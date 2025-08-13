@@ -1,0 +1,697 @@
+<!-- Chosen Palette: Cool Gray & Blue -->
+<!-- Application Structure Plan: The SPA is structured using a two-tab interface to cleanly separate "Commit Guidelines" from "Branching Strategy." This design choice avoids overwhelming the user with information and provides a focused view for each topic. The user can easily switch between the two main sections. The commit guidelines are presented as interactive cards with a copy-to-clipboard feature for practical use. The branching strategy includes a custom, non-SVG/non-Mermaid visual diagram built with HTML/CSS to make the abstract flow concrete and easy to understand. This structure enhances usability by organizing the content logically for a developer audience. -->
+<!-- Visualization & Content Choices: 
+- Report Info: Commit Message Rules -> Goal: Inform & practical application -> Presentation: Interactive cards in a grid layout -> Interaction: A "Copy" button on each card copies the commit prefix (e.g., ":sparkles: Feat:") to the clipboard. Justification: This makes the rules immediately usable. Library/Method: Vanilla JS for clipboard interaction, Tailwind for card styling.
+- Report Info: Branching Strategy Text -> Goal: Inform -> Presentation: Clearly formatted text sections for each branch type (`main`, `dev`, task branches). Justification: Maintains clarity of the original document. Library/Method: Tailwind CSS for typography and layout.
+- Report Info: `gitGraph` Diagram -> Goal: Visualize relationships and flow -> Presentation: A custom-built diagram using HTML `div`s and Tailwind CSS to represent commits, branches, and merges. It mimics the structure of the Mermaid diagram. Interaction: Hover effects could be added, but a clear static visualization is prioritized. Justification: This fulfills the strict "NO SVG/Mermaid" requirement while still providing a crucial visual aid. Library/Method: HTML and Tailwind CSS.
+-->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Rules: Interactive Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f3f4f6; /* gray-100 */
+      }
+      .code-font {
+        font-family: "Fira Code", monospace;
+      }
+      .tab-button.active {
+        background-color: #3b82f6; /* blue-500 */
+        color: white;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+          0 2px 4px -2px rgb(0 0 0 / 0.1);
+      }
+      .tab-button {
+        transition: all 0.2s ease-in-out;
+      }
+      .card-copy-button {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+      }
+      .card:hover .card-copy-button {
+        opacity: 1;
+      }
+      .git-graph-container {
+        position: relative;
+        min-height: 450px;
+      }
+      .git-branch {
+        position: absolute;
+        width: 4px;
+        background-color: #9ca3af;
+      }
+      .git-commit {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 9999px;
+        border: 3px solid white;
+        box-sizing: content-box;
+      }
+      .git-commit-label {
+        position: absolute;
+        white-space: nowrap;
+        font-size: 0.875rem;
+        color: #4b5563;
+      }
+      .branch-main {
+        background-color: #8b5cf6;
+      } /* violet-500 */
+      .branch-dev {
+        background-color: #3b82f6;
+      } /* blue-500 */
+      .branch-feat {
+        background-color: #22c55e;
+      } /* green-500 */
+      .branch-bug {
+        background-color: #ef4444;
+      } /* red-500 */
+      .merge-line {
+        position: absolute;
+        width: 4px;
+        background-color: #9ca3af;
+        transform-origin: top left;
+      }
+    </style>
+  </head>
+  <body class="h-full antialiased">
+    <main class="w-full max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <header class="text-center mb-8">
+        <h1 class="text-3xl sm:text-2xl font-bold text-gray-800">
+          GitHub Rules: Interactive Guide By Wanna-be-Coder
+        </h1>
+        <p class="mt-2 text-lg text-gray-600">
+          A practical guide to commit messages and branching.
+        </p>
+      </header>
+
+      <!-- Tab Navigation -->
+      <div
+        class="mb-8 flex justify-center items-center bg-gray-200 rounded-lg p-1.5 max-w-sm mx-auto shadow-inner"
+      >
+        <button
+          id="tab-btn-commits"
+          class="tab-button w-full py-2 px-4 rounded-md text-sm sm:text-base font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 active"
+        >
+          Commit Guidelines
+        </button>
+        <button
+          id="tab-btn-branching"
+          class="tab-button w-full py-2 px-4 rounded-md text-sm sm:text-base font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Branching Strategy
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="tab-content">
+        <!-- Commit Guidelines Content -->
+        <section id="tab-content-commits">
+          <div class="text-center mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700">
+              📝 Commit Message Guidelines
+            </h2>
+            <p class="mt-2 text-gray-600 max-w-3xl mx-auto">
+              Use these prefixes for clear and consistent commit history. Click
+              any card to copy the prefix.
+            </p>
+          </div>
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6"
+          >
+            <!-- Commit Type Cards -->
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':sparkles: Feat:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">✨</span>
+                    <span class="code-font">:sparkles: Feat:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">When adding a new feature.</p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Feat: Implement user authentication
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':bug: Fix:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">🐛</span>
+                    <span class="code-font">:bug: Fix:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">When fixing a bug.</p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Fix: Resolve login issue on mobile
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':arrow_up: Update:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">⬆️</span>
+                    <span class="code-font">:arrow_up: Update:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    Minor enhancements or dependency updates.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Update: Upgrade React to v18.2
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':wastebasket: Remove:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">🗑️</span>
+                    <span class="code-font">:wastebasket: Remove:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    When deleting code, files, or features.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Remove: Deprecated user profile module
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':memo: Docs:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">📝</span>
+                    <span class="code-font">:memo: Docs:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    When making changes to documentation.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Docs: Add setup instructions to README
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':art: Style:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">🎨</span>
+                    <span class="code-font">:art: Style:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    Formatting or stylistic changes.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Style: Format code with Prettier
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':rocket: Deploy:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">🚀</span>
+                    <span class="code-font">:rocket: Deploy:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    When deploying a new version.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Deploy: Release v1.0.0 to production
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':test_tube: Test:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">🧪</span>
+                    <span class="code-font">:test_tube: Test:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    When adding or correcting tests.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Test: Add unit tests for API endpoints
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':gear: Chore:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">⚙️</span>
+                    <span class="code-font">:gear: Chore:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    Routine tasks and maintenance.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Chore: Configure CI/CD pipeline
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+            <div
+              class="card bg-white p-4 rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              onclick="copyToClipboard(':rewind: Revert:')"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    <span class="mr-2 text-xl">⏪</span>
+                    <span class="code-font">:rewind: Revert:</span>
+                  </h3>
+                  <p class="text-gray-600 mt-1">
+                    When reverting previous commits.
+                  </p>
+                  <p class="text-sm text-gray-500 mt-2 code-font italic">
+                    e.g., Revert: Previous commit that broke build
+                  </p>
+                </div>
+                <span
+                  class="card-copy-button text-xs text-blue-500 font-semibold"
+                  >COPY</span
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Branching Strategy Content -->
+        <section id="tab-content-branching" class="hidden">
+          <div class="text-center mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700">
+              🌳 GitHub Branching Strategy
+            </h2>
+            <p class="mt-2 text-gray-600 max-w-3xl mx-auto">
+              This model uses `main` for production, `dev` for integration, and
+              task-specific branches for new work.
+            </p>
+          </div>
+          <div class="lg:grid lg:grid-cols-2 lg:gap-12 items-start">
+            <div>
+              <div class="mb-6 bg-white p-5 rounded-lg shadow-md">
+                <h3 class="font-semibold text-xl text-gray-800 mb-2">
+                  1. <span class="code-font text-violet-600">main</span> Branch
+                </h3>
+                <p class="text-gray-600">
+                  <strong class="font-medium text-gray-700">Purpose:</strong>
+                  Always contains production-ready, stable code.
+                </p>
+                <p class="text-gray-600">
+                  <strong class="font-medium text-gray-700">Protection:</strong>
+                  Highly protected. Merges only from `dev` after thorough
+                  testing.
+                </p>
+                <p class="text-gray-600">
+                  <strong class="font-medium text-gray-700">Releases:</strong>
+                  Tagged for each release (e.g.,
+                  <code
+                    class="code-font bg-gray-200 text-sm py-0.5 px-1 rounded"
+                    >v1.0.0</code
+                  >).
+                </p>
+              </div>
+              <div class="mb-6 bg-white p-5 rounded-lg shadow-md">
+                <h3 class="font-semibold text-xl text-gray-800 mb-2">
+                  2. <span class="code-font text-blue-600">dev</span> Branch
+                </h3>
+                <p class="text-gray-600">
+                  <strong class="font-medium text-gray-700">Purpose:</strong>
+                  Contains the latest integrated development code.
+                </p>
+                <p class="text-gray-600">
+                  <strong class="font-medium text-gray-700">Source:</strong>
+                  Created from `main`.
+                </p>
+                <p class="text-gray-600">
+                  <strong class="font-medium text-gray-700"
+                    >Integration:</strong
+                  >
+                  All specific task branches are merged into `dev`.
+                </p>
+              </div>
+              <div class="mb-6 bg-white p-5 rounded-lg shadow-md">
+                <h3 class="font-semibold text-xl text-gray-800 mb-2">
+                  3. Specific Task Branches
+                </h3>
+                <p class="text-gray-600 mb-3">
+                  <strong class="font-medium text-gray-700">Purpose:</strong>
+                  Dedicated branches for individual features, bugs, or updates,
+                  branching from `dev`.
+                </p>
+                <h4 class="font-semibold text-gray-700 mb-2">
+                  Naming Convention:
+                </h4>
+                <ul class="list-disc list-inside space-y-2 text-gray-600">
+                  <li>
+                    <code
+                      class="code-font bg-gray-200 text-sm py-0.5 px-1 rounded"
+                      >feat/IssueNum-short-desc</code
+                    >
+                  </li>
+                  <li>
+                    <code
+                      class="code-font bg-gray-200 text-sm py-0.5 px-1 rounded"
+                      >bug/IssueNum-short-desc</code
+                    >
+                  </li>
+                  <li>
+                    <code
+                      class="code-font bg-gray-200 text-sm py-0.5 px-1 rounded"
+                      >up/IssueNum-short-desc</code
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-8 lg:mt-0">
+              <h3 class="text-center font-semibold text-xl text-gray-800 mb-4">
+                Branching Visual Flow
+              </h3>
+              <div
+                class="bg-white p-4 sm:p-6 rounded-lg shadow-md w-full chart-container max-w-lg mx-auto overflow-hidden"
+              >
+                <div class="git-graph-container code-font">
+                  <!-- Main branch -->
+                  <div
+                    class="git-branch branch-main"
+                    style="left: 25%; top: 0; height: 100%"
+                  ></div>
+                  <div
+                    class="git-commit branch-main"
+                    style="left: 25%; top: 40px; transform: translateX(-50%)"
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 25%; top: 44px; transform: translateX(20px)"
+                    >Initial Commit</span
+                  >
+                  <div
+                    class="git-commit branch-main"
+                    style="left: 25%; top: 400px; transform: translateX(-50%)"
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 25%; top: 404px; transform: translateX(20px)"
+                    >v1.0.0</span
+                  >
+                  <!-- Dev branch -->
+                  <div
+                    class="git-branch branch-dev"
+                    style="left: 50%; top: 80px; height: 320px"
+                  ></div>
+                  <div
+                    class="merge-line branch-dev"
+                    style="
+                      left: 25%;
+                      top: 40px;
+                      height: 57px;
+                      transform: rotate(45deg);
+                    "
+                  ></div>
+                  <div
+                    class="git-commit branch-dev"
+                    style="left: 50%; top: 80px; transform: translateX(-50%)"
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 50%; top: 84px; transform: translateX(20px)"
+                    >Dev Initial</span
+                  >
+                  <!-- Feature branch -->
+                  <div
+                    class="git-branch branch-feat"
+                    style="left: 75%; top: 120px; height: 120px"
+                  ></div>
+                  <div
+                    class="merge-line branch-feat"
+                    style="
+                      left: 50%;
+                      top: 80px;
+                      height: 57px;
+                      transform: rotate(45deg);
+                    "
+                  ></div>
+                  <div
+                    class="git-commit branch-feat"
+                    style="left: 75%; top: 120px; transform: translateX(-50%)"
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 75%; top: 124px; transform: translateX(20px)"
+                    >feat/123: Add UI</span
+                  >
+                  <div
+                    class="git-commit branch-feat"
+                    style="left: 75%; top: 180px; transform: translateX(-50%)"
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 75%; top: 184px; transform: translateX(20px)"
+                    >feat/123: Add logic</span
+                  >
+                  <div
+                    class="merge-line branch-feat"
+                    style="
+                      left: 50%;
+                      top: 240px;
+                      height: 85px;
+                      transform: rotate(-45deg) translateX(20px)
+                        translateY(-20px);
+                    "
+                  ></div>
+                  <div
+                    class="git-commit branch-dev"
+                    style="
+                      left: 50%;
+                      top: 240px;
+                      transform: translateX(-50%);
+                      border-color: #22c55e;
+                    "
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 50%; top: 244px; transform: translateX(20px)"
+                    >Merge feat/123</span
+                  >
+                  <!-- Bug branch -->
+                  <div
+                    class="git-branch branch-bug"
+                    style="left: 75%; top: 280px; height: 40px"
+                  ></div>
+                  <div
+                    class="merge-line branch-bug"
+                    style="
+                      left: 50%;
+                      top: 240px;
+                      height: 57px;
+                      transform: rotate(45deg);
+                    "
+                  ></div>
+                  <div
+                    class="git-commit branch-bug"
+                    style="left: 75%; top: 280px; transform: translateX(-50%)"
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 75%; top: 284px; transform: translateX(20px)"
+                    >bug/456: Fix login</span
+                  >
+                  <div
+                    class="merge-line branch-bug"
+                    style="
+                      left: 50%;
+                      top: 320px;
+                      height: 57px;
+                      transform: rotate(-45deg) translateX(0px) translateY(-0px);
+                    "
+                  ></div>
+                  <div
+                    class="git-commit branch-dev"
+                    style="
+                      left: 50%;
+                      top: 320px;
+                      transform: translateX(-50%);
+                      border-color: #ef4444;
+                    "
+                  ></div>
+                  <span
+                    class="git-commit-label"
+                    style="left: 50%; top: 324px; transform: translateX(20px)"
+                    >Merge bug/456</span
+                  >
+                  <!-- Merge to main -->
+                  <div
+                    class="merge-line branch-dev"
+                    style="
+                      left: 25%;
+                      top: 400px;
+                      height: 180px;
+                      transform: rotate(-45deg) translateX(28px)
+                        translateY(-28px);
+                    "
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Notification for copy -->
+      <div
+        id="copy-notification"
+        class="fixed bottom-5 right-5 bg-gray-800 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 transform translate-y-2 transition-all duration-300"
+      >
+        Copied to clipboard!
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const tabs = {
+          commits: {
+            btn: document.getElementById("tab-btn-commits"),
+            content: document.getElementById("tab-content-commits"),
+          },
+          branching: {
+            btn: document.getElementById("tab-btn-branching"),
+            content: document.getElementById("tab-content-branching"),
+          },
+        };
+
+        const switchTab = (tabName) => {
+          Object.keys(tabs).forEach((key) => {
+            const isSelected = key === tabName;
+            tabs[key].btn.classList.toggle("active", isSelected);
+            tabs[key].content.classList.toggle("hidden", !isSelected);
+          });
+        };
+
+        tabs.commits.btn.addEventListener("click", () => switchTab("commits"));
+        tabs.branching.btn.addEventListener("click", () =>
+          switchTab("branching")
+        );
+
+        // Set initial state
+        switchTab("commits");
+      });
+
+      function copyToClipboard(text) {
+        const notification = document.getElementById("copy-notification");
+
+        if (!navigator.clipboard) {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            document.execCommand("copy");
+          } catch (err) {
+            console.error("Fallback: Oops, unable to copy", err);
+          }
+          document.body.removeChild(textArea);
+        } else {
+          navigator.clipboard.writeText(text).catch((err) => {
+            console.error("Async: Could not copy text: ", err);
+          });
+        }
+
+        notification.classList.remove("opacity-0", "translate-y-2");
+        notification.classList.add("opacity-100", "translate-y-0");
+        setTimeout(() => {
+          notification.classList.add("opacity-0", "translate-y-2");
+          notification.classList.remove("opacity-100", "translate-y-0");
+        }, 2000);
+      }
+    </script>
+  </body>
+</html>
