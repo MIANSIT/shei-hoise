@@ -2,7 +2,7 @@
 import { SignUpContainer } from "../components/auth/SignUp/SignUpContainer";
 import { useEffect, useState } from "react";
 
-export default function RegisterPage() {
+export default function SignUprPage() {
   const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {

@@ -23,7 +23,6 @@ export function SignUpContainer({ isMobile }: SignUpContainerProps) {
     },
   });
 
-  const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const onSubmit = async (values: SignUpFormValues) => {
@@ -32,7 +31,6 @@ export function SignUpContainer({ isMobile }: SignUpContainerProps) {
       // Replace with your actual API call
       console.log("Submitting form:", values);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      setSuccess(true);
       form.reset();
     } catch (error) {
       console.error("Registration failed:", error);
@@ -45,8 +43,6 @@ export function SignUpContainer({ isMobile }: SignUpContainerProps) {
     form,
     onSubmit,
     isLoading,
-    success,
-    setSuccess,
   };
 
   return isMobile ? (

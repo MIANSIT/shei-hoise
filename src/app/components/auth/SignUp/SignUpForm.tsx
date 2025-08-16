@@ -4,7 +4,6 @@ import { SignUpFormValues } from "../../../../lib/utils/formSchema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SheiAlert, SheiAlertDescription } from "../../ui/shei-alert/alert";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
@@ -29,11 +28,9 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
           {...form.register("firstName")}
         />
         {form.formState.errors.firstName && (
-          <SheiAlert variant="destructive" className="mt-1">
-            <SheiAlertDescription>
-              {form.formState.errors.firstName.message}
-            </SheiAlertDescription>
-          </SheiAlert>
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.firstName.message}
+          </p>
         )}
       </div>
 
@@ -46,11 +43,9 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
           {...form.register("lastName")}
         />
         {form.formState.errors.lastName && (
-          <SheiAlert variant="destructive" className="mt-1">
-            <SheiAlertDescription>
-              {form.formState.errors.lastName.message}
-            </SheiAlertDescription>
-          </SheiAlert>
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.lastName.message}
+          </p>
         )}
       </div>
 
@@ -63,11 +58,9 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
           {...form.register("email")}
         />
         {form.formState.errors.email && (
-          <SheiAlert variant="destructive" className="mt-1">
-            <SheiAlertDescription>
-              {form.formState.errors.email.message}
-            </SheiAlertDescription>
-          </SheiAlert>
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.email.message}
+          </p>
         )}
       </div>
 
@@ -80,11 +73,9 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
           {...form.register("phone")}
         />
         {form.formState.errors.phone && (
-          <SheiAlert variant="destructive" className="mt-1">
-            <SheiAlertDescription>
-              {form.formState.errors.phone.message}
-            </SheiAlertDescription>
-          </SheiAlert>
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.phone.message}
+          </p>
         )}
       </div>
 
@@ -106,11 +97,9 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
           </span>
         </div>
         {form.formState.errors.password && (
-          <SheiAlert variant="destructive" className="mt-1">
-            <SheiAlertDescription>
-              {form.formState.errors.password.message}
-            </SheiAlertDescription>
-          </SheiAlert>
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.password.message}
+          </p>
         )}
       </div>
 
@@ -132,11 +121,9 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
           </span>
         </div>
         {form.formState.errors.confirmPassword && (
-          <SheiAlert variant="destructive" className="mt-1">
-            <SheiAlertDescription>
-              {form.formState.errors.confirmPassword.message}
-            </SheiAlertDescription>
-          </SheiAlert>
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.confirmPassword.message}
+          </p>
         )}
       </div>
 
