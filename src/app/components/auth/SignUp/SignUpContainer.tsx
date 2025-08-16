@@ -5,6 +5,7 @@ import { SignUpFormSchema, SignUpFormValues } from "../../../../lib/utils/formSc
 import { useState } from "react";
 import { SignUpMobile } from "./SignUpMobile";
 import { SignUpDesktop } from "./SignUpDesktop";
+import { useSheiNotification } from "../../../../lib/hook/useSheiNotification"
 
 interface SignUpContainerProps {
   isMobile: boolean;
@@ -21,33 +22,36 @@ export function SignUpContainer({ isMobile }: SignUpContainerProps) {
       password: "",
       confirmPassword: "",
     },
-  });
+  })
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false)
+  const sheiNotification = useSheiNotification() // 👈 initialize here
 
   const onSubmit = async (values: SignUpFormValues) => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
       // Replace with your actual API call
-      console.log("Submitting form:", values);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      form.reset();
+      console.log("Submitting form:", values)
+      await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate API call
+      form.reset()
+
+      // ✅ Success sheiNotification
+      sheiNotification.success("Registration successful!", { duration: 3000 })
     } catch (error) {
-      console.error("Registration failed:", error);
+      console.error("Registration failed:", error)
+
+      // ❌ Error sheiNotification
+      sheiNotification.error("Registration failed. Please try again.", { duration: 4000 })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const commonProps = {
     form,
     onSubmit,
     isLoading,
-  };
+  }
 
-  return isMobile ? (
-    <SignUpMobile {...commonProps} />
-  ) : (
-    <SignUpDesktop {...commonProps} />
-  );
+  return isMobile ? <SignUpMobile {...commonProps} /> : <SignUpDesktop {...commonProps} />
 }
