@@ -100,7 +100,7 @@ export function FormFields() {
 
       <p className="text-center text-sm text-gray-400">
         Don&apos;t have an account?{" "}
-        <Link href="/signUp" className="text-white hover:underline">
+        <Link href="/sign-up" className="text-white hover:underline">
           Sign up
         </Link>
       </p>
