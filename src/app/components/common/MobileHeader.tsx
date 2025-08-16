@@ -27,7 +27,7 @@ export default function MobileHeader() {
     { name: "Shop", path: "/shop" },
     { name: "Products", path: "/products" },
     { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/signup", isHighlighted: true },
+    { name: "Sign up", path: "/signUp", isHighlighted: true },
   ];
 
   return (
