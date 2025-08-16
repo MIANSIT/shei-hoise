@@ -51,16 +51,13 @@ export default function DesktopHeader() {
             ))}
           </nav>
         </div>
-
-        {/* Right: Cart + Auth */}
         <div className="flex items-center gap-5">
-          {/* Cart */}
           <div className="relative">
             <Link
               href="/cart"
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 hover:bg-gray-800"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800"
             >
-              <HiOutlineShoppingCart size={18} />
+              <HiOutlineShoppingCart size={18} className="text-white text-sm" />
             </Link>
           </div>
           {navLinks.slice(3).map((link) => (
