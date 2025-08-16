@@ -10,6 +10,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
 import Link from "next/link";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card"; // adjust path if needed
 
 interface SignUpFormProps {
   form?: UseFormReturn<SignUpFormValues>;
@@ -33,12 +41,11 @@ export function SignUpForm({ form }: SignUpFormProps) {
   const handleSubmit = async (values: SignUpFormValues) => {
     setIsLoading(true);
     try {
-      // 🟢 No API yet — just log values
       console.log("Signup values:", values);
-
-      // Always succeed for now
       internalForm.reset();
-      sheiNotification.success("Shei Hoise Account created successfully!", { duration: 3000 });
+      sheiNotification.success("Shei Hoise Account created successfully!", {
+        duration: 3000,
+      });
     } catch (error) {
       console.error("Shei Hoise Account creation failed:", error);
       sheiNotification.error("Shei Hoise Account creation failed. Please try again.", {
@@ -50,94 +57,98 @@ export function SignUpForm({ form }: SignUpFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Title + Subtitle */}
+    <div className="space-y-6 max-w-md mx-auto">
+      {/* Outside Title + Subtitle */}
       <div className="text-center">
-        <h2 className="text-4xl font-semibold text-left">Create Account</h2>
-        <p className="text-gray-500 text-sm text-left mt-2">
-          Enter your details to create your account
+        <h1 className="text-4xl font-bold text-left text-white">Create Account</h1>
+        <p className="mt-2 text-gray-400 text-left">
+        Enter your details to create your account
         </p>
       </div>
 
-      {/* Form */}
-      <form
-        onSubmit={internalForm.handleSubmit(handleSubmit)}
-        className="space-y-4"
-      >
-        {/* Name */}
-        <div className="grid gap-2">
-          <Label htmlFor="name">Full Name</Label>
-          <Input
-            id="name"
-            type="text"
-            autoComplete="name"
-            placeholder="Full Name"
-            {...internalForm.register("name")}
-          />
-          {internalForm.formState.errors.name && (
-            <p className="text-sm text-red-500 mt-1">
-              {internalForm.formState.errors.name.message}
-            </p>
-          )}
-        </div>
+      {/* Card with form */}
+      <Card>
+     
 
-        {/* Email */}
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="Email"
-            autoComplete="email"
-            {...internalForm.register("email")}
-          />
-          {internalForm.formState.errors.email && (
-            <p className="text-sm text-red-500 mt-1">
-              {internalForm.formState.errors.email.message}
-            </p>
-          )}
-        </div>
+        <CardContent>
+          <form onSubmit={internalForm.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Name */}
+            <div className="grid gap-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                autoComplete="name"
+                placeholder="Full Name"
+                {...internalForm.register("name")}
+              />
+              {internalForm.formState.errors.name && (
+                <p className="text-sm text-red-500 mt-1">
+                  {internalForm.formState.errors.name.message}
+                </p>
+              )}
+            </div>
 
-        {/* Password */}
-        <div className="grid gap-2 relative">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              className="pr-10"
-              placeholder="Password"
-              autoComplete="new-password"
-              {...internalForm.register("password")}
-            />
-            <span
-              className="absolute inset-y-0 right-2 flex items-center cursor-pointer text-gray-400"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </span>
-          </div>
-          {internalForm.formState.errors.password && (
-            <p className="text-sm text-red-500 mt-1">
-              {internalForm.formState.errors.password.message}
-            </p>
-          )}
-        </div>
+            {/* Email */}
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Email"
+                autoComplete="email"
+                {...internalForm.register("email")}
+              />
+              {internalForm.formState.errors.email && (
+                <p className="text-sm text-red-500 mt-1">
+                  {internalForm.formState.errors.email.message}
+                </p>
+              )}
+            </div>
 
-        {/* Submit */}
-        <Button type="submit" className="w-full mt-2" disabled={isLoading}>
-          {isLoading ? "Processing..." : "Create account"}
-        </Button>
-      </form>
+            {/* Password */}
+            <div className="grid gap-2 relative">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  className="pr-10"
+                  placeholder="Password"
+                  autoComplete="new-password"
+                  {...internalForm.register("password")}
+                />
+                <span
+                  className="absolute inset-y-0 right-2 flex items-center cursor-pointer text-gray-400"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </span>
+              </div>
+              {internalForm.formState.errors.password && (
+                <p className="text-sm text-red-500 mt-1">
+                  {internalForm.formState.errors.password.message}
+                </p>
+              )}
+            </div>
 
-      {/* Footer */}
-      <p className="text-center text-sm text-gray-500">
-        Already have an account?{" "}
-        <Link href="/login" className="text-white font-medium hover:underline">
-          Sign in
-        </Link>
-      </p>
+            {/* Submit */}
+            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+              {isLoading ? "Processing..." : "Create account"}
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="justify-center">
+          <p className="text-sm text-gray-500">
+            Already have an account?{" "}
+            <Link href="/login" className="text-white font-medium hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { DesktopLayout } from "../../ui/sheiAuthLayout/AuthDesktop";
 import { MobileLayout } from "../../ui/sheiAuthLayout/AuthMobile";
-import { FormFields } from "./LoginupForm";
+import { LoginForm } from "./LoginForm";
 
 export function LoginWrapper() {
   return (
@@ -10,14 +10,14 @@ export function LoginWrapper() {
       {/* Mobile Layout */}
       <div className="block md:hidden">
         <MobileLayout>
-          <FormFields />
+          <LoginForm />
         </MobileLayout>
       </div>
 
       {/* Desktop Layout */}
       <div className="hidden md:block">
         <DesktopLayout>
-          <FormFields />
+          <LoginForm />
         </DesktopLayout>
       </div>
     </>
