@@ -46,8 +46,8 @@ export function FormFields() {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-white">Welcome back</h1>
-        <p className="mt-2 text-gray-400">
+        <h1 className="text-4xl font-bold text-left text-white">Welcome back</h1>
+        <p className="mt-2 text-gray-400 text-left">
           Enter your credentials to access your account
         </p>
       </div>
@@ -82,6 +82,7 @@ export function FormFields() {
           id="password"
           name="password"
           type="password"
+          placeholder="Password"
           required
           className="text-sm h-14"
         />

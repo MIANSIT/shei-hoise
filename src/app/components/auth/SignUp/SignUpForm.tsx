@@ -71,6 +71,7 @@ export function SignUpForm({ form }: SignUpFormProps) {
             id="name"
             type="text"
             autoComplete="name"
+            placeholder="Full Name"
             {...internalForm.register("name")}
           />
           {internalForm.formState.errors.name && (
@@ -86,6 +87,7 @@ export function SignUpForm({ form }: SignUpFormProps) {
           <Input
             id="email"
             type="email"
+            placeholder="Email"
             autoComplete="email"
             {...internalForm.register("email")}
           />
@@ -104,6 +106,7 @@ export function SignUpForm({ form }: SignUpFormProps) {
               id="password"
               type={showPassword ? "text" : "password"}
               className="pr-10"
+              placeholder="Password"
               autoComplete="new-password"
               {...internalForm.register("password")}
             />
