@@ -15,36 +15,21 @@ interface RegistrationFormProps {
 
 export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      {/* First Name */}
+      {/* Name Field */}
       <div className="grid gap-2">
-        <Label htmlFor="firstName">First Name</Label>
+        <Label htmlFor="name">Full Name</Label>
         <Input
-          id="firstName"
+          id="name"
           type="text"
-          {...form.register("firstName")}
+          autoComplete="name"
+          {...form.register("name")}
         />
-        {form.formState.errors.firstName && (
+        {form.formState.errors.name && (
           <p className="text-sm text-red-500 mt-1">
-            {form.formState.errors.firstName.message}
-          </p>
-        )}
-      </div>
-
-      {/* Last Name */}
-      <div className="grid gap-2">
-        <Label htmlFor="lastName">Last Name</Label>
-        <Input
-          id="lastName"
-          type="text"
-          {...form.register("lastName")}
-        />
-        {form.formState.errors.lastName && (
-          <p className="text-sm text-red-500 mt-1">
-            {form.formState.errors.lastName.message}
+            {form.formState.errors.name.message}
           </p>
         )}
       </div>
@@ -55,26 +40,12 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
         <Input
           id="email"
           type="email"
+          autoComplete="email"
           {...form.register("email")}
         />
         {form.formState.errors.email && (
           <p className="text-sm text-red-500 mt-1">
             {form.formState.errors.email.message}
-          </p>
-        )}
-      </div>
-
-      {/* Phone */}
-      <div className="grid gap-2">
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          type="tel"
-          {...form.register("phone")}
-        />
-        {form.formState.errors.phone && (
-          <p className="text-sm text-red-500 mt-1">
-            {form.formState.errors.phone.message}
           </p>
         )}
       </div>
@@ -87,11 +58,13 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
             id="password"
             type={showPassword ? "text" : "password"}
             className="pr-10"
+            autoComplete="new-password"
             {...form.register("password")}
           />
           <span
             className="absolute inset-y-0 right-2 flex items-center cursor-pointer text-gray-400"
             onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </span>
@@ -103,32 +76,13 @@ export function SignUpForm({ form, onSubmit, isLoading }: RegistrationFormProps)
         )}
       </div>
 
-      {/* Confirm Password */}
-      <div className="grid gap-2 relative">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
-        <div className="relative">
-          <Input
-            id="confirmPassword"
-            type={showConfirmPassword ? "text" : "password"}
-            className="pr-10"
-            {...form.register("confirmPassword")}
-          />
-          <span
-            className="absolute inset-y-0 right-2 flex items-center cursor-pointer text-gray-400"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </span>
-        </div>
-        {form.formState.errors.confirmPassword && (
-          <p className="text-sm text-red-500 mt-1">
-            {form.formState.errors.confirmPassword.message}
-          </p>
-        )}
-      </div>
-
-      <Button type="submit" className="w-full mt-2" disabled={isLoading}>
-        {isLoading ? "Processing..." : "Register"}
+      <Button 
+        type="submit" 
+        className="w-full mt-2" 
+        disabled={isLoading}
+        aria-live="polite"
+      >
+        {isLoading ? "Processing..." : "Create account"}
       </Button>
     </form>
   );
