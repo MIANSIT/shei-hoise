@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-export const registrationFormSchema = z
+export const SignUpFormSchema = z
   .object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
@@ -14,4 +14,4 @@ export const registrationFormSchema = z
     path: ["confirmPassword"],
   })
 
-export type RegistrationFormValues = z.infer<typeof registrationFormSchema>
+export type SignUpFormValues = z.infer<typeof SignUpFormSchema>
