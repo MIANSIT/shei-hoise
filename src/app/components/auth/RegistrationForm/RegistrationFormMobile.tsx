@@ -5,7 +5,7 @@ import {
   SheiAlert,
   SheiAlertTitle,
   SheiAlertDescription,
-} from "../../ui/shei-alert/alert";
+} from "../../ui/sheiAlert/SheiAlert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {

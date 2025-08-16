@@ -1,7 +1,7 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { SheiAlert, SheiAlertTitle, SheiAlertDescription } from "../../ui/shei-alert/alert";
+import { SheiAlert, SheiAlertTitle, SheiAlertDescription } from "../../ui/sheiAlert/SheiAlert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registrationFormSchema, RegistrationFormValues } from "../../../../lib/utils/formSchema";

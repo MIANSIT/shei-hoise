@@ -2,7 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { SheiAlert, SheiAlertDescription } from "../../ui/shei-alert/alert";
+import { SheiAlert, SheiAlertDescription } from "../../ui/sheiAlert/SheiAlert";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
