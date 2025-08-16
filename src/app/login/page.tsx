@@ -1,4 +1,5 @@
-import { LoginForm } from "../components/shadcn/LoginupForm"
+import { LoginForm } from "../components/auth/LoginupForm"
+
 
 export default function Page() {
   return (

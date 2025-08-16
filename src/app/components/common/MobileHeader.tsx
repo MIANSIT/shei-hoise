@@ -36,7 +36,7 @@ export default function MobileHeader() {
         <Link href="/" className="flex items-center">
           <Image
             src="/logo.png"
-            alt="Your Logo"
+            alt="Shei Hoise Logo"
             width={32}
             height={32}
             priority
