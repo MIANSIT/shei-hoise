@@ -1,7 +1,6 @@
 "use client";
 
 import { HiOutlineShoppingCart } from "react-icons/hi";
-import { useCart } from "../../../lib/context/CartContext";
 import useCartStore from "@/lib/store/cartStore";
 
 type ShoppingCartIconProps = {
