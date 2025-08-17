@@ -1,17 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { HiOutlineShoppingCart } from "react-icons/hi";
 import { useCart } from "../../../lib/context/CartContext";
 
-export default function ShoppingCartIcon() {
+type ShoppingCartIconProps = {
+  onClick?: () => void;
+};
+
+export default function ShoppingCartIcon({ onClick }: ShoppingCartIconProps) {
   const { cartCount } = useCart();
 
   return (
     <div className="relative">
-      <Link
-        href="/cart"
-        className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800 transition-colors"
+      <button
+        onClick={onClick}
+        className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800 transition-colors cursor-pointer"
         aria-label="Shopping cart"
       >
         <HiOutlineShoppingCart size={18} className="text-white text-sm" />
@@ -20,7 +23,7 @@ export default function ShoppingCartIcon() {
             {cartCount}
           </span>
         )}
-      </Link>
+      </button>
     </div>
   );
 }

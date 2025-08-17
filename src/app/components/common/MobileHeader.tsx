@@ -6,7 +6,7 @@ import Image from "next/image";
 import { FaBars, FaTimes } from "react-icons/fa";
 import ShoppingCartIcon from "./ShoppingCartIcon";
 import { usePathname } from "next/navigation";
-
+import CartBottomBar from "../shop/CartBottomBar";
 interface NavLink {
   name: string;
   path: string;
@@ -14,6 +14,7 @@ interface NavLink {
 }
 
 export default function MobileHeader() {
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const pathname = usePathname();
@@ -31,6 +32,7 @@ export default function MobileHeader() {
   ];
 
   return (
+    <>
     <header className="bg-black px-4 py-3 shadow-md lg:hidden relative z-50">
       <div className="flex items-center justify-between">
         <Link href="/" className="flex items-center">
@@ -43,7 +45,7 @@ export default function MobileHeader() {
           />
         </Link>
         <div className="flex items-center gap-3">
-          <ShoppingCartIcon />
+          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -87,5 +89,7 @@ export default function MobileHeader() {
         </ul>
       </nav>
     </header>
+    <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+    </>
   );
 }
