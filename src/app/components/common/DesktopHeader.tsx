@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import ShoppingCartIcon from "./HeaderShoppingCartIcon";
+import ShoppingCartIcon from "./ShoppingCartIcon";
 
 interface NavLink {
   name: string;
