@@ -10,4 +10,6 @@ export interface CartState {
   clearCart: () => void;
   totalItems: () => number;
   totalPrice: () => number;
+  removeItem: (id: string | number) => void;
+  updateQuantity: (id: string | number, quantity: number) => void;
 }

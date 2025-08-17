@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import ShoppingCartIcon from "./ShoppingCartIcon";
-import CartSidebar from "../shop/CartSidebar";
+import CartSidebar from "../cart/CartSidebar";
 
 interface NavLink {
   name: string;

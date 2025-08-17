@@ -6,7 +6,7 @@ import Image from "next/image";
 import { FaBars, FaTimes } from "react-icons/fa";
 import ShoppingCartIcon from "./ShoppingCartIcon";
 import { usePathname } from "next/navigation";
-import CartBottomBar from "../shop/CartBottomBar";
+import CartBottomBar from "../cart/CartBottomBar";
 interface NavLink {
   name: string;
   path: string;

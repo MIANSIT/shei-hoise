@@ -24,6 +24,18 @@ const useCartStore = create<CartState>()(
           };
         }),
 
+      removeItem: (id) =>
+        set((state) => ({
+          cart: state.cart.filter((item) => item.id !== id),
+        })),
+
+      updateQuantity: (id, quantity) =>
+        set((state) => ({
+          cart: state.cart.map((item) =>
+            item.id === id ? { ...item, quantity } : item
+          ),
+        })),
+
       clearCart: () => set({ cart: [] }),
 
       totalItems: () =>
@@ -31,7 +43,7 @@ const useCartStore = create<CartState>()(
 
       totalPrice: () =>
         get().cart.reduce(
-          (sum, item) => sum + item?.currentPrice * item.quantity,
+          (sum, item) => sum + item.currentPrice * item.quantity,
           0
         ),
     }),
