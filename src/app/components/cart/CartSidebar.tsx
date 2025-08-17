@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import useCartStore from "@/lib/store/cartStore";
-import { CartItem } from "../../../lib/types/cart";
+import CartItemsList from "./CartItemList";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -12,7 +12,7 @@ type CartSidebarProps = {
 };
 
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
-  const { cart, totalPrice, totalItems, removeItem, updateQuantity } = useCartStore();
+  const { cart, totalPrice, totalItems } = useCartStore();
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -25,11 +25,6 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
       document.body.style.overflow = "auto";
     };
   }, [isOpen]);
-
-  const handleQuantityChange = (item: CartItem, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    updateQuantity(item.id, newQuantity);
-  };
 
   return (
     <>
@@ -73,59 +68,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                 </button>
               </div>
             ) : (
-              <div className='space-y-4'>
-                {cart.map((item: CartItem) => (
-                  <div
-                    key={item.id}
-                    className='flex items-start justify-between border-b border-gray-700 pb-4'
-                  >
-                    {/* Product Image and Info */}
-                    <div className='flex items-start gap-4 flex-1'>
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className='w-16 h-16 object-cover rounded'
-                      />
-                      <div className='flex-1'>
-                        <h3 className='font-semibold'>{item.title}</h3>
-                        <p className='text-sm text-gray-400'>{item.category}</p>
-                        <p className='text-sm text-gray-300 mt-1'>
-                          ${item.currentPrice.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quantity Controls */}
-                    <div className='flex flex-col items-end gap-2'>
-                      <div className='flex items-center gap-2'>
-                        <button
-                          onClick={() => handleQuantityChange(item, item.quantity - 1)}
-                          className='w-6 h-6 flex items-center justify-center bg-gray-700 rounded hover:bg-gray-600'
-                          disabled={item.quantity <= 1}
-                        >
-                          -
-                        </button>
-                        <span className='w-6 text-center'>{item.quantity}</span>
-                        <button
-                          onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                          className='w-6 h-6 flex items-center justify-center bg-gray-700 rounded hover:bg-gray-600'
-                        >
-                          +
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className='text-xs text-red-400 hover:text-red-300'
-                      >
-                        Remove
-                      </button>
-                      <p className='text-sm font-medium'>
-                        ${(item.currentPrice * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <CartItemsList />
             )}
           </div>
 

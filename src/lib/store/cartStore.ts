@@ -32,7 +32,9 @@ const useCartStore = create<CartState>()(
       updateQuantity: (id, quantity) =>
         set((state) => ({
           cart: state.cart.map((item) =>
-            item.id === id ? { ...item, quantity } : item
+            item.id === id
+              ? { ...item, quantity: Math.max(1, quantity) } 
+              : item
           ),
         })),
 
