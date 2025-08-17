@@ -28,19 +28,19 @@ export default function DesktopHeader() {
 
   return (
     <>
-      <header className="hidden lg:block w-full bg-black text-white shadow-md">
-        <div className="flex items-center justify-between px-8 py-4">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center">
+      <header className='hidden lg:block w-full bg-black text-white shadow-md'>
+        <div className='flex items-center justify-between px-8 py-4'>
+          <div className='flex items-center gap-8'>
+            <Link href='/' className='flex items-center'>
               <Image
-                src="/logo.png"
-                alt="Shei Hoise Logo"
+                src='/logo.png'
+                alt='Shei Hoise Logo'
                 width={32}
                 height={32}
                 priority
               />
             </Link>
-            <nav className="flex items-center gap-6">
+            <nav className='flex items-center gap-6'>
               {navLinks.slice(0, 3).map((link) => (
                 <Link
                   key={link.path}
@@ -56,7 +56,7 @@ export default function DesktopHeader() {
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-5">
+          <div className='flex items-center gap-5'>
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
             {navLinks.slice(3).map((link) => (
               <Link
@@ -74,7 +74,7 @@ export default function DesktopHeader() {
           </div>
         </div>
       </header>
-      
+
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
