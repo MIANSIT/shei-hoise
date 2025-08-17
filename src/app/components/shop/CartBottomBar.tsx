@@ -43,7 +43,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
             <h2 className="text-lg font-semibold">Your Cart</h2>
             <button 
               onClick={onClose}
-              className="p-1 rounded-md hover:bg-gray-800"
+              className="p-1 rounded-md hover:bg-gray-800 cursor-pointer"
               aria-label="Close cart"
             >
               <X className="h-5 w-5" />
