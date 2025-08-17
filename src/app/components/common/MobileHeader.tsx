@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FaBars, FaTimes } from "react-icons/fa";
-import { HiOutlineShoppingCart } from "react-icons/hi";
+import ShoppingCartIcon from "./ShoppingCartIcon";
 import { usePathname } from "next/navigation";
-
+import CartBottomBar from "../shop/CartBottomBar";
 interface NavLink {
   name: string;
   path: string;
@@ -14,6 +14,7 @@ interface NavLink {
 }
 
 export default function MobileHeader() {
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const pathname = usePathname();
@@ -27,10 +28,11 @@ export default function MobileHeader() {
     { name: "Shop", path: "/shop" },
     { name: "Products", path: "/products" },
     { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/signUp", isHighlighted: true },
+    { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];
 
   return (
+    <>
     <header className="bg-black px-4 py-3 shadow-md lg:hidden relative z-50">
       <div className="flex items-center justify-between">
         <Link href="/" className="flex items-center">
@@ -43,12 +45,7 @@ export default function MobileHeader() {
           />
         </Link>
         <div className="flex items-center gap-3">
-          <Link
-            href="/cart"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800 transition-colors"
-          >
-            <HiOutlineShoppingCart className="text-white text-sm" />
-          </Link>
+          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -92,5 +89,7 @@ export default function MobileHeader() {
         </ul>
       </nav>
     </header>
+    <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+    </>
   );
 }

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CartState } from "../types/cart";
 
-const useCart = create<CartState>()(
+const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       cart: [],
@@ -24,25 +24,16 @@ const useCart = create<CartState>()(
           };
         }),
 
-      removeFromCart: (id) =>
-        set((state) => ({
-          cart: state.cart.filter((item) => item.id !== id),
-        })),
-
-      updateQuantity: (id, quantity) =>
-        set((state) => ({
-          cart: state.cart.map((item) =>
-            item.id === id ? { ...item, quantity } : item
-          ),
-        })),
-
       clearCart: () => set({ cart: [] }),
 
       totalItems: () =>
         get().cart.reduce((sum, item) => sum + item.quantity, 0),
 
       totalPrice: () =>
-        get().cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        get().cart.reduce(
+          (sum, item) => sum + item?.currentPrice * item.quantity,
+          0
+        ),
     }),
     {
       name: "cart-storage", // key in localStorage
@@ -50,4 +41,4 @@ const useCart = create<CartState>()(
   )
 );
 
-export default useCart;
+export default useCartStore;
