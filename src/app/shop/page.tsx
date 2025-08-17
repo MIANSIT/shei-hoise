@@ -4,14 +4,17 @@ import MobileHeader from "../components/common/MobileHeader";
 import DesktopHeader from "../components/common/DesktopHeader";
 import ProductCard from "../components/shop/ProductCard";
 import { useSheiNotification } from "../../lib/hook/useSheiNotification";
+import { useCart } from "../../lib/context/CartContext";
 
 const Shop = () => {
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
   const { success } = useSheiNotification();
+  const { addToCart } = useCart();
 
   const handleAddToCart = async (productId: number, productTitle: string) => {
     setLoadingStates(prev => ({ ...prev, [productId]: true }));
     await new Promise(resolve => setTimeout(resolve, 1000));
+    addToCart(1); // Add 1 to cart count
     success(`${productTitle} added to cart`);
     setLoadingStates(prev => ({ ...prev, [productId]: false }));
   };

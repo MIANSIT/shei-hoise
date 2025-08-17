@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { HiOutlineShoppingCart } from "react-icons/hi";
+import ShoppingCartIcon from "./HeaderShoppingCartIcon";
 
 interface NavLink {
   name: string;
@@ -52,14 +52,7 @@ export default function DesktopHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-5">
-          <div className="relative">
-            <Link
-              href="/cart"
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800"
-            >
-              <HiOutlineShoppingCart size={18} className="text-white text-sm" />
-            </Link>
-          </div>
+           <ShoppingCartIcon />
           {navLinks.slice(3).map((link) => (
             <Link
               key={link.path}

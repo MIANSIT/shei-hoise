@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FaBars, FaTimes } from "react-icons/fa";
-import { HiOutlineShoppingCart } from "react-icons/hi";
+import ShoppingCartIcon from "./HeaderShoppingCartIcon";
 import { usePathname } from "next/navigation";
 
 interface NavLink {
@@ -43,12 +43,7 @@ export default function MobileHeader() {
           />
         </Link>
         <div className="flex items-center gap-3">
-          <Link
-            href="/cart"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800 transition-colors"
-          >
-            <HiOutlineShoppingCart className="text-white text-sm" />
-          </Link>
+          <ShoppingCartIcon />
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
