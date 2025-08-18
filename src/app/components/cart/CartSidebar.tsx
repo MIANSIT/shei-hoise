@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
+import { Button } from "@/components/ui/button";
+import CartCheckoutLayout from "./CartCheckoutLayout";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -25,6 +27,11 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
       document.body.style.overflow = "auto";
     };
   }, [isOpen]);
+
+  const handleCheckout = () => {
+    console.log("Proceeding to checkout");
+    // Add your checkout logic here
+  };
 
   return (
     <>
@@ -60,35 +67,23 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             {cart.length === 0 ? (
               <div className='text-center py-8'>
                 <p className='text-gray-500'>Your cart is empty</p>
-                <button
+                <Button
+                  className="mt-4 w-full bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
                   onClick={onClose}
-                  className='mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
                 >
                   Continue Shopping
-                </button>
+                </Button>
               </div>
             ) : (
               <CartItemsList />
             )}
           </div>
 
-          {/* Cart Summary */}
           {cart.length > 0 && (
-            <div className='p-4 border-t border-gray-700'>
-              <div className='flex justify-between mb-2'>
-                <span>Subtotal:</span>
-                <span className='font-medium'>${totalPrice().toFixed(2)}</span>
-              </div>
-              <button
-                className='w-full py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'
-                onClick={() => {
-                  // Add your checkout logic here
-                  console.log('Proceeding to checkout');
-                }}
-              >
-                Proceed to Checkout
-              </button>
-            </div>
+            <CartCheckoutLayout
+              subtotal={totalPrice()}
+              onCheckout={handleCheckout}
+            />
           )}
         </div>
       </div>
