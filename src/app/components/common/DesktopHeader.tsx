@@ -27,7 +27,7 @@ export default function DesktopHeader() {
 
   return (
     <>
-      <header className="hidden lg:block w-full bg-black text-white shadow-md">
+      <header className="hidden lg:block fixed top-0 left-0 w-full text-white z-50 bg-transparent backdrop-blur-md">
         <div className="flex items-center justify-between px-8 py-4">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center">
@@ -47,7 +47,7 @@ export default function DesktopHeader() {
                   className={`text-sm font-medium transition-colors ${
                     pathname === link.path
                       ? "text-white font-semibold"
-                      : "text-gray-400 hover:text-white"
+                      : "text-gray-200 hover:text-white"
                   }`}
                 >
                   {link.name}
@@ -81,6 +81,9 @@ export default function DesktopHeader() {
       </header>
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      {/* Spacer to push content below header */}
+      <div className="hidden lg:block h-16"></div>
     </>
   );
 }
