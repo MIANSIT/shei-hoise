@@ -1,4 +1,3 @@
-// components/common/DesktopHeader.tsx
 "use client";
 
 import { useState } from "react";
@@ -23,7 +22,7 @@ export default function DesktopHeader() {
     { name: "Shop", path: "/shop" },
     { name: "Products", path: "/products" },
     { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/signup", isHighlighted: true },
+    { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];
 
   return (
@@ -48,7 +47,7 @@ export default function DesktopHeader() {
                   className={`text-sm font-medium transition-colors ${
                     pathname === link.path
                       ? "text-white font-semibold"
-                      : "text-gray-400 hover:text-white"
+                      : "text-gray-200 hover:text-white"
                   }`}
                 >
                   {link.name}
@@ -58,24 +57,33 @@ export default function DesktopHeader() {
           </div>
           <div className='flex items-center gap-5'>
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-            {navLinks.slice(3).map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`text-sm font-medium ${
-                  link.isHighlighted
-                    ? "px-4 py-1.5 rounded-md bg-white text-black font-semibold hover:bg-gray-200"
-                    : "text-gray-200 hover:text-white"
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.slice(3).map((link) => {
+              const redirectParam =
+                link.path === "/login" || link.path === "/sign-up"
+                  ? `?redirect=${encodeURIComponent(pathname)}`
+                  : "";
+              return (
+                <Link
+                  key={link.path}
+                  href={`${link.path}${redirectParam}`}
+                  className={`text-sm font-medium ${
+                    link.isHighlighted
+                      ? "px-4 py-1.5 rounded-md bg-white text-black font-semibold hover:bg-gray-200"
+                      : "text-gray-200 hover:text-white"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </header>
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      {/* Spacer to push content below header */}
+      <div className="hidden lg:block h-16"></div>
     </>
   );
 }

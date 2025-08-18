@@ -6,6 +6,7 @@ import ProductCard from "../components/shop/ProductCard";
 import { useSheiNotification } from "../../lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import { Product } from "@/lib/types/product";
+import { dummyProducts } from "../../lib/store/dummyProducts"; // ✅ imported product list
 
 const Shop = () => {
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>(
