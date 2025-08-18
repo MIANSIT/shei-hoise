@@ -12,12 +12,6 @@ const Shop = () => {
   const { success } = useSheiNotification();
   const { addToCart } = useCart();
 
-
-
-
-
-
-
   const handleAddToCart = async (productId: number, productTitle: string) => {
     setLoadingStates(prev => ({ ...prev, [productId]: true }));
     await new Promise(resolve => setTimeout(resolve, 1000));
