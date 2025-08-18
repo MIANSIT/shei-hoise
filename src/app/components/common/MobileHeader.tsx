@@ -8,6 +8,7 @@ import ShoppingCartIcon from "./ShoppingCartIcon";
 import { usePathname } from "next/navigation";
 import CartBottomBar from "../shop/CartBottomBar";
 
+
 interface NavLink {
   name: string;
   path: string;
