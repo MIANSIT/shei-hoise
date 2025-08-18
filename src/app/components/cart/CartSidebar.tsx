@@ -38,7 +38,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md text-white bg-black shadow-xl z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md text-white bg-gray-900 shadow-xl z-50 transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -48,7 +48,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             <h2 className='text-lg font-semibold'>Your Cart ({totalItems()})</h2>
             <button
               onClick={onClose}
-              className='p-1 rounded-md hover:bg-gray-800 cursor-pointer'
+              className='p-1 rounded-md hover:bg-black cursor-pointer'
               aria-label='Close cart'
             >
               <X className='h-5 w-5' />

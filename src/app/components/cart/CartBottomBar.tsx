@@ -38,7 +38,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
       
       {/* Bottom Bar */}
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-black text-white shadow-lg z-50 transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed bottom-0 left-0 right-0 bg-gray-800 text-white shadow-lg z-50 transition-transform duration-300 ease-in-out lg:hidden rounded-tl-2xl rounded-tr-2xl ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -47,7 +47,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
             <h2 className="text-lg font-semibold">Your Cart ({totalItems()})</h2>
             <button 
               onClick={onClose}
-              className="p-1 rounded-md hover:bg-gray-800 cursor-pointer"
+              className="p-1 rounded-md hover:bg-black cursor-pointer"
               aria-label="Close cart"
             >
               <X className="h-5 w-5" />
