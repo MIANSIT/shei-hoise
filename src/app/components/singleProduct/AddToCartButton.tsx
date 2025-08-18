@@ -19,11 +19,26 @@ const AddToCartButton: FC<AddToCartButtonProps> = ({ onAdd }) => {
 
   return (
     <Button
-      className="mt-4 w-full sm:w-auto"
       onClick={handleClick}
       disabled={loading}
+      className="
+        mt-4 
+        w-full sm:w-auto 
+        h-12 px-6 
+        text-base font-medium 
+        rounded-xl 
+        transition-colors 
+        disabled:opacity-70
+      "
     >
-      {loading ? <SheiLoader /> : "Add to Cart"}
+      {loading ? (
+        <div className="flex items-center justify-center gap-2">
+          <SheiLoader />
+          <span className="hidden sm:inline">Adding...</span>
+        </div>
+      ) : (
+        "Add to Cart"
+      )}
     </Button>
   );
 };
