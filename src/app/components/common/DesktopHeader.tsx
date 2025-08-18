@@ -1,4 +1,3 @@
-// components/common/DesktopHeader.tsx
 "use client";
 
 import { useState } from "react";
@@ -58,23 +57,29 @@ export default function DesktopHeader() {
           </div>
           <div className="flex items-center gap-5">
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-            {navLinks.slice(3).map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`text-sm font-medium ${
-                  link.isHighlighted
-                    ? "px-4 py-1.5 rounded-md bg-white text-black font-semibold hover:bg-gray-200"
-                    : "text-gray-200 hover:text-white"
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.slice(3).map((link) => {
+              const redirectParam =
+                link.path === "/login" || link.path === "/sign-up"
+                  ? `?redirect=${encodeURIComponent(pathname)}`
+                  : "";
+              return (
+                <Link
+                  key={link.path}
+                  href={`${link.path}${redirectParam}`}
+                  className={`text-sm font-medium ${
+                    link.isHighlighted
+                      ? "px-4 py-1.5 rounded-md bg-white text-black font-semibold hover:bg-gray-200"
+                      : "text-gray-200 hover:text-white"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </header>
-      
+
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
