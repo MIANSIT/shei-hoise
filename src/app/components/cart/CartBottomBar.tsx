@@ -38,7 +38,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
       
       {/* Bottom Bar */}
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-gray-800 text-white shadow-lg z-50 transition-transform duration-300 ease-in-out lg:hidden rounded-tl-2xl rounded-tr-2xl ${
+        className={`fixed bottom-0 left-0 right-0 bg-gray-900 text-white shadow-lg z-50 transition-transform duration-300 ease-in-out lg:hidden rounded-tl-2xl rounded-tr-2xl ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
