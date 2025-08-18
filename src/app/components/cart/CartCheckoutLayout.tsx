@@ -13,7 +13,7 @@ export default function CartCheckoutLayout({
   onCheckout,
 }: CartCheckoutLayoutProps) {
   return (
-    <div className="pt-4 border-t border-gray-700">
+    <div className="pt-4 border-t border-gray-700 m-4">
       <div className="flex justify-between mb-4">
         <span>SubTotal:</span>
         <span className="font-bold">${subtotal.toFixed(2)}</span>
