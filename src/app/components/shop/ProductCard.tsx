@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { FaShoppingCart, FaStar, FaRegStar, FaStarHalfAlt } from "react-icons/fa";
-import { SheiLoader } from "../ui//SheiLoader";
+import { SheiLoader } from "../ui/SheiLoader";
 interface ProductCardProps {
   title: string;
   category: string;
