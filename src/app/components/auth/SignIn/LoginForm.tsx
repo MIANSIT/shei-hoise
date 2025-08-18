@@ -17,7 +17,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const notify = useSheiNotification();
+  const notify = useSheiNotification(); // our custom hook
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,13 +29,20 @@ export function LoginForm() {
     const password = formData.get("password") as string;
 
     try {
+      // Simulate login process
       console.log("Email:", email, "Password:", password);
-      notify.success("Welcome to Shei Hoise");
-      router.push("/login");
+
+      // Show success toast with colored background
+      notify.success("Welcome back! You have successfully logged in.");
+
+      // Redirect after login
+      router.push("#"); // change path as needed
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Login failed. Please try again.";
       setError(message);
+
+      // Show error toast with red background
       notify.error(message);
     } finally {
       setIsLoading(false);
@@ -44,7 +51,7 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6 max-w-md mx-auto">
-      {/* Welcome text outside the card */}
+      {/* Welcome text */}
       <div className="text-center">
         <h1 className="text-4xl font-bold text-left text-white">Welcome back</h1>
         <p className="mt-2 text-gray-400 text-left">
@@ -52,7 +59,7 @@ export function LoginForm() {
         </p>
       </div>
 
-      {/* Card containing the login form */}
+      {/* Login Card */}
       <Card>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-6">
