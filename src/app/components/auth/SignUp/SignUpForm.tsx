@@ -49,6 +49,7 @@ export function SignUpForm() {
         <h1 className="text-4xl font-bold text-left text-white">Create Account</h1>
         <p className="mt-2 text-gray-400 text-left">
           Enter your details to create your account
+          Enter your details to create your account
         </p>
       </div>
       <Card>
@@ -108,7 +109,10 @@ export function SignUpForm() {
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-500">
             Already have an account?{" "}
-            <Link href="/login" className="text-white font-medium hover:underline">
+            <Link
+              href="/login"
+              className="text-white font-medium hover:underline"
+            >
               Sign in
             </Link>
           </p>
