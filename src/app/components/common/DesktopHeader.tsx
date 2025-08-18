@@ -23,7 +23,7 @@ export default function DesktopHeader() {
     { name: "Shop", path: "/shop" },
     { name: "Products", path: "/products" },
     { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/signup", isHighlighted: true },
+    { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];
 
   return (
