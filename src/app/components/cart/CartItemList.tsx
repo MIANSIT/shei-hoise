@@ -6,26 +6,40 @@ import useCartStore from "@/lib/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
+import { useState } from "react";
 
 export default function CartItemsList() {
   const { cart, removeItem, updateQuantity } = useCartStore();
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
     updateQuantity(item.id, newQuantity);
   };
 
+  const handleRemoveItem = (id: number) => {
+    setRemovingId(id);
+    setTimeout(() => {
+      removeItem(id);
+      setRemovingId(null);
+    }, 300);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {cart.map((item: CartItem) => (
         <div
           key={item.id}
-          className="relative flex items-center justify-between rounded-lg bg-black/20 p-3"
+          className={`
+            relative flex items-center justify-between rounded-lg bg-black/20 p-3
+            transition-all duration-300 ease-in-out
+            ${
+              removingId === item.id
+                ? "opacity-0 -translate-x-10"
+                : "opacity-100 translate-x-0"
+            }
+          `}
         >
-          {/* Remove Button (top-right corner) */}
-          
-
-          {/* Product Image and Info */}
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 rounded-lg overflow-hidden">
               <Image
@@ -42,7 +56,7 @@ export default function CartItemsList() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 rounded-md cursor-pointer"
+                  className="h-7 w-7 rounded-md cursor-pointer hover:bg-white/10"
                   onClick={() => handleQuantityChange(item, item.quantity - 1)}
                   disabled={item.quantity <= 1}
                 >
@@ -52,7 +66,7 @@ export default function CartItemsList() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 rounded-md cursor-pointer"
+                  className="h-7 w-7 rounded-md cursor-pointer hover:bg-white/10"
                   onClick={() => handleQuantityChange(item, item.quantity + 1)}
                 >
                   <Plus className="h-3 w-3" />
@@ -61,16 +75,16 @@ export default function CartItemsList() {
             </div>
           </div>
 
-          {/* Price */}
           <div className="flex items-end flex-col gap-8">
             <Button
-            variant="ghost"
-            size="icon"
-            className=" text-red-500 hover:text-red-600 h-6 w-6 cursor-pointer"
-            onClick={() => removeItem(item.id)}
-          >
-           <Trash2 className="h-4 w-4" />
-          </Button>
+              variant="ghost"
+              size="icon"
+              className="group h-8 w-8 cursor-pointer hover:bg-red-500/10 transition-colors"
+              onClick={() => handleRemoveItem(item.id)}
+              aria-label="Remove item"
+            >
+              <Trash2 className="h-4 w-4 text-red-500 group-hover:text-red-400 transition-colors" />
+            </Button>
             <p className="text-white font-medium">
               ${(item.currentPrice * item.quantity).toFixed(2)}
             </p>
