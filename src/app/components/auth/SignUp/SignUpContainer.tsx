@@ -18,7 +18,7 @@ export function SignUpContainer() {
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <DesktopHeader />
         <DesktopLayout>
           <SignUpForm />
