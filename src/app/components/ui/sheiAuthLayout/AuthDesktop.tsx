@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export function DesktopLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-[100dvh] w-full">
+    <div className="flex min-h-[calc(100dvh-72px)] w-full">
       {/* Left side - Image */}
       <div className="hidden w-1/2 md:block">
         <div className="relative h-full w-full">

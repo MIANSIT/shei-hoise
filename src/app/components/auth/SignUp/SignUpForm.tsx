@@ -49,7 +49,6 @@ export function SignUpForm() {
         <h1 className="text-4xl font-bold text-left text-white">Create Account</h1>
         <p className="mt-2 text-gray-400 text-left">
           Enter your details to create your account
-          Enter your details to create your account
         </p>
       </div>
       <Card>
