@@ -27,10 +27,12 @@ export default function DesktopHeader() {
 
   return (
     <>
-      <header className='hidden lg:block w-full bg-black text-white shadow-md'>
-        <div className='flex items-center justify-between px-8 py-4'>
-          <div className='flex items-center gap-8'>
-            <Link href='/' className='flex items-center'>
+      {/* Sticky Header */}
+      <header className="hidden lg:block sticky top-0 left-0 w-full text-white z-50 bg-transparent backdrop-blur-md">
+        <div className="flex items-center justify-between px-8 py-4">
+          {/* Logo + Navigation */}
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center">
               <Image
                 src='/logo.png'
                 alt='Shei Hoise Logo'
@@ -39,23 +41,32 @@ export default function DesktopHeader() {
                 priority
               />
             </Link>
-            <nav className='flex items-center gap-6'>
-              {navLinks.slice(0, 3).map((link) => (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  className={`text-sm font-medium transition-colors ${
-                    pathname === link.path
-                      ? "text-white font-semibold"
-                      : "text-gray-200 hover:text-white"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
+
+            <nav className="flex items-center gap-6">
+              {navLinks.slice(0, 3).map((link) => {
+                const isActive = pathname === link.path;
+                return (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    className={`relative text-sm font-medium transition-colors duration-300 
+                      ${isActive ? "text-white font-semibold" : "text-gray-200 hover:text-white"}
+                      after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full
+                      after:bg-gradient-to-r after:from-yellow-400 after:to-yellow-600
+                      after:scale-x-0 after:origin-left after:transition-transform after:duration-300
+                      hover:after:scale-x-100
+                      ${isActive ? "after:scale-x-100" : ""}
+                    `}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
-          <div className='flex items-center gap-5'>
+
+          {/* Cart + Auth Links */}
+          <div className="flex items-center gap-5">
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
             {navLinks.slice(3).map((link) => {
               const redirectParam =
@@ -80,10 +91,8 @@ export default function DesktopHeader() {
         </div>
       </header>
 
+      {/* Cart Sidebar */}
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
-      {/* Spacer to push content below header */}
-      <div className="hidden lg:block h-16"></div>
     </>
   );
 }

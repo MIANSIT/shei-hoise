@@ -46,7 +46,7 @@ const Shop = () => {
               currentPrice={product.currentPrice}
               originalPrice={product.originalPrice}
               rating={product.rating}
-              imageUrl={product.imageUrl}
+              imageUrl={product.images[0]}
               productLink={`/products/${product.id}`}
               discount={product.discount}
               onAddToCart={() => handleAddToCart(product)}
