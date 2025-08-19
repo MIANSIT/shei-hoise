@@ -27,8 +27,10 @@ export default function DesktopHeader() {
 
   return (
     <>
-      <header className="hidden lg:block fixed top-0 left-0 w-full text-white z-50 bg-transparent backdrop-blur-md">
+      {/* Sticky Header (no extra spacer needed) */}
+      <header className="hidden lg:block sticky top-0 left-0 w-full text-white z-50 bg-transparent backdrop-blur-md">
         <div className="flex items-center justify-between px-8 py-4">
+          {/* Logo + Navigation */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center">
               <Image
@@ -55,6 +57,8 @@ export default function DesktopHeader() {
               ))}
             </nav>
           </div>
+
+          {/* Cart + Auth Links */}
           <div className="flex items-center gap-5">
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
             {navLinks.slice(3).map((link) => {
@@ -80,10 +84,8 @@ export default function DesktopHeader() {
         </div>
       </header>
 
+      {/* Cart Sidebar */}
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
-      {/* Spacer to push content below header */}
-      <div className="hidden lg:block h-16"></div>
     </>
   );
 }

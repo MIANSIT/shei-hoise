@@ -8,7 +8,6 @@ import ShoppingCartIcon from "./ShoppingCartIcon";
 import { usePathname } from "next/navigation";
 import CartBottomBar from "../shop/CartBottomBar";
 
-
 interface NavLink {
   name: string;
   path: string;
@@ -33,10 +32,17 @@ export default function MobileHeader() {
 
   return (
     <>
-      <header className="bg-black px-4 py-3 shadow-md lg:hidden relative z-50">
+      {/* Fixed mobile header */}
+      <header className="bg-black px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <Image src="/logo.png" alt="Shei Hoise Logo" width={32} height={32} priority />
+            <Image
+              src="/logo.png"
+              alt="Shei Hoise Logo"
+              width={32}
+              height={32}
+              priority
+            />
           </Link>
           <div className="flex items-center gap-3">
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
@@ -50,6 +56,7 @@ export default function MobileHeader() {
           </div>
         </div>
 
+        {/* Mobile nav menu */}
         <nav
           className={`overflow-hidden transition-all duration-300 ease-in-out bg-black ${
             menuOpen ? "max-h-70 opacity-100 mt-2" : "max-h-0 opacity-0"
@@ -63,7 +70,9 @@ export default function MobileHeader() {
                   : "";
               return (
                 <li key={link.path}>
-                  {index === 3 && <div className="border-t border-white/20 my-2"></div>}
+                  {index === 3 && (
+                    <div className="border-t border-white/20 my-2"></div>
+                  )}
                   <Link
                     href={`${link.path}${redirectParam}`}
                     className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
@@ -83,6 +92,10 @@ export default function MobileHeader() {
         </nav>
       </header>
 
+      {/* Push page content below fixed header */}
+      <div className="h-[60px] lg:hidden" />
+
+      {/* Cart bottom bar */}
       <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
