@@ -9,23 +9,27 @@ import { Product } from "@/lib/types/product";
 import { dummyProducts } from "../../lib/store/dummyProducts";
 
 const Shop = () => {
-  const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
+  const [loadingProductId, setLoadingProductId] = useState<number | null>(null);
   const { success } = useSheiNotification();
   const { addToCart } = useCartStore();
 
-  // Convert dummy products to proper Product type
+  const handleAddToCart = async (product: Product) => {
+    setLoadingProductId(product.id);
+    try {
+      await addToCart(product); // Ensure addToCart returns a promise
+      success(`${product.title} added to cart`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    } finally {
+      setLoadingProductId(null);
+    }
+  };
+
   const products: Product[] = dummyProducts.map(product => ({
     ...product,
     currentPrice: parseFloat(product.currentPrice),
     originalPrice: parseFloat(product.originalPrice)
   }));
-
-  const handleAddToCart = async (product: Product) => {
-    setLoadingStates((prev) => ({ ...prev, [product.id]: true }));
-    addToCart(product);
-    success(`${product.title} added to cart`);
-    setLoadingStates((prev) => ({ ...prev, [product.id]: false }));
-  };
 
   return (
     <>
@@ -46,7 +50,7 @@ const Shop = () => {
               productLink={`/products/${product.id}`}
               discount={product.discount}
               onAddToCart={() => handleAddToCart(product)}
-              isLoading={loadingStates[product.id] || false}
+              isLoading={loadingProductId === product.id}
             />
           ))}
         </div>
