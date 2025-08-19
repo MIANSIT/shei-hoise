@@ -13,17 +13,19 @@ export default function CartItemsList() {
   const { cart, removeItem, updateQuantity, clearCart } = useCartStore();
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [isClearing, setIsClearing] = useState(false);
-  const [changingQuantities, setChangingQuantities] = useState<Record<number, 'up' | 'down'>>({});
+  const [changingQuantities, setChangingQuantities] = useState<
+    Record<number, "up" | "down">
+  >({});
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
-    
-    const direction = newQuantity > item.quantity ? 'up' : 'down';
-    setChangingQuantities(prev => ({ ...prev, [item.id]: direction }));
-    
+
+    const direction = newQuantity > item.quantity ? "up" : "down";
+    setChangingQuantities((prev) => ({ ...prev, [item.id]: direction }));
+
     setTimeout(() => {
       updateQuantity(item.id, newQuantity);
-      setChangingQuantities(prev => {
+      setChangingQuantities((prev) => {
         const newState = { ...prev };
         delete newState[item.id];
         return newState;
@@ -41,7 +43,7 @@ export default function CartItemsList() {
 
   const handleClearCart = () => {
     if (cart.length === 0) return;
-    
+
     setIsClearing(true);
     setTimeout(() => {
       clearCart();
@@ -82,7 +84,7 @@ export default function CartItemsList() {
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20 rounded-lg overflow-hidden">
               <Image
-                src={item.imageUrl}
+                src={item.images[0]}
                 alt={item.title}
                 fill
                 className="object-cover"
@@ -103,19 +105,19 @@ export default function CartItemsList() {
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
-                
+
                 <div className="relative w-6 h-6 flex items-center justify-center">
                   <AnimatePresence mode="wait">
                     <motion.span
                       key={item.quantity}
-                      initial={{ 
-                        y: changingQuantities[item.id] === 'up' ? -20 : 20,
-                        opacity: 0 
+                      initial={{
+                        y: changingQuantities[item.id] === "up" ? -20 : 20,
+                        opacity: 0,
                       }}
                       animate={{ y: 0, opacity: 1 }}
-                      exit={{ 
-                        y: changingQuantities[item.id] === 'up' ? 20 : -20,
-                        opacity: 0 
+                      exit={{
+                        y: changingQuantities[item.id] === "up" ? 20 : -20,
+                        opacity: 0,
                       }}
                       transition={{ duration: 0.2, ease: "easeInOut" }}
                       className="absolute text-center"
@@ -124,7 +126,7 @@ export default function CartItemsList() {
                     </motion.span>
                   </AnimatePresence>
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="icon"
@@ -149,7 +151,7 @@ export default function CartItemsList() {
             >
               <Trash2 className="h-4 w-4 text-red-500 group-hover:text-red-400 transition-colors" />
             </Button>
-            <motion.p 
+            <motion.p
               className="text-white font-medium"
               key={`price-${item.id}-${item.quantity}`}
               initial={{ scale: 1.1 }}
