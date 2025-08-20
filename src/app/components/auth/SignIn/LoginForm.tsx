@@ -22,15 +22,14 @@ export function LoginForm() {
   const notify = useSheiNotification();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/"; // Default to home
+  const redirect = searchParams.get("redirect") || "/";
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
       console.log("Login values:", values);
       notify.success("Logged in successfully!");
-
-      router.push(redirect); // Redirect to original page
+      router.push(redirect);
     } catch {
       notify.warning("Login failed. Please try again.");
     } finally {
@@ -50,6 +49,7 @@ export function LoginForm() {
       <Card>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Email */}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input {...form.register("email")} placeholder="Email" type="email" />
@@ -58,12 +58,23 @@ export function LoginForm() {
               )}
             </div>
 
+            {/* Password */}
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
               <Input {...form.register("password")} type="password" placeholder="Password" />
               {form.formState.errors.password && (
                 <p className="text-sm text-red-500 mt-1">{form.formState.errors.password.message}</p>
               )}
+
+              {/* Modern E-Commerce Forgot Password Link */}
+              <div className="text-right mt-1">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-gray-500 hover:text-gray-300 transition-colors duration-200"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>
@@ -84,4 +95,3 @@ export function LoginForm() {
     </div>
   );
 }
-
