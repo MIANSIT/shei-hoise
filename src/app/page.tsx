@@ -7,8 +7,15 @@ import Footer from "./components/common/Footer";
 const Home = () => {
   return (
     <div className="flex flex-col min-h-screen">
-      <MobileHeader />
-      <DesktopHeader />
+      {/* Mobile Header: hidden on md screens */}
+      <div className="block md:hidden">
+        <MobileHeader />
+      </div>
+
+      {/* Desktop Header: hidden on screens smaller than md */}
+      <div className="hidden md:block">
+        <DesktopHeader />
+      </div>
 
       <main className="flex-grow">
         <h1 className="text-center mt-10">This is Home Page</h1>
