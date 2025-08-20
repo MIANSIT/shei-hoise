@@ -10,7 +10,7 @@ const ProductPrice: FC<ProductPriceProps> = ({ price, originalPrice }) => {
     <div className="flex items-center gap-2 mt-2">
       <span className="text-2xl font-bold">${price.toFixed(2)}</span>
       {originalPrice && (
-        <span className="line-through text-gray-400">${originalPrice.toFixed(2)}</span>
+        <span className="line-through text-ring">${originalPrice.toFixed(2)}</span>
       )}
     </div>
   );
