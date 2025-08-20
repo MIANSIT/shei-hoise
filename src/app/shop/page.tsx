@@ -13,10 +13,13 @@ import Footer from "../components/common/Footer";
 export default function Shop() {
   const { success } = useSheiNotification();
   const { addToCart } = useCartStore();
+  const [loadingProductId, setLoadingProductId] = React.useState<number | null>(
+    null
+  );
 
   const handleAddToCart = async (product: Product) => {
+    setLoadingProductId(product.id);
     try {
-      // Create a product with the correct structure for the cart
       const cartProduct = {
         ...product,
         imageUrl: product.imageUrl || product.images[0],
@@ -25,6 +28,8 @@ export default function Shop() {
       success(`${product.title} added to cart`);
     } catch (error) {
       console.error("Error adding to cart:", error);
+    } finally {
+      setLoadingProductId(null);
     }
   };
 
@@ -52,9 +57,10 @@ export default function Shop() {
               originalPrice={product.originalPrice}
               rating={product.rating}
               imageUrl={product.images[0]}
-              productLink={`/product/${product.id}`}
+              productLink={`/products/${product.id}`}
               discount={product.discount}
               onAddToCart={() => handleAddToCart(product)}
+              isLoading={loadingProductId === product.id}
             />
           ))}
         </div>

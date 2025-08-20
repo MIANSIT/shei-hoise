@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, ShoppingCart, Zap, Check } from "lucide-react";
 import { useState } from "react";
-import { SheiLoader } from "../ui/SheiLoader";
 
 interface ProductCardProps {
   title: string;
@@ -15,6 +14,7 @@ interface ProductCardProps {
   imageUrl: string;
   productLink: string;
   discount?: number;
+  isLoading?: boolean;
   onAddToCart: () => Promise<void>;
 }
 
@@ -26,6 +26,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   rating,
   imageUrl,
   productLink,
+  isLoading,
   onAddToCart,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -57,11 +58,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     try {
       await onAddToCart();
-
       setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 2000);
+      setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
       console.error("Error adding to cart:", error);
     } finally {
@@ -70,9 +68,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <Link href={productLink} className="block">
-      <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-500 p-0 group bg-card">
-        <div className="relative w-full h-80 overflow-hidden">
+    <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card ">
+      {/* Entire clickable area (except buttons) */}
+      <Link
+        href={productLink}
+        className="flex flex-col flex-1 cursor-pointer hover:text-white"
+      >
+        <div className="relative w-full h-80 overflow-hidden group">
           <Image
             src={imageUrl}
             alt={title}
@@ -80,7 +82,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
             className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
             sizes="(max-width: 640px) 100vw, 300px"
           />
-
           <div className="absolute inset-0 flex justify-between items-start p-4">
             <span className="text-white text-xs uppercase tracking-wider bg-black bg-opacity-50 px-2 py-1 rounded-md">
               {category}
@@ -88,10 +89,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col p-4 gap-3">
-          <h3 className="font-semibold text-lg line-clamp-1 hover:text-primary transition-all duration-300">
-            {title}
-          </h3>
+        <div className="flex flex-col p-4 gap-3 ">
+          <h3 className="font-semibold text-lg line-clamp-1 ">{title}</h3>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -107,77 +106,88 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             </div>
           </div>
+        </div>
+      </Link>
 
-          {/* ✅ Buttons stop propagation */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="secondary"
-              size="lg"
-              className="gap-2 cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = "/checkout"; // manual redirect
-              }}
-            >
-              <Zap className="w-4 h-4" />
-              <span>Buy Now</span>
-            </Button>
+      {/* Buttons outside Link */}
+      <div className="grid grid-cols-2 gap-2 p-4">
+        <Button
+          asChild
+          variant="secondary"
+          size="lg"
+          className="gap-2 transition-all duration-500"
+        >
+          <Link href="/checkout">
+            <Zap className="w-4 h-4" />
+            <span className="relative top-[-1px]">Buy Now</span>
+          </Link>
+        </Button>
 
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleAddToCart();
-              }}
-              disabled={isAdding}
-              variant="default"
-              size="lg"
-              className={`gap-2 relative overflow-hidden cursor-pointer ${
-                showSuccess
-                  ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg"
-                  : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
+        <Button
+          onClick={handleAddToCart}
+          disabled={isLoading || isAdding}
+          variant="default"
+          size="lg"
+          className={`gap-2 cursor-pointer relative overflow-hidden transition-all duration-500 ease-in-out ${
+            showSuccess
+              ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg"
+              : "bg-primary"
+          }`}
+        >
+          <div className="flex items-center justify-center w-full relative">
+            {/* Normal state */}
+            <div
+              className={`flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                isAdding || showSuccess
+                  ? "opacity-0 -translate-y-4"
+                  : "opacity-100 translate-y-0"
               }`}
             >
-              <div className="flex items-center justify-center w-full relative">
-                {/* Normal state */}
-                <div
-                  className={`flex items-center gap-2 ${
-                    isAdding || showSuccess
-                      ? "opacity-0 -translate-y-4"
-                      : "opacity-100 translate-y-0"
-                  }`}
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  <span>Add to Cart</span>
-                </div>
+              <ShoppingCart className="w-5 h-5" />
+              <span>Add to Cart</span>
+            </div>
 
-                {/* Loading */}
-                <div
-                  className={`absolute flex items-center gap-2 ${
-                    isAdding && !showSuccess
-                      ? "opacity-100 translate-y-0"
-                      : "opacity-0 translate-y-4"
-                  }`}
-                >
-                  <SheiLoader size="sm" loaderColor="white" loadingText="Adding..." />
-                </div>
+            {/* Loading state */}
+            <div
+              className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                isAdding && !showSuccess
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+            >
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin-slow"></div>
+              <span>Adding...</span>
+            </div>
 
-                {/* Success */}
-                <div
-                  className={`absolute flex items-center gap-2 ${
-                    showSuccess ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                  }`}
-                >
-                  <Check className="w-5 h-5" />
-                  <span>Added!</span>
-                </div>
-              </div>
-            </Button>
+            {/* Success state */}
+            <div
+              className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                showSuccess
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+            >
+              <Check className="w-5 h-5" />
+              <span>Added!</span>
+            </div>
           </div>
-        </div>
-      </Card>
-    </Link>
+        </Button>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .animate-spin-slow {
+          animation: spin 1.5s linear infinite;
+        }
+      `}</style>
+    </Card>
   );
 };
 
