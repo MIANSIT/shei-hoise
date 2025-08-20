@@ -1,14 +1,13 @@
 "use client";
 
 import React from "react";
-import MobileHeader from "../components/common/MobileHeader";
-import DesktopHeader from "../components/common/DesktopHeader";
 import ProductCard from "../components/shop/ProductCard";
 import { useSheiNotification } from "../../lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import { Product } from "@/lib/types/product";
 import { dummyProducts } from "../../lib/store/dummyProducts";
 import Footer from "../components/common/Footer";
+import Header from "../components/common/Header";
 
 export default function Shop() {
   const { success } = useSheiNotification();
@@ -43,8 +42,7 @@ export default function Shop() {
 
   return (
     <>
-      <MobileHeader />
-      <DesktopHeader />
+      <Header />
 
       <div className="px-8 py-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
