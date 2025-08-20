@@ -26,7 +26,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   rating,
   imageUrl,
   productLink,
-  isLoading,
   onAddToCart,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -67,9 +66,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
+  const handleBuyNow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isAdding) return;
+
+    setIsAdding(true);
+    
+    try {
+      await onAddToCart();
+      window.location.href = "/checkout";
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
     <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card ">
-      {/* Entire clickable area (except buttons) */}
       <Link
         href={productLink}
         className="flex flex-col flex-1 cursor-pointer hover:text-white"
@@ -108,18 +124,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
       </Link>
-
-      {/* ✅ Buttons stop propagation */}
       <div className="flex flex-col gap-2 px-4 pb-4">
         <Button
           variant="secondary"
           size="lg"
           className="gap-2 cursor-pointer"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = "/checkout"; // manual redirect
-          }}
+          onClick={handleBuyNow}
+          disabled={isAdding}
         >
           <Zap className="w-4 h-4" />
           <span className="relative top-[-1px]">Buy Now</span>
@@ -141,7 +152,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           }`}
         >
           <div className="flex items-center justify-center w-full relative">
-            {/* Normal state */}
             <div
               className={`flex items-center gap-2 ${
                 isAdding || showSuccess
@@ -152,8 +162,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <ShoppingCart className="w-5 h-5" />
               <span className="relative top-[-1px]">Add to Cart</span>
             </div>
-
-            {/* Loading state */}
             <div
               className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
                 isAdding && !showSuccess
@@ -164,8 +172,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin-slow"></div>
               <span>Adding...</span>
             </div>
-
-            {/* Success */}
             <div
               className={`absolute flex items-center gap-2 ${
                 showSuccess

@@ -7,11 +7,13 @@ import { motion } from "framer-motion";
 type CartCheckoutLayoutProps = {
   subtotal: number;
   onCheckout: () => void;
+  buttonText?: string;
 };
 
 export default function CartCheckoutLayout({
   subtotal,
   onCheckout,
+  buttonText = "Proceed to Checkout",
 }: CartCheckoutLayoutProps) {
   return (
     <motion.div 
@@ -37,10 +39,10 @@ export default function CartCheckoutLayout({
         whileTap={{ scale: 0.98 }}
       >
         <Button 
-          className="w-full bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+          className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
           onClick={onCheckout}
         >
-          Proceed to Checkout
+          {buttonText}
         </Button>
       </motion.div>
     </motion.div>
