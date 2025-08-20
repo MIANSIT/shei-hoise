@@ -1,6 +1,7 @@
 "use client";
 
 import DesktopHeader from "../../common/DesktopHeader";
+import Footer from "../../common/Footer";
 import MobileHeader from "../../common/MobileHeader";
 import { DesktopLayout } from "../../ui/sheiAuthLayout/AuthDesktop";
 import { MobileLayout } from "../../ui/sheiAuthLayout/AuthMobile";
@@ -15,6 +16,7 @@ export function LoginWrapper() {
         <MobileLayout>
           <LoginForm />
         </MobileLayout>
+        <Footer />
       </div>
 
       {/* Desktop Layout */}
@@ -23,6 +25,7 @@ export function LoginWrapper() {
         <DesktopLayout>
           <LoginForm />
         </DesktopLayout>
+        <Footer />
       </div>
     </>
   );

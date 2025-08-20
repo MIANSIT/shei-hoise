@@ -6,6 +6,7 @@ import ProductCard from "../components/shop/ProductCard";
 import { useSheiNotification } from "../../lib/hook/useSheiNotification";
 import { useCart } from "../../lib/context/CartContext";
 import { dummyProducts } from "../../lib/store/dummyProducts"; // ✅ imported product list
+import Footer from "../components/common/Footer";
 
 const Shop = () => {
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
@@ -44,6 +45,7 @@ const Shop = () => {
           ))}
         </div>
       </div>
+      <Footer />
     </>
   );
 };

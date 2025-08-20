@@ -5,6 +5,7 @@ import { DesktopLayout } from "../../ui/sheiAuthLayout/AuthDesktop";
 import { MobileLayout } from "../../ui/sheiAuthLayout/AuthMobile";
 import MobileHeader from "../../common/MobileHeader";
 import DesktopHeader from "../../common/DesktopHeader";
+import Footer from "../../common/Footer";
 
 export function SignUpContainer() {
   return (
@@ -15,6 +16,7 @@ export function SignUpContainer() {
         <MobileLayout>
           <SignUpForm />
         </MobileLayout>
+        <Footer />
       </div>
 
       {/* Desktop Layout */}
@@ -23,6 +25,7 @@ export function SignUpContainer() {
         <DesktopLayout>
           <SignUpForm />
         </DesktopLayout>
+        <Footer />
       </div>
     </>
   );
