@@ -47,7 +47,7 @@ const SheiLoader = React.forwardRef<HTMLSpanElement, SheiLoaderProps>(
           aria-label="Loading"
         />
         {loadingText && (
-          <span className="text-sm font-medium">{loadingText}</span>
+          <span className="text-white text-sm font-medium">{loadingText}</span>
         )}
       </div>
     );

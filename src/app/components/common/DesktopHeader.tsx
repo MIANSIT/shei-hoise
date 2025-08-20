@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import ShoppingCartIcon from "./ShoppingCartIcon";
-import CartSidebar from "../shop/CartSidebar";
+import CartSidebar from "../cart/CartSidebar";
 
 interface NavLink {
   name: string;
@@ -34,8 +34,8 @@ export default function DesktopHeader() {
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center">
               <Image
-                src="/logo.png"
-                alt="Shei Hoise Logo"
+                src='/logo.png'
+                alt='Shei Hoise Logo'
                 width={32}
                 height={32}
                 priority
