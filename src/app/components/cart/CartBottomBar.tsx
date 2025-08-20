@@ -1,12 +1,12 @@
-// components/cart/CartBottomBar.tsx
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { Button } from "@/components/ui/button";
+
 type CartBottomBarProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +14,7 @@ type CartBottomBarProps = {
 
 export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   const { cart, totalPrice, totalItems } = useCartStore();
+  const [isMounted, setIsMounted] = useState(false);
 
   // Prevent background scrolling when open
   useEffect(() => {
@@ -27,10 +28,17 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const handleCheckout = () => {
     console.log("Proceeding to checkout");
     // Add your checkout logic here
   };
+
+  // Only show cart count after component has mounted
+  const displayCount = isMounted ? totalItems() : 0;
 
   return (
     <>
@@ -51,7 +59,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">
-              Your Cart ({totalItems()})
+              Your Cart ({displayCount})
             </h2>
             <button
               onClick={onClose}

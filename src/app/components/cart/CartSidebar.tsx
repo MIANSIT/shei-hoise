@@ -1,7 +1,7 @@
 // components/cart/CartSidebar.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
@@ -15,6 +15,7 @@ type CartSidebarProps = {
 
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { cart, totalPrice, totalItems } = useCartStore();
+  const [isMounted, setIsMounted] = useState(false);
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -28,10 +29,17 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const handleCheckout = () => {
     console.log("Proceeding to checkout");
     // Add your checkout logic here
   };
+
+  // Only show cart count after component has mounted
+  const displayCount = isMounted ? totalItems() : 0;
 
   return (
     <>
@@ -52,7 +60,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         <div className='flex flex-col h-full'>
           {/* Header */}
           <div className='flex items-center justify-between p-4 border-b'>
-            <h2 className='text-lg font-semibold'>Your Cart ({totalItems()})</h2>
+            <h2 className='text-lg font-semibold'>Your Cart ({displayCount})</h2>
             <button
               onClick={onClose}
               className='p-1 rounded-md hover:bg-black cursor-pointer'

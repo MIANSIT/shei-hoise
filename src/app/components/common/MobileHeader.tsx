@@ -7,6 +7,7 @@ import { FaBars, FaTimes } from "react-icons/fa";
 import ShoppingCartIcon from "./ShoppingCartIcon";
 import { usePathname } from "next/navigation";
 import CartBottomBar from "../cart/CartBottomBar";
+
 interface NavLink {
   name: string;
   path: string;
@@ -90,11 +91,7 @@ export default function MobileHeader() {
           </ul>
         </nav>
       </header>
-
-      {/* Push page content below fixed header */}
       <div className="h-[60px] lg:hidden" />
-
-      {/* Cart bottom bar */}
       <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
