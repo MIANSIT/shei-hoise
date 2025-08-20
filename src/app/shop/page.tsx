@@ -8,6 +8,7 @@ import { useSheiNotification } from "../../lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import { Product } from "@/lib/types/product";
 import { dummyProducts } from "../../lib/store/dummyProducts";
+import Footer from "../components/common/Footer";
 
 export default function Shop() {
   const { success } = useSheiNotification();
@@ -58,7 +59,7 @@ export default function Shop() {
           ))}
         </div>
       </div>
-
+      <Footer />
     </>
   );
 }

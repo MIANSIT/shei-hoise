@@ -28,7 +28,7 @@ export default function DesktopHeader() {
   return (
     <>
       {/* Sticky Header */}
-      <header className="hidden lg:block sticky top-0 left-0 w-full text-white z-50 bg-transparent backdrop-blur-md">
+      <header className="hidden md:block sticky top-0 left-0 w-full text-white z-50 bg-transparent backdrop-blur-md">
         <div className="flex items-center justify-between px-8 py-4">
           {/* Logo + Navigation */}
           <div className="flex items-center gap-8">
