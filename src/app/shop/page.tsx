@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 import MobileHeader from "../components/common/MobileHeader";
 import DesktopHeader from "../components/common/DesktopHeader";
@@ -8,7 +9,7 @@ import useCartStore from "@/lib/store/cartStore";
 import { Product } from "@/lib/types/product";
 import { dummyProducts } from "../../lib/store/dummyProducts";
 
-const Shop = () => {
+export default function Shop() {
   const { success } = useSheiNotification();
   const { addToCart } = useCartStore();
 
@@ -19,7 +20,7 @@ const Shop = () => {
         ...product,
         imageUrl: product.imageUrl || product.images[0],
       };
-      addToCart(cartProduct); 
+      addToCart(cartProduct);
       success(`${product.title} added to cart`);
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -48,17 +49,16 @@ const Shop = () => {
               category={product.category}
               currentPrice={product.currentPrice}
               originalPrice={product.originalPrice}
-              rating={product.rating} 
+              rating={product.rating}
               imageUrl={product.images[0]}
-              productLink={`/products/${product.id}`}
+              productLink={`/product/${product.id}`}
               discount={product.discount}
               onAddToCart={() => handleAddToCart(product)}
             />
           ))}
         </div>
       </div>
+
     </>
   );
-};
-
-export default Shop;
+}
