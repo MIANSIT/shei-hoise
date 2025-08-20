@@ -24,8 +24,8 @@ const Shop = () => {
     <>
       <MobileHeader />
       <DesktopHeader />
-      
-      <div className="px-8 py-8">
+
+      <div className="px-8 pt-3 pb-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {dummyProducts.map((product) => (
             <ProductCard
