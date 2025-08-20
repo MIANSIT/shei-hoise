@@ -10,7 +10,7 @@ export function LoginWrapper() {
   return (
     <>
       {/* Mobile Layout */}
-      <div className="block lg:hidden">
+      <div className="block md:hidden">
         <MobileHeader />
         <MobileLayout>
           <LoginForm />
@@ -18,7 +18,7 @@ export function LoginWrapper() {
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden lg:block">
+      <div className="hidden md:block">
         <DesktopHeader />
         <DesktopLayout>
           <LoginForm />

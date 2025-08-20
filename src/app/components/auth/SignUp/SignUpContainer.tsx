@@ -10,7 +10,7 @@ export function SignUpContainer() {
   return (
     <>
       {/* Mobile Layout */}
-      <div className="block lg:hidden">
+      <div className="block md:hidden">
         <MobileHeader />
         <MobileLayout>
           <SignUpForm />
@@ -18,7 +18,7 @@ export function SignUpContainer() {
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden lg:block">
+      <div className="hidden md:block">
         <DesktopHeader />
         <DesktopLayout>
           <SignUpForm />
