@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, ShoppingCart, Zap, Check } from "lucide-react";
 import { useState } from "react";
+import { SheiLoader } from "../ui/SheiLoader"; // Import the SheiLoader
 
 interface ProductCardProps {
   title: string;
@@ -14,7 +15,6 @@ interface ProductCardProps {
   imageUrl: string;
   productLink: string;
   discount?: number;
-  isLoading?: boolean;
   onAddToCart: () => Promise<void>;
 }
 
@@ -26,7 +26,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   rating,
   imageUrl,
   productLink,
-  isLoading,
   onAddToCart,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -63,7 +62,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
-      }, 2000); // Increased from 1500ms to 2000ms for longer visibility
+      }, 2000);
     } catch (error) {
       console.error("Error adding to cart:", error);
     } finally {
@@ -130,7 +129,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           
           <Button
             onClick={handleAddToCart}
-            disabled={isLoading || isAdding}
+            disabled={isAdding}
             variant="default"
             size="lg"
             className={`gap-2 cursor-pointer relative overflow-hidden transition-all duration-500 ease-in-out ${
@@ -145,15 +144,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 isAdding || showSuccess ? "opacity-0 -translate-y-4" : "opacity-100 translate-y-0"
               }`}>
                 <ShoppingCart className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
-                <span>Add to Cart</span>
+                <span className="relative top-[-1px]">Add to Cart</span>
               </div>
               
-              {/* Adding state */}
+              {/* Adding state - using SheiLoader with text */}
               <div className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
                 isAdding && !showSuccess ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin-slow"></div>
-                <span>Adding...</span>
+                <SheiLoader size="sm" loaderColor="white" loadingText="Adding..." />
               </div>
               
               {/* Success state */}
@@ -161,7 +159,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 showSuccess ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}>
                 <Check className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
-                <span>Added!</span>
+                <span className="relative top-[-1px]">Added!</span>
               </div>
             </div>
           </Button>

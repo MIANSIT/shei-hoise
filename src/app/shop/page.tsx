@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import MobileHeader from "../components/common/MobileHeader";
 import DesktopHeader from "../components/common/DesktopHeader";
 import ProductCard from "../components/shop/ProductCard";
@@ -9,12 +9,10 @@ import { Product } from "@/lib/types/product";
 import { dummyProducts } from "../../lib/store/dummyProducts";
 
 const Shop = () => {
-  const [loadingProductId, setLoadingProductId] = useState<number | null>(null);
   const { success } = useSheiNotification();
   const { addToCart } = useCartStore();
 
   const handleAddToCart = async (product: Product) => {
-    setLoadingProductId(product.id);
     try {
       // Create a product with the correct structure for the cart
       const cartProduct = {
@@ -25,8 +23,6 @@ const Shop = () => {
       success(`${product.title} added to cart`);
     } catch (error) {
       console.error("Error adding to cart:", error);
-    } finally {
-      setLoadingProductId(null);
     }
   };
 
@@ -53,11 +49,10 @@ const Shop = () => {
               currentPrice={product.currentPrice}
               originalPrice={product.originalPrice}
               rating={product.rating} 
-              imageUrl={product.images[0]} // Use imageUrl instead of product.images[0]
+              imageUrl={product.images[0]}
               productLink={`/products/${product.id}`}
               discount={product.discount}
               onAddToCart={() => handleAddToCart(product)}
-              isLoading={loadingProductId === product.id}
             />
           ))}
         </div>
