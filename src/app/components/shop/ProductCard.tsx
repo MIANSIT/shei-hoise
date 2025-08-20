@@ -167,16 +167,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </Button>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin 1.5s linear infinite;
-        }
-      `}</style>
     </Card>
   );
 };
