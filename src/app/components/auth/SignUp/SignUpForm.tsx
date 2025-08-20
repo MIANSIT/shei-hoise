@@ -2,19 +2,18 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  signUpSchema,
-  SignUpFormValues,
-} from "../../../../lib/utils/formSchema";
+import { signUpSchema, SignUpFormValues } from "../../../../lib/utils/formSchema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
 import Link from "next/link";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
+import { SheiLoader } from "../../ui/SheiLoader";
+import { PasswordToggle } from "../../common/PasswordToggle";
+
 
 export function SignUpForm() {
   const form = useForm<SignUpFormValues>({
@@ -25,16 +24,17 @@ export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const notify = useSheiNotification();
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
 
   const onSubmit = async (values: SignUpFormValues) => {
     setIsLoading(true);
     try {
       console.log("Signup values:", values);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       form.reset();
       notify.success("Account created successfully!");
-      
-      // Redirect to login page after success
       router.push("/login");
     } catch {
       notify.warning("Account creation failed. Please try again.");
@@ -51,13 +51,18 @@ export function SignUpForm() {
           Enter your details to create your account
         </p>
       </div>
+
       <Card>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">Full Name</Label>
-              <Input {...form.register("name")} placeholder="Full Name" />
+              <Input
+                {...form.register("name")}
+                placeholder="Full Name"
+                disabled={isLoading}
+              />
               {form.formState.errors.name && (
                 <p className="text-sm text-red-500 mt-1">
                   {form.formState.errors.name.message}
@@ -68,7 +73,12 @@ export function SignUpForm() {
             {/* Email */}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input {...form.register("email")} placeholder="Email" type="email" />
+              <Input
+                {...form.register("email")}
+                placeholder="Email"
+                type="email"
+                disabled={isLoading}
+              />
               {form.formState.errors.email && (
                 <p className="text-sm text-red-500 mt-1">
                   {form.formState.errors.email.message}
@@ -83,15 +93,16 @@ export function SignUpForm() {
                 <Input
                   {...form.register("password")}
                   type={showPassword ? "text" : "password"}
-                  className="pr-10"
                   placeholder="Password"
+                  disabled={isLoading}
+                  className="pr-14"
                 />
-                <span
-                  className="absolute inset-y-0 right-2 flex items-center cursor-pointer text-gray-400"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </span>
+                <div className="absolute inset-y-0 right-2 flex items-center">
+                  <PasswordToggle
+                    show={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                  />
+                </div>
               </div>
               {form.formState.errors.password && (
                 <p className="text-sm text-red-500 mt-1">
@@ -100,18 +111,29 @@ export function SignUpForm() {
               )}
             </div>
 
-            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
-              {isLoading ? "Processing..." : "Create account"}
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full mt-2 relative overflow-hidden"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <SheiLoader
+                  size="sm"
+                  loaderColor="black"
+                  loadingText="Processing..."
+                />
+              ) : (
+                "Create account"
+              )}
             </Button>
           </form>
         </CardContent>
+
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-500">
             Already have an account?{" "}
-            <Link
-              href="/login"
-              className="text-white font-medium hover:underline"
-            >
+            <Link href="/login" className="text-white font-medium hover:underline">
               Sign in
             </Link>
           </p>

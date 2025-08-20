@@ -11,6 +11,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
 import Link from "next/link";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { SheiLoader } from "../../ui/SheiLoader";
+import { PasswordToggle } from "../../common/PasswordToggle";
 
 export function LoginForm() {
   const form = useForm<LoginFormValues>({
@@ -19,6 +21,7 @@ export function LoginForm() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const notify = useSheiNotification();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,6 +31,9 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       console.log("Login values:", values);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       notify.success("Logged in successfully!");
       router.push(redirect);
     } catch {
@@ -52,21 +58,42 @@ export function LoginForm() {
             {/* Email */}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input {...form.register("email")} placeholder="Email" type="email" />
+              <Input
+                {...form.register("email")}
+                placeholder="Email"
+                type="email"
+                disabled={isLoading}
+              />
               {form.formState.errors.email && (
-                <p className="text-sm text-red-500 mt-1">{form.formState.errors.email.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {form.formState.errors.email.message}
+                </p>
               )}
             </div>
 
             {/* Password */}
-            <div className="grid gap-2">
+            <div className="grid gap-2 relative">
               <Label htmlFor="password">Password</Label>
-              <Input {...form.register("password")} type="password" placeholder="Password" />
+              <div className="relative">
+                <Input
+                  {...form.register("password")}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  disabled={isLoading}
+                  className="pr-14" // extra padding for toggle
+                />
+                <div className="absolute inset-y-0 right-2 flex items-center">
+                  <PasswordToggle
+                    show={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                  />
+                </div>
+              </div>
               {form.formState.errors.password && (
-                <p className="text-sm text-red-500 mt-1">{form.formState.errors.password.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {form.formState.errors.password.message}
+                </p>
               )}
-
-              {/* Modern E-Commerce Forgot Password Link */}
               <div className="text-right mt-1">
                 <Link
                   href="/forgot-password"
@@ -77,8 +104,21 @@ export function LoginForm() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full mt-2 relative overflow-hidden"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <SheiLoader
+                  size="sm"
+                  loaderColor="black"
+                  loadingText="Signing in..."
+                />
+              ) : (
+                "Sign in"
+              )}
             </Button>
           </form>
         </CardContent>
@@ -86,7 +126,10 @@ export function LoginForm() {
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-400">
             Don&apos;t have an account?{" "}
-            <Link href={`/sign-up?redirect=${encodeURIComponent(redirect)}`} className="text-white hover:underline">
+            <Link
+              href={`/sign-up?redirect=${encodeURIComponent(redirect)}`}
+              className="text-white hover:underline"
+            >
               Sign up
             </Link>
           </p>
