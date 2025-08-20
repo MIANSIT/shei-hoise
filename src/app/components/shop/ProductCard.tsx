@@ -109,7 +109,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           {/* ✅ Buttons stop propagation */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-2">
             <Button
               variant="secondary"
               size="lg"
@@ -121,7 +121,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               }}
             >
               <Zap className="w-4 h-4" />
-              <span>Buy Now</span>
+              <span className="relative top-[-1px]">Buy Now</span>
             </Button>
 
             <Button
@@ -149,7 +149,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
-                  <span>Add to Cart</span>
+                  <span className="relative top-[-1px]">Add to Cart</span>
                 </div>
 
                 {/* Loading */}
@@ -170,7 +170,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   }`}
                 >
                   <Check className="w-5 h-5" />
-                  <span>Added!</span>
+                  <span className="relative top-[-1px]">Added!</span>
                 </div>
               </div>
             </Button>
