@@ -7,6 +7,9 @@ import CartItemsList from "@/app/components/cart/CartItemList";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import CheckoutForm from "./UserCheckoutForm";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { CheckoutFormValues } from "@/lib/utils/formSchema";
 
 interface MobileCheckoutProps {
   cartLength: number;
@@ -22,22 +25,38 @@ const MobileCheckout = ({
   const { totalPrice } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
-
+  const [isProcessing, setIsProcessing] = useState(false);
+  const notify = useSheiNotification();
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const subtotal = isMounted ? totalPrice() : 0;
+  const handleCheckoutSubmit = async (values: CheckoutFormValues) => {
+    setIsProcessing(true);
+    try {
+      console.log("Checkout values:", values);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      notify.success("Shipping information saved!");
+      onCheckout();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      notify.warning("Failed to save information. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
   const steps = [
     {
       title: "Customer Information",
       content: (
         <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-4 mt-4">
           <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
-          <p className="text-gray-300 text-sm">
-            Form will be placed here later
-          </p>
+          <CheckoutForm
+            onSubmit={handleCheckoutSubmit}
+            isLoading={isProcessing}
+          />
         </div>
       ),
     },
@@ -105,8 +124,8 @@ const MobileCheckout = ({
     <div className="container mx-auto px-4 py-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Checkout</h1>
-      <div className="flex items-center justify-center gap-2">
-        <Button
+        <div className="flex items-center justify-center gap-2">
+          <Button
             onClick={prevStep}
             disabled={activeStep === 0}
             variant="outline"
@@ -127,7 +146,7 @@ const MobileCheckout = ({
               Complete Purchase
             </Button>
           )}
-      </div>
+        </div>
       </div>
       {/* <div className="flex mb-6">
         {steps.map((step, index) => (
@@ -177,8 +196,6 @@ const MobileCheckout = ({
           {steps[activeStep].content}
         </motion.div>
       </AnimatePresence>
-
-      
     </div>
   );
 };
