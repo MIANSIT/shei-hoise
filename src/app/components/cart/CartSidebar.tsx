@@ -47,7 +47,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         onClick={onClose}
       />
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md text-white bg-gray-900 shadow-xl z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md text-white bg-black shadow-xl z-50 transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

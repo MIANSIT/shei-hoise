@@ -73,7 +73,7 @@ export default function CartItemsList() {
           key={item.id}
           className={`
             relative flex items-center justify-between rounded-lg bg-black/20 p-3
-            transition-all duration-300 ease-in-out
+            transition-all duration-300 ease-in-out border-gray-700 border-2
             ${
               removingId === item.id || isClearing
                 ? "opacity-0 -translate-x-10"
