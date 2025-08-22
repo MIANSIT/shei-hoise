@@ -20,7 +20,7 @@ export default function DesktopHeader() {
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
     { name: "Shop", path: "/shop" },
-    { name: "Products", path: "/products" },
+    { name: "Checkout", path: "/checkout" },
     { name: "Log in", path: "/login" },
     { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];

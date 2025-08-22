@@ -1,4 +1,4 @@
-
+// lib/utils/formSchema.ts
 import { z } from "zod";
 
 export const validators = {
@@ -13,6 +13,11 @@ export const validators = {
     ),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string().min(8, "Confirm password must be at least 8 characters"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  country: z.string().min(1, "Please select a country"),
+  city: z.string().min(2, "City must be at least 2 characters"),
+  shippingAddress: z.string().min(5, "Shipping address must be at least 5 characters"),
+  postCode: z.string().min(3, "Post code must be at least 3 characters"),
 };
 
 // Signup schema
@@ -21,14 +26,23 @@ export const signUpSchema = z
     name: validators.name,
     email: validators.email,
     password: validators.password,
-    
   })
-
 
 // Login schema
 export const loginSchema = z.object({
   email: validators.email,
   password: validators.password,
+});
+
+// Checkout schema
+export const userCheckoutSchema = z.object({
+  email: validators.email,
+  phone: validators.phone,
+  name: validators.name,
+  country: validators.country,
+  city: validators.city,
+  shippingAddress: validators.shippingAddress,
+  postCode: validators.postCode,
 });
 
 // Profile update schema (example)
@@ -39,4 +53,5 @@ export const profileSchema = z.object({
 
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 export type LoginFormValues = z.infer<typeof loginSchema>;
+export type CheckoutFormValues = z.infer<typeof userCheckoutSchema>;
 export type ProfileFormValues = z.infer<typeof profileSchema>;
