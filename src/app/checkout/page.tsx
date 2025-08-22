@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
-import DesktopCheckout from "../components/checkout/DesktopCheckoutLayout";
-import MobileCheckout from "../components/checkout/MobileCheckoutLayout";
+import DesktopCheckout from "../components/product/checkout/DesktopCheckoutLayout";
+import MobileCheckout from "../components/product/checkout/MobileCheckoutLayout";
 
 export default function CheckoutPage() {
   const { cart, totalItems } = useCartStore();
