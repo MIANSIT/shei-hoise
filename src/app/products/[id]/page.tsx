@@ -5,14 +5,14 @@ import { dummyProducts } from "../../../lib/store/dummyProducts";
 import MobileHeader from "../../components/common/MobileHeader";
 import DesktopHeader from "../../components/common/DesktopHeader";
 
-import ProductImage from "../../components/singleProduct/ProductImage";
-import ProductTitle from "../../components/singleProduct/ProductTitle";
-import ProductPrice from "../../components/singleProduct/ProductPrice";
-import ProductQuantitySelector from "../../components/singleProduct/ProductQuantitySelector";
-import AddToCartButton from "../../components/singleProduct/AddToCartButton";
-import ProductFeatures from "../../components/singleProduct/ProductFeatures";
-import ProductSpecifications from "../../components/singleProduct/ProductSpecifications";
-import BackButton from "@/app/components/singleProduct/BackButton";
+import ProductImage from "../../components/product/singleProduct/ProductImage";
+import ProductTitle from "../../components/product/singleProduct/ProductTitle";
+import ProductPrice from "../../components/product/singleProduct/ProductPrice";
+import ProductQuantitySelector from "../../components/product/singleProduct/ProductQuantitySelector";
+import AddToCartButton from "../../components/product/singleProduct/AddToCartButton";
+import ProductFeatures from "../../components/product/singleProduct/ProductFeatures";
+import ProductSpecifications from "../../components/product/singleProduct/ProductSpecifications";
+import BackButton from "@/app/components/product/singleProduct/BackButton";
 
 type Product = {
   id: number;

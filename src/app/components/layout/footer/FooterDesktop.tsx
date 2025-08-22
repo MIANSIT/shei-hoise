@@ -1,7 +1,7 @@
 "use client";
 
-import FooterBrand from "../../footer/FooterBrand";
-import FooterLinks from "../../footer/FooterLinks";
+import FooterBrand from "../../common/FooterBrand";
+import FooterLinks from "../../common/FooterLinks";
 import { footerContent } from "../../../../lib/store/footerContent";
 
 export default function FooterDesktop() {

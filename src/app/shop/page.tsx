@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import ProductCard from "../components/shop/ProductCard";
+import ProductCard from "../components/product/shop/ProductCard";
 import { useSheiNotification } from "../../lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import { Product } from "@/lib/types/product";

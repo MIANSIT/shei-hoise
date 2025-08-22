@@ -6,9 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SheiLoader } from "../ui/SheiLoader";
+import { SheiLoader } from "../../ui/SheiLoader/loader";
 import { userCheckoutSchema, CheckoutFormValues } from "@/lib/utils/formSchema";
-import { CountryFlag } from "../common/CountryFlag";
+import { CountryFlag } from "../../common/CountryFlag";
 
 interface CheckoutFormProps {
   onSubmit: (values: CheckoutFormValues) => void;

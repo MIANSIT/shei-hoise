@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { FC } from "react";
-import mergeRefs from "../../../lib/hook/mergeMultipleRefs";
+import mergeRefs from "../../../../lib/hook/mergeMultipleRefs";
 import { SwipeableHandlers } from "react-swipeable";
 
 interface MainImageProps {

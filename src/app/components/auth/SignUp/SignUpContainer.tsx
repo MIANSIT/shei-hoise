@@ -1,8 +1,8 @@
 "use client";
 
 import { SignUpForm } from "./SignUpForm";
-import { DesktopLayout } from "../../ui/sheiAuthLayout/AuthDesktop";
-import { MobileLayout } from "../../ui/sheiAuthLayout/AuthMobile";
+import { DesktopLayout } from "../../layout/auth/AuthDesktop";
+import { MobileLayout } from "../../layout/auth/AuthMobile";
 import MobileHeader from "../../common/MobileHeader";
 import DesktopHeader from "../../common/DesktopHeader";
 import Footer from "../../common/Footer";
