@@ -43,7 +43,7 @@ export default function ProductFilterSection({
         </div>
 
         <motion.div
-          className="flex flex-wrap gap-2 md:ml-auto"
+          className="flex flex-wrap gap-2 md:justify-end"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
