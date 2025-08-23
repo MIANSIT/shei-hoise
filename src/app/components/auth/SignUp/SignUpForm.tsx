@@ -1,12 +1,24 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
 import { signUpSchema, SignUpFormValues } from "@/lib/utils/formSchema";
 import { UserForm } from "../../common/UserForm";
 
 export function SignUpForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/"; // fallback if no redirect
+
   const defaultValues: SignUpFormValues = { name: "", email: "", password: "" };
 
   const handleSubmit = async (values: SignUpFormValues) => {
     console.log("Signup values:", values);
-    await new Promise((res) => setTimeout(res, 1000)); // simulate API call
+
+    // simulate API call
+    await new Promise((res) => setTimeout(res, 1000));
+
+    // Redirect after successful signup
+    router.push(redirectTo);
   };
 
   return (
@@ -27,7 +39,7 @@ export function SignUpForm() {
         footer={{
           text: "Already have an account?",
           linkText: "Sign in",
-          linkUrl: "/login",
+          linkUrl: `/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`,
         }}
       />
     </div>

@@ -16,8 +16,7 @@ export function DesktopLayout({ children, isAdmin = false }: DesktopLayoutProps)
           src={isAdmin ? "/adminBg.png" : "/bgImage.png"}
           alt={isAdmin ? "Admin background" : "Login background"}
           fill
-          className="object-contain" // image fits entirely, no crop
-          style={{ objectPosition: "center" }} // center the image
+          className="object-cover" // image fits entirely, no crop
           priority
           quality={100}
         />

@@ -12,7 +12,7 @@ export default function AdminLoginComponent() {
     // Call your admin login API here
     // For now we simulate login:
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push("/admin-dashboard"); // Redirect after successful login
+    router.push("/dashboard"); // Redirect after successful login
   };
 
   return (
