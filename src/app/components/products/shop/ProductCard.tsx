@@ -13,7 +13,6 @@ interface ProductCardProps {
   rating: number;
   imageUrl: string;
   productLink: string;
-  discount?: number;
   isLoading?: boolean;
   onAddToCart: () => Promise<void>;
 }
@@ -30,6 +29,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // ✅ Auto calculate discount
+  const calculatedDiscount =
+    originalPrice > 0
+      ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+      : 0;
 
   const renderStars = () => {
     const stars = [];
@@ -69,27 +74,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const handleBuyNow = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (isAdding) return;
 
     setIsAdding(true);
-    
+
     try {
       await onAddToCart();
       window.location.href = "/checkout";
     } catch (error) {
-      console.error("Error adding to cart:", error);
+      console.error("Error buying product:", error);
     } finally {
       setIsAdding(false);
     }
   };
 
   return (
-    <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card ">
+    <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card">
       <Link
         href={productLink}
         className="flex flex-col flex-1 cursor-pointer hover:text-white"
       >
+        {/* Product Image */}
         <div className="relative w-full h-80 overflow-hidden group">
           <Image
             src={imageUrl}
@@ -105,25 +111,42 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col p-4 gap-3 ">
-          <h3 className="font-semibold text-lg line-clamp-1 ">{title}</h3>
+        {/* Info Section */}
+        <div className="flex flex-col p-4 gap-3">
+          <h3 className="font-semibold text-lg line-clamp-1">{title}</h3>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg">${currentPrice}</span>
-              <span className="text-sm text-muted-foreground line-through">
-                ${originalPrice}
-              </span>
+          {/* Price + Discount + Rating */}
+          <div className="flex flex-col gap-1">
+            {/* Price + Discount */}
+            <div className="flex items-center justify-between">
+              {/* Left side: Price + Old Price */}
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-semibold text-foreground">
+                  ${currentPrice}
+                </span>
+                <span className="text-sm text-muted-foreground line-through">
+                  ${originalPrice}
+                </span>
+              </div>
+
+              {/* Right side: Discount */}
+              {calculatedDiscount > 0 && (
+                <span className="text-xs font-medium text-white bg-red-500 px-2 py-0.5 rounded-full">
+                  -{calculatedDiscount}%
+                </span>
+              )}
             </div>
-            <div className="flex items-center">
+
+            {/* Rating */}
+            <div className="flex items-center gap-1 text-muted-foreground">
               <div className="flex">{renderStars()}</div>
-              <span className="text-sm text-muted-foreground ml-1">
-                {rating.toFixed(1)}
-              </span>
+              <span className="text-xs">{rating.toFixed(1)}</span>
             </div>
           </div>
         </div>
       </Link>
+
+      {/* Buttons */}
       <div className="flex flex-col gap-2 px-4 pb-4">
         <Button
           variant="secondary"
@@ -152,6 +175,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           }`}
         >
           <div className="flex items-center justify-center w-full relative">
+            {/* Default text */}
             <div
               className={`flex items-center gap-2 ${
                 isAdding || showSuccess
@@ -162,6 +186,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <ShoppingCart className="w-5 h-5" />
               <span className="relative top-[-1px]">Add to Cart</span>
             </div>
+
+            {/* Loading state */}
             <div
               className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
                 isAdding && !showSuccess
@@ -172,6 +198,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin-slow"></div>
               <span>Adding...</span>
             </div>
+
+            {/* Success state */}
             <div
               className={`absolute flex items-center gap-2 ${
                 showSuccess
