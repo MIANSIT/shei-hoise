@@ -1,24 +1,30 @@
+"use client";
+
 import Image from "next/image";
 
-export function DesktopLayout({ children }: { children: React.ReactNode }) {
+interface DesktopLayoutProps {
+  children: React.ReactNode;
+  isAdmin?: boolean;
+}
+
+export function DesktopLayout({ children, isAdmin = false }: DesktopLayoutProps) {
   return (
-    <div className="flex min-h-[calc(100dvh-72px)] w-full">
+    <div className="flex min-h-screen w-full">
       {/* Left side - Image */}
-      <div className="hidden w-1/2 md:block">
-        <div className="relative h-full w-full">
-          <Image
-            src="/bgImage.png"
-            alt="Login background"
-            fill
-            className="object-cover"
-            priority
-            quality={100}
-          />
-        </div>
+      <div className="hidden md:flex w-1/2 h-screen relative items-center justify-center">
+        <Image
+          src={isAdmin ? "/adminBg.png" : "/bgImage.png"}
+          alt={isAdmin ? "Admin background" : "Login background"}
+          fill
+          className="object-contain" // image fits entirely, no crop
+          style={{ objectPosition: "center" }} // center the image
+          priority
+          quality={100}
+        />
       </div>
 
       {/* Right side - Form */}
-      <div className="flex w-full items-center justify-center bg-black p-8 md:w-1/2">
+      <div className="flex w-full md:w-1/2 items-center justify-center bg-black p-8">
         <div className="w-full max-w-md space-y-8">{children}</div>
       </div>
     </div>

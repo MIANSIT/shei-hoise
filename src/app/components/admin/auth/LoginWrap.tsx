@@ -1,29 +1,25 @@
 "use client";
 
-import DesktopHeader from "../../common/DesktopHeader";
 import Footer from "../../common/Footer";
-import MobileHeader from "../../common/MobileHeader";
 import { DesktopLayout } from "../../layout/auth/AuthDesktop";
 import { MobileLayout } from "../../layout/auth/AuthMobile";
-import { LoginForm } from "./LoginForm";
+import  AdminLoginComponent  from "./Login";
 
-export function LoginWrapper() {
+export default function LoginWrapper() {
   return (
     <>
       {/* Mobile Layout */}
       <div className="block md:hidden">
-        <MobileHeader />
         <MobileLayout>
-          <LoginForm />
+          <AdminLoginComponent />
         </MobileLayout>
         <Footer />
       </div>
 
       {/* Desktop Layout */}
       <div className="hidden md:block">
-        <DesktopHeader />
-        <DesktopLayout isAdmin={false}>
-          <LoginForm />
+        <DesktopLayout isAdmin={true}>
+          <AdminLoginComponent />
         </DesktopLayout>
         <Footer />
       </div>
