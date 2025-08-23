@@ -7,8 +7,8 @@ import { Product } from "@/lib/types/product";
 import { dummyProducts } from "@/lib/store/dummyProducts";
 import Footer from "../components/common/Footer";
 import Header from "../components/common/Header";
-import ProductFilterSection from "../components/product/ProductFilter";
-import ProductGrid from "../components/product/ProductGrid";
+import ProductFilterSection from "../components/products/ProductFilter";
+import ProductGrid from "../components/products/ProductGrid";
 
 export default function Shop() {
   const { success } = useSheiNotification();

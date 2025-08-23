@@ -43,7 +43,7 @@ export default function ProductGrid({
               originalPrice={product.originalPrice}
               rating={product.rating}
               imageUrl={product.images[0]}
-              productLink={`/products/${product.id}`}
+              productLink={`/product/${product.id}`}
               discount={product.discount}
               onAddToCart={() => onAddToCart(product)}
               isLoading={loadingProductId === product.id}
