@@ -11,7 +11,7 @@ import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
 import Link from "next/link";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { SheiLoader } from "../../ui/SheiLoader";
+import { SheiLoader } from "../../ui/SheiLoader/loader";
 import { PasswordToggle } from "../../common/PasswordToggle";
 
 

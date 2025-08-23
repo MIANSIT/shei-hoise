@@ -2,7 +2,7 @@
 
 import { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SheiLoader } from "../ui/SheiLoader";
+import { SheiLoader } from "../../ui/SheiLoader/loader";
 
 interface AddToCartButtonProps {
   onAdd: () => Promise<void>;

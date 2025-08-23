@@ -2,7 +2,7 @@
 
 import FooterMobile from "../layout/footer/FooterMobile";
 import FooterDesktop from "../layout/footer/FooterDesktop";
-import FooterBottom from "../footer/FooterBottom";
+import FooterBottom from "./FooterBottom";
 import { footerContent } from "../../../lib/store/footerContent";
 
 export default function Footer() {

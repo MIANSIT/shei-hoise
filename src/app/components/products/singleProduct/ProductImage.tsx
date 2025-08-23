@@ -1,7 +1,7 @@
 import { FC } from "react";
 import MainImage from "../image/MainImage";
 import Thumbnails from "../image/Thumbnails";
-import { useProductImage } from "../../../lib/hook/useProductImage";
+import { useProductImage } from "../../../../lib/hook/useProductImage";
 
 interface ProductImageProps {
   images: string[];
