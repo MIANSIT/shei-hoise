@@ -1,7 +1,9 @@
 "use client";
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { NavLink } from "./NavMenu";
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface AuthButtonsProps {
   links: NavLink[];
@@ -9,7 +11,27 @@ interface AuthButtonsProps {
 
 export default function AuthButtons({ links }: AuthButtonsProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAdminLoggedIn, logout } = useAuthStore();
 
+  const handleLogout = () => {
+    logout();
+    router.push("/admin-login");
+  };
+
+  if (isAdminLoggedIn) {
+    // ✅ If logged in → show logout button
+    return (
+      <button
+        onClick={handleLogout}
+        className="px-4 py-1.5 rounded-md bg-red-500 text-white font-semibold hover:bg-red-600"
+      >
+        Logout
+      </button>
+    );
+  }
+
+  // ❌ If not logged in → show login & signup links
   return (
     <>
       {links.map((link) => {
