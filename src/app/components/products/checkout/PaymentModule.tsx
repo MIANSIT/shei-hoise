@@ -102,8 +102,8 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
               whileTap={{ scale: 0.95 }}
               className={`p-2 rounded-lg cursor-pointer transition-all text-center w-24 ${
                 selectedMethod === method.id
-                  ? "bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-bold"
-                  : "bg-gray-800 hover:bg-gray-700"
+                  ? "bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold"
+                  : "bg-gradient-to-br from-gray-900 to-black hover:bg-gradient-to-br hover:from-yellow-500 hover:to-yellow-700"
               }`}
               onClick={() => {
                 setSelectedMethod(method.id);
@@ -126,7 +126,7 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="bg-gray-900 border-gray-700">
+          <Card className="bg-gradient-to-br from-gray-900 to-black border-gray-700">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg">
@@ -204,12 +204,12 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
           disabled={
             isProcessing || (needsTransactionId && !transactionId.trim())
           }
-          className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isProcessing ? (
             <>
               <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-black"
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
