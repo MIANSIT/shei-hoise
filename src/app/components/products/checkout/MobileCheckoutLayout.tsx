@@ -11,6 +11,8 @@ import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
 import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
+import PaymentModule from "./PaymentModule";
+
 interface MobileCheckoutProps {
   cartLength: number;
   displayCount: number;
@@ -28,11 +30,24 @@ const MobileCheckout = ({
   const [activeStep, setActiveStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const notify = useSheiNotification();
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const subtotal = isMounted ? totalPrice() : 0;
+  const nextStep = () => {
+    if (activeStep < steps.length - 1) {
+      setActiveStep(activeStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
+    }
+  };
+
   const handleCheckoutSubmit = async (values: CheckoutFormValues) => {
     setIsProcessing(true);
     try {
@@ -47,12 +62,11 @@ const MobileCheckout = ({
     }
   };
 
-  const handleFinalCheckout = () => {
-    // Your existing checkout logic
+  const handlePaymentSuccess = () => {
     onCheckout();
-    // Clear the form data after successful checkout
     clearFormData();
   };
+
   const steps = [
     {
       title: "Cart Items",
@@ -99,46 +113,18 @@ const MobileCheckout = ({
       ),
     },
     {
-      title: "Order Summary",
+      title: "Payment",
       content: (
-        <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-4 mt-4">
-          <h2 className="text-lg font-semibold mb-3">Order Summary</h2>
-          <div>
-            <div className="flex justify-between mb-4 text-white items-center">
-              <span className="text-sm">SubTotal:</span>
-              <motion.span
-                className="font-bold text-lg"
-                key={`subtotal-${subtotal}`}
-                initial={{ scale: 1.1 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                ${subtotal.toFixed(2)}
-              </motion.span>
-            </div>
-            <Button
-              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300 py-3 text-base font-medium"
-              onClick={handleFinalCheckout}
-            >
-              Make Payment
-            </Button>
-          </div>
+        <div className="mt-4">
+          <PaymentModule
+            amount={subtotal}
+            onSuccess={handlePaymentSuccess}
+            onCancel={prevStep}
+          />
         </div>
       ),
     },
   ];
-
-  const nextStep = () => {
-    if (activeStep < steps.length - 1) {
-      setActiveStep(activeStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (activeStep > 0) {
-      setActiveStep(activeStep - 1);
-    }
-  };
 
   return (
     <div className="container mx-auto px-4 py-4">
@@ -149,23 +135,19 @@ const MobileCheckout = ({
             onClick={prevStep}
             disabled={activeStep === 0}
             variant="outline"
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 cursor-pointer"
           >
             <ChevronLeft size={8} />
           </Button>
 
           {activeStep < steps.length - 1 ? (
-            <Button onClick={nextStep} className="flex items-center gap-1">
+            <Button
+              onClick={nextStep}
+              className="flex items-center gap-1 cursor-pointer"
+            >
               <ChevronRight size={8} />
             </Button>
-          ) : (
-            <Button
-              onClick={onCheckout}
-              className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700"
-            >
-              Complete Purchase
-            </Button>
-          )}
+          ) : null}
         </div>
       </div>
       <div className="w-full bg-gray-700 rounded-full h-1.5 mb-6">
