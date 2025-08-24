@@ -1,17 +1,20 @@
-// components/Header.tsx
 "use client";
 
 import MobileHeader from "./MobileHeader";
 import DesktopHeader from "./DesktopHeader";
 
-export default function Header() {
+interface HeaderProps {
+  isAdmin?: boolean;
+}
+
+export default function Header({ isAdmin = false }: HeaderProps) {
   return (
     <>
       <div className="block md:hidden">
-        <MobileHeader />
+        <MobileHeader  />
       </div>
       <div className="hidden md:block">
-        <DesktopHeader />
+        <DesktopHeader isAdmin={isAdmin} />
       </div>
     </>
   );

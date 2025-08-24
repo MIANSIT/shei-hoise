@@ -7,8 +7,8 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ name = "Admin" }) => {
   return (
     <div className="p-4 bg-black-100 rounded-md text-center">
-      <h1 className="text-2xl font-bold text-black">Hello, {name}!</h1>
-      <p className="text-black">Welcome to Shei Hoise E-com</p>
+      <h1 className="text-2xl font-bold text-white">Hello, {name}!</h1>
+      <p className="text-white">Welcome to Shei Hoise E-com</p>
     </div>
   );
 };
