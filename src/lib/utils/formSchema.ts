@@ -1,6 +1,6 @@
-// lib/utils/formSchema.ts
 import { z } from "zod";
 
+// Common validators
 export const validators = {
   name: z.string().min(1, "Name is required"),
   email: z
@@ -21,36 +21,37 @@ export const validators = {
 };
 
 // Signup schema
-export const signUpSchema = z
-  .object({
-    name: validators.name,
-    email: validators.email,
-    password: validators.password,
-  })
+export const signUpSchema = z.object({
+  name: validators.name,
+  email: validators.email,
+  password: validators.password,
+});
 
 // Login schema
 export const loginSchema = z.object({
+  name: z.string().optional(),
   email: validators.email,
   password: validators.password,
 });
 
 // Checkout schema
 export const userCheckoutSchema = z.object({
+  name: validators.name,
   email: validators.email,
   phone: validators.phone,
-  name: validators.name,
   country: validators.country,
   city: validators.city,
   shippingAddress: validators.shippingAddress,
   postCode: validators.postCode,
 });
 
-// Profile update schema (example)
+// Profile update schema
 export const profileSchema = z.object({
   name: validators.name,
   email: validators.email,
 });
 
+// Infer TypeScript types from schemas
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type CheckoutFormValues = z.infer<typeof userCheckoutSchema>;

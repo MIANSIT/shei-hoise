@@ -43,7 +43,7 @@ export function useSheiNotification() {
     };
 
     toast(
-      <div className="relative flex items-start gap-2 w-full">
+      <div className="relative flex items-start gap-2 w-fit max-w-[90vw]">
         {/* Icon */}
         <div className="flex-shrink-0">{icons[type]}</div>
 
@@ -55,9 +55,9 @@ export function useSheiNotification() {
           size="sm"
           variant="default"
           className={`
-            h-6 w-6 p-0 rounded-full shadow-md flex items-center justify-center
-            hover:brightness-110 transition ml-[3.75rem]
-          `}
+        h-6 w-6 p-0 rounded-full shadow-md flex items-center justify-center
+        hover:brightness-110 transition ml-3
+      `}
           style={{ backgroundColor: closeBgColors[type] }}
           onClick={() => toast.dismiss()}
         >
@@ -71,9 +71,9 @@ export function useSheiNotification() {
           padding: "0.5rem 0.75rem",
           borderRadius: "0.5rem",
           boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-          width: "90%",
-          maxWidth: "350px",
-          minWidth: "180px",
+          width: "fit-content",
+          minWidth: "100px",
+          maxWidth: "90vw", // keeps it responsive
           wordBreak: "break-word",
         },
         duration: options?.duration ?? 4000,
