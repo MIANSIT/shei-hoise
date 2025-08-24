@@ -28,7 +28,7 @@ export function LoginForm() {
         router.push(redirectTo);
       }, 500);
       
-    } catch (err) {
+    } catch {
       // Handle login error
       error("Login failed. Please check your credentials and try again.");
     }

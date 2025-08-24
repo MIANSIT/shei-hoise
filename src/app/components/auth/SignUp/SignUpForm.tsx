@@ -28,7 +28,7 @@ export function SignUpForm() {
         router.push(redirectTo);
       }, 500);
       
-    } catch (err) {
+    } catch {
       // Handle signup error
       error("Signup failed. Please try again.");
     }

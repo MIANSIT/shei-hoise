@@ -25,7 +25,7 @@ export default function AdminLoginComponent() {
       } else {
         error("Invalid admin credentials");
       }
-    } catch (err) {
+    } catch {
       error("Login failed. Please try again.");
     }
   };
