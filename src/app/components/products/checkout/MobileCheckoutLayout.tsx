@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
-
+import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
 interface MobileCheckoutProps {
   cartLength: number;
   displayCount: number;
@@ -22,6 +22,7 @@ const MobileCheckout = ({
   displayCount,
   onCheckout,
 }: MobileCheckoutProps) => {
+  const { clearFormData } = useCheckoutStore();
   const { totalPrice } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -37,29 +38,22 @@ const MobileCheckout = ({
     try {
       console.log("Checkout values:", values);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
       notify.success("Shipping information saved!");
-      onCheckout();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      nextStep();
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const handleFinalCheckout = () => {
+    // Your existing checkout logic
+    onCheckout();
+    // Clear the form data after successful checkout
+    clearFormData();
+  };
   const steps = [
-    {
-      title: "Customer Information",
-      content: (
-        <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-4 mt-4">
-          <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
-          <CheckoutForm
-            onSubmit={handleCheckoutSubmit}
-            isLoading={isProcessing}
-          />
-        </div>
-      ),
-    },
     {
       title: "Cart Items",
       content: (
@@ -73,8 +67,34 @@ const MobileCheckout = ({
               <p className="text-white">Your cart is empty</p>
             </div>
           ) : (
-            <CartItemsList />
+            <>
+              <CartItemsList />
+              <div className="flex justify-between mt-4 text-white border-gray-700 border-2 rounded-lg p-3">
+                <span className="font-bold">Subtotal :</span>
+                <motion.span
+                  className="font-bold"
+                  key={`subtotal-${subtotal}`}
+                  initial={{ scale: 1.1 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  ${subtotal.toFixed(2)}
+                </motion.span>
+              </div>
+            </>
           )}
+        </div>
+      ),
+    },
+    {
+      title: "Customer Information",
+      content: (
+        <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-4 mt-4">
+          <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
+          <CheckoutForm
+            onSubmit={handleCheckoutSubmit}
+            isLoading={isProcessing}
+          />
         </div>
       ),
     },
@@ -98,7 +118,7 @@ const MobileCheckout = ({
             </div>
             <Button
               className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300 py-3 text-base font-medium"
-              onClick={onCheckout}
+              onClick={handleFinalCheckout}
             >
               Make Payment
             </Button>
@@ -148,36 +168,6 @@ const MobileCheckout = ({
           )}
         </div>
       </div>
-      {/* <div className="flex mb-6">
-        {steps.map((step, index) => (
-          <div
-            key={index}
-            className="flex-1 flex flex-col items-center mx-1"
-            onClick={() => setActiveStep(index)}
-          >
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                index === activeStep
-                  ? "bg-yellow-500 text-black"
-                  : index < activeStep
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-700 text-white"
-              } font-medium text-sm`}
-            >
-              {index + 1}
-            </div>
-            <span
-              className={`text-xs  text-center ${
-                index === activeStep
-                  ? "text-yellow-500 font-medium"
-                  : "text-gray-400"
-              } ${index < activeStep ? "text-green-500" : ""}`}
-            >
-              {step.title.split(" ")[0]}
-            </span>
-          </div>
-        ))}
-      </div> */}
       <div className="w-full bg-gray-700 rounded-full h-1.5 mb-6">
         <div
           className="bg-yellow-500 h-1.5 rounded-full transition-all duration-300"

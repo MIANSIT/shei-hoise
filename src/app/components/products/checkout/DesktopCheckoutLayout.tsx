@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
+import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
 
 interface DesktopCheckoutProps {
   cartLength: number;
@@ -24,6 +25,7 @@ const DesktopCheckout = ({
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const notify = useSheiNotification();
+  const { clearFormData } = useCheckoutStore();
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,15 +38,21 @@ const DesktopCheckout = ({
     try {
       console.log("Checkout values:", values);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
       notify.success("Shipping information saved!");
-      onCheckout();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          onCheckout();
+
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleFinalCheckout = () => {
+    // Your existing checkout logic
+    onCheckout();
+    // Clear the form data after successful checkout
+    clearFormData();
   };
 
   return (
