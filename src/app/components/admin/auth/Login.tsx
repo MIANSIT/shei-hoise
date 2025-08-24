@@ -3,16 +3,31 @@
 import { UserForm } from "../../common/UserForm";
 import { loginSchema, LoginFormValues } from "@/lib/utils/formSchema";
 import { useRouter } from "next/navigation";
+import { useSheiNotification } from "../../../../lib/hook/useSheiNotification"; // Adjust the import path as needed
 
 export default function AdminLoginComponent() {
   const router = useRouter();
+  const { success, error } = useSheiNotification();
 
   const handleAdminLogin = async (values: LoginFormValues) => {
-    console.log("Admin login values:", values);
-    // Call your admin login API here
-    // For now we simulate login:
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push("/dashboard"); // Redirect after successful login
+    try {
+      console.log("Admin login values:", values);
+      
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      // Replace this with actual API call logic
+      const isSuccess = true; // Simulate success
+      
+      if (isSuccess) {
+        success("Admin Login successful!",{ duration: 1000 });
+        setTimeout(() => router.push("/dashboard"), 500);
+      } else {
+        error("Invalid admin credentials");
+      }
+    } catch (err) {
+      error("Login failed. Please try again.");
+    }
   };
 
   return (
@@ -24,8 +39,6 @@ export default function AdminLoginComponent() {
         defaultValues={{ email: "", password: "" }}
         onSubmit={handleAdminLogin}
         submitText="Login as Admin"
-        // Hide footer links for admin login
-      
       />
     </div>
   );

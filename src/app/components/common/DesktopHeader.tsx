@@ -25,6 +25,9 @@ export default function DesktopHeader() {
     { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];
 
+  // Check if current page is an auth page
+  const isAuthPage = pathname === "/login" || pathname === "/sign-up";
+
   return (
     <>
       {/* Sticky Header */}
@@ -69,10 +72,11 @@ export default function DesktopHeader() {
           <div className="flex items-center gap-5">
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
             {navLinks.slice(3).map((link) => {
-              const redirectParam =
-                link.path === "/login" || link.path === "/sign-up"
-                  ? `?redirect=${encodeURIComponent(pathname)}`
-                  : "";
+              // If we're on an auth page, redirect to home after login/signup
+              // Otherwise, redirect back to the current page
+              const redirectTo = isAuthPage ? "/" : pathname;
+              const redirectParam = `?redirect=${encodeURIComponent(redirectTo)}`;
+              
               return (
                 <Link
                   key={link.path}

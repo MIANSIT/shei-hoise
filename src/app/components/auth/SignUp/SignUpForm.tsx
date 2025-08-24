@@ -3,22 +3,35 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { signUpSchema, SignUpFormValues } from "@/lib/utils/formSchema";
 import { UserForm } from "../../common/UserForm";
+import { useSheiNotification } from "../../../../lib/hook/useSheiNotification"; // Adjust the import path as needed
 
 export function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/"; // fallback if no redirect
+  const { success, error } = useSheiNotification();
 
   const defaultValues: SignUpFormValues = { name: "", email: "", password: "" };
 
   const handleSubmit = async (values: SignUpFormValues) => {
     console.log("Signup values:", values);
 
-    // simulate API call
-    await new Promise((res) => setTimeout(res, 1000));
-
-    // Redirect after successful signup
-    router.push(redirectTo);
+    try {
+      // simulate API call
+      await new Promise((res) => setTimeout(res, 1000));
+      
+      // Simulate successful signup
+      success("Account created successfully! Redirecting...", { duration: 1000 });
+      
+      // Add a small delay before redirecting to show the notification
+      setTimeout(() => {
+        router.push(redirectTo);
+      }, 500);
+      
+    } catch (err) {
+      // Handle signup error
+      error("Signup failed. Please try again.");
+    }
   };
 
   return (
