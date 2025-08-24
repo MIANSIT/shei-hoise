@@ -3,25 +3,38 @@
 import { UserForm } from "../../common/UserForm";
 import { loginSchema, LoginFormValues } from "@/lib/utils/formSchema";
 import { useRouter } from "next/navigation";
-import { useSheiNotification } from "../../../../lib/hook/useSheiNotification"; // Adjust the import path as needed
+import { useSheiNotification } from "../../../../lib/hook/useSheiNotification"; 
+import { useAuthStore } from "@/lib/store/authStore"; // ✅ import Zustand store
 
 export default function AdminLoginComponent() {
   const router = useRouter();
   const { success, error } = useSheiNotification();
+  const login = useAuthStore((state) => state.login); // ✅ grab login function from store
+
+  // 🔑 Default credentials (you can change these later or move to env vars)
+  const DEFAULT_ADMIN = {
+    email: "admin@sheihoise.com",
+    password: "admin123",
+  };
 
   const handleAdminLogin = async (values: LoginFormValues) => {
     try {
       console.log("Admin login values:", values);
-      
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Replace this with actual API call logic
-      const isSuccess = true; // Simulate success
-      
-      if (isSuccess) {
-        success("Admin Login successful!",{ duration: 1000 });
-        setTimeout(() => router.push("/dashboard"), 500);
+
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // ✅ Simple check for hardcoded credentials
+      if (
+        values.email === DEFAULT_ADMIN.email &&
+        values.password === DEFAULT_ADMIN.password
+      ) {
+        login(); // ✅ set Zustand auth state
+        success("Admin Login successful!", { duration: 1000 });
+
+        setTimeout(() => {
+          router.push("/dashboard"); // ✅ redirect to protected dashboard
+        }, 500);
       } else {
         error("Invalid admin credentials");
       }

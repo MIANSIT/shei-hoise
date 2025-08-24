@@ -36,7 +36,8 @@ export default function DesktopHeader({ isAdmin = false }: DesktopHeaderProps) {
       <header className="hidden md:flex sticky top-0 left-0 w-full items-center justify-between px-8 py-4 text-white z-50 bg-transparent backdrop-blur-md">
         {/* Left side */}
         <div className="flex items-center gap-8">
-          <LogoTitle showTitle={isAdmin} /> {/* Admin: logo+title, User: logo */}
+          <LogoTitle showTitle={isAdmin} isAdmin={isAdmin} />{" "}
+          {/* Admin: logo+title, User: logo */}
           {!isAdmin && <NavMenu links={mainLinks} />}
         </div>
 
@@ -47,7 +48,9 @@ export default function DesktopHeader({ isAdmin = false }: DesktopHeaderProps) {
         </div>
       </header>
 
-      {!isAdmin && <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />}
+      {!isAdmin && (
+        <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      )}
     </>
   );
 }

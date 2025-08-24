@@ -3,7 +3,7 @@
 import Footer from "../../common/Footer";
 import { DesktopLayout } from "../../layout/auth/AuthDesktop";
 import { MobileLayout } from "../../layout/auth/AuthMobile";
-import  AdminLoginComponent  from "./Login";
+import AdminLoginComponent from "./Login";
 
 export default function LoginWrapper() {
   return (
