@@ -3,8 +3,8 @@ export const dummyProducts = [
     id: 1,
     title: "Premium Wireless Headphones",
     category: "Audio",
-    currentPrice: "200",
-    originalPrice: "250",
+    currentPrice: "50000",
+    originalPrice: "60000",
     rating: 4.5,
     discount: 20,
     images: [

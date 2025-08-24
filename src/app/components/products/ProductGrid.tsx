@@ -25,7 +25,10 @@ export default function ProductGrid({
   }
 
   return (
-    <motion.div layout className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mt-8 mb-8">
+    <motion.div
+      layout
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mt-8 mb-8"
+    >
       <AnimatePresence>
         {products.map((product) => (
           <motion.div
@@ -34,17 +37,21 @@ export default function ProductGrid({
             initial={{ opacity: 0, scale: 0.5, rotate: -10, x: -50, y: -50 }}
             animate={{ opacity: 1, scale: 1, rotate: 0, x: 0, y: 0 }}
             exit={{ opacity: 0, scale: 0.5, rotate: 10, x: 50, y: 50 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15, mass: 0.5 }}
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 15,
+              mass: 0.5,
+            }}
           >
             <ProductCard
               title={product.title}
               category={product.category}
-              currentPrice={product.currentPrice}
-              originalPrice={product.originalPrice}
+              currentPrice={Number(product.currentPrice)} // 👈 also convert string → number
+              originalPrice={Number(product.originalPrice)} // 👈 fix type mismatch
               rating={product.rating}
               imageUrl={product.images[0]}
               productLink={`/product/${product.id}`}
-              discount={product.discount}
               onAddToCart={() => onAddToCart(product)}
               isLoading={loadingProductId === product.id}
             />
