@@ -11,7 +11,6 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // initially closed on mobile
-  const [isDesktop, setIsDesktop] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
@@ -20,13 +19,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
         setIsSidebarOpen(true); // open sidebar on desktop
-        setIsDesktop(true);
       } else {
         setIsSidebarOpen(false); // close sidebar on mobile
-        setIsDesktop(false);
       }
     };
-
     handleResize(); // initial check
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
