@@ -3,7 +3,7 @@
 import { useState } from "react";
 import LogoTitle from "../header/LogoTitle";
 import NavMenu, { NavLink } from "../header/NavMenu";
-import ShoppingCartIcon from "./ShoppingCartIcon";
+import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
 import AuthButtons from "../header/AuthButtons";
 

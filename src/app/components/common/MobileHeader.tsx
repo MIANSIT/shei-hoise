@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ShoppingCartIcon from "./ShoppingCartIcon";
+import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartBottomBar from "../cart/CartBottomBar";
 import { usePathname, useRouter } from "next/navigation";
 import LogoTitle from "../header/LogoTitle";
