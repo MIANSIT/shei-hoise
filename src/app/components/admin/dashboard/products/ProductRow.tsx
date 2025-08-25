@@ -36,12 +36,15 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
 
       {/* Title */}
       <td className="text-center font-medium text-white group-hover:text-white transition-colors">
-        {product.title}
+        <span className="block max-w-[200px] truncate mx-auto">
+          {product.title}
+        </span>
       </td>
 
-      {/* Category */}
       <td className="text-center text-white group-hover:text-white transition-colors">
-        {product.category}
+        <span className="block max-w-[120px] truncate mx-auto">
+          {product.category}
+        </span>
       </td>
 
       {/* Price */}
