@@ -1,9 +1,7 @@
-"use client";
-
+"use client"
 import { useParams } from "next/navigation";
 import { dummyProducts } from "../../../lib/store/dummyProducts";
-import MobileHeader from "../../components/common/MobileHeader";
-import DesktopHeader from "../../components/common/DesktopHeader";
+import Header from "../../components/common/Header";
 
 import ProductImage from "../../components/products/singleProduct/ProductImage";
 import ProductTitle from "../../components/products/singleProduct/ProductTitle";
@@ -45,14 +43,9 @@ export default function ProductPage() {
   };
 
   return (
- <>
-      {/* Headers outside of the container */}
-      <div className="block md:hidden">
-        <MobileHeader />
-      </div>
-      <div className="hidden md:block">
-        <DesktopHeader />
-      </div>
+    <>
+      {/* Use the new responsive Header */}
+      <Header />
 
       {/* Main page content inside container */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
