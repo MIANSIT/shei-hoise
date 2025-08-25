@@ -7,11 +7,8 @@ export const dummyProducts = [
     originalPrice: "60000",
     rating: 4.5,
     discount: 20,
-    images: [
-      "/dummyProduct.avif",
-      "/logo.png",
-      "/dummyProduct.avif",
-    ],
+    stock: 25, // added stock
+    images: ["/dummyProduct.avif", "/logo.png", "/dummyProduct.avif"],
     description:
       "Experience crystal-clear sound with our premium wireless headphones. Featuring active noise cancellation, 30-hour battery life, and comfortable over-ear design for all-day listening comfort.",
     features: [
@@ -39,7 +36,8 @@ export const dummyProducts = [
     originalPrice: "200",
     rating: 4.2,
     discount: 20,
-    images: ["/dummyProduct.avif"], // single image as array
+    stock: 50, // added stock
+    images: ["/dummyProduct.avif"],
     description:
       "A sleek and modern watch with premium materials and accurate timekeeping. Perfect for any occasion.",
     features: [
@@ -63,6 +61,7 @@ export const dummyProducts = [
     originalPrice: "1000",
     rating: 4.8,
     discount: 10,
+    stock: 30, // added stock
     images: ["/dummyProduct.avif"],
     description:
       "Smartphone X combines high-end performance, stunning display, and long-lasting battery life in one sleek package.",
@@ -89,6 +88,7 @@ export const dummyProducts = [
     originalPrice: "899.99",
     rating: 4.6,
     discount: 11,
+    stock: 20, // added stock
     images: ["/dummyProduct.avif"],
     description:
       "Smartphone Y delivers premium performance with excellent camera and battery life at a great price.",
@@ -114,6 +114,7 @@ export const dummyProducts = [
     originalPrice: "159.99",
     rating: 4.4,
     discount: 18,
+    stock: 40, // added stock
     images: ["/dummyProduct.avif"],
     description:
       "Compact wireless earbuds with excellent sound quality, long battery life, and ergonomic design for comfortable all-day use.",
