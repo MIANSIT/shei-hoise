@@ -1,21 +1,14 @@
 "use client";
 import React from "react";
-import MobileHeader from "./components/common/MobileHeader";
-import DesktopHeader from "./components/common/DesktopHeader";
+
 import Footer from "./components/common/Footer";
+import Header from "./components/common/Header";
 
 const Home = () => {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Mobile Header: hidden on md screens */}
-      <div className="block md:hidden">
-        <MobileHeader />
-      </div>
-
-      {/* Desktop Header: hidden on screens smaller than md */}
-      <div className="hidden md:block">
-        <DesktopHeader />
-      </div>
+   <Header isAdmin={false} />
 
       <main className="flex-grow">
         <h1 className="text-center mt-10">This is Home Page</h1>
