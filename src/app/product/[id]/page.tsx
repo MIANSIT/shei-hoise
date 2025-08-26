@@ -1,5 +1,4 @@
-"use client";
-
+"use client"
 import { useParams } from "next/navigation";
 import { dummyProducts } from "../../../lib/store/dummyProducts";
 import MobileHeader from "../../components/common/MobileHeader";
