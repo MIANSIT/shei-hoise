@@ -5,14 +5,14 @@ import { useDropzone } from "react-dropzone";
 import { Label } from "@/components/ui/label";
 
 interface ImageUploaderProps {
-  images: File[] | string[];
-  setImages: (files: File[]) => void; // still only File[] for new uploads
+  images: (File | string)[];
+  setImages: (files: (File | string)[]) => void; // same type as PicturesWallUploader
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages }) => {
   const onDrop = (acceptedFiles: File[]) => {
     setImages([
-      ...images.filter((img): img is File => img instanceof File),
+      ...images.filter((img): img is File => img instanceof File), // keep existing files only
       ...acceptedFiles,
     ]);
   };
@@ -23,7 +23,9 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages }) => {
   });
 
   const handleRemoveImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index).filter((img): img is File => img instanceof File));
+    setImages(
+      images.filter((_, i) => i !== index) // remove by index
+    );
   };
 
   return (
@@ -59,7 +61,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages }) => {
             </p>
           )}
           <p className="text-xs text-gray-500">
-            Accepted formats: <span className="text-gray-400">.jpeg, .png, .webp</span> <br />
+            Accepted formats:{" "}
+            <span className="text-gray-400">.jpeg, .png, .webp</span> <br />
             Max size: <span className="text-gray-400">5MB</span>
           </p>
         </div>

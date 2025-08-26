@@ -86,7 +86,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
         <div className="flex items-center justify-center gap-2">
           <Button
             variant="outline"
-            className="bg-blue-500 text-white hover:bg-blue-600"
+            className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
             size="sm"
             onClick={handleEdit} // Navigate to edit page
           >
@@ -94,7 +94,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
           </Button>
           <Button
             variant="destructive"
-            className="bg-red-500 text-white hover:bg-red-600"
+            className="bg-red-500 text-white hover:bg-red-600 cursor-pointer"
             size="sm"
             onClick={handleDelete}
           >

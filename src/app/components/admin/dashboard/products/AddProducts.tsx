@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import FormField from "./addProducts/FormField";
 import PriceFields from "./addProducts/PriceFields";
 import StockFields from "./addProducts/StockFields";
+import PicturesWallUploader from "./addProducts/PicturesWallUploader";
 import ImageUploader from "./addProducts/ImageUploader";
 
 export interface Product {
@@ -14,7 +15,7 @@ export interface Product {
   originalPrice: string;
   discount: number | string;
   stock: number | string;
-  images: File[] | string[]; // ✅ allow string URLs for existing images
+  images: (File | string)[]; // ✅ support URLs or File objects
 }
 
 interface ProductPageFormProps {
@@ -45,7 +46,7 @@ const AddProducts: React.FC<ProductPageFormProps> = ({ product, onSubmit }) => {
         name === "discount" || name === "stock"
           ? value === ""
             ? ""
-            : Number(value) // allow empty string internally
+            : Number(value)
           : value,
     }));
   };
@@ -60,7 +61,7 @@ const AddProducts: React.FC<ProductPageFormProps> = ({ product, onSubmit }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-800 rounded-lg mt-10 text-white">
+    <div className="max-w-4xl mx-auto p-6 bg-gray-800 rounded-lg  text-white">
       <h1 className="text-2xl font-bold mb-6">
         {product ? "Edit Product" : "Add Product"}
       </h1>
@@ -96,12 +97,22 @@ const AddProducts: React.FC<ProductPageFormProps> = ({ product, onSubmit }) => {
           onChange={handleChange}
         />
 
-        <ImageUploader
-          images={formData.images}
-          setImages={(files) =>
-            setFormData((prev) => ({ ...prev, images: files }))
-          }
-        />
+        {/* ✅ Pictures Wall Uploader */}
+        {formData.images.length === 0 ? (
+          <ImageUploader
+            images={formData.images}
+            setImages={(files) =>
+              setFormData((prev) => ({ ...prev, images: files }))
+            }
+          />
+        ) : (
+          <PicturesWallUploader
+            images={formData.images}
+            setImages={(files) =>
+              setFormData((prev) => ({ ...prev, images: files }))
+            }
+          />
+        )}
 
         <div className="flex justify-end gap-2 mt-4">
           <Button type="submit">
