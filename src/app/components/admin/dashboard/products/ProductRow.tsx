@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 interface Product {
   id: number;
@@ -20,6 +21,17 @@ interface ProductRowProps {
 }
 
 const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
+  const router = useRouter();
+
+  const handleEdit = () => {
+    router.push(`/dashboard/products/edit-product/${product.id}`);
+  };
+
+  const handleDelete = () => {
+    // Your delete logic here
+    console.log("Delete product:", product.id);
+  };
+
   return (
     <tr className="group hover:bg-gray-900 transition-colors">
       {/* Image */}
@@ -76,6 +88,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
             variant="outline"
             className="bg-blue-500 text-white hover:bg-blue-600"
             size="sm"
+            onClick={handleEdit} // Navigate to edit page
           >
             Edit
           </Button>
@@ -83,6 +96,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
             variant="destructive"
             className="bg-red-500 text-white hover:bg-red-600"
             size="sm"
+            onClick={handleDelete}
           >
             Delete
           </Button>
