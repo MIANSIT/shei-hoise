@@ -18,26 +18,29 @@ export function useSheiNotification() {
     content: ReactNode,
     options?: SheiNotificationOptions
   ) => {
+    // ✅ Modern background colors
     const bgColors: Record<ToastType, string> = {
-      success: "#22c55e",
-      warning: "#facc15",
-      error: "#fef2f2",
+      success: "#22c55e", // Tailwind emerald-500
+      warning: "#facc15", // Tailwind yellow-400
+      error: "#fef2f2", // subtle red-50
     };
 
+    // ✅ Modern text colors for contrast
     const textColors: Record<ToastType, string> = {
-      success: "white",
-      warning: "black",
-      error: "#b91c1c",
+      success: "#f9fafb", // gray-50 (softer than pure white)
+      warning: "#1f2937", // gray-800 for readability
+      error: "#b91c1c", // red-700
     };
 
+    // ✅ Close button background colors
     const closeBgColors: Record<ToastType, string> = {
-      success: "#16a34a",
-      warning: "#f59e0b",
-      error: "#dc2626",
+      success: "#16a34a", // emerald-600
+      warning: "#eab308", // yellow-500
+      error: "#dc2626", // red-600
     };
 
     const icons: Record<ToastType, ReactNode> = {
-      success: <CheckCircle2 className="h-5 w-5 text-white" />,
+      success: <CheckCircle2 className="h-5 w-5 text-emerald-100" />,
       warning: <AlertTriangle className="h-5 w-5 text-yellow-700" />,
       error: <XCircle className="h-5 w-5 text-red-600" />,
     };
@@ -55,13 +58,13 @@ export function useSheiNotification() {
           size="sm"
           variant="default"
           className={`
-        h-6 w-6 p-0 rounded-full shadow-md flex items-center justify-center
-        hover:brightness-110 transition ml-3
-      `}
+            h-6 w-6 p-0 rounded-full shadow-md flex items-center justify-center
+            hover:brightness-110 transition ml-3
+          `}
           style={{ backgroundColor: closeBgColors[type] }}
           onClick={() => toast.dismiss()}
         >
-          <X className="h-3 w-3 text-red-600" />
+          <X className="h-3 w-3 text-white" />
         </Button>
       </div>,
       {
@@ -69,12 +72,13 @@ export function useSheiNotification() {
           backgroundColor: bgColors[type],
           color: textColors[type],
           padding: "0.5rem 0.75rem",
-          borderRadius: "0.5rem",
-          boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+          borderRadius: "0.75rem", // ✅ more modern rounded corners
+          boxShadow: "0 6px 14px rgba(0,0,0,0.15)", // ✅ softer, modern shadow
           width: "fit-content",
-          minWidth: "100px",
+          minWidth: "120px",
           maxWidth: "90vw", // keeps it responsive
           wordBreak: "break-word",
+          fontWeight: 500, // ✅ modern semi-bold text
         },
         duration: options?.duration ?? 4000,
       }
