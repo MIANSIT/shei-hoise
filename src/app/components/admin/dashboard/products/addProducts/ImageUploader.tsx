@@ -4,12 +4,14 @@ import Image from "next/image";
 import { useDropzone } from "react-dropzone";
 import { Label } from "@/components/ui/label";
 
+
 interface ImageUploaderProps {
   images: (File | string)[];
-  setImages: (files: (File | string)[]) => void; // same type as PicturesWallUploader
+  setImages: (files: (File | string)[]) => void;
+  error?: string; // 👈 add error prop
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages }) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error }) => {
   const onDrop = (acceptedFiles: File[]) => {
     setImages([
       ...images.filter((img): img is File => img instanceof File), // keep existing files only
@@ -23,18 +25,17 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages }) => {
   });
 
   const handleRemoveImage = (index: number) => {
-    setImages(
-      images.filter((_, i) => i !== index) // remove by index
-    );
+    setImages(images.filter((_, i) => i !== index));
   };
 
   return (
     <div className="flex flex-col gap-2">
       <Label>Upload Images</Label>
+
       <div
         {...getRootProps()}
-        className={`mt-2 border-2 border-dashed border-gray-600 rounded-lg p-10 text-center cursor-pointer transition bg-gray-900 hover:border-blue-400 ${
-          isDragActive ? "border-blue-500 bg-gray-800" : ""
+        className={`mt-2 border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition bg-gray-900 hover:border-blue-400 ${
+          isDragActive ? "border-blue-500 bg-gray-800" : "border-gray-600"
         }`}
       >
         <input {...getInputProps()} multiple />
@@ -61,12 +62,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages }) => {
             </p>
           )}
           <p className="text-xs text-gray-500">
-            Accepted formats:{" "}
-            <span className="text-gray-400">.jpeg, .png, .webp</span> <br />
+            Accepted formats: <span className="text-gray-400">.jpeg, .png, .webp</span> <br />
             Max size: <span className="text-gray-400">5MB</span>
           </p>
         </div>
       </div>
+
+      {/* Show error message below dropzone */}
+      {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
 
       {/* Previews */}
       <div className="flex flex-wrap gap-4 mt-4">

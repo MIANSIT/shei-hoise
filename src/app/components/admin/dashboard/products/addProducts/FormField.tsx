@@ -8,7 +8,8 @@ interface FormFieldProps {
   value: string | number;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
-  placeholder?: string; // 👈 added
+  placeholder?: string;
+  error?: string; // 👈 add error prop
 }
 
 const FormField: React.FC<FormFieldProps> = ({
@@ -19,6 +20,7 @@ const FormField: React.FC<FormFieldProps> = ({
   onChange,
   required,
   placeholder,
+  error,
 }) => {
   return (
     <div className="flex flex-col w-full">
@@ -34,9 +36,12 @@ const FormField: React.FC<FormFieldProps> = ({
         value={value}
         onChange={onChange}
         required={required}
-        placeholder={placeholder} // 👈 now supported
-        className="border rounded-md px-3 py-2 w-full"
+        placeholder={placeholder}
+        className={`border rounded-md px-3 py-2 w-full ${
+          error ? "border-red-400" : ""
+        }`}
       />
+      {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
     </div>
   );
 };
