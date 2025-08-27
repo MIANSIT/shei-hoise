@@ -47,7 +47,7 @@ const EditProductPage = () => {
           size="default"
         />
 
-        <h1 className="text-2xl font-bold mb-6">Edit Product (ID: {id})</h1>
+        {/* <h1 className="text-2xl font-bold mb-6">Edit Product (ID: {id})</h1> */}
 
         <AddProductForm product={productToEdit} onSubmit={handleUpdate} />
       </div>

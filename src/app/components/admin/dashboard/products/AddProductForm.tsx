@@ -12,7 +12,6 @@ import {
   adminProductSchema,
   ProductFormValues,
 } from "../../../../../lib/utils/formSchema";
-import { UseFormReturn } from "react-hook-form";
 
 interface ProductPageFormProps {
   product?: ProductFormValues;
@@ -20,13 +19,6 @@ interface ProductPageFormProps {
 }
 
 // Reusable error message component with proper typing
-const ErrorMessage: React.FC<{
-  field: keyof ProductFormValues;
-  form: UseFormReturn<ProductFormValues>;
-}> = ({ field, form }) => {
-  const error = form.formState.errors[field];
-  return error ? <p className="text-red-400 text-sm">{error.message}</p> : null;
-};
 
 const AddProductForm: React.FC<ProductPageFormProps> = ({
   product,
