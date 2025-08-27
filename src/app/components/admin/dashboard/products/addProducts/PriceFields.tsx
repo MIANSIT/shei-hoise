@@ -23,7 +23,6 @@ const PriceFields: React.FC<PriceFieldsProps> = ({
           value={currentPrice}
           onChange={onChange}
           placeholder="Current Price"
-          required
         />
       </div>
       <div className="flex-1">
@@ -34,7 +33,6 @@ const PriceFields: React.FC<PriceFieldsProps> = ({
           value={originalPrice}
           onChange={onChange}
           placeholder="Original Price"
-          required
         />
       </div>
     </div>

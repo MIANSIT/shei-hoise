@@ -41,6 +41,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
             src={product.images[0]}
             alt={product.title}
             fill
+            sizes="(max-width: 768px) 100px, (max-width: 1200px) 150px, 200px"
             className="object-cover rounded-md"
           />
         </div>

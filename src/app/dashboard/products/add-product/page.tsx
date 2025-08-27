@@ -1,24 +1,22 @@
 "use client";
-
 import React from "react";
-import ProductPageForm, {
-  Product,
-} from "../../../components/admin/dashboard/products/AddProducts";
+import AddProductForm from "../../../components/admin/dashboard/products/AddProductForm";
 import BackButton from "../../../components/ui/BackButton";
 import ProtectedRoute from "@/app/components/common/ProtectedRoute";
 import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
+import { ProductFormValues } from "../../../../lib/utils/formSchema";
 
 export default function AddProductPage() {
-  const { success, error } = useSheiNotification(); // destructure methods
+  const { success, error } = useSheiNotification();
 
-  const handleSubmit = (product: Product) => {
+  const handleSubmit = (product: ProductFormValues) => {
     try {
-      // 👉 here you’d usually send data to API
+      // API call here (mock for now)
       console.log("Adding product:", product);
 
       success(
         <div>
-          <b>{product.title}</b> has been added successfully!
+          🎉 <b>{product.title}</b> has been added successfully!
         </div>
       );
     } catch {
@@ -28,10 +26,10 @@ export default function AddProductPage() {
 
   return (
     <ProtectedRoute>
-      <div>
+      <div className="p-6">
         <BackButton label="All Products" href="/dashboard/products" />
 
-        <ProductPageForm onSubmit={handleSubmit} />
+        <AddProductForm onSubmit={handleSubmit} />
       </div>
     </ProtectedRoute>
   );

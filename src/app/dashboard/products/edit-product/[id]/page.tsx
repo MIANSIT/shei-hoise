@@ -2,9 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import AddProducts, {
-  Product,
-} from "../../../../components/admin/dashboard/products/AddProducts";
+import AddProductForm from "../../../../components/admin/dashboard/products/AddProductForm";
+import type { ProductFormValues } from "../../../../../lib/utils/formSchema";
 import { dummyProducts } from "@/lib/store/dummyProducts";
 import BackButton from "../../../../components/ui/BackButton";
 import ProtectedRoute from "@/app/components/common/ProtectedRoute";
@@ -15,16 +14,15 @@ const EditProductPage = () => {
   const { id } = params;
 
   const productId = Number(id);
-
   const productToEdit = dummyProducts.find((p) => p.id === productId);
 
   const { success, error } = useSheiNotification();
 
-  const handleUpdate = (updatedProduct: Product) => {
+  const handleUpdate = (updatedProduct: ProductFormValues) => {
     try {
       console.log("Updated product:", updatedProduct);
 
-      // ✅ show success notification with JSX
+      // ✅ show success notification
       success(
         <div>
           <b>{updatedProduct.title}</b> has been updated successfully!
@@ -36,11 +34,7 @@ const EditProductPage = () => {
   };
 
   if (!productToEdit) {
-    return (
-      <div className="p-6 text-white">
-        Product not found!
-      </div>
-    );
+    return <div className="p-6 text-white">Product not found!</div>;
   }
 
   return (
@@ -55,7 +49,7 @@ const EditProductPage = () => {
 
         <h1 className="text-2xl font-bold mb-6">Edit Product (ID: {id})</h1>
 
-        <AddProducts product={productToEdit} onSubmit={handleUpdate} />
+        <AddProductForm product={productToEdit} onSubmit={handleUpdate} />
       </div>
     </ProtectedRoute>
   );
