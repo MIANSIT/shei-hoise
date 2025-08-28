@@ -35,6 +35,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Header */}
         <header className="flex items-center justify-between bg-black dark:bg-gray-900 text-white p-4 shadow-md">
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Image src="/logo.png" alt="Logo" width={40} height={40} />
+              <h1 className="text-lg font-bold">Shei Hoise Dashboard</h1>
+            </div>
             {/* Sidebar toggle button */}
             <button
               onClick={toggleSidebar}
@@ -48,15 +52,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </button>
 
             {/* Logo and title */}
-            <div className="flex items-center gap-2">
-              <Image src="/logo.png" alt="Logo" width={30} height={30} />
-              <h1 className="text-lg font-semibold">Shei Hoise</h1>
-            </div>
           </div>
 
           {/* Right side (optional) */}
           <div>
-            {/* Add profile, notifications, etc. here */}
+            
           </div>
         </header>
 
