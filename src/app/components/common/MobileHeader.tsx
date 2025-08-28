@@ -31,7 +31,7 @@ export default function MobileHeader() {
     <>
       <header className="bg-black px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50">
         <div className="flex items-center justify-between">
-          <LogoTitle showTitle={true} isAdmin={false} />
+          <LogoTitle showTitle={true} />
 
           <div className="flex items-center gap-3">
             {/* Cart */}
@@ -62,7 +62,9 @@ export default function MobileHeader() {
                   <a
                     href={link.path}
                     className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
-                      isActive ? "bg-gray-600 text-white" : "text-white hover:bg-gray-600"
+                      isActive
+                        ? "bg-gray-600 text-white"
+                        : "text-white hover:bg-gray-600"
                     }`}
                   >
                     {link.name}
@@ -76,7 +78,11 @@ export default function MobileHeader() {
             </li>
 
             <li>
-              <AuthButtons links={authLinksUser} isAdminPanel={false} isVertical={true} />
+              <AuthButtons
+                links={authLinksUser}
+                isAdminPanel={false}
+                isVertical={true}
+              />
             </li>
           </ul>
         </nav>

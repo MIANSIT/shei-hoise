@@ -35,7 +35,7 @@ export default function DesktopHeader() {
       >
         {/* Left side */}
         <div className="flex items-center gap-8">
-          <LogoTitle showTitle={true} isAdmin={false} />
+          <LogoTitle showTitle={false } />
           <NavMenu links={mainLinks} />
         </div>
 
