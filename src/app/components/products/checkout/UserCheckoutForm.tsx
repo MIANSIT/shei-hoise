@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { SheiLoader } from "../../ui/SheiLoader/loader";
 import { userCheckoutSchema, CheckoutFormValues } from "@/lib/utils/formSchema";
 import { CountryFlag } from "../../common/CountryFlag";
+import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
+import { useEffect } from "react";
 
 interface CheckoutFormProps {
   onSubmit: (values: CheckoutFormValues) => void;
@@ -16,20 +18,20 @@ interface CheckoutFormProps {
 }
 
 const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
+  const { formData, setFormData } = useCheckoutStore();
+  
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(userCheckoutSchema),
-    defaultValues: {
-      email: "",
-      phone: "",
-      name: "",
-      country: "",
-      city: "",
-      shippingAddress: "",
-      postCode: "",
-    },
+    defaultValues: formData,
   });
 
+  // Update form values when store data changes
+  useEffect(() => {
+    form.reset(formData);
+  }, [formData, form]);
+
   const handleSubmit = (values: CheckoutFormValues) => {
+    setFormData(values); // Save to store
     onSubmit(values);
   };
 

@@ -1,4 +1,3 @@
-// components/checkout/DesktopCheckout.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,6 +7,15 @@ import { motion } from "framer-motion";
 import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
+import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
+import PaymentModule from "./PaymentModule";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DesktopCheckoutProps {
   cartLength: number;
@@ -23,7 +31,9 @@ const DesktopCheckout = ({
   const { totalPrice } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const notify = useSheiNotification();
+  const { clearFormData } = useCheckoutStore();
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,10 +46,8 @@ const DesktopCheckout = ({
     try {
       console.log("Checkout values:", values);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
       notify.success("Shipping information saved!");
-      onCheckout();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      setShowPaymentModal(true);
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
     } finally {
@@ -47,51 +55,83 @@ const DesktopCheckout = ({
     }
   };
 
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    onCheckout();
+    clearFormData();
+  };
+
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Items Card */}
-        <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-1">
-            Your Cart ({displayCount} items)
-          </h2>
-          <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mb-4"></div>
-          {cartLength === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-white">Your cart is empty</p>
-            </div>
-          ) : (
-            <CartItemsList />
-          )}
-          {cartLength > 0 && (
-            <div>
-              <div className="flex justify-between mt-4 text-white border-gray-700 border-2 rounded-lg p-3">
-                <span className="font-bold">Subtotal :</span>
-                <motion.span
-                  className="font-bold"
-                  key={`subtotal-${subtotal}`}
-                  initial={{ scale: 1.1 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  ${subtotal.toFixed(2)}
-                </motion.span>
+        <Card className="bg-gradient-to-br from-gray-900 to-black">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">
+              Your Cart ({displayCount} items)
+            </CardTitle>
+            <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30"></div>
+          </CardHeader>
+          <CardContent>
+            {cartLength === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-white">Your cart is empty</p>
               </div>
-            </div>
-          )}
-        </div>
+            ) : (
+              <CartItemsList />
+            )}
+            {cartLength > 0 && (
+              <div>
+                <div className="flex justify-between mt-4 text-white border-gray-700 border-2 rounded-lg p-3">
+                  <span className="font-bold">Subtotal :</span>
+                  <motion.span
+                    className="font-bold"
+                    key={`subtotal-${subtotal}`}
+                    initial={{ scale: 1.1 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    ${subtotal.toFixed(2)}
+                  </motion.span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
         {/* Customer Information Card */}
-        <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-1">Customer Information</h2>
-          <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mb-4"></div>
-          <CheckoutForm
-            onSubmit={handleCheckoutSubmit}
-            isLoading={isProcessing}
-          />
-          
-        </div>
+        <Card className="bg-gradient-to-br from-gray-900 to-black">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">
+              Customer Information
+            </CardTitle>
+            <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30"></div>
+          </CardHeader>
+          <CardContent>
+            <CheckoutForm
+              onSubmit={handleCheckoutSubmit}
+              isLoading={isProcessing}
+            />
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Payment Modal using Shadcn Dialog */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-[625px] bg-gradient-to-br from-gray-900 to-black border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-white">
+              Payment
+            </DialogTitle>
+          </DialogHeader>
+          <PaymentModule
+            amount={subtotal}
+            onSuccess={handlePaymentSuccess}
+            onCancel={() => setShowPaymentModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
