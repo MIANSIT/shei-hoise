@@ -7,11 +7,7 @@ import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
 import AuthButtons from "../header/AuthButtons";
 
-interface DesktopHeaderProps {
-  isAdmin?: boolean;
-}
-
-export default function DesktopHeader({ isAdmin = false }: DesktopHeaderProps) {
+export default function DesktopHeader() {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Main navigation for users
@@ -39,26 +35,21 @@ export default function DesktopHeader({ isAdmin = false }: DesktopHeaderProps) {
       >
         {/* Left side */}
         <div className="flex items-center gap-8">
-          <LogoTitle showTitle={isAdmin} isAdmin={isAdmin} />
-          {!isAdmin && <NavMenu links={mainLinks} />}
+          <LogoTitle showTitle={true} isAdmin={false} />
+          <NavMenu links={mainLinks} />
         </div>
 
         {/* Right side */}
         <div className="flex items-center gap-5">
-          {!isAdmin && (
-            <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-          )}
-          {/* Pass isAdminPanel to AuthButtons */}
-          <AuthButtons links={isAdmin ? [] : authLinksUser} isAdminPanel={isAdmin} />
+          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+          <AuthButtons links={authLinksUser} isAdminPanel={false} />
         </div>
       </header>
 
       {/* Page content wrapper */}
       <main className="pt-16">{/* Your page content */}</main>
 
-      {!isAdmin && (
-        <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      )}
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
 }
