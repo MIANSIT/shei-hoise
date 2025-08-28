@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <Sidebar collapsed={!isSidebarOpen} />
 
           {/* Main content */}
-          <main className="flex-1 p-6">{children}</main>
+          <main className="flex-1 ">{children}</main>
         </div>
       </div>
     </ProtectedRoute>

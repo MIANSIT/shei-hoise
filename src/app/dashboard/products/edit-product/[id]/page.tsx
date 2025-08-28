@@ -43,7 +43,7 @@ const EditProductPage = () => {
         <BackButton
           label="All Products"
           href="/dashboard/products"
-          variant="outline"
+       
           size="default"
         />
 

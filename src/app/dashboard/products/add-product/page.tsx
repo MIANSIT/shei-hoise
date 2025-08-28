@@ -27,7 +27,11 @@ export default function AddProductPage() {
   return (
     <ProtectedRoute>
       <div className="p-6">
-        <BackButton label="All Products" href="/dashboard/products" />
+        <BackButton
+          label="All Products"
+          href="/dashboard/products"
+          size="default"
+        />
 
         <AddProductForm onSubmit={handleSubmit} />
       </div>
