@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 interface Product {
   id: number;
@@ -20,6 +21,17 @@ interface ProductRowProps {
 }
 
 const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
+  const router = useRouter();
+
+  const handleEdit = () => {
+    router.push(`/dashboard/products/edit-product/${product.id}`);
+  };
+
+  const handleDelete = () => {
+    // Your delete logic here
+    console.log("Delete product:", product.id);
+  };
+
   return (
     <tr className="group hover:bg-gray-900 transition-colors">
       {/* Image */}
@@ -29,6 +41,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
             src={product.images[0]}
             alt={product.title}
             fill
+            sizes="(max-width: 768px) 100px, (max-width: 1200px) 150px, 200px"
             className="object-cover rounded-md"
           />
         </div>
@@ -74,15 +87,17 @@ const ProductRow: React.FC<ProductRowProps> = ({ product }) => {
         <div className="flex items-center justify-center gap-2">
           <Button
             variant="outline"
-            className="bg-blue-500 text-white hover:bg-blue-600"
+            className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
             size="sm"
+            onClick={handleEdit} // Navigate to edit page
           >
             Edit
           </Button>
           <Button
             variant="destructive"
-            className="bg-red-500 text-white hover:bg-red-600"
+            className="bg-red-500 text-white hover:bg-red-600 cursor-pointer"
             size="sm"
+            onClick={handleDelete}
           >
             Delete
           </Button>

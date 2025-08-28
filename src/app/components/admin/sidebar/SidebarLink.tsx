@@ -5,25 +5,25 @@ import React from "react";
 
 interface SidebarLinkProps {
   title: string;
-  href?: string; // If present, this renders a <Link>
+  href?: string;
   icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   isActive?: boolean;
-  onClick?: () => void; // For buttons that toggle submenus
-  children?: React.ReactNode; // Optional nested content like chevron
+  onClick?: () => void;
+  children?: React.ReactNode;
+  collapsed?: boolean;
 }
 
-const SidebarLink: React.FC<SidebarLinkProps> = ({ title, href, icon: Icon, isActive, onClick, children }) => {
+const SidebarLink: React.FC<SidebarLinkProps> = ({ title, href, icon: Icon, isActive, onClick, children, collapsed = false }) => {
   const content = (
     <span className="flex items-center justify-between w-full">
       <span className="flex items-center gap-2">
         {Icon && <Icon className="w-5 h-5 text-white" />}
-        <span>{title}</span>
+        {!collapsed && <span>{title}</span>}
       </span>
-      {children}
+      {!collapsed && children}
     </span>
   );
 
-  // Render as Link if href exists, otherwise as a button
   return href ? (
     <Link
       href={href}

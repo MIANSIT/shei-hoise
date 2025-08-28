@@ -4,12 +4,16 @@ import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 
-export default function ProtectedRoute({ children }: { children: ReactNode }) {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const isAdminLoggedIn = useAuthStore((state) => state.isAdminLoggedIn);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Wait until Zustand store rehydrates from localStorage
+  // Wait for Zustand rehydration
   useEffect(() => {
     const unsubscribe = useAuthStore.persist.onHydrate(() => {
       setIsHydrated(true);
@@ -21,6 +25,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     return () => unsubscribe?.();
   }, []);
 
+  // Redirect if admin is not logged in
   useEffect(() => {
     if (isHydrated && !isAdminLoggedIn) {
       router.replace("/admin-login");
@@ -30,7 +35,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!isHydrated || !isAdminLoggedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
-        Checking authentication...
+        Checking admin authentication...
       </div>
     );
   }

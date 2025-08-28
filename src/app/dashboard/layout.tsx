@@ -1,45 +1,71 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
-import Header from "../components/common/Header";
 import ProtectedRoute from "../components/common/ProtectedRoute";
+import { PanelLeft } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // initially closed on mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // sidebar state
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
-  // Detect if screen is desktop
+  // Detect screen size and auto-open sidebar on desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
-        setIsSidebarOpen(true); // open sidebar on desktop
+        setIsSidebarOpen(true);
       } else {
-        setIsSidebarOpen(false); // close sidebar on mobile
+        setIsSidebarOpen(false);
       }
     };
-    handleResize(); // initial check
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen flex flex-col bg-black">
-        {/* Responsive Header (mobile + desktop) */}
-        <Header isAdmin={true} onSidebarToggle={toggleSidebar} />
+      <div className="min-h-screen flex flex-col dark:bg-gray-900">
+        {/* Header */}
+        <header className="flex items-center justify-between bg-black dark:bg-gray-900 text-white p-4 shadow-md">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Image src="/logo.png" alt="Logo" width={40} height={40} />
+              <h1 className="text-lg font-bold">Shei Hoise Dashboard</h1>
+            </div>
+            {/* Sidebar toggle button */}
+            <button
+              onClick={toggleSidebar}
+              className="p-2 rounded hover:bg-gray-700 transition-transform duration-300"
+            >
+              <PanelLeft
+                className={`w-5 h-5 transition-transform duration-300 ${
+                  isSidebarOpen ? "rotate-0" : "rotate-180"
+                }`}
+              />
+            </button>
+
+            {/* Logo and title */}
+          </div>
+
+          {/* Right side (optional) */}
+          <div>
+            
+          </div>
+        </header>
 
         <div className="flex flex-1">
           {/* Sidebar */}
-          {isSidebarOpen && <Sidebar />}
+          <Sidebar collapsed={!isSidebarOpen} />
 
           {/* Main content */}
-          <main className="flex-1 p-4">{children}</main>
+          <main className="flex-1 ">{children}</main>
         </div>
       </div>
     </ProtectedRoute>
