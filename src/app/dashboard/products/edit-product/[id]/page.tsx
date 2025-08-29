@@ -7,7 +7,6 @@ import type { ProductFormValues } from "../../../../../lib/utils/formSchema";
 import { dummyProducts } from "@/lib/store/dummyProducts";
 import ProtectedRoute from "@/app/components/common/ProtectedRoute";
 import { useSheiNotification } from "../../../../../lib/hook/useSheiNotification";
-import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 
 const EditProductPage = () => {
   const params = useParams();
@@ -38,15 +37,12 @@ const EditProductPage = () => {
   }
 
   return (
-    <ProtectedRoute>
       <div className="p-6">
-        <Breadcrumb />
 
         {/* <h1 className="text-2xl font-bold mb-6">Edit Product (ID: {id})</h1> */}
 
         <AddProductForm product={productToEdit} onSubmit={handleUpdate} />
       </div>
-    </ProtectedRoute>
   );
 };
 
