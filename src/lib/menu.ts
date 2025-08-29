@@ -37,7 +37,7 @@ export const sideMenu: MenuItem[] = [
     children: [
       { title: "Add Order", href: "/orders/add", icon: PlusCircle },
       { title: "Pending Orders", href: "/orders/pending", icon: Clock },
-      { title: "Processing Orders", href: "/orders/processing", icon: Clock }, // New submenu
+      { title: "Processing Orders", href: "/orders/processing", icon: Clock },
       { title: "Completed Orders", href: "/orders/completed", icon: CheckCircle },
     ],
   },

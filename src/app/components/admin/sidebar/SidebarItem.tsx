@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
-import { MenuItem } from "@/lib/menu";
+import type { MenuItem } from "@/lib/menu";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import SidebarLink from "./SidebarLink";
+import { usePathname } from "next/navigation";
 
 interface SidebarItemProps {
   item: MenuItem;
@@ -20,43 +20,22 @@ export default function SidebarItem({ item, collapsed = false }: SidebarItemProp
 
   return (
     <div>
-      {/* Parent link */}
-      {hasChildren ? (
-        <SidebarLink
-          title={item.title}
-          icon={item.icon}
-          isActive={isActive}
-          onClick={() => setOpen(!open)}
-          collapsed={collapsed}
-        >
-          {!collapsed && (open ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />)}
-        </SidebarLink>
-      ) : (
-        <SidebarLink
-          title={item.title}
-          icon={item.icon}
-          href={item.href}
-          isActive={isActive}
-          collapsed={collapsed}
-        />
-      )}
+      <SidebarLink
+        title={item.title}
+        icon={item.icon}
+        href={!hasChildren ? item.href : undefined}
+        isActive={isActive}
+        collapsed={collapsed}
+        onClick={hasChildren ? () => setOpen(!open) : undefined}
+      >
+        {!collapsed && hasChildren && (open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+      </SidebarLink>
 
-      {/* Submenu links */}
       {hasChildren && open && !collapsed && (
         <div className="pl-6 mt-1 space-y-1">
-          {item.children!.map((child) => {
-            const isChildActive = !!(child.href && pathname === child.href);
-            return (
-              <SidebarLink
-                key={child.title}
-                title={child.title}
-                icon={child.icon}
-                href={child.href}
-                isActive={isChildActive}
-                collapsed={collapsed}
-              />
-            );
-          })}
+          {item.children!.map((child) => (
+            <SidebarItem key={child.title} item={child} collapsed={collapsed} />
+          ))}
         </div>
       )}
     </div>
