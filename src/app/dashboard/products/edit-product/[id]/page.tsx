@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import AddProductForm from "../../../../components/admin/dashboard/products/AddProductForm";
 import type { ProductFormValues } from "../../../../../lib/utils/formSchema";
 import { dummyProducts } from "@/lib/store/dummyProducts";
-import BackButton from "../../../../components/ui/BackButton";
 import ProtectedRoute from "@/app/components/common/ProtectedRoute";
 import { useSheiNotification } from "../../../../../lib/hook/useSheiNotification";
+import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 
 const EditProductPage = () => {
   const params = useParams();
@@ -40,12 +40,7 @@ const EditProductPage = () => {
   return (
     <ProtectedRoute>
       <div className="p-6">
-        <BackButton
-          label="All Products"
-          href="/dashboard/products"
-       
-          size="default"
-        />
+        <Breadcrumb />
 
         {/* <h1 className="text-2xl font-bold mb-6">Edit Product (ID: {id})</h1> */}
 

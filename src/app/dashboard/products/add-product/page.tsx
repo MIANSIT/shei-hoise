@@ -1,10 +1,10 @@
 "use client";
 import React from "react";
 import AddProductForm from "../../../components/admin/dashboard/products/AddProductForm";
-import BackButton from "../../../components/ui/BackButton";
 import ProtectedRoute from "@/app/components/common/ProtectedRoute";
 import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
 import { ProductFormValues } from "../../../../lib/utils/formSchema";
+import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 
 export default function AddProductPage() {
   const { success, error } = useSheiNotification();
@@ -26,15 +26,12 @@ export default function AddProductPage() {
 
   return (
     <ProtectedRoute>
-      <div className="p-6">
-        <BackButton
-          label="All Products"
-          href="/dashboard/products"
-          size="default"
-        />
+    
+      
+          <Breadcrumb />
 
         <AddProductForm onSubmit={handleSubmit} />
-      </div>
+     
     </ProtectedRoute>
   );
 }
