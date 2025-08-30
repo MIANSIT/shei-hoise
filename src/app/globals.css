@@ -164,29 +164,3 @@
 /* Force AntD picture-card remove button icon to red */
 /* Make AntD menu transparent and text white */
 /* Menu background black */
-.custom-antd-menu {
-  background-color: black !important;
-}
-
-/* Menu items text white */
-.custom-antd-menu .ant-menu-item,
-.custom-antd-menu .ant-menu-submenu-title {
-  color: white !important;
-}
-
-/* Hover effect */
-.custom-antd-menu .ant-menu-item:hover {
-  background-color: white !important;
-  color: black !important;
-}
-
-/* Selected item */
-.custom-antd-menu .ant-menu-item-selected {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-}
-
-/* Submenu arrow white */
-.custom-antd-menu .ant-menu-submenu-arrow {
-  color: white !important;
-}
