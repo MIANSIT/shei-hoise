@@ -35,10 +35,10 @@ export default function CreateOrder() {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const day = now.getDate().toString().padStart(2, "0");
+
     const sessionCounter = 1; // placeholder counter
     setOrderId(
-      `SHEI-${year}${month}${day}-${sessionCounter.toString().padStart(2, "0")}`
+      `SHEI${year}${month}-${sessionCounter.toString().padStart(2, "0")}`
     );
   }, []);
 
