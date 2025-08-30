@@ -5,17 +5,17 @@ import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { PanelLeft } from "lucide-react";
+import Breadcrumb from "@/app/components/admin/common/Breadcrumb"; // ✅ import
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
-  // Detect screen size and auto-open sidebar on desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -50,22 +50,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               />
             </button>
-
-            {/* Logo and title */}
           </div>
 
           {/* Right side (optional) */}
-          <div>
-            
-          </div>
+          <div></div>
         </header>
 
         <div className="flex flex-1">
           {/* Sidebar */}
           <Sidebar collapsed={!isSidebarOpen} />
 
-          {/* Main content */}
-          <main className="flex-1 ">{children}</main>
+          {/* Main content area */}
+          <main className="flex-1 ">
+            {/* ✅ Breadcrumb placed here */}
+            <Breadcrumb />
+
+            {/* Page content */}
+            <div className="mt-4">{children}</div>
+          </main>
         </div>
       </div>
     </ProtectedRoute>
