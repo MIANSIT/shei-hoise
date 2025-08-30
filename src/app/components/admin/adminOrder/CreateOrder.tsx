@@ -14,9 +14,7 @@ export interface Product {
 
 export default function CreateOrder() {
   // --- Products ---
-  const [products, setProducts] = useState<Product[]>([
-    { id: dummyProducts[0].id, quantity: 1 },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // --- Customer info ---
   const [customerInfo, setCustomerInfo] = useState({
@@ -39,7 +37,9 @@ export default function CreateOrder() {
     const month = (now.getMonth() + 1).toString().padStart(2, "0");
     const day = now.getDate().toString().padStart(2, "0");
     const sessionCounter = 1; // placeholder counter
-    setOrderId(`SHEI-${year}${month}${day}-${sessionCounter.toString().padStart(2, "0")}`);
+    setOrderId(
+      `SHEI-${year}${month}${day}-${sessionCounter.toString().padStart(2, "0")}`
+    );
   }, []);
 
   return (

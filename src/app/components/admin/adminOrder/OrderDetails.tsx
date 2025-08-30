@@ -15,10 +15,13 @@ interface OrderDetailsProps {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
 }
 
-export default function OrderDetails({ products, setProducts }: OrderDetailsProps) {
+export default function OrderDetails({
+  products,
+  setProducts,
+}: OrderDetailsProps) {
   const handleProductChange = (rowId: number, selectedId: number) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === rowId ? { ...p, id: selectedId } : p))
+      prev.map((p, index) => (index === rowId ? { ...p, id: selectedId } : p))
     );
   };
 
@@ -33,10 +36,9 @@ export default function OrderDetails({ products, setProducts }: OrderDetailsProp
   };
 
   const handleAddProduct = () => {
-    if (dummyProducts.length === 0) return; // safety check
     setProducts((prev) => [
       ...prev,
-      { id: dummyProducts[0].id, quantity: 1 },
+      { id: 0, quantity: 1 }, // id 0 means "no product selected"
     ]);
   };
 

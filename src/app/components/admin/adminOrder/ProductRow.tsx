@@ -42,7 +42,7 @@ export default function ProductRow({
     <div className="border border-white/20 rounded-md p-4 bg-transparent space-y-3">
       <Select
         onValueChange={(val) => onProductChange(product.id, Number(val))}
-        value={selectedProduct?.id.toString() || ""}
+        value={product.id !== 0 ? product.id.toString() : ""} // show empty if id is 0
       >
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select product" />
