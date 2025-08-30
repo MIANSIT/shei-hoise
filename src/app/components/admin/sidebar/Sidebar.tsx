@@ -22,7 +22,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
       className="shadow-md !bg-transparent flex flex-col"
       theme="dark"
     >
-      <div className="flex flex-col h-[84vh]">
+      <div className="flex flex-col ">
         <SidebarBrand collapsed={collapsed} />
         <SidebarMenu />
       </div>

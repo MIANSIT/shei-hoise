@@ -35,10 +35,10 @@ export const sideMenu: MenuItem[] = [
     title: "Orders",
     icon: ShoppingCart,
     children: [
-      { title: "Add Order", href: "/orders/add", icon: PlusCircle },
-      { title: "Pending Orders", href: "/orders/pending", icon: Clock },
-      { title: "Processing Orders", href: "/orders/processing", icon: Clock },
-      { title: "Completed Orders", href: "/orders/completed", icon: CheckCircle },
+      { title: "Add Order", href: "/dashboard/orders/create-order", icon: PlusCircle },
+      { title: "Pending Orders", href: "/dashboard/orders/pending", icon: Clock },
+      { title: "Processing Orders", href: "/dashboard/orders/processing", icon: Clock },
+      { title: "Completed Orders", href: "/dashboard/orders/completed", icon: CheckCircle },
     ],
   },
   {
