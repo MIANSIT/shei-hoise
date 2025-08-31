@@ -59,7 +59,6 @@ export default function SidebarMenu() {
         borderRight: 0,
         backgroundColor: "transparent",
       }}
-      className="custom-antd-menu"
     />
   );
 }
