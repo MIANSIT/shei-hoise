@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartBottomBar from "../cart/CartBottomBar";
 import { usePathname } from "next/navigation";
 import LogoTitle from "../header/LogoTitle";
 import { NavLink } from "../header/NavMenu";
 import AuthButtons from "../header/AuthButtons";
+import ThemeToggle from "../theme/ThemeToggle";
+import { Button } from "@/components/ui/button";
+import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
 
 export default function MobileHeader() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -14,7 +18,9 @@ export default function MobileHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => setIsHydrated(true), []);
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
@@ -29,28 +35,29 @@ export default function MobileHeader() {
 
   return (
     <>
-      <header className="bg-black px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50">
+      <header className="bg-background px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50">
         <div className="flex items-center justify-between">
           <LogoTitle showTitle={true} />
-
-          <div className="flex items-center gap-3">
-            {/* Cart */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-
-            {/* Menu toggle */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setMenuOpen((prev) => !prev)}
+              className="text-foreground hover:bg-accent"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
-              className="text-white focus:outline-none cursor-pointer text-sm"
             >
-              {menuOpen ? <span>&#x2715;</span> : <span>&#9776;</span>}
-            </button>
+              {menuOpen ? (
+                <HiOutlineX size={18} />
+              ) : (
+                <HiOutlineMenu size={18} />
+              )}
+            </Button>
           </div>
         </div>
-
-        {/* Mobile nav menu */}
         <nav
-          className={`overflow-hidden transition-all duration-300 ease-in-out bg-black ${
+          className={`overflow-hidden transition-all duration-300 ease-in-out bg-background ${
             menuOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"
           }`}
         >
@@ -59,22 +66,23 @@ export default function MobileHeader() {
               const isActive = isHydrated && pathname === link.path;
               return (
                 <li key={link.path}>
-                  <a
+                  <Link
                     href={link.path}
                     className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
                       isActive
-                        ? "bg-gray-600 text-white"
-                        : "text-white hover:bg-gray-600"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground hover:bg-accent"
                     }`}
+                    onClick={() => setMenuOpen(false)}
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               );
             })}
 
             <li>
-              <div className="border-t border-white/20 my-2" />
+              <div className="border-t border-border my-2" />
             </li>
 
             <li>
