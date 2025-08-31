@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import DataTable from "../../common/DataTable";
@@ -20,19 +19,14 @@ interface Product {
 
 interface ProductTableProps {
   products: Product[];
-  loading?: boolean; // ready for API
+  loading?: boolean;
 }
 
 const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
   const router = useRouter();
 
-  const handleEdit = (id: number) => {
-    router.push(`/dashboard/products/edit-product/${id}`);
-  };
-
-  const handleDelete = (id: number) => {
-    console.log("Delete product:", id);
-  };
+  const handleEdit = (id: number) => router.push(`/dashboard/products/edit-product/${id}`);
+  const handleDelete = (id: number) => console.log("Delete product:", id);
 
   const columns: ColumnsType<Product> = [
     {
@@ -40,12 +34,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
       dataIndex: "images",
       key: "image",
       render: (images: string[]) => (
-        <div className="w-16 h-16 relative mx-auto">
+        <div className="flex justify-center items-center h-16">
           <Image
             src={images[0]}
             alt="product"
-            fill
-            className="object-cover rounded-md"
+            width={64}
+            height={64}
+            className="rounded-md object-cover"
           />
         </div>
       ),
@@ -54,9 +49,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
       title: "Title",
       dataIndex: "title",
       key: "title",
-      render: (text: string) => (
-        <span className="block max-w-[200px] truncate">{text}</span>
-      ),
+      ellipsis: true,
     },
     {
       title: "Category",
@@ -69,7 +62,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
       render: (_, record) => (
         <div className="flex flex-col items-center">
           <span className="font-semibold text-lg">₹{record.currentPrice}</span>
-          <span className="line-through text-gray-400 text-sm">
+          <span className="text-gray-400 line-through text-sm">
             ₹{record.originalPrice}
           </span>
         </div>
@@ -80,7 +73,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
       dataIndex: "discount",
       key: "discount",
       render: (discount: number) => (
-        <span className="text-green-400 font-semibold">{discount}%</span>
+        <span
+          className={`px-2 py-1 rounded ${
+            discount > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+          }`}
+        >
+          {discount}%
+        </span>
       ),
     },
     {
@@ -93,36 +92,31 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
       key: "actions",
       render: (_, record) => (
         <div className="flex gap-2 justify-center">
-          <Button
-            variant="outline"
-            className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
-            size="sm"
+          <button
+            className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition"
             onClick={() => handleEdit(record.id)}
           >
             Edit
-          </Button>
-          <Button
-            variant="destructive"
-            className="bg-red-500 text-white hover:bg-red-600 cursor-pointer"
-            size="sm"
+          </button>
+          <button
+            className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
             onClick={() => handleDelete(record.id)}
           >
             Delete
-          </Button>
+          </button>
         </div>
       ),
     },
   ];
 
   return (
-    <div className="transparent-table">
-      <DataTable<Product>
-        columns={columns}
-        data={products}
-        pagination={{ pageSize: 10 }} // ✅ AntD default pagination
-        loading={loading}
-      />
-    </div>
+    <DataTable<Product>
+      columns={columns}
+      data={products}
+      rowKey="id"
+      pagination={{ pageSize: 10 }}
+      loading={loading}
+    />
   );
 };
 

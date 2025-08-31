@@ -58,10 +58,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <div className="flex flex-1">
           {/* Sidebar */}
-          <Sidebar collapsed={!isSidebarOpen} />
-
+          <div>
+            <Sidebar collapsed={!isSidebarOpen} />
+          </div>
           {/* Main content area */}
-          <main className="flex-1 ">
+          <main className="flex-1 bg-white text-black">
             {/* ✅ Breadcrumb placed here */}
             <Breadcrumb />
 
