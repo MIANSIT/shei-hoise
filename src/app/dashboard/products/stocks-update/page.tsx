@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import StockChangeTable from "@/app/components/admin/dashboard/products/StockChangeTable"
+import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable"
 
 const StockPage = () => {
   return (
