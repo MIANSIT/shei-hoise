@@ -43,48 +43,46 @@ export default function CreateOrder() {
   }, []);
 
   return (
-    <div className="w-full p-6 text-white bg-transparent">
+    <Card className="  p-6">
       <h2 className="text-2xl font-semibold mb-6">Create Order</h2>
 
-      <Card className="bg-transparent border border-white/20 text-white p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Customer Info */}
-          <CustomerInfo
-            customerInfo={customerInfo}
-            setCustomerInfo={setCustomerInfo}
-            orderId={orderId}
-          />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Customer Info */}
+        <CustomerInfo
+          customerInfo={customerInfo}
+          setCustomerInfo={setCustomerInfo}
+          orderId={orderId}
+        />
 
-          <div className="space-y-6">
-            {/* Order Details */}
-            <OrderDetails products={products} setProducts={setProducts} />
+        <div className="space-y-6">
+          {/* Order Details */}
+          <OrderDetails products={products} setProducts={setProducts} />
 
-            {/* Order Summary */}
-            <OrderSummary
-              products={products.map((p) => {
-                const prod = dummyProducts.find((dp) => dp.id === p.id);
-                return prod
-                  ? { ...prod, quantity: p.quantity }
-                  : { ...dummyProducts[0], quantity: p.quantity };
-              })}
-              discount={discount}
-              setDiscount={setDiscount}
-              status={status}
-              setStatus={setStatus}
-            />
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <SaveOrderButton
-            orderId={orderId}
-            products={products}
-            customerInfo={customerInfo}
+          {/* Order Summary */}
+          <OrderSummary
+            products={products.map((p) => {
+              const prod = dummyProducts.find((dp) => dp.id === p.id);
+              return prod
+                ? { ...prod, quantity: p.quantity }
+                : { ...dummyProducts[0], quantity: p.quantity };
+            })}
             discount={discount}
+            setDiscount={setDiscount}
             status={status}
+            setStatus={setStatus}
           />
         </div>
-      </Card>
-    </div>
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <SaveOrderButton
+          orderId={orderId}
+          products={products}
+          customerInfo={customerInfo}
+          discount={discount}
+          status={status}
+        />
+      </div>
+    </Card>
   );
 }
