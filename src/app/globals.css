@@ -164,3 +164,56 @@
 /* Force AntD picture-card remove button icon to red */
 /* Make AntD menu transparent and text white */
 /* Menu background black */
+/* Transparent background and white text for AntD Table */
+.transparent-table .ant-table {
+  background: transparent !important;
+  color: white !important;
+}
+
+.transparent-table .ant-table-thead > tr > th {
+  background: transparent !important;
+  color: white !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.transparent-table .ant-table-tbody > tr > td {
+  background: transparent !important;
+  color: white !important;
+  text-align: center;
+}
+
+.transparent-table .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 255, 255, 0.1) !important; /* subtle hover effect */
+}
+/* Transparent background + white text */
+
+
+/* Pagination styles */
+.custom-table .ant-pagination {
+  background: transparent !important;
+  color: white !important;
+}
+
+.custom-table .ant-pagination-item {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.custom-table .ant-pagination-item a {
+  color: white !important;
+}
+
+.custom-table .ant-pagination-item-active {
+  border-color: white !important;
+}
+
+.custom-table .ant-pagination-prev .ant-pagination-item-link,
+.custom-table .ant-pagination-next .ant-pagination-item-link {
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Empty state */
+
