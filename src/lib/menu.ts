@@ -23,11 +23,27 @@ export interface MenuItem {
 export const sideMenu: MenuItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
   {
+    title: "Users",
+    icon: User,
+    children: [
+      { title: "All Users", href: "/account/profile", icon: User },
+      { title: "Create Users", href: "/account/settings", icon: Settings },
+    ],
+  },
+  {
     title: "Products",
     icon: Package,
     children: [
-      { title: "Add Product", href: "/dashboard/products/add-product", icon: PlusCircle },
-      { title: "Stock Update", href: "/dashboard/products/stocks-update", icon: Package },
+      {
+        title: "Add Product",
+        href: "/dashboard/products/add-product",
+        icon: PlusCircle,
+      },
+      {
+        title: "Stock Update",
+        href: "/dashboard/products/stocks-update",
+        icon: Package,
+      },
       { title: "All Products", href: "/dashboard/products", icon: List },
     ],
   },
@@ -35,20 +51,29 @@ export const sideMenu: MenuItem[] = [
     title: "Orders",
     icon: ShoppingCart,
     children: [
-      { title: "Add Order", href: "/dashboard/orders/create-order", icon: PlusCircle },
-      { title: "Pending Orders", href: "/dashboard/orders/pending", icon: Clock },
-      { title: "Processing Orders", href: "/dashboard/orders/processing", icon: Clock },
-      { title: "Completed Orders", href: "/dashboard/orders/completed", icon: CheckCircle },
+      {
+        title: "Add Order",
+        href: "/dashboard/orders/create-order",
+        icon: PlusCircle,
+      },
+      {
+        title: "Pending Orders",
+        href: "/dashboard/orders/pending",
+        icon: Clock,
+      },
+      {
+        title: "Processing Orders",
+        href: "/dashboard/orders/processing",
+        icon: Clock,
+      },
+      {
+        title: "Completed Orders",
+        href: "/dashboard/orders/completed",
+        icon: CheckCircle,
+      },
     ],
   },
-  {
-    title: "Account",
-    icon: User,
-    children: [
-      { title: "Profile", href: "/account/profile", icon: User },
-      { title: "Settings", href: "/account/settings", icon: Settings },
-    ],
-  },
+
   {
     title: "Financial",
     icon: DollarSign,
