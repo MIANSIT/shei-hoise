@@ -27,7 +27,7 @@ export const sideMenu: MenuItem[] = [
     icon: Package,
     children: [
       { title: "Add Product", href: "/dashboard/products/add-product", icon: PlusCircle },
-      { title: "Stock Change", href: "/dashboard/products/stocks-update", icon: Package },
+      { title: "Stock Update", href: "/dashboard/products/stocks-update", icon: Package },
       { title: "All Products", href: "/dashboard/products", icon: List },
     ],
   },
