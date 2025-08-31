@@ -1,4 +1,3 @@
-// components/common/DataTable.tsx
 "use client"
 
 import React from "react"
@@ -13,6 +12,7 @@ interface DataTableProps<T> {
   rowKey?: string | ((record: T) => string)
   pagination?: TableProps<T>["pagination"]
   bordered?: boolean
+  rowSelection?: TableProps<T>["rowSelection"] // ✅ add this
 }
 
 function DataTable<T extends object>({
@@ -22,6 +22,7 @@ function DataTable<T extends object>({
   rowKey = "id",
   pagination = { pageSize: 10 },
   bordered = true,
+  rowSelection, // ✅ add here
 }: DataTableProps<T>) {
   return (
     <Table<T>
@@ -31,6 +32,7 @@ function DataTable<T extends object>({
       loading={loading}
       pagination={pagination}
       bordered={bordered}
+      rowSelection={rowSelection} // ✅ pass it to Table
       className="custom-table"
     />
   )
