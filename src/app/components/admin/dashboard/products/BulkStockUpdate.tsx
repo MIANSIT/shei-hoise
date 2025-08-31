@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import { InputNumber } from "antd";
+import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 
 interface BulkStockUpdateProps {
   selectedCount: number;
@@ -27,41 +28,38 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
   return (
     <div className="flex items-center space-x-2 mb-2">
       {/* Custom counter */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2 mb-2">
         {/* Minus button */}
-        <button
+        <SheiButton
           onClick={() => setBulkStock((prev) => Math.max(0, prev - 1))}
-          className="text-xl px-2"
-        >
-          <MinusOutlined />
-        </button>
+          icon={<MinusOutlined />}
+          type="default"
+          className="w-10 h-10 flex items-center justify-center text-xl"
+        />
 
         {/* Number input */}
         <InputNumber
           min={0}
           value={bulkStock}
           onChange={(value) => setBulkStock(Number(value ?? 0))}
-          controls={false} // hide default buttons
-          className="!w-16 text-center font-bold [&>input]:text-center [&>input]:font-bold rounded-lg"
+          controls={false}
+          className="w-16 text-center font-bold [&>input]:text-center [&>input]:font-bold rounded-lg"
           formatter={(value) => value?.toString().padStart(2, "0") ?? "00"}
         />
 
         {/* Plus button */}
-        <button
+        <SheiButton
           onClick={() => setBulkStock((prev) => prev + 1)}
-          className="text-xl px-2"
-        >
-          <PlusOutlined />
-        </button>
+          icon={<PlusOutlined />}
+          type="default"
+          className="w-10 h-10 flex items-center justify-center text-xl"
+        />
       </div>
 
       {/* Update button */}
-      <button
-        onClick={handleClick}
-        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-      >
-        Update Selected ({selectedCount})
-      </button>
+      <SheiButton onClick={handleClick} type="primary" className="px-4 py-2">
+        Approved Stock ({selectedCount})
+      </SheiButton>
     </div>
   );
 };
