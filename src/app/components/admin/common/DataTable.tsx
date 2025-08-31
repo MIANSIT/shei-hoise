@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React from "react";
 import { Table } from "antd";
@@ -6,13 +6,13 @@ import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 interface DataTableProps<T> {
-  columns: ColumnsType<T>
-  data: T[]
-  loading?: boolean
-  rowKey?: string | ((record: T) => string)
-  pagination?: TableProps<T>["pagination"]
-  bordered?: boolean
-  rowSelection?: TableProps<T>["rowSelection"] // ✅ add this
+  columns: ColumnsType<T>;
+  data: T[];
+  loading?: boolean;
+  rowKey?: keyof T | ((record: T) => string); // ✅ change here
+  pagination?: TableProps<T>["pagination"];
+  bordered?: boolean;
+  rowSelection?: TableProps<T>["rowSelection"];
 }
 
 function DataTable<T extends object>({
@@ -39,7 +39,7 @@ function DataTable<T extends object>({
       rowSelection={rowSelection} // ✅ pass it to Table
       className="custom-table"
     />
-  )
+  );
 }
 
 export default DataTable;
