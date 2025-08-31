@@ -1,16 +1,18 @@
-"use client";
+"use client"
 
 import React from "react";
 import { Table } from "antd";
 import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
-interface DataTableProps<T extends object> {
-  columns: ColumnsType<T>;
-  data: T[];
-  loading?: boolean;
-  rowKey?: keyof T | ((record: T) => string);
-  pagination?: TableProps<T>["pagination"];
+interface DataTableProps<T> {
+  columns: ColumnsType<T>
+  data: T[]
+  loading?: boolean
+  rowKey?: string | ((record: T) => string)
+  pagination?: TableProps<T>["pagination"]
+  bordered?: boolean
+  rowSelection?: TableProps<T>["rowSelection"] // ✅ add this
 }
 
 function DataTable<T extends object>({
@@ -19,6 +21,8 @@ function DataTable<T extends object>({
   loading = false,
   rowKey = "id" as keyof T,
   pagination = { pageSize: 10 },
+  bordered = true,
+  rowSelection, // ✅ add here
 }: DataTableProps<T>) {
   // Convert rowKey to function if string
   const getRowKey =
@@ -31,38 +35,11 @@ function DataTable<T extends object>({
       rowKey={getRowKey}
       loading={loading}
       pagination={pagination}
-      bordered={false}
-      className="custom-ant-table"
-      rowClassName={() => "custom-ant-row"}
-      components={{
-        header: {
-          cell: (props) => (
-            <th
-              {...props}
-              style={{
-                ...props.style,
-                fontWeight: 600,
-                backgroundColor: "#fafafa",
-                textAlign: "center",
-              }}
-            />
-          ),
-        },
-        body: {
-          cell: (props) => (
-            <td
-              {...props}
-              style={{
-                ...props.style,
-                textAlign: "center", // horizontal center
-                verticalAlign: "middle", // vertical center
-              }}
-            />
-          ),
-        },
-      }}
+      bordered={bordered}
+      rowSelection={rowSelection} // ✅ pass it to Table
+      className="custom-table"
     />
-  );
+  )
 }
 
 export default DataTable;
