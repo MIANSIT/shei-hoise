@@ -2,14 +2,15 @@ import {
   Home,
   Package,
   ShoppingCart,
-  Settings,
+  UserPlus,
   User,
   CreditCard,
   DollarSign,
   PlusCircle,
   List,
-  CheckCircle,
-  Clock,
+  Clipboard,
+  Edit,
+  BarChart2,
 } from "lucide-react";
 import React from "react";
 
@@ -27,7 +28,7 @@ export const sideMenu: MenuItem[] = [
     icon: User,
     children: [
       { title: "All Users", href: "/account/profile", icon: User },
-      { title: "Create Users", href: "/account/settings", icon: Settings },
+      { title: "Create Users", href: "/account/settings", icon: UserPlus },
     ],
   },
   {
@@ -42,7 +43,7 @@ export const sideMenu: MenuItem[] = [
       {
         title: "Stock Update",
         href: "/dashboard/products/stocks-update",
-        icon: Package,
+        icon: Edit,
       },
       { title: "All Products", href: "/dashboard/products", icon: List },
     ],
@@ -52,24 +53,14 @@ export const sideMenu: MenuItem[] = [
     icon: ShoppingCart,
     children: [
       {
-        title: "Add Order",
+        title: "Create Order",
         href: "/dashboard/orders/create-order",
         icon: PlusCircle,
       },
       {
-        title: "Pending Orders",
-        href: "/dashboard/orders/pending",
-        icon: Clock,
-      },
-      {
-        title: "Processing Orders",
-        href: "/dashboard/orders/processing",
-        icon: Clock,
-      },
-      {
-        title: "Completed Orders",
-        href: "/dashboard/orders/completed",
-        icon: CheckCircle,
+        title: "All Orders",
+        href: "/dashboard/orders/all",
+        icon: Clipboard,
       },
     ],
   },
@@ -79,7 +70,7 @@ export const sideMenu: MenuItem[] = [
     icon: DollarSign,
     children: [
       { title: "Billing", href: "/financial/billing", icon: CreditCard },
-      { title: "Cost", href: "/financial/cost", icon: DollarSign },
+      { title: "Cost", href: "/financial/cost", icon: BarChart2 },
     ],
   },
 ];

@@ -9,10 +9,12 @@ interface DataTableProps<T> {
   columns: ColumnsType<T>;
   data: T[];
   loading?: boolean;
-  rowKey?: keyof T | ((record: T) => string); // ✅ change here
+  rowKey?: keyof T | ((record: T) => string);
   pagination?: TableProps<T>["pagination"];
   bordered?: boolean;
   rowSelection?: TableProps<T>["rowSelection"];
+  size?: "small" | "middle" | "large";
+  // ✅ optional modern styles without custom CSS
 }
 
 function DataTable<T extends object>({
@@ -22,9 +24,9 @@ function DataTable<T extends object>({
   rowKey = "id" as keyof T,
   pagination = { pageSize: 10 },
   bordered = true,
-  rowSelection, // ✅ add here
+  rowSelection,
+  size = "middle", // modern default
 }: DataTableProps<T>) {
-  // Convert rowKey to function if string
   const getRowKey =
     typeof rowKey === "function" ? rowKey : (record: T) => `${record[rowKey]}`;
 
@@ -36,8 +38,11 @@ function DataTable<T extends object>({
       loading={loading}
       pagination={pagination}
       bordered={bordered}
-      rowSelection={rowSelection} // ✅ pass it to Table
-      className="custom-table"
+      rowSelection={rowSelection}
+      size={size}
+      // ✅ AntD modern props
+      style={{ borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}
+      tableLayout="fixed" // optional: makes columns uniform
     />
   );
 }
