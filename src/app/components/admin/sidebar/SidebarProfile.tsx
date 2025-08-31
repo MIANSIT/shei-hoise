@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Avatar, Dropdown, Tooltip } from "antd";
+import React, { useState } from "react";
+import { Avatar, Dropdown, Tooltip, Spin } from "antd";
 import type { MenuProps } from "antd";
 import { LogOut } from "lucide-react";
 import { LucideIcon } from "@/lib/LucideIcon";
@@ -17,11 +17,23 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
   const logout = useAuthStore((state) => state.logout);
   const notify = useSheiNotification();
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    notify.success("Logout successful!");
-    router.push("/admin-login");
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+
+      // Call logout API & update Zustand
+      await logout();
+
+      notify.success("Logout successful!");
+      router.push("/admin-login");
+    } catch (err) {
+      console.error("Logout error:", err);
+      notify.error("Logout failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const profileMenu: MenuProps = {
@@ -39,7 +51,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
   return (
     <div className="p-4 border-t border-gray-500 mt-auto">
       {collapsed ? (
-        // 👉 Collapsed = true → Avatar + Dropdown for logout
+        // Collapsed view: Avatar only with dropdown menu
         <Dropdown menu={profileMenu} placement="topRight">
           <div className="flex items-center gap-3 cursor-pointer">
             <Avatar style={{ backgroundColor: "#7265e6" }} size={40}>
@@ -48,7 +60,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
           </div>
         </Dropdown>
       ) : (
-        // 👉 Collapsed = false → Avatar + Name + Email + Logout icon
+        // Expanded view: Avatar, info, logout button
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Avatar style={{ backgroundColor: "#7265e6" }} size={40}>
@@ -63,9 +75,10 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
           <Tooltip title="Logout">
             <button
               onClick={handleLogout}
-              className="text-red-400 hover:text-red-800 transition"
+              className="text-red-400 hover:text-red-800 transition flex items-center justify-center"
+              disabled={loading}
             >
-              <LucideIcon icon={LogOut} size={20} />
+              {loading ? <Spin size="small" /> : <LucideIcon icon={LogOut} size={20} />}
             </button>
           </Tooltip>
         </div>

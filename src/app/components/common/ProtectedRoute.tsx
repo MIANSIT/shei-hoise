@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 
 interface ProtectedRouteProps {
@@ -11,28 +11,20 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const isAdminLoggedIn = useAuthStore((state) => state.isAdminLoggedIn);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
 
-  // Wait for Zustand rehydration
   useEffect(() => {
-    const unsubscribe = useAuthStore.persist.onHydrate(() => {
-      setIsHydrated(true);
-    });
+    if (!hydrated) checkAuth();
+  }, [checkAuth, hydrated]);
 
-    // If already hydrated, mark true
-    if (typeof window !== "undefined") setIsHydrated(true);
-
-    return () => unsubscribe?.();
-  }, []);
-
-  // Redirect if admin is not logged in
   useEffect(() => {
-    if (isHydrated && !isAdminLoggedIn) {
+    if (hydrated && !isAdminLoggedIn) {
       router.replace("/admin-login");
     }
-  }, [isAdminLoggedIn, isHydrated, router]);
+  }, [hydrated, isAdminLoggedIn, router]);
 
-  if (!isHydrated || !isAdminLoggedIn) {
+  if (!hydrated || !isAdminLoggedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
         Checking admin authentication...
