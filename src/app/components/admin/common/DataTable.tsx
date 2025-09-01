@@ -1,3 +1,4 @@
+// File: components/admin/common/DataTable.tsx
 "use client";
 
 import React from "react";
@@ -14,7 +15,8 @@ interface DataTableProps<T> {
   bordered?: boolean;
   rowSelection?: TableProps<T>["rowSelection"];
   size?: "small" | "middle" | "large";
-  // ✅ optional modern styles without custom CSS
+  expandable?: TableProps<T>["expandable"];
+  rowClassName?: TableProps<T>["rowClassName"]; // ✅ added
 }
 
 function DataTable<T extends object>({
@@ -25,7 +27,9 @@ function DataTable<T extends object>({
   pagination = { pageSize: 10 },
   bordered = true,
   rowSelection,
-  size = "middle", // modern default
+  size = "middle",
+  expandable,
+  rowClassName, // ✅ accept rowClassName
 }: DataTableProps<T>) {
   const getRowKey =
     typeof rowKey === "function" ? rowKey : (record: T) => `${record[rowKey]}`;
@@ -40,9 +44,9 @@ function DataTable<T extends object>({
       bordered={bordered}
       rowSelection={rowSelection}
       size={size}
-      // ✅ AntD modern props
-      style={{ borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}
-      tableLayout="fixed" // optional: makes columns uniform
+      tableLayout="fixed"
+      expandable={expandable}
+      rowClassName={rowClassName} // ✅ forward it
     />
   );
 }

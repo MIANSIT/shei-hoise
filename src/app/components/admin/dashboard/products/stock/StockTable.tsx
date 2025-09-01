@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import React from "react"
-import type { ColumnsType } from "antd/es/table"
-import type { TableRowSelection } from "antd/es/table/interface"
-import DataTable from "@/app/components/admin/common/DataTable"
-import Image from "next/image"
-import { InputNumber } from "antd"
+import React from "react";
+import type { ColumnsType } from "antd/es/table";
+import type { TableRowSelection } from "antd/es/table/interface";
+import DataTable from "@/app/components/admin/common/DataTable";
+import Image from "next/image";
+import { InputNumber } from "antd";
 
 interface Product {
-  id: number
-  title: string
-  currentPrice: string
-  stock: number
-  images: string[]
+  id: number;
+  title: string;
+  currentPrice: string;
+  stock: number;
+  images: string[];
 }
 
 interface StockTableProps {
-  products: Product[]
-  editedStocks: Record<number, number>
-  onStockChange: (id: number, value: number) => void
-  rowSelection?: TableRowSelection<Product>
+  products: Product[];
+  editedStocks: Record<number, number>;
+  onStockChange: (id: number, value: number) => void;
+  rowSelection?: TableRowSelection<Product>;
 }
 
 const StockTable: React.FC<StockTableProps> = ({
@@ -33,13 +33,15 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Image",
       dataIndex: "images",
       key: "images",
+      align: "center",
+      width: 100, // set the column width (adjust as needed)
       render: (images: string[]) => (
         <Image
           src={images[0]}
           alt="product"
           width={50}
           height={50}
-          className="rounded-md object-cover"
+          className="rounded-md object-cover items-center "
         />
       ),
     },
@@ -47,6 +49,7 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Product Name",
       dataIndex: "title",
       key: "title",
+      className: "font-semibold",
     },
     {
       title: "Price",
@@ -67,7 +70,7 @@ const StockTable: React.FC<StockTableProps> = ({
         />
       ),
     },
-  ]
+  ];
 
   return (
     <DataTable
@@ -77,7 +80,7 @@ const StockTable: React.FC<StockTableProps> = ({
       rowSelection={rowSelection}
       pagination={false}
     />
-  )
-}
+  );
+};
 
-export default StockTable
+export default StockTable;
