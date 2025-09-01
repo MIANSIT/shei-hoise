@@ -59,7 +59,7 @@ export const sideMenu: MenuItem[] = [
       },
       {
         title: "All Orders",
-        href: "/dashboard/orders/all",
+        href: "/dashboard/orders/view-order",
         icon: Clipboard,
       },
     ],
