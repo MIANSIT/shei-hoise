@@ -5,9 +5,8 @@ import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { Tooltip, Tag, Button } from "antd";
 import EditableOrderStatus from "./EditableOrderStatus";
-import OrderStatusTag from "./OrderStatusTag";
 import EditablePaymentStatus from "./EditablePaymentStatus";
-import PaymentStatusTag from "./PaymentStatusTag";
+import StatusTag from "./StatusTag"; // unified tag component
 
 interface Product {
   title: string;
@@ -39,10 +38,9 @@ const OrderProductTable: React.FC<Props> = ({
 }) => {
   const productsWithKey = products.map((p, idx) => ({ ...p, key: `${orderId}-${idx}` }));
 
-  // Determine if the row is locked
   const isLocked = (status === "delivered" || status === "cancelled") && paymentStatus === "paid";
 
-  // State for editable dropdowns
+  // local states that change when admin selects a new value
   const [selectedStatus, setSelectedStatus] = useState(status);
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState(paymentStatus);
 
@@ -98,7 +96,6 @@ const OrderProductTable: React.FC<Props> = ({
 
   return (
     <div className="p-4 bg-gray-50 rounded-md space-y-4">
-      {/* Products table */}
       <DataTable<Product>
         columns={columns}
         data={productsWithKey}
@@ -109,21 +106,23 @@ const OrderProductTable: React.FC<Props> = ({
         rowClassName={() => "hover:bg-gray-100"}
       />
 
-      {/* Editable dropdowns with single Save button */}
       <div className="flex gap-6 flex-wrap items-center mt-2">
         <div>
           <span className="font-medium">Order Status:</span>{" "}
           {status === "delivered" || status === "cancelled" ? (
-            <OrderStatusTag status={status} />
+            <StatusTag status={status} />
           ) : (
-            <EditableOrderStatus status={selectedStatus} onSave={setSelectedStatus} />
+            <EditableOrderStatus
+              status={selectedStatus}
+              onSave={setSelectedStatus}
+            />
           )}
         </div>
 
         <div>
           <span className="font-medium">Payment Status:</span>{" "}
           {paymentStatus === "paid" ? (
-            <PaymentStatusTag status="paid" />
+            <StatusTag status="paid" />
           ) : (
             <EditablePaymentStatus
               status={selectedPaymentStatus}
@@ -132,7 +131,6 @@ const OrderProductTable: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Show Save button only if not locked */}
         {!isLocked && (
           <Button
             type="primary"

@@ -5,7 +5,7 @@ import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { Avatar, Space } from "antd";
 import OrderProductTable from "./OrderProductTable";
-import OrderStatusTag from "./OrderStatusTag";
+import StatusTag from "./StatusTag";
 
 export interface Order {
   id: number;
@@ -88,7 +88,7 @@ const MainOrders: React.FC = () => {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: Order["status"]) => <OrderStatusTag status={status} />,
+      render: (status: Order["status"]) => <StatusTag status={status} />,
     },
     {
       title: "Order Date",

@@ -6,6 +6,7 @@ import Sidebar from "../components/admin/sidebar/Sidebar";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { PanelLeft } from "lucide-react";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb"; // ✅ import
+import "@ant-design/v5-patch-for-react-19";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
