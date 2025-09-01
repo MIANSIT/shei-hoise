@@ -17,6 +17,7 @@ const MainOrders: React.FC = () => {
   return (
     <div className="p-6">
       <h2 className="text-xl font-semibold mb-4">All Orders</h2>
+      {/* OrdersTable now has search/filter built-in */}
       <OrdersTable orders={orders} onUpdate={updateOrder} />
     </div>
   );

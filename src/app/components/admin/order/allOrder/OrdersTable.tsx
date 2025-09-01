@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Table, Avatar, Space, Tooltip } from "antd";
+import React, { useState } from "react";
+import { Table, Avatar, Space, Tooltip, Input } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Order } from "@/lib/types/types";
 import StatusTag from "./StatusTag";
@@ -14,6 +14,13 @@ interface Props {
 }
 
 const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
+  const [searchOrderId, setSearchOrderId] = useState<string>("");
+
+  // Filter orders by Order ID
+  const filteredOrders = orders.filter((order) =>
+    order.id.toString().includes(searchOrderId)
+  );
+
   const columns: ColumnsType<Order> = [
     {
       title: "Order ID",
@@ -39,7 +46,9 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
       title: "Delivery Address",
       key: "address",
       render: (order: Order) => {
-        const fullAddress = `${order.user.address || ""}${order.user.city ? ", " + order.user.city : ""}${order.user.country ? ", " + order.user.country : ""}`.trim() || "Not Provided";
+        const fullAddress = `${order.user.address || ""}${
+          order.user.city ? ", " + order.user.city : ""
+        }${order.user.country ? ", " + order.user.country : ""}`.trim() || "Not Provided";
         return (
           <Tooltip title={fullAddress}>
             <div className="truncate max-w-[150px]">{fullAddress}</div>
@@ -55,14 +64,7 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
           (sum, p) => sum + p.price * p.quantity,
           0
         );
-        const tooltipText = order.products
-          .map((p) => `${p.title}: ${p.quantity}`)
-          .join(", ");
-        return (
-          <Tooltip title={tooltipText}>
-            <div className="truncate max-w-[120px]">${total.toFixed(2)}</div>
-          </Tooltip>
-        );
+        return <span>${total.toFixed(2)}</span>;
       },
     },
     {
@@ -85,34 +87,44 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
   ];
 
   return (
-    <Table<Order>
-      columns={columns}
-      dataSource={orders}
-      rowKey="id"
-      expandable={{
-        expandedRowRender: (order) => (
-          <div className="space-y-6">
-            {/* Keep original OrderProductTable */}
-            <OrderProductTable
-              order={order}
-              onSaveStatus={(s) => onUpdate(order.id, { status: s })}
-              onSavePaymentStatus={(s) =>
-                onUpdate(order.id, { paymentStatus: s })
-              }
-              onSaveDeliveryOption={(o) =>
-                onUpdate(order.id, { deliveryOption: o })
-              }
-              onSavePaymentMethod={(m) =>
-                onUpdate(order.id, { paymentMethod: m })
-              }
-            />
+    <div>
+      {/* Filter input above the table */}
+      <div className="flex justify-end mb-4">
+        <Input
+          placeholder="Search by Order ID"
+          value={searchOrderId}
+          onChange={(e) => setSearchOrderId(e.target.value)}
+          style={{ width: 250 }}
+          allowClear
+        />
+      </div>
 
-            {/* Modern DetailedOrderView */}
-            <DetailedOrderView order={order} />
-          </div>
-        ),
-      }}
-    />
+      <Table<Order>
+        columns={columns}
+        dataSource={filteredOrders}
+        rowKey="id"
+        expandable={{
+          expandedRowRender: (order) => (
+            <div className="space-y-6">
+              <OrderProductTable
+                order={order}
+                onSaveStatus={(s) => onUpdate(order.id, { status: s })}
+                onSavePaymentStatus={(s) =>
+                  onUpdate(order.id, { paymentStatus: s })
+                }
+                onSaveDeliveryOption={(o) =>
+                  onUpdate(order.id, { deliveryOption: o })
+                }
+                onSavePaymentMethod={(m) =>
+                  onUpdate(order.id, { paymentMethod: m })
+                }
+              />
+              <DetailedOrderView order={order} />
+            </div>
+          ),
+        }}
+      />
+    </div>
   );
 };
 
