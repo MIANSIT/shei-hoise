@@ -50,7 +50,7 @@ export function UserForm<T extends Record<string, unknown>>({
 
   const renderError = (fieldName: keyof T) =>
     form.formState.errors[fieldName as Path<T>] ? (
-      <p className="text-sm text-red-500 mt-1">
+      <p className="text-sm text-destructive mt-1">
         {form.formState.errors[fieldName as Path<T>]?.message as string}
       </p>
     ) : null;
@@ -65,7 +65,7 @@ export function UserForm<T extends Record<string, unknown>>({
 
     return (
       <div key={String(key)} className="grid gap-2 relative">
-        <Label htmlFor={String(key)}>{label}</Label>
+        <Label htmlFor={String(key)} className="text-foreground">{label}</Label>
         <div className={isPassword ? "relative" : ""}>
           <Input
             {...form.register(key as Path<T>)}
@@ -100,8 +100,7 @@ export function UserForm<T extends Record<string, unknown>>({
         {isLoading ? (
           <SheiLoader
             size="sm"
-            loaderColor="black"
-            loadingText="Processing..."
+            loaderColor="current"
           />
         ) : (
           submitText
@@ -109,9 +108,9 @@ export function UserForm<T extends Record<string, unknown>>({
       </Button>
 
       {footer?.text && footer?.linkText && footer?.linkUrl && (
-        <p className="text-sm text-gray-400 text-center mt-2">
+        <p className="text-sm text-muted-foreground text-center mt-2">
           {footer.text}{" "}
-          <Link href={footer.linkUrl} className="text-white hover:underline">
+          <Link href={footer.linkUrl} className="text-foreground hover:underline">
             {footer.linkText}
           </Link>
         </p>

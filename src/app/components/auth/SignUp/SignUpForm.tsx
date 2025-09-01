@@ -37,10 +37,10 @@ export function SignUpForm() {
   return (
     <div>
       <div className="text-center mb-6">
-        <h1 className="text-4xl font-bold text-left text-white">
+        <h1 className="text-4xl font-bold text-left text-foreground">
           Create Account
         </h1>
-        <p className="mt-2 text-gray-400 text-left">
+        <p className="mt-2 text-muted-foreground text-left">
           Enter your details to create your account
         </p>
       </div>
