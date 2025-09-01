@@ -72,18 +72,18 @@ const MobileCheckout = ({
       title: "Cart Items",
       content: (
         <div className="mt-4">
-          <h2 className="text-lg font-semibold mb-3">
+          <h2 className="text-lg font-semibold mb-3 text-foreground">
             Your Cart ({displayCount} items)
           </h2>
 
           {cartLength === 0 ? (
-            <div className="text-center py-6 bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md">
-              <p className="text-white">Your cart is empty</p>
+            <div className="text-center py-6 bg-card rounded-lg shadow-md">
+              <p className="text-muted-foreground">Your cart is empty</p>
             </div>
           ) : (
             <>
               <CartItemsList />
-              <div className="flex justify-between mt-4 text-white border-gray-700 border-2 rounded-lg p-3">
+              <div className="flex justify-between mt-4 text-foreground border-border border rounded-lg p-3 bg-muted">
                 <span className="font-bold">Subtotal :</span>
                 <motion.span
                   className="font-bold"
@@ -103,8 +103,8 @@ const MobileCheckout = ({
     {
       title: "Customer Information",
       content: (
-        <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg shadow-md p-4 mt-4">
-          <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
+        <div className="bg-card rounded-lg shadow-md p-4 mt-4 border-border">
+          <h2 className="text-lg font-semibold mb-3 text-card-foreground">Customer Information</h2>
           <CheckoutForm
             onSubmit={handleCheckoutSubmit}
             isLoading={isProcessing}
@@ -129,7 +129,7 @@ const MobileCheckout = ({
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Checkout</h1>
+        <h1 className="text-xl font-bold text-foreground">Checkout</h1>
         <div className="flex items-center justify-center gap-2">
           <Button
             onClick={prevStep}
@@ -150,7 +150,7 @@ const MobileCheckout = ({
           ) : null}
         </div>
       </div>
-      <div className="w-full bg-gray-700 rounded-full h-1.5 mb-6">
+      <div className="w-full bg-muted rounded-full h-1.5 mb-6">
         <div
           className="bg-yellow-500 h-1.5 rounded-full transition-all duration-300"
           style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }}
