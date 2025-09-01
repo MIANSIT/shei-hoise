@@ -29,7 +29,11 @@ export interface Order {
 const initialOrders: Order[] = [
   {
     id: 1,
-    user: { name: "John Doe", email: "john@example.com", avatar: "https://i.pravatar.cc/40?img=1" },
+    user: {
+      name: "John Doe",
+      email: "john@example.com",
+      avatar: "https://i.pravatar.cc/40?img=1",
+    },
     products: [
       { title: "iPhone 15", quantity: 1, price: 1200 },
       { title: "AirPods Pro", quantity: 2, price: 250 },
@@ -42,7 +46,11 @@ const initialOrders: Order[] = [
   },
   {
     id: 2,
-    user: { name: "Sarah Smith", email: "sarah@example.com", avatar: "https://i.pravatar.cc/40?img=2" },
+    user: {
+      name: "Sarah Smith",
+      email: "sarah@example.com",
+      avatar: "https://i.pravatar.cc/40?img=2",
+    },
     products: [{ title: "MacBook Pro 14”", quantity: 1, price: 2200 }],
     status: "delivered",
     orderDate: "2025-08-20",
@@ -56,11 +64,41 @@ const MainOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 
   const handleStatusChange = (orderId: number, newStatus: Order["status"]) => {
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status: newStatus } : o)));
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+    );
+  };
+  const handleDeliveryOptionChange = (
+    orderId: number,
+    newOption: Order["deliveryOption"]
+  ) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, deliveryOption: newOption } : o
+      )
+    );
   };
 
-  const handlePaymentStatusChange = (orderId: number, newStatus: Order["paymentStatus"]) => {
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, paymentStatus: newStatus } : o)));
+  const handlePaymentMethodChange = (
+    orderId: number,
+    newMethod: Order["paymentMethod"]
+  ) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, paymentMethod: newMethod } : o
+      )
+    );
+  };
+
+  const handlePaymentStatusChange = (
+    orderId: number,
+    newStatus: Order["paymentStatus"]
+  ) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, paymentStatus: newStatus } : o
+      )
+    );
   };
 
   const columns: ColumnsType<Order> = [
@@ -82,7 +120,9 @@ const MainOrders: React.FC = () => {
       title: "Total Price",
       key: "total",
       render: (_: unknown, order: Order) =>
-        `$${order.products.reduce((sum, p) => sum + p.price * p.quantity, 0).toFixed(2)}`,
+        `$${order.products
+          .reduce((sum, p) => sum + p.price * p.quantity, 0)
+          .toFixed(2)}`,
     },
     {
       title: "Status",
@@ -105,8 +145,16 @@ const MainOrders: React.FC = () => {
       deliveryOption={order.deliveryOption}
       paymentMethod={order.paymentMethod}
       paymentStatus={order.paymentStatus}
-      onSaveStatus={newStatus => handleStatusChange(order.id, newStatus)}
-      onSavePaymentStatus={newStatus => handlePaymentStatusChange(order.id, newStatus)}
+      onSaveStatus={(newStatus) => handleStatusChange(order.id, newStatus)}
+      onSavePaymentStatus={(newStatus) =>
+        handlePaymentStatusChange(order.id, newStatus)
+      }
+      onSaveDeliveryOption={(newOption) =>
+        handleDeliveryOptionChange(order.id, newOption)
+      }
+      onSavePaymentMethod={(newMethod) =>
+        handlePaymentMethodChange(order.id, newMethod)
+      }
     />
   );
 

@@ -6,7 +6,9 @@ import type { ColumnsType } from "antd/es/table";
 import { Tooltip, Tag, Button } from "antd";
 import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
-import StatusTag from "./StatusTag"; // unified tag component
+import EditableDeliveryOption from "./EditableDeliveryOption";
+import EditablePaymentMethod from "./EditablePaymentMethod";
+import StatusTag from "./StatusTag";
 
 interface Product {
   title: string;
@@ -24,6 +26,8 @@ interface Props {
   paymentStatus: "paid" | "pending" | "failed";
   onSaveStatus: (newStatus: Props["status"]) => void;
   onSavePaymentStatus: (newStatus: Props["paymentStatus"]) => void;
+  onSaveDeliveryOption: (newOption: Props["deliveryOption"]) => void;
+  onSavePaymentMethod: (newMethod: Props["paymentMethod"]) => void;
 }
 
 const OrderProductTable: React.FC<Props> = ({
@@ -35,18 +39,35 @@ const OrderProductTable: React.FC<Props> = ({
   paymentStatus,
   onSaveStatus,
   onSavePaymentStatus,
+  onSaveDeliveryOption,
+  onSavePaymentMethod,
 }) => {
-  const productsWithKey = products.map((p, idx) => ({ ...p, key: `${orderId}-${idx}` }));
+  const productsWithKey = products.map((p, idx) => ({
+    ...p,
+    key: `${orderId}-${idx}`,
+  }));
 
-  const isLocked = (status === "delivered" || status === "cancelled") && paymentStatus === "paid";
+  const isLocked =
+    (status === "delivered" || status === "cancelled") &&
+    paymentStatus === "paid";
 
-  // local states that change when admin selects a new value
+  // local states
   const [selectedStatus, setSelectedStatus] = useState(status);
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState(paymentStatus);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] =
+    useState(paymentStatus);
+  const [selectedDeliveryOption, setSelectedDeliveryOption] =
+    useState(deliveryOption);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState(paymentMethod);
 
   const handleSaveAll = () => {
     if (selectedStatus !== status) onSaveStatus(selectedStatus);
-    if (selectedPaymentStatus !== paymentStatus) onSavePaymentStatus(selectedPaymentStatus);
+    if (selectedPaymentStatus !== paymentStatus)
+      onSavePaymentStatus(selectedPaymentStatus);
+    if (selectedDeliveryOption !== deliveryOption)
+      onSaveDeliveryOption(selectedDeliveryOption);
+    if (selectedPaymentMethod !== paymentMethod)
+      onSavePaymentMethod(selectedPaymentMethod);
   };
 
   const columns: ColumnsType<Product> = [
@@ -55,7 +76,9 @@ const OrderProductTable: React.FC<Props> = ({
       dataIndex: "title",
       key: "title",
       render: (title: string, product: Product) => (
-        <Tooltip title={`Quantity: ${product.quantity} × $${product.price.toFixed(2)}`}>
+        <Tooltip
+          title={`Quantity: ${product.quantity} × $${product.price.toFixed(2)}`}
+        >
           <div
             style={{
               display: "inline-block",
@@ -107,6 +130,7 @@ const OrderProductTable: React.FC<Props> = ({
       />
 
       <div className="flex gap-6 flex-wrap items-center mt-2">
+        {/* Order Status */}
         <div>
           <span className="font-medium">Order Status:</span>{" "}
           {status === "delivered" || status === "cancelled" ? (
@@ -119,6 +143,7 @@ const OrderProductTable: React.FC<Props> = ({
           )}
         </div>
 
+        {/* Payment Status */}
         <div>
           <span className="font-medium">Payment Status:</span>{" "}
           {paymentStatus === "paid" ? (
@@ -131,12 +156,34 @@ const OrderProductTable: React.FC<Props> = ({
           )}
         </div>
 
+        {/* Delivery Option */}
+        <div>
+          <span className="font-medium">Delivery Option:</span>{" "}
+          <EditableDeliveryOption
+            option={selectedDeliveryOption}
+            onSave={setSelectedDeliveryOption}
+          />
+        </div>
+
+        {/* Payment Method */}
+        <div>
+          <span className="font-medium">Payment Method:</span>{" "}
+          <EditablePaymentMethod
+            method={selectedPaymentMethod}
+            onSave={setSelectedPaymentMethod}
+          />
+        </div>
+
+        {/* Save Button */}
         {!isLocked && (
           <Button
             type="primary"
             onClick={handleSaveAll}
             disabled={
-              selectedStatus === status && selectedPaymentStatus === paymentStatus
+              selectedStatus === status &&
+              selectedPaymentStatus === paymentStatus &&
+              selectedDeliveryOption === deliveryOption &&
+              selectedPaymentMethod === paymentMethod
             }
           >
             Save
