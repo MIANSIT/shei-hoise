@@ -47,7 +47,7 @@ export default function ProductPage() {
 
   if (!product)
     return (
-      <p className="text-center mt-20 text-lg md:text-xl">Product not found.</p>
+      <p className="text-center mt-20 text-lg md:text-xl text-foreground">Product not found.</p>
     );
 
   const handleAddToCart = async (): Promise<void> => {
@@ -119,14 +119,14 @@ export default function ProductPage() {
               price={Number(product.currentPrice)}
               originalPrice={Number(product.originalPrice)}
             />
-            <p className="text-gray-600 mt-4 text-sm sm:text-base md:text-lg">
+            <p className="text-muted-foreground mt-4 text-sm sm:text-base md:text-lg">
               {product.description || "No description available."}
             </p>
 
             {/* Quantity Selector and Add to Cart */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-6">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-sm font-medium text-muted-foreground">
                   Quantity:
                 </span>
                 <ProductQuantitySelector
@@ -140,15 +140,15 @@ export default function ProductPage() {
                     initial={{ scale: 1.1 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
-                    className="text-lg font-semibold"
+                    className="text-lg font-semibold text-foreground"
                   >
                     ${totalPrice.toFixed(2)}
                   </motion.span>
-                  {quantity > 1 && (
-                    <span className="text-sm text-gray-500 ml-2">
+                  {/* {quantity > 1 && (
+                    <span className="text-sm text-muted-foreground ml-2">
                       (${Number(product.currentPrice).toFixed(2)} each)
                     </span>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -156,14 +156,14 @@ export default function ProductPage() {
                 onClick={handleAddToCart}
                 isLoading={isAdding}
                 showSuccess={showSuccess}
-                className="flex-1 sm:flex-initial"
+                className=""
               />
             </div>
           </div>
         </div>
 
         {/* Divider */}
-        <hr className="my-10 border-gray-300" />
+        <hr className="my-10 border-border" />
 
         {/* Bottom section: Features + Specifications */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-10">

@@ -29,13 +29,13 @@ const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
   };
 
   return (
-    <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
+    <div className="flex items-center border border-border rounded-md overflow-hidden">
       <Button
         variant="ghost"
         size="icon"
         onClick={handleDecrement}
         disabled={quantity <= 1}
-        className="h-10 w-10 rounded-none hover:bg-white/10 transition-colors cursor-pointer"
+        className="h-10 w-10 rounded-none hover:bg-accent transition-colors cursor-pointer"
       >
         <Minus className="h-4 w-4" />
       </Button>
@@ -54,7 +54,7 @@ const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
               opacity: 0 
             }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="absolute font-medium text-sm"
+            className="absolute font-medium text-sm text-foreground"
           >
             {quantity}
           </motion.span>
@@ -65,7 +65,7 @@ const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
         variant="ghost"
         size="icon"
         onClick={handleIncrement}
-        className="h-10 w-10 rounded-none hover:bg-white/10 transition-colors cursor-pointer"
+        className="h-10 w-10 rounded-none hover:bg-accent transition-colors cursor-pointer"
       >
         <Plus className="h-4 w-4" />
       </Button>

@@ -7,12 +7,12 @@ interface ProductSpecificationsProps {
 const ProductSpecifications: FC<ProductSpecificationsProps> = ({ specs }) => {
   return (
     <div>
-      <h2 className="font-semibold text-xl mb-3">Specifications</h2>
-      <dl className="divide-y divide-gray-200">
+      <h2 className="font-semibold text-xl mb-3 text-foreground">Specifications</h2>
+      <dl className="divide-y divide-border">
         {specs.map((s, i) => (
-          <div key={i} className="flex justify-between py-2 text-primary">
-            <dt className="font-medium">{s.label}</dt>
-            <dd>{s.value}</dd>
+          <div key={i} className="flex justify-between py-2">
+            <dt className="font-medium text-muted-foreground">{s.label}</dt>
+            <dd className="text-foreground">{s.value}</dd>
           </div>
         ))}
       </dl>
