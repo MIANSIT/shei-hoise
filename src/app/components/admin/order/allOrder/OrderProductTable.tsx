@@ -1,195 +1,83 @@
 "use client";
 
 import React, { useState } from "react";
-import DataTable from "@/app/components/admin/common/DataTable";
-import type { ColumnsType } from "antd/es/table";
-import { Tooltip, Tag, Button } from "antd";
-import EditableOrderStatus from "./EditableOrderStatus";
-import EditablePaymentStatus from "./EditablePaymentStatus";
-import EditableDeliveryOption from "./EditableDeliveryOption";
-import EditablePaymentMethod from "./EditablePaymentMethod";
-import StatusTag from "./StatusTag";
-
-interface Product {
-  title: string;
-  quantity: number;
-  price: number;
-  key: string;
-}
+import { Order, Product } from "@/lib/types/types";
+import ProductListTable from "./ProductListTable";
+import OrderControls from "./OrderControls";
 
 interface Props {
-  products: Omit<Product, "key">[];
-  orderId: number;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
-  deliveryOption: "Pathao" | "Courier" | "Other";
-  paymentMethod: "COD" | "Online";
-  paymentStatus: "paid" | "pending" | "failed";
-  onSaveStatus: (newStatus: Props["status"]) => void;
-  onSavePaymentStatus: (newStatus: Props["paymentStatus"]) => void;
-  onSaveDeliveryOption: (newOption: Props["deliveryOption"]) => void;
-  onSavePaymentMethod: (newMethod: Props["paymentMethod"]) => void;
+  order: Order;
+  onSaveStatus: (newStatus: Order["status"]) => void;
+  onSavePaymentStatus: (newStatus: Order["paymentStatus"]) => void;
+  onSaveDeliveryOption: (newOption: Order["deliveryOption"]) => void;
+  onSavePaymentMethod: (newMethod: Order["paymentMethod"]) => void;
 }
 
 const OrderProductTable: React.FC<Props> = ({
-  products,
-  orderId,
-  status,
-  deliveryOption,
-  paymentMethod,
-  paymentStatus,
+  order,
   onSaveStatus,
   onSavePaymentStatus,
   onSaveDeliveryOption,
   onSavePaymentMethod,
 }) => {
-  const productsWithKey = products.map((p, idx) => ({
+  // Add keys to products for table rows
+  const productsWithKey: Product[] = order.products.map((p, idx) => ({
     ...p,
-    key: `${orderId}-${idx}`,
+    key: `${order.id}-${idx}`,
   }));
 
+  // Lock if delivered/cancelled and payment is paid
   const isLocked =
-    (status === "delivered" || status === "cancelled") &&
-    paymentStatus === "paid";
+    (order.status === "delivered" || order.status === "cancelled") &&
+    order.paymentStatus === "paid";
 
-  // local states
-  const [selectedStatus, setSelectedStatus] = useState(status);
-  const [selectedPaymentStatus, setSelectedPaymentStatus] =
-    useState(paymentStatus);
-  const [selectedDeliveryOption, setSelectedDeliveryOption] =
-    useState(deliveryOption);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState(paymentMethod);
+  // Local state for editable fields
+  const [selectedStatus, setSelectedStatus] = useState<Order["status"]>(
+    order.status
+  );
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<
+    Order["paymentStatus"]
+  >(order.paymentStatus);
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<
+    Order["deliveryOption"]
+  >(order.deliveryOption);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    Order["paymentMethod"]
+  >(order.paymentMethod);
 
+  // Save changes if any
   const handleSaveAll = () => {
-    if (selectedStatus !== status) onSaveStatus(selectedStatus);
-    if (selectedPaymentStatus !== paymentStatus)
+    if (selectedStatus !== order.status) onSaveStatus(selectedStatus);
+    if (selectedPaymentStatus !== order.paymentStatus)
       onSavePaymentStatus(selectedPaymentStatus);
-    if (selectedDeliveryOption !== deliveryOption)
+    if (selectedDeliveryOption !== order.deliveryOption)
       onSaveDeliveryOption(selectedDeliveryOption);
-    if (selectedPaymentMethod !== paymentMethod)
+    if (selectedPaymentMethod !== order.paymentMethod)
       onSavePaymentMethod(selectedPaymentMethod);
   };
 
-  const columns: ColumnsType<Product> = [
-    {
-      title: "Product",
-      dataIndex: "title",
-      key: "title",
-      render: (title: string, product: Product) => (
-        <Tooltip
-          title={`Quantity: ${product.quantity} × $${product.price.toFixed(2)}`}
-        >
-          <div
-            style={{
-              display: "inline-block",
-              overflow: "hidden",
-              whiteSpace: "nowrap",
-              textOverflow: "ellipsis",
-              maxWidth: 200,
-            }}
-          >
-            {title}
-          </div>
-        </Tooltip>
-      ),
-    },
-    { title: "Quantity", dataIndex: "quantity", key: "quantity" },
-    {
-      title: "Unit Price",
-      dataIndex: "price",
-      key: "price",
-      render: (price: number) => `$${price.toFixed(2)}`,
-    },
-    {
-      title: "Line Total",
-      key: "lineTotal",
-      render: (_, p: Product) => `$${(p.price * p.quantity).toFixed(2)}`,
-    },
-    {
-      title: "Delivery",
-      key: "deliveryOption",
-      render: () => <Tag color="blue">{deliveryOption}</Tag>,
-    },
-    {
-      title: "Payment Method",
-      key: "paymentMethod",
-      render: () => <Tag color="purple">{paymentMethod}</Tag>,
-    },
-  ];
-
   return (
     <div className="p-4 bg-gray-50 rounded-md space-y-4">
-      <DataTable<Product>
-        columns={columns}
-        data={productsWithKey}
-        pagination={false}
-        bordered={false}
-        size="small"
-        rowKey="key"
-        rowClassName={() => "hover:bg-gray-100"}
+      {/* Product table with delivery & payment inside */}
+      <ProductListTable products={productsWithKey} order={order} />
+
+      {/* Editable controls for order */}
+      <OrderControls
+        status={order.status}
+        selectedStatus={selectedStatus}
+        onSelectStatus={setSelectedStatus}
+        paymentStatus={order.paymentStatus}
+        selectedPaymentStatus={selectedPaymentStatus}
+        onSelectPaymentStatus={setSelectedPaymentStatus}
+        deliveryOption={order.deliveryOption}
+        selectedDeliveryOption={selectedDeliveryOption}
+        onSelectDeliveryOption={setSelectedDeliveryOption}
+        paymentMethod={order.paymentMethod}
+        selectedPaymentMethod={selectedPaymentMethod}
+        onSelectPaymentMethod={setSelectedPaymentMethod}
+        isLocked={isLocked}
+        onSaveAll={handleSaveAll}
       />
-
-      <div className="flex gap-6 flex-wrap items-center mt-2">
-        {/* Order Status */}
-        <div>
-          <span className="font-medium">Order Status:</span>{" "}
-          {status === "delivered" || status === "cancelled" ? (
-            <StatusTag status={status} />
-          ) : (
-            <EditableOrderStatus
-              status={selectedStatus}
-              onSave={setSelectedStatus}
-            />
-          )}
-        </div>
-
-        {/* Payment Status */}
-        <div>
-          <span className="font-medium">Payment Status:</span>{" "}
-          {paymentStatus === "paid" ? (
-            <StatusTag status="paid" />
-          ) : (
-            <EditablePaymentStatus
-              status={selectedPaymentStatus}
-              onSave={setSelectedPaymentStatus}
-            />
-          )}
-        </div>
-
-        {/* Delivery Option */}
-        <div>
-          <span className="font-medium">Delivery Option:</span>{" "}
-          <EditableDeliveryOption
-            option={selectedDeliveryOption}
-            onSave={setSelectedDeliveryOption}
-          />
-        </div>
-
-        {/* Payment Method */}
-        <div>
-          <span className="font-medium">Payment Method:</span>{" "}
-          <EditablePaymentMethod
-            method={selectedPaymentMethod}
-            onSave={setSelectedPaymentMethod}
-          />
-        </div>
-
-        {/* Save Button */}
-        {!isLocked && (
-          <Button
-            type="primary"
-            onClick={handleSaveAll}
-            disabled={
-              selectedStatus === status &&
-              selectedPaymentStatus === paymentStatus &&
-              selectedDeliveryOption === deliveryOption &&
-              selectedPaymentMethod === paymentMethod
-            }
-          >
-            Save
-          </Button>
-        )}
-      </div>
     </div>
   );
 };
