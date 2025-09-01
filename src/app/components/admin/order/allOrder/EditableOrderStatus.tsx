@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, memo } from "react";
-import { Select, Button, Space } from "antd";
+import React, { useState, memo, useEffect } from "react";
+import { Select } from "antd";
 
 interface Props {
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
-  onSave: (newStatus: Props["status"]) => void;
+  onSave: (newStatus: Props["status"]) => void; // will now just update state
 }
 
 const STATUS_OPTIONS = [
@@ -16,7 +16,6 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-// Named Select component
 const OrderStatusSelect: React.FC<{
   value: Props["status"];
   onChange: (v: Props["status"]) => void;
@@ -31,32 +30,23 @@ const OrderStatusSelect: React.FC<{
   />
 );
 
-// Memoize it for performance
 const MemoizedOrderStatusSelect = memo(OrderStatusSelect);
 
 const EditableOrderStatus: React.FC<Props> = ({ status, onSave }) => {
   const [selectedStatus, setSelectedStatus] = useState(status);
-  const isLocked = status === "delivered";
+  const isLocked = status === "delivered" || status === "cancelled";
 
-  const handleSave = useCallback(() => {
-    if (selectedStatus !== status) {
-      onSave(selectedStatus);
-    }
-  }, [selectedStatus, status, onSave]);
+  // Keep parent updated whenever selection changes
+  useEffect(() => {
+    onSave(selectedStatus);
+  }, [selectedStatus, onSave]);
 
   return (
-    <Space>
-      <MemoizedOrderStatusSelect
-        value={selectedStatus}
-        onChange={setSelectedStatus}
-        disabled={isLocked}
-      />
-      {!isLocked && (
-        <Button type="primary" onClick={handleSave}>
-          Save
-        </Button>
-      )}
-    </Space>
+    <MemoizedOrderStatusSelect
+      value={selectedStatus}
+      onChange={setSelectedStatus}
+      disabled={isLocked}
+    />
   );
 };
 

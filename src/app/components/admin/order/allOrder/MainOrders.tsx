@@ -7,9 +7,6 @@ import { Avatar, Space } from "antd";
 import OrderProductTable from "./OrderProductTable";
 import OrderStatusTag from "./OrderStatusTag";
 
-// --------------------
-// Order Type
-// --------------------
 export interface Order {
   id: number;
   user: {
@@ -24,11 +21,11 @@ export interface Order {
   }[];
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   orderDate: string;
+  deliveryOption: "Pathao" | "Courier" | "Other";
+  paymentMethod: "COD" | "Online";
+  paymentStatus: "paid" | "pending" | "failed";
 }
 
-// --------------------
-// Dummy Orders Data
-// --------------------
 const initialOrders: Order[] = [
   {
     id: 1,
@@ -39,6 +36,9 @@ const initialOrders: Order[] = [
     ],
     status: "processing",
     orderDate: "2025-08-25",
+    deliveryOption: "Pathao",
+    paymentMethod: "Online",
+    paymentStatus: "pending",
   },
   {
     id: 2,
@@ -46,19 +46,21 @@ const initialOrders: Order[] = [
     products: [{ title: "MacBook Pro 14”", quantity: 1, price: 2200 }],
     status: "delivered",
     orderDate: "2025-08-20",
+    deliveryOption: "Courier",
+    paymentMethod: "COD",
+    paymentStatus: "paid",
   },
 ];
 
-// --------------------
-// All Orders Component
-// --------------------
 const MainOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 
   const handleStatusChange = (orderId: number, newStatus: Order["status"]) => {
-    setOrders(prev =>
-      prev.map(order => (order.id === orderId ? { ...order, status: newStatus } : order))
-    );
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status: newStatus } : o)));
+  };
+
+  const handlePaymentStatusChange = (orderId: number, newStatus: Order["paymentStatus"]) => {
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, paymentStatus: newStatus } : o)));
   };
 
   const columns: ColumnsType<Order> = [
@@ -100,7 +102,11 @@ const MainOrders: React.FC = () => {
       products={order.products}
       orderId={order.id}
       status={order.status}
+      deliveryOption={order.deliveryOption}
+      paymentMethod={order.paymentMethod}
+      paymentStatus={order.paymentStatus}
       onSaveStatus={newStatus => handleStatusChange(order.id, newStatus)}
+      onSavePaymentStatus={newStatus => handlePaymentStatusChange(order.id, newStatus)}
     />
   );
 
