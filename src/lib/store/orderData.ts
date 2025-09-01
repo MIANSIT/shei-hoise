@@ -1,4 +1,6 @@
-import { Order } from "@/lib/types/types";
+// lib/data/orders.ts
+
+import { Order } from "../types/types";
 
 export const initialOrders: Order[] = [
   {
@@ -7,6 +9,10 @@ export const initialOrders: Order[] = [
       name: "John Doe",
       email: "john@example.com",
       avatar: "https://i.pravatar.cc/40?img=1",
+      address: "123 Main Street",
+      city: "Dhaka",
+      country: "Bangladesh",
+      phone: "+880123456789",
     },
     products: [
       { title: "iPhone 15", quantity: 1, price: 1200 },
@@ -24,6 +30,10 @@ export const initialOrders: Order[] = [
       name: "Sarah Smith",
       email: "sarah@example.com",
       avatar: "https://i.pravatar.cc/40?img=2",
+      address: "456 Park Avenue",
+      city: "Chittagong",
+      country: "Bangladesh",
+      phone: "+880987654321",
     },
     products: [{ title: "MacBook Pro 14”", quantity: 1, price: 2200 }],
     status: "delivered",

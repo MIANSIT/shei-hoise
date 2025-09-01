@@ -1,3 +1,5 @@
+// lib/types/types.ts
+
 export interface Product {
   title: string;
   quantity: number;
@@ -11,6 +13,10 @@ export interface Order {
     name: string;
     email: string;
     avatar?: string;
+    address?: string;
+    phone?: string; // Added phone number
+    city?: string;
+    country?: string;
   };
   products: Product[];
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";

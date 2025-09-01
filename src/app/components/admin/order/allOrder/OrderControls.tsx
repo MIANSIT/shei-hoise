@@ -52,7 +52,11 @@ const OrderControls: React.FC<Props> = ({
         {status === "delivered" || status === "cancelled" ? (
           <StatusTag status={status} />
         ) : (
-          <EditableOrderStatus status={selectedStatus} onSave={onSelectStatus} />
+          <EditableOrderStatus
+            status={selectedStatus}
+            onSave={onSelectStatus}
+            hideDelivered={selectedPaymentStatus !== "paid"} // hide Delivered if not paid
+          />
         )}
       </div>
 
@@ -70,6 +74,7 @@ const OrderControls: React.FC<Props> = ({
       </div>
 
       {/* Delivery Option */}
+
       <div>
         <span className="font-medium">Delivery Option:</span>{" "}
         <EditableDeliveryOption

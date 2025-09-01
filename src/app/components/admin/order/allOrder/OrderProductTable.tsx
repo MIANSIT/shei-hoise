@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Order, Product } from "@/lib/types/types";
-import ProductListTable from "./ProductListTable";
+import { Order } from "@/lib/types/types";
 import OrderControls from "./OrderControls";
 
 interface Props {
@@ -21,10 +20,6 @@ const OrderProductTable: React.FC<Props> = ({
   onSavePaymentMethod,
 }) => {
   // Add keys to products for table rows
-  const productsWithKey: Product[] = order.products.map((p, idx) => ({
-    ...p,
-    key: `${order.id}-${idx}`,
-  }));
 
   // Lock if delivered/cancelled and payment is paid
   const isLocked =
@@ -59,7 +54,6 @@ const OrderProductTable: React.FC<Props> = ({
   return (
     <div className="p-4 bg-gray-50 rounded-md space-y-4">
       {/* Product table with delivery & payment inside */}
-      <ProductListTable products={productsWithKey} order={order} />
 
       {/* Editable controls for order */}
       <OrderControls

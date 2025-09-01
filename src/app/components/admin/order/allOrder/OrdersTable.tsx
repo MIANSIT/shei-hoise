@@ -6,6 +6,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Order } from "@/lib/types/types";
 import StatusTag from "./StatusTag";
 import OrderProductTable from "./OrderProductTable";
+import DetailedOrderView from "./DetailedOrderView";
 
 interface Props {
   orders: Order[];
@@ -14,6 +15,12 @@ interface Props {
 
 const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
   const columns: ColumnsType<Order> = [
+    {
+      title: "Order ID",
+      dataIndex: "id",
+      key: "id",
+      render: (id: number) => <span className="font-medium">#{id}</span>,
+    },
     {
       title: "User Info",
       dataIndex: "user",
@@ -29,11 +36,28 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
       ),
     },
     {
+      title: "Delivery Address",
+      key: "address",
+      render: (order: Order) => {
+        const fullAddress = `${order.user.address || ""}${order.user.city ? ", " + order.user.city : ""}${order.user.country ? ", " + order.user.country : ""}`.trim() || "Not Provided";
+        return (
+          <Tooltip title={fullAddress}>
+            <div className="truncate max-w-[150px]">{fullAddress}</div>
+          </Tooltip>
+        );
+      },
+    },
+    {
       title: "Total Price",
       key: "total",
       render: (_, order) => {
-        const total = order.products.reduce((sum, p) => sum + p.price * p.quantity, 0);
-        const tooltipText = order.products.map((p) => `${p.title}: ${p.quantity}`).join(", ");
+        const total = order.products.reduce(
+          (sum, p) => sum + p.price * p.quantity,
+          0
+        );
+        const tooltipText = order.products
+          .map((p) => `${p.title}: ${p.quantity}`)
+          .join(", ");
         return (
           <Tooltip title={tooltipText}>
             <div className="truncate max-w-[120px]">${total.toFixed(2)}</div>
@@ -67,13 +91,25 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
       rowKey="id"
       expandable={{
         expandedRowRender: (order) => (
-          <OrderProductTable
-            order={order}
-            onSaveStatus={(s) => onUpdate(order.id, { status: s })}
-            onSavePaymentStatus={(s) => onUpdate(order.id, { paymentStatus: s })}
-            onSaveDeliveryOption={(o) => onUpdate(order.id, { deliveryOption: o })}
-            onSavePaymentMethod={(m) => onUpdate(order.id, { paymentMethod: m })}
-          />
+          <div className="space-y-6">
+            {/* Keep original OrderProductTable */}
+            <OrderProductTable
+              order={order}
+              onSaveStatus={(s) => onUpdate(order.id, { status: s })}
+              onSavePaymentStatus={(s) =>
+                onUpdate(order.id, { paymentStatus: s })
+              }
+              onSaveDeliveryOption={(o) =>
+                onUpdate(order.id, { deliveryOption: o })
+              }
+              onSavePaymentMethod={(m) =>
+                onUpdate(order.id, { paymentMethod: m })
+              }
+            />
+
+            {/* Modern DetailedOrderView */}
+            <DetailedOrderView order={order} />
+          </div>
         ),
       }}
     />
