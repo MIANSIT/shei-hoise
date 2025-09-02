@@ -23,7 +23,7 @@ export function DesktopLayout({ children, isAdmin = false }: DesktopLayoutProps)
       </div>
 
       {/* Right side - Form */}
-      <div className="flex w-full md:w-1/2 items-center justify-center bg-black p-8">
+      <div className="flex w-full md:w-1/2 items-center justify-center bg-background p-8">
         <div className="w-full max-w-md space-y-8">{children}</div>
       </div>
     </div>

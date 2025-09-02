@@ -26,7 +26,7 @@ export default function FooterBrand({ brand }: BrandProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-white">{brand.name}</h2>
+      <h2 className="text-xl font-semibold text-foreground">{brand.name}</h2>
       <p className="mt-3 text-sm text-muted-foreground">{brand.description}</p>
       <div className="flex gap-4 mt-4">
         {socialLinks.map((social, index) => {
@@ -36,7 +36,7 @@ export default function FooterBrand({ brand }: BrandProps) {
               key={index} 
               href={social.href}
               aria-label={`Visit our ${social.label} page`}
-              className="text-muted-foreground hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <IconComponent className="h-5 w-5" />
             </Link>

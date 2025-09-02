@@ -90,7 +90,7 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
     selectedMethod === "bkash" || selectedMethod === "nagad";
 
   return (
-    <div className="flex flex-col space-y-4 text-white overflow-y-none">
+    <div className="flex flex-col space-y-4 text-foreground overflow-y-none">
       {/* Payment method selection */}
       <div className="flex justify-between mb-4">
         {paymentMethods.map((method) => {
@@ -102,8 +102,8 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
               whileTap={{ scale: 0.95 }}
               className={`p-2 rounded-lg cursor-pointer transition-all text-center w-24 ${
                 selectedMethod === method.id
-                  ? "bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold"
-                  : "bg-gradient-to-br from-gray-900 to-black hover:bg-gradient-to-br hover:from-yellow-500 hover:to-yellow-700"
+                  ? "bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-primary-foreground font-bold"
+                  : "bg-secondary hover:bg-accent"
               }`}
               onClick={() => {
                 setSelectedMethod(method.id);
@@ -126,10 +126,10 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="bg-gradient-to-br from-gray-900 to-black border-gray-700">
+          <Card className="bg-card border-border">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-lg">
+                <CardTitle className="text-lg text-card-foreground">
                   {selectedMethodData?.title}
                 </CardTitle>
                 <div
@@ -143,15 +143,15 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 {selectedMethodData?.description}
               </p>
 
-              <div className="bg-gray-800 p-3 rounded-lg">
+              <div className="bg-muted p-3 rounded-lg">
                 <h3 className="font-medium mb-2 text-yellow-400 text-sm">
                   Instructions:
                 </h3>
-                <p className="text-xs text-gray-300 mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   {selectedMethodData?.instructions.replace(
                     "$AMOUNT",
                     amount.toFixed(2)
@@ -169,17 +169,17 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
                       placeholder="Enter your transaction ID"
                       value={transactionId}
                       onChange={(e) => setTransactionId(e.target.value)}
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                      className="text-foreground"
                     />
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Please enter the transaction ID from your payment
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-                <span className="text-gray-400 text-sm">Total Payment</span>
+              <div className="flex justify-between items-center pt-2 border-t border-border">
+                <span className="text-muted-foreground text-sm">Total Payment</span>
                 <span className="text-xl font-bold text-yellow-400">
                   ${amount.toFixed(2)}
                 </span>
@@ -191,25 +191,17 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
 
       {/* Buttons */}
       <div className="flex space-x-3 pt-2">
-        {/* <Button
-          variant="outline"
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="flex-1 border-gray-700 text-white hover:bg-gray-800"
-        >
-          Cancel
-        </Button> */}
         <Button
           onClick={handlePayment}
           disabled={
             isProcessing || (needsTransactionId && !transactionId.trim())
           }
-          className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-primary-foreground font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isProcessing ? (
             <>
               <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-foreground"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"

@@ -22,8 +22,8 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
       size="lg"
       className={`gap-2 relative overflow-hidden cursor-pointer min-w-[140px] ${className} ${
         showSuccess
-          ? "bg-green-600 hover:bg-green-700"
-          : "bg-primary hover:bg-primary/90"
+          ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground"
+          : "bg-primary hover:bg-primary/90 text-primary-foreground"
       }`}
     >
       <div className="flex items-center justify-center w-full relative h-6">
@@ -55,7 +55,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
               transition={{ duration: 0.2 }}
               className="absolute flex items-center gap-2"
             >
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
               <span>Adding...</span>
             </motion.div>
           )}

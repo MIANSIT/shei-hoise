@@ -63,12 +63,12 @@ const DesktopCheckout = ({
 
   return (
     <div className="container mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+      <h1 className="text-3xl font-bold mb-8 text-foreground">Checkout</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Items Card */}
-        <Card className="bg-gradient-to-br from-gray-900 to-black">
+        <Card className="bg-card">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">
+            <CardTitle className="text-xl font-semibold text-card-foreground">
               Your Cart ({displayCount} items)
             </CardTitle>
             <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30"></div>
@@ -76,14 +76,14 @@ const DesktopCheckout = ({
           <CardContent>
             {cartLength === 0 ? (
               <div className="text-center py-8">
-                <p className="text-white">Your cart is empty</p>
+                <p className="text-muted-foreground">Your cart is empty</p>
               </div>
             ) : (
               <CartItemsList />
             )}
             {cartLength > 0 && (
               <div>
-                <div className="flex justify-between mt-4 text-white border-gray-700 border-2 rounded-lg p-3">
+                <div className="flex justify-between mt-4 text-foreground border-border border rounded-lg p-3">
                   <span className="font-bold">Subtotal :</span>
                   <motion.span
                     className="font-bold"
@@ -101,9 +101,9 @@ const DesktopCheckout = ({
         </Card>
         
         {/* Customer Information Card */}
-        <Card className="bg-gradient-to-br from-gray-900 to-black">
+        <Card className="bg-card">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">
+            <CardTitle className="text-xl font-semibold text-card-foreground">
               Customer Information
             </CardTitle>
             <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30"></div>
@@ -119,9 +119,9 @@ const DesktopCheckout = ({
 
       {/* Payment Modal using Shadcn Dialog */}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent className="sm:max-w-[625px] bg-gradient-to-br from-gray-900 to-black border-gray-700">
+        <DialogContent className="sm:max-w-[625px] bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-white">
+            <DialogTitle className="text-xl font-semibold text-card-foreground">
               Payment
             </DialogTitle>
           </DialogHeader>

@@ -46,7 +46,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
         onClick={onClose}
       />
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-black text-white shadow-lg z-50 transition-transform duration-300 ease-in-out lg:hidden rounded-tl-2xl rounded-tr-2xl ${
+        className={`fixed bottom-0 left-0 right-0 bg-background text-foreground shadow-lg z-50 transition-transform duration-300 ease-in-out lg:hidden rounded-tl-2xl rounded-tr-2xl border-t border-border ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -57,7 +57,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
             </h2>
             <button
               onClick={onClose}
-              className="p-1 rounded-md hover:bg-black cursor-pointer"
+              className="p-1 rounded-md hover:bg-accent cursor-pointer transition-colors"
               aria-label="Close cart"
             >
               <X className="h-5 w-5" />
@@ -66,9 +66,9 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
           <div className="max-h-[60vh] overflow-y-auto pb-4">
             {cart.length === 0 ? (
               <div className="text-center py-4">
-                <p className="text-gray-500">Your cart is empty</p>
+                <p className="text-muted-foreground">Your cart is empty</p>
                 <Button
-                  className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
+                  className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
                   onClick={onClose}
                 >
                   Continue Shopping

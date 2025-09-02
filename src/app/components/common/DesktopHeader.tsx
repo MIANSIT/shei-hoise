@@ -6,6 +6,7 @@ import NavMenu, { NavLink } from "../header/NavMenu";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
 import AuthButtons from "../header/AuthButtons";
+import ThemeToggle from "../theme/ThemeToggle"; // Import the new component
 
 export default function DesktopHeader() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -35,12 +36,13 @@ export default function DesktopHeader() {
       >
         {/* Left side */}
         <div className="flex items-center gap-8">
-          <LogoTitle showTitle={false } />
+          <LogoTitle showTitle={false} />
           <NavMenu links={mainLinks} />
         </div>
 
         {/* Right side */}
         <div className="flex items-center gap-5">
+          <ThemeToggle /> {/* Use the new component */}
           <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
           <AuthButtons links={authLinksUser} isAdminPanel={false} />
         </div>

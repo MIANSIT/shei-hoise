@@ -58,7 +58,7 @@ export default function CartItemsList() {
         <div className="flex justify-end">
           <Button
             variant="ghost"
-            className="text-red-500 hover:text-red-600 text-sm cursor-pointer"
+            className="text-destructive hover:text-destructive/80 text-sm cursor-pointer"
             onClick={handleClearCart}
             disabled={isClearing}
           >
@@ -72,8 +72,8 @@ export default function CartItemsList() {
         <div
           key={item.id}
           className={`
-            relative flex items-center justify-between rounded-lg bg-black/20 p-3
-            transition-all duration-300 ease-in-out border-gray-700 border-2
+            relative flex items-center justify-between rounded-lg bg-card/50 p-3
+            transition-all duration-300 ease-in-out border-border border
             ${
               removingId === item.id || isClearing
                 ? "opacity-0 -translate-x-10"
@@ -91,15 +91,15 @@ export default function CartItemsList() {
               />
             </div>
             <div>
-              <h3 className="font-medium text-white md:text-xs text-sm">
+              <h3 className="font-medium text-foreground md:text-xs text-sm">
                 {item.title}
               </h3>
-              <p className="text-sm text-gray-400">{item.category}</p>
+              <p className="text-sm text-muted-foreground">{item.category}</p>
               <div className="mt-2 flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 rounded-md cursor-pointer hover:bg-white/10"
+                  className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
                   onClick={() => handleQuantityChange(item, item.quantity - 1)}
                   disabled={item.quantity <= 1 || isClearing}
                 >
@@ -120,7 +120,7 @@ export default function CartItemsList() {
                         opacity: 0,
                       }}
                       transition={{ duration: 0.2, ease: "easeInOut" }}
-                      className="absolute text-center"
+                      className="absolute text-center text-foreground"
                     >
                       {item.quantity}
                     </motion.span>
@@ -130,7 +130,7 @@ export default function CartItemsList() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 rounded-md cursor-pointer hover:bg-white/10"
+                  className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
                   onClick={() => handleQuantityChange(item, item.quantity + 1)}
                   disabled={isClearing}
                 >
@@ -144,15 +144,15 @@ export default function CartItemsList() {
             <Button
               variant="ghost"
               size="icon"
-              className="group h-8 w-8 cursor-pointer hover:bg-red-500/10 transition-colors"
+              className="group h-8 w-8 cursor-pointer hover:bg-destructive/10 transition-colors"
               onClick={() => handleRemoveItem(item.id)}
               aria-label="Remove item"
               disabled={isClearing}
             >
-              <Trash2 className="h-4 w-4 text-red-500 group-hover:text-red-400 transition-colors" />
+              <Trash2 className="h-4 w-4 text-destructive group-hover:text-destructive/80 transition-colors" />
             </Button>
             <motion.p
-              className="text-white font-medium"
+              className="text-foreground font-medium"
               key={`price-${item.id}-${item.quantity}`}
               initial={{ scale: 1.1 }}
               animate={{ scale: 1 }}
