@@ -70,10 +70,14 @@ export const adminProductSchema = z.object({
   ),
   images: z.array(z.any()).min(1, "At least one image is required"),
 });
-
+export const categorySchema = z.object({
+  name: z.string().min(1, "Category name is required"),
+  description: z.string().optional(),
+});
 // Infer TypeScript types from schemas
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type CheckoutFormValues = z.infer<typeof userCheckoutSchema>;
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 export type ProductFormValues = z.infer<typeof adminProductSchema>;
+export type CategoryFormValues = z.infer<typeof categorySchema>;

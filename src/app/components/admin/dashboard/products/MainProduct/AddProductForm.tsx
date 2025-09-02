@@ -2,16 +2,16 @@
 
 import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import FormField from "./addProducts/FormField";
-import PriceFields from "./addProducts/PriceFields";
-import StockFields from "./addProducts/StockFields";
-import PicturesWallUploader from "./addProducts/PicturesWallUploader";
-import ImageUploader from "./addProducts/ImageUploader";
-import { useZodForm } from "../../../../../lib/utils/useZodForm";
+import FormField from "../addProducts/FormField";
+import PriceFields from "../addProducts/PriceFields";
+import StockFields from "../addProducts/StockFields";
+import PicturesWallUploader from "../addProducts/PicturesWallUploader";
+import ImageUploader from "../addProducts/ImageUploader";
+import { useZodForm } from "../../../../../../lib/utils/useZodForm";
 import {
   adminProductSchema,
   ProductFormValues,
-} from "../../../../../lib/utils/formSchema";
+} from "../../../../../../lib/utils/formSchema";
 
 interface ProductPageFormProps {
   product?: ProductFormValues;
