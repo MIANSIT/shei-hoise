@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { Button, Popconfirm, message } from "antd";
+import { Button, Popconfirm } from "antd";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import type { Category } from "@/lib/types/category";
@@ -57,7 +57,6 @@ export default function CategoryTable({
             title="Are you sure to delete this category?"
             onConfirm={() => {
               onDelete(record);
-              message.success("Category deleted");
             }}
             okText="Yes"
             cancelText="No"
@@ -71,5 +70,7 @@ export default function CategoryTable({
     },
   ];
 
-  return <DataTable<Category> columns={columns} data={data} loading={loading} />;
+  return (
+    <DataTable<Category> columns={columns} data={data} loading={loading} />
+  );
 }

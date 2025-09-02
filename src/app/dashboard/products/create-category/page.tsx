@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Button, message } from "antd";
-import CategoryTable from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTable";
-import AddCategoryCardForm from "@/app/components/admin/dashboard/products/ProductCategory/CategoryForm";
 import type { Category } from "@/lib/types/category";
+import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
+import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
+import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 export default function CategoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -12,12 +13,25 @@ export default function CategoryPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
+  const notify = useSheiNotification();
+
+  // Fetch categories (simulated)
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
       setCategories([
-        { id: "1", name: "Electronics", description: "All electronic products", createdAt: "2025-09-02" },
-        { id: "2", name: "Clothing", description: "Men and women clothing", createdAt: "2025-09-02" },
+        {
+          id: "1",
+          name: "Electronics",
+          description: "All electronic products",
+          createdAt: "2025-09-02",
+        },
+        {
+          id: "2",
+          name: "Clothing",
+          description: "Men and women clothing",
+          createdAt: "2025-09-02",
+        },
       ]);
       setLoading(false);
     }, 1000);
@@ -30,7 +44,7 @@ export default function CategoryPage() {
 
   const handleDelete = (category: Category) => {
     setCategories(prev => prev.filter(c => c.id !== category.id));
-    message.success(`Deleted category ${category.name}`);
+    notify.error(`Deleted category "${category.name}"`); // RED for delete
   };
 
   const handleFormSubmit = (data: { name: string; description?: string }) => {
@@ -38,7 +52,7 @@ export default function CategoryPage() {
       setCategories(prev =>
         prev.map(c => (c.id === editingCategory.id ? { ...c, ...data } : c))
       );
-      message.success("Category updated successfully!");
+      notify.info(`Category "${data.name}" updated successfully!`); // BLUE for update
     } else {
       const newCategory: Category = {
         id: Date.now().toString(),
@@ -46,7 +60,7 @@ export default function CategoryPage() {
         ...data,
       };
       setCategories(prev => [...prev, newCategory]);
-      message.success("Category created successfully!");
+      notify.success(`Category "${data.name}" created successfully!`); // GREEN for create
     }
 
     setShowForm(false);
@@ -55,46 +69,28 @@ export default function CategoryPage() {
 
   return (
     <div className="p-6 space-y-4">
-      {/* Top bar */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Categories</h2>
-        <Button
-          variant="solid"
-          style={{
-            backgroundColor: showForm ? "#dc2626" : "#16a34a", // red for close, green for create
-            color: "white",
-          }}
-          onClick={() => {
-            if (!showForm) setEditingCategory(null); // clear editing when opening create form
-            setShowForm(prev => !prev);
-          }}
-        >
-          {showForm ? "Close Form" : "Create Category"}
-        </Button>
-      </div>
+      <CategoryTopBar
+        showForm={showForm}
+        toggleForm={() => {
+          if (!showForm) setEditingCategory(null);
+          setShowForm(prev => !prev);
+        }}
+      />
 
-      {/* Main content */}
       <div className={`flex gap-6 ${showForm ? "flex-row" : "flex-col"}`}>
-        {/* Table */}
-        <div className={`${showForm ? "w-2/3" : "w-full"}`}>
-          <CategoryTable
-            data={categories}
-            loading={loading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        </div>
+        <CategoryTablePanel
+          categories={categories}
+          loading={loading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          showForm={showForm}
+        />
 
-        {/* Form */}
-        {showForm && (
-          <div className="w-1/3">
-            <AddCategoryCardForm
-              onSubmit={handleFormSubmit}
-              editingCategory={editingCategory}
-              key={editingCategory?.id || "new-category"}
-            />
-          </div>
-        )}
+        <CategoryFormPanel
+          showForm={showForm}
+          editingCategory={editingCategory}
+          onSubmit={handleFormSubmit}
+        />
       </div>
     </div>
   );
