@@ -1,4 +1,4 @@
-import Products from "@/app/components/admin/dashboard/products/Products";
+import Products from "@/app/components/admin/dashboard/products/MainProduct/Products";
 
 export default function ProductsPage() {
   return (

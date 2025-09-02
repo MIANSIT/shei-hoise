@@ -11,6 +11,7 @@ import {
   Clipboard,
   Edit,
   BarChart2,
+  FolderPlus,
 } from "lucide-react";
 import React from "react";
 
@@ -46,6 +47,7 @@ export const sideMenu: MenuItem[] = [
         icon: Edit,
       },
       { title: "All Products", href: "/dashboard/products", icon: List },
+      { title: "All Categories", href: "/dashboard/products/view-category", icon: FolderPlus },
     ],
   },
   {
