@@ -49,6 +49,8 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
     }${order.user.country ? ", " + order.user.country : ""}`.trim() ||
     "Not Provided";
 
+  const isCancelled = order.status === "cancelled";
+
   return (
     <div className="space-y-6 p-4 bg-white rounded-lg shadow-sm">
       {/* Products Table */}
@@ -78,26 +80,42 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             <p>{order.user.phone || "Not Provided"}</p>
           </div>
 
-          {/* Single row for delivery/payment statuses */}
+          {/* Cancel Note or Delivery/Payment statuses */}
           <div className="sm:col-span-2 flex flex-wrap gap-6 mt-2">
+            {/* Always show Order Status */}
             <div>
-              <strong>Delivery Method:&nbsp;</strong>
-              <StatusTag
-                status={order.deliveryOption.toLowerCase() as StatusType}
-              />
+              <strong>Order Status:&nbsp;</strong>
+              <StatusTag status={order.status.toLowerCase() as StatusType} />
             </div>
-            <div>
-              <strong>Payment Method:&nbsp;</strong>
-              <StatusTag
-                status={order.paymentMethod.toLowerCase() as StatusType}
-              />
-            </div>
-            <div>
-              <strong>Payment Status:&nbsp;</strong>
-              <StatusTag
-                status={order.paymentStatus.toLowerCase() as StatusType}
-              />
-            </div>
+
+            {/* Conditional: Cancel Note vs Delivery/Payment */}
+            {isCancelled && order.cancelNote ? (
+              <div>
+                <strong>Cancel Note:&nbsp;</strong>
+                <span>{order.cancelNote}</span>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <strong>Delivery Method:&nbsp;</strong>
+                  <StatusTag
+                    status={order.deliveryOption.toLowerCase() as StatusType}
+                  />
+                </div>
+                <div>
+                  <strong>Payment Method:&nbsp;</strong>
+                  <StatusTag
+                    status={order.paymentMethod.toLowerCase() as StatusType}
+                  />
+                </div>
+                <div>
+                  <strong>Payment Status:&nbsp;</strong>
+                  <StatusTag
+                    status={order.paymentStatus.toLowerCase() as StatusType}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

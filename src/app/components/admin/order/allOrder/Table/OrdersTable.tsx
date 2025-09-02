@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { Table, Avatar, Space, Tooltip } from "antd";
+import React, { useState, useEffect } from "react";
+import { Avatar, Space, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Order, Product } from "@/lib/types/types";
 import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
+import DataTable from "@/app/components/admin/common/DataTable";
 
 interface Props {
   orders: Order[];
@@ -18,16 +19,18 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
   const [searchOrderId, setSearchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
 
-  // Handle search by Order ID
+  useEffect(() => {
+    const filtered = orders.filter((o) =>
+      o.id.toString().includes(searchOrderId)
+    );
+    setFilteredOrders(filtered);
+  }, [orders, searchOrderId]);
+
   const handleSearchChange = (value: string) => {
     setSearchOrderId(value);
-    const filtered = orders.filter((o) => o.id.toString().includes(value));
-    setFilteredOrders(filtered);
   };
 
-  // Handle filter from tabs component
   const handleTabFilter = (filtered: Order[]) => {
-    // Apply search as well
     const finalFiltered = filtered.filter((o) =>
       o.id.toString().includes(searchOrderId)
     );
@@ -103,12 +106,8 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
 
   return (
     <div>
-      {/* Search input above table */}
-
-      <div className=" mb-4">
-        {/* Search input on the left */}
-
-        {/* Filter tabs on the right */}
+      {/* Search + Tabs */}
+      <div className="mb-4">
         <OrdersFilterTabs
           orders={orders}
           onFilter={handleTabFilter}
@@ -116,29 +115,38 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
           onSearchChange={handleSearchChange}
         />
       </div>
-      {/* Orders table */}
-      <Table<Order>
+
+      {/* DataTable */}
+      <DataTable<Order>
         columns={columns}
-        dataSource={filteredOrders}
+        data={filteredOrders}
         rowKey="id"
+        pagination={{ pageSize: 10 }}
+        size="middle"
         expandable={{
           expandedRowRender: (order: Order) => (
             <div className="space-y-6">
-              <OrderProductTable
-                order={order}
-                onSaveStatus={(s: Order["status"]) =>
-                  onUpdate(order.id, { status: s })
-                }
-                onSavePaymentStatus={(s: Order["paymentStatus"]) =>
-                  onUpdate(order.id, { paymentStatus: s })
-                }
-                onSaveDeliveryOption={(o: Order["deliveryOption"]) =>
-                  onUpdate(order.id, { deliveryOption: o })
-                }
-                onSavePaymentMethod={(m: Order["paymentMethod"]) =>
-                  onUpdate(order.id, { paymentMethod: m })
-                }
-              />
+              {/* Show editable controls only if order is not delivered or cancelled */}
+              {order.status !== "delivered" && order.status !== "cancelled" && (
+                <OrderProductTable
+                  order={order}
+                  onSaveStatus={(s) => onUpdate(order.id, { status: s })}
+                  onSavePaymentStatus={(s) =>
+                    onUpdate(order.id, { paymentStatus: s })
+                  }
+                  onSaveDeliveryOption={(o) =>
+                    onUpdate(order.id, { deliveryOption: o })
+                  }
+                  onSavePaymentMethod={(m) =>
+                    onUpdate(order.id, { paymentMethod: m })
+                  }
+                  onSaveCancelNote={(note) =>
+                    onUpdate(order.id, { cancelNote: note })
+                  }
+                />
+              )}
+
+              {/* Always show detailed view */}
               <DetailedOrderView order={order} />
             </div>
           ),

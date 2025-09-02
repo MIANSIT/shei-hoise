@@ -25,4 +25,5 @@ export interface Order {
   paymentMethod: "COD" | "Online";
   paymentStatus: "paid" | "pending" | "failed";
   deliveryCost: number;
+  cancelNote?: string; // <--- add this line
 }

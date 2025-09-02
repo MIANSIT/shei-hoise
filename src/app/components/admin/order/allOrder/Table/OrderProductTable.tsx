@@ -10,6 +10,7 @@ interface Props {
   onSavePaymentStatus: (newStatus: Order["paymentStatus"]) => void;
   onSaveDeliveryOption: (newOption: Order["deliveryOption"]) => void;
   onSavePaymentMethod: (newMethod: Order["paymentMethod"]) => void;
+  onSaveCancelNote?: (note: string) => void;
 }
 
 const OrderProductTable: React.FC<Props> = ({
@@ -18,15 +19,8 @@ const OrderProductTable: React.FC<Props> = ({
   onSavePaymentStatus,
   onSaveDeliveryOption,
   onSavePaymentMethod,
+  onSaveCancelNote,
 }) => {
-  // Add keys to products for table rows
-
-  // Lock if delivered/cancelled and payment is paid
-  const isLocked =
-    (order.status === "delivered" || order.status === "cancelled") &&
-    order.paymentStatus === "paid";
-
-  // Local state for editable fields
   const [selectedStatus, setSelectedStatus] = useState<Order["status"]>(
     order.status
   );
@@ -39,8 +33,12 @@ const OrderProductTable: React.FC<Props> = ({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
     Order["paymentMethod"]
   >(order.paymentMethod);
+  const [cancelNote, setCancelNote] = useState(order.cancelNote || "");
 
-  // Save changes if any
+  const isLocked =
+    (order.status === "delivered" || order.status === "cancelled") &&
+    order.paymentStatus === "paid";
+
   const handleSaveAll = () => {
     if (selectedStatus !== order.status) onSaveStatus(selectedStatus);
     if (selectedPaymentStatus !== order.paymentStatus)
@@ -49,13 +47,11 @@ const OrderProductTable: React.FC<Props> = ({
       onSaveDeliveryOption(selectedDeliveryOption);
     if (selectedPaymentMethod !== order.paymentMethod)
       onSavePaymentMethod(selectedPaymentMethod);
+    if (cancelNote !== order.cancelNote) onSaveCancelNote?.(cancelNote);
   };
 
   return (
     <div className="p-4 bg-gray-50 rounded-md space-y-4">
-      {/* Product table with delivery & payment inside */}
-
-      {/* Editable controls for order */}
       <OrderControls
         status={order.status}
         selectedStatus={selectedStatus}
@@ -69,6 +65,8 @@ const OrderProductTable: React.FC<Props> = ({
         paymentMethod={order.paymentMethod}
         selectedPaymentMethod={selectedPaymentMethod}
         onSelectPaymentMethod={setSelectedPaymentMethod}
+        cancelNote={cancelNote}
+        onSelectCancelNote={setCancelNote}
         isLocked={isLocked}
         onSaveAll={handleSaveAll}
       />
