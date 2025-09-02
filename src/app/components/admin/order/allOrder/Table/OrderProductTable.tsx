@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Order } from "@/lib/types/types";
-import OrderControls from "./OrderControls";
+import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
 
 interface Props {
   order: Order;

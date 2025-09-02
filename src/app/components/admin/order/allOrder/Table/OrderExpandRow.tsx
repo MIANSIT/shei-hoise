@@ -1,5 +1,5 @@
 import React from "react";
-import { Order } from "../../../../../lib/types/types";
+import { Order } from "../../../../../../lib/types/types";
 import OrderProductTable from "./OrderProductTable";
 
 interface Props {

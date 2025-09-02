@@ -4,7 +4,7 @@ import React from "react";
 import DataTable from "@/app/components/admin/common/DataTable";
 import { ColumnsType } from "antd/es/table";
 import { Order, Product } from "@/lib/types/types";
-import StatusTag, { StatusType } from "./StatusTag";
+import StatusTag, { StatusType } from "../StatusFilter/StatusTag";
 
 interface Props {
   order: Order;

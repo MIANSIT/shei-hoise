@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Table, Avatar, Space, Tooltip, Input } from "antd";
+import { Table, Avatar, Space, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Order, Product } from "@/lib/types/types";
-import StatusTag from "./StatusTag";
+import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
-import DetailedOrderView from "./DetailedOrderView";
-import OrdersFilterTabs from "./OrdersFilterTabs";
+import DetailedOrderView from "../TableData/DetailedOrderView";
+import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 
 interface Props {
   orders: Order[];

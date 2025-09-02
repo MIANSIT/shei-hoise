@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "antd";
-import StatusTag from "./StatusTag";
+import StatusTag from "../StatusFilter/StatusTag";
 import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
 import EditableDeliveryOption from "./EditableDeliveryOption";
