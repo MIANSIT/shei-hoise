@@ -24,4 +24,5 @@ export interface Order {
   deliveryOption: "Pathao" | "Courier" | "Other";
   paymentMethod: "COD" | "Online";
   paymentStatus: "paid" | "pending" | "failed";
+  deliveryCost: number;
 }

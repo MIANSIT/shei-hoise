@@ -26,9 +26,20 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       render: (p) => `$${p.toFixed(2)}`,
     },
     {
-      title: "Grand Total",
+      title: "Total",
       key: "lineTotal",
       render: (_, p) => `$${(p.price * p.quantity).toFixed(2)}`,
+    },
+    {
+      title: "Delivery Cost",
+      key: "deliveryCost",
+      render: () => `$${order.deliveryCost.toFixed(2)}`,
+    },
+    {
+      title: "Grand Total",
+      key: "grandTotal",
+      render: (_, p) =>
+        `$${(p.price * p.quantity + order.deliveryCost).toFixed(2)}`,
     },
   ];
 
@@ -56,40 +67,36 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
       {/* Delivery & Payment Info */}
       <div>
-        {/* Delivery & Payment Info */}
-        <div>
-          <h3 className="font-semibold mb-2">Delivery & Payment Info</h3>
+        <h3 className="font-semibold mb-2">Delivery & Payment Info</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
+          <div>
+            <strong>Full Delivery Address:</strong>
+            <p className="truncate">{fullAddress}</p>
+          </div>
+          <div>
+            <strong>Phone Number:</strong>
+            <p>{order.user.phone || "Not Provided"}</p>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
+          {/* Single row for delivery/payment statuses */}
+          <div className="sm:col-span-2 flex flex-wrap gap-6 mt-2">
             <div>
-              <strong>Full Delivery Address:</strong>
-              <p className="truncate">{fullAddress}</p>
+              <strong>Delivery Method:&nbsp;</strong>
+              <StatusTag
+                status={order.deliveryOption.toLowerCase() as StatusType}
+              />
             </div>
             <div>
-              <strong>Phone Number:</strong>
-              <p>{order.user.phone || "Not Provided"}</p>
+              <strong>Payment Method:&nbsp;</strong>
+              <StatusTag
+                status={order.paymentMethod.toLowerCase() as StatusType}
+              />
             </div>
-
-            {/* Single row for delivery/payment statuses */}
-            <div className="sm:col-span-2 flex flex-wrap gap-6 mt-2">
-              <div>
-                <strong>Delivery Method:&nbsp;</strong>
-                <StatusTag
-                  status={order.deliveryOption.toLowerCase() as StatusType}
-                />
-              </div>
-              <div>
-                <strong>Payment Method:&nbsp;</strong>
-                <StatusTag
-                  status={order.paymentMethod.toLowerCase() as StatusType}
-                />
-              </div>
-              <div>
-                <strong>Payment Status:&nbsp;</strong>
-                <StatusTag
-                  status={order.paymentStatus.toLowerCase() as StatusType}
-                />
-              </div>
+            <div>
+              <strong>Payment Status:&nbsp;</strong>
+              <StatusTag
+                status={order.paymentStatus.toLowerCase() as StatusType}
+              />
             </div>
           </div>
         </div>

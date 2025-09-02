@@ -16,7 +16,8 @@ interface DataTableProps<T> {
   rowSelection?: TableProps<T>["rowSelection"];
   size?: "small" | "middle" | "large";
   expandable?: TableProps<T>["expandable"];
-  rowClassName?: TableProps<T>["rowClassName"]; // ✅ added
+  rowClassName?: TableProps<T>["rowClassName"];
+  // deliveryCost removed — not needed
 }
 
 function DataTable<T extends object>({
@@ -29,7 +30,7 @@ function DataTable<T extends object>({
   rowSelection,
   size = "middle",
   expandable,
-  rowClassName, // ✅ accept rowClassName
+  rowClassName,
 }: DataTableProps<T>) {
   const getRowKey =
     typeof rowKey === "function" ? rowKey : (record: T) => `${record[rowKey]}`;
@@ -46,7 +47,7 @@ function DataTable<T extends object>({
       size={size}
       tableLayout="fixed"
       expandable={expandable}
-      rowClassName={rowClassName} // ✅ forward it
+      rowClassName={rowClassName} // forward rowClassName
     />
   );
 }

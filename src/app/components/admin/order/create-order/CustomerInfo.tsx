@@ -7,6 +7,7 @@ interface CustomerInfoData {
   address: string;
   contact: string;
   deliveryMethod: string;
+  city: string; // ✅ Added city
 }
 
 interface CustomerInfoProps {
@@ -57,6 +58,25 @@ export default function CustomerInfo({ customerInfo, setCustomerInfo, orderId }:
             setCustomerInfo(prev => ({ ...prev, contact: e.target.value }))
           }
         />
+      </div>
+
+      {/* ✅ City Selection */}
+      <div>
+        <label className="text-sm">City</label>
+        <Select
+          value={customerInfo.city}
+          onValueChange={(val) =>
+            setCustomerInfo(prev => ({ ...prev, city: val }))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select City" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="inside-dhaka">Inside Dhaka</SelectItem>
+            <SelectItem value="outside-dhaka">Outside Dhaka</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>

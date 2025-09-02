@@ -13,6 +13,7 @@ export const initialOrders: Order[] = [
       city: "Dhaka",
       country: "Bangladesh",
       phone: "+880123456789",
+      
     },
     products: [
       { title: "iPhone 15", quantity: 1, price: 1200 },
@@ -23,6 +24,8 @@ export const initialOrders: Order[] = [
     deliveryOption: "Pathao",
     paymentMethod: "Online",
     paymentStatus: "pending",
+      deliveryCost: 50,
+
   },
   {
     id: 2,
@@ -41,5 +44,8 @@ export const initialOrders: Order[] = [
     deliveryOption: "Courier",
     paymentMethod: "COD",
     paymentStatus: "paid",
+      deliveryCost: 50,
+
   },
+  
 ];

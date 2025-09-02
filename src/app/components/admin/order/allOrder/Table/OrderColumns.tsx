@@ -1,7 +1,7 @@
 import { ColumnsType } from "antd/es/table";
 import { Avatar, Space, Tooltip } from "antd";
-import { Order } from "../../../../../lib/types/types";
-import StatusTag from "./StatusTag";
+import { Order, Product } from "@/lib/types/types";
+import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
 
 export const getOrderColumns = (): ColumnsType<Order> => [
   {
@@ -23,9 +23,10 @@ export const getOrderColumns = (): ColumnsType<Order> => [
     key: "total",
     render: (_: unknown, order: Order) => {
       const total = order.products.reduce(
-        (sum, p) => sum + p.price * p.quantity,
+        (sum: number, p: Product) => sum + p.price * p.quantity,
         0
       );
+
       const tooltipText = order.products
         .map((p) => `${p.title}: ${p.quantity}`)
         .join(", ");

@@ -19,30 +19,30 @@ export default function OrderDetails({
   products,
   setProducts,
 }: OrderDetailsProps) {
-  const handleProductChange = (rowId: number, selectedId: number) => {
+  const handleProductChange = (rowIndex: number, selectedId: number) => {
     setProducts((prev) =>
-      prev.map((p, index) => (index === rowId ? { ...p, id: selectedId } : p))
+      prev.map((p, index) =>
+        index === rowIndex ? { ...p, id: selectedId } : p
+      )
     );
   };
 
-  const handleQuantityChange = (rowId: number, value: number) => {
+  const handleQuantityChange = (rowIndex: number, value: number) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === rowId ? { ...p, quantity: value } : p))
+      prev.map((p, index) =>
+        index === rowIndex ? { ...p, quantity: value } : p
+      )
     );
   };
 
-  const handleRemove = (rowId: number) => {
-    setProducts((prev) => prev.filter((p) => p.id !== rowId));
+  const handleRemove = (rowIndex: number) => {
+    setProducts((prev) => prev.filter((_, index) => index !== rowIndex));
   };
 
   const handleAddProduct = () => {
-    setProducts((prev) => [
-      ...prev,
-      { id: 0, quantity: 1 }, // id 0 means "no product selected"
-    ]);
+    setProducts((prev) => [...prev, { id: 0, quantity: 1 }]);
   };
 
-  // Prepare all products for the select dropdown
   const allProductsForRow = dummyProducts.map((p) => ({
     id: p.id,
     title: p.title,
@@ -58,7 +58,8 @@ export default function OrderDetails({
       <div className="space-y-4">
         {products.map((product, index) => (
           <ProductRow
-            key={index} // use index if id might be duplicate
+            key={index}
+            rowIndex={index} // ✅ pass row index
             product={product}
             allProducts={allProductsForRow}
             onProductChange={handleProductChange}
@@ -73,7 +74,7 @@ export default function OrderDetails({
           variant="outline"
           className="border-white/30 text-white hover:bg-white/10"
           onClick={handleAddProduct}
-          disabled={dummyProducts.length === 0} // disable if no dummy products
+          disabled={dummyProducts.length === 0}
         >
           + Add Product
         </Button>
