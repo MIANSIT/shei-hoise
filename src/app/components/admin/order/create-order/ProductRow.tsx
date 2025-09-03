@@ -41,7 +41,7 @@ export default function ProductRow({
     : 0;
 
   return (
-    <div className="border border-white/20 rounded-md p-4 bg-transparent space-y-3">
+    <div className="border border-white/20 rounded-md p-4  space-y-3">
       <Select
         onValueChange={(val) => onProductChange(rowIndex, Number(val))}
         value={product.id !== 0 ? product.id.toString() : ""}
@@ -67,11 +67,11 @@ export default function ProductRow({
             onChange={(e) =>
               onQuantityChange(rowIndex, Number(e.target.value))
             }
-            className="w-full text-white"
+            className="w-full "
           />
         </div>
 
-        <div className="flex-1 text-sm text-gray-200 space-y-1">
+        <div className="flex-1 text-sm  space-y-1">
           <div>
             <span className="font-medium">Unit Price:</span>{" "}
             {selectedProduct ? `৳${selectedProduct.currentPrice}` : "-"}

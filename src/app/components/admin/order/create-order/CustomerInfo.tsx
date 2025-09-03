@@ -45,7 +45,7 @@ export default function CustomerInfo({ customerInfo, setCustomerInfo, orderId }:
           onChange={(e) =>
             setCustomerInfo(prev => ({ ...prev, address: e.target.value }))
           }
-          className="w-full rounded-md border border-white/30 bg-transparent px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white"
+          className="w-full rounded-md border   px-4 py-2 focus:outline-none focus:ring-2 "
         />
       </div>
 

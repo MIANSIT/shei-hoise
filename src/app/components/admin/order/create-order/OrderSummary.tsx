@@ -44,7 +44,7 @@ export default function OrderSummary({
   const dueAmount = subtotal - discount + deliveryCost;
 
   return (
-    <div className="mt-6 space-y-4 text-white border-t border-white/20 pt-4">
+    <div className="mt-6 space-y-4  border-t border-white/20 pt-4">
       <p>Subtotal: ৳{subtotal}</p>
 
       {/* Discount */}

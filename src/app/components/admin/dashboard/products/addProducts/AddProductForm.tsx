@@ -2,11 +2,11 @@
 
 import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import FormField from "../addProducts/FormField";
-import PriceFields from "../addProducts/PriceFields";
-import StockFields from "../addProducts/StockFields";
-import PicturesWallUploader from "../addProducts/PicturesWallUploader";
-import ImageUploader from "../addProducts/ImageUploader";
+import FormField from "./FormField";
+import PriceFields from "./PriceFields";
+import StockFields from "./StockFields";
+import PicturesWallUploader from "./PicturesWallUploader";
+import ImageUploader from "./ImageUploader";
 import { useZodForm } from "../../../../../../lib/utils/useZodForm";
 import {
   adminProductSchema,
@@ -45,7 +45,7 @@ const AddProductForm: React.FC<ProductPageFormProps> = ({
   const images = form.watch("images");
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-900 rounded-lg text-gray-100 shadow-lg">
+    <div className="max-w-4xl mx-auto p-6  rounded-lg  shadow-lg">
       <h1 className="text-2xl font-bold mb-6">
         {product ? "Edit Product" : "Add Product"}
       </h1>

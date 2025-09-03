@@ -72,7 +72,7 @@ export default function OrderDetails({
       <div className="pt-4">
         <Button
           variant="outline"
-          className="border-white/30 text-white hover:bg-white/10"
+          className="border-white/30  hover:"
           onClick={handleAddProduct}
           disabled={dummyProducts.length === 0}
         >

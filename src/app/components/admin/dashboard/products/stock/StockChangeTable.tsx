@@ -67,6 +67,7 @@ const StockChangeTable: React.FC = () => {
         <SheiButton
           onClick={handleUpdateStock}
           disabled={Object.keys(editedStocks).length === 0}
+          className="!bg-green-600 !text-white hover:!bg-green-700 "
         >
           Update Stock
         </SheiButton>

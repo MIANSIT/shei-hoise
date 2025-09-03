@@ -51,7 +51,7 @@ const OrderProductTable: React.FC<Props> = ({
   };
 
   return (
-    <div className="p-4 bg-gray-50 rounded-md space-y-4">
+    <div className="p-4  rounded-md space-y-4">
       <OrderControls
         status={order.status}
         selectedStatus={selectedStatus}

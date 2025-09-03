@@ -13,7 +13,7 @@ export const getOrderColumns = (): ColumnsType<Order> => [
         <Avatar src={user.avatar} />
         <div>
           <div className="font-medium">{user.name}</div>
-          <div className="text-gray-500 text-xs">{user.email}</div>
+          <div className=" text-xs">{user.email}</div>
         </div>
       </Space>
     ),

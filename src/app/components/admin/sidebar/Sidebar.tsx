@@ -19,7 +19,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
       collapsed={collapsed}
       trigger={null}
       width={240}
-      className="shadow-md !bg-transparent flex flex-col"
+      className="shadow-md  flex flex-col "
       theme="dark"
     >
       <div className="flex flex-col ">

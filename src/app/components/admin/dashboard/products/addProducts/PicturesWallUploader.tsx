@@ -68,7 +68,7 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
         beforeUpload={() => false} // prevent auto upload 
        
       >
-        {fileList.length >= 8 ? null : <div className="text-gray-200 ">Upload</div>}
+        {fileList.length >= 8 ? null : <div className=" ">Upload</div>}
       </Upload>
 
       <Modal
