@@ -6,6 +6,7 @@ import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type CartBottomBarProps = {
   isOpen: boolean;
@@ -15,6 +16,7 @@ type CartBottomBarProps = {
 export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   const { cart, totalPrice, totalItems } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   // Prevent background scrolling when open
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   }, []);
 
   const handleCheckout = () => {
-    console.log("Proceeding to checkout");
+   router.push("/checkout");
   };
   const displayCount = isMounted ? totalItems() : 0;
 

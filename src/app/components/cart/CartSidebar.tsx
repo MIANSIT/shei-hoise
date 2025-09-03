@@ -7,6 +7,7 @@ import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
 import { Button } from "@/components/ui/button";
 import CartCheckoutLayout from "./CartCheckoutLayout";
+import {useRouter} from "next/navigation";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -16,6 +17,7 @@ type CartSidebarProps = {
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { cart, totalPrice, totalItems } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   }, []);
 
   const handleCheckout = () => {
-    console.log("Proceeding to checkout");
+    router.push("/checkout");
   };
   const displayCount = isMounted ? totalItems() : 0;
 
