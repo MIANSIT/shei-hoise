@@ -7,7 +7,7 @@ import { footerContent } from "../../../lib/store/footerContent";
 
 export default function Footer() {
   return (
-    <footer className="bg-black text-gray-300 w-full mt-auto">
+    <footer className="bg-background text-muted-foreground w-full mt-auto border-t border-border">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="block md:hidden">
           <FooterMobile />

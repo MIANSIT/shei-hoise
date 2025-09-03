@@ -24,7 +24,11 @@ export default function NavMenu({ links }: NavMenuProps) {
             key={link.path}
             href={link.path}
             className={`relative text-sm font-medium transition-colors duration-300
-              ${isActive ? "text-white font-semibold" : "text-gray-200 hover:text-white"}
+              ${
+                isActive 
+                  ? "text-foreground font-semibold" 
+                  : "text-muted-foreground hover:text-foreground"
+              }
               after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-full
               after:bg-gradient-to-r after:from-yellow-400 after:to-yellow-600
               after:scale-x-0 after:origin-left after:transition-transform after:duration-300

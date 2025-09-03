@@ -30,7 +30,7 @@ export default function AuthButtons({
     return (
       <button
         onClick={handleLogout}
-        className="px-4 py-1.5 rounded-md bg-red-500 text-white font-semibold hover:bg-red-600 block w-full"
+        className="px-4 py-1.5 rounded-md bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90 block w-full"
       >
         Logout
       </button>
@@ -48,11 +48,11 @@ export default function AuthButtons({
             href={`${link.path}${redirectParam}`}
             className={`text-sm font-medium px-4 py-1.5 rounded-md ${
               link.isHighlighted
-                ? "bg-white text-black font-semibold hover:bg-gray-200"
-                : "text-gray-200 hover:text-white"
-            } block`}
+                ? "bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+                : "text-muted-foreground hover:text-foreground border border-border"
+            } block transition-colors`}
           >
-            {link.name}
+            <span className="relative top-[-1px]">{link.name}</span>
           </Link>
         );
       })}

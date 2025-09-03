@@ -47,7 +47,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           className={`w-4 h-4 ${
             i <= fullStars
               ? "fill-yellow-400 text-yellow-400"
-              : "fill-gray-300 text-gray-300"
+              : "fill-muted text-muted-foreground"
           }`}
         />
       );
@@ -90,10 +90,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card">
+    <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border">
       <Link
         href={productLink}
-        className="flex flex-col flex-1 cursor-pointer hover:text-white"
+        className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
       >
         {/* Product Image */}
         <div className="relative w-full h-80 overflow-hidden group">
@@ -105,7 +105,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             sizes="(max-width: 640px) 100vw, 300px"
           />
           <div className="absolute inset-0 flex justify-between items-start p-4">
-            <span className="text-white text-xs uppercase tracking-wider bg-black bg-opacity-50 px-2 py-1 rounded-md">
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-background/80 px-2 py-1 rounded-md">
               {category}
             </span>
           </div>
@@ -113,7 +113,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Info Section */}
         <div className="flex flex-col p-4 gap-3">
-          <h3 className="font-semibold text-lg line-clamp-1">{title}</h3>
+          <h3 className="font-semibold text-lg line-clamp-1 text-foreground">{title}</h3>
 
           {/* Price + Discount + Rating */}
           <div className="flex flex-col gap-1">
@@ -124,14 +124,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <span className="text-xl font-semibold text-foreground">
                   ${currentPrice}
                 </span>
-                <span className="text-sm text-muted-foreground line-through">
-                  ${originalPrice}
-                </span>
+                {originalPrice > currentPrice && (
+                  <span className="text-sm text-muted-foreground line-through">
+                    ${originalPrice}
+                  </span>
+                )}
               </div>
 
               {/* Right side: Discount */}
               {calculatedDiscount > 0 && (
-                <span className="text-xs font-medium text-white bg-red-500 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-medium text-primary-foreground bg-primary px-2 py-0.5 rounded-full">
                   -{calculatedDiscount}%
                 </span>
               )}
@@ -170,7 +172,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           size="lg"
           className={`gap-2 relative overflow-hidden cursor-pointer ${
             showSuccess
-              ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg"
+              ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
               : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
           }`}
         >
@@ -195,7 +197,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   : "opacity-0 translate-y-4"
               }`}
             >
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin-slow"></div>
+              <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
               <span>Adding...</span>
             </div>
 

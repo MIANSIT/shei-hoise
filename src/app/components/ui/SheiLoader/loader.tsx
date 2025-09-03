@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -18,8 +17,10 @@ const loaderVariants = cva(
         primary: "text-primary",
         secondary: "text-secondary",
         destructive: "text-destructive",
+        foreground: "text-foreground", // Added foreground option
         white: "text-white",
         black: "text-black",
+        current: "text-current border-current",
       },
     },
     defaultVariants: {
@@ -47,7 +48,7 @@ const SheiLoader = React.forwardRef<HTMLSpanElement, SheiLoaderProps>(
           aria-label="Loading"
         />
         {loadingText && (
-          <span className="text-white text-sm font-medium">{loadingText}</span>
+          <span className="text-primary text-sm font-medium">{loadingText}</span>
         )}
       </div>
     );

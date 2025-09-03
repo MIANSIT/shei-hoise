@@ -36,8 +36,8 @@ export default function ProductFilterSection({
     <section className="w-full">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Products</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl font-bold text-foreground">Products</h2>
+          <p className="text-muted-foreground">
             Browse our latest products and find something you&apos;ll love.
           </p>
         </div>
@@ -54,8 +54,8 @@ export default function ProductFilterSection({
                 variant={activeCategory === category ? "default" : "outline"}
                 className={`rounded-full px-4 py-1 text-sm transition ${
                   activeCategory === category
-                    ? "bg-white text-black shadow-sm"
-                    : "bg-transparent text-white hover:bg-white/10"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-foreground hover:bg-accent border-border"
                 }`}
                 onClick={() => onCategoryChange(category)}
               >

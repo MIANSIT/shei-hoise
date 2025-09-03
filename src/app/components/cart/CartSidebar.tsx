@@ -7,6 +7,7 @@ import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
 import { Button } from "@/components/ui/button";
 import CartCheckoutLayout from "./CartCheckoutLayout";
+import {useRouter} from "next/navigation";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -16,6 +17,7 @@ type CartSidebarProps = {
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { cart, totalPrice, totalItems } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   }, []);
 
   const handleCheckout = () => {
-    console.log("Proceeding to checkout");
+    router.push("/checkout");
   };
   const displayCount = isMounted ? totalItems() : 0;
 
@@ -47,16 +49,16 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         onClick={onClose}
       />
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md text-white bg-black shadow-xl z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md text-foreground bg-background shadow-xl z-50 transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className='flex flex-col h-full'>
-          <div className='flex items-center justify-between p-4 border-b'>
+          <div className='flex items-center justify-between p-4 border-b border-border'>
             <h2 className='text-lg font-semibold'>Your Cart ({displayCount})</h2>
             <button
               onClick={onClose}
-              className='p-1 rounded-md hover:bg-black cursor-pointer'
+              className='p-1 rounded-md hover:bg-accent cursor-pointer transition-colors'
               aria-label='Close cart'
             >
               <X className='h-5 w-5' />
@@ -65,9 +67,9 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
           <div className='flex-1 p-4 overflow-y-auto'>
             {cart.length === 0 ? (
               <div className='text-center py-8'>
-                <p className='text-gray-500'>Your cart is empty</p>
+                <p className='text-muted-foreground'>Your cart is empty</p>
                 <Button
-                  className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
+                  className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
                   onClick={onClose}
                 >
                   Continue Shopping
