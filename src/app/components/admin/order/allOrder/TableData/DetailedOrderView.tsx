@@ -52,7 +52,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
   const isCancelled = order.status === "cancelled";
 
   return (
-    <div className="space-y-6 p-4 bg-white rounded-lg shadow-sm">
+    <div className="space-y-6 p-4  rounded-lg shadow-sm">
       {/* Products Table */}
       <div>
         <h3 className="font-semibold mb-2">Products</h3>
@@ -70,7 +70,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       {/* Delivery & Payment Info */}
       <div>
         <h3 className="font-semibold mb-2">Delivery & Payment Info</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4  rounded-md">
           <div>
             <strong>Full Delivery Address:</strong>
             <p className="truncate">{fullAddress}</p>

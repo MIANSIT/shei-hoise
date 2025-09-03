@@ -8,8 +8,15 @@ interface SidebarBrandProps {
 
 export default function SidebarBrand({ collapsed }: SidebarBrandProps) {
   return (
-    <div className="h-16 flex items-center justify-center text-white font-bold text-lg tracking-wide border-b border-gray-800">
-      {collapsed ? "🛒" : "My Admin"}
+    <div
+      className="h-16 flex items-center justify-center font-bold text-lg tracking-wide"
+      style={{
+        borderBottom: "1px solid var(--sidebar-border)",
+        color: "var(--sidebar-foreground)",
+        background: "var(--sidebar)",
+      }}
+    >
+      {collapsed ? "🛒" : "Shei Admin"}
     </div>
   );
 }
