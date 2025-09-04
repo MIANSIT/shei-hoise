@@ -5,6 +5,7 @@ import DataTable from "@/app/components/admin/common/DataTable";
 import { ColumnsType } from "antd/es/table";
 import { Order, Product } from "@/lib/types/types";
 import StatusTag, { StatusType } from "../StatusFilter/StatusTag";
+import { Tooltip } from "antd";
 
 interface Props {
   order: Order;
@@ -28,7 +29,15 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
     {
       title: "Total",
       key: "lineTotal",
-      render: (_, p) => `$${(p.price * p.quantity).toFixed(2)}`,
+      render: (_, p) => (
+        <Tooltip
+          title={`${p.price.toFixed(2)} × ${p.quantity} = $${(
+            p.price * p.quantity
+          ).toFixed(2)}`}
+        >
+          <span>${(p.price * p.quantity).toFixed(2)}</span>
+        </Tooltip>
+      ),
     },
     {
       title: "Delivery Cost",
@@ -38,8 +47,15 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
     {
       title: "Grand Total",
       key: "grandTotal",
-      render: (_, p) =>
-        `$${(p.price * p.quantity + order.deliveryCost).toFixed(2)}`,
+      render: (_, p) => (
+        <Tooltip
+          title={`${(p.price * p.quantity).toFixed(2)} + ${order.deliveryCost.toFixed(2)}`}
+        >
+          <span>
+            ${((p.price * p.quantity + order.deliveryCost).toFixed(2))}
+          </span>
+        </Tooltip>
+      ),
     },
   ];
 
