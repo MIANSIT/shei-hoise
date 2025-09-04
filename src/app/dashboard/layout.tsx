@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  // Handle sidebar responsiveness
+  // Sidebar responsiveness
   useEffect(() => {
     const handleResize = () => setIsSidebarOpen(window.innerWidth >= 768);
     handleResize();
@@ -35,7 +35,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, []);
 
-  // Toggle light/dark
+  // Toggle light/dark mode
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
@@ -47,10 +47,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <ProtectedRoute>
       <ConfigProvider
         theme={{
-          algorithm:
-            theme === "dark"
-              ? antdTheme.darkAlgorithm
-              : antdTheme.defaultAlgorithm,
+          algorithm: theme === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
           token: {
             colorPrimary: "#3b82f6", // brand color
             borderRadius: 8,
@@ -58,10 +55,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           components: {
             Menu: {
               itemColor: theme === "dark" ? "#d1d5db" : "#374151",
-              itemHoverBg: theme === "dark" ? "#1f2937" : "#e5e7eb",
-              itemHoverColor: theme === "dark" ? "#f9fafb" : "#111827",
-              itemSelectedBg: theme === "dark" ? "#374151" : "#f3f4f6",
-              itemSelectedColor: theme === "dark" ? "#fff" : "#111827",
+              itemHoverBg: theme === "dark" ? "#1f2937" : "#000000",
+              itemHoverColor: theme === "dark" ? "#e5e7eb" : "#e5e7eb",
+              itemSelectedBg: theme === "dark" ? "#374151" : "#000000",
+              itemSelectedColor: "#ffffff",
+              groupTitleColor: theme === "dark" ? "#d1d5db" : "#374151",
             },
           },
         }}
@@ -92,7 +90,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
             </div>
 
-            {/* Theme toggle button */}
+            {/* Theme toggle */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded hover:opacity-70"
