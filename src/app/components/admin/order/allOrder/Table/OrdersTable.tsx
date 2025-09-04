@@ -19,6 +19,9 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
   const [searchOrderId, setSearchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
 
+  // Track only one expanded row
+  const [expandedRowKey, setExpandedRowKey] = useState<number | null>(null);
+
   useEffect(() => {
     const filtered = orders.filter((o) =>
       o.id.toString().includes(searchOrderId)
@@ -26,9 +29,7 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
     setFilteredOrders(filtered);
   }, [orders, searchOrderId]);
 
-  const handleSearchChange = (value: string) => {
-    setSearchOrderId(value);
-  };
+  const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleTabFilter = (filtered: Order[]) => {
     const finalFiltered = filtered.filter((o) =>
@@ -53,7 +54,7 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
           <Avatar src={user.avatar} />
           <div>
             <div className="font-medium">{user.name}</div>
-            <div className=" text-xs">{user.email}</div>
+            <div className="text-xs">{user.email}</div>
           </div>
         </Space>
       ),
@@ -116,17 +117,19 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
         />
       </div>
 
-      {/* DataTable */}
       <DataTable<Order>
         columns={columns}
         data={filteredOrders}
-        rowKey="id"
+        rowKey={(record) => record.id.toString()} // ✅ convert number to string
         pagination={{ pageSize: 10 }}
         size="middle"
         expandable={{
+          expandedRowKeys:
+            expandedRowKey !== null ? [expandedRowKey.toString()] : [],
+          onExpand: (expanded, record) =>
+            setExpandedRowKey(expanded ? record.id : null),
           expandedRowRender: (order: Order) => (
             <div className="space-y-6">
-              {/* Show editable controls only if order is not delivered or cancelled */}
               {order.status !== "delivered" && order.status !== "cancelled" && (
                 <OrderProductTable
                   order={order}
@@ -145,8 +148,6 @@ const OrdersTable: React.FC<Props> = ({ orders, onUpdate }) => {
                   }
                 />
               )}
-
-              {/* Always show detailed view */}
               <DetailedOrderView order={order} />
             </div>
           ),
