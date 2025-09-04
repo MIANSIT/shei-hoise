@@ -33,9 +33,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         const total = p.price * p.quantity;
         return (
           <Tooltip
-            title={`(Unit Price)${p.price.toFixed(2)} × (Quantity)  ${
-              p.quantity
-            }  = ${total.toFixed(2)}`}
+            title={`(Unit Price)${p.price.toFixed(2)} ×   ${p.quantity} (Qty) `}
           >
             <span>${total.toFixed(2)}</span>
           </Tooltip>
@@ -55,7 +53,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         const total = p.price * p.quantity;
         return (
           <Tooltip
-            title={`(Products Total)${total.toFixed(
+            title={`(Products Total) ${total.toFixed(
               2
             )} + ${order.deliveryCost.toFixed(2)} (Delivery Cost)`}
           >
