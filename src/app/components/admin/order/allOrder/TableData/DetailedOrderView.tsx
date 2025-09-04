@@ -29,16 +29,20 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
     {
       title: "Total",
       key: "lineTotal",
-      render: (_, p) => (
-        <Tooltip
-          title={`${p.price.toFixed(2)} × ${p.quantity} = $${(
-            p.price * p.quantity
-          ).toFixed(2)}`}
-        >
-          <span>${(p.price * p.quantity).toFixed(2)}</span>
-        </Tooltip>
-      ),
+      render: (_, p) => {
+        const total = p.price * p.quantity;
+        return (
+          <Tooltip
+            title={`(Unit Price)${p.price.toFixed(2)} × (Quantity)  ${
+              p.quantity
+            }  = ${total.toFixed(2)}`}
+          >
+            <span>${total.toFixed(2)}</span>
+          </Tooltip>
+        );
+      },
     },
+
     {
       title: "Delivery Cost",
       key: "deliveryCost",
@@ -47,15 +51,18 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
     {
       title: "Grand Total",
       key: "grandTotal",
-      render: (_, p) => (
-        <Tooltip
-          title={`${(p.price * p.quantity).toFixed(2)} + ${order.deliveryCost.toFixed(2)}`}
-        >
-          <span>
-            ${((p.price * p.quantity + order.deliveryCost).toFixed(2))}
-          </span>
-        </Tooltip>
-      ),
+      render: (_, p) => {
+        const total = p.price * p.quantity;
+        return (
+          <Tooltip
+            title={`(Products Total)${total.toFixed(
+              2
+            )} + ${order.deliveryCost.toFixed(2)} (Delivery Cost)`}
+          >
+            <span>${(total + order.deliveryCost).toFixed(2)}</span>
+          </Tooltip>
+        );
+      },
     },
   ];
 
