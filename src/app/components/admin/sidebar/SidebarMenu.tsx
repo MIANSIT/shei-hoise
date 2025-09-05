@@ -49,7 +49,6 @@ export default function SidebarMenu() {
   return (
     <Menu
       mode="inline"
-      theme="dark"
       selectedKeys={[pathname]}
       defaultOpenKeys={defaultOpenKeys}
       items={items}
@@ -57,7 +56,7 @@ export default function SidebarMenu() {
       style={{
         flex: 1,
         borderRight: 0,
-        backgroundColor: "transparent",
+        background: "transparent",
       }}
     />
   );

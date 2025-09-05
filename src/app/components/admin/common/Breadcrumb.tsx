@@ -16,12 +16,12 @@ export default function Breadcrumb() {
 
   return (
     <nav aria-label="Breadcrumb" className="mb-4 ml-4 mt-4">
-      <ol className="flex items-center space-x-2 text-sm ">
+      <ol className="flex items-center space-x-2 text-sm">
         {/* Root breadcrumb (Dashboard) */}
         <li>
           <Link
             href="/dashboard"
-            className="flex items-center  hover:text-gray-500"
+            className="flex items-center font-bold hover:text-gray-500"
           >
             Dashboard
           </Link>
@@ -46,7 +46,7 @@ export default function Breadcrumb() {
               ) : (
                 <Link
                   href={href}
-                  className=" hover:text-gray-500"
+                  className="font-bold hover:text-gray-500"
                 >
                   {formatted}
                 </Link>

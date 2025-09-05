@@ -1,10 +1,10 @@
 import React from "react";
 import ProductTable from "./ProductTable";
-import { dummyProducts } from "../../../../../lib/store/dummyProducts";
+import { dummyProducts } from "@/lib/store/dummyProducts";
 
 const Products: React.FC = () => {
   return (
-    <div className="p-6">
+    <div className="">
       <ProductTable products={dummyProducts} />
     </div>
   );

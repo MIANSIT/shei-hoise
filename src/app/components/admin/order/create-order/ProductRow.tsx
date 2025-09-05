@@ -19,14 +19,16 @@ interface ProductItem {
 }
 
 interface ProductRowProps {
+  rowIndex: number;
   product: { id: number; quantity: number };
   allProducts: ProductItem[];
-  onProductChange: (rowId: number, selectedId: number) => void;
-  onQuantityChange: (rowId: number, value: number) => void;
-  onRemove: (rowId: number) => void;
+  onProductChange: (rowIndex: number, selectedId: number) => void;
+  onQuantityChange: (rowIndex: number, value: number) => void;
+  onRemove: (rowIndex: number) => void;
 }
 
 export default function ProductRow({
+  rowIndex,
   product,
   allProducts,
   onProductChange,
@@ -39,10 +41,10 @@ export default function ProductRow({
     : 0;
 
   return (
-    <div className="border border-white/20 rounded-md p-4 bg-transparent space-y-3">
+    <div className="border border-white/20 rounded-md p-4  space-y-3">
       <Select
-        onValueChange={(val) => onProductChange(product.id, Number(val))}
-        value={product.id !== 0 ? product.id.toString() : ""} // show empty if id is 0
+        onValueChange={(val) => onProductChange(rowIndex, Number(val))}
+        value={product.id !== 0 ? product.id.toString() : ""}
       >
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select product" />
@@ -63,13 +65,13 @@ export default function ProductRow({
             min={1}
             value={product.quantity}
             onChange={(e) =>
-              onQuantityChange(product.id, Number(e.target.value))
+              onQuantityChange(rowIndex, Number(e.target.value))
             }
-            className="w-full text-white"
+            className="w-full "
           />
         </div>
 
-        <div className="flex-1 text-sm text-gray-200 space-y-1">
+        <div className="flex-1 text-sm  space-y-1">
           <div>
             <span className="font-medium">Unit Price:</span>{" "}
             {selectedProduct ? `৳${selectedProduct.currentPrice}` : "-"}
@@ -95,7 +97,7 @@ export default function ProductRow({
       <div className="flex justify-between items-center mt-2 text-sm">
         <div className="font-medium">Total: ৳{total}</div>
         <button
-          onClick={() => onRemove(product.id)}
+          onClick={() => onRemove(rowIndex)}
           className="text-red-400 hover:text-red-500"
         >
           <Trash2 size={18} />

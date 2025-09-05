@@ -2,10 +2,9 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import AddProductForm from "../../../../components/admin/dashboard/products/AddProductForm";
+import AddProductForm from "../../../../components/admin/dashboard/products/addProducts/AddProductForm";
 import type { ProductFormValues } from "../../../../../lib/utils/formSchema";
 import { dummyProducts } from "@/lib/store/dummyProducts";
-import ProtectedRoute from "@/app/components/common/ProtectedRoute";
 import { useSheiNotification } from "../../../../../lib/hook/useSheiNotification";
 
 const EditProductPage = () => {

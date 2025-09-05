@@ -22,10 +22,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
   const handleLogout = async () => {
     try {
       setLoading(true);
-
-      // Call logout API & update Zustand
       await logout();
-
       notify.success("Logout successful!");
       router.push("/admin-login");
     } catch (err) {
@@ -49,33 +46,41 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
   };
 
   return (
-    <div className="p-4 border-t border-gray-500 mt-auto">
+    <div
+      className="p-4 mt-auto"
+      style={{
+        borderTop: "1px solid var(--sidebar-border)",
+        background: "var(--sidebar)",
+        color: "var(--sidebar-foreground)",
+      }}
+    >
       {collapsed ? (
-        // Collapsed view: Avatar only with dropdown menu
         <Dropdown menu={profileMenu} placement="topRight">
           <div className="flex items-center gap-3 cursor-pointer">
-            <Avatar style={{ backgroundColor: "#7265e6" }} size={40}>
+            <Avatar style={{ backgroundColor: "var(--sidebar-primary)" }} size={40}>
               AD
             </Avatar>
           </div>
         </Dropdown>
       ) : (
-        // Expanded view: Avatar, info, logout button
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Avatar style={{ backgroundColor: "#7265e6" }} size={40}>
+            <Avatar style={{ backgroundColor: "var(--sidebar-primary)" }} size={40}>
               AD
             </Avatar>
             <div>
-              <div className="text-sm font-medium text-white">Admin</div>
-              <div className="text-xs text-gray-400">admin@sheihoise.com</div>
+              <div className="text-sm font-medium" style={{ color: "var(--sidebar-foreground)" }}>
+                Admin
+              </div>
+              <div className="text-xs opacity-70">admin@sheihoise.com</div>
             </div>
           </div>
 
           <Tooltip title="Logout">
             <button
               onClick={handleLogout}
-              className="text-red-400 hover:text-red-800 transition flex items-center justify-center"
+              className="transition flex items-center justify-center"
+              style={{ color: "var(--destructive)" }}
               disabled={loading}
             >
               {loading ? <Spin size="small" /> : <LucideIcon icon={LogOut} size={20} />}

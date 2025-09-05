@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import AddProductForm from "../../../components/admin/dashboard/products/AddProductForm";
+import AddProductForm from "../../../components/admin/dashboard/products/addProducts/AddProductForm";
 import { useSheiNotification } from "../../../../lib/hook/useSheiNotification";
 import { ProductFormValues } from "../../../../lib/utils/formSchema";
 

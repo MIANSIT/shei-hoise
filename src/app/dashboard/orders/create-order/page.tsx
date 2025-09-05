@@ -1,4 +1,4 @@
-import CreateOrder from "@/app/components/admin/order/CreateOrder"
+import CreateOrder from "@/app/components/admin/order/create-order/CreateOrder";
 
 export default function OrdersPage() {
   return (

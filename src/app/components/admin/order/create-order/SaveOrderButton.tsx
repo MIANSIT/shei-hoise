@@ -15,6 +15,7 @@ interface SaveOrderButtonProps {
   products: Product[];
   customerInfo: CustomerInfoData;
   discount: number;
+  deliveryCost: number; // ✅ Added here
   status: string;
 }
 
@@ -23,10 +24,18 @@ export default function SaveOrderButton({
   products,
   customerInfo,
   discount,
+  deliveryCost, // ✅ Added here
   status,
 }: SaveOrderButtonProps) {
   const handleSave = async () => {
-    const orderData = { orderId, products, customerInfo, discount, status };
+    const orderData = {
+      orderId,
+      products,
+      customerInfo,
+      discount,
+      deliveryCost, // ✅ Added here
+      status,
+    };
     console.log("Order to save:", orderData);
 
     // Future backend API call
