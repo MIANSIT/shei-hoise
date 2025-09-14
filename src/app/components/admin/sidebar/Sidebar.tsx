@@ -25,7 +25,7 @@ export default function Sidebar({ collapsed = false, themeMode }: SidebarProps) 
     >
       <div className="flex flex-col flex-1">
         <SidebarBrand collapsed={collapsed} />
-        <SidebarMenu theme={themeMode} /> {/* pass theme down */}
+        <SidebarMenu themeMode={themeMode} /> {/* pass theme down */}
       </div>
       <SidebarProfile collapsed={collapsed} />
     </Sider>

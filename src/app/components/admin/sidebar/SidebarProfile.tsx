@@ -5,16 +5,15 @@ import { Avatar, Dropdown, Tooltip, Spin } from "antd";
 import type { MenuProps } from "antd";
 import { LogOut } from "lucide-react";
 import { LucideIcon } from "@/lib/LucideIcon";
-import { useAuthStore } from "@/lib/store/authStore";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface SidebarProfileProps {
   collapsed: boolean;
 }
 
 export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
-  const logout = useAuthStore((state) => state.logout);
   const notify = useSheiNotification();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -22,12 +21,16 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
   const handleLogout = async () => {
     try {
       setLoading(true);
-      await logout();
+      await supabase.auth.signOut();
       notify.success("Logout successful!");
       router.push("/admin-login");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Logout error:", err);
-      notify.error("Logout failed. Please try again.");
+      if (err instanceof Error) {
+        notify.error(`Logout failed: ${err.message}`);
+      } else {
+        notify.error("Logout failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +82,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
           <Tooltip title="Logout">
             <button
               onClick={handleLogout}
-              className="transition flex items-center justify-center"
+              className="transition flex items-center justify-center cursor-pointer"
               style={{ color: "var(--destructive)" }}
               disabled={loading}
             >
