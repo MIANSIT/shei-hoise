@@ -6,7 +6,9 @@ import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { sideMenu } from "@/lib/menu";
 import { LucideIcon } from "@/lib/LucideIcon";
-
+interface SidebarMenuProps {
+  themeMode: "light" | "dark";
+}
 type AntdMenuItem = Required<MenuProps>["items"][number];
 
 const buildMenuItems = (menu: typeof sideMenu): AntdMenuItem[] =>
@@ -24,7 +26,7 @@ const buildMenuItems = (menu: typeof sideMenu): AntdMenuItem[] =>
     return { key: item.href || item.title, icon, label: item.title };
   });
 
-export default function SidebarMenu() {
+export default function SidebarMenu({ themeMode }: SidebarMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
 
