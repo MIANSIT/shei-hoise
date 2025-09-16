@@ -1,12 +1,9 @@
 "use server";
 
-import {
-  updateCategorySchema,
-  type UpdateCategoryType,
-} from "@/lib/schema/category.schema";
+import { updateCategorySchema, type UpdateCategoryType } from "@/lib/schema/category.schema";
 import { supabase } from "@/lib/supabase";
 
-export async function updateCategory(data: UpdateCategoryType) {
+export async function updateCategory(data: UpdateCategoryType, store_id: string) {
   const payload = updateCategorySchema.parse(data);
 
   try {
@@ -17,9 +14,8 @@ export async function updateCategory(data: UpdateCategoryType) {
         slug: payload.slug,
         description: payload.description ?? null,
         parent_id: payload.parent_id ?? null,
-        // image: payload.image ?? null,
         is_active: payload.is_active,
-        edited_at: new Date().toISOString(),
+        store_id, 
       })
       .eq("id", payload.id);
 

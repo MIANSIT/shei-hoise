@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
-import type { CreateCategoryType } from "@/lib/schema/category.schema";
-import type { Category } from "@/lib/types/category";
-import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
-import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
-import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
-import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { createCategory } from "../../../../lib/queries/categories/createCategory";
+import { updateCategory } from "../../../../lib/queries/categories/updateCategory";
+import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
+import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
+import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
+import type { Category } from "@/lib/types/category";
+import type { CreateCategoryType } from "@/lib/schema/category.schema";
 
 export default function CategoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -17,37 +20,38 @@ export default function CategoryPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const notify = useSheiNotification();
+  const { user, loading: userLoading } = useCurrentUser();
 
   const fetchCategories = async () => {
+    if (!user?.store_id) return;
+
     setLoading(true);
     const { data, error } = await supabase
       .from("categories")
-      .select("id, name, slug, description, parent_id, is_active, created_at")
+      .select("id,name,slug,description,parent_id,is_active,created_at")
+      .eq("store_id", user.store_id)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching categories:", error);
       notify.error("Failed to load categories");
     } else {
-      const mapped: Category[] =
+      setCategories(
         (data?.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug ?? "",
-          description: c.description ?? "",
-          parent_id: c.parent_id ?? null,
-          is_active: c.is_active ?? true,
-          createdAt: c.created_at ? new Date(c.created_at).toISOString().split("T")[0] : "",
-        })) ?? []) as Category[];
-      setCategories(mapped);
+          ...c,
+          createdAt: c.created_at
+            ? new Date(c.created_at).toISOString().split("T")[0]
+            : "",
+        })) ?? []) as Category[]
+      );
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchCategories();
+    if (!userLoading) fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, userLoading]);
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
@@ -55,60 +59,69 @@ export default function CategoryPage() {
   };
 
   const handleDelete = async (category: Category) => {
-    const { error } = await supabase.from("categories").delete().eq("id", category.id);
+    if (!user?.store_id) return;
+    const { error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", category.id)
+      .eq("store_id", user.store_id);
 
     if (error) {
       notify.error(`Failed to delete "${category.name}"`);
       return;
     }
+
     setCategories((prev) => prev.filter((c) => c.id !== category.id));
-    notify.error(`Deleted category "${category.name}"`);
+    notify.info(`Deleted category "${category.name}"`);
   };
 
-  // <-- unified type here: CreateCategoryType
   const handleFormSubmit = async (data: CreateCategoryType) => {
-    // normalize parent_id (empty string -> null)
-    const parent_id = data.parent_id === "" || data.parent_id === null || data.parent_id === undefined
-      ? null
-      : data.parent_id;
-
-    if (editingCategory) {
-      const { error } = await supabase
-        .from("categories")
-        .update({
-          name: data.name,
-          slug: data.slug,
-          description: data.description ?? null,
-          parent_id,
-          is_active: data.is_active ?? true,
-          edited_at: new Date().toISOString(),
-        })
-        .eq("id", editingCategory.id);
-
-      if (error) {
-        notify.error("Update failed");
-        return;
-      }
-      notify.info(`Category "${data.name}" updated successfully!`);
-    } else {
-      const { error } = await supabase.from("categories").insert({
-        name: data.name,
-        slug: data.slug,
-        description: data.description ?? null,
-        parent_id,
-        is_active: data.is_active ?? true,
-      });
-
-      if (error) {
-        notify.error("Create failed");
-        return;
-      }
-      notify.success(`Category "${data.name}" created successfully!`);
+    if (!user?.store_id) {
+      notify.error("Missing store info");
+      return;
     }
 
-    setShowForm(false);
-    setEditingCategory(null);
-    fetchCategories(); // refresh table
+    // Normalize parent_id: empty string or undefined => null
+    const parent_id =
+      data.parent_id === "" ||
+      data.parent_id === null ||
+      data.parent_id === undefined
+        ? null
+        : data.parent_id;
+
+    try {
+      if (editingCategory) {
+        await updateCategory(
+          {
+            id: editingCategory.id,
+            name: data.name,
+            slug: data.slug,
+            description: data.description ?? null,
+            parent_id, // parent category can be null
+            is_active: data.is_active ?? true,
+          },
+          user.store_id
+        );
+        notify.info(`Category "${data.name}" updated successfully!`);
+      } else {
+        await createCategory(
+          {
+            ...data,
+            parent_id, // parent category can be null
+            is_active: data.is_active ?? true,
+          },
+          user.store_id
+        );
+        notify.success(`Category "${data.name}" created successfully!`);
+      }
+
+      setShowForm(false);
+      setEditingCategory(null);
+      fetchCategories();
+    } catch (err: any) {
+      console.error(err);
+      notify.error(err?.message ?? "Failed to save category");
+    }
   };
 
   return (
