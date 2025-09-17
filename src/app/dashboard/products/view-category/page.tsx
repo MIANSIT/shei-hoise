@@ -2,14 +2,17 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { createCategory } from "../../../../lib/queries/categories/createCategory";
-import { updateCategory } from "../../../../lib/queries/categories/updateCategory";
+import { createCategory } from "@/lib/queries/categories/createCategory";
+import { updateCategory } from "@/lib/queries/categories/updateCategory";
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
+import { deleteCategoryQuery } from "@/lib/queries/categories/deleteCategory";
+
 import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
 import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
 import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
+
 import type { Category } from "@/lib/types/category";
 import type { CreateCategoryType } from "@/lib/schema/category.schema";
 
@@ -24,18 +27,10 @@ export default function CategoryPage() {
 
   const fetchCategories = async () => {
     if (!user?.store_id) return;
-
     setLoading(true);
-    const { data, error } = await supabase
-      .from("categories")
-      .select("id,name,slug,description,parent_id,is_active,created_at")
-      .eq("store_id", user.store_id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching categories:", error);
-      notify.error("Failed to load categories");
-    } else {
+    try {
+      const { data, error } = await getCategoriesQuery(user.store_id);
+      if (error) throw error;
       setCategories(
         (data?.map((c: any) => ({
           ...c,
@@ -44,8 +39,12 @@ export default function CategoryPage() {
             : "",
         })) ?? []) as Category[]
       );
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      notify.error("Failed to load categories");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -60,19 +59,14 @@ export default function CategoryPage() {
 
   const handleDelete = async (category: Category) => {
     if (!user?.store_id) return;
-    const { error } = await supabase
-      .from("categories")
-      .delete()
-      .eq("id", category.id)
-      .eq("store_id", user.store_id);
-
-    if (error) {
+    try {
+      await deleteCategoryQuery(category.id, user.store_id);
+      setCategories((prev) => prev.filter((c) => c.id !== category.id));
+      notify.info(`Deleted category "${category.name}"`);
+    } catch (error) {
+      console.error("Delete error:", error);
       notify.error(`Failed to delete "${category.name}"`);
-      return;
     }
-
-    setCategories((prev) => prev.filter((c) => c.id !== category.id));
-    notify.info(`Deleted category "${category.name}"`);
   };
 
   const handleFormSubmit = async (data: CreateCategoryType) => {
@@ -81,7 +75,6 @@ export default function CategoryPage() {
       return;
     }
 
-    // Normalize parent_id: empty string or undefined => null
     const parent_id =
       data.parent_id === "" ||
       data.parent_id === null ||
@@ -97,7 +90,7 @@ export default function CategoryPage() {
             name: data.name,
             slug: data.slug,
             description: data.description ?? null,
-            parent_id, // parent category can be null
+            parent_id,
             is_active: data.is_active ?? true,
           },
           user.store_id
@@ -107,7 +100,7 @@ export default function CategoryPage() {
         await createCategory(
           {
             ...data,
-            parent_id, // parent category can be null
+            parent_id,
             is_active: data.is_active ?? true,
           },
           user.store_id
