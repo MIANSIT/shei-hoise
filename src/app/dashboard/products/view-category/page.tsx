@@ -1,11 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
-import type { Category } from "@/lib/types/category";
-import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
-import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
-import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
+import React, { useEffect, useState } from "react";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { createCategory } from "@/lib/queries/categories/createCategory";
+import { updateCategory } from "@/lib/queries/categories/updateCategory";
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
+import { deleteCategoryQuery } from "@/lib/queries/categories/deleteCategory";
+
+import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
+import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
+import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
+
+import type { Category } from "@/lib/types/category";
+import type { CreateCategoryType } from "@/lib/schema/category.schema";
 
 export default function CategoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -14,57 +23,98 @@ export default function CategoryPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const notify = useSheiNotification();
+  const { user, loading: userLoading } = useCurrentUser();
 
-  // Fetch categories (simulated)
-  useEffect(() => {
+  const fetchCategories = async () => {
+    if (!user?.store_id) return;
     setLoading(true);
-    setTimeout(() => {
-      setCategories([
-        {
-          id: "1",
-          name: "Electronics",
-          description: "All electronic products",
-          createdAt: "2025-09-02",
-        },
-        {
-          id: "2",
-          name: "Clothing",
-          description: "Men and women clothing",
-          createdAt: "2025-09-02",
-        },
-      ]);
+    try {
+      const { data, error } = await getCategoriesQuery(user.store_id);
+      if (error) throw error;
+      setCategories(
+        (data?.map((c: any) => ({
+          ...c,
+          createdAt: c.created_at
+            ? new Date(c.created_at).toISOString().split("T")[0]
+            : "",
+        })) ?? []) as Category[]
+      );
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      notify.error("Failed to load categories");
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    if (!userLoading) fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, userLoading]);
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
     setShowForm(true);
   };
 
-  const handleDelete = (category: Category) => {
-    setCategories(prev => prev.filter(c => c.id !== category.id));
-    notify.error(`Deleted category "${category.name}"`); // RED for delete
+  const handleDelete = async (category: Category) => {
+    if (!user?.store_id) return;
+    try {
+      await deleteCategoryQuery(category.id, user.store_id);
+      setCategories((prev) => prev.filter((c) => c.id !== category.id));
+      notify.info(`Deleted category "${category.name}"`);
+    } catch (error) {
+      console.error("Delete error:", error);
+      notify.error(`Failed to delete "${category.name}"`);
+    }
   };
 
-  const handleFormSubmit = (data: { name: string; description?: string }) => {
-    if (editingCategory) {
-      setCategories(prev =>
-        prev.map(c => (c.id === editingCategory.id ? { ...c, ...data } : c))
-      );
-      notify.info(`Category "${data.name}" updated successfully!`); // BLUE for update
-    } else {
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString().split("T")[0],
-        ...data,
-      };
-      setCategories(prev => [...prev, newCategory]);
-      notify.success(`Category "${data.name}" created successfully!`); // GREEN for create
+  const handleFormSubmit = async (data: CreateCategoryType) => {
+    if (!user?.store_id) {
+      notify.error("Missing store info");
+      return;
     }
 
-    setShowForm(false);
-    setEditingCategory(null);
+    const parent_id =
+      data.parent_id === "" ||
+      data.parent_id === null ||
+      data.parent_id === undefined
+        ? null
+        : data.parent_id;
+
+    try {
+      if (editingCategory) {
+        await updateCategory(
+          {
+            id: editingCategory.id,
+            name: data.name,
+            slug: data.slug,
+            description: data.description ?? null,
+            parent_id,
+            is_active: data.is_active ?? true,
+          },
+          user.store_id
+        );
+        notify.info(`Category "${data.name}" updated successfully!`);
+      } else {
+        await createCategory(
+          {
+            ...data,
+            parent_id,
+            is_active: data.is_active ?? true,
+          },
+          user.store_id
+        );
+        notify.success(`Category "${data.name}" created successfully!`);
+      }
+
+      setShowForm(false);
+      setEditingCategory(null);
+      fetchCategories();
+    } catch (err: any) {
+      console.error(err);
+      notify.error(err?.message ?? "Failed to save category");
+    }
   };
 
   return (
@@ -73,7 +123,7 @@ export default function CategoryPage() {
         showForm={showForm}
         toggleForm={() => {
           if (!showForm) setEditingCategory(null);
-          setShowForm(prev => !prev);
+          setShowForm((prev) => !prev);
         }}
       />
 
@@ -90,6 +140,7 @@ export default function CategoryPage() {
           showForm={showForm}
           editingCategory={editingCategory}
           onSubmit={handleFormSubmit}
+          allCategories={categories}
         />
       </div>
     </div>

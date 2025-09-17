@@ -1,4 +1,4 @@
-// File: components/admin/products/CategoryTable.tsx
+// components/admin/products/CategoryTable.tsx
 "use client";
 
 import React from "react";
@@ -21,12 +21,6 @@ export default function CategoryTable({
   onDelete,
 }: CategoryTableProps) {
   const columns: ColumnsType<Category> = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 100,
-    },
     {
       title: "Name",
       dataIndex: "name",
@@ -55,9 +49,7 @@ export default function CategoryTable({
           </Button>
           <Popconfirm
             title="Are you sure to delete this category?"
-            onConfirm={() => {
-              onDelete(record);
-            }}
+            onConfirm={() => onDelete(record)}
             okText="Yes"
             cancelText="No"
           >
@@ -70,7 +62,5 @@ export default function CategoryTable({
     },
   ];
 
-  return (
-    <DataTable<Category> columns={columns} data={data} loading={loading} />
-  );
+  return <DataTable<Category> columns={columns} data={data} loading={loading} />;
 }

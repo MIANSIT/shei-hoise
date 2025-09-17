@@ -72,6 +72,10 @@ export const adminProductSchema = z.object({
 });
 export const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format"),
   description: z.string().optional(),
 });
 // Infer TypeScript types from schemas

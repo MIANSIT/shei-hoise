@@ -1,12 +1,12 @@
-// File: components/admin/products/AddCategoryCardForm.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import * as React from "react";
+import { useEffect } from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
 import {
-  categorySchema,
-  type CategoryFormValues,
-} from "@/lib/utils/formSchema";
+  createCategorySchema,
+  type CreateCategoryType,
+} from "@/lib/schema/category.schema";
 import {
   Form,
   FormItem,
@@ -23,32 +23,97 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import type { Category } from "@/lib/types/category";
 
 interface AddCategoryCardFormProps {
-  onSubmit?: (data: CategoryFormValues) => void;
-  editingCategory?: CategoryFormValues | null; // optional for edit mode
+  onSubmit?: (data: CreateCategoryType) => Promise<void> | void;
+  editingCategory?: (CreateCategoryType & { id?: string }) | Category | null;
+  onSuccess?: () => void;
+  allCategories?: Category[];
 }
 
 export default function AddCategoryCardForm({
   onSubmit,
   editingCategory = null,
+  onSuccess,
+  allCategories = [],
 }: AddCategoryCardFormProps) {
-  const form = useZodForm<CategoryFormValues>(categorySchema, {
+  const toast = useSheiNotification();
+
+  const form = useZodForm<CreateCategoryType>(createCategorySchema, {
     name: "",
+    slug: "",
     description: "",
+    parent_id: null as any,
+    is_active: true,
   });
 
-  // Whenever editingCategory changes, populate the form
-  React.useEffect(() => {
+  // Watch the name value so the effect can react to it
+  const nameValue = form.watch("name");
+
+  // ✅ Single effect handles BOTH: editing reset and slug generation
+  useEffect(() => {
+    // 1️⃣ Reset fields if editingCategory changes
     if (editingCategory) {
-      form.reset(editingCategory);
-    } else {
-      form.reset({ name: "", description: "" });
+      form.reset({
+        name: (editingCategory as any).name ?? "",
+        slug: (editingCategory as any).slug ?? "",
+        description: (editingCategory as any).description ?? "",
+        parent_id:
+          (editingCategory as any).parent_id ??
+          (editingCategory as any).parentId ??
+          null,
+        is_active: (editingCategory as any).is_active ?? true,
+      });
+    } else if (!nameValue) {
+      // reset only when no name value and no editing category
+      form.reset({
+        name: "",
+        slug: "",
+        description: "",
+        parent_id: null as any,
+        is_active: true,
+      });
     }
-  }, [editingCategory, form]);
-  const handleSubmit = (data: CategoryFormValues) => {
-    if (onSubmit) onSubmit(data); // Call parent
-    form.reset(); // Reset after submission
+
+    // 2️⃣ Auto-generate slug whenever name changes
+    const slugValue = nameValue
+      ? nameValue
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+      : "";
+    form.setValue("slug", slugValue);
+  }, [editingCategory, nameValue, form]); // one dependency array
+
+  const handleSubmit = async (data: CreateCategoryType) => {
+    const normalized: CreateCategoryType = {
+      ...data,
+      parent_id:
+        data.parent_id === "" || data.parent_id === undefined
+          ? null
+          : (data.parent_id as any),
+    };
+
+    try {
+      if (onSubmit) {
+        await onSubmit(normalized);
+      } else {
+        toast.info(
+          "No submission handler provided. Form validated but didn't save."
+        );
+      }
+      onSuccess?.();
+      form.reset();
+    } catch (error: any) {
+      console.error("Error saving category (form):", error);
+      toast.error(
+        error?.message ?? "Failed to save category. Please try again."
+      );
+    }
   };
 
   return (
@@ -61,11 +126,7 @@ export default function AddCategoryCardForm({
 
       <CardContent>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
-          >
-            {/* Name Field */}
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
@@ -74,7 +135,18 @@ export default function AddCategoryCardForm({
               <FormMessage>{form.formState.errors.name?.message}</FormMessage>
             </FormItem>
 
-            {/* Description Field */}
+            <FormItem>
+              <FormLabel>Slug</FormLabel>
+              <FormControl>
+                <Input
+                  {...form.register("slug")}
+                  placeholder="Auto Generated Slug"
+                  readOnly
+                />
+              </FormControl>
+              <FormMessage>{form.formState.errors.slug?.message}</FormMessage>
+            </FormItem>
+
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
@@ -88,9 +160,28 @@ export default function AddCategoryCardForm({
               </FormMessage>
             </FormItem>
 
-            {/* Submit Button */}
-            <CardFooter>
-              <Button variant="destructive" type="submit" className="w-full">
+            <FormItem>
+              <FormLabel>Parent Category</FormLabel>
+              <FormControl>
+                <select
+                  {...form.register("parent_id")}
+                  className="border rounded w-full p-2"
+                >
+                  <option value="">None</option>
+                  {allCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+              <FormMessage>
+                {form.formState.errors.parent_id?.message}
+              </FormMessage>
+            </FormItem>
+
+            <CardFooter className="px-0 pt-4">
+              <Button type="submit" className="w-full" variant="destructive">
                 {editingCategory ? "Update Category" : "Create Category"}
               </Button>
             </CardFooter>
