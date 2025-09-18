@@ -3,19 +3,27 @@ import React from "react";
 import { useDropzone } from "react-dropzone";
 import { Label } from "@/components/ui/label";
 
+interface ImageObj {
+  imageUrl: string;
+  altText?: string;
+  isPrimary?: boolean;
+  file?: File; // optional, if it's a new uploaded file
+}
 
 interface ImageUploaderProps {
-  images: (File | string)[];
-  setImages: (files: (File | string)[]) => void;
-  error?: string; // 👈 add error prop
+  images: ImageObj[];
+  setImages: (files: ImageObj[]) => void;
+  error?: string;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error }) => {
   const onDrop = (acceptedFiles: File[]) => {
-    setImages([
-      ...images.filter((img): img is File => img instanceof File), // keep existing files only
-      ...acceptedFiles,
-    ]);
+    const newImages: ImageObj[] = acceptedFiles.map((file) => ({
+      file,
+      imageUrl: URL.createObjectURL(file),
+    }));
+
+    setImages([...images, ...newImages]);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -23,16 +31,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error 
     accept: { "image/*": [] },
   });
 
-
-
   return (
     <div className="flex flex-col gap-2">
       <Label>Upload Images</Label>
 
       <div
         {...getRootProps()}
-        className={`mt-2 border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition  hover:border-yellow-400 ${
-          isDragActive ? "border-yellow-500 " : "border-gray-600"
+        className={`mt-2 border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition hover:border-yellow-400 ${
+          isDragActive ? "border-yellow-500" : "border-gray-600"
         }`}
       >
         <input {...getInputProps()} multiple />
@@ -52,24 +58,42 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error 
             />
           </svg>
           {isDragActive ? (
-            <p className=" font-medium">Drop images here...</p>
+            <p className="font-medium">Drop images here...</p>
           ) : (
-            <p className=" font-medium">
-              Drag and drop an image here or click to browse
+            <p className="font-medium">
+              Drag and drop images here or click to browse
             </p>
           )}
-          <p className="text-xs ">
-            Accepted formats: <span className="">.jpeg, .png, .webp</span> <br />
-            Max size: <span className="">5MB</span>
+          <p className="text-xs">
+            Accepted formats: <span>.jpeg, .png, .webp</span> <br />
+            Max size: <span>5MB</span>
           </p>
         </div>
       </div>
 
-      {/* Show error message below dropzone */}
       {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
 
-      {/* Previews */}
-     
+      {/* Preview */}
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {images.map((img, idx) => (
+            <div key={idx} className="relative w-24 h-24 border rounded overflow-hidden">
+              <img
+                src={img.imageUrl}
+                alt={img.altText || "preview"}
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 rounded-bl"
+              >
+                X
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

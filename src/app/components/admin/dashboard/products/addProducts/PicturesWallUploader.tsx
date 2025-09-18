@@ -4,9 +4,16 @@ import Image from "next/image";
 import { Upload, Modal } from "antd";
 import type { RcFile, UploadFile, UploadProps } from "antd/es/upload";
 
+interface ImageObj {
+  imageUrl: string;
+  altText?: string;
+  isPrimary?: boolean;
+  file?: File;
+}
+
 interface PicturesWallUploaderProps {
-  images: (File | string)[]; // accept File or string URLs
-  setImages: (files: (File | string)[]) => void;
+  images: ImageObj[];
+  setImages: (files: ImageObj[]) => void;
 }
 
 const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, setImages }) => {
@@ -18,19 +25,20 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
   // Convert `images` prop to AntD UploadFile format
   useEffect(() => {
     const uploadFiles = images.map((img, index) => {
-      if (typeof img === "string") {
+      if (img.file) {
         return {
-          uid: `existing-${index}`,
-          name: img.split("/").pop() || `image-${index}`,
+          uid: img.file.name + "-" + index,
+          name: img.file.name,
           status: "done",
-          url: img,
+          originFileObj: img.file,
+          url: img.imageUrl,
         } as UploadFile;
       } else {
         return {
-          uid: (img as RcFile).name + "-" + index,
-          name: (img as RcFile).name,
+          uid: `existing-${index}`,
+          name: img.imageUrl.split("/").pop() || `image-${index}`,
           status: "done",
-          originFileObj: img as RcFile,
+          url: img.imageUrl,
         } as UploadFile;
       }
     });
@@ -52,8 +60,13 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
   const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
     setFileList(newFileList);
 
-    // Update parent images array
-    const newImages = newFileList.map((file) => file.originFileObj || file.url || "");
+    // Map UploadFile back to ImageObj
+    const newImages: ImageObj[] = newFileList.map((file) => ({
+      file: file.originFileObj as File,
+      imageUrl: file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj as File) : ""),
+      altText: file.name,
+      isPrimary: false,
+    }));
     setImages(newImages);
   };
 
@@ -65,18 +78,12 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
         fileList={fileList}
         onPreview={handlePreview}
         onChange={handleChange}
-        beforeUpload={() => false} // prevent auto upload 
-       
+        beforeUpload={() => false} // prevent auto upload
       >
-        {fileList.length >= 8 ? null : <div className=" ">Upload</div>}
+        {fileList.length >= 8 ? null : <div>Upload</div>}
       </Upload>
 
-      <Modal
-        open={previewOpen}
-        title={previewTitle}
-        footer={null}
-        onCancel={handleCancel}
-      >
+      <Modal open={previewOpen} title={previewTitle} footer={null} onCancel={handleCancel}>
         {previewImage && (
           <div className="relative w-full h-96">
             <Image
@@ -85,7 +92,6 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
               fill
               style={{ objectFit: "contain" }}
               unoptimized
-              
             />
           </div>
         )}
