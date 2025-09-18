@@ -1,14 +1,8 @@
 // lib/queries/products/createProduct.ts
 import { supabase } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
-
-/**
- * Create a product and, if provided, its variants.
- * Returns the newly created product id.
- */
 export async function createProduct(product: ProductType) {
   try {
-    // --- 1️⃣ Insert the product ---
     const { data: productData, error: productError } = await supabase
       .from("products")
       .insert({

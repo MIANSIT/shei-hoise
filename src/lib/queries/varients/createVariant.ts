@@ -1,10 +1,5 @@
-// lib/queries/products/createVariant.ts
 import { supabase } from "@/lib/supabase";
 import { ProductVariantType } from "@/lib/schema/varientSchema";
-
-/**
- * Create a single variant
- */
 export async function createVariant(variant: ProductVariantType) {
   try {
     const { data, error } = await supabase
