@@ -23,11 +23,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
     name: "",
     slug: "",
     description: "",
-    shortDescription: "",
-    basePrice: 0,
-    tpPrice: 0,
-    discountedPrice: 0,
-    discountAmount: 0,
+    short_description: "",
+    base_price: 0,
+    tp_price: 0,
+    discounted_price: 0,
+    discount_amount: 0,
     weight: 0,
     sku: "",
     variants: [],
@@ -124,8 +124,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           label="Short Description"
           name="shortDescription"
           as="textarea"
-          value={form.watch("shortDescription") ?? ""}
-          onChange={(e) => form.setValue("shortDescription", e.target.value)}
+          value={form.watch("short_description") ?? ""}
+          onChange={(e) => form.setValue("short_description", e.target.value)}
         />
 
         {/* Base Price */}
@@ -133,8 +133,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           label="Base Price"
           name="basePrice"
           type="number"
-          value={form.watch("basePrice")}
-          onChange={(e) => form.setValue("basePrice", parseFloat(e.target.value))}
+          value={form.watch("base_price")}
+          onChange={(e) => form.setValue("base_price", parseFloat(e.target.value))}
         />
 
         {/* TP Price */}
@@ -142,8 +142,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           label="TP Price"
           name="tpPrice"
           type="number"
-          value={form.watch("tpPrice")}
-          onChange={(e) => form.setValue("tpPrice", parseFloat(e.target.value))}
+          value={form.watch("tp_price")}
+          onChange={(e) => form.setValue("tp_price", parseFloat(e.target.value))}
         />
 
         {/* Discounted Price */}
@@ -151,8 +151,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           label="Discounted Price"
           name="discountedPrice"
           type="number"
-          value={form.watch("discountedPrice")}
-          onChange={(e) => form.setValue("discountedPrice", parseFloat(e.target.value))}
+          value={form.watch("discounted_price")}
+          onChange={(e) => form.setValue("discounted_price", parseFloat(e.target.value))}
         />
 
         {/* Discount Amount */}
@@ -160,8 +160,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           label="Discount Amount"
           name="discountAmount"
           type="number"
-          value={form.watch("discountAmount")}
-          onChange={(e) => form.setValue("discountAmount", parseFloat(e.target.value))}
+          value={form.watch("discount_amount")}
+          onChange={(e) => form.setValue("discount_amount", parseFloat(e.target.value))}
         />
 
         {/* Weight */}

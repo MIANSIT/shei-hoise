@@ -7,13 +7,13 @@ export const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   slug: z.string().min(1, "Slug is required"),
   description: z.string().optional(),
-  shortDescription: z.string().optional(),
-  basePrice: z.number().min(0, "Base price must be greater than 0"),
+  short_description: z.string().optional(),
+  base_price: z.number().min(0, "Base price must be greater than 0"),
   weight: z.number().optional(),
   sku: z.string().optional(),
-  tpPrice: z.number().optional(),
-  discountedPrice: z.number().optional(),
-  discountAmount: z.number().optional(),
+  tp_price: z.number().optional(),
+  discounted_price: z.number().optional(),
+  discount_amount: z.number().optional(),
   variants: z.array(variantSchema).optional(),
   images: z
     .array(
