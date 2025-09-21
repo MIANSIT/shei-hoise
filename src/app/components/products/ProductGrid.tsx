@@ -8,7 +8,7 @@ import { Product } from "@/lib/types/product";
 interface ProductGridProps {
   products: Product[];
   onAddToCart: (product: Product) => Promise<void>; // ✅ change void → Promise<void>
-  loadingProductId: number | null;
+  loadingProductId: string | null;
 }
 
 export default function ProductGrid({
@@ -50,10 +50,10 @@ export default function ProductGrid({
               currentPrice={Number(product.currentPrice)} // 👈 also convert string → number
               originalPrice={Number(product.originalPrice)} // 👈 fix type mismatch
               rating={product.rating}
-              imageUrl={product.images[0]}
+              // imageUrl={product.imageUrl}
               productLink={`/product/${product.id}`}
               onAddToCart={() => onAddToCart(product)}
-              isLoading={loadingProductId === product.id}
+              isLoading={loadingProductId === String(product.id)}
             />
           </motion.div>
         ))}

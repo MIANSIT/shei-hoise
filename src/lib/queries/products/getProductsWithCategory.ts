@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getProductsWithVariants, ProductWithVariants } from "./getProductsWithVariants";
 import { getCategoriesQuery } from "../categories/getCategories";
 export async function getProductsWithCategory(storeId: string) {
