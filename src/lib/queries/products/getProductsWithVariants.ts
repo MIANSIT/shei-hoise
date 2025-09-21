@@ -23,8 +23,9 @@ export interface ProductWithVariants {
   base_price: number | null;
   discounted_price: number | null;
   category_id: string | null;
-  category?: Category | null; 
+  category?: Category | null;
   product_variants: ProductVariant[];
+  images?: string[]; // ✅ Add this line
 }
 
 export async function getProductsWithVariants(storeId: string) {
@@ -58,7 +59,9 @@ export async function getProductsWithVariants(storeId: string) {
   // normalize the data to have a single `category` field
   return (data ?? []).map((p: any) => ({
     ...p,
-    category: p.categories ? { id: p.categories.id, name: p.categories.name } : null,
+    category: p.categories
+      ? { id: p.categories.id, name: p.categories.name }
+      : null,
     product_variants: p.product_variants ?? [],
   })) as ProductWithVariants[];
 }

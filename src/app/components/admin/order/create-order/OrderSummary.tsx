@@ -1,20 +1,13 @@
 "use client";
+
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 export interface Product {
-  id: number;
+  id: string;
   title: string;
-  category: string;
-  currentPrice: string;
+  currentPrice: number;
   quantity: number;
-  images?: string[];
 }
 
 interface OrderSummaryProps {
@@ -36,16 +29,18 @@ export default function OrderSummary({
   status,
   setStatus,
 }: OrderSummaryProps) {
+  // Calculate subtotal
   const subtotal = products.reduce(
-    (sum, p) => sum + Number(p.currentPrice) * p.quantity,
+    (sum, p) => sum + p.currentPrice * p.quantity,
     0
   );
 
   const dueAmount = subtotal - discount + deliveryCost;
 
   return (
-    <div className="mt-6 space-y-4  border-t border-white/20 pt-4">
-      <p>Subtotal: ৳{subtotal}</p>
+    <div className="mt-6 space-y-4 border-t border-white/20 pt-4">
+      {/* Subtotal */}
+      <p className="font-medium">Subtotal: ৳{subtotal}</p>
 
       {/* Discount */}
       <div>
@@ -53,6 +48,8 @@ export default function OrderSummary({
         <Input
           type="number"
           value={discount}
+          min={0}
+          max={subtotal}
           onChange={(e) => setDiscount(Number(e.target.value))}
         />
       </div>
@@ -63,6 +60,7 @@ export default function OrderSummary({
         <Input
           type="number"
           value={deliveryCost}
+          min={0}
           onChange={(e) => setDeliveryCost(Number(e.target.value))}
         />
       </div>
