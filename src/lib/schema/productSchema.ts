@@ -3,7 +3,6 @@ import {
   variantSchema,
   ProductVariantType as VariantType,
 } from "./varientSchema";
-
 export const productSchema = z.object({
   store_id: z.string().uuid(),
   category_id: z.string().uuid().optional(),
@@ -20,10 +19,17 @@ export const productSchema = z.object({
   stock: z
     .number()
     .min(0, "Stock must be greater than or equal to 0")
-    .default(0), // <-- added
+    .default(0),
+
+  // New fields
+  dimensions: z.string().optional(),
+  is_digital: z.boolean().optional(),
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  featured: z.boolean().optional(),
+  meta_title: z.string().optional(),
+  meta_description: z.string().optional(),
 
   variants: z.array(variantSchema).optional(),
-
   images: z
     .array(
       z.object({
@@ -37,3 +43,4 @@ export const productSchema = z.object({
 
 export type ProductType = z.infer<typeof productSchema>;
 export type ProductVariantType = VariantType;
+export type CreateProductType = Omit<ProductType, "id">;

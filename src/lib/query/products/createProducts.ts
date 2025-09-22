@@ -55,9 +55,9 @@ export async function createProduct(product: CreateProductType) {
         .insert(
           product.images.map((image) => ({
             product_id: productId,
-            image_url: image.image_url,
-            alt_text: image.alt_text,
-            is_primary: image.is_primary ?? false,
+            image_url: image.imageUrl, // camelCase → snake_case
+            alt_text: image.altText, // camelCase → snake_case
+            is_primary: image.isPrimary ?? false,
           }))
         );
 
