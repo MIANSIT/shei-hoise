@@ -34,7 +34,7 @@ const Products: React.FC = () => {
     };
 
     fetchProducts();
-  }, [notify, storeId]); // ✅ Type-safe, no error
+  }, [storeId]);
 
   return <ProductTable products={products} loading={loading} />;
 };
