@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
-import { productSchema, ProductType, ProductVariantType } from "@/lib/schema/productSchema";
+import {
+  productSchema,
+  ProductType,
+  ProductVariantType,
+} from "@/lib/schema/productSchema";
 import FormField from "./FormField";
 import VariantDialog from "./VariantDialog";
 import { Button } from "@/components/ui/button";
@@ -16,7 +20,11 @@ interface AddProductFormProps {
   onSubmit: (product: ProductType) => void;
 }
 
-const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSubmit }) => {
+const AddProductForm: React.FC<AddProductFormProps> = ({
+  product,
+  storeId,
+  onSubmit,
+}) => {
   const form = useZodForm<ProductType>(productSchema, {
     store_id: storeId,
     category_id: "",
@@ -30,13 +38,18 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
     discount_amount: 0,
     weight: 0,
     sku: "",
+    stock: 0, // <-- added
     variants: [],
     images: [],
   });
 
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
-  const [editingVariant, setEditingVariant] = useState<ProductVariantType | undefined>(undefined);
+  const [editingVariant, setEditingVariant] = useState<
+    ProductVariantType | undefined
+  >(undefined);
 
   const images = form.watch("images") || [];
 
@@ -54,7 +67,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
     const sub = form.watch((values, { name }) => {
       if (name === "name") {
         const slugValue = values.name
-          ? values.name.toLowerCase().trim()
+          ? values.name
+              .toLowerCase()
+              .trim()
               .replace(/[^a-z0-9\s-]/g, "")
               .replace(/\s+/g, "-")
               .replace(/-+/g, "-")
@@ -82,7 +97,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
         {/* Product Name */}
         <FormField
           label="Product Name"
@@ -134,7 +152,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           name="basePrice"
           type="number"
           value={form.watch("base_price")}
-          onChange={(e) => form.setValue("base_price", parseFloat(e.target.value))}
+          onChange={(e) =>
+            form.setValue("base_price", parseFloat(e.target.value))
+          }
         />
 
         {/* TP Price */}
@@ -143,7 +163,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           name="tpPrice"
           type="number"
           value={form.watch("tp_price")}
-          onChange={(e) => form.setValue("tp_price", parseFloat(e.target.value))}
+          onChange={(e) =>
+            form.setValue("tp_price", parseFloat(e.target.value))
+          }
         />
 
         {/* Discounted Price */}
@@ -152,7 +174,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           name="discountedPrice"
           type="number"
           value={form.watch("discounted_price")}
-          onChange={(e) => form.setValue("discounted_price", parseFloat(e.target.value))}
+          onChange={(e) =>
+            form.setValue("discounted_price", parseFloat(e.target.value))
+          }
         />
 
         {/* Discount Amount */}
@@ -161,7 +185,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           name="discountAmount"
           type="number"
           value={form.watch("discount_amount")}
-          onChange={(e) => form.setValue("discount_amount", parseFloat(e.target.value))}
+          onChange={(e) =>
+            form.setValue("discount_amount", parseFloat(e.target.value))
+          }
         />
 
         {/* Weight */}
@@ -180,7 +206,14 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           value={form.watch("sku")}
           onChange={(e) => form.setValue("sku", e.target.value)}
         />
-
+        {/* Stock Field for main product */}
+        <FormField
+          label="Stock"
+          name="stock"
+          type="number"
+          value={form.watch("stock") ?? 0}
+          onChange={(e) => form.setValue("stock", parseInt(e.target.value))}
+        />
         {/* Variants */}
         <div className="col-span-1 md:col-span-2 flex flex-col space-y-2">
           <label className="text-sm font-medium">Variants</label>
@@ -190,12 +223,19 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
                 key={idx}
                 type="button"
                 variant="accent"
-                onClick={() => { setEditingVariant(v); setVariantDialogOpen(true); }}
+                onClick={() => {
+                  setEditingVariant(v);
+                  setVariantDialogOpen(true);
+                }}
               >
                 {v.variant_name}
               </Button>
             ))}
-            <Button type="button" variant="destructive" onClick={() => setVariantDialogOpen(true)}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setVariantDialogOpen(true)}
+            >
               + Add Variant
             </Button>
           </div>
@@ -204,9 +244,15 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
         {/* Images */}
         <div className="col-span-1 md:col-span-2">
           {images.length === 0 ? (
-            <ImageUploader images={images} setImages={(files) => form.setValue("images", files)} />
+            <ImageUploader
+              images={images}
+              setImages={(files) => form.setValue("images", files)}
+            />
           ) : (
-            <PicturesWallUploader images={images} setImages={(files) => form.setValue("images", files)} />
+            <PicturesWallUploader
+              images={images}
+              setImages={(files) => form.setValue("images", files)}
+            />
           )}
         </div>
 
@@ -222,7 +268,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
       <VariantDialog
         open={variantDialogOpen}
         variant={editingVariant}
-        onClose={() => { setVariantDialogOpen(false); setEditingVariant(undefined); }}
+        onClose={() => {
+          setVariantDialogOpen(false);
+          setEditingVariant(undefined);
+        }}
         onSave={handleVariantSave}
       />
     </div>

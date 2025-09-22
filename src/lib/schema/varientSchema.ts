@@ -9,6 +9,10 @@ export const variantSchema = z.object({
   weight: z.number().optional(),
   color: z.string().optional(),
   is_active: z.boolean().default(true),
+  stock: z
+    .number()
+    .min(0, "Stock must be greater than or equal to 0")
+    .default(0), // <-- added
 });
 
 export type ProductVariantType = z.infer<typeof variantSchema>;

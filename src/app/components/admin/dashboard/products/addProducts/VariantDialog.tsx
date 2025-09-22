@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import FormField from "./FormField";
@@ -33,6 +32,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
   const [color, setColor] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
+  const [stock, setStock] = useState(0); // <-- stock state
 
   useEffect(() => {
     if (variant) {
@@ -43,6 +43,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
       setColor(variant.color || "");
       setAttributes(variant.attributes || {});
       setIsActive(variant.is_active ?? true);
+      setStock(variant.stock ?? 0); // <-- load stock
     } else {
       setVariantName("");
       setSku("");
@@ -51,6 +52,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
       setColor("");
       setAttributes({});
       setIsActive(true);
+      setStock(0); // <-- reset stock
     }
   }, [variant]);
 
@@ -65,6 +67,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
       color,
       attributes,
       is_active: isActive,
+      stock, // <-- save stock
       product_id: variant?.product_id,
     });
     onClose();
@@ -116,6 +119,14 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
           />
 
           <FormField
+            label="Stock"
+            name="stock"
+            type="number"
+            value={stock}
+            onChange={(e) => setStock(parseInt(e.target.value))}
+          />
+
+          <FormField
             label="Attributes (JSON)"
             name="attributes"
             as="textarea"
@@ -126,7 +137,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
                 if (typeof parsed === "object" && parsed !== null)
                   setAttributes(parsed);
               } catch {
-                // ignore invalid JSON until corrected
+                // ignore invalid JSON
               }
             }}
           />
