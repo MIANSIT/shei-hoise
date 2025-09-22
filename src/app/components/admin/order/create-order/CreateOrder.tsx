@@ -88,7 +88,7 @@ export default function CreateOrder() {
     };
 
     fetchProductsAndImages();
-  }, [user, userLoading]);
+  }, [storeId, user, userLoading]);
 
   return (
     <Card className="p-6 mb-6">

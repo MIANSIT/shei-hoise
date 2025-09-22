@@ -17,7 +17,7 @@ export default function AddProductPage() {
   const handleSubmit = async (product: ProductType) => {
     try {
       // Call the Supabase query directly
-      const productId = await createProduct(product);
+      await createProduct(product);
 
       success(
         <div>
