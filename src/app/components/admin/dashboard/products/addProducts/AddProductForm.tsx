@@ -17,7 +17,7 @@ import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 interface AddProductFormProps {
   product?: ProductType;
   storeId: string;
-  onSubmit: (product: ProductType) => void; // handled by page
+  onSubmit: (product: ProductType) => void;
 }
 
 const AddProductForm: React.FC<AddProductFormProps> = ({
@@ -47,10 +47,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     []
   );
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
-  const [editingVariant, setEditingVariant] = useState<
-    ProductVariantType | undefined
-  >(undefined);
-
+  const [editingVariant, setEditingVariant] = useState<ProductVariantType>();
   const images = form.watch("images") || [];
 
   // Fetch categories
@@ -85,45 +82,71 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     if (product) form.reset(product);
   }, [product, form]);
 
-  // Handle variant save
   const handleVariantSave = (variant: ProductVariantType) => {
     const variants = form.getValues("variants") || [];
     const updated = editingVariant
       ? variants.map((v) => (v === editingVariant ? variant : v))
       : [...variants, variant];
-
     form.setValue("variants", updated);
     setEditingVariant(undefined);
   };
 
+  // Required fields
+  const requiredFields = {
+    name: form.watch("name"),
+    category_id: form.watch("category_id"),
+    base_price: form.watch("base_price"),
+    tp_price: form.watch("tp_price"),
+    sku: form.watch("sku"),
+  };
+
+  // Variant stock
+  const variants = form.watch("variants") || [];
+  const totalVariantStock = variants.reduce(
+    (sum, v) => sum + (v.stock ?? 0),
+    0
+  );
+
+  // Save button disabled logic
+  const isSaveDisabled =
+    Object.values(requiredFields).some(
+      (field) => field === "" || field === undefined
+    ) ||
+    ((variants.length > 0 && totalVariantStock === 0) ||
+      (variants.length === 0 && (form.watch("stock") ?? 0) === 0));
+
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      {/* Expose form.handleSubmit to parent */}
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
         {/* Main Product Fields */}
         <FormField
-          label="Product Name"
+          label="Product Name *"
           name="name"
           value={form.watch("name")}
           onChange={(e) => form.setValue("name", e.target.value)}
+          error={!form.watch("name") ? "Required" : undefined}
         />
+
         <FormField
           label="Slug"
           name="slug"
           value={form.watch("slug")}
           readOnly
         />
+
         <FormField
-          label="Category"
-          name="categoryId"
+          label="Category *"
+          name="category_id"
           as="select"
           options={categories.map((c) => ({ value: c.id, label: c.name }))}
           value={form.watch("category_id") ?? ""}
           onChange={(e) => form.setValue("category_id", e.target.value)}
+          error={!form.watch("category_id") ? "Required" : undefined}
         />
+
         <FormField
           label="Description"
           name="description"
@@ -131,49 +154,55 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
           value={form.watch("description") ?? ""}
           onChange={(e) => form.setValue("description", e.target.value)}
         />
+
         <FormField
           label="Short Description"
-          name="shortDescription"
+          name="short_description"
           as="textarea"
           value={form.watch("short_description") ?? ""}
           onChange={(e) => form.setValue("short_description", e.target.value)}
         />
+
         <FormField
-          label="Base Price"
-          name="basePrice"
+          label="Base Price *"
+          name="base_price"
           type="number"
           value={form.watch("base_price")}
           onChange={(e) =>
             form.setValue("base_price", parseFloat(e.target.value))
           }
+          error={form.watch("base_price") === 0 ? "Required" : undefined}
         />
+
         <FormField
-          label="TP Price"
-          name="tpPrice"
+          label="TP Price *"
+          name="tp_price"
           type="number"
           value={form.watch("tp_price")}
-          onChange={(e) =>
-            form.setValue("tp_price", parseFloat(e.target.value))
-          }
+          onChange={(e) => form.setValue("tp_price", parseFloat(e.target.value))}
+          error={form.watch("tp_price") === 0 ? "Required" : undefined}
         />
+
         <FormField
           label="Discounted Price"
-          name="discountedPrice"
+          name="discounted_price"
           type="number"
           value={form.watch("discounted_price")}
           onChange={(e) =>
             form.setValue("discounted_price", parseFloat(e.target.value))
           }
         />
+
         <FormField
           label="Discount Amount"
-          name="discountAmount"
+          name="discount_amount"
           type="number"
           value={form.watch("discount_amount")}
           onChange={(e) =>
             form.setValue("discount_amount", parseFloat(e.target.value))
           }
         />
+
         <FormField
           label="Weight"
           name="weight"
@@ -181,25 +210,39 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
           value={form.watch("weight") ?? ""}
           onChange={(e) => form.setValue("weight", parseFloat(e.target.value))}
         />
+
         <FormField
-          label="SKU"
+          label="SKU *"
           name="sku"
           value={form.watch("sku")}
           onChange={(e) => form.setValue("sku", e.target.value)}
+          error={!form.watch("sku") ? "Required" : undefined}
         />
+
         <FormField
-          label="Stock"
+          label="Stock *"
           name="stock"
           type="number"
-          value={form.watch("stock") ?? 0}
-          onChange={(e) => form.setValue("stock", parseInt(e.target.value))}
+          value={variants.length > 0 ? totalVariantStock : form.watch("stock") ?? 0}
+          onChange={(e) => {
+            if (variants.length === 0) {
+              form.setValue("stock", parseInt(e.target.value));
+            }
+          }}
+          error={
+            (variants.length > 0 && totalVariantStock === 0) ||
+            (variants.length === 0 && (form.watch("stock") ?? 0) === 0)
+              ? "Required"
+              : undefined
+          }
+          readOnly={variants.length > 0}
         />
 
         {/* Variants */}
         <div className="col-span-1 md:col-span-2 flex flex-col space-y-2">
           <label className="text-sm font-medium">Variants</label>
           <div className="flex gap-2 flex-wrap">
-            {(form.watch("variants") || []).map((v, idx) => (
+            {variants.map((v, idx) => (
               <Button
                 key={idx}
                 type="button"
@@ -239,7 +282,13 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
 
         {/* Submit */}
         <div className="col-span-1 md:col-span-2 flex justify-end mt-4">
-          <Button type="submit" className="bg-green-600 hover:bg-green-700">
+          <Button
+            type="submit"
+            className={`bg-green-600 hover:bg-green-700 ${
+              isSaveDisabled ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={isSaveDisabled}
+          >
             {product ? "Update Product" : "Save Product"}
           </Button>
         </div>
@@ -255,7 +304,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
         }}
         onSave={handleVariantSave}
         mainProductStock={form.watch("stock") ?? 0}
-        existingVariants={form.watch("variants") || []}
+        existingVariants={variants}
       />
     </div>
   );
