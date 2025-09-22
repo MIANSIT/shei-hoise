@@ -25,8 +25,6 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
   variant,
   onClose,
   onSave,
-  mainProductStock,
-  existingVariants,
 }) => {
   const [variantName, setVariantName] = useState("");
   const [sku, setSku] = useState("");
