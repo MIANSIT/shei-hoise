@@ -2,6 +2,7 @@
 import React from "react";
 import { useDropzone } from "react-dropzone";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
 interface ImageObj {
   imageUrl: string;
@@ -77,11 +78,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
           {images.map((img, idx) => (
-            <div key={idx} className="relative w-24 h-24 border rounded overflow-hidden">
-              <img
+            <div key={idx} className="relative w-24 h-24">
+              <Image
                 src={img.imageUrl}
                 alt={img.altText || "preview"}
+                width={96}
+                height={96}
                 className="w-full h-full object-cover"
+                unoptimized
               />
               <button
                 type="button"

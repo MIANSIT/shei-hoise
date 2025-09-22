@@ -16,9 +16,7 @@ export default function AddProductPage() {
 
   const handleSubmit = async (product: ProductType) => {
     try {
-      // Call the Supabase query directly
       await createProduct(product);
-
       success(
         <div>
           🎉 <b>{product.name}</b> has been added successfully!
@@ -32,7 +30,6 @@ export default function AddProductPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-white mb-6">Add Product</h1>
       <AddProductForm storeId={user.store_id} onSubmit={handleSubmit} />
     </div>
   );

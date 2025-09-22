@@ -1,7 +1,12 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
-import { productSchema, ProductType, ProductVariantType } from "@/lib/schema/productSchema";
+import {
+  productSchema,
+  ProductType,
+  ProductVariantType,
+} from "@/lib/schema/productSchema";
 import FormField from "./FormField";
 import VariantDialog from "./VariantDialog";
 import { Button } from "@/components/ui/button";
@@ -12,10 +17,14 @@ import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 interface AddProductFormProps {
   product?: ProductType;
   storeId: string;
-  onSubmit: (product: ProductType) => void;
+  onSubmit: (product: ProductType) => void; // handled by page
 }
 
-const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSubmit }) => {
+const AddProductForm: React.FC<AddProductFormProps> = ({
+  product,
+  storeId,
+  onSubmit,
+}) => {
   const form = useZodForm<ProductType>(productSchema, {
     store_id: storeId,
     category_id: "",
@@ -34,9 +43,13 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
     images: [],
   });
 
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
-  const [editingVariant, setEditingVariant] = useState<ProductVariantType | undefined>(undefined);
+  const [editingVariant, setEditingVariant] = useState<
+    ProductVariantType | undefined
+  >(undefined);
 
   const images = form.watch("images") || [];
 
@@ -54,7 +67,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
     const sub = form.watch((values, { name }) => {
       if (name === "name") {
         const slugValue = values.name
-          ? values.name.toLowerCase().trim()
+          ? values.name
+              .toLowerCase()
+              .trim()
               .replace(/[^a-z0-9\s-]/g, "")
               .replace(/\s+/g, "-")
               .replace(/-+/g, "-")
@@ -83,24 +98,24 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
+      {/* Expose form.handleSubmit to parent */}
       <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const productData: ProductType = {
-            ...form.getValues(),
-            stock: form.getValues("stock") ?? 0,
-            variants: (form.getValues("variants") || []).map((v) => ({
-              ...v,
-              stock: v.stock ?? 0,
-            })),
-          };
-          onSubmit(productData);
-        }}
+        onSubmit={form.handleSubmit(onSubmit)}
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
         {/* Main Product Fields */}
-        <FormField label="Product Name" name="name" value={form.watch("name")} onChange={(e) => form.setValue("name", e.target.value)} />
-        <FormField label="Slug" name="slug" value={form.watch("slug")} readOnly />
+        <FormField
+          label="Product Name"
+          name="name"
+          value={form.watch("name")}
+          onChange={(e) => form.setValue("name", e.target.value)}
+        />
+        <FormField
+          label="Slug"
+          name="slug"
+          value={form.watch("slug")}
+          readOnly
+        />
         <FormField
           label="Category"
           name="categoryId"
@@ -109,26 +124,99 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
           value={form.watch("category_id") ?? ""}
           onChange={(e) => form.setValue("category_id", e.target.value)}
         />
-        <FormField label="Description" name="description" as="textarea" value={form.watch("description") ?? ""} onChange={(e) => form.setValue("description", e.target.value)} />
-        <FormField label="Short Description" name="shortDescription" as="textarea" value={form.watch("short_description") ?? ""} onChange={(e) => form.setValue("short_description", e.target.value)} />
-        <FormField label="Base Price" name="basePrice" type="number" value={form.watch("base_price")} onChange={(e) => form.setValue("base_price", parseFloat(e.target.value))} />
-        <FormField label="TP Price" name="tpPrice" type="number" value={form.watch("tp_price")} onChange={(e) => form.setValue("tp_price", parseFloat(e.target.value))} />
-        <FormField label="Discounted Price" name="discountedPrice" type="number" value={form.watch("discounted_price")} onChange={(e) => form.setValue("discounted_price", parseFloat(e.target.value))} />
-        <FormField label="Discount Amount" name="discountAmount" type="number" value={form.watch("discount_amount")} onChange={(e) => form.setValue("discount_amount", parseFloat(e.target.value))} />
-        <FormField label="Weight" name="weight" type="number" value={form.watch("weight") ?? ""} onChange={(e) => form.setValue("weight", parseFloat(e.target.value))} />
-        <FormField label="SKU" name="sku" value={form.watch("sku")} onChange={(e) => form.setValue("sku", e.target.value)} />
-        <FormField label="Stock" name="stock" type="number" value={form.watch("stock") ?? 0} onChange={(e) => form.setValue("stock", parseInt(e.target.value))} />
+        <FormField
+          label="Description"
+          name="description"
+          as="textarea"
+          value={form.watch("description") ?? ""}
+          onChange={(e) => form.setValue("description", e.target.value)}
+        />
+        <FormField
+          label="Short Description"
+          name="shortDescription"
+          as="textarea"
+          value={form.watch("short_description") ?? ""}
+          onChange={(e) => form.setValue("short_description", e.target.value)}
+        />
+        <FormField
+          label="Base Price"
+          name="basePrice"
+          type="number"
+          value={form.watch("base_price")}
+          onChange={(e) =>
+            form.setValue("base_price", parseFloat(e.target.value))
+          }
+        />
+        <FormField
+          label="TP Price"
+          name="tpPrice"
+          type="number"
+          value={form.watch("tp_price")}
+          onChange={(e) =>
+            form.setValue("tp_price", parseFloat(e.target.value))
+          }
+        />
+        <FormField
+          label="Discounted Price"
+          name="discountedPrice"
+          type="number"
+          value={form.watch("discounted_price")}
+          onChange={(e) =>
+            form.setValue("discounted_price", parseFloat(e.target.value))
+          }
+        />
+        <FormField
+          label="Discount Amount"
+          name="discountAmount"
+          type="number"
+          value={form.watch("discount_amount")}
+          onChange={(e) =>
+            form.setValue("discount_amount", parseFloat(e.target.value))
+          }
+        />
+        <FormField
+          label="Weight"
+          name="weight"
+          type="number"
+          value={form.watch("weight") ?? ""}
+          onChange={(e) => form.setValue("weight", parseFloat(e.target.value))}
+        />
+        <FormField
+          label="SKU"
+          name="sku"
+          value={form.watch("sku")}
+          onChange={(e) => form.setValue("sku", e.target.value)}
+        />
+        <FormField
+          label="Stock"
+          name="stock"
+          type="number"
+          value={form.watch("stock") ?? 0}
+          onChange={(e) => form.setValue("stock", parseInt(e.target.value))}
+        />
 
         {/* Variants */}
         <div className="col-span-1 md:col-span-2 flex flex-col space-y-2">
           <label className="text-sm font-medium">Variants</label>
           <div className="flex gap-2 flex-wrap">
             {(form.watch("variants") || []).map((v, idx) => (
-              <Button key={idx} type="button" variant="accent" onClick={() => { setEditingVariant(v); setVariantDialogOpen(true); }}>
+              <Button
+                key={idx}
+                type="button"
+                variant="accent"
+                onClick={() => {
+                  setEditingVariant(v);
+                  setVariantDialogOpen(true);
+                }}
+              >
                 {v.variant_name} (Stock: {v.stock ?? 0})
               </Button>
             ))}
-            <Button type="button" variant="destructive" onClick={() => setVariantDialogOpen(true)}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setVariantDialogOpen(true)}
+            >
               + Add Variant
             </Button>
           </div>
@@ -136,9 +224,17 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
 
         {/* Images */}
         <div className="col-span-1 md:col-span-2">
-          {images.length === 0
-            ? <ImageUploader images={images} setImages={(files) => form.setValue("images", files)} />
-            : <PicturesWallUploader images={images} setImages={(files) => form.setValue("images", files)} />}
+          {images.length === 0 ? (
+            <ImageUploader
+              images={images}
+              setImages={(files) => form.setValue("images", files)}
+            />
+          ) : (
+            <PicturesWallUploader
+              images={images}
+              setImages={(files) => form.setValue("images", files)}
+            />
+          )}
         </div>
 
         {/* Submit */}
@@ -153,7 +249,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ product, storeId, onSub
       <VariantDialog
         open={variantDialogOpen}
         variant={editingVariant}
-        onClose={() => { setVariantDialogOpen(false); setEditingVariant(undefined); }}
+        onClose={() => {
+          setVariantDialogOpen(false);
+          setEditingVariant(undefined);
+        }}
         onSave={handleVariantSave}
         mainProductStock={form.watch("stock") ?? 0}
         existingVariants={form.watch("variants") || []}
