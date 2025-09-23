@@ -1,15 +1,10 @@
+// File: components/product/PicturesWallUploader.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Upload, Modal } from "antd";
-import type { RcFile, UploadFile, UploadProps } from "antd/es/upload";
-
-interface ImageObj {
-  imageUrl: string;
-  altText?: string;
-  isPrimary?: boolean;
-  file?: File;
-}
+import type { UploadFile, UploadProps } from "antd/es/upload";
+import { ImageObj } from "./ImageUploader";
 
 interface PicturesWallUploaderProps {
   images: ImageObj[];
@@ -22,7 +17,6 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
   const [previewImage, setPreviewImage] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
 
-  // Convert `images` prop to AntD UploadFile format
   useEffect(() => {
     const uploadFiles = images.map((img, index) => {
       if (img.file) {
@@ -47,20 +41,15 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
 
   const handleCancel = () => setPreviewOpen(false);
 
-  const handlePreview = async (file: UploadFile) => {
-    let src = file.url;
-    if (!src && file.originFileObj) {
-      src = await getBase64(file.originFileObj as RcFile);
-    }
-    setPreviewImage(src || "");
+  const handlePreview = (file: UploadFile) => {
+    const src = file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj as File) : "");
+    setPreviewImage(src);
     setPreviewTitle(file.name || "");
     setPreviewOpen(true);
   };
 
   const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
     setFileList(newFileList);
-
-    // Map UploadFile back to ImageObj
     const newImages: ImageObj[] = newFileList.map((file) => ({
       file: file.originFileObj as File,
       imageUrl: file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj as File) : ""),
@@ -73,12 +62,12 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
   return (
     <>
       <Upload
-        action={undefined} // manual upload
+        action={undefined}
         listType="picture-card"
         fileList={fileList}
         onPreview={handlePreview}
         onChange={handleChange}
-        beforeUpload={() => false} // prevent auto upload
+        beforeUpload={() => false}
       >
         {fileList.length >= 8 ? null : <div>Upload</div>}
       </Upload>
@@ -99,14 +88,5 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
     </>
   );
 };
-
-// Helper to convert File to Base64
-const getBase64 = (file: RcFile): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 
 export default PicturesWallUploader;

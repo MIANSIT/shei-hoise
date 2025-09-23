@@ -2,10 +2,32 @@
 import { supabase } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createProductInventory } from "./inventory/createProductInventory";
+import { uploadProductImage } from "@/lib/queries/products/productImage/uploadProductImage";
 
-export async function createProduct(product: ProductType) {
+export async function createProduct(product: ProductType): Promise<string> {
   try {
-    // 1️⃣ Insert product
+    // 1️⃣ Insert placeholder images first
+    let imageRows: { id: string }[] = [];
+    const images = product.images ?? [];
+    if (images.length > 0) {
+      const { data, error } = await supabase
+        .from("product_images")
+        .insert(
+          images.map((img, idx) => ({
+            product_id: null,
+            variant_id: null,
+            image_url: "",
+            alt_text: img.altText ?? "",
+            sort_order: idx,
+            is_primary: img.isPrimary ?? false,
+          }))
+        )
+        .select("id");
+      if (error) throw error;
+      imageRows = data;
+    }
+
+    // 2️⃣ Insert product
     const { data: productData, error: productError } = await supabase
       .from("products")
       .insert({
@@ -24,47 +46,53 @@ export async function createProduct(product: ProductType) {
       })
       .select("id")
       .single();
-
     if (productError || !productData) throw productError;
 
     const productId = productData.id;
 
-    // 2️⃣ Insert variants if any and get their IDs
+    // 3️⃣ Update product_id in product_images
+    if (imageRows.length > 0) {
+      for (let i = 0; i < images.length; i++) {
+        const file = images[i].file;
+        if (!file) continue; // skip if file is undefined
+        const publicURL = await uploadProductImage(file, productId);
+        await supabase
+          .from("product_images")
+          .update({ image_url: publicURL, product_id: productId })
+          .eq("id", imageRows[i].id);
+      }
+    }
+
+    // 4️⃣ Insert variants if any
     let variantIds: string[] = [];
     let variantStocks: number[] = [];
-
-    if (product.variants && product.variants.length > 0) {
-      const variantsToInsert = product.variants.map(
-        (v: ProductVariantType) => ({
-          variant_name: v.variant_name,
-          sku: v.sku,
-          price: v.price,
-          weight: v.weight,
-          color: v.color,
-          attributes: v.attributes ?? {},
-          is_active: v.is_active,
-          product_id: productId,
-        })
-      );
-
+    const variants = product.variants ?? [];
+    if (variants.length > 0) {
+      const variantsToInsert = variants.map((v: ProductVariantType) => ({
+        variant_name: v.variant_name,
+        sku: v.sku,
+        price: v.price,
+        weight: v.weight,
+        color: v.color,
+        attributes: v.attributes ?? {},
+        is_active: v.is_active,
+        product_id: productId,
+      }));
       const { data: insertedVariants, error: variantError } = await supabase
         .from("product_variants")
         .insert(variantsToInsert)
         .select("id");
-
       if (variantError) throw variantError;
 
       variantIds = insertedVariants.map((v: { id: string }) => v.id);
-      variantStocks = product.variants.map((v) => v.stock ?? 0);
+      variantStocks = variants.map((v) => v.stock ?? 0);
     }
 
-    // 3️⃣ Create inventory records
-    const mainProductStock = product.stock ?? 0;
-
+    // 5️⃣ Create inventory
     await createProductInventory(
       productId,
       variantIds,
-      mainProductStock,
+      product.stock ?? 0,
       variantStocks,
       true
     );
