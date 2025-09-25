@@ -11,7 +11,7 @@ interface ProductCardProps {
   currentPrice: number;
   originalPrice: number;
   rating: number;
-  imageUrl: string;
+  // imageUrl: string;
   productLink: string;
   isLoading?: boolean;
   onAddToCart: () => Promise<void>;
@@ -23,7 +23,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   currentPrice,
   originalPrice,
   rating,
-  imageUrl,
+  // imageUrl,
   productLink,
   onAddToCart,
 }) => {
@@ -97,13 +97,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       >
         {/* Product Image */}
         <div className="relative w-full h-80 overflow-hidden group">
-          <Image
+          {/* <Image
             src={imageUrl}
             alt={title}
             fill
             className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
             sizes="(max-width: 640px) 100vw, 300px"
-          />
+          /> */}
           <div className="absolute inset-0 flex justify-between items-start p-4">
             <span className="text-card-foreground text-xs uppercase tracking-wider bg-background/80 px-2 py-1 rounded-md">
               {category}

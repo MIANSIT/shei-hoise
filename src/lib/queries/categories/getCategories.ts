@@ -1,8 +1,4 @@
 import { supabase } from "@/lib/supabase";
-
-/**
- * Fetch categories for a given store_id
- */
 export async function getCategoriesQuery(storeId: string) {
   return supabase
     .from("categories")

@@ -1,112 +1,72 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
-
-interface Product {
-  id: number;
-  title: string;
-  category: string;
-  currentPrice: string;
-  originalPrice: string;
-  discount: number;
-  stock: number;
-  images: string[];
-}
+import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 
 interface ProductTableProps {
-  products: Product[];
+  products: ProductWithVariants[];
   loading?: boolean;
-  modernStyle?: boolean; // ✅ optional flag for modern look
 }
 
 const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
   const router = useRouter();
 
-  const handleEdit = (id: number) =>
-    router.push(`/dashboard/products/edit-product/${id}`);
-  const handleDelete = (id: number) => console.log("Delete product:", id);
+  const handleEdit = (id: string) => router.push(`/dashboard/products/edit-product/${id}`);
+  const handleDelete = (id: string) => console.log("Delete product:", id);
 
-  const columns: ColumnsType<Product> = [
+  const columns: ColumnsType<ProductWithVariants> = [
     {
-      title: "Image",
-      dataIndex: "images",
-      key: "image",
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
       align: "center",
-      render: (images: string[]) => (
-        <div className="flex justify-center items-center h-16">
-          <Image
-            src={images[0]}
-            alt="product"
-            width={64}
-            height={64}
-            className="rounded-md object-cover"
-          />
-        </div>
-      ),
-    },
-    {
-      title: "Title",
-      dataIndex: "title",
-      align: "center",
-
-      key: "title",
-      ellipsis: true,
     },
     {
       title: "Category",
-      dataIndex: "category",
-      align: "center",
-
       key: "category",
+      align: "center",
+      render: (_, record) => record.category?.name || "None",
     },
     {
-      title: "Price",
+      title: "Base Price",
+      dataIndex: "base_price",
+      key: "base_price",
       align: "center",
-
-      key: "price",
-      render: (_, record) => (
-        <div className="flex flex-col items-center">
-          <span className="font-semibold text-lg">₹{record.currentPrice}</span>
-          <span className="text-gray-400 line-through text-sm">
-            ₹{record.originalPrice}
-          </span>
-        </div>
-      ),
+      render: (price: number | null) => (price ?? "—"),
     },
     {
-      title: "Discount",
-      dataIndex: "discount",
+      title: "Discounted Price",
+      dataIndex: "discounted_price",
+      key: "discounted_price",
       align: "center",
-
-      key: "discount",
-      render: (discount: number) => (
-        <span
-          className={`px-2 py-1 rounded ${
-            discount > 0
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          }`}
-        >
-          {discount}%
-        </span>
-      ),
+      render: (price: number | null) => (price ?? "—"),
     },
     {
-      title: "Stock",
-      dataIndex: "stock",
+      title: "Variants",
+      key: "variants",
       align: "center",
-
-      key: "stock",
+      render: (_, record) => {
+        const vars = record.product_variants;
+        if (!vars || vars.length === 0)
+          return <span className="text-gray-400">None</span>;
+        return (
+          <div className="flex flex-col gap-1">
+            {vars.map((v) => (
+              <span key={v.id} className="text-sm">
+                {v.variant_name ?? "(Unnamed)"} – {v.price ?? "N/A"}
+              </span>
+            ))}
+          </div>
+        );
+      },
     },
     {
       title: "Actions",
       key: "actions",
       align: "center",
-
       render: (_, record) => (
         <div className="flex gap-2 justify-center">
           <button
@@ -127,14 +87,14 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
   ];
 
   return (
-    <DataTable<Product>
+    <DataTable<ProductWithVariants>
       columns={columns}
       data={products}
       rowKey="id"
       pagination={{ pageSize: 10 }}
       loading={loading}
       size="middle"
-      bordered={true}
+      bordered
     />
   );
 };
