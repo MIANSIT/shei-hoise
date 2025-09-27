@@ -14,10 +14,10 @@ export const productSchema = z.object({
   base_price: z.number().min(0, "Base price must be greater than 0"),
   weight: z.number().optional(),
   sku: z.string().optional(),
-  tp_price: z.number().optional(),
+  tp_price: z.number().min(1, "TP price must be greater than 0"),
   discounted_price: z.number().optional(),
   discount_amount: z.number().optional(),
-  stock: z.number().min(0, "Stock must be 0 or greater").optional(), // <-- NEW
+  stock: z.number().min(0, "Stock must be 0 or greater"),
   dimensions: z.string().optional(), // ✅ added
   is_digital: z.boolean().optional(), // ✅ added
   status: z.string().optional(), // could also use z.enum([...]) if you have fixed statuses

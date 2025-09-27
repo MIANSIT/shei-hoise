@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 
 interface Option {
@@ -11,9 +12,11 @@ interface FormFieldProps {
   name: string;
   type?: string;
   value?: string | number;
-  checked?: boolean; // ✅ added for checkbox support
+  checked?: boolean;
   onChange?: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => void;
   required?: boolean;
   placeholder?: string;
@@ -21,6 +24,11 @@ interface FormFieldProps {
   as?: "input" | "textarea" | "select";
   options?: Option[];
   readOnly?: boolean;
+
+  // numeric attributes
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 const FormField: React.FC<FormFieldProps> = ({
@@ -36,12 +44,17 @@ const FormField: React.FC<FormFieldProps> = ({
   as = "input",
   options = [],
   readOnly = false,
+
+  step,
 }) => {
   return (
-    <div className="flex flex-col w-full">
+    <div
+      className="flex flex-col w-full scroll-mt-24"
+      id={`field-${name}`} // scroll target
+    >
       {label && (
         <label htmlFor={name} className="text-sm font-medium mb-1">
-          {label}
+          {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
 
@@ -54,7 +67,9 @@ const FormField: React.FC<FormFieldProps> = ({
           required={required}
           placeholder={placeholder}
           readOnly={readOnly}
-          className={`border rounded-md px-3 py-2 w-full resize-none ${error ? "border-red-400" : ""}`}
+          className={`border rounded-md px-3 py-2 w-full resize-none ${
+            error ? "border-red-400" : ""
+          }`}
         />
       ) : as === "select" ? (
         <select
@@ -64,7 +79,9 @@ const FormField: React.FC<FormFieldProps> = ({
           onChange={onChange}
           required={required}
           disabled={readOnly}
-          className={`border rounded-md px-3 py-2 w-full ${error ? "border-red-400" : ""}`}
+          className={`border rounded-md px-3 py-2 w-full ${
+            error ? "border-red-400" : ""
+          }`}
         >
           <option value="">Select an option</option>
           {options.map((opt) => (
@@ -78,13 +95,16 @@ const FormField: React.FC<FormFieldProps> = ({
           id={name}
           name={name}
           type={type}
-          value={type === "checkbox" ? undefined : value} // checkbox doesn't use value
-          checked={type === "checkbox" ? checked : undefined} // use checked for checkbox
+          value={type === "checkbox" ? undefined : value}
+          checked={type === "checkbox" ? checked : undefined}
           onChange={onChange}
           required={required}
           placeholder={placeholder}
           readOnly={readOnly}
-          className={`border rounded-md px-3 py-2 w-full ${error ? "border-red-400" : ""}`}
+          step={step}
+          className={`border rounded-md px-3 py-2 w-full ${
+            error ? "border-red-400" : ""
+          }`}
         />
       )}
 
