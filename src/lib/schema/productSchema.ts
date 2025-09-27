@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { variantSchema, ProductVariantType as VariantType } from "./varientSchema";
+import {
+  variantSchema,
+  ProductVariantType as VariantType,
+} from "./varientSchema";
 
 export const productSchema = z.object({
   store_id: z.string().uuid(),
@@ -14,6 +17,12 @@ export const productSchema = z.object({
   tp_price: z.number().optional(),
   discounted_price: z.number().optional(),
   discount_amount: z.number().optional(),
+  dimensions: z.string().optional(), // ✅ added
+  is_digital: z.boolean().optional(), // ✅ added
+  status: z.string().optional(), // could also use z.enum([...]) if you have fixed statuses
+  featured: z.boolean().optional(),
+  meta_title: z.string().optional(),
+  meta_description: z.string().optional(),
   variants: z.array(variantSchema).optional(),
   images: z
     .array(

@@ -1,8 +1,8 @@
-import { CreateProductType } from "@/lib/schema/productSchema";
+import { ProductType  } from "@/lib/schema/productSchema";
 import { supabase } from "@/lib/supabase";
 
 // Insert product and related records
-export async function createProduct(product: CreateProductType) {
+export async function createProduct(product: ProductType ) {
   try {
     // Step 1: Insert main product
     const { data: productData, error: productError } = await supabase
@@ -55,9 +55,9 @@ export async function createProduct(product: CreateProductType) {
         .insert(
           product.images.map((image) => ({
             product_id: productId,
-            image_url: image.image_url,
-            alt_text: image.alt_text,
-            is_primary: image.is_primary ?? false,
+            image_url: image.imageUrl,
+            alt_text: image.altText,
+            is_primary: image.isPrimary ?? false,
           }))
         );
 
