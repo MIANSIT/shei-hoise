@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { useDropzone } from "react-dropzone";
-import { Label } from "@/components/ui/label";
 
 interface ImageObj {
   imageUrl: string;
@@ -16,7 +15,11 @@ interface ImageUploaderProps {
   error?: string;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error }) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({
+  images,
+  setImages,
+  error,
+}) => {
   const onDrop = (acceptedFiles: File[]) => {
     const newImages: ImageObj[] = acceptedFiles.map((file) => ({
       file,
@@ -33,8 +36,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error 
 
   return (
     <div className="flex flex-col gap-2">
-      <Label>Upload Images</Label>
-
       <div
         {...getRootProps()}
         className={`mt-2 border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition hover:border-yellow-400 ${
@@ -72,28 +73,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ images, setImages, error 
       </div>
 
       {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
-
-      {/* Preview */}
-      {images.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {images.map((img, idx) => (
-            <div key={idx} className="relative w-24 h-24 border rounded overflow-hidden">
-              <img
-                src={img.imageUrl}
-                alt={img.altText || "preview"}
-                className="w-full h-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 rounded-bl"
-              >
-                X
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

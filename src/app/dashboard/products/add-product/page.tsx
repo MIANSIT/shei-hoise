@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
-import AddProductForm from "../../../components/admin/dashboard/products/addProducts/AddProductForm";
+import React, { useRef } from "react";
+import AddProductForm, {
+  AddProductFormRef,
+} from "../../../components/admin/dashboard/products/addProducts/AddProductForm";
 import { ProductType } from "@/lib/schema/productSchema";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -10,20 +12,22 @@ import { createProduct } from "@/lib/queries/products/createProduct";
 export default function AddProductPage() {
   const { success, error } = useSheiNotification();
   const { user, loading } = useCurrentUser();
+  const formRef = useRef<AddProductFormRef>(null);
 
   if (loading) return <p>Loading...</p>;
   if (!user || !user.store_id) return <p>No store found for this user.</p>;
 
   const handleSubmit = async (product: ProductType) => {
     try {
-      // Call the Supabase query directly
-      const productId = await createProduct(product);
-
+      await createProduct(product);
       success(
         <div>
           🎉 <b>{product.name}</b> has been added successfully!
         </div>
       );
+
+      // Reset form & variants using ref
+      formRef.current?.reset();
     } catch (err) {
       console.error(err);
       error("❌ Failed to add product. Please try again.");
@@ -31,9 +35,12 @@ export default function AddProductPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-white mb-6">Add Product</h1>
-      <AddProductForm storeId={user.store_id} onSubmit={handleSubmit} />
+    <div>
+      <AddProductForm
+        ref={formRef}
+        storeId={user.store_id}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }
