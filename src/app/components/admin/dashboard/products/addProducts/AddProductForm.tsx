@@ -50,9 +50,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     };
 
     const form = useZodForm<ProductType>(productSchema, initialValues);
-    const [categories, setCategories] = useState<
-      { id: string; name: string }[]
-    >([]);
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+      []
+    );
+
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
 
@@ -96,23 +97,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           onSubmit={form.handleSubmit(
             (data) => {
               // ✅ Custom validation for main numeric fields
-              if (
-                data.base_price <= 0 ||
-                data.tp_price <= 0 ||
-                (variants.length === 0 && data.stock < 0)
-              ) {
-                notifyError(
-                  "Base Price and TP Price must be > 0. Stock cannot be negative."
-                );
-
-                // Scroll to first invalid field
-                const firstInvalid =
-                  data.base_price <= 0
-                    ? "base_price"
-                    : data.tp_price <= 0
-                    ? "tp_price"
-                    : "stock";
-                const el = document.getElementById(`field-${firstInvalid}`);
+              if (data.base_price <= 0) {
+                notifyError("Base Price must be greater than 0.");
+                const el = document.getElementById("field-base_price");
                 if (el) {
                   el.scrollIntoView({ behavior: "smooth", block: "center" });
                   el.classList.add("animate-shake");
@@ -121,6 +108,29 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 return;
               }
 
+              if (data.tp_price <= 0) {
+                notifyError("TP Price must be greater than 0.");
+                const el = document.getElementById("field-tp_price");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  el.classList.add("animate-shake");
+                  setTimeout(() => el.classList.remove("animate-shake"), 500);
+                }
+                return;
+              }
+
+              if (variants.length === 0 && data.stock <= 0) {
+                notifyError("Stock must be greater than 0 if there are no variants.");
+                const el = document.getElementById("field-stock");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  el.classList.add("animate-shake");
+                  setTimeout(() => el.classList.remove("animate-shake"), 500);
+                }
+                return;
+              }
+
+              // ✅ All good, submit
               onSubmit(data, {
                 reset: () => form.reset(initialValues),
                 formValues: () => form.getValues(),
@@ -185,9 +195,13 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             label="Base Price"
             name="base_price"
             type="number"
+            min={1}
             value={form.watch("base_price")}
             onChange={(e) =>
-              form.setValue("base_price", parseFloat(e.target.value))
+              form.setValue(
+                "base_price",
+                Math.max(1, parseFloat(e.target.value))
+              )
             }
             required
             error={form.formState.errors.base_price?.message as string}
@@ -197,9 +211,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             label="TP Price"
             name="tp_price"
             type="number"
+            min={1}
             value={form.watch("tp_price")}
             onChange={(e) =>
-              form.setValue("tp_price", parseFloat(e.target.value))
+              form.setValue("tp_price", Math.max(1, parseFloat(e.target.value)))
             }
             required
             error={form.formState.errors.tp_price?.message as string}
@@ -258,9 +273,13 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               label="Stock"
               name="stock"
               type="number"
-              min={0}
-              value={form.watch("stock") ?? 0}
-              onChange={(e) => form.setValue("stock", parseInt(e.target.value))}
+              min={1}
+              value={form.watch("stock") ?? 1}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                form.setValue("stock", val > 0 ? val : 1);
+              }}
+              required
               error={form.formState.errors.stock?.message as string}
             />
           )}
