@@ -1,26 +1,25 @@
 "use client";
 
-import React, { forwardRef, useImperativeHandle } from "react";
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  useEffect,
+  useState,
+} from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
-import {
-  productSchema,
-  ProductType,
-  ProductVariantType,
-} from "@/lib/schema/productSchema";
+import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
-import VariantDialog from "./VariantDialog";
-import { Button } from "@/components/ui/button";
-import { getCategoriesQuery } from "../../../../../../lib/queries/categories/getCategories";
-import ProductVariants from "./ProductVariants";
 import ProductImages from "./ProductImages";
+import ProductVariantsInline from "./ProductVariants"; // Import the new component
+import { Button } from "@/components/ui/button";
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 
 interface AddProductFormProps {
   product?: ProductType;
   storeId: string;
-  onSubmit: (product: ProductType) => void;
+  onSubmit: (product: ProductType, formMethods: AddProductFormRef) => void;
 }
 
-// Expose form methods to parent via ref
 export interface AddProductFormRef {
   reset: () => void;
   formValues: () => ProductType;
@@ -47,31 +46,17 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     };
 
     const form = useZodForm<ProductType>(productSchema, initialValues);
-
-    const [categories, setCategories] = React.useState<
+    const [categories, setCategories] = useState<
       { id: string; name: string }[]
     >([]);
-    const [variantDialogOpen, setVariantDialogOpen] = React.useState(false);
-    const [editingVariant, setEditingVariant] = React.useState<
-      ProductVariantType | undefined
-    >(undefined);
-
     const images = form.watch("images") ?? [];
+    const variants = form.watch("variants") ?? [];
 
-    if (categories.length === 0) {
+    useEffect(() => {
       getCategoriesQuery(storeId).then(({ data }) => {
         if (data) setCategories(data);
       });
-    }
-
-    const handleVariantSave = (variant: ProductVariantType) => {
-      const variants = form.getValues("variants") || [];
-      const updated = editingVariant
-        ? variants.map((v) => (v === editingVariant ? variant : v))
-        : [...variants, variant];
-      form.setValue("variants", updated);
-      setEditingVariant(undefined);
-    };
+    }, [storeId]);
 
     const handleNameChange = (value: string) => {
       form.setValue("name", value);
@@ -84,7 +69,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       form.setValue("slug", slugValue);
     };
 
-    // expose form methods to parent
     useImperativeHandle(ref, () => ({
       reset: () => form.reset(initialValues),
       formValues: () => form.getValues(),
@@ -93,9 +77,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     return (
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit((data) =>
+            onSubmit(data, {
+              reset: () => form.reset(initialValues),
+              formValues: () => form.getValues(),
+            })
+          )}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
+          {/* Product Fields */}
           <FormField
             label="Product Name"
             name="name"
@@ -181,19 +171,22 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             value={form.watch("sku")}
             onChange={(e) => form.setValue("sku", e.target.value)}
           />
-          <FormField
-            label="Stock"
-            name="stock"
-            type="number"
-            value={form.watch("stock") ?? 0}
-            onChange={(e) => form.setValue("stock", parseInt(e.target.value))}
-          />
 
-          <ProductVariants
-            form={form}
-            setEditingVariant={setEditingVariant}
-            setVariantDialogOpen={setVariantDialogOpen}
-          />
+          {/* Show main stock only if no variants */}
+          {variants.length === 0 && (
+            <FormField
+              label="Stock"
+              name="stock"
+              type="number"
+              value={form.watch("stock") ?? 0}
+              onChange={(e) => form.setValue("stock", parseInt(e.target.value))}
+            />
+          )}
+
+          {/* --- Inline Variant Component --- */}
+          <ProductVariantsInline form={form} />
+
+          {/* Images */}
           <ProductImages
             images={images}
             setImages={(files) => form.setValue("images", files)}
@@ -205,21 +198,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </Button>
           </div>
         </form>
-
-        <VariantDialog
-          open={variantDialogOpen}
-          variant={editingVariant}
-          onClose={() => {
-            setVariantDialogOpen(false);
-            setEditingVariant(undefined);
-          }}
-          onSave={handleVariantSave}
-        />
       </div>
     );
   }
 );
 
 AddProductForm.displayName = "AddProductForm";
-
 export default AddProductForm;

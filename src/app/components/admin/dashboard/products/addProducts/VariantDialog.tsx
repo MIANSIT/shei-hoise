@@ -32,6 +32,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
   const [color, setColor] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [isActive, setIsActive] = useState(true);
+  const [stock, setStock] = useState(0);
 
   useEffect(() => {
     if (variant) {
@@ -42,6 +43,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
       setColor(variant.color || "");
       setAttributes(variant.attributes || {});
       setIsActive(variant.is_active ?? true);
+      setStock(variant.stock ?? 0);
     } else {
       setVariantName("");
       setSku("");
@@ -50,11 +52,12 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
       setColor("");
       setAttributes({});
       setIsActive(true);
+      setStock(0);
     }
   }, [variant]);
 
   const handleSave = () => {
-    if (!variantName) return; // simple validation
+    if (!variantName) return;
 
     onSave({
       variant_name: variantName,
@@ -64,6 +67,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
       color,
       attributes,
       is_active: isActive,
+      stock,
       product_id: variant?.product_id,
     });
     onClose();
@@ -84,12 +88,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
             onChange={(e) => setVariantName(e.target.value)}
           />
 
-          <FormField
-            label="SKU"
-            name="sku"
-            value={sku}
-            onChange={(e) => setSku(e.target.value)}
-          />
+          <FormField label="SKU" name="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
 
           <FormField
             label="Price"
@@ -107,12 +106,7 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
             onChange={(e) => setWeight(parseFloat(e.target.value))}
           />
 
-          <FormField
-            label="Color"
-            name="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-          />
+          <FormField label="Color" name="color" value={color} onChange={(e) => setColor(e.target.value)} />
 
           <FormField
             label="Attributes (JSON)"
@@ -122,12 +116,17 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
             onChange={(e) => {
               try {
                 const parsed = JSON.parse(e.target.value);
-                if (typeof parsed === "object" && parsed !== null)
-                  setAttributes(parsed);
-              } catch {
-                // ignore invalid JSON until corrected
-              }
+                if (typeof parsed === "object" && parsed !== null) setAttributes(parsed);
+              } catch {}
             }}
+          />
+
+          <FormField
+            label="Stock"
+            name="stock"
+            type="number"
+            value={stock}
+            onChange={(e) => setStock(parseInt(e.target.value))}
           />
 
           <FormField
@@ -135,17 +134,12 @@ const VariantDialog: React.FC<VariantDialogProps> = ({
             name="isActive"
             type="checkbox"
             checked={isActive}
-            onChange={(e) => {
-              const target = e.target as HTMLInputElement;
-              setIsActive(target.checked);
-            }}
+            onChange={(e) => setIsActive((e.target as HTMLInputElement).checked)}
           />
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} variant="greenish">
             {variant ? "Update" : "Save"}
           </Button>

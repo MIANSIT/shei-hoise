@@ -1,8 +1,10 @@
-// lib/queries/products/createProduct.ts
 import { supabase } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
+import { createInventory } from "@/lib/queries/inventory/createInventory";
+
 export async function createProduct(product: ProductType) {
   try {
+    // 1️⃣ Insert Product
     const { data: productData, error: productError } = await supabase
       .from("products")
       .insert({
@@ -11,41 +13,56 @@ export async function createProduct(product: ProductType) {
         name: product.name,
         slug: product.slug,
         description: product.description,
-        short_description: product.short_description, // keep the DB column name
+        short_description: product.short_description,
         base_price: product.base_price,
         tp_price: product.tp_price,
         discounted_price: product.discounted_price,
         discount_amount: product.discount_amount,
         weight: product.weight,
         sku: product.sku,
-        // images: product.images, // uncomment only if you actually have an `images` jsonb column
       })
       .select("id")
       .single();
 
     if (productError) throw productError;
-
     const productId = productData.id;
 
-    // --- 2️⃣ Insert variants if any ---
-    if (product.variants && product.variants.length > 0) {
-      // Map JS keys to the actual DB column names
-      const variantsToInsert = product.variants.map((v: ProductVariantType) => ({
-        variant_name: v.variant_name,
-        sku: v.sku,
-        price: v.price,
-        weight: v.weight,
-        color: v.color,
-        attributes: v.attributes ?? {}, // must be jsonb
-        is_active: v.is_active,         // rename from isActive
-        product_id: productId,          // rename from productId
-      }));
+    // 2️⃣ Insert Variants if any
+    if (product.variants?.length) {
+      const variantsToInsert = product.variants.map(
+        (v: ProductVariantType) => ({
+          variant_name: v.variant_name,
+          sku: v.sku,
+          price: v.price,
+          weight: v.weight,
+          color: v.color,
+          attributes: v.attributes ?? {},
+          is_active: v.is_active,
+          product_id: productId,
+        })
+      );
 
-      const { error: variantError } = await supabase
-        .from("product_variants")      // ✅ correct table name
-        .insert(variantsToInsert);
+      const { data: insertedVariants, error: variantError } = await supabase
+        .from("product_variants")
+        .insert(variantsToInsert)
+        .select("id");
 
       if (variantError) throw variantError;
+
+      // ✅ Create inventory for variants with actual stock
+      (insertedVariants as { id: string }[]).forEach((v, idx) => {
+        createInventory({
+          product_id: productId,
+          variant_id: v.id,
+          quantity_available: product.variants![idx].stock ?? 0,
+        });
+      });
+    } else {
+      // ✅ No variants → create inventory for main product with stock
+      await createInventory({
+        product_id: productId,
+        quantity_available: product.stock ?? 0,
+      });
     }
 
     return productId;
