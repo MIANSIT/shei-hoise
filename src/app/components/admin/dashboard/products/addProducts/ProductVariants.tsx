@@ -52,16 +52,19 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
       {variants.map((variant, idx) => (
         <div
           key={idx}
-          className="border p-6 rounded relative  grid grid-cols-1 md:grid-cols-3 gap-4"
+          className="border p-6 rounded relative grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <Button
-            type="button"
-            variant="destructive"
-            className="absolute top-1 right-2"
-            onClick={() => handleRemoveVariant(idx)}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {/* Variant Header */}
+          <div className="col-span-full flex justify-between items-center mb-2">
+            <h4 className="font-medium text-lg">Variant {idx + 1}</h4>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => handleRemoveVariant(idx)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
 
           <FormField
             label="Name"
