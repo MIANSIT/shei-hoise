@@ -62,6 +62,7 @@ export default function StorePage({
     rating: 0,
     slug: p.slug,
     images: p.images || [],
+    imageUrl: p.images && p.images.length > 0 ? p.images[0] : "", // Add imageUrl property
     discount: p.base_price - (p.discounted_price ?? p.base_price),
   }));
 
@@ -69,11 +70,18 @@ export default function StorePage({
     <>
       <Header />
       <div className="px-8 py-4">
-        <ProductGrid
-          products={mappedProducts}
-          onAddToCart={handleAddToCart}
-          loadingProductId={loadingProductId}
-        />
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            {/* Replace this with a fancy loader if you like */}
+            <span className="text-lg font-medium">Loading products...</span>
+          </div>
+        ) : (
+          <ProductGrid
+            products={mappedProducts}
+            onAddToCart={handleAddToCart}
+            loadingProductId={loadingProductId}
+          />
+        )}
       </div>
       <Footer />
     </>
