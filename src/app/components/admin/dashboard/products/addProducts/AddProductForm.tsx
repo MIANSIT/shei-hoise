@@ -1,11 +1,6 @@
 "use client";
 
-import React, {
-  forwardRef,
-  useImperativeHandle,
-  useEffect,
-  useState,
-} from "react";
+import React, { forwardRef, useImperativeHandle, useEffect, useState } from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
 import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
@@ -40,9 +35,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       short_description: "",
       base_price: 0,
       tp_price: 0,
-      discounted_price: 0,
-      discount_amount: 0,
-      weight: 0,
+      discounted_price: undefined,
+      discount_amount: undefined,
+      weight: undefined,
       sku: "",
       stock: 0,
       variants: [],
@@ -50,9 +45,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     };
 
     const form = useZodForm<ProductType>(productSchema, initialValues);
-    const [categories, setCategories] = useState<{ id: string; name: string }[]>(
-      []
-    );
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
@@ -95,47 +88,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <form
           onSubmit={form.handleSubmit(
-            (data) => {
-              // ✅ Custom validation for main numeric fields
-              if (data.base_price <= 0) {
-                notifyError("Base Price must be greater than 0.");
-                const el = document.getElementById("field-base_price");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  el.classList.add("animate-shake");
-                  setTimeout(() => el.classList.remove("animate-shake"), 500);
-                }
-                return;
-              }
-
-              if (data.tp_price <= 0) {
-                notifyError("TP Price must be greater than 0.");
-                const el = document.getElementById("field-tp_price");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  el.classList.add("animate-shake");
-                  setTimeout(() => el.classList.remove("animate-shake"), 500);
-                }
-                return;
-              }
-
-              if (variants.length === 0 && data.stock <= 0) {
-                notifyError("Stock must be greater than 0 if there are no variants.");
-                const el = document.getElementById("field-stock");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  el.classList.add("animate-shake");
-                  setTimeout(() => el.classList.remove("animate-shake"), 500);
-                }
-                return;
-              }
-
-              // ✅ All good, submit
+            (data) =>
               onSubmit(data, {
                 reset: () => form.reset(initialValues),
                 formValues: () => form.getValues(),
-              });
-            },
+              }),
             (errors) => {
               notifyError(
                 "Please fix the highlighted required fields before saving."
@@ -151,7 +108,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             value={form.watch("name")}
             onChange={(e) => handleNameChange(e.target.value)}
             required
-            error={form.formState.errors.name?.message as string}
+            error={form.formState.errors.name?.message?.toString()}
           />
 
           <FormField
@@ -159,7 +116,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             name="slug"
             value={form.watch("slug")}
             readOnly
-            error={form.formState.errors.slug?.message as string}
+            error={form.formState.errors.slug?.message?.toString()}
           />
 
           <FormField
@@ -170,7 +127,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             value={form.watch("category_id") ?? ""}
             onChange={(e) => form.setValue("category_id", e.target.value)}
             required
-            error={form.formState.errors.category_id?.message as string}
+            error={form.formState.errors.category_id?.message?.toString()}
           />
 
           <FormField
@@ -180,12 +137,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             value={form.watch("description") ?? ""}
             onChange={(e) => form.setValue("description", e.target.value)}
             required
-            error={form.formState.errors.description?.message as string}
+            error={form.formState.errors.description?.message?.toString()}
           />
 
           <FormField
             label="Short Description"
-            name="shortDescription"
+            name="short_description"
             as="textarea"
             value={form.watch("short_description") ?? ""}
             onChange={(e) => form.setValue("short_description", e.target.value)}
@@ -198,13 +155,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             min={1}
             value={form.watch("base_price")}
             onChange={(e) =>
-              form.setValue(
-                "base_price",
-                Math.max(1, parseFloat(e.target.value))
-              )
+              form.setValue("base_price", parseFloat(e.target.value))
             }
             required
-            error={form.formState.errors.base_price?.message as string}
+            error={form.formState.errors.base_price?.message?.toString()}
           />
 
           <FormField
@@ -213,11 +167,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             type="number"
             min={1}
             value={form.watch("tp_price")}
-            onChange={(e) =>
-              form.setValue("tp_price", Math.max(1, parseFloat(e.target.value)))
-            }
+            onChange={(e) => form.setValue("tp_price", parseFloat(e.target.value))}
             required
-            error={form.formState.errors.tp_price?.message as string}
+            error={form.formState.errors.tp_price?.message?.toString()}
           />
 
           <FormField
@@ -231,6 +183,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 e.target.value ? parseFloat(e.target.value) : undefined
               )
             }
+            error={form.formState.errors.discounted_price?.message?.toString()}
           />
 
           <FormField
@@ -244,6 +197,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 e.target.value ? parseFloat(e.target.value) : undefined
               )
             }
+            error={form.formState.errors.discount_amount?.message?.toString()}
           />
 
           <FormField
@@ -257,6 +211,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 e.target.value ? parseFloat(e.target.value) : undefined
               )
             }
+            error={form.formState.errors.weight?.message?.toString()}
           />
 
           <FormField
@@ -265,7 +220,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             value={form.watch("sku")}
             onChange={(e) => form.setValue("sku", e.target.value)}
             required
-            error={form.formState.errors.sku?.message as string}
+            error={form.formState.errors.sku?.message?.toString()}
           />
 
           {variants.length === 0 && (
@@ -275,12 +230,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               type="number"
               min={1}
               value={form.watch("stock") ?? 1}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                form.setValue("stock", val > 0 ? val : 1);
-              }}
+              onChange={(e) =>
+                form.setValue("stock", parseInt(e.target.value) || 1)
+              }
               required
-              error={form.formState.errors.stock?.message as string}
+              error={form.formState.errors.stock?.message?.toString()}
             />
           )}
 
