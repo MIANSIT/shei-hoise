@@ -6,7 +6,6 @@ interface ImageObj {
   imageUrl: string;
   altText?: string;
   isPrimary?: boolean;
-  file?: File; // optional, if it's a new uploaded file
 }
 
 interface ImageUploaderProps {
@@ -21,9 +20,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   error,
 }) => {
   const onDrop = (acceptedFiles: File[]) => {
+    // Convert files to DB-safe image URLs
     const newImages: ImageObj[] = acceptedFiles.map((file) => ({
-      file,
-      imageUrl: URL.createObjectURL(file),
+      imageUrl: URL.createObjectURL(file), // temporary preview
+      altText: file.name,
+      isPrimary: false,
     }));
 
     setImages([...images, ...newImages]);
@@ -58,13 +59,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
               d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 0L8 8m4-4l4 4"
             />
           </svg>
-          {isDragActive ? (
-            <p className="font-medium">Drop images here...</p>
-          ) : (
-            <p className="font-medium">
-              Drag and drop images here or click to browse
-            </p>
-          )}
+          <p className="font-medium">
+            {isDragActive
+              ? "Drop images here..."
+              : "Drag and drop images here or click to browse"}
+          </p>
           <p className="text-xs">
             Accepted formats: <span>.jpeg, .png, .webp</span> <br />
             Max size: <span>5MB</span>

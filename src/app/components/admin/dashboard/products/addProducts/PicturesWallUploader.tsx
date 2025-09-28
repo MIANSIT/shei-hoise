@@ -2,13 +2,12 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Upload, Modal } from "antd";
-import type { RcFile, UploadFile, UploadProps } from "antd/es/upload";
+import type { UploadFile, UploadProps } from "antd/es/upload";
 
 interface ImageObj {
   imageUrl: string;
   altText?: string;
   isPrimary?: boolean;
-  file?: File;
 }
 
 interface PicturesWallUploaderProps {
@@ -16,7 +15,10 @@ interface PicturesWallUploaderProps {
   setImages: (files: ImageObj[]) => void;
 }
 
-const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, setImages }) => {
+const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
+  images,
+  setImages,
+}) => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -24,35 +26,20 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
 
   // Convert `images` prop to AntD UploadFile format
   useEffect(() => {
-    const uploadFiles = images.map((img, index) => {
-      if (img.file) {
-        return {
-          uid: img.file.name + "-" + index,
-          name: img.file.name,
-          status: "done",
-          originFileObj: img.file,
-          url: img.imageUrl,
-        } as UploadFile;
-      } else {
-        return {
-          uid: `existing-${index}`,
-          name: img.imageUrl.split("/").pop() || `image-${index}`,
-          status: "done",
-          url: img.imageUrl,
-        } as UploadFile;
-      }
-    });
+    const uploadFiles = images.map((img, index) => ({
+      uid: `existing-${index}`,
+      name: img.altText || `image-${index}`,
+      status: "done",
+      url: img.imageUrl,
+    })) as UploadFile[];
+
     setFileList(uploadFiles);
   }, [images]);
 
   const handleCancel = () => setPreviewOpen(false);
 
   const handlePreview = async (file: UploadFile) => {
-    let src = file.url;
-    if (!src && file.originFileObj) {
-      src = await getBase64(file.originFileObj as RcFile);
-    }
-    setPreviewImage(src || "");
+    setPreviewImage(file.url || "");
     setPreviewTitle(file.name || "");
     setPreviewOpen(true);
   };
@@ -60,13 +47,13 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
   const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
     setFileList(newFileList);
 
-    // Map UploadFile back to ImageObj
+    // Map UploadFile back to DB-safe ImageObj
     const newImages: ImageObj[] = newFileList.map((file) => ({
-      file: file.originFileObj as File,
-      imageUrl: file.url || (file.originFileObj ? URL.createObjectURL(file.originFileObj as File) : ""),
+      imageUrl: file.url || "",
       altText: file.name,
       isPrimary: false,
     }));
+
     setImages(newImages);
   };
 
@@ -83,7 +70,12 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
         {fileList.length >= 8 ? null : <div>Upload</div>}
       </Upload>
 
-      <Modal open={previewOpen} title={previewTitle} footer={null} onCancel={handleCancel}>
+      <Modal
+        open={previewOpen}
+        title={previewTitle}
+        footer={null}
+        onCancel={handleCancel}
+      >
         {previewImage && (
           <div className="relative w-full h-96">
             <Image
@@ -99,14 +91,5 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({ images, set
     </>
   );
 };
-
-// Helper to convert File to Base64
-const getBase64 = (file: RcFile): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 
 export default PicturesWallUploader;
