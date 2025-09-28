@@ -1,6 +1,11 @@
 "use client";
 
-import React, { forwardRef, useImperativeHandle, useEffect, useState } from "react";
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  useEffect,
+  useState,
+} from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
 import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
@@ -40,12 +45,16 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       weight: undefined,
       sku: "",
       stock: 0,
+      featured: false,
+      status: "",
       variants: [],
       images: [],
     };
 
     const form = useZodForm<ProductType>(productSchema, initialValues);
-    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+    const [categories, setCategories] = useState<
+      { id: string; name: string }[]
+    >([]);
 
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
@@ -102,6 +111,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           )}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
+          {/* Basic Fields */}
           <FormField
             label="Product Name"
             name="name"
@@ -167,7 +177,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             type="number"
             min={1}
             value={form.watch("tp_price")}
-            onChange={(e) => form.setValue("tp_price", parseFloat(e.target.value))}
+            onChange={(e) =>
+              form.setValue("tp_price", parseFloat(e.target.value))
+            }
             required
             error={form.formState.errors.tp_price?.message?.toString()}
           />
@@ -238,13 +250,49 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             />
           )}
 
+          {/* Product Variants & Images */}
           <ProductVariantsInline form={form} />
-
           <ProductImages
             images={images}
             setImages={(files) => form.setValue("images", files)}
           />
 
+          {/* Featured Checkbox */}
+          {/* Featured and Status on same line */}
+          <div className="flex items-center justify-between mt-2 col-span-1 md:col-span-2 space-x-4">
+            {/* Featured Checkbox */}
+            <div className="flex items-center space-x-2">
+              <input
+                id="featured"
+                type="checkbox"
+                checked={form.watch("featured") ?? false}
+                onChange={(e) => form.setValue("featured", e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <label htmlFor="featured" className="text-sm font-bold pl-1">
+                Featured Product
+              </label>
+            </div>
+
+            {/* Status Dropdown */}
+            <div className="flex flex-col w-1/2">
+              <label htmlFor="status" className="text-sm font-medium mb-1">
+                Status
+              </label>
+              <select
+                id="status"
+                value={form.watch("status") ?? "inactive"}
+                onChange={(e) => form.setValue("status", e.target.value)}
+                className="border rounded-md px-3 py-2 w-full"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="draft">Draft</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Submit Button */}
           <div className="col-span-1 md:col-span-2 flex justify-end mt-4">
             <Button type="submit" className="bg-green-600 hover:bg-green-700">
               {product ? "Update Product" : "Save Product"}

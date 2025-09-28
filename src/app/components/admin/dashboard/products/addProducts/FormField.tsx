@@ -95,8 +95,8 @@ const FormField: React.FC<FormFieldProps> = ({
           id={name}
           name={name}
           type={type}
-          value={type === "checkbox" ? undefined : value}
-          checked={type === "checkbox" ? checked : undefined}
+          value={type === "checkbox" ? undefined : value ?? ""}
+          checked={type === "checkbox" ? checked ?? false : undefined}
           onChange={onChange}
           required={required}
           placeholder={placeholder}
