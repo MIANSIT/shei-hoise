@@ -8,18 +8,19 @@ import Image from "next/image";
 import { InputNumber } from "antd";
 
 interface Product {
-  id: number;
+  id: string;
   title: string;
-  currentPrice: string;
+  currentPrice: number;
   stock: number;
-  images: string[];
+  imageUrl: string | null;
 }
 
 interface StockTableProps {
   products: Product[];
-  editedStocks: Record<number, number>;
-  onStockChange: (id: number, value: number) => void;
+  editedStocks: Record<string, number>;
+  onStockChange: (id: string, value: number) => void;
   rowSelection?: TableRowSelection<Product>;
+  loading?: boolean;
 }
 
 const StockTable: React.FC<StockTableProps> = ({
@@ -27,23 +28,26 @@ const StockTable: React.FC<StockTableProps> = ({
   editedStocks,
   onStockChange,
   rowSelection,
+  loading,
 }) => {
   const columns: ColumnsType<Product> = [
     {
       title: "Image",
-      dataIndex: "images",
-      key: "images",
+      key: "image",
       align: "center",
-      width: 100, // set the column width (adjust as needed)
-      render: (images: string[]) => (
-        <Image
-          src={images[0]}
-          alt="product"
-          width={50}
-          height={50}
-          className="rounded-md object-cover items-center "
-        />
-      ),
+      width: 100,
+      render: (_value: unknown, record: Product) =>
+        record.imageUrl ? (
+          <Image
+            src={record.imageUrl}
+            alt={record.title}
+            width={50}
+            height={50}
+            className="rounded-md object-cover"
+          />
+        ) : (
+          <div className="w-12 h-12 bg-gray-200 rounded-md" />
+        ),
     },
     {
       title: "Product Name",
@@ -55,13 +59,13 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Price",
       dataIndex: "currentPrice",
       key: "currentPrice",
-      render: (price) => <span>${price}</span>,
+      render: (price: number) => <span>${price}</span>,
     },
     {
       title: "Stock",
       dataIndex: "stock",
       key: "stock",
-      render: (_: number, record: Product) => (
+      render: (_value: number, record: Product) => (
         <InputNumber
           min={0}
           value={editedStocks[record.id] ?? record.stock}
@@ -79,6 +83,7 @@ const StockTable: React.FC<StockTableProps> = ({
       rowKey="id"
       rowSelection={rowSelection}
       pagination={false}
+      loading={loading}
     />
   );
 };

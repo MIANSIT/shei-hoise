@@ -1,32 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
-import { dummyProducts } from "@/lib/store/dummyProducts";
+import React, { useEffect, useState } from "react";
+import { getProductWithStock } from "@/lib/queries/products/getProductWithStock";
 import StockTable from "./StockTable";
 import BulkStockUpdate from "./BulkStockUpdate";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
-
-interface Product {
-  id: number;
-  title: string;
-  currentPrice: string;
-  stock: number;
-  images: string[];
-}
+import {
+  mapProductsForTable,
+  TableProduct,
+} from "@/lib/queries/products/mapProductsForTable";
 
 const StockChangeTable: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(dummyProducts);
-  const [editedStocks, setEditedStocks] = useState<Record<number, number>>({});
+  const [products, setProducts] = useState<TableProduct[]>([]);
+  const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleStockChange = (id: number, value: number) => {
+  useEffect(() => {
+    async function fetchProducts() {
+      setLoading(true);
+      try {
+        const data = await getProductWithStock();
+        setProducts(mapProductsForTable(data));
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
+
+  const handleStockChange = (id: string, value: number) => {
     setEditedStocks((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleBulkUpdate = (value: number) => {
     const newEditedStocks = { ...editedStocks };
     selectedRowKeys.forEach((key) => {
-      const id = Number(key);
+      const id = String(key);
       const currentStock = products.find((p) => p.id === id)?.stock ?? 0;
       const previousEdit = editedStocks[id] ?? currentStock;
       newEditedStocks[id] = previousEdit + value;
@@ -61,6 +71,7 @@ const StockChangeTable: React.FC = () => {
           selectedRowKeys,
           onChange: setSelectedRowKeys,
         }}
+        loading={loading}
       />
 
       <div className="flex justify-end">
