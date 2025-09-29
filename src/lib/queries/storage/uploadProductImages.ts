@@ -1,3 +1,4 @@
+// src/lib/queries/storage/uploadProductImages.ts
 import { supabaseAdmin } from "@/lib/supabase";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
@@ -5,7 +6,7 @@ import { ProductImageType } from "@/lib/schema/productImageSchema";
 export async function uploadProductImages(
   storeId: string,
   productId: string,
-  images: FrontendImage[]
+  images: (FrontendImage & { variantId?: string })[]
 ) {
   if (!images || images.length === 0) return [];
 
@@ -18,13 +19,14 @@ export async function uploadProductImages(
     for (let i = 0; i < imagesToUpload.length; i++) {
       const img = imagesToUpload[i];
 
-      // ✅ Case 1: Existing Supabase URL (already uploaded)
+      // Case 1: Existing Supabase URL
       if (
         img.imageUrl.startsWith("http") &&
         !img.imageUrl.startsWith("blob:")
       ) {
         uploadedImages.push({
           product_id: productId,
+          variant_id: img.variantId, // assign variant id or undefined
           image_url: img.imageUrl,
           alt_text: img.altText,
           sort_order: i,
@@ -33,8 +35,7 @@ export async function uploadProductImages(
         continue;
       }
 
-      // ✅ Case 2: New file (temporary blob URL)
-      // fetch the blob from browser preview URL
+      // Case 2: New file (blob URL)
       const response = await fetch(img.imageUrl);
       const blob = await response.blob();
 
@@ -45,7 +46,6 @@ export async function uploadProductImages(
         .upload(filePath, blob, { contentType: blob.type || "image/png" });
 
       if (uploadError) throw uploadError;
-
       uploadedFilePaths.push(filePath);
 
       const { data: publicUrlData } = supabaseAdmin.storage
@@ -54,6 +54,7 @@ export async function uploadProductImages(
 
       uploadedImages.push({
         product_id: productId,
+        variant_id: img.variantId, // assign variant id or undefined
         image_url: publicUrlData.publicUrl,
         alt_text: img.altText,
         sort_order: i,
@@ -61,7 +62,7 @@ export async function uploadProductImages(
       });
     }
 
-    // ✅ Insert all images in DB
+    // Insert all images in DB
     const { error: insertError } = await supabaseAdmin
       .from("product_images")
       .insert(uploadedImages);

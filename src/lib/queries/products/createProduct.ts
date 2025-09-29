@@ -1,3 +1,4 @@
+// src/lib/queries/product/createProduct.ts
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
@@ -40,6 +41,7 @@ export async function createProduct(product: ProductType) {
     productId = productData.id;
 
     // 2️⃣ Insert Variants (if any)
+    let firstVariantId: string | undefined = undefined;
     if (product.variants?.length) {
       const variantsToInsert = product.variants.map(
         (v: ProductVariantType) => ({
@@ -64,6 +66,8 @@ export async function createProduct(product: ProductType) {
 
       insertedVariants.forEach((v) => insertedVariantIds.push(v.id));
 
+      firstVariantId = insertedVariants[0]?.id;
+
       // Create inventory for each variant
       for (let i = 0; i < insertedVariants.length; i++) {
         await createInventory({
@@ -82,7 +86,17 @@ export async function createProduct(product: ProductType) {
 
     // 3️⃣ Upload images
     if (product.images?.length) {
-      await uploadProductImages(product.store_id, productId!, product.images);
+      // assign variant_id for all images
+      const imagesWithVariantId = product.images.map((img) => ({
+        ...img,
+        variantId: firstVariantId, // undefined if no variants
+      }));
+
+      await uploadProductImages(
+        product.store_id,
+        productId!,
+        imagesWithVariantId
+      );
     }
 
     return productId;
@@ -92,7 +106,11 @@ export async function createProduct(product: ProductType) {
     if (productId) {
       const tablesToDelete = [
         { table: "product_images", column: "product_id", values: [productId] },
-        { table: "product_inventory", column: "product_id", values: [productId] },
+        {
+          table: "product_inventory",
+          column: "product_id",
+          values: [productId],
+        },
       ];
 
       if (insertedVariantIds.length) {
@@ -103,13 +121,20 @@ export async function createProduct(product: ProductType) {
         });
       }
 
-      tablesToDelete.push({ table: "products", column: "id", values: [productId] });
+      tablesToDelete.push({
+        table: "products",
+        column: "id",
+        values: [productId],
+      });
 
       for (const { table, column, values } of tablesToDelete) {
         try {
           await supabaseAdmin.from(table).delete().in(column, values);
         } catch (deleteErr) {
-          console.error(`Failed to delete from ${table} during rollback:`, deleteErr);
+          console.error(
+            `Failed to delete from ${table} during rollback:`,
+            deleteErr
+          );
         }
       }
     }
