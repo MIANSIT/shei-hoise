@@ -36,7 +36,7 @@ export const productSchema = z
         z.object({
           imageUrl: z.string().url("Invalid image URL"),
           altText: z.string().optional(),
-          isPrimary: z.boolean().default(false),
+          isPrimary: z.boolean().default(false).optional(),
         })
       )
       .optional(),
