@@ -6,20 +6,16 @@ import type { TableRowSelection } from "antd/es/table/interface";
 import DataTable from "@/app/components/admin/common/DataTable";
 import Image from "next/image";
 import { InputNumber } from "antd";
-
-interface Product {
-  id: string;
-  title: string;
-  currentPrice: number;
-  stock: number;
-  imageUrl: string | null;
-}
+import {
+  ProductRow,
+  VariantRow,
+} from "@/lib/hook/products/stock/mapProductsForTable";
 
 interface StockTableProps {
-  products: Product[];
+  products: ProductRow[];
   editedStocks: Record<string, number>;
   onStockChange: (id: string, value: number) => void;
-  rowSelection?: TableRowSelection<Product>;
+  rowSelection?: TableRowSelection<ProductRow>;
   loading?: boolean;
 }
 
@@ -30,13 +26,12 @@ const StockTable: React.FC<StockTableProps> = ({
   rowSelection,
   loading,
 }) => {
-  const columns: ColumnsType<Product> = [
+  const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
       key: "image",
-      align: "center",
-      width: 100,
-      render: (_value: unknown, record: Product) =>
+      width: 80,
+      render: (_value, record) =>
         record.imageUrl ? (
           <Image
             src={record.imageUrl}
@@ -50,7 +45,7 @@ const StockTable: React.FC<StockTableProps> = ({
         ),
     },
     {
-      title: "Product Name",
+      title: "Product / Variant",
       dataIndex: "title",
       key: "title",
       className: "font-semibold",
@@ -65,7 +60,7 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Stock",
       dataIndex: "stock",
       key: "stock",
-      render: (_value: number, record: Product) => (
+      render: (_value: number, record: ProductRow | VariantRow) => (
         <InputNumber
           min={0}
           value={editedStocks[record.id] ?? record.stock}
@@ -84,6 +79,32 @@ const StockTable: React.FC<StockTableProps> = ({
       rowSelection={rowSelection}
       pagination={false}
       loading={loading}
+      expandable={{
+        expandedRowRender: (record) => {
+          // Only expand if this row is a ProductRow and has variants
+          if (
+            "variants" in record &&
+            record.variants &&
+            record.variants.length > 0
+          ) {
+            return (
+              <DataTable
+                columns={columns}
+                data={record.variants}
+                rowKey="id"
+                pagination={false}
+                // Nested rows should not have row selection
+                rowSelection={undefined}
+              />
+            );
+          }
+          return null;
+        },
+        rowExpandable: (record) =>
+          "variants" in record &&
+          !!record.variants &&
+          record.variants.length > 0,
+      }}
     />
   );
 };

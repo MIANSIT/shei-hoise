@@ -1,7 +1,7 @@
-// utils/mapProductsForTable.ts
+// utils/mapProductsForModernTable.ts
 import { ProductWithStock } from "../../../queries/products/getProductWithStock";
 
-export interface TableProduct {
+export interface VariantRow {
   id: string;
   title: string;
   currentPrice: number;
@@ -9,32 +9,43 @@ export interface TableProduct {
   imageUrl: string | null;
 }
 
-export function mapProductsForTable(products: ProductWithStock[]): TableProduct[] {
-  const tableData: TableProduct[] = [];
+export interface ProductRow {
+  id: string;
+  title: string;
+  currentPrice: number;
+  stock: number;
+  imageUrl: string | null;
+  variants?: VariantRow[];
+}
 
-  products.forEach((p) => {
+export function mapProductsForModernTable(
+  products: ProductWithStock[]
+): ProductRow[] {
+  return products.map((p) => {
     if (p.variants.length === 0) {
-      // Product has no variants
-      tableData.push({
+      return {
         id: p.id,
         title: p.name,
         currentPrice: p.base_price,
         stock: p.stock?.quantity_available ?? 0,
         imageUrl: p.primary_image?.image_url ?? null,
-      });
+      };
     } else {
-      // Product has variants, create a row per variant
-      p.variants.forEach((v) => {
-        tableData.push({
+      return {
+        id: p.id,
+        title: p.name,
+        currentPrice: p.base_price,
+        stock: p.stock?.quantity_available ?? 0,
+        imageUrl: p.primary_image?.image_url ?? null,
+        variants: p.variants.map((v) => ({
           id: v.id,
-          title: `${p.name} - ${v.variant_name}`,
+          title: v.variant_name,
           currentPrice: v.price,
           stock: v.stock.quantity_available,
-          imageUrl: v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
-        });
-      });
+          imageUrl:
+            v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
+        })),
+      };
     }
   });
-
-  return tableData;
 }

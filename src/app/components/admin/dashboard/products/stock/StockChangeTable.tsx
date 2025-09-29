@@ -6,12 +6,12 @@ import StockTable from "./StockTable";
 import BulkStockUpdate from "./BulkStockUpdate";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
-  mapProductsForTable,
-  TableProduct,
+  mapProductsForModernTable,
+  ProductRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
 
 const StockChangeTable: React.FC = () => {
-  const [products, setProducts] = useState<TableProduct[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ const StockChangeTable: React.FC = () => {
       setLoading(true);
       try {
         const data = await getProductWithStock();
-        setProducts(mapProductsForTable(data));
+        setProducts(mapProductsForModernTable(data));
       } finally {
         setLoading(false);
       }
@@ -45,13 +45,26 @@ const StockChangeTable: React.FC = () => {
   };
 
   const handleUpdateStock = () => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        editedStocks[p.id] !== undefined
-          ? { ...p, stock: editedStocks[p.id] }
-          : p
-      )
-    );
+    const updateStockRecursively = (rows: ProductRow[]) =>
+      rows.map((p) => {
+        const updatedStock =
+          editedStocks[p.id] !== undefined ? editedStocks[p.id] : p.stock;
+
+        // Change 'let' to 'const'
+        const updatedVariants = p.variants?.map((v) => ({
+          ...v,
+          stock:
+            editedStocks[v.id] !== undefined ? editedStocks[v.id] : v.stock,
+        }));
+
+        return {
+          ...p,
+          stock: updatedStock,
+          variants: updatedVariants,
+        };
+      });
+
+    setProducts(updateStockRecursively(products));
     setEditedStocks({});
     setSelectedRowKeys([]);
   };
