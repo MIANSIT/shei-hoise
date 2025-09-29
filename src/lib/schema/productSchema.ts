@@ -47,6 +47,8 @@ export const productSchema = z
           isPrimary: z.boolean().default(false).optional(),
         })
       )
+      .min(1, "At least one image is required")
+      .max(5, "Maximum 5 images are allowed")
       .optional(),
   })
   .superRefine((data, ctx) => {
@@ -69,6 +71,15 @@ export const productSchema = z
           path: ["discounted_price"],
         });
       }
+    }
+
+    // Ensure at least one image if images exist
+    if (data.images && data.images.length > 5) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Maximum 5 images are allowed.",
+        path: ["images"],
+      });
     }
   });
 

@@ -1,18 +1,19 @@
-// src/lib/queries/products/createProduct.ts
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
 import { uploadProductImages } from "@/lib/queries/storage/uploadProductImages";
 
 /**
- * Fully atomic product creation (shorter, cleaner rollback)
+ * Fully atomic product creation
  */
 export async function createProduct(product: ProductType) {
+  if (!product.store_id) throw new Error("Store ID is missing");
+
   let productId: string | null = null;
   const insertedVariantIds: string[] = [];
 
   try {
-    // 1️⃣ Insert Product
+    // 1️⃣ Insert main product
     const { data: productData, error: productError } = await supabaseAdmin
       .from("products")
       .insert({
@@ -35,10 +36,10 @@ export async function createProduct(product: ProductType) {
       .single();
 
     if (productError) throw productError;
+    if (!productData?.id) throw new Error("Product ID not returned");
     productId = productData.id;
-    if (!productId) throw new Error("Product ID is missing");
 
-    // 2️⃣ Insert Variants if any
+    // 2️⃣ Insert Variants (if any)
     if (product.variants?.length) {
       const variantsToInsert = product.variants.map(
         (v: ProductVariantType) => ({
@@ -61,27 +62,27 @@ export async function createProduct(product: ProductType) {
 
       if (variantError) throw variantError;
 
-      insertedVariants.forEach((v: { id: string }) =>
-        insertedVariantIds.push(v.id)
-      );
+      insertedVariants.forEach((v) => insertedVariantIds.push(v.id));
 
+      // Create inventory for each variant
       for (let i = 0; i < insertedVariants.length; i++) {
         await createInventory({
-          product_id: productId,
+          product_id: productId!,
           variant_id: insertedVariants[i].id,
           quantity_available: product.variants![i].stock ?? 0,
         });
       }
     } else {
+      // No variants → create main inventory
       await createInventory({
-        product_id: productId,
+        product_id: productId!,
         quantity_available: product.stock ?? 0,
       });
     }
 
-    // 3️⃣ Upload images (rollback-safe function)
+    // 3️⃣ Upload images
     if (product.images?.length) {
-      await uploadProductImages(product.store_id!, productId, product.images);
+      await uploadProductImages(product.store_id, productId!, product.images);
     }
 
     return productId;
@@ -89,17 +90,11 @@ export async function createProduct(product: ProductType) {
     console.error("createProduct failed, rolling back:", err);
 
     if (productId) {
-      // 🔴 Clean rollback using loop
       const tablesToDelete = [
         { table: "product_images", column: "product_id", values: [productId] },
-        {
-          table: "product_inventory",
-          column: "product_id",
-          values: [productId],
-        },
+        { table: "product_inventory", column: "product_id", values: [productId] },
       ];
 
-      // Add variants if any
       if (insertedVariantIds.length) {
         tablesToDelete.push({
           table: "product_variants",
@@ -108,22 +103,13 @@ export async function createProduct(product: ProductType) {
         });
       }
 
-      // Add the main product last
-      tablesToDelete.push({
-        table: "products",
-        column: "id",
-        values: [productId],
-      });
+      tablesToDelete.push({ table: "products", column: "id", values: [productId] });
 
-      // Loop through tables and delete
       for (const { table, column, values } of tablesToDelete) {
         try {
           await supabaseAdmin.from(table).delete().in(column, values);
         } catch (deleteErr) {
-          console.error(
-            `Failed to delete from ${table} during rollback:`,
-            deleteErr
-          );
+          console.error(`Failed to delete from ${table} during rollback:`, deleteErr);
         }
       }
     }

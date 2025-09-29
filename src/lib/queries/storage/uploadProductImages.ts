@@ -1,70 +1,53 @@
-// src/lib/queries/products/uploadProductImages.ts
 import { supabaseAdmin } from "@/lib/supabase";
-import { ProductType } from "@/lib/schema/productSchema";
+import { FrontendImage } from "@/lib/types/frontendImage";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
 
-/**
- * Uploads product images to Supabase Storage under:
- * shei-hoise-product/{storeId}/
- * and inserts records in product_images table
- *
- * If any upload or DB insert fails, it deletes uploaded files to rollback.
- */
 export async function uploadProductImages(
   storeId: string,
   productId: string,
-  images: ProductType["images"]
+  images: FrontendImage[]
 ) {
-  if (!images || images.length === 0) return;
+  if (!images || images.length === 0) return [];
 
   const uploadedImages: ProductImageType[] = [];
-  const uploadedFilePaths: string[] = []; // track files for rollback
+  const uploadedFilePaths: string[] = [];
 
-  // Create placeholder to ensure folder exists
-  const placeholderPath = `${storeId}/.placeholder`;
-  const { error: placeholderError } = await supabaseAdmin.storage
-    .from("shei-hoise-product")
-    .upload(placeholderPath, new Blob([""]), { upsert: true });
-  if (placeholderError)
-    console.warn(
-      "Could not create store folder placeholder:",
-      placeholderError
-    );
+  const imagesToUpload = images.slice(0, 5); // limit to 5
 
   try {
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i];
+    for (let i = 0; i < imagesToUpload.length; i++) {
+      const img = imagesToUpload[i];
 
-      // Already a valid URL → use directly
-      if (img.imageUrl.startsWith("http")) {
+      // ✅ Case 1: Existing Supabase URL (already uploaded)
+      if (
+        img.imageUrl.startsWith("http") &&
+        !img.imageUrl.startsWith("blob:")
+      ) {
         uploadedImages.push({
           product_id: productId,
           image_url: img.imageUrl,
           alt_text: img.altText,
           sort_order: i,
-          is_primary: img.isPrimary ?? i === 0,
+          is_primary: i === 0,
         });
         continue;
       }
 
-      // Convert Blob/File from blob URL
+      // ✅ Case 2: New file (temporary blob URL)
+      // fetch the blob from browser preview URL
       const response = await fetch(img.imageUrl);
       const blob = await response.blob();
 
-      // File path: bucket/storeId/productId-timestamp-index.png
       const filePath = `${storeId}/${productId}-${Date.now()}-${i}.png`;
 
       const { error: uploadError } = await supabaseAdmin.storage
         .from("shei-hoise-product")
-        .upload(filePath, blob, {
-          contentType: blob.type || "image/png",
-          upsert: true,
-        });
+        .upload(filePath, blob, { contentType: blob.type || "image/png" });
+
       if (uploadError) throw uploadError;
 
-      uploadedFilePaths.push(filePath); // track uploaded file
+      uploadedFilePaths.push(filePath);
 
-      // Public URL
       const { data: publicUrlData } = supabaseAdmin.storage
         .from("shei-hoise-product")
         .getPublicUrl(filePath);
@@ -74,11 +57,11 @@ export async function uploadProductImages(
         image_url: publicUrlData.publicUrl,
         alt_text: img.altText,
         sort_order: i,
-        is_primary: img.isPrimary ?? i === 0,
+        is_primary: i === 0,
       });
     }
 
-    // Insert into product_images table
+    // ✅ Insert all images in DB
     const { error: insertError } = await supabaseAdmin
       .from("product_images")
       .insert(uploadedImages);
@@ -87,23 +70,16 @@ export async function uploadProductImages(
 
     return uploadedImages;
   } catch (err) {
-    console.error(
-      "uploadProductImages failed, rolling back uploaded files:",
-      err
-    );
+    console.error("Failed to upload images:", err);
 
-    // Delete any files that were uploaded before failure
+    // rollback any uploaded files in storage
     for (const filePath of uploadedFilePaths) {
       try {
         await supabaseAdmin.storage
           .from("shei-hoise-product")
           .remove([filePath]);
-      } catch (removeError) {
-        console.error(
-          "Failed to remove file during rollback:",
-          filePath,
-          removeError
-        );
+      } catch (removeErr) {
+        console.error("Failed to remove file during rollback:", removeErr);
       }
     }
 
