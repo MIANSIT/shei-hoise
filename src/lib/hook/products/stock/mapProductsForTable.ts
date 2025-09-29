@@ -1,5 +1,5 @@
 // utils/mapProductsForTable.ts
-import { ProductWithStock } from "./getProductWithStock";
+import { ProductWithStock } from "../../../queries/products/getProductWithStock";
 
 export interface TableProduct {
   id: string;

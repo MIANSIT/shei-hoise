@@ -8,7 +8,7 @@ import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
   mapProductsForTable,
   TableProduct,
-} from "@/lib/queries/products/mapProductsForTable";
+} from "@/lib/hook/products/stock/mapProductsForTable";
 
 const StockChangeTable: React.FC = () => {
   const [products, setProducts] = useState<TableProduct[]>([]);
