@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { variantSchema, ProductVariantType as VariantType } from "./varientSchema";
+import {
+  variantSchema,
+  ProductVariantType as VariantType,
+} from "./varientSchema";
 
 export const productSchema = z
   .object({
@@ -12,7 +15,10 @@ export const productSchema = z
     description: z.string().min(1, "Description is required"),
     short_description: z.string().optional(),
 
-    base_price: z.number().min(1, "Base price must be greater than 0").default(0),
+    base_price: z
+      .number()
+      .min(1, "Base price must be greater than 0")
+      .default(0),
     tp_price: z.number().min(1, "TP price must be greater than 0").default(0),
 
     discounted_price: z.number().optional(),
@@ -24,7 +30,9 @@ export const productSchema = z
 
     dimensions: z.string().optional(),
     is_digital: z.boolean().default(false).optional(),
-    status: z.string().default("inactive"),
+    status: z
+      .enum(["draft", "active", "inactive", "archived"])
+      .default("draft"),
     featured: z.boolean().default(false),
     meta_title: z.string().optional(),
     meta_description: z.string().optional(),

@@ -1,6 +1,8 @@
+// src/lib/queries/products/createProduct.ts
 import { supabase } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
+import { uploadProductImages } from "@/lib/queries/storage/uploadProductImages";
 
 export async function createProduct(product: ProductType) {
   try {
@@ -20,6 +22,8 @@ export async function createProduct(product: ProductType) {
         discount_amount: product.discount_amount,
         weight: product.weight,
         sku: product.sku,
+        status: product.status ?? "draft",
+        featured: product.featured,
       })
       .select("id")
       .single();
@@ -49,7 +53,7 @@ export async function createProduct(product: ProductType) {
 
       if (variantError) throw variantError;
 
-      // ✅ Create inventory for variants with actual stock
+      // Create inventory for variants
       (insertedVariants as { id: string }[]).forEach((v, idx) => {
         createInventory({
           product_id: productId,
@@ -58,11 +62,16 @@ export async function createProduct(product: ProductType) {
         });
       });
     } else {
-      // ✅ No variants → create inventory for main product with stock
+      // No variants → inventory for main product
       await createInventory({
         product_id: productId,
         quantity_available: product.stock ?? 0,
       });
+    }
+
+    // 3️⃣ Upload images via helper
+    if (product.images?.length) {
+      await uploadProductImages(product.store_id!, productId, product.images);
     }
 
     return productId;

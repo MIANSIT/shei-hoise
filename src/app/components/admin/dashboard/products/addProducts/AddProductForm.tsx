@@ -46,7 +46,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       sku: "",
       stock: 0,
       featured: false,
-      status: "",
+      status: "active",
       variants: [],
       images: [],
     };
@@ -281,13 +281,23 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               </label>
               <select
                 id="status"
-                value={form.watch("status") ?? "inactive"}
-                onChange={(e) => form.setValue("status", e.target.value)}
+                value={form.watch("status") ?? "draft"}
+                onChange={(e) =>
+                  form.setValue(
+                    "status",
+                    e.target.value as
+                      | "draft"
+                      | "active"
+                      | "inactive"
+                      | "archived"
+                  )
+                }
                 className="border rounded-md px-3 py-2 w-full"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
               </select>
             </div>
           </div>
