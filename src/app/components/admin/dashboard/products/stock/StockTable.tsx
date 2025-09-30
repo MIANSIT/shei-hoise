@@ -6,6 +6,7 @@ import type { TableRowSelection } from "antd/es/table/interface";
 import DataTable from "@/app/components/admin/common/DataTable";
 import Image from "next/image";
 import { InputNumber } from "antd";
+import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
   ProductRow,
   VariantRow,
@@ -13,21 +14,76 @@ import {
 
 interface StockTableProps {
   products: ProductRow[];
+  editedStocks: Record<string, number>;
   onStockChange: (
     productId: string,
     variantId: string | null,
     value: number
   ) => void;
+  onSingleUpdate: (
+    productId: string,
+    variantId: string | null,
+    quantity: number
+  ) => void;
   rowSelection?: TableRowSelection<ProductRow>;
   loading?: boolean;
+  bulkActive?: boolean;
 }
 
 const StockTable: React.FC<StockTableProps> = ({
   products,
+  editedStocks,
   onStockChange,
+  onSingleUpdate,
   rowSelection,
   loading,
+  bulkActive = false,
 }) => {
+  const renderStockCell = (record: ProductRow | VariantRow) => {
+    const key = record.id;
+    const editedValue = editedStocks[key] ?? record.stock;
+    const showUpdateButton = key in editedStocks && !bulkActive;
+
+    return (
+      <div className="flex items-center gap-2">
+        {"variants" in record && record.variants?.length ? (
+          <span className="italic text-gray-400">
+            Stock managed in variants
+          </span>
+        ) : (
+          <>
+            <InputNumber
+              min={0}
+              value={editedValue}
+              onChange={(value) =>
+                onStockChange(
+                  record.id,
+                  "variants" in record ? null : record.id,
+                  Number(value ?? 0)
+                )
+              }
+              className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
+            />
+            {showUpdateButton && (
+              <SheiButton
+                onClick={() =>
+                  onSingleUpdate(
+                    record.id,
+                    "variants" in record ? null : record.id,
+                    editedValue
+                  )
+                }
+                size="small"
+              >
+                Update
+              </SheiButton>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
@@ -60,30 +116,8 @@ const StockTable: React.FC<StockTableProps> = ({
     },
     {
       title: "Stock",
-      dataIndex: "stock",
       key: "stock",
-      render: (_value, record) => {
-        if ("variants" in record && record.variants?.length) {
-          return (
-            <span className="italic text-gray-400">
-              Stock managed in variants
-            </span>
-          );
-        }
-
-        const variantId =
-          "variants" in record ? null : (record as VariantRow).id;
-        return (
-          <InputNumber
-            min={0}
-            value={record.stock}
-            onChange={(value) =>
-              onStockChange(record.id, variantId, Number(value ?? 0))
-            }
-            className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
-          />
-        );
-      },
+      render: (_value, record) => renderStockCell(record),
     },
   ];
 

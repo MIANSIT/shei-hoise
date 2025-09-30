@@ -8,25 +8,20 @@ import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 interface BulkStockUpdateProps {
   selectedCount: number;
   onUpdate: (value: number) => Promise<void>;
+  loading?: boolean;
 }
 
 const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
   selectedCount,
   onUpdate,
+  loading = false,
 }) => {
   const [bulkStock, setBulkStock] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
     if (bulkStock <= 0) return;
-
-    setLoading(true);
-    try {
-      await onUpdate(bulkStock);
-      setBulkStock(0);
-    } finally {
-      setLoading(false);
-    }
+    await onUpdate(bulkStock);
+    setBulkStock(0);
   };
 
   if (selectedCount === 0) return null;
