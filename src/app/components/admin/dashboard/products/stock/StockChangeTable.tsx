@@ -4,69 +4,91 @@ import React, { useEffect, useState } from "react";
 import { getProductWithStock } from "@/lib/queries/products/getProductWithStock";
 import StockTable from "./StockTable";
 import BulkStockUpdate from "./BulkStockUpdate";
-import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
   mapProductsForModernTable,
   ProductRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
+import { updateInventory } from "@/lib/queries/inventory/updateInventory";
 
 const StockChangeTable: React.FC = () => {
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true);
-      try {
-        const data = await getProductWithStock();
-        setProducts(mapProductsForModernTable(data));
-      } finally {
-        setLoading(false);
-      }
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const data = await getProductWithStock();
+      setProducts(mapProductsForModernTable(data));
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
-  const handleStockChange = (id: string, value: number) => {
-    setEditedStocks((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleBulkUpdate = (value: number) => {
-    const newEditedStocks = { ...editedStocks };
-    selectedRowKeys.forEach((key) => {
-      const id = String(key);
-      const currentStock = products.find((p) => p.id === id)?.stock ?? 0;
-      const previousEdit = editedStocks[id] ?? currentStock;
-      newEditedStocks[id] = previousEdit + value;
-    });
-    setEditedStocks(newEditedStocks);
-  };
-
-  const handleUpdateStock = () => {
-    const updateStockRecursively = (rows: ProductRow[]) =>
-      rows.map((p) => {
-        const updatedStock =
-          editedStocks[p.id] !== undefined ? editedStocks[p.id] : p.stock;
-
-        // Change 'let' to 'const'
-        const updatedVariants = p.variants?.map((v) => ({
-          ...v,
-          stock:
-            editedStocks[v.id] !== undefined ? editedStocks[v.id] : v.stock,
-        }));
-
-        return {
-          ...p,
-          stock: updatedStock,
-          variants: updatedVariants,
-        };
+  // Individual stock change
+  const handleStockChange = async (
+    productId: string,
+    variantId: string | null,
+    newStock: number
+  ) => {
+    try {
+      await updateInventory({
+        product_id: productId,
+        variant_id: variantId,
+        quantity_available: newStock,
       });
+      console.log("Updated:", { productId, variantId, newStock });
+      // refetch updated products
+      fetchProducts();
+    } catch (err) {
+      console.error("Failed to update stock:", err);
+    }
+  };
 
-    setProducts(updateStockRecursively(products));
-    setEditedStocks({});
-    setSelectedRowKeys([]);
+  // Bulk update
+  // Inside StockChangeTable.tsx, replace handleBulkUpdate with:
+  const handleBulkUpdate = async (value: number) => {
+    for (const key of selectedRowKeys) {
+      const id = String(key);
+      const product = products.find((p) => p.id === id);
+
+      if (!product) continue;
+
+      if (product.variants?.length) {
+        for (const v of product.variants) {
+          const newStock = v.stock + value;
+          try {
+            await updateInventory({
+              product_id: product.id,
+              variant_id: v.id, // variant_id is UUID
+              quantity_available: newStock,
+            });
+            console.log({ productId: product.id, variantId: v.id, newStock });
+          } catch (err) {
+            console.error("Failed to update variant stock:", err);
+          }
+        }
+      } else {
+        const newStock = product.stock + value;
+        try {
+          await updateInventory({
+            product_id: product.id,
+            variant_id: null, // null for main product
+            quantity_available: newStock,
+          });
+          console.log({ productId: product.id, variantId: null, newStock });
+        } catch (err) {
+          console.error("Failed to update product stock:", err);
+        }
+      }
+    }
+
+    // Refetch all products after bulk update
+    fetchProducts();
   };
 
   return (
@@ -75,27 +97,12 @@ const StockChangeTable: React.FC = () => {
         selectedCount={selectedRowKeys.length}
         onUpdate={handleBulkUpdate}
       />
-
       <StockTable
         products={products}
-        editedStocks={editedStocks}
         onStockChange={handleStockChange}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: setSelectedRowKeys,
-        }}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
         loading={loading}
       />
-
-      <div className="flex justify-end">
-        <SheiButton
-          onClick={handleUpdateStock}
-          disabled={Object.keys(editedStocks).length === 0}
-          className="!bg-green-600 !text-white hover:!bg-green-700 "
-        >
-          Update Stock
-        </SheiButton>
-      </div>
     </div>
   );
 };

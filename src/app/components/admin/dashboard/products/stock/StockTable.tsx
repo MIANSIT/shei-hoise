@@ -13,15 +13,17 @@ import {
 
 interface StockTableProps {
   products: ProductRow[];
-  editedStocks: Record<string, number>;
-  onStockChange: (id: string, value: number) => void;
+  onStockChange: (
+    productId: string,
+    variantId: string | null,
+    value: number
+  ) => void;
   rowSelection?: TableRowSelection<ProductRow>;
   loading?: boolean;
 }
 
 const StockTable: React.FC<StockTableProps> = ({
   products,
-  editedStocks,
   onStockChange,
   rowSelection,
   loading,
@@ -60,14 +62,28 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Stock",
       dataIndex: "stock",
       key: "stock",
-      render: (_value: number, record: ProductRow | VariantRow) => (
-        <InputNumber
-          min={0}
-          value={editedStocks[record.id] ?? record.stock}
-          onChange={(value) => onStockChange(record.id, Number(value ?? 0))}
-          className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
-        />
-      ),
+      render: (_value, record) => {
+        if ("variants" in record && record.variants?.length) {
+          return (
+            <span className="italic text-gray-400">
+              Stock managed in variants
+            </span>
+          );
+        }
+
+        const variantId =
+          "variants" in record ? null : (record as VariantRow).id;
+        return (
+          <InputNumber
+            min={0}
+            value={record.stock}
+            onChange={(value) =>
+              onStockChange(record.id, variantId, Number(value ?? 0))
+            }
+            className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
+          />
+        );
+      },
     },
   ];
 
@@ -80,30 +96,18 @@ const StockTable: React.FC<StockTableProps> = ({
       pagination={false}
       loading={loading}
       expandable={{
-        expandedRowRender: (record) => {
-          // Only expand if this row is a ProductRow and has variants
-          if (
-            "variants" in record &&
-            record.variants &&
-            record.variants.length > 0
-          ) {
-            return (
-              <DataTable
-                columns={columns}
-                data={record.variants}
-                rowKey="id"
-                pagination={false}
-                // Nested rows should not have row selection
-                rowSelection={undefined}
-              />
-            );
-          }
-          return null;
-        },
+        expandedRowRender: (record) =>
+          "variants" in record && record.variants?.length ? (
+            <DataTable
+              columns={columns}
+              data={record.variants}
+              rowKey="id"
+              pagination={false}
+              rowSelection={undefined}
+            />
+          ) : null,
         rowExpandable: (record) =>
-          "variants" in record &&
-          !!record.variants &&
-          record.variants.length > 0,
+          "variants" in record && !!record.variants?.length,
       }}
     />
   );
