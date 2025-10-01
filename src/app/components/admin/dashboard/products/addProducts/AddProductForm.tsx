@@ -6,7 +6,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { useZodForm } from "@/lib/utils/useZodForm";
+import { useForm, FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
 import ProductImages from "./ProductImages";
@@ -14,7 +15,6 @@ import ProductVariantsInline from "./ProductVariants";
 import { Button } from "@/components/ui/button";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { FieldErrors } from "react-hook-form";
 
 interface AddProductFormProps {
   product?: ProductType;
@@ -31,27 +31,36 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
     const { error: notifyError } = useSheiNotification();
 
+    // Make sure required numbers are always initialized
     const initialValues: ProductType = product ?? {
       store_id: storeId,
-      category_id: "",
+      category_id: "", // optional, can be empty string
       name: "",
       slug: "",
       description: "",
       short_description: "",
-      base_price: 0,
-      tp_price: 0,
+      base_price: 0, // required number
+      tp_price: 0, // required number
       discounted_price: undefined,
       discount_amount: undefined,
       weight: undefined,
       sku: "",
-      stock: 0,
-      featured: false,
-      status: "active",
+      stock: 0, // required number
+      featured: false, // required boolean
+      status: "active", // required enum
       variants: [],
       images: [],
+      dimensions: undefined,
+      is_digital: false, // optional boolean, but we provide a value
+      meta_title: undefined,
+      meta_description: undefined,
     };
 
-    const form = useZodForm<ProductType>(productSchema, initialValues);
+    const form = useForm<ProductType>({
+      defaultValues: initialValues,
+      resolver: zodResolver(productSchema),
+    });
+
     const [categories, setCategories] = useState<
       { id: string; name: string }[]
     >([]);
@@ -136,7 +145,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
             value={form.watch("category_id") ?? ""}
             onChange={(e) => form.setValue("category_id", e.target.value)}
-            required
             error={form.formState.errors.category_id?.message?.toString()}
           />
 
@@ -240,10 +248,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               label="Stock"
               name="stock"
               type="number"
-              min={1}
-              value={form.watch("stock") ?? 1}
+              min={0}
+              value={form.watch("stock")}
               onChange={(e) =>
-                form.setValue("stock", parseInt(e.target.value) || 1)
+                form.setValue("stock", parseInt(e.target.value) || 0)
               }
               required
               error={form.formState.errors.stock?.message?.toString()}
@@ -257,10 +265,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             setImages={(files) => form.setValue("images", files)}
           />
 
-          {/* Featured Checkbox */}
-          {/* Featured and Status on same line */}
+          {/* Featured & Status */}
           <div className="flex items-center justify-between mt-2 col-span-1 md:col-span-2 space-x-4">
-            {/* Featured Checkbox */}
             <div className="flex items-center space-x-2">
               <input
                 id="featured"
@@ -274,7 +280,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               </label>
             </div>
 
-            {/* Status Dropdown */}
             <div className="flex flex-col w-1/2">
               <label htmlFor="status" className="text-sm font-medium mb-1">
                 Status

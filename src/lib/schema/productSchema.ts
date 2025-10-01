@@ -15,25 +15,20 @@ export const productSchema = z
     description: z.string().min(1, "Description is required"),
     short_description: z.string().optional(),
 
-    base_price: z
-      .number()
-      .min(1, "Base price must be greater than 0")
-      .default(0),
-    tp_price: z.number().min(1, "TP price must be greater than 0").default(0),
+    base_price: z.number().min(1, "Base price must be greater than 0"),
+    tp_price: z.number().min(1, "TP price must be greater than 0"),
 
     discounted_price: z.number().optional(),
     discount_amount: z.number().optional(),
     weight: z.number().optional(),
     sku: z.string().min(1, "SKU is required"),
 
-    stock: z.number().min(0, "Stock cannot be negative").default(0),
+    stock: z.number().min(0, "Stock cannot be negative"),
 
     dimensions: z.string().optional(),
-    is_digital: z.boolean().default(false).optional(),
-    status: z
-      .enum(["draft", "active", "inactive", "archived"])
-      .default("draft"),
-    featured: z.boolean().default(false),
+    is_digital: z.boolean().optional(),
+    status: z.enum(["draft", "active", "inactive", "archived"]),
+    featured: z.boolean(),
     meta_title: z.string().optional(),
     meta_description: z.string().optional(),
 
@@ -44,7 +39,7 @@ export const productSchema = z
         z.object({
           imageUrl: z.string().url("Invalid image URL"),
           altText: z.string().optional(),
-          isPrimary: z.boolean().default(false).optional(),
+          isPrimary: z.boolean().optional(),
         })
       )
       .min(1, "At least one image is required")
