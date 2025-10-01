@@ -92,9 +92,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         }
       }
     };
-
+    const { control } = form;
     return (
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <div className='max-w-5xl mx-auto p-6 space-y-6'>
         <form
           onSubmit={form.handleSubmit(
             (data) =>
@@ -109,142 +109,110 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               scrollToFirstError(errors);
             }
           )}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className='grid grid-cols-1 md:grid-cols-2 gap-4'
         >
           {/* Basic Fields */}
           <FormField
-            label="Product Name"
-            name="name"
-            value={form.watch("name")}
-            onChange={(e) => handleNameChange(e.target.value)}
+            label='Product Name'
+            name='name'
+            control={control}
             required
             error={form.formState.errors.name?.message?.toString()}
           />
 
           <FormField
-            label="Slug"
-            name="slug"
-            value={form.watch("slug")}
+            label='Slug'
+            name='slug'
+            control={control}
             readOnly
             error={form.formState.errors.slug?.message?.toString()}
           />
 
           <FormField
-            label="Category"
-            name="category_id"
-            as="select"
+            label='Category'
+            name='category_id'
+            as='select'
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
-            value={form.watch("category_id") ?? ""}
-            onChange={(e) => form.setValue("category_id", e.target.value)}
+            control={control}
             required
             error={form.formState.errors.category_id?.message?.toString()}
           />
 
           <FormField
-            label="Description"
-            name="description"
-            as="textarea"
-            value={form.watch("description") ?? ""}
-            onChange={(e) => form.setValue("description", e.target.value)}
+            label='Description'
+            name='description'
+            as='textarea'
+            control={control}
             required
             error={form.formState.errors.description?.message?.toString()}
           />
 
           <FormField
-            label="Short Description"
-            name="short_description"
-            as="textarea"
-            value={form.watch("short_description") ?? ""}
-            onChange={(e) => form.setValue("short_description", e.target.value)}
+            label='Short Description'
+            name='short_description'
+            as='textarea'
+            control={control}
           />
 
           <FormField
-            label="Base Price"
-            name="base_price"
-            type="number"
+            label='Base Price'
+            name='base_price'
+            type='number'
             min={1}
-            value={form.watch("base_price")}
-            onChange={(e) =>
-              form.setValue("base_price", parseFloat(e.target.value))
-            }
+            control={control}
             required
             error={form.formState.errors.base_price?.message?.toString()}
           />
 
           <FormField
-            label="TP Price"
-            name="tp_price"
-            type="number"
+            label='TP Price'
+            name='tp_price'
+            type='number'
             min={1}
-            value={form.watch("tp_price")}
-            onChange={(e) =>
-              form.setValue("tp_price", parseFloat(e.target.value))
-            }
+            control={control}
             required
             error={form.formState.errors.tp_price?.message?.toString()}
           />
 
           <FormField
-            label="Discounted Price"
-            name="discounted_price"
-            type="number"
-            value={form.watch("discounted_price") ?? ""}
-            onChange={(e) =>
-              form.setValue(
-                "discounted_price",
-                e.target.value ? parseFloat(e.target.value) : undefined
-              )
-            }
+            label='Discounted Price'
+            name='discounted_price'
+            type='number'
+            control={control}
             error={form.formState.errors.discounted_price?.message?.toString()}
           />
 
           <FormField
-            label="Discount Amount"
-            name="discount_amount"
-            type="number"
-            value={form.watch("discount_amount") ?? ""}
-            onChange={(e) =>
-              form.setValue(
-                "discount_amount",
-                e.target.value ? parseFloat(e.target.value) : undefined
-              )
-            }
+            label='Discount Amount'
+            name='discount_amount'
+            type='number'
+            control={control}
             error={form.formState.errors.discount_amount?.message?.toString()}
           />
 
           <FormField
-            label="Weight"
-            name="weight"
-            type="number"
-            value={form.watch("weight") ?? ""}
-            onChange={(e) =>
-              form.setValue(
-                "weight",
-                e.target.value ? parseFloat(e.target.value) : undefined
-              )
-            }
+            label='Weight'
+            name='weight'
+            type='number'
+            control={control}
             error={form.formState.errors.weight?.message?.toString()}
           />
 
           <FormField
-            label="SKU"
-            name="sku"
-            value={form.watch("sku")}
-            onChange={(e) => form.setValue("sku", e.target.value)}
+            label='SKU'
+            name='sku'
+            control={control}
             required
             error={form.formState.errors.sku?.message?.toString()}
           />
 
           {variants.length === 0 && (
             <FormField
-              label="Stock"
-              name="stock"
-              type="number"
+              label='Stock'
+              name='stock'
+              type='number'
               min={1}
-              value={form.watch("stock") ?? 1}
-              onChange={(e) =>
-                form.setValue("stock", parseInt(e.target.value) || 1)
-              }
+              control={control}
               required
               error={form.formState.errors.stock?.message?.toString()}
             />
@@ -259,28 +227,28 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
           {/* Featured Checkbox */}
           {/* Featured and Status on same line */}
-          <div className="flex items-center justify-between mt-2 col-span-1 md:col-span-2 space-x-4">
+          <div className='flex items-center justify-between mt-2 col-span-1 md:col-span-2 space-x-4'>
             {/* Featured Checkbox */}
-            <div className="flex items-center space-x-2">
+            <div className='flex items-center space-x-2'>
               <input
-                id="featured"
-                type="checkbox"
+                id='featured'
+                type='checkbox'
                 checked={form.watch("featured") ?? false}
                 onChange={(e) => form.setValue("featured", e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300"
+                className='w-4 h-4 rounded border-gray-300'
               />
-              <label htmlFor="featured" className="text-sm font-bold pl-1">
+              <label htmlFor='featured' className='text-sm font-bold pl-1'>
                 Featured Product
               </label>
             </div>
 
             {/* Status Dropdown */}
-            <div className="flex flex-col w-1/2">
-              <label htmlFor="status" className="text-sm font-medium mb-1">
+            <div className='flex flex-col w-1/2'>
+              <label htmlFor='status' className='text-sm font-medium mb-1'>
                 Status
               </label>
               <select
-                id="status"
+                id='status'
                 value={form.watch("status") ?? "draft"}
                 onChange={(e) =>
                   form.setValue(
@@ -292,19 +260,19 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                       | "archived"
                   )
                 }
-                className="border rounded-md px-3 py-2 w-full"
+                className='border rounded-md px-3 py-2 w-full'
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
+                <option value='active'>Active</option>
+                <option value='inactive'>Inactive</option>
+                <option value='draft'>Draft</option>
+                <option value='archived'>Archived</option>
               </select>
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="col-span-1 md:col-span-2 flex justify-end mt-4">
-            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+          <div className='col-span-1 md:col-span-2 flex justify-end mt-4'>
+            <Button type='submit' className='bg-green-600 hover:bg-green-700'>
               {product ? "Update Product" : "Save Product"}
             </Button>
           </div>
