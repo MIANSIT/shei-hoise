@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import ProductTable from "./ProductTable";
-import { getProductsWithVariants, ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
+import {
+  getProductsWithVariants,
+  ProductWithVariants,
+} from "@/lib/queries/products/getProductsWithVariants";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
@@ -13,13 +16,14 @@ const Products: React.FC = () => {
   const notify = useSheiNotification();
 
   useEffect(() => {
-    // ✅ run only when the store_id actually changes
     if (!user?.store_id) return;
+
+    const storeId: string = user.store_id;
 
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const res = await getProductsWithVariants(user.store_id);
+        const res = await getProductsWithVariants(storeId);
         setProducts(res);
       } catch (err) {
         console.error(err);
@@ -30,7 +34,7 @@ const Products: React.FC = () => {
     };
 
     fetchProducts();
-  }, [user?.store_id]);
+  }, [user?.store_id, notify]);
 
   return <ProductTable products={products} loading={loading} />;
 };
