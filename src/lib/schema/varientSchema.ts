@@ -8,7 +8,7 @@ export const variantSchema = z.object({
   attributes: z.record(z.string(), z.string()).optional(),
   weight: z.number().optional(),
   color: z.string().min(1, "Color is required"),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean(), // make it required
   stock: z.number().min(1, "Stock must be 1 or greater"),
 });
 
