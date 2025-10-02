@@ -27,9 +27,9 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         price: 0,
         weight: 0,
         color: "",
-        stock: 0,
+        stock: 1,
         is_active: true,
-        attributes: {}, // JSON object
+        attributes: null,
       } as ProductVariantType,
     ]);
   };
@@ -113,31 +113,51 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               error={error.stock?.message}
             />
 
-            {/* Attributes as JSON object */}
+            {/* Attributes as simple input */}
             <Controller
               control={form.control}
               name={`variants.${idx}.attributes`}
-              defaultValue={variant.attributes ?? {}}
+              defaultValue={variant.attributes ?? null} // type-safe
               render={({ field, fieldState }) => {
                 const valueAsString =
-                  typeof field.value === "object"
-                    ? JSON.stringify(field.value, null, 2)
-                    : field.value;
+                  typeof field.value === "string"
+                    ? field.value
+                    : field.value && typeof field.value === "object"
+                    ? Object.entries(field.value)
+                        .map(([k, v]) => `${k}-${v}`)
+                        .join(", ")
+                    : "";
+
                 return (
                   <div className="col-span-full">
                     <label className="block mb-1 font-medium">
-                      Attributes (JSON)
+                      Attributes (Size-M, Color-Red)
                     </label>
                     <textarea
-                      className="w-full border rounded-md p-2 min-h-[60px]"
+                      className="w-full border rounded-md p-2"
+                      placeholder="Size-M, Color-Red"
                       value={valueAsString}
                       onChange={(e) => {
-                        try {
-                          const parsed = JSON.parse(e.target.value);
-                          field.onChange(parsed);
-                        } catch {
-                          field.onChange(e.target.value);
+                        // keep string while typing
+                        field.onChange(e.target.value);
+                      }}
+                      onBlur={(e) => {
+                        // convert to object on blur
+                        const val = e.target.value.trim();
+                        if (!val) {
+                          field.onChange(null);
+                          return;
                         }
+
+                        const obj: Record<string, string> = {};
+                        val.split(",").forEach((pair) => {
+                          const [key, value] = pair
+                            .split("-")
+                            .map((s) => s.trim());
+                          if (key && value !== undefined) obj[key] = value;
+                        });
+
+                        field.onChange(Object.keys(obj).length ? obj : null);
                       }}
                     />
                     {(fieldState.error || error.attributes?.message) && (

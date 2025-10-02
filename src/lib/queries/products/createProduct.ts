@@ -1,17 +1,44 @@
-// src/lib/queries/product/createProduct.ts
+// src/lib/queries/products/createProduct.ts
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
 import { uploadProductImages } from "@/lib/queries/storage/uploadProductImages";
 
 /**
- * Fully atomic product creation
+ * Fully atomic product creation with robust rollback
  */
 export async function createProduct(product: ProductType) {
   if (!product.store_id) throw new Error("Store ID is missing");
 
   let productId: string | null = null;
   const insertedVariantIds: string[] = [];
+
+  // Helper function for rollback
+  const rollback = async () => {
+    if (!productId) return;
+
+    const tablesToDelete = [
+      { table: "product_images", column: "product_id", values: [productId] },
+      { table: "product_inventory", column: "product_id", values: [productId] },
+      insertedVariantIds.length
+        ? {
+            table: "product_variants",
+            column: "id",
+            values: insertedVariantIds,
+          }
+        : null,
+      { table: "products", column: "id", values: [productId] },
+    ].filter(Boolean) as { table: string; column: string; values: string[] }[];
+
+    for (const { table, column, values } of tablesToDelete) {
+      if (!values.length) continue;
+      const { error } = await supabaseAdmin
+        .from(table)
+        .delete()
+        .in(column, values);
+      if (error) console.error(`Rollback failed for ${table}:`, error);
+    }
+  };
 
   try {
     // 1️⃣ Insert main product
@@ -42,6 +69,7 @@ export async function createProduct(product: ProductType) {
 
     // 2️⃣ Insert Variants (if any)
     let firstVariantId: string | undefined = undefined;
+
     if (product.variants?.length) {
       const variantsToInsert = product.variants.map(
         (v: ProductVariantType) => ({
@@ -65,16 +93,20 @@ export async function createProduct(product: ProductType) {
       if (variantError) throw variantError;
 
       insertedVariants.forEach((v) => insertedVariantIds.push(v.id));
-
       firstVariantId = insertedVariants[0]?.id;
 
       // Create inventory for each variant
       for (let i = 0; i < insertedVariants.length; i++) {
-        await createInventory({
-          product_id: productId!,
-          variant_id: insertedVariants[i].id,
-          quantity_available: product.variants![i].stock ?? 0,
-        });
+        try {
+          await createInventory({
+            product_id: productId!,
+            variant_id: insertedVariants[i].id,
+            quantity_available: product.variants![i].stock ?? 0,
+          });
+        } catch (invErr) {
+          console.error("Inventory creation failed:", invErr);
+          throw invErr;
+        }
       }
     } else {
       // No variants → create main inventory
@@ -86,59 +118,34 @@ export async function createProduct(product: ProductType) {
 
     // 3️⃣ Upload images
     if (product.images?.length) {
-      // assign variant_id for all images
       const imagesWithVariantId = product.images.map((img) => ({
         ...img,
         variantId: firstVariantId, // undefined if no variants
       }));
 
-      await uploadProductImages(
-        product.store_id,
-        productId!,
-        imagesWithVariantId
-      );
+      try {
+        await uploadProductImages(
+          product.store_id,
+          productId!,
+          imagesWithVariantId
+        );
+      } catch (imgErr) {
+        console.error("Image upload failed:", imgErr);
+        throw imgErr;
+      }
     }
 
     return productId;
-  } catch (err) {
-    console.error("createProduct failed, rolling back:", err);
+  } catch (err: unknown) {
+    console.error("createProduct failed:", err);
 
-    if (productId) {
-      const tablesToDelete = [
-        { table: "product_images", column: "product_id", values: [productId] },
-        {
-          table: "product_inventory",
-          column: "product_id",
-          values: [productId],
-        },
-      ];
-
-      if (insertedVariantIds.length) {
-        tablesToDelete.push({
-          table: "product_variants",
-          column: "id",
-          values: insertedVariantIds,
-        });
-      }
-
-      tablesToDelete.push({
-        table: "products",
-        column: "id",
-        values: [productId],
-      });
-
-      for (const { table, column, values } of tablesToDelete) {
-        try {
-          await supabaseAdmin.from(table).delete().in(column, values);
-        } catch (deleteErr) {
-          console.error(
-            `Failed to delete from ${table} during rollback:`,
-            deleteErr
-          );
-        }
-      }
+    // Perform rollback
+    try {
+      await rollback();
+    } catch (rollbackErr) {
+      console.error("Rollback encountered errors:", rollbackErr);
     }
 
-    throw err;
+    throw err; // rethrow original error
   }
 }
