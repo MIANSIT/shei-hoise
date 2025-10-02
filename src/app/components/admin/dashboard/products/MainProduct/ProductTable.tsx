@@ -1,23 +1,61 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { Edit, Trash2 } from "lucide-react";
+import { Modal } from "antd";
+import { deleteProduct } from "@/lib/queries/products/deleteProduct";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 interface ProductTableProps {
   products: ProductWithVariants[];
   loading?: boolean;
+  onDeleteSuccess?: () => void; // callback to refresh parent
 }
 
-const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
+const ProductTable: React.FC<ProductTableProps> = ({
+  products,
+  loading,
+  onDeleteSuccess,
+}) => {
   const router = useRouter();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const sheiNotif = useSheiNotification();
 
   const handleEdit = (id: string) =>
     router.push(`/dashboard/products/edit-product/${id}`);
-  const handleDelete = (id: string) => console.log("Delete product:", id);
+
+  const showDeleteModal = (id: string) => {
+    setDeletingId(id);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+
+    try {
+      await deleteProduct(deletingId);
+
+      sheiNotif.success("Product deleted successfully");
+
+      setModalOpen(false);
+      setDeletingId(null);
+
+      if (onDeleteSuccess) onDeleteSuccess(); // refresh parent table
+    } catch (err) {
+      console.error(err);
+      sheiNotif.error("Failed to delete product");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const columns: ColumnsType<ProductWithVariants> = [
     {
@@ -105,7 +143,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
           </button>
           <button
             className="p-1 rounded hover:bg-red-100 transition"
-            onClick={() => handleDelete(record.id)}
+            onClick={() => showDeleteModal(record.id)}
           >
             <Trash2 className="w-5 h-5 text-red-600" />
           </button>
@@ -115,22 +153,39 @@ const ProductTable: React.FC<ProductTableProps> = ({ products, loading }) => {
   ];
 
   return (
-    <div className="rounded-lg border border-gray-200 shadow-md overflow-hidden">
-      <DataTable<ProductWithVariants>
-        columns={columns}
-        data={products}
-        rowKey="id"
-        pagination={{ pageSize: 10 }}
-        loading={loading}
-        size="middle"
-        bordered={false}
-        rowClassName={(record, index) =>
-          index % 2 === 0
-            ? "bg-white hover:bg-gray-50 transition-transform"
-            : "bg-gray-50 hover:bg-gray-100 transition-transform"
-        }
-      />
-    </div>
+    <>
+      <div className="rounded-lg border border-gray-200 shadow-md overflow-hidden">
+        <DataTable<ProductWithVariants>
+          columns={columns}
+          data={products}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          loading={loading}
+          size="middle"
+          bordered={false}
+          rowClassName={(record, index) =>
+            index % 2 === 0
+              ? "bg-white hover:bg-gray-50 transition-transform"
+              : "bg-gray-50 hover:bg-gray-100 transition-transform"
+          }
+        />
+      </div>
+
+      <Modal
+        open={modalOpen}
+        title="Are you sure?"
+        onOk={handleDelete}
+        onCancel={() => setModalOpen(false)}
+        okText="Yes, Delete"
+        cancelText="Cancel"
+        confirmLoading={deleteLoading}
+      >
+        <p>
+          Do you really want to delete this product? This action cannot be
+          undone.
+        </p>
+      </Modal>
+    </>
   );
 };
 
