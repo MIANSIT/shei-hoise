@@ -13,12 +13,16 @@ type SheiNotificationOptions = {
 };
 
 export function useSheiNotification() {
-  const notify = (type: ToastType, content: ReactNode, options?: SheiNotificationOptions) => {
+  const notify = (
+    type: ToastType,
+    content: ReactNode,
+    options?: SheiNotificationOptions
+  ) => {
     const bgColors: Record<ToastType, string> = {
-      success: "#22c55e", // green
-      warning: "#facc15", // yellow
-      error: "#dc2626", // red
-      info: "#2563eb",    // blue
+      success: "#22c55e",
+      warning: "#facc15",
+      error: "#dc2626",
+      info: "#2563eb",
     };
     const textColors: Record<ToastType, string> = {
       success: "#f9fafb",
@@ -42,11 +46,11 @@ export function useSheiNotification() {
     toast(
       <div className="relative flex items-start gap-2 w-fit max-w-[90vw]">
         <div className="flex-shrink-0">{icons[type]}</div>
-        <div className="flex-1 min-w-0 break-words">{content}</div>
+        <div className="flex-1 min-w-0 break-words text-base">{content}</div>
         <Button
           size="sm"
           variant="default"
-          className="h-6 w-6 p-0 rounded-full shadow-md flex items-center justify-center hover:brightness-110 transition ml-3"
+          className="h-6 w-6 p-0 rounded-full flex items-center justify-center hover:brightness-110 transition ml-3"
           style={{ backgroundColor: closeBgColors[type] }}
           onClick={() => toast.dismiss()}
         >
@@ -59,12 +63,13 @@ export function useSheiNotification() {
           color: textColors[type],
           padding: "0.5rem 0.75rem",
           borderRadius: "0.75rem",
-          boxShadow: "0 6px 14px rgba(0,0,0,0.15)",
+          // Removed boxShadow to get rid of black border
           width: "fit-content",
           minWidth: "120px",
           maxWidth: "90vw",
           wordBreak: "break-word",
           fontWeight: 500,
+          fontSize: "1rem", // slightly larger font
         },
         duration: options?.duration ?? 4000,
       }
