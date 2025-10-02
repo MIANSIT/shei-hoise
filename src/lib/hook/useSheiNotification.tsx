@@ -44,32 +44,32 @@ export function useSheiNotification() {
     };
 
     toast(
-      <div className="relative flex items-start gap-2 w-fit max-w-[90vw]">
+      <div className="relative flex items-start gap-3 w-fit max-w-[90vw]">
         <div className="flex-shrink-0">{icons[type]}</div>
         <div className="flex-1 min-w-0 break-words text-base">{content}</div>
         <Button
           size="sm"
           variant="default"
-          className="h-6 w-6 p-0 rounded-full flex items-center justify-center hover:brightness-110 transition ml-3"
+          className="h-7 w-7 p-0 rounded-full flex items-center justify-center hover:brightness-110 transition"
           style={{ backgroundColor: closeBgColors[type] }}
           onClick={() => toast.dismiss()}
         >
-          <X className="h-3 w-3 text-white" />
+          <X className="h-4 w-4 text-white" />
         </Button>
       </div>,
       {
         style: {
           backgroundColor: bgColors[type],
           color: textColors[type],
-          padding: "0.5rem 0.75rem",
+          padding: "0.6rem 0.85rem",
           borderRadius: "0.75rem",
-          // Removed boxShadow to get rid of black border
+          // removed boxShadow to remove black border
           width: "fit-content",
-          minWidth: "120px",
+          minWidth: "140px",
           maxWidth: "90vw",
           wordBreak: "break-word",
           fontWeight: 500,
-          fontSize: "1rem", // slightly larger font
+          fontSize: "1rem",
         },
         duration: options?.duration ?? 4000,
       }
