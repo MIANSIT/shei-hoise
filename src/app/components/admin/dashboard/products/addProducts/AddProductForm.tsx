@@ -1,4 +1,3 @@
-// File: components/forms/AddProductForm.tsx
 "use client";
 
 import React, {
@@ -105,26 +104,19 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
     const { control, watch, setValue } = form;
 
-    // ----------------------------
-    // Discount calculation hook
-    // ----------------------------
     const basePrice = watch("base_price");
     const discountAmount = watch("discount_amount");
-
     const discountedPrice = useDiscountCalculation({
       basePrice: basePrice ?? 0,
       discountAmount,
     });
 
     useEffect(() => {
-      // set discounted_price as number | undefined to match schema
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
 
-    // ----------------------------
-
     return (
-      <div className="max-w-5xl mx-auto p-6 space-y-8  rounded-2xl shadow-lg">
+      <div className="max-w-5xl mx-auto p-6 space-y-8 rounded-2xl shadow-lg">
         <form
           onSubmit={form.handleSubmit(
             (data) =>
@@ -142,7 +134,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           className="space-y-8"
         >
           {/* ----------------- Product Info ----------------- */}
-          <section className=" p-6 rounded-xl shadow-inner space-y-4">
+          <section className="p-6 rounded-xl shadow-inner space-y-4">
             <h2 className="text-xl font-semibold ">Product Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -188,13 +180,13 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               as="textarea"
               control={control}
               required
-              className="h-24 rounded-md border border-gray-300  p-2 focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="h-24 rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-green-400"
               error={form.formState.errors.description?.message?.toString()}
             />
           </section>
 
           {/* ----------------- Pricing Info ----------------- */}
-          <section className=" p-6 rounded-xl shadow-inner space-y-4">
+          <section className="p-6 rounded-xl shadow-inner space-y-4">
             <h2 className="text-xl font-semibold ">Pricing</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -213,7 +205,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 required
                 error={form.formState.errors.base_price?.message?.toString()}
               />
-
               <FormField
                 label="Discount Amount (BDT)"
                 name="discount_amount"
@@ -255,16 +246,18 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               )}
             </div>
           </section>
+
           {/* ----------------- Variants ----------------- */}
-          <section className=" p-6 rounded-xl shadow-inner space-y-4 ">
-            <h2 className="text-xl font-semibold  ">Variants</h2>
+          <section className="p-6 rounded-xl shadow-inner space-y-4">
+            <h2 className="text-xl font-semibold">Variants</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProductVariantsInline form={form} />
             </div>
           </section>
-          {/* ----------------- Images  ----------------- */}
-          <section className=" p-6 rounded-xl shadow-inner space-y-4">
-            <h2 className="text-xl font-semibold ">Images</h2>
+
+          {/* ----------------- Images ----------------- */}
+          <section className="p-6 rounded-xl shadow-inner space-y-4">
+            <h2 className="text-xl font-semibold">Images</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProductImages
                 images={images}
@@ -274,13 +267,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           </section>
 
           {/* ----------------- Featured & Status ----------------- */}
-          <section className=" p-6 rounded-xl shadow-inner flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <section className="p-6 rounded-xl shadow-inner flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="flex items-center space-x-3">
               <input
                 id="featured"
                 type="checkbox"
-                checked={form.watch("featured") ?? false}
-                onChange={(e) => form.setValue("featured", e.target.checked)}
+                {...form.register("featured")} // ✅ bind using react-hook-form
                 className="w-5 h-5 rounded border-gray-300 accent-green-500"
               />
               <label htmlFor="featured" className="text-sm font-semibold ml-1">
@@ -294,18 +286,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               </label>
               <select
                 id="status"
-                value={form.watch("status") ?? "draft"}
-                onChange={(e) =>
-                  form.setValue(
-                    "status",
-                    e.target.value as
-                      | "draft"
-                      | "active"
-                      | "inactive"
-                      | "archived"
-                  )
-                }
-                className="border rounded-lg px-4 py-2  focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition"
+                {...form.register("status")} // ✅ bind using react-hook-form
+                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>

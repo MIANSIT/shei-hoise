@@ -21,7 +21,7 @@ export const productSchema = z
     discounted_price: z.number().optional(),
     discount_amount: z.number().optional(),
     weight: z.number().optional(),
-    sku: z.string().min(1, "SKU is required"),
+    sku: z.string().min(1, "SKU is required"), // main product SKU
 
     stock: z.number().min(0, "Stock cannot be negative"),
 
@@ -66,15 +66,6 @@ export const productSchema = z
           path: ["discounted_price"],
         });
       }
-    }
-
-    // Ensure at least one image if images exist
-    if (data.images && data.images.length > 5) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Maximum 5 images are allowed.",
-        path: ["images"],
-      });
     }
   });
 
