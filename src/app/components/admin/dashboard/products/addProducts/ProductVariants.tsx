@@ -85,7 +85,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             />
             <FormField
               control={form.control}
-              label="Price"
+              label="Price (BDT)"
               name={`variants.${idx}.price`}
               type="number"
               required
@@ -93,7 +93,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             />
             <FormField
               control={form.control}
-              label="Weight"
+              label="Weight (Kg)"
               name={`variants.${idx}.weight`}
               type="number"
               error={error.weight?.message}

@@ -198,7 +198,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             <h2 className="text-xl font-semibold ">Pricing</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
-                label="Base Price"
+                label="Base Price (BDT)"
                 name="base_price"
                 type="number"
                 control={control}
@@ -206,7 +206,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 error={form.formState.errors.base_price?.message?.toString()}
               />
               <FormField
-                label="TP Price"
+                label="TP Price (BDT)"
                 name="tp_price"
                 type="number"
                 control={control}
@@ -214,14 +214,14 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 error={form.formState.errors.tp_price?.message?.toString()}
               />
               <FormField
-                label="Discount Amount"
+                label="Discount Amount (BDT)"
                 name="discount_amount"
                 type="number"
                 control={control}
                 error={form.formState.errors.discount_amount?.message?.toString()}
               />
               <FormField
-                label="Discounted Price"
+                label="Discounted Price (BDT)"
                 name="discounted_price"
                 type="number"
                 control={control}
@@ -229,7 +229,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 error={form.formState.errors.discounted_price?.message?.toString()}
               />
               <FormField
-                label="Weight"
+                label="Weight (kg)"
                 name="weight"
                 type="number"
                 control={control}
