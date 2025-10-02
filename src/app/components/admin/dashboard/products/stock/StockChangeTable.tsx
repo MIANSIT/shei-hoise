@@ -4,7 +4,10 @@ import React, { useEffect, useState } from "react";
 import { getProductWithStock } from "@/lib/queries/products/getProductWithStock";
 import StockTable from "./StockTable";
 import BulkStockUpdate from "./BulkStockUpdate";
-import { mapProductsForModernTable, ProductRow } from "@/lib/hook/products/stock/mapProductsForTable";
+import {
+  mapProductsForModernTable,
+  ProductRow,
+} from "@/lib/hook/products/stock/mapProductsForTable";
 import { updateInventory } from "@/lib/queries/inventory/updateInventory";
 
 const StockChangeTable: React.FC = () => {
@@ -29,15 +32,26 @@ const StockChangeTable: React.FC = () => {
   }, []);
 
   // Handle individual input change
-  const handleStockChange = (productId: string, variantId: string | null, value: number) => {
+  const handleStockChange = (
+    productId: string,
+    variantId: string | null,
+    value: number
+  ) => {
     setEditedStocks((prev) => ({ ...prev, [variantId ?? productId]: value }));
   };
 
   // Single row update
-  const handleSingleUpdate = async (productId: string, variantId: string | null, quantity: number) => {
+  const handleSingleUpdate = async (
+    productId: string,
+    variantId: string | null,
+    quantity: number
+  ) => {
     try {
-      await updateInventory({ product_id: productId, variant_id: variantId, quantity_available: quantity });
-      console.log("Single updated:", { productId, variantId, quantity });
+      await updateInventory({
+        product_id: productId,
+        ...(variantId ? { variant_id: variantId } : {}),
+        quantity_available: quantity,
+      });
       setEditedStocks((prev) => {
         const copy = { ...prev };
         delete copy[variantId ?? productId];
@@ -60,13 +74,18 @@ const StockChangeTable: React.FC = () => {
       if (product.variants?.length) {
         for (const v of product.variants) {
           const newStock = v.stock + value;
-          await updateInventory({ product_id: product.id, variant_id: v.id, quantity_available: newStock });
-          console.log("Bulk updated variant:", { productId: product.id, variantId: v.id, newStock });
+          await updateInventory({
+            product_id: product.id,
+            variant_id: v.id,
+            quantity_available: newStock,
+          });
         }
       } else {
         const newStock = product.stock + value;
-        await updateInventory({ product_id: product.id, variant_id: null, quantity_available: newStock });
-        console.log("Bulk updated product:", { productId: product.id, variantId: null, newStock });
+        await updateInventory({
+          product_id: product.id,
+          quantity_available: newStock,
+        });
       }
     }
     setEditedStocks({});
@@ -76,7 +95,11 @@ const StockChangeTable: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <BulkStockUpdate selectedCount={selectedRowKeys.length} onUpdate={handleBulkUpdate} loading={bulkActive} />
+      <BulkStockUpdate
+        selectedCount={selectedRowKeys.length}
+        onUpdate={handleBulkUpdate}
+        loading={bulkActive}
+      />
       <StockTable
         products={products}
         editedStocks={editedStocks}

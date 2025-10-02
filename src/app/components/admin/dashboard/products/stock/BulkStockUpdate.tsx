@@ -19,7 +19,7 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
   const [bulkStock, setBulkStock] = useState<number>(0);
 
   const handleClick = async () => {
-    if (bulkStock <= 0) return;
+    // Allow negative values
     await onUpdate(bulkStock);
     setBulkStock(0);
   };
@@ -30,7 +30,7 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
     <div className="flex items-center space-x-2 mb-2">
       <div className="flex items-center gap-2 mb-2">
         <SheiButton
-          onClick={() => setBulkStock((prev) => Math.max(0, prev - 1))}
+          onClick={() => setBulkStock((prev) => prev - 1)}
           icon={<MinusOutlined />}
           type="default"
           className="w-10 h-10 flex items-center justify-center text-xl"
@@ -38,13 +38,11 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
         />
 
         <InputNumber
-          min={0}
           value={bulkStock}
           onChange={(value) => setBulkStock(Number(value ?? 0))}
           controls={false}
           disabled={loading}
           className="w-16 text-center font-bold [&>input]:text-center [&>input]:font-bold rounded-lg"
-          formatter={(value) => value?.toString().padStart(2, "0") ?? "00"}
         />
 
         <SheiButton
@@ -56,7 +54,7 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
         />
       </div>
 
-      <SheiButton onClick={handleClick} disabled={bulkStock <= 0 || loading}>
+      <SheiButton onClick={handleClick} disabled={loading}>
         {loading ? <Spin size="small" /> : "Update Stock"}
       </SheiButton>
     </div>

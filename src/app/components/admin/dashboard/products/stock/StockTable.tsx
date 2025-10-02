@@ -44,41 +44,35 @@ const StockTable: React.FC<StockTableProps> = ({
     const editedValue = editedStocks[key] ?? record.stock;
     const showUpdateButton = key in editedStocks && !bulkActive;
 
+    if ("variants" in record && record.variants?.length) {
+      return (
+        <span className="italic text-gray-400">Stock managed in variants</span>
+      );
+    }
+
     return (
-      <div className="flex items-center gap-2">
-        {"variants" in record && record.variants?.length ? (
-          <span className="italic text-gray-400">
-            Stock managed in variants
-          </span>
-        ) : (
-          <>
-            <InputNumber
-              min={0}
-              value={editedValue}
-              onChange={(value) =>
-                onStockChange(
-                  record.id,
-                  "variants" in record ? null : record.id,
-                  Number(value ?? 0)
-                )
-              }
-              className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
-            />
-            {showUpdateButton && (
-              <SheiButton
-                onClick={() =>
-                  onSingleUpdate(
-                    record.id,
-                    "variants" in record ? null : record.id,
-                    editedValue
-                  )
-                }
-                size="small"
-              >
-                Update
-              </SheiButton>
-            )}
-          </>
+      <div
+        className="flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <InputNumber
+          min={0}
+          value={editedValue}
+          onChange={(value) =>
+            onStockChange(record.id, null, Number(value ?? 0))
+          }
+          className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
+        />
+        {showUpdateButton && (
+          <SheiButton
+            onClick={async (e) => {
+              e.stopPropagation();
+              await onSingleUpdate(record.id, null, editedValue);
+            }}
+            size="small"
+          >
+            Update
+          </SheiButton>
         )}
       </div>
     );
