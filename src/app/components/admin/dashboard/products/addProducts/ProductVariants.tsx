@@ -1,7 +1,8 @@
+// File: components/forms/ProductVariantsInline.tsx
 "use client";
 
 import React from "react";
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, Controller } from "react-hook-form";
 import { ProductType } from "@/lib/schema/productSchema";
 import { ProductVariantType } from "@/lib/schema/varientSchema";
 import FormField from "./FormField";
@@ -26,10 +27,10 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         price: 0,
         weight: 0,
         color: "",
-        attributes: {},
         stock: 0,
         is_active: true,
-      },
+        attributes: {}, // JSON object
+      } as ProductVariantType,
     ]);
   };
 
@@ -40,17 +41,6 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
     );
   };
 
-  const handleChange = (
-    index: number,
-    field: keyof ProductVariantType,
-    value: string | number | boolean | object
-  ) => {
-    const updated = [...variants];
-    updated[index] = { ...updated[index], [field]: value };
-    form.setValue("variants", updated);
-  };
-
-  // TypeScript-safe error mapping for array
   const variantErrors = form.formState.errors.variants as
     | (
         | Partial<Record<keyof ProductVariantType, { message?: string }>>
@@ -65,13 +55,14 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         return (
           <div
             key={idx}
-            className="border p-6 rounded relative grid grid-cols-1 md:grid-cols-3 gap-4"
+            className="border rounded-lg p-6 shadow-sm relative grid grid-cols-1 md:grid-cols-3 gap-4 bg-white hover:shadow-md transition-shadow duration-200"
           >
-            <div className="col-span-full flex justify-between items-center mb-2">
-              <h4 className="font-medium text-lg">Variant {idx + 1}</h4>
+            <div className="col-span-full flex justify-between items-center mb-4">
+              <h4 className="font-semibold text-lg">Variant {idx + 1}</h4>
               <Button
                 type="button"
                 variant="destructive"
+                className="p-2"
                 onClick={() => handleRemoveVariant(idx)}
               >
                 <Trash2 className="w-4 h-4" />
@@ -79,82 +70,84 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             </div>
 
             <FormField
+              control={form.control}
               label="Name"
-              name={`variant_name-${idx}`}
-              value={variant.variant_name}
-              onChange={(e) =>
-                handleChange(idx, "variant_name", e.target.value)
-              }
+              name={`variants.${idx}.variant_name`}
               required
               error={error.variant_name?.message}
             />
-
             <FormField
+              control={form.control}
               label="SKU"
-              name={`sku-${idx}`}
-              value={variant.sku || ""}
-              onChange={(e) => handleChange(idx, "sku", e.target.value)}
+              name={`variants.${idx}.sku`}
               required
               error={error.sku?.message}
             />
-
             <FormField
+              control={form.control}
               label="Price"
-              name={`price-${idx}`}
+              name={`variants.${idx}.price`}
               type="number"
-              value={variant.price}
-              onChange={(e) =>
-                handleChange(idx, "price", parseFloat(e.target.value))
-              }
               required
               error={error.price?.message}
             />
-
             <FormField
+              control={form.control}
               label="Weight"
-              name={`weight-${idx}`}
+              name={`variants.${idx}.weight`}
               type="number"
-              value={variant.weight || 0}
-              onChange={(e) =>
-                handleChange(idx, "weight", parseFloat(e.target.value))
-              }
               error={error.weight?.message}
             />
-
             <FormField
+              control={form.control}
               label="Color"
-              name={`color-${idx}`}
-              value={variant.color || ""}
-              onChange={(e) => handleChange(idx, "color", e.target.value)}
-              required
+              name={`variants.${idx}.color`}
               error={error.color?.message}
             />
-
             <FormField
+              control={form.control}
               label="Stock"
-              name={`stock-${idx}`}
+              name={`variants.${idx}.stock`}
               type="number"
-              value={variant.stock}
-              onChange={(e) =>
-                handleChange(idx, "stock", parseInt(e.target.value))
-              }
               required
               error={error.stock?.message}
             />
 
-            <FormField
-              label="Attributes (JSON)"
-              name={`attributes-${idx}`}
-              as="textarea"
-              value={JSON.stringify(variant.attributes || {}, null, 2)}
-              onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  if (parsed && typeof parsed === "object")
-                    handleChange(idx, "attributes", parsed);
-                } catch {}
+            {/* Attributes as JSON object */}
+            <Controller
+              control={form.control}
+              name={`variants.${idx}.attributes`}
+              defaultValue={variant.attributes ?? {}}
+              render={({ field, fieldState }) => {
+                const valueAsString =
+                  typeof field.value === "object"
+                    ? JSON.stringify(field.value, null, 2)
+                    : field.value;
+                return (
+                  <div className="col-span-full">
+                    <label className="block mb-1 font-medium">
+                      Attributes (JSON)
+                    </label>
+                    <textarea
+                      className="w-full border rounded-md p-2 min-h-[60px]"
+                      value={valueAsString}
+                      onChange={(e) => {
+                        try {
+                          const parsed = JSON.parse(e.target.value);
+                          field.onChange(parsed);
+                        } catch {
+                          field.onChange(e.target.value);
+                        }
+                      }}
+                    />
+                    {(fieldState.error || error.attributes?.message) && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {fieldState.error?.message || error.attributes?.message}
+                      </p>
+                    )}
+                  </div>
+                );
               }}
-              error={error.attributes?.message?.toString()}
             />
           </div>
         );

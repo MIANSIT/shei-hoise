@@ -1,163 +1,185 @@
-// FormField.tsx
+// File: components/forms/FormField.tsx
 "use client";
 
 import React from "react";
-import { Controller, Control } from "react-hook-form";
-import { Input, Select, Checkbox, InputNumber } from "antd";
-import type { InputProps } from "antd/es/input";
-import type { TextAreaProps } from "antd/es/input";
-import type { SelectProps } from "antd/es/select";
-import type { CheckboxProps } from "antd/es/checkbox";
-import type { InputNumberProps } from "antd/es/input-number";
+import { Controller, Control, FieldValues, Path } from "react-hook-form";
 
 type Option = { label: string; value: string | number };
 
-type BaseProps = {
-  control: Control<any>;
-  name: string;
+type BaseProps<T extends FieldValues> = {
+  control: Control<T>;
+  name: Path<T>;
   label?: string;
   required?: boolean;
   error?: string | null;
   readOnly?: boolean;
   placeholder?: string;
+  onChange?: (value: T[Path<T>]) => void;
+  className?: string; // <-- add this
 };
 
-// Input (text/password/etc.)
-type InputFieldProps = BaseProps & {
+// Input
+type InputFieldProps<T extends FieldValues> = BaseProps<T> & {
   as?: "input";
-  type?: Exclude<InputProps["type"], undefined>;
-} & Omit<InputProps, "name" | "value" | "onChange" | "defaultValue">;
+  type?: "text" | "email" | "password" | "number";
+};
 
 // Textarea
-type TextareaFieldProps = BaseProps & { as: "textarea" } & Omit<
-    TextAreaProps,
-    "name" | "value" | "onChange" | "defaultValue"
-  >;
+type TextareaFieldProps<T extends FieldValues> = BaseProps<T> & {
+  as: "textarea";
+};
 
 // Select
-type SelectFieldProps = BaseProps & { as: "select"; options?: Option[] } & Omit<
-    SelectProps<any>,
-    "name" | "value" | "onChange" | "defaultValue"
-  >;
+type SelectFieldProps<T extends FieldValues> = BaseProps<T> & {
+  as: "select";
+  options?: Option[];
+};
 
 // Checkbox
-type CheckboxFieldProps = BaseProps & { as: "checkbox" } & Omit<
-    CheckboxProps,
-    "name" | "checked" | "onChange" | "defaultValue"
-  >;
+type CheckboxFieldProps<T extends FieldValues> = BaseProps<T> & {
+  as: "checkbox";
+};
 
-// Number (uses antd InputNumber)
-type NumberFieldProps = BaseProps & { as?: "input"; type: "number" } & Omit<
-    InputNumberProps,
-    "name" | "value" | "onChange" | "defaultValue"
-  >;
+// Number
+type NumberFieldProps<T extends FieldValues> = BaseProps<T> & {
+  as?: "input";
+  type: "number";
+};
 
-export type FormFieldProps =
-  | InputFieldProps
-  | TextareaFieldProps
-  | SelectFieldProps
-  | CheckboxFieldProps
-  | NumberFieldProps;
+export type FormFieldProps<T extends FieldValues> =
+  | InputFieldProps<T>
+  | TextareaFieldProps<T>
+  | SelectFieldProps<T>
+  | CheckboxFieldProps<T>
+  | NumberFieldProps<T>;
 
-const FormField: React.FC<FormFieldProps> = (props) => {
-  const { control, name, label, required, error } = props as BaseProps;
+const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
+  const { control, name, label, required, error, onChange } =
+    props as BaseProps<T>;
 
-  // render container + label
+  const commonClasses =
+    "w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500";
+  const extraClass = props.className ?? "";
   return (
-    <div className='flex flex-col w-full scroll-mt-24' id={`field-${name}`}>
+    <div className="flex flex-col w-full scroll-mt-24" id={`field-${name}`}>
       {label && (
-        <label htmlFor={name} className='text-sm font-medium mb-1'>
-          {label} {required && <span className='text-red-500'>*</span>}
+        <label htmlFor={name} className="text-sm font-semibold mb-1">
+          {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
 
       <Controller
-        name={name}
         control={control}
+        name={name}
         render={({ field }) => {
           // TEXTAREA
-          if ((props as TextareaFieldProps).as === "textarea") {
-            const p = props as TextareaFieldProps;
+          if ("as" in props && props.as === "textarea") {
+            const p = props as TextareaFieldProps<T>;
             return (
-              <Input.TextArea
+              <textarea
                 id={name}
-                {...(p as any)}
-                value={field.value ?? ""}
-                onChange={(e) => field.onChange(e.target.value)}
+                {...field}
+                placeholder={p.placeholder}
+                className={`${commonClasses}${extraClass} resize-none min-h-[80px]`}
                 disabled={p.readOnly}
-                status={error ? "error" : undefined}
+                onChange={(e) => {
+                  field.onChange(e.target.value as T[Path<T>]);
+                  onChange?.(e.target.value as T[Path<T>]);
+                }}
+                value={field.value ?? ""}
               />
             );
           }
 
           // SELECT
-          if ((props as SelectFieldProps).as === "select") {
-            const p = props as SelectFieldProps;
+          if ("as" in props && props.as === "select") {
+            const p = props as SelectFieldProps<T>;
             return (
-              <Select
+              <select
                 id={name}
-                {...(p as any)}
-                value={field.value}
-                onChange={(val) => field.onChange(val)}
+                {...field}
+                value={field.value ?? ""}
+                className={commonClasses}
                 disabled={p.readOnly}
-                options={p.options}
-                status={error ? "error" : undefined}
-              />
+                onChange={(e) => {
+                  field.onChange(e.target.value as T[Path<T>]);
+                  onChange?.(e.target.value as T[Path<T>]);
+                }}
+              >
+                {p.placeholder && (
+                  <option value="" disabled hidden>
+                    {p.placeholder}
+                  </option>
+                )}
+                {p.options?.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             );
           }
 
           // CHECKBOX
-          if ((props as CheckboxFieldProps).as === "checkbox") {
-            const p = props as CheckboxFieldProps;
-            // Checkbox children often used as label — preserve that if provided
-            const children = (p as any).children ?? p.placeholder ?? "";
+          if ("as" in props && props.as === "checkbox") {
+            const p = props as CheckboxFieldProps<T>;
             return (
-              <Checkbox
-                id={name}
-                {...(p as any)}
-                checked={!!field.value}
-                onChange={(e) => field.onChange(e.target.checked)}
-                disabled={p.readOnly}
-              >
-                {children}
-              </Checkbox>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={!!field.value}
+                  onChange={(e) => {
+                    field.onChange(e.target.checked as T[Path<T>]);
+                    onChange?.(e.target.checked as T[Path<T>]);
+                  }}
+                  className="w-4 h-4 rounded border-gray-300"
+                  disabled={p.readOnly}
+                />
+                <span>{p.label}</span>
+              </div>
             );
           }
 
-          // NUMBER (InputNumber)
-          if ((props as NumberFieldProps).type === "number") {
-            const p = props as NumberFieldProps;
-            return (
-              <InputNumber
-                id={name}
-                {...(p as any)}
-                value={field.value ?? undefined}
-                onChange={(val) => field.onChange(val)}
-                disabled={p.readOnly}
-                status={error ? "error" : undefined}
-              />
-            );
-          }
+          // NUMBER or DEFAULT INPUT
+          // NUMBER or DEFAULT INPUT
+          const p = props as InputFieldProps<T> | NumberFieldProps<T>;
+          const isNumber = p.type === "number";
 
-          // DEFAULT INPUT (text/password/etc.)
-          {
-            const p = props as InputFieldProps;
-            return (
-              <Input
-                id={name}
-                {...(p as any)}
-                value={field.value ?? ""}
-                onChange={(e) => field.onChange(e.target.value)}
-                type={p.type}
-                disabled={p.readOnly}
-                status={error ? "error" : undefined}
-              />
-            );
-          }
+          // Controlled value for input element
+          const inputValue: string | number = isNumber
+            ? field.value ?? "" // show "" when undefined
+            : field.value ?? "";
+
+          return (
+            <input
+              {...field}
+              type={p.type ?? "text"}
+              placeholder={p.placeholder}
+              className={commonClasses}
+              disabled={p.readOnly}
+              value={inputValue}
+              onChange={(e) => {
+                let newValue: T[Path<T>];
+
+                if (isNumber) {
+                  // Pass undefined for empty input, otherwise parseFloat
+                  newValue =
+                    e.target.value === ""
+                      ? (undefined as unknown as T[Path<T>])
+                      : (parseFloat(e.target.value) as T[Path<T>]);
+                } else {
+                  newValue = e.target.value as T[Path<T>];
+                }
+
+                field.onChange(newValue);
+                onChange?.(newValue);
+              }}
+            />
+          );
         }}
       />
 
-      {error && <p className='text-red-400 text-sm mt-1'>{error}</p>}
+      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
 };
