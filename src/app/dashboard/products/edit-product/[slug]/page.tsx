@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AddProductForm from "@/app/components/admin/dashboard/products/addProducts/AddProductForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { getProductById } from "@/lib/queries/products/getProductById";
+import { getProductBySlug } from "@/lib/queries/products/getProductBySlug";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import type { ProductType } from "@/lib/schema/productSchema";
 import type { Product } from "@/lib/queries/products/getProducts";
@@ -12,7 +12,7 @@ import { mapProductToFormType } from "@/lib/hook/products/mapProductToFormType";
 
 const EditProductPage = () => {
   const params = useParams();
-  const { id } = params;
+  const { slug } = params; // get slug from URL
   const { success, error } = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
 
@@ -20,20 +20,26 @@ const EditProductPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id || !user?.store_id) return;
+    if (!slug || !user?.store_id) return;
+
+    console.log("Fetching product for slug:", slug);
 
     setLoading(true);
-    getProductById(user.store_id, id as string)
+    getProductBySlug(user.store_id, slug as string)
       .then((res: Product | null) => {
+        console.log("Fetched product:", res);
         if (!res) {
           error("Product not found.");
           return;
         }
         setProduct(mapProductToFormType(res, user.store_id!));
       })
-      .catch(() => error("Failed to fetch product."))
+      .catch((err) => {
+        console.error("Error fetching product:", err);
+        error("Failed to fetch product.");
+      })
       .finally(() => setLoading(false));
-  }, [id, user?.store_id]);
+  }, [slug, user?.store_id]);
 
   const handleUpdate = (updatedProduct: ProductType) => {
     try {

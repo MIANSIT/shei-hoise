@@ -28,8 +28,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
   const sheiNotif = useSheiNotification();
 
-  const handleEdit = (id: string) =>
-    router.push(`/dashboard/products/edit-product/${id}`);
+  const handleEdit = (slug: string) =>
+    router.push(`/dashboard/products/edit-product/${slug}`);
 
   const showDeleteModal = (id: string) => {
     setDeletingId(id);
@@ -137,7 +137,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         >
           <button
             className="p-1 rounded hover:bg-blue-100 transition"
-            onClick={() => handleEdit(record.id)}
+            onClick={() => handleEdit(record.slug)}
           >
             <Edit className="w-5 h-5 text-blue-600" />
           </button>
