@@ -32,7 +32,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
     const { error: notifyError } = useSheiNotification();
 
-    const initialValues: ProductType = product ?? {
+    const initialValues: ProductType = {
       store_id: storeId,
       category_id: undefined,
       name: "",
@@ -54,6 +54,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       is_digital: false,
       meta_title: undefined,
       meta_description: undefined,
+      ...product, // merge product values if editing
     };
 
     const form = useForm<ProductType>({
@@ -66,6 +67,13 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     >([]);
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
+
+    // Reset form whenever product changes
+    useEffect(() => {
+      if (product) {
+        form.reset({ ...initialValues });
+      }
+    }, [product, form]);
 
     useEffect(() => {
       getCategoriesQuery(storeId).then(({ data }) => {
@@ -104,6 +112,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
     const { control, watch, setValue } = form;
 
+    // Discount calculation
     const basePrice = watch("base_price");
     const discountAmount = watch("discount_amount");
     const discountedPrice = useDiscountCalculation({
@@ -272,7 +281,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               <input
                 id="featured"
                 type="checkbox"
-                {...form.register("featured")} // ✅ bind using react-hook-form
+                {...form.register("featured")}
                 className="w-5 h-5 rounded border-gray-300 accent-green-500"
               />
               <label htmlFor="featured" className="text-sm font-semibold ml-1">
@@ -281,12 +290,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
 
             <div className="flex flex-col w-full md:w-1/3">
-              <label htmlFor="status" className="text-sm font-medium mb-1 ">
+              <label htmlFor="status" className="text-sm font-medium mb-1">
                 Status
               </label>
               <select
                 id="status"
-                {...form.register("status")} // ✅ bind using react-hook-form
+                {...form.register("status")}
                 className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition"
               >
                 <option value="active">Active</option>
