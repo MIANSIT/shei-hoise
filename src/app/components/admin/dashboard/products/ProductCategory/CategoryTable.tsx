@@ -2,7 +2,8 @@
 "use client";
 
 import React from "react";
-import { Button, Popconfirm } from "antd";
+import { Button, Popconfirm, Tooltip } from "antd";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import type { Category } from "@/lib/types/category";
@@ -25,7 +26,6 @@ export default function CategoryTable({
       title: "Name",
       dataIndex: "name",
       key: "name",
-      width: 200,
     },
     {
       title: "Description",
@@ -36,31 +36,42 @@ export default function CategoryTable({
       title: "Created At",
       dataIndex: "createdAt",
       key: "createdAt",
-      width: 180,
     },
     {
       title: "Actions",
       key: "actions",
-      width: 180,
       render: (_, record) => (
-        <div className="flex gap-2">
-          <Button type="default" size="small" onClick={() => onEdit(record)}>
-            Edit
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(record)}
+            />
+          </Tooltip>
+
           <Popconfirm
             title="Are you sure to delete this category?"
             onConfirm={() => onDelete(record)}
             okText="Yes"
             cancelText="No"
           >
-            <Button type="primary" danger size="small">
-              Delete
-            </Button>
+            <Tooltip title="Delete">
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
           </Popconfirm>
         </div>
       ),
     },
   ];
 
-  return <DataTable<Category> columns={columns} data={data} loading={loading} />;
+  return (
+    <DataTable<Category> columns={columns} data={data} loading={loading} />
+  );
 }
