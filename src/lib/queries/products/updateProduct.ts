@@ -107,7 +107,10 @@ export async function updateProduct(update: UpdateProductType) {
         const { error: insVarError } = await supabaseAdmin
           .from("product_variants")
           .insert(
-            update.variants.map((v) => ({ ...v, product_id: update.id }))
+            update.variants.map(({ stock, ...v }) => ({
+              ...v,
+              product_id: update.id,
+            }))
           );
         if (insVarError) throw insVarError;
       }
