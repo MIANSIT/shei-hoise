@@ -117,6 +117,7 @@ export async function getProductBySlug(
   );
 
   return {
+    id: p.id, // 👈 add this!
     store_id: storeId,
     name: p.name,
     slug: p.slug,

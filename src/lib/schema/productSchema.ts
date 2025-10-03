@@ -6,6 +6,7 @@ import {
 
 export const productSchema = z
   .object({
+    id: z.string().uuid().optional(), // enforce UUID string
     store_id: z.string().uuid(),
     category_id: z.string().uuid().optional(),
 
