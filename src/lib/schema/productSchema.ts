@@ -8,8 +8,12 @@ export const productSchema = z
   .object({
     id: z.string().uuid().optional(), // enforce UUID string
     store_id: z.string().uuid(),
-    category_id: z.string().uuid().optional(),
-
+    category_id: z
+      .string()
+      .nullable()
+      .refine((val) => val !== null && val !== "", {
+        message: "Category is required",
+      }),
     name: z.string().min(1, "Product name is required"),
     slug: z.string().min(1, "Slug is required"),
 
@@ -43,7 +47,6 @@ export const productSchema = z
           isPrimary: z.boolean().optional(),
         })
       )
-      .min(1, "At least one image is required")
       .max(5, "Maximum 5 images are allowed")
       .optional(),
   })
