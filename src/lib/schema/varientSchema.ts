@@ -5,7 +5,7 @@ export const variantSchema = z
     id: z.string().uuid().optional(),
     product_id: z.string().uuid().optional(),
     variant_name: z.string().min(1, "Variant name is required"),
-    sku: z.string().min(1, "SKU is required"),
+    sku: z.string().optional(), // enforced in productSchema or superRefine
 
     attributes: z
       .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
@@ -17,16 +17,16 @@ export const variantSchema = z
     is_active: z.boolean(),
 
     base_price: z.number().optional(),
+    tp_price: z.number().optional(),
     discounted_price: z.number().optional(),
     discount_amount: z.number().optional(),
-    tp_price: z.number().optional(),
     stock: z.number().optional(),
 
     created_at: z.string().optional(),
     updated_at: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    // Optional: enforce discount consistency per variant
+    // Discount consistency per variant
     if (data.discount_amount && data.discounted_price) {
       const expected = (data.base_price ?? 0) - data.discount_amount;
       if (data.discounted_price !== expected) {

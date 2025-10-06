@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
 import ProductImages from "./ProductImages";
-import ProductVariantsInline from "./ProductVariants";
+import ProductVariantsInline from "./ProductVariantsInline";
 import { Button } from "@/components/ui/button";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
@@ -249,6 +249,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               <ProductImages
                 images={images}
                 setImages={(files) => form.setValue("images", files)}
+                error={form.formState.errors.images?.message as string}
               />
             </div>
           </section>

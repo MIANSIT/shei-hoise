@@ -91,12 +91,14 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               label="Base Price (BDT)"
               name={`variants.${idx}.base_price`}
               type="number"
+              required
             />
             <FormField
               control={form.control}
               label="TP Price (BDT)"
               name={`variants.${idx}.tp_price`}
               type="number"
+              required
             />
             <FormField
               control={form.control}
@@ -121,6 +123,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               control={form.control}
               label="Color"
               name={`variants.${idx}.color`}
+              required
             />
             <FormField
               control={form.control}

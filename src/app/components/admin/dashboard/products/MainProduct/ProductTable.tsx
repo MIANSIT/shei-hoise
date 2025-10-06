@@ -119,7 +119,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 key={v.id}
                 className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded"
               >
-                {v.variant_name ?? "(Unnamed)"}: ${v.price ?? "N/A"}
+                {v.variant_name ?? "(Unnamed)"}: $
+                {v.discounted_price ?? v.base_price ?? "N/A"}
               </span>
             ))}
           </div>

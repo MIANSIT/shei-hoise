@@ -8,11 +8,13 @@ import { FrontendImage } from "@/lib/types/frontendImage";
 interface ProductImagesProps {
   images: FrontendImage[];
   setImages: (files: FrontendImage[]) => void;
+  error?: string; // Add error prop
 }
 
 const ProductImages: React.FC<ProductImagesProps> = ({
   images = [],
   setImages,
+  error,
 }) => {
   return (
     <div className="col-span-1 md:col-span-2">
@@ -27,6 +29,9 @@ const ProductImages: React.FC<ProductImagesProps> = ({
           Only the first 5 images will be saved.
         </p>
       )}
+
+      {/* Show validation error */}
+      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
 };

@@ -24,7 +24,7 @@ export const productSchema = z
     discounted_price: z.number().optional(),
     discount_amount: z.number().optional(),
     weight: z.number().optional(),
-    sku: z.string().min(1, "SKU is required"),
+    sku: z.string().optional(), // enforced conditionally
     stock: z.number().optional(),
 
     dimensions: z.string().optional(),
@@ -50,7 +50,6 @@ export const productSchema = z
     const hasVariants = data.variants && data.variants.length > 0;
 
     if (hasVariants) {
-      // ✅ Each variant must have its own base_price, tp_price, and stock
       data.variants?.forEach((variant, index) => {
         if (!variant.base_price) {
           ctx.addIssue({
@@ -73,9 +72,15 @@ export const productSchema = z
             path: ["variants", index, "stock"],
           });
         }
+        if (!variant.sku) {
+          ctx.addIssue({
+            code: "custom",
+            message: "SKU is required for each variant.",
+            path: ["variants", index, "sku"],
+          });
+        }
       });
     } else {
-      // ✅ When no variants, product-level fields are required
       if (!data.base_price) {
         ctx.addIssue({
           code: "custom",
@@ -90,6 +95,13 @@ export const productSchema = z
           path: ["tp_price"],
         });
       }
+      if (!data.sku) {
+        ctx.addIssue({
+          code: "custom",
+          message: "SKU is required when no variants exist.",
+          path: ["sku"],
+        });
+      }
       if (data.stock === undefined || data.stock < 1) {
         ctx.addIssue({
           code: "custom",
@@ -99,7 +111,7 @@ export const productSchema = z
       }
     }
 
-    // ✅ Discount consistency at product level
+    // Discount validation
     if (data.discount_amount && data.discounted_price) {
       const expected = (data.base_price ?? 0) - data.discount_amount;
       if (data.discounted_price !== expected) {
@@ -109,6 +121,21 @@ export const productSchema = z
           path: ["discounted_price"],
         });
       }
+    }
+
+    // Image validation
+    if (!data.images || data.images.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "At least one image is required.",
+        path: ["images"],
+      });
+    } else if (!data.images.some((img) => img.isPrimary)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "At least one image must be marked as primary.",
+        path: ["images"],
+      });
     }
   });
 

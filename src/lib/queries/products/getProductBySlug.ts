@@ -9,7 +9,10 @@ interface DbVariant {
   product_id: string;
   variant_name: string;
   sku?: string | null;
-  price: number;
+  base_price: number;
+  discounted_price?: number | null;
+  discount_amount?: number | null;
+  tp_price?: number | null;
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
   color?: string | null;
@@ -40,23 +43,31 @@ interface DbProduct {
   product_variants: DbVariant[] | null;
 }
 
-// Map variant to ProductType-compatible shape
+// Normalize variant for form
 function mapVariant(v: DbVariant, allImages: ProductImage[] = []) {
   const images = allImages.filter((img) => img.variant_id === v.id);
+
   return {
-    variant_name: v.variant_name,
-    sku: v.sku || "",
-    price: Number(v.price),
-    attributes: v.attributes || {},
-    weight: v.weight ?? undefined,
-    color: v.color || "",
+    id: v.id,
+    product_id: v.product_id,
+    variant_name: v.variant_name ?? "",
+    sku: v.sku ?? "",
+    base_price: Number(v.base_price ?? 0),
+    tp_price: Number(v.tp_price ?? 0),
+    discounted_price: v.discounted_price ?? 0,
+    discount_amount: v.discount_amount ?? 0,
+    attributes: v.attributes ?? null,
+    weight: v.weight ?? 0,
+    color: v.color ?? "",
     is_active: v.is_active ?? true,
-    stock: v.product_inventory?.[0]?.quantity_available || 0,
+    stock: v.product_inventory?.[0]?.quantity_available ?? 0,
     images,
+    created_at: undefined,
+    updated_at: undefined,
   };
 }
 
-// Main function: fetch and return ProductType directly
+// Main function
 export async function getProductBySlug(
   storeId: string,
   slug: string
@@ -87,7 +98,10 @@ export async function getProductBySlug(
         product_id,
         variant_name,
         sku,
-        price,
+        base_price,
+        discounted_price,
+        discount_amount,
+        tp_price,
         attributes,
         weight,
         color,
@@ -112,12 +126,13 @@ export async function getProductBySlug(
       ? { id: p.categories.id, name: p.categories.name }
       : undefined;
 
+  // Filter main product images (not variant-specific)
   const productImages = (p.product_images ?? []).filter(
     (img) => img.variant_id === null
   );
 
   return {
-    id: p.id, // 👈 add this!
+    id: p.id,
     store_id: storeId,
     name: p.name,
     slug: p.slug,
@@ -125,21 +140,19 @@ export async function getProductBySlug(
     short_description: p.short_description ?? "",
     base_price: Number(p.base_price),
     tp_price: p.tp_price ?? 0,
-    sku: p.sku || "",
-    stock: p.product_inventory?.[0]?.quantity_available || 0,
+    sku: p.sku ?? "",
+    stock: p.product_inventory?.[0]?.quantity_available ?? 0,
     status: p.status,
     featured: p.featured === true || p.featured === "true",
     category_id: category?.id ?? null,
-    discounted_price: p.discounted_price ?? undefined,
-    discount_amount: p.discount_amount ?? undefined,
-    weight: p.weight ?? undefined,
-
+    discounted_price: p.discounted_price ?? 0,
+    discount_amount: p.discount_amount ?? 0,
+    weight: p.weight ?? 0,
     images: productImages.map((img) => ({
       imageUrl: img.image_url,
       altText: img.alt_text ?? undefined,
       isPrimary: img.is_primary,
     })),
-
     variants: (p.product_variants ?? []).map((v) =>
       mapVariant(v, p.product_images ?? [])
     ),
