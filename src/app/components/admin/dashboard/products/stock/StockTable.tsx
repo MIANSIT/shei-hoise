@@ -39,54 +39,17 @@ const StockTable: React.FC<StockTableProps> = ({
   loading,
   bulkActive = false,
 }) => {
-  const renderStockCell = (record: ProductRow | VariantRow) => {
-    const key = record.id;
-    const editedValue = editedStocks[key] ?? record.stock;
-    const showUpdateButton = key in editedStocks && !bulkActive;
-
-    if ("variants" in record && record.variants?.length) {
-      return (
-        <span className="italic text-gray-400">Stock managed in variants</span>
-      );
-    }
-
-    return (
-      <div
-        className="flex items-center gap-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <InputNumber
-          min={0}
-          value={editedValue}
-          onChange={(value) =>
-            onStockChange(record.id, null, Number(value ?? 0))
-          }
-          className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
-        />
-        {showUpdateButton && (
-          <SheiButton
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onSingleUpdate(record.id, null, editedValue);
-            }}
-            size="small"
-          >
-            Update
-          </SheiButton>
-        )}
-      </div>
-    );
-  };
-
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
       key: "image",
       width: 80,
-      render: (_value, record) =>
-        record.imageUrl ? (
+      render: (_value, record) => {
+        const imageUrl = record.imageUrl ?? null;
+
+        return imageUrl ? (
           <Image
-            src={record.imageUrl}
+            src={imageUrl}
             alt={record.title}
             width={50}
             height={50}
@@ -94,7 +57,8 @@ const StockTable: React.FC<StockTableProps> = ({
           />
         ) : (
           <div className="w-12 h-12 bg-gray-200 rounded-md" />
-        ),
+        );
+      },
     },
     {
       title: "Product / Variant",
@@ -106,12 +70,73 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Price",
       dataIndex: "currentPrice",
       key: "currentPrice",
-      render: (price: number) => <span>${price}</span>,
+      render: (_price: number | null, record: ProductRow | VariantRow) => {
+        // 🟡 If this record has variants → show message
+        if ("variants" in record && record.variants?.length) {
+          return (
+            <span className="italic text-gray-400">
+              Price depends on variants
+            </span>
+          );
+        }
+
+        // 🟢 For variant or product without variants → show proper price
+        const price =
+          typeof record.currentPrice === "number" ? record.currentPrice : 0;
+        return <span>${price.toFixed(2)}</span>;
+      },
     },
     {
       title: "Stock",
       key: "stock",
-      render: (_value, record) => renderStockCell(record),
+      render: (_value, record, _index) => {
+        // 🟡 If product has variants → show message
+        if ("variants" in record && record.variants?.length) {
+          return (
+            <span className="italic text-gray-400">
+              Stock managed in variants
+            </span>
+          );
+        }
+
+        // 🟢 Otherwise editable stock
+        const key = record.id;
+        const editedValue = editedStocks[key] ?? record.stock;
+        const showUpdateButton = key in editedStocks && !bulkActive;
+
+        // Determine correct parent + variant IDs
+        const parentId =
+          "variants" in record ? record.id : (record as VariantRow).productId;
+        const variantId =
+          "variants" in record ? null : (record as VariantRow).id;
+
+        return (
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <InputNumber
+              min={0}
+              value={editedValue}
+              onChange={(value) =>
+                onStockChange(parentId, variantId, Number(value ?? 0))
+              }
+              className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
+            />
+            {showUpdateButton && (
+              <SheiButton
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await onSingleUpdate(parentId, variantId, editedValue);
+                }}
+                size="small"
+              >
+                Update
+              </SheiButton>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -128,10 +153,12 @@ const StockTable: React.FC<StockTableProps> = ({
           "variants" in record && record.variants?.length ? (
             <DataTable
               columns={columns}
-              data={record.variants}
+              data={record.variants.map((v) => ({
+                ...v,
+                productId: record.id, // ✅ ensures variants know their parent
+              }))}
               rowKey="id"
               pagination={false}
-              rowSelection={undefined}
             />
           ) : null,
         rowExpandable: (record) =>

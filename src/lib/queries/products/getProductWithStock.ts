@@ -1,4 +1,4 @@
-// src/lib/queries/product/getProductWithStock.ts
+// lib/queries/products/getProductWithStock.ts
 import { supabaseAdmin } from "@/lib/supabase";
 
 export interface ProductImage {
@@ -19,17 +19,19 @@ export interface ProductVariant {
   id: string;
   product_id: string;
   variant_name: string;
-  price: number;
+  base_price: number;
+  discounted_price?: number | null;
+  tp_price?: number | null;
   color?: string | null;
   stock: ProductStock;
-  primary_image: ProductImage | null; // only primary image
+  primary_image: ProductImage | null;
 }
 
 export interface ProductWithStock {
   id: string;
   name: string;
   base_price: number;
-  primary_image: ProductImage | null; // only primary image
+  primary_image: ProductImage | null;
   stock: ProductStock | null;
   variants: ProductVariant[];
 }
@@ -38,7 +40,9 @@ export interface ProductWithStock {
 interface SupabaseProductVariantRow {
   id: string;
   variant_name: string;
-  price: string;
+  base_price: number;
+  discounted_price: number | null;
+  tp_price: number | null;
   color: string | null;
   product_inventory: ProductStock[];
   product_images: ProductImage[];
@@ -47,7 +51,7 @@ interface SupabaseProductVariantRow {
 interface SupabaseProductRow {
   id: string;
   name: string;
-  base_price: string;
+  base_price: number;
   product_images: ProductImage[];
   product_inventory: ProductStock[];
   product_variants: SupabaseProductVariantRow[];
@@ -66,7 +70,9 @@ export async function getProductWithStock(): Promise<ProductWithStock[]> {
       product_variants(
         id,
         variant_name,
-        price,
+        base_price,
+        discounted_price,
+        tp_price,
         color,
         product_inventory(quantity_available, quantity_reserved),
         product_images(id, product_id, variant_id, image_url, alt_text, is_primary)
@@ -75,7 +81,7 @@ export async function getProductWithStock(): Promise<ProductWithStock[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data || []).map((p: SupabaseProductRow): ProductWithStock => {
+  return (data || []).map((p) => {
     const primaryProductImage =
       p.product_images?.find((img) => img.is_primary) || null;
 
@@ -85,23 +91,20 @@ export async function getProductWithStock(): Promise<ProductWithStock[]> {
       base_price: Number(p.base_price),
       primary_image: primaryProductImage,
       stock: p.product_inventory?.[0] || null,
-      variants: (p.product_variants || []).map((v): ProductVariant => {
-        const primaryVariantImage =
-          v.product_images?.find((img) => img.is_primary) || null;
-
-        return {
-          id: v.id,
-          product_id: p.id,
-          variant_name: v.variant_name,
-          price: Number(v.price),
-          color: v.color || null,
-          stock: v.product_inventory?.[0] || {
-            quantity_available: 0,
-            quantity_reserved: 0,
-          },
-          primary_image: primaryVariantImage,
-        };
-      }),
+      variants: (p.product_variants || []).map((v) => ({
+        id: v.id,
+        product_id: p.id,
+        variant_name: v.variant_name,
+        base_price: v.base_price,
+        discounted_price: v.discounted_price,
+        tp_price: v.tp_price,
+        color: v.color || null,
+        stock: v.product_inventory?.[0] || {
+          quantity_available: 0,
+          quantity_reserved: 0,
+        },
+        primary_image: v.product_images?.find((img) => img.is_primary) || null,
+      })),
     };
   });
 }
