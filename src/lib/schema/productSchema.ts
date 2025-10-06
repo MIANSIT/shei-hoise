@@ -6,7 +6,7 @@ import {
 
 export const productSchema = z
   .object({
-    id: z.string().uuid().optional(), // enforce UUID string
+    id: z.string().uuid().optional(),
     store_id: z.string().uuid(),
     category_id: z
       .string()
@@ -16,19 +16,16 @@ export const productSchema = z
       }),
     name: z.string().min(1, "Product name is required"),
     slug: z.string().min(1, "Slug is required"),
-
     description: z.string().min(1, "Description is required"),
     short_description: z.string().optional(),
 
-    base_price: z.number().min(1, "Base price must be greater than 0"),
-    tp_price: z.number().min(1, "TP price must be greater than 0"),
-
+    base_price: z.number().optional(),
+    tp_price: z.number().optional(),
     discounted_price: z.number().optional(),
     discount_amount: z.number().optional(),
     weight: z.number().optional(),
-    sku: z.string().min(1, "SKU is required"), // main product SKU
-
-    stock: z.number().min(0, "Stock cannot be negative"),
+    sku: z.string().min(1, "SKU is required"),
+    stock: z.number().optional(),
 
     dimensions: z.string().optional(),
     is_digital: z.boolean().optional(),
@@ -38,7 +35,6 @@ export const productSchema = z
     meta_description: z.string().optional(),
 
     variants: z.array(variantSchema).optional(),
-
     images: z
       .array(
         z.object({
@@ -51,22 +47,65 @@ export const productSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    // Stock check when no variants
-    if ((!data.variants || data.variants.length === 0) && data.stock <= 0) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Stock must be greater than 0 if there are no variants.",
-        path: ["stock"],
-      });
-    }
+    const hasVariants = data.variants && data.variants.length > 0;
 
-    // Discount consistency check
-    if (data.discount_amount && data.discounted_price) {
-      const expectedPrice = data.base_price - data.discount_amount;
-      if (data.discounted_price !== expectedPrice) {
+    if (hasVariants) {
+      // ✅ Each variant must have its own base_price, tp_price, and stock
+      data.variants?.forEach((variant, index) => {
+        if (!variant.base_price) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Base price is required for each variant.",
+            path: ["variants", index, "base_price"],
+          });
+        }
+        if (!variant.tp_price) {
+          ctx.addIssue({
+            code: "custom",
+            message: "TP price is required for each variant.",
+            path: ["variants", index, "tp_price"],
+          });
+        }
+        if (!variant.stock) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Stock is required for each variant.",
+            path: ["variants", index, "stock"],
+          });
+        }
+      });
+    } else {
+      // ✅ When no variants, product-level fields are required
+      if (!data.base_price) {
         ctx.addIssue({
           code: "custom",
-          message: `Discounted price should be base_price - discount_amount (${expectedPrice}).`,
+          message: "Base price is required when no variants exist.",
+          path: ["base_price"],
+        });
+      }
+      if (!data.tp_price) {
+        ctx.addIssue({
+          code: "custom",
+          message: "TP price is required when no variants exist.",
+          path: ["tp_price"],
+        });
+      }
+      if (data.stock === undefined || data.stock < 1) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Stock must be at least 1 when no variants exist.",
+          path: ["stock"],
+        });
+      }
+    }
+
+    // ✅ Discount consistency at product level
+    if (data.discount_amount && data.discounted_price) {
+      const expected = (data.base_price ?? 0) - data.discount_amount;
+      if (data.discounted_price !== expected) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Discounted price should be base_price - discount_amount (${expected}).`,
           path: ["discounted_price"],
         });
       }

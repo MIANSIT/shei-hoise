@@ -1,4 +1,3 @@
-// src/lib/queries/products/createProduct.ts
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
@@ -13,7 +12,7 @@ export async function createProduct(product: ProductType) {
   let productId: string | null = null;
   const insertedVariantIds: string[] = [];
 
-  // Helper function for rollback
+  // 🔁 Rollback helper
   const rollback = async () => {
     if (!productId) return;
 
@@ -73,14 +72,17 @@ export async function createProduct(product: ProductType) {
     if (product.variants?.length) {
       const variantsToInsert = product.variants.map(
         (v: ProductVariantType) => ({
+          product_id: productId,
           variant_name: v.variant_name,
           sku: v.sku,
-          price: v.price,
+          base_price: v.base_price,
+          tp_price: v.tp_price,
+          discounted_price: v.discounted_price,
+          discount_amount: v.discount_amount,
           weight: v.weight,
           color: v.color,
           attributes: v.attributes ?? {},
           is_active: v.is_active,
-          product_id: productId,
         })
       );
 
@@ -95,7 +97,7 @@ export async function createProduct(product: ProductType) {
       insertedVariants.forEach((v) => insertedVariantIds.push(v.id));
       firstVariantId = insertedVariants[0]?.id;
 
-      // Create inventory for each variant
+      // 🧾 Create inventory for each variant
       for (let i = 0; i < insertedVariants.length; i++) {
         try {
           await createInventory({
@@ -109,14 +111,14 @@ export async function createProduct(product: ProductType) {
         }
       }
     } else {
-      // No variants → create main inventory
+      // 🧾 No variants → create main inventory
       await createInventory({
         product_id: productId!,
         quantity_available: product.stock ?? 0,
       });
     }
 
-    // 3️⃣ Upload images
+    // 3️⃣ Upload product images
     if (product.images?.length) {
       const imagesWithVariantId = product.images.map((img) => ({
         ...img,
@@ -137,15 +139,15 @@ export async function createProduct(product: ProductType) {
 
     return productId;
   } catch (err: unknown) {
-    console.error("createProduct failed:", err);
+    console.error("❌ createProduct failed:", err);
 
-    // Perform rollback
+    // Perform rollback if something fails
     try {
       await rollback();
     } catch (rollbackErr) {
-      console.error("Rollback encountered errors:", rollbackErr);
+      console.error("⚠️ Rollback encountered errors:", rollbackErr);
     }
 
-    throw err; // rethrow original error
+    throw err;
   }
 }

@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AddProductForm from "@/app/components/admin/dashboard/products/addProducts/AddProductForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { getProductBySlug } from "@/lib/queries/products/getProductBySlug";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import type { ProductType } from "@/lib/schema/productSchema";
-
 import { updateProduct } from "@/lib/queries/products/updateProduct";
 import {
   updateProductSchema,
@@ -26,21 +25,25 @@ const EditProductPage = () => {
   useEffect(() => {
     if (!slug || !user?.store_id) return;
 
-    setLoading(true);
-    getProductBySlug(user.store_id, slug as string)
-      .then((res) => {
+    const fetchProduct = async () => {
+      setLoading(true);
+      try {
+        const res = await getProductBySlug(user.store_id!, slug as string);
         if (!res) {
           error("Product not found.");
           return;
         }
         setProduct(res);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error(err);
         error("Failed to fetch product.");
-      })
-      .finally(() => setLoading(false));
-  }, [slug, user?.store_id]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [slug, user?.store_id, error]); // ✅ safe, no infinite loop
 
   const handleUpdate = async (updatedProduct: ProductType) => {
     try {
@@ -59,7 +62,6 @@ const EditProductPage = () => {
     } catch (err: unknown) {
       console.error("Update failed:", err);
 
-      // Narrow unknown to get a message
       if (err instanceof Error) {
         error(err.message);
       } else {
@@ -73,12 +75,11 @@ const EditProductPage = () => {
 
   return (
     <div className="p-6">
-      {" "}
       <AddProductForm
         product={product}
         storeId={product.store_id}
         onSubmit={handleUpdate}
-      />{" "}
+      />
     </div>
   );
 };

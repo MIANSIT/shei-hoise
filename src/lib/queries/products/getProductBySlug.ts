@@ -129,7 +129,7 @@ export async function getProductBySlug(
     stock: p.product_inventory?.[0]?.quantity_available || 0,
     status: p.status,
     featured: p.featured === true || p.featured === "true",
-    category_id: category?.id,
+    category_id: category?.id ?? null,
     discounted_price: p.discounted_price ?? undefined,
     discount_amount: p.discount_amount ?? undefined,
     weight: p.weight ?? undefined,

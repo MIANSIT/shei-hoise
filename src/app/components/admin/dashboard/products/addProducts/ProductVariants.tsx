@@ -24,12 +24,15 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
       {
         variant_name: "",
         sku: "",
-        price: 0,
         weight: 0,
         color: "",
-        stock: 1,
+        stock: 0,
         is_active: true,
         attributes: null,
+        base_price: 0,
+        tp_price: 0,
+        discounted_price: 0,
+        discount_amount: 0,
       } as ProductVariantType,
     ]);
   };
@@ -55,7 +58,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         return (
           <div
             key={idx}
-            className="border rounded-lg p-6 shadow-sm relative grid grid-cols-1 md:grid-cols-3 gap-4 bg-white hover:shadow-md transition-shadow duration-200"
+            className="border rounded-lg p-6 shadow-sm relative grid grid-cols-1 md:grid-cols-3 gap-4  hover:shadow-md transition-shadow duration-200"
           >
             <div className="col-span-full flex justify-between items-center mb-4">
               <h4 className="font-semibold text-lg">Variant {idx + 1}</h4>
@@ -71,38 +74,53 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
 
             <FormField
               control={form.control}
-              label="Name"
+              label="Variant Name"
               name={`variants.${idx}.variant_name`}
               required
-              error={error.variant_name?.message}
             />
             <FormField
               control={form.control}
               label="SKU"
               name={`variants.${idx}.sku`}
               required
-              error={error.sku?.message}
+            />
+
+            {/* Price fields */}
+            <FormField
+              control={form.control}
+              label="Base Price (BDT)"
+              name={`variants.${idx}.base_price`}
+              type="number"
             />
             <FormField
               control={form.control}
-              label="Price (BDT)"
-              name={`variants.${idx}.price`}
+              label="TP Price (BDT)"
+              name={`variants.${idx}.tp_price`}
               type="number"
-              required
-              error={error.price?.message}
             />
+            <FormField
+              control={form.control}
+              label="Discount Amount (BDT)"
+              name={`variants.${idx}.discount_amount`}
+              type="number"
+            />
+            <FormField
+              control={form.control}
+              label="Discounted Price (BDT)"
+              name={`variants.${idx}.discounted_price`}
+              type="number"
+            />
+
             <FormField
               control={form.control}
               label="Weight (Kg)"
               name={`variants.${idx}.weight`}
               type="number"
-              error={error.weight?.message}
             />
             <FormField
               control={form.control}
               label="Color"
               name={`variants.${idx}.color`}
-              error={error.color?.message}
             />
             <FormField
               control={form.control}
@@ -110,14 +128,13 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               name={`variants.${idx}.stock`}
               type="number"
               required
-              error={error.stock?.message}
             />
 
-            {/* Attributes as simple input */}
+            {/* Attributes */}
             <Controller
               control={form.control}
               name={`variants.${idx}.attributes`}
-              defaultValue={variant.attributes ?? null} // type-safe
+              defaultValue={variant.attributes ?? null}
               render={({ field, fieldState }) => {
                 const valueAsString =
                   typeof field.value === "string"
@@ -138,11 +155,9 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                       placeholder="Size-M, Color-Red"
                       value={valueAsString}
                       onChange={(e) => {
-                        // keep string while typing
                         field.onChange(e.target.value);
                       }}
                       onBlur={(e) => {
-                        // convert to object on blur
                         const val = e.target.value.trim();
                         if (!val) {
                           field.onChange(null);
