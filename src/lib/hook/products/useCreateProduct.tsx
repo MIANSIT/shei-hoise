@@ -1,12 +1,12 @@
 import { createProduct } from "@/lib/query/products/createProducts";
-import { CreateProductType } from "@/lib/schema/productSchema";
+import { ProductType } from "@/lib/schema/productSchema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function useCreateProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: CreateProductType) => {
+    mutationFn: async (payload: ProductType) => {
       return createProduct(payload);
     },
     onSuccess: (data) => {

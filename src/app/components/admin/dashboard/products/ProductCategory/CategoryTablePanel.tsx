@@ -12,9 +12,15 @@ interface CategoryTablePanelProps {
   showForm: boolean;
 }
 
-export default function CategoryTablePanel({ categories, loading, onEdit, onDelete, showForm }: CategoryTablePanelProps) {
+export default function CategoryTablePanel({
+  categories,
+  loading,
+  onEdit,
+  onDelete,
+  showForm,
+}: CategoryTablePanelProps) {
   return (
-    <div className={`${showForm ? "w-2/3" : "w-full"}`}>
+    <div className={`${showForm ? "lg:w-2/3 w-full" : "w-full"}`}>
       <CategoryTable
         data={categories}
         loading={loading}
