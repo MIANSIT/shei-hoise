@@ -1,6 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
-import { FrontendImage } from "@/lib/types/frontendImage";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
 
 /**
