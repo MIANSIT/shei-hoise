@@ -9,9 +9,9 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import type { ProductType } from "@/lib/schema/productSchema";
 import { updateProduct } from "@/lib/queries/products/updateProduct";
 import {
-  updateProductSchema,
-  UpdateProductType,
-} from "@/lib/schema/updateProductSchema";
+  productUpdateSchema,
+  ProductUpdateType,
+} from "@/lib/schema/productUpdateSchema";
 
 const EditProductPage = () => {
   const params = useParams();
@@ -43,12 +43,16 @@ const EditProductPage = () => {
     };
 
     fetchProduct();
-  }, [slug, user?.store_id, error]); // ✅ safe, no infinite loop
+  }, [slug, user?.store_id, error]);
 
   const handleUpdate = async (updatedProduct: ProductType) => {
+    if (!user?.store_id) return;
+
     try {
-      const payload: UpdateProductType = updateProductSchema.parse({
+      // Validate & transform to ProductUpdateType
+      const payload: ProductUpdateType = productUpdateSchema.parse({
         ...updatedProduct,
+        store_id: user.store_id,
         id: updatedProduct.id,
       });
 
@@ -61,7 +65,6 @@ const EditProductPage = () => {
       );
     } catch (err: unknown) {
       console.error("Update failed:", err);
-
       if (err instanceof Error) {
         error(err.message);
       } else {

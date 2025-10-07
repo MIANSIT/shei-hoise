@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
-import { uploadProductImages } from "@/lib/queries/storage/uploadProductImages";
+import { uploadOrUpdateProductImages  } from "@/lib/queries/storage/uploadProductImages";
 
 /**
  * Fully atomic product creation with robust rollback
@@ -126,7 +126,7 @@ export async function createProduct(product: ProductType) {
       }));
 
       try {
-        await uploadProductImages(
+        await uploadOrUpdateProductImages(
           product.store_id,
           productId!,
           imagesWithVariantId

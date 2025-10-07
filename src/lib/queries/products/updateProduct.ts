@@ -1,158 +1,169 @@
-// src/lib/queries/products/updateProduct.ts
 import { supabaseAdmin } from "@/lib/supabase";
-import { UpdateProductType } from "@/lib/schema/updateProductSchema";
-import { uploadProductImages } from "@/lib/queries/storage/uploadProductImages";
+import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
+import { FrontendImage } from "@/lib/types/frontendImage";
+import { ProductImageType } from "@/lib/schema/productImageSchema";
 
 /**
- * Fetch full snapshot of product (main row, variants, inventory, images)
+ * Smartly update product, variants, inventory, and images.
  */
-async function fetchFullProduct(productId: string) {
-  const { data: product, error: prodErr } = await supabaseAdmin
+export async function updateProduct(data: ProductUpdateType) {
+  const { id, store_id, variants, images, stock, ...productData } = data;
+
+  if (!store_id) throw new Error("Store ID is required");
+
+  // 1️⃣ Update product table (without stock)
+  const { error: productError } = await supabaseAdmin
     .from("products")
-    .select("*")
-    .eq("id", productId)
-    .single();
-  if (prodErr) throw prodErr;
+    .update(productData)
+    .eq("id", id);
 
-  const { data: variants, error: varErr } = await supabaseAdmin
-    .from("product_variants")
-    .select("*")
-    .eq("product_id", productId);
-  if (varErr) throw varErr;
+  if (productError) throw productError;
 
-  const { data: inventory, error: invErr } = await supabaseAdmin
-    .from("product_inventory")
-    .select("*")
-    .eq("product_id", productId);
-  if (invErr) throw invErr;
-
-  const { data: images, error: imgErr } = await supabaseAdmin
-    .from("product_images")
-    .select("*")
-    .eq("product_id", productId);
-  if (imgErr) throw imgErr;
-
-  return { product, variants, inventory, images };
-}
-
-/**
- * Restore snapshot if update fails
- */
-async function restoreProductSnapshot(
-  productId: string,
-  snapshot: Awaited<ReturnType<typeof fetchFullProduct>>
-) {
-  // Clear current state
-  const tables = ["product_images", "product_inventory", "product_variants"];
-  for (const table of tables) {
-    await supabaseAdmin.from(table).delete().eq("product_id", productId);
-  }
-
-  // Restore product row
-  await supabaseAdmin
-    .from("products")
-    .update(snapshot.product)
-    .eq("id", productId);
-
-  // Restore variants
-  if (snapshot.variants.length) {
-    await supabaseAdmin.from("product_variants").insert(snapshot.variants);
-  }
-
-  // Restore inventory
-  if (snapshot.inventory.length) {
-    await supabaseAdmin.from("product_inventory").insert(snapshot.inventory);
-  }
-
-  // Restore images
-  if (snapshot.images.length) {
-    await supabaseAdmin.from("product_images").insert(snapshot.images);
-  }
-}
-
-/**
- * Update product with rollback-on-failure
- */
-export async function updateProduct(update: UpdateProductType) {
-  if (!update.id) throw new Error("Product ID is required");
-
-  // Take snapshot before updating
-  const snapshot = await fetchFullProduct(update.id);
-
-  try {
-    // 1️⃣ Update product main row (ignore variants/images/stock for now)
-    const productFields = { ...update };
-    delete productFields.variants;
-    delete productFields.images;
-    delete productFields.stock; // ❌ important: products table has no stock column
-
-    if (Object.keys(productFields).length > 0) {
-      const { error: productError } = await supabaseAdmin
-        .from("products")
-        .update(productFields)
-        .eq("id", update.id);
-      if (productError) throw productError;
-    }
-
-    // 2️⃣ Update variants
-    if (update.variants) {
-      // Delete old → insert new
-      const { error: delVarError } = await supabaseAdmin
-        .from("product_variants")
-        .delete()
-        .eq("product_id", update.id);
-      if (delVarError) throw delVarError;
-
-      if (update.variants.length) {
-        const { error: insVarError } = await supabaseAdmin
+  // 2️⃣ Update or insert variants and their inventory
+  if (variants && variants.length > 0) {
+    for (const variant of variants) {
+      if (variant.id) {
+        // Update existing variant
+        await supabaseAdmin
           .from("product_variants")
-          .insert(
-            update.variants.map(({ stock, ...v }) => ({
-              ...v,
-              product_id: update.id,
-            }))
-          );
-        if (insVarError) throw insVarError;
+          .update(variant)
+          .eq("id", variant.id);
+      } else {
+        // Insert new variant
+        const { data: newVariant } = await supabaseAdmin
+          .from("product_variants")
+          .insert({ ...variant, product_id: id })
+          .select()
+          .single();
+        variant.id = newVariant.id;
+      }
+
+      // Upsert inventory for variant
+      if (variant.stock !== undefined) {
+        await supabaseAdmin.from("product_inventory").upsert(
+          {
+            product_id: id,
+            variant_id: variant?.id ?? null,
+            quantity_available: variant?.stock ?? stock ?? 0,
+            quantity_reserved: 0,
+            track_inventory: true,
+          },
+          { onConflict: "product_id,variant_id" }
+        );
       }
     }
+  } else if (stock !== undefined) {
+    // Upsert inventory for non-variant product
+    await supabaseAdmin.from("product_inventory").upsert(
+      {
+        product_id: id,
+        variant_id: null,
+        quantity_available: stock,
+        quantity_reserved: 0,
+        track_inventory: true,
+      },
+      { onConflict: "product_id,variant_id" }
+    );
+  }
 
-    // 3️⃣ Update inventory (main product stock only)
-    if (update.stock !== undefined) {
-      const { error: invError } = await supabaseAdmin
-        .from("product_inventory")
-        .update({ quantity_available: update.stock })
-        .eq("product_id", update.id)
-        .is("variant_id", null); // only main product
-      if (invError) throw invError;
-    }
+  // 3️⃣ Handle images (smartly)
+  if (images && images.length > 0) {
+    // Fetch existing images
+    const { data: existingImages } = await supabaseAdmin
+      .from("product_images")
+      .select("id, image_url")
+      .eq("product_id", id);
 
-    // 4️⃣ Update images
-    if (update.images) {
-      // Delete old → insert new
-      const { error: delImgError } = await supabaseAdmin
+    const uploadedImages: ProductImageType[] = [];
+    const uploadedFilePaths: string[] = [];
+
+    // Determine images to delete
+    const imageUrlsToKeep = images.map((img) => img.imageUrl);
+    const imagesToDelete = existingImages?.filter(
+      (img) => !imageUrlsToKeep.includes(img.image_url)
+    );
+
+    if (imagesToDelete && imagesToDelete.length > 0) {
+      // Delete from storage and DB
+      for (const img of imagesToDelete) {
+        if (img.image_url.startsWith("https://")) {
+          const fileName = img.image_url.split("/").slice(-1)[0];
+          try {
+            await supabaseAdmin.storage
+              .from("shei-hoise-product")
+              .remove([`${store_id}/${fileName}`]);
+          } catch (err) {
+            console.error("Failed to remove image from storage:", err);
+          }
+        }
+      }
+
+      await supabaseAdmin
         .from("product_images")
         .delete()
-        .eq("product_id", update.id);
-      if (delImgError) throw delImgError;
+        .in(
+          "id",
+          imagesToDelete.map((img) => img.id)
+        );
+    }
 
-      await uploadProductImages(
-        update.store_id ?? snapshot.product.store_id,
-        update.id,
-        update.images
+    // Insert or update images
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+
+      const existing = existingImages?.find(
+        (ex) => ex.image_url === img.imageUrl
       );
+      if (existing) {
+        // Update metadata
+        await supabaseAdmin
+          .from("product_images")
+          .update({
+            alt_text: img.altText,
+            sort_order: i,
+            is_primary: i === 0,
+          })
+          .eq("id", existing.id);
+        continue;
+      }
+
+      // Upload new blob images
+      let imageUrl = img.imageUrl;
+      if (img.imageUrl.startsWith("blob:")) {
+        const response = await fetch(img.imageUrl);
+        const blob = await response.blob();
+        const filePath = `${store_id}/${id}-${Date.now()}-${i}.png`;
+
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from("shei-hoise-product")
+          .upload(filePath, blob, { contentType: blob.type || "image/png" });
+        if (uploadError) throw uploadError;
+        uploadedFilePaths.push(filePath);
+
+        const { data: publicUrlData } = await supabaseAdmin.storage
+          .from("shei-hoise-product")
+          .getPublicUrl(filePath);
+        imageUrl = publicUrlData.publicUrl;
+      }
+
+      uploadedImages.push({
+        product_id: id,
+        variant_id: img.variantId,
+        image_url: imageUrl,
+        alt_text: img.altText,
+        sort_order: i,
+        is_primary: i === 0,
+      });
     }
 
-    return { success: true };
-  } catch (err) {
-    console.error("updateProduct failed:", err);
-
-    // Rollback to snapshot
-    try {
-      await restoreProductSnapshot(update.id, snapshot);
-    } catch (restoreErr) {
-      console.error("Failed to restore product snapshot:", restoreErr);
+    // Insert new images
+    if (uploadedImages.length > 0) {
+      const { error: insertError } = await supabaseAdmin
+        .from("product_images")
+        .insert(uploadedImages);
+      if (insertError) throw insertError;
     }
-
-    throw err;
   }
+
+  return true;
 }
