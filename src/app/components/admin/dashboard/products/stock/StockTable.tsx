@@ -89,7 +89,7 @@ const StockTable: React.FC<StockTableProps> = ({
     {
       title: "Stock",
       key: "stock",
-      render: (_value, record, _index) => {
+      render: (_value, record) => {
         // 🟡 If product has variants → show message
         if ("variants" in record && record.variants?.length) {
           return (
