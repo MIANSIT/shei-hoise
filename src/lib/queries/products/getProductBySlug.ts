@@ -127,9 +127,7 @@ export async function getProductBySlug(
       : undefined;
 
   // Filter main product images (not variant-specific)
-  const productImages = (p.product_images ?? []).filter(
-    (img) => img.variant_id === null
-  );
+  const productImages = p.product_images ?? [];
 
   return {
     id: p.id,
