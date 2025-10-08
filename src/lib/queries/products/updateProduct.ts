@@ -74,7 +74,6 @@ export async function updateProduct(data: ProductUpdateType) {
       .eq("product_id", id);
 
     const uploadedImages: ProductImageType[] = [];
-    const uploadedFilePaths: string[] = [];
 
     // Determine images to delete
     const imageUrlsToKeep = images.map((img) => img.imageUrl);
@@ -107,6 +106,14 @@ export async function updateProduct(data: ProductUpdateType) {
     }
 
     // Insert or update images
+    // Determine variant ID for images
+    let variantIdForImages: string | null = null;
+    if (variants && variants.length > 0) {
+      // Product has variants, use the first variant's ID
+      variantIdForImages = variants[0].id ?? null;
+    }
+
+    // Insert or update images
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
 
@@ -114,13 +121,14 @@ export async function updateProduct(data: ProductUpdateType) {
         (ex) => ex.image_url === img.imageUrl
       );
       if (existing) {
-        // Update metadata
+        // Update metadata and ensure variant_id is set
         await supabaseAdmin
           .from("product_images")
           .update({
             alt_text: img.altText,
             sort_order: i,
             is_primary: i === 0,
+            variant_id: variantIdForImages, // <-- assign variant_id for updates
           })
           .eq("id", existing.id);
         continue;
@@ -137,7 +145,6 @@ export async function updateProduct(data: ProductUpdateType) {
           .from("shei-hoise-product")
           .upload(filePath, blob, { contentType: blob.type || "image/png" });
         if (uploadError) throw uploadError;
-        uploadedFilePaths.push(filePath);
 
         const { data: publicUrlData } = await supabaseAdmin.storage
           .from("shei-hoise-product")
@@ -147,7 +154,7 @@ export async function updateProduct(data: ProductUpdateType) {
 
       uploadedImages.push({
         product_id: id,
-        variant_id: img.variantId,
+        variant_id: variantIdForImages!, // <-- assign variant_id for new images
         image_url: imageUrl,
         alt_text: img.altText,
         sort_order: i,
