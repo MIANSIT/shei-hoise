@@ -1,59 +1,35 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "./shop/ProductCard";
+import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/types/product";
 
 interface ProductGridProps {
   products: Product[];
-  onAddToCart: (product: Product) => Promise<void>; // ✅ change void → Promise<void>
+  onAddToCart: (product: Product) => Promise<void>;
   loadingProductId: string | null;
 }
 
-export default function ProductGrid({
-  products,
-  onAddToCart,
-  loadingProductId,
-}: ProductGridProps) {
-  if (products.length === 0) {
-    return (
-      <div className="text-center text-gray-500 py-12 text-lg font-medium">
-        🚫 No Products Available
-      </div>
-    );
-  }
+export default function ProductGrid({ products, onAddToCart, loadingProductId }: ProductGridProps) {
+  if (!products.length) return <div className="text-center py-12 text-gray-500">🚫 No Products Available</div>;
 
   return (
-    <motion.div
-      layout
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mt-8 mb-8"
-    >
+    <motion.div layout className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mt-8 mb-8">
       <AnimatePresence>
         {products.map((product) => (
           <motion.div
             key={product.id}
             layout
-            initial={{ opacity: 0, scale: 0.5, rotate: -10, x: -50, y: -50 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0, x: 0, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, rotate: 10, x: 50, y: 50 }}
-            transition={{
-              type: "spring",
-              stiffness: 200,
-              damping: 15,
-              mass: 0.5,
-            }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, mass: 0.5 }}
           >
             <ProductCard
-              title={product.title}
-              category={product.category}
-              currentPrice={Number(product.currentPrice)} // 👈 also convert string → number
-              originalPrice={Number(product.originalPrice)} // 👈 fix type mismatch
-              rating={product.rating}
-              // imageUrl={product.imageUrl}
-              productLink={`/product/${product.id}`}
+              product={product}
               onAddToCart={() => onAddToCart(product)}
-              isLoading={loadingProductId === String(product.id)}
+              isLoading={loadingProductId === product.id}
             />
           </motion.div>
         ))}
