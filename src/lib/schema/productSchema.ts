@@ -21,18 +21,18 @@ export const productSchema = z
 
     base_price: z.number().optional(),
     tp_price: z.number().optional(),
-    discounted_price: z.number().optional(),
-    discount_amount: z.number().optional(),
-    weight: z.number().optional(),
+    discounted_price: z.number().optional().nullable(),
+    discount_amount: z.number().optional().nullable(),
+    weight: z.number().optional().nullable(),
     sku: z.string().optional(), // enforced conditionally
     stock: z.number().optional(),
 
-    dimensions: z.string().optional(),
+    dimensions: z.string().optional().nullable(),
     is_digital: z.boolean().optional(),
     status: z.enum(["draft", "active", "inactive", "archived"]),
     featured: z.boolean(),
-    meta_title: z.string().optional(),
-    meta_description: z.string().optional(),
+    meta_title: z.string().optional().nullable(),
+    meta_description: z.string().optional().nullable(),
 
     variants: z.array(variantSchema).optional(),
     images: z
