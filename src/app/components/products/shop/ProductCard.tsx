@@ -83,13 +83,13 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
         <div className="flex flex-col p-4 gap-3">
           <h3 className="font-semibold text-lg line-clamp-1 text-foreground">{product.name}</h3>
 
-          {variant && <p className="text-sm text-muted-foreground">{variant.variant_name}{variant.color ? ` - ${variant.color}` : ""}</p>}
+          {/* {variant && <p className="text-sm text-muted-foreground">{variant.variant_name}{variant.color ? ` - ${variant.color}` : ""}</p>} */}
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-semibold text-foreground">
-                  {product.variants?.length ? `Price Starts from $${displayPrice.toFixed(2)}` : `$${displayPrice.toFixed(2)}`}
+                  {product.variants?.length ? `Starts from $${displayPrice.toFixed(2)}` : `$${displayPrice.toFixed(2)}`}
                 </span>
                 {calculatedDiscount > 0 && (
                   <span className="text-sm text-muted-foreground line-through">${product.base_price.toFixed(2)}</span>
