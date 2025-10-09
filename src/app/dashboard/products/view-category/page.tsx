@@ -11,6 +11,7 @@ import { deleteCategoryQuery } from "@/lib/queries/categories/deleteCategory";
 import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
 import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
 import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
+import CategoryCardList from "@/app/components/admin/dashboard/products/ProductCategory/CategoryCardList";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
@@ -65,7 +66,12 @@ export default function CategoryPage() {
 
       setCategories(
         (data?.map((c: RawCategory) => ({
-          ...c,
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          description: c.description ?? undefined,
+          parent_id: c.parent_id ?? null,
+          is_active: c.is_active,
           createdAt: c.created_at
             ? new Date(c.created_at).toISOString().split("T")[0]
             : "",
@@ -176,16 +182,25 @@ export default function CategoryPage() {
         isLgUp={isLgUp}
       />
 
-      {/* Table + Inline Form for lg screens */}
+      {/* Table for desktop / Cards for mobile */}
       <div className={`flex gap-6 ${isLgUp ? "flex-row" : "flex-col"}`}>
-        <CategoryTablePanel
-          categories={categories}
-          loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          showForm={showForm} // responsive width handled inside TablePanel
-        />
+        {isLgUp ? (
+          <CategoryTablePanel
+            categories={categories}
+            loading={loading}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            showForm={showForm}
+          />
+        ) : (
+          <CategoryCardList
+            categories={categories}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        )}
 
+        {/* Inline Form for lg */}
         {isLgUp && showForm && (
           <div className="w-1/3">
             <CategoryFormPanel
@@ -198,7 +213,7 @@ export default function CategoryPage() {
         )}
       </div>
 
-      {/* Modal for md/sm */}
+      {/* Modal for mobile */}
       {!isLgUp && showForm && (
         <Dialog open={showForm} onOpenChange={() => setShowForm(false)}>
           <DialogContent className="sm:max-w-lg w-full">

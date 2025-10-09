@@ -5,7 +5,6 @@ import { InputNumber, Checkbox } from "antd";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
 import {
   ProductRow,
-  VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import Image from "next/image";
