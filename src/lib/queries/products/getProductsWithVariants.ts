@@ -1,6 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabase";
 
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  image_url: string;
+  alt_text: string | null;
+  is_primary: boolean;
+}
+
 export interface ProductVariant {
   id: string;
   variant_name: string | null;
@@ -12,6 +21,7 @@ export interface ProductVariant {
   weight: number | null;
   color: string | null;
   is_active: boolean;
+  product_images: ProductImage[]; // ✅ include images here
 }
 
 export interface Category {
@@ -27,6 +37,7 @@ export interface ProductWithVariants {
   discounted_price: number | null;
   category_id: string | null;
   category?: Category | null;
+  product_images: ProductImage[]; // ✅ main product images
   product_variants: ProductVariant[];
 }
 
@@ -42,7 +53,15 @@ export async function getProductsWithVariants(storeId: string) {
       discounted_price,
       category_id,
       categories (id, name),
-      product_variants(
+      product_images (
+        id,
+        product_id,
+        variant_id,
+        image_url,
+        alt_text,
+        is_primary
+      ),
+      product_variants (
         id,
         variant_name,
         sku,
@@ -52,7 +71,15 @@ export async function getProductsWithVariants(storeId: string) {
         tp_price,
         weight,
         color,
-        is_active
+        is_active,
+        product_images (
+          id,
+          product_id,
+          variant_id,
+          image_url,
+          alt_text,
+          is_primary
+        )
       )
       `
     )
@@ -61,12 +88,17 @@ export async function getProductsWithVariants(storeId: string) {
 
   if (error) throw error;
 
-  // Normalize the data
   return (data ?? []).map((p: any) => ({
-    ...p,
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    base_price: p.base_price,
+    discounted_price: p.discounted_price,
+    category_id: p.category_id,
     category: p.categories
       ? { id: p.categories.id, name: p.categories.name }
       : null,
+    product_images: p.product_images ?? [],
     product_variants: (p.product_variants ?? []).map((v: any) => ({
       id: v.id,
       variant_name: v.variant_name,
@@ -78,6 +110,7 @@ export async function getProductsWithVariants(storeId: string) {
       weight: v.weight,
       color: v.color,
       is_active: v.is_active,
+      product_images: v.product_images ?? [],
     })),
   })) as ProductWithVariants[];
 }

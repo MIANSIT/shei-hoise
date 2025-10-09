@@ -9,7 +9,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { Modal } from "antd";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-
+import Image from "next/image"; // ✅ add this import at top
 interface ProductTableProps {
   products: ProductWithVariants[];
   loading?: boolean;
@@ -58,6 +58,43 @@ const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   const columns: ColumnsType<ProductWithVariants> = [
+    // 🖼️ Image Column
+    {
+      title: "Image",
+      key: "image",
+      align: "center",
+      render: (_, record) => {
+        // Pick the best image
+        const productImage =
+          record.product_images?.find((img) => img.is_primary) ||
+          record.product_images?.[0] ||
+          record.product_variants
+            ?.flatMap((v) => v.product_images || [])
+            .find((img) => img.is_primary) ||
+          record.product_variants?.flatMap((v) => v.product_images || [])[0];
+
+        // ✅ fallback to placeholder or your own static image
+        const imageUrl =
+          productImage?.image_url ||
+          "https://lizjlqgrurjegmjeujki.supabase.co/storage/v1/object/public/dummyImage/logo.png";
+
+        return (
+          <div className="flex justify-center">
+            <div className="relative w-12 h-12">
+              <Image
+                src={imageUrl}
+                alt={record.name}
+                fill
+                sizes="48px"
+                className="object-cover rounded-md border border-gray-200"
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+
+    // 🏷️ Name Column
     {
       title: "Name",
       dataIndex: "name",
@@ -69,6 +106,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </span>
       ),
     },
+
+    // 📂 Category Column
     {
       title: "Category",
       key: "category",
@@ -77,6 +116,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
         <span className="text-gray-600">{record.category?.name || "—"}</span>
       ),
     },
+
+    // 💰 Base Price
     {
       title: "Base Price",
       dataIndex: "base_price",
@@ -88,6 +129,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </span>
       ),
     },
+
+    // 💸 Discounted Price
     {
       title: "Discounted Price",
       dataIndex: "discounted_price",
@@ -103,6 +146,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </span>
       ),
     },
+
+    // 🧩 Variants
     {
       title: "Variants",
       key: "variants",
@@ -127,6 +172,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
         );
       },
     },
+
+    // ⚙️ Actions
     {
       title: "Actions",
       key: "actions",
