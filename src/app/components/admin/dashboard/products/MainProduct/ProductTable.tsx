@@ -130,19 +130,21 @@ const ProductTable: React.FC<ProductTableProps> = ({
       render: (_, record) => {
         const vars = record.product_variants || [];
         if (!vars.length) return <span className="italic">—</span>;
+
         return (
-          <div className="flex flex-wrap gap-1">
-            {vars.slice(0, 3).map((v) => (
-              <Tag
-                key={v.id}
-                color="blue"
-                className="rounded-lg px-2 py-0.5 text-xs font-medium"
-              >
-                {v.variant_name ?? "Unnamed"}: ${v.base_price ?? "N/A"}
-              </Tag>
-            ))}
-            {vars.length > 3 && (
-              <span className="text-xs">+{vars.length - 3} more</span>
+          <div className="flex flex-wrap gap-1 items-center">
+            <Tag
+              key={vars[0].id}
+              color="blue"
+              className="rounded-lg px-2 py-0.5 text-xs font-medium"
+            >
+              {vars[0].variant_name ?? "Unnamed"}: $
+              {vars[0].base_price ?? "N/A"}
+            </Tag>
+            {vars.length > 1 && (
+              <span className="text-xs text-gray-500">
+                +{vars.length - 1} more
+              </span>
             )}
           </div>
         );
@@ -255,20 +257,24 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 content={
                   <div className="flex flex-col gap-1">
                     <div className="flex flex-wrap gap-1">
-                      {variants.slice(0, 3).map((v) => (
-                        <Tag
-                          key={v.id}
-                          color="blue"
-                          className="rounded-lg px-2 py-0.5 text-xs font-medium"
-                        >
-                          {v.variant_name ?? "Unnamed"}: $
-                          {v.base_price ?? "N/A"}
-                        </Tag>
-                      ))}
-                      {variants.length > 3 && (
-                        <span className="text-xs">
-                          +{variants.length - 3} more
-                        </span>
+                      {variants.length > 0 ? (
+                        <>
+                          <Tag
+                            key={variants[0].id}
+                            color="blue"
+                            className="rounded-lg px-2 py-0.5 text-xs font-medium"
+                          >
+                            {variants[0].variant_name ?? "Unnamed"}: $
+                            {variants[0].base_price ?? "N/A"}
+                          </Tag>
+                          {variants.length > 1 && (
+                            <span className="text-xs text-gray-500 ml-1">
+                              +{variants.length - 1} more
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="italic">—</span>
                       )}
                     </div>
                     <div className="flex gap-2 mt-2">
