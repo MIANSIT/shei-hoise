@@ -18,6 +18,24 @@ interface ProductTableProps {
   onDeleteSuccess?: () => void;
 }
 
+// Helper functions
+const getLowestBasePrice = (product: ProductWithVariants) => {
+  const variantPrices =
+    product.product_variants?.map((v) => v.base_price).filter(Boolean) || [];
+  return variantPrices.length > 0
+    ? Math.min(...(variantPrices as number[]))
+    : product.base_price;
+};
+
+const getLowestDiscountedPrice = (product: ProductWithVariants) => {
+  const variantDiscounts =
+    (product.product_variants
+      ?.map((v) => v.discounted_price)
+      .filter(Boolean) as number[]) || [];
+  if (variantDiscounts.length > 0) return Math.min(...variantDiscounts);
+  return product.discounted_price || null;
+};
+
 const ProductTable: React.FC<ProductTableProps> = ({
   products,
   loading,
@@ -132,31 +150,35 @@ const ProductTable: React.FC<ProductTableProps> = ({
     },
     {
       title: "Base Price",
-      dataIndex: "base_price",
       key: "base_price",
       align: "right",
       responsive: ["md"],
-      render: (price: number | null) => (
-        <span className="font-medium">
-          {price ? `$${price.toFixed(2)}` : "—"}
-        </span>
-      ),
+      render: (_, record) => {
+        const price = getLowestBasePrice(record);
+        return (
+          <span className="font-medium">
+            {price ? `$${price.toFixed(2)}` : "—"}
+          </span>
+        );
+      },
     },
     {
       title: "Discounted",
-      dataIndex: "discounted_price",
       key: "discounted_price",
       align: "right",
       responsive: ["md"],
-      render: (price: number | null) => (
-        <span
-          className={`font-medium ${
-            price ? "text-green-600" : "text-gray-400"
-          }`}
-        >
-          {price ? `$${price.toFixed(2)}` : "—"}
-        </span>
-      ),
+      render: (_, record) => {
+        const price = getLowestDiscountedPrice(record);
+        return (
+          <span
+            className={`font-medium ${
+              price ? "text-green-600" : "text-gray-400"
+            }`}
+          >
+            {price ? `$${price.toFixed(2)}` : "—"}
+          </span>
+        );
+      },
     },
     {
       title: "Action",
@@ -213,6 +235,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
             const variants = record.product_variants || [];
 
+            const basePrice = getLowestBasePrice(record);
+            const discountedPrice = getLowestDiscountedPrice(record);
+
             return (
               <ProductCardLayout
                 key={record.id}
@@ -248,19 +273,15 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                     <div className="flex gap-2 mt-2">
                       <span className="font-medium">
-                        {record.base_price
-                          ? `$${record.base_price.toFixed(2)}`
-                          : "—"}
+                        {basePrice ? `$${basePrice.toFixed(2)}` : "—"}
                       </span>
                       <span
                         className={`font-medium ${
-                          record.discounted_price
-                            ? "text-green-600"
-                            : "text-gray-400"
+                          discountedPrice ? "text-green-600" : "text-gray-400"
                         }`}
                       >
-                        {record.discounted_price
-                          ? `$${record.discounted_price.toFixed(2)}`
+                        {discountedPrice
+                          ? `$${discountedPrice.toFixed(2)}`
                           : "—"}
                       </span>
                     </div>

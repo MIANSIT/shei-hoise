@@ -19,31 +19,39 @@ export async function updateProduct(data: ProductUpdateType) {
   if (productError) throw productError;
 
   // 2️⃣ Update or insert variants and their inventory
+
   if (variants && variants.length > 0) {
     for (const variant of variants) {
+      const { stock: variantStock, ...variantData } = variant; // 👈 exclude stock
+
       if (variant.id) {
         // Update existing variant
         await supabaseAdmin
           .from("product_variants")
-          .update(variant)
+          .update(variantData)
           .eq("id", variant.id);
       } else {
         // Insert new variant
-        const { data: newVariant } = await supabaseAdmin
-          .from("product_variants")
-          .insert({ ...variant, product_id: id })
-          .select()
-          .single();
+        const { data: newVariant, error: variantInsertError } =
+          await supabaseAdmin
+            .from("product_variants")
+            .insert({ ...variantData, product_id: id })
+            .select("id") // 👈 explicitly request id
+            .single();
+
+        if (variantInsertError) throw variantInsertError;
+        if (!newVariant) throw new Error("Failed to insert variant");
+
         variant.id = newVariant.id;
       }
 
       // Upsert inventory for variant
-      if (variant.stock !== undefined) {
+      if (variantStock !== undefined) {
         await supabaseAdmin.from("product_inventory").upsert(
           {
             product_id: id,
             variant_id: variant?.id ?? null,
-            quantity_available: variant?.stock ?? stock ?? 0,
+            quantity_available: variantStock ?? stock ?? 0,
             quantity_reserved: 0,
             track_inventory: true,
           },
@@ -51,18 +59,6 @@ export async function updateProduct(data: ProductUpdateType) {
         );
       }
     }
-  } else if (stock !== undefined) {
-    // Upsert inventory for non-variant product
-    await supabaseAdmin.from("product_inventory").upsert(
-      {
-        product_id: id,
-        variant_id: null,
-        quantity_available: stock,
-        quantity_reserved: 0,
-        track_inventory: true,
-      },
-      { onConflict: "product_id,variant_id" }
-    );
   }
 
   // 3️⃣ Handle images (smartly)
