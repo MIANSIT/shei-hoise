@@ -13,6 +13,7 @@ type BaseProps<T extends FieldValues> = {
   required?: boolean;
   // error?: string | null;
   readOnly?: boolean;
+  disabled?: boolean; // <-- add this
   placeholder?: string;
   onChange?: (value: T[Path<T>]) => void;
   className?: string; // <-- add this
@@ -58,12 +59,15 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
 
   const commonClasses =
     "w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500";
+
+  const readOnlyClasses = "bg-gray-100 text-gray-600 cursor-not-allowed";
+
   const extraClass = props.className ?? "";
   return (
-    <div className='flex flex-col w-full scroll-mt-24' id={`field-${name}`}>
+    <div className="flex flex-col w-full scroll-mt-24" id={`field-${name}`}>
       {label && (
-        <label htmlFor={name} className='text-sm font-semibold mb-1'>
-          {label} {required && <span className='text-red-500'>*</span>}
+        <label htmlFor={name} className="text-sm font-semibold mb-1">
+          {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
 
@@ -88,7 +92,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
                   }}
                   value={field.value ?? ""}
                 />
-                <p className='text-red-500 text-sm mt-1'>
+                <p className="text-red-500 text-sm mt-1">
                   {fieldState.error?.message}
                 </p>
               </>
@@ -112,7 +116,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
                   }}
                 >
                   {p.placeholder && (
-                    <option value='' disabled hidden>
+                    <option value="" disabled hidden>
                       {p.placeholder}
                     </option>
                   )}
@@ -122,7 +126,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
                     </option>
                   ))}
                 </select>
-                <p className='text-red-500 text-sm mt-1'>
+                <p className="text-red-500 text-sm mt-1">
                   {fieldState.error?.message}
                 </p>
               </>
@@ -134,20 +138,20 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             const p = props as CheckboxFieldProps<T>;
             return (
               <>
-                <div className='flex items-center space-x-2'>
+                <div className="flex items-center space-x-2">
                   <input
-                    type='checkbox'
+                    type="checkbox"
                     checked={!!field.value}
                     onChange={(e) => {
                       field.onChange(e.target.checked as T[Path<T>]);
                       onChange?.(e.target.checked as T[Path<T>]);
                     }}
-                    className='w-4 h-4 rounded border-gray-300'
-                    disabled={p.readOnly}
+                    className="w-4 h-4 rounded border-gray-300"
+                    disabled={p.disabled || p.readOnly}
                   />
                   <span>{p.label}</span>
                 </div>
-                <p className='text-red-500 text-sm mt-1'>
+                <p className="text-red-500 text-sm mt-1">
                   {fieldState.error?.message}
                 </p>
               </>
@@ -170,14 +174,15 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
                 {...field}
                 type={p.type ?? "text"}
                 placeholder={p.placeholder}
-                className={commonClasses}
-                disabled={p.readOnly}
+                className={`${commonClasses} ${
+                  p.readOnly ? readOnlyClasses : ""
+                } ${extraClass}`}
+                readOnly={p.readOnly} // make input actually read-only
                 value={inputValue}
                 onChange={(e) => {
                   let newValue: T[Path<T>];
 
                   if (isNumber) {
-                    // Pass undefined for empty input, otherwise parseFloat
                     newValue =
                       e.target.value === ""
                         ? (undefined as unknown as T[Path<T>])
@@ -190,7 +195,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
                   onChange?.(newValue);
                 }}
               />
-              <p className='text-red-500 text-sm mt-1'>
+              <p className="text-red-500 text-sm mt-1">
                 {fieldState.error?.message}
               </p>
             </>

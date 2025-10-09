@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation"; // ⬅️ added useRouter
 import AddProductForm from "@/app/components/admin/dashboard/products/addProducts/AddProductForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { getProductBySlug } from "@/lib/queries/products/getProductBySlug";
@@ -15,6 +15,7 @@ import {
 
 const EditProductPage = () => {
   const params = useParams();
+  const router = useRouter(); // ⬅️ initialize router
   const { slug } = params;
   const { success, error } = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
@@ -63,6 +64,11 @@ const EditProductPage = () => {
           <b>{updatedProduct.name}</b> has been updated successfully!
         </div>
       );
+
+      // ✅ Redirect after success
+      setTimeout(() => {
+        router.push("/dashboard/products");
+      }, 1000); // optional delay to let the toast show
     } catch (err: unknown) {
       console.error("Update failed:", err);
       if (err instanceof Error) {
