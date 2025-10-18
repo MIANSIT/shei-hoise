@@ -14,7 +14,6 @@ export default function DesktopHeader() {
   // Main navigation for users
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Shop", path: "/shop" },
     { name: "Checkout", path: "/checkout" },
   ];
 
