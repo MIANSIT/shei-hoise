@@ -7,34 +7,40 @@ interface ProductQuantitySelectorProps {
   quantity: number;
   onIncrement: () => void;
   onDecrement: () => void;
+  disabled?: boolean; // Add disabled prop
 }
 
 const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
   quantity,
   onIncrement,
   onDecrement,
+  disabled = false, // Default to false
 }) => {
   const [changingDirection, setChangingDirection] = useState<"up" | "down" | null>(null);
 
   const handleIncrement = () => {
+    if (disabled) return;
     setChangingDirection("up");
     setTimeout(() => setChangingDirection(null), 300);
     onIncrement();
   };
 
   const handleDecrement = () => {
+    if (disabled) return;
     setChangingDirection("down");
     setTimeout(() => setChangingDirection(null), 300);
     onDecrement();
   };
 
   return (
-    <div className="flex items-center border border-border rounded-md overflow-hidden">
+    <div className={`flex items-center border border-border rounded-md overflow-hidden ${
+      disabled ? "opacity-50 cursor-not-allowed" : ""
+    }`}>
       <Button
         variant="ghost"
         size="icon"
         onClick={handleDecrement}
-        disabled={quantity <= 1}
+        disabled={quantity <= 1 || disabled}
         className="h-10 w-10 rounded-none hover:bg-accent transition-colors cursor-pointer"
       >
         <Minus className="h-4 w-4" />
@@ -65,6 +71,7 @@ const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
         variant="ghost"
         size="icon"
         onClick={handleIncrement}
+        disabled={disabled}
         className="h-10 w-10 rounded-none hover:bg-accent transition-colors cursor-pointer"
       >
         <Plus className="h-4 w-4" />

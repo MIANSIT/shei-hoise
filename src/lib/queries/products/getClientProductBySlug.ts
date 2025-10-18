@@ -1,7 +1,7 @@
 // lib/queries/products/getClientProductBySlug.ts
 import { supabaseAdmin } from "@/lib/supabase";
 
-export async function getClientProductBySlug(store_slug: string, product_slug: string) {
+export async function getClientProductBySlug(product_slug: string) {
   const { data, error } = await supabaseAdmin
     .from("products")
     .select(`
