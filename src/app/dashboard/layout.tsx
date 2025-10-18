@@ -26,17 +26,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const { role } = useCurrentUser();
 
-  console.log("User Role:", role);
-
   // Redirect if no session
   useEffect(() => {
     if (!loading && !session) {
       router.replace("/admin-login");
     }
-    if (role !== USERTYPE.STORE_OWNER) {
+    if (role !== undefined && role !== USERTYPE.STORE_OWNER) {
       router.push("/");
     }
-  }, [loading, session, router]);
+  }, [loading, session, router, role]);
 
   // Sidebar responsiveness
   useEffect(() => {
