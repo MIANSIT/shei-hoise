@@ -79,7 +79,7 @@ export default function ProductCard({
     <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border">
       {/* ✅ Use store_slug dynamically in link */}
       <Link
-        href={`/${store_slug}/${product.slug}`}
+        href={`${store_slug}/product/${product.slug}`}
         className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
       >
         <div className="relative w-full h-80 overflow-hidden group">

@@ -6,24 +6,30 @@ import { MobileLayout } from "../../layout/auth/AuthMobile";
 import MobileHeader from "../../common/MobileHeader";
 import DesktopHeader from "../../common/DesktopHeader";
 import Footer from "../../common/Footer";
+import { Suspense } from "react";
+import { Spin } from "antd";
 
 export function SignUpContainer() {
   return (
     <>
       {/* Mobile Layout */}
-      <div className="block md:hidden">
+      <div className='block md:hidden'>
         <MobileHeader />
         <MobileLayout>
-          <SignUpForm />
+          <Suspense fallback={<Spin />}>
+            <SignUpForm />
+          </Suspense>
         </MobileLayout>
         <Footer />
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:block">
+      <div className='hidden md:block'>
         <DesktopHeader />
         <DesktopLayout>
-          <SignUpForm />
+          <Suspense fallback={<Spin />}>
+            <SignUpForm />
+          </Suspense>{" "}
         </DesktopLayout>
         <Footer />
       </div>
