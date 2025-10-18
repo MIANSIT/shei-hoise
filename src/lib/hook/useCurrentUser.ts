@@ -2,17 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { z } from "zod";
-
-const userSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
-  first_name: z.string(),
-  phone: z.string().nullable(),
-  store_id: z.string().uuid().nullable(),
-});
-
-export type CurrentUser = z.infer<typeof userSchema>;
+import { CurrentUser, userSchema } from "../types/users";
 
 export function useCurrentUser() {
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -31,7 +21,7 @@ export function useCurrentUser() {
 
         const { data, error: dbErr } = await supabase
           .from("users")
-          .select("id,email,first_name,phone,store_id")
+          .select("id,email,first_name,phone,store_id,user_type")
           .eq("id", authUser.id)
           .single();
 
@@ -50,5 +40,5 @@ export function useCurrentUser() {
     loadUser();
   }, []);
 
-  return { user, loading, error };
+  return { user, loading, error, role: user?.user_type };
 }

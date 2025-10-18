@@ -12,6 +12,8 @@ import "antd/dist/reset.css";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { Spin } from "antd";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { USERTYPE } from "@/lib/types/users";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -22,11 +24,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const { session, loading } = useSupabaseAuth();
   const router = useRouter();
+  const { role } = useCurrentUser();
+
+  console.log("User Role:", role);
 
   // Redirect if no session
   useEffect(() => {
     if (!loading && !session) {
       router.replace("/admin-login");
+    }
+    if (role !== USERTYPE.STORE_OWNER) {
+      router.push("/");
     }
   }, [loading, session, router]);
 
@@ -56,7 +64,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   if (loading || (!loading && !session)) {
-    return <Spin fullscreen size="large" tip="Loading..." />;
+    return <Spin fullscreen size='large' tip='Loading...' />;
   }
 
   return (
@@ -83,21 +91,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <div
-        className="min-h-screen flex flex-col"
+        className='min-h-screen flex flex-col'
         style={{ background: "var(--background)", color: "var(--foreground)" }}
       >
         {/* Header */}
         <header
-          className="flex items-center justify-between p-4 shadow-md"
+          className='flex items-center justify-between p-4 shadow-md'
           style={{ background: "var(--card)", color: "var(--card-foreground)" }}
         >
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Logo" width={40} height={40} />
-            <h1 className="text-lg font-bold">Shei Hoise Dashboard</h1>
+          <div className='flex items-center gap-2'>
+            <Image src='/logo.png' alt='Logo' width={40} height={40} />
+            <h1 className='text-lg font-bold'>Shei Hoise Dashboard</h1>
 
             <button
               onClick={() => setIsSidebarOpen((prev) => !prev)}
-              className="p-2 rounded hover:opacity-70 transition-transform duration-300"
+              className='p-2 rounded hover:opacity-70 transition-transform duration-300'
               style={{ background: "var(--muted)" }}
             >
               <PanelLeft
@@ -111,32 +119,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded hover:opacity-70"
+            className='p-2 rounded hover:opacity-70'
             style={{ background: "var(--muted)" }}
           >
             {theme === "light" ? (
-              <Moon className="w-5 h-5" />
+              <Moon className='w-5 h-5' />
             ) : (
-              <Sun className="w-5 h-5" />
+              <Sun className='w-5 h-5' />
             )}
           </button>
         </header>
 
-        <div className="flex flex-1">
+        <div className='flex flex-1'>
           {/* Sidebar */}
           <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
 
           {/* Main content */}
           <main
-            className="flex-1 relative"
+            className='flex-1 relative'
             style={{
               background: "var(--background)",
               color: "var(--foreground)",
             }}
           >
-            <Toaster position="top-right" />
+            <Toaster position='top-right' />
             <Breadcrumb />
-            <div className="mt-4">{children}</div>
+            <div className='mt-4'>{children}</div>
           </main>
         </div>
       </div>
