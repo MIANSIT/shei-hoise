@@ -19,7 +19,7 @@ export function LoginForm() {
     try {
       // Simulate API call
       await new Promise((res) => setTimeout(res, 1000));
-      
+
       // Simulate successful login
       success("Login successful! ", { duration: 1000 });
 
@@ -27,7 +27,6 @@ export function LoginForm() {
       setTimeout(() => {
         router.push(redirectTo);
       }, 500);
-      
     } catch {
       // Handle login error
       error("Login failed. Please check your credentials and try again.");
@@ -36,25 +35,16 @@ export function LoginForm() {
 
   return (
     <div>
-      <div className="text-center mb-6">
-        <h1 className="text-4xl font-bold text-left text-foreground">Welcome back</h1>
-        <p className="mt-2 text-muted-foreground text-left">
+      <div className='text-center mb-6'>
+        <h1 className='text-4xl font-bold text-left text-foreground'>
+          Welcome back
+        </h1>
+        <p className='mt-2 text-muted-foreground text-left'>
           Enter your credentials to access your account
         </p>
       </div>
 
-      <UserForm
-        schema={loginSchema}
-        defaultValues={defaultValues}
-        onSubmit={handleSubmit}
-        hiddenFields={{ name: true }}
-        submitText="Sign In"
-        footer={{
-          text: "Don't have an account?",
-          linkText: "Sign up",
-          linkUrl: `/sign-up${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`,
-        }}
-      />
+      <UserForm submitText='Sign In' />
     </div>
   );
 }
