@@ -5,16 +5,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, ShoppingCart, Zap, Check } from "lucide-react";
-import { Product, ProductImage } from "@/lib/types/product";
+import { ShoppingCart, Zap, Check } from "lucide-react";
+import { Product } from "@/lib/types/product";
 
 interface ProductCardProps {
+  store_slug: string; // ✅ added
   product: Product;
   isLoading?: boolean;
   onAddToCart: () => Promise<void>;
 }
 
-export default function ProductCard({ product, onAddToCart, isLoading = false }: ProductCardProps) {
+export default function ProductCard({
+  store_slug,
+  product,
+  onAddToCart,
+  isLoading = false,
+}: ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -22,7 +28,9 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
       ? variant.discounted_price
-      : variant?.base_price ?? product.discounted_price ?? product.base_price;
+      : variant?.base_price ??
+        product.discounted_price ??
+        product.base_price;
 
   const displayImage =
     variant?.primary_image?.image_url ||
@@ -32,7 +40,11 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
     "/placeholder.png";
 
   const calculatedDiscount =
-    product.base_price > displayPrice ? Math.round(((product.base_price - displayPrice) / product.base_price) * 100) : 0;
+    product.base_price > displayPrice
+      ? Math.round(
+          ((product.base_price - displayPrice) / product.base_price) * 100
+        )
+      : 0;
 
   const handleAddToCart = async () => {
     if (adding) return;
@@ -65,7 +77,11 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
 
   return (
     <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border">
-      <Link href={`/product/${product.slug}`} className="flex flex-col flex-1 cursor-pointer hover:text-foreground">
+      {/* ✅ Use store_slug dynamically in link */}
+      <Link
+        href={`${store_slug}/product/${product.slug}`}
+        className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
+      >
         <div className="relative w-full h-80 overflow-hidden group">
           <Image
             src={displayImage}
@@ -81,18 +97,22 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
         </div>
 
         <div className="flex flex-col p-4 gap-3">
-          <h3 className="font-semibold text-lg line-clamp-1 text-foreground">{product.name}</h3>
-
-          {/* {variant && <p className="text-sm text-muted-foreground">{variant.variant_name}{variant.color ? ` - ${variant.color}` : ""}</p>} */}
+          <h3 className="font-semibold text-lg line-clamp-1 text-foreground">
+            {product.name}
+          </h3>
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-semibold text-foreground">
-                  {product.variants?.length ? `Starts from $${displayPrice.toFixed(2)}` : `$${displayPrice.toFixed(2)}`}
+                  {product.variants?.length
+                    ? `Starts from $${displayPrice.toFixed(2)}`
+                    : `$${displayPrice.toFixed(2)}`}
                 </span>
                 {calculatedDiscount > 0 && (
-                  <span className="text-sm text-muted-foreground line-through">${product.base_price.toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground line-through">
+                    ${product.base_price.toFixed(2)}
+                  </span>
                 )}
               </div>
               {calculatedDiscount > 0 && (
@@ -114,7 +134,7 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
           disabled={adding}
         >
           <Zap className="w-4 h-4" />
-          <span className="relative top-[-1px]">Buy Now</span>
+          <span>Buy Now</span>
         </Button>
 
         <Button
@@ -134,15 +154,21 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
         >
           <div className="flex items-center justify-center w-full relative">
             <div
-              className={`flex items-center gap-2 ${adding || showSuccess ? "opacity-0 -translate-y-4" : "opacity-100 translate-y-0"}`}
+              className={`flex items-center gap-2 ${
+                adding || showSuccess
+                  ? "opacity-0 -translate-y-4"
+                  : "opacity-100 translate-y-0"
+              }`}
             >
               <ShoppingCart className="w-5 h-5" />
-              <span className="relative top-[-1px]">Add to Cart</span>
+              <span>Add to Cart</span>
             </div>
 
             <div
               className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
-                adding && !showSuccess ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                adding && !showSuccess
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
               }`}
             >
               <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
@@ -150,10 +176,14 @@ export default function ProductCard({ product, onAddToCart, isLoading = false }:
             </div>
 
             <div
-              className={`absolute flex items-center gap-2 ${showSuccess ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              className={`absolute flex items-center gap-2 ${
+                showSuccess
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
             >
               <Check className="w-5 h-5" />
-              <span className="relative top-[-1px]">Added!</span>
+              <span>Added!</span>
             </div>
           </div>
         </Button>

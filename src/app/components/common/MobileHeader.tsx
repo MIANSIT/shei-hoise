@@ -24,7 +24,6 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Shop", path: "/shop" },
     { name: "Checkout", path: "/checkout" },
   ];
 
