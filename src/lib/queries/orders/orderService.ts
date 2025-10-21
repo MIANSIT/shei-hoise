@@ -143,7 +143,7 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
 
     console.log('Order items inserted successfully');
 
-    // Step 3: Update inventory quantities - SIMPLIFIED APPROACH
+    // Step 3: Update inventory quantities in product_inventory table
     console.log('Updating inventory quantities...');
     
     const inventoryUpdateResults = [];
@@ -153,40 +153,47 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
         console.log(`Updating inventory for product ${item.product_id}, variant ${item.variant_id}, quantity ${item.quantity}`);
 
         if (item.variant_id) {
-          // First, get current reserved quantity for variant
-          const { data: variantData, error: fetchError } = await supabaseAdmin
-            .from('product_variants')
-            .select('reserved_quantity')
-            .eq('id', item.variant_id)
+          // Update variant inventory in product_inventory table
+          console.log(`Updating variant inventory for ${item.variant_id}`);
+          
+          // First, get current inventory for the variant
+          const { data: inventoryData, error: fetchError } = await supabaseAdmin
+            .from('product_inventory')
+            .select('id, quantity_available, quantity_reserved')
+            .eq('variant_id', item.variant_id)
             .single();
 
           if (fetchError) {
-            console.error(`Error fetching variant ${item.variant_id}:`, fetchError);
+            console.error(`Error fetching variant inventory ${item.variant_id}:`, {
+              message: fetchError.message,
+              details: fetchError.details,
+              hint: fetchError.hint,
+              code: fetchError.code
+            });
             inventoryUpdateResults.push({
               type: 'variant',
               id: item.variant_id,
               success: false,
-              error: `Failed to fetch variant: ${fetchError.message}`
+              error: `Failed to fetch variant inventory: ${fetchError.message}`
             });
             continue;
           }
 
           // Calculate new reserved quantity
-          const currentReserved = variantData.reserved_quantity || 0;
+          const currentReserved = inventoryData.quantity_reserved || 0;
           const newReserved = currentReserved + item.quantity;
 
-          // Update variant stock
-          console.log(`Updating variant ${item.variant_id} stock from ${currentReserved} to ${newReserved}`);
+          // Update variant inventory
           const { error: variantStockError } = await supabaseAdmin
-            .from('product_variants')
+            .from('product_inventory')
             .update({ 
-              reserved_quantity: newReserved,
+              quantity_reserved: newReserved,
               updated_at: new Date().toISOString()
             })
-            .eq('id', item.variant_id);
+            .eq('variant_id', item.variant_id);
 
           if (variantStockError) {
-            console.error(`Error updating variant stock for ${item.variant_id}:`, {
+            console.error(`Error updating variant inventory for ${item.variant_id}:`, {
               message: variantStockError.message,
               details: variantStockError.details,
               hint: variantStockError.hint,
@@ -199,7 +206,7 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
               error: variantStockError.message
             });
           } else {
-            console.log(`Successfully updated variant ${item.variant_id} stock`);
+            console.log(`Successfully updated variant ${item.variant_id} inventory from ${currentReserved} to ${newReserved}`);
             inventoryUpdateResults.push({
               type: 'variant',
               id: item.variant_id,
@@ -207,40 +214,49 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
             });
           }
         } else {
-          // First, get current reserved quantity for product
-          const { data: productData, error: fetchError } = await supabaseAdmin
-            .from('products')
-            .select('reserved_quantity')
-            .eq('id', item.product_id)
+          // Update product inventory in product_inventory table
+          console.log(`Updating product inventory for ${item.product_id}`);
+          
+          // First, get current inventory for the product
+          const { data: inventoryData, error: fetchError } = await supabaseAdmin
+            .from('product_inventory')
+            .select('id, quantity_available, quantity_reserved')
+            .eq('product_id', item.product_id)
+            .is('variant_id', null)
             .single();
 
           if (fetchError) {
-            console.error(`Error fetching product ${item.product_id}:`, fetchError);
+            console.error(`Error fetching product inventory ${item.product_id}:`, {
+              message: fetchError.message,
+              details: fetchError.details,
+              hint: fetchError.hint,
+              code: fetchError.code
+            });
             inventoryUpdateResults.push({
               type: 'product',
               id: item.product_id,
               success: false,
-              error: `Failed to fetch product: ${fetchError.message}`
+              error: `Failed to fetch product inventory: ${fetchError.message}`
             });
             continue;
           }
 
           // Calculate new reserved quantity
-          const currentReserved = productData.reserved_quantity || 0;
+          const currentReserved = inventoryData.quantity_reserved || 0;
           const newReserved = currentReserved + item.quantity;
 
-          // Update product stock
-          console.log(`Updating product ${item.product_id} stock from ${currentReserved} to ${newReserved}`);
+          // Update product inventory
           const { error: productStockError } = await supabaseAdmin
-            .from('products')
+            .from('product_inventory')
             .update({ 
-              reserved_quantity: newReserved,
+              quantity_reserved: newReserved,
               updated_at: new Date().toISOString()
             })
-            .eq('id', item.product_id);
+            .eq('product_id', item.product_id)
+            .is('variant_id', null);
 
           if (productStockError) {
-            console.error(`Error updating product stock for ${item.product_id}:`, {
+            console.error(`Error updating product inventory for ${item.product_id}:`, {
               message: productStockError.message,
               details: productStockError.details,
               hint: productStockError.hint,
@@ -253,7 +269,7 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
               error: productStockError.message
             });
           } else {
-            console.log(`Successfully updated product ${item.product_id} stock`);
+            console.log(`Successfully updated product ${item.product_id} inventory from ${currentReserved} to ${newReserved}`);
             inventoryUpdateResults.push({
               type: 'product',
               id: item.product_id,
@@ -283,8 +299,6 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
     
     if (failedUpdates.length > 0) {
       console.warn('Some inventory updates failed:', failedUpdates);
-      // Don't throw error here - order should still be created even if inventory update fails
-      // This allows manual inventory adjustment later
     }
 
     console.log('Order process completed successfully');
