@@ -1,3 +1,4 @@
+// lib/queries/products/getProductsWithVariants.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabase";
 
@@ -8,6 +9,11 @@ export interface ProductImage {
   image_url: string;
   alt_text: string | null;
   is_primary: boolean;
+}
+
+export interface ProductStock {
+  quantity_available: number;
+  quantity_reserved: number;
 }
 
 export interface ProductVariant {
@@ -21,7 +27,8 @@ export interface ProductVariant {
   weight: number | null;
   color: string | null;
   is_active: boolean;
-  product_images: ProductImage[]; // ✅ include images here
+  product_images: ProductImage[];
+  product_inventory: ProductStock[];
 }
 
 export interface Category {
@@ -37,8 +44,9 @@ export interface ProductWithVariants {
   discounted_price: number | null;
   category_id: string | null;
   category?: Category | null;
-  product_images: ProductImage[]; // ✅ main product images
+  product_images: ProductImage[];
   product_variants: ProductVariant[];
+  product_inventory: ProductStock[];
 }
 
 export async function getProductsWithVariants(storeId: string) {
@@ -79,8 +87,10 @@ export async function getProductsWithVariants(storeId: string) {
           image_url,
           alt_text,
           is_primary
-        )
-      )
+        ),
+        product_inventory (quantity_available, quantity_reserved)
+      ),
+      product_inventory (quantity_available, quantity_reserved)
       `
     )
     .eq("store_id", storeId)
@@ -111,6 +121,8 @@ export async function getProductsWithVariants(storeId: string) {
       color: v.color,
       is_active: v.is_active,
       product_images: v.product_images ?? [],
+      product_inventory: v.product_inventory ?? [],
     })),
+    product_inventory: p.product_inventory ?? [],
   })) as ProductWithVariants[];
 }
