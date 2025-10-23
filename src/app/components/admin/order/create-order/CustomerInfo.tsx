@@ -12,7 +12,7 @@ import {
   Tag,
   Alert,
   Space,
-  Typography
+  Typography,
 } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
 
@@ -27,46 +27,42 @@ interface CustomerInfoProps {
   isExistingCustomer?: boolean;
 }
 
-export default function CustomerInfo({ 
-  customerInfo, 
-  setCustomerInfo, 
+export default function CustomerInfo({
+  customerInfo,
+  setCustomerInfo,
   orderId,
-  isExistingCustomer = false 
+  isExistingCustomer = false,
 }: CustomerInfoProps) {
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(?:\+88|01)?\d{9,11}$/;
-    return phoneRegex.test(phone.replace(/\s/g, ''));
+    return phoneRegex.test(phone.replace(/\s/g, ""));
   };
 
-  const validatePassword = (password: string) => {
-    return password && password.length >= 6;
-  };
-
-  const isPhoneValid = customerInfo.phone ? validatePhone(customerInfo.phone) : true;
-  const isPasswordValid = customerInfo.password ? validatePassword(customerInfo.password) : true;
+  const isPhoneValid = customerInfo.phone
+    ? validatePhone(customerInfo.phone)
+    : true;
 
   const handleFieldChange = (field: keyof CustomerInfoType, value: any) => {
-    setCustomerInfo(prev => ({ ...prev, [field]: value }));
+    setCustomerInfo((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Generate a random password when component mounts for new customers
+  // Set default password to "123456" when component mounts for new customers
   React.useEffect(() => {
     if (!isExistingCustomer && !customerInfo.password) {
-      const randomPassword = Math.random().toString(36).slice(-8) + 'A1!';
-      setCustomerInfo(prev => ({ ...prev, password: randomPassword }));
+      setCustomerInfo((prev) => ({ ...prev, password: "AdminCustomer1232*" }));
     }
   }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
           <div>
             <Title level={4} style={{ margin: 0 }}>
               Customer Information
             </Title>
             {isExistingCustomer && (
-              <Tag color="blue" style={{ marginTop: '8px' }}>
+              <Tag color="blue" style={{ marginTop: "8px" }}>
                 Existing Customer
               </Tag>
             )}
@@ -74,17 +70,13 @@ export default function CustomerInfo({
 
           <Form layout="vertical">
             <Form.Item label="Order ID">
-              <Input 
-                value={orderId} 
-                disabled 
-                size="large"
-              />
+              <Input value={orderId} disabled size="large" />
             </Form.Item>
 
             <Row gutter={16}>
               <Col xs={24} md={12}>
-                <Form.Item 
-                  label="Customer Name" 
+                <Form.Item
+                  label="Customer Name"
                   required
                   validateStatus={!customerInfo.name ? "error" : ""}
                   help={!customerInfo.name ? "Customer name is required" : ""}
@@ -92,15 +84,15 @@ export default function CustomerInfo({
                   <Input
                     placeholder="Enter customer name"
                     value={customerInfo.name}
-                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    onChange={(e) => handleFieldChange("name", e.target.value)}
                     size="large"
-                    disabled={isExistingCustomer} // Keep name disabled for existing customers
+                    disabled={isExistingCustomer}
                   />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item 
-                  label="Customer Email" 
+                <Form.Item
+                  label="Customer Email"
                   required
                   validateStatus={!customerInfo.email ? "error" : ""}
                   help={!customerInfo.email ? "Email is required" : ""}
@@ -109,9 +101,9 @@ export default function CustomerInfo({
                     type="email"
                     placeholder="customer@example.com"
                     value={customerInfo.email}
-                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    onChange={(e) => handleFieldChange("email", e.target.value)}
                     size="large"
-                    disabled={isExistingCustomer} // Keep email disabled for existing customers
+                    disabled={isExistingCustomer}
                   />
                 </Form.Item>
               </Col>
@@ -119,33 +111,35 @@ export default function CustomerInfo({
 
             <Row gutter={16}>
               <Col xs={24} md={12}>
-                <Form.Item 
-                  label="Customer Phone" 
+                <Form.Item
+                  label="Customer Phone"
                   required
-                  validateStatus={!isPhoneValid ? "error" : !customerInfo.phone ? "error" : ""}
-                  help={!isPhoneValid ? "Please enter a valid phone number" : !customerInfo.phone ? "Phone number is required" : ""}
+                  validateStatus={
+                    !isPhoneValid ? "error" : !customerInfo.phone ? "error" : ""
+                  }
+                  help={
+                    !isPhoneValid
+                      ? "Please enter a valid phone number"
+                      : !customerInfo.phone
+                      ? "Phone number is required"
+                      : ""
+                  }
                 >
                   <Input
                     placeholder="017********"
                     value={customerInfo.phone}
-                    onChange={(e) => handleFieldChange('phone', e.target.value)}
+                    onChange={(e) => handleFieldChange("phone", e.target.value)}
                     size="large"
-                    disabled={isExistingCustomer} // Keep phone disabled for existing customers
+                    disabled={isExistingCustomer}
                   />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
                 {!isExistingCustomer && (
-                  <Form.Item 
-                    label="Customer Password" 
-                    required
-                    validateStatus={!isPasswordValid ? "error" : ""}
-                    help={!isPasswordValid ? "Password must be at least 6 characters" : "Auto-generated password. Customer can reset later."}
-                  >
+                  <Form.Item label="Customer Password" required>
                     <Input.Password
-                      placeholder="Enter password"
-                      value={customerInfo.password}
-                      onChange={(e) => handleFieldChange('password', e.target.value)}
+                      value="AdminCustomer1232*"
+                      disabled
                       size="large"
                     />
                   </Form.Item>
@@ -153,8 +147,8 @@ export default function CustomerInfo({
               </Col>
             </Row>
 
-            <Form.Item 
-              label="Customer Address" 
+            <Form.Item
+              label="Customer Address"
               required
               validateStatus={!customerInfo.address ? "error" : ""}
               help={!customerInfo.address ? "Address is required" : ""}
@@ -162,16 +156,15 @@ export default function CustomerInfo({
               <TextArea
                 placeholder="Enter complete address"
                 value={customerInfo.address}
-                onChange={(e) => handleFieldChange('address', e.target.value)}
+                onChange={(e) => handleFieldChange("address", e.target.value)}
                 rows={3}
-                // REMOVED: disabled={isExistingCustomer} - Address should be editable
               />
             </Form.Item>
 
             <Row gutter={16}>
               <Col xs={24} md={12}>
-                <Form.Item 
-                  label="City" 
+                <Form.Item
+                  label="City"
                   required
                   validateStatus={!customerInfo.city ? "error" : ""}
                   help={!customerInfo.city ? "City is required" : ""}
@@ -179,9 +172,8 @@ export default function CustomerInfo({
                   <Select
                     placeholder="Select city"
                     value={customerInfo.city || undefined}
-                    onChange={(value) => handleFieldChange('city', value)}
+                    onChange={(value) => handleFieldChange("city", value)}
                     size="large"
-                    // REMOVED: disabled={isExistingCustomer} - City should be editable
                   >
                     <Option value="inside-dhaka">Inside Dhaka</Option>
                     <Option value="outside-dhaka">Outside Dhaka</Option>
@@ -189,16 +181,22 @@ export default function CustomerInfo({
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item 
-                  label="Delivery Method" 
+                <Form.Item
+                  label="Delivery Method"
                   required
                   validateStatus={!customerInfo.deliveryMethod ? "error" : ""}
-                  help={!customerInfo.deliveryMethod ? "Delivery method is required" : ""}
+                  help={
+                    !customerInfo.deliveryMethod
+                      ? "Delivery method is required"
+                      : ""
+                  }
                 >
                   <Select
                     placeholder="Select delivery method"
                     value={customerInfo.deliveryMethod || undefined}
-                    onChange={(value) => handleFieldChange('deliveryMethod', value)}
+                    onChange={(value) =>
+                      handleFieldChange("deliveryMethod", value)
+                    }
                     size="large"
                   >
                     <Option value="courier">Courier</Option>
@@ -212,20 +210,25 @@ export default function CustomerInfo({
               <TextArea
                 placeholder="Any special instructions or notes..."
                 value={customerInfo.notes}
-                onChange={(e) => handleFieldChange('notes', e.target.value)}
+                onChange={(e) => handleFieldChange("notes", e.target.value)}
                 rows={2}
               />
             </Form.Item>
           </Form>
 
-          {!isExistingCustomer && customerInfo.password && (
+          {!isExistingCustomer && (
             <Alert
               message="Customer Account Creation"
               description={
-                <Space direction="vertical">
-                  <Text>A customer account will be created with the provided information.</Text>
-                  <Text strong>Password: {customerInfo.password}</Text>
-                  <Text type="secondary">The customer can reset their password later if needed.</Text>
+                <Space direction="vertical" size={0}>
+                  <Text>
+                    A customer account will be created with the provided
+                    information.
+                  </Text>
+                  <Text>
+                    Default password is set to:{" "}
+                    <Text strong>AdminCustomer1232*</Text>
+                  </Text>
                 </Space>
               }
               type="info"
@@ -236,12 +239,7 @@ export default function CustomerInfo({
           {isExistingCustomer && customerInfo.customer_id && (
             <Alert
               message="Customer Information"
-              description={
-                <Space direction="vertical">
-                  <Text>This order is linked to an existing customer. Basic customer information is auto-filled.</Text>
-                  <Text type="secondary">You can modify the delivery address and city for this specific order.</Text>
-                </Space>
-              }
+              description="This order is linked to an existing customer. Basic customer information is auto-filled. You can modify the delivery address and city for this specific order."
               type="info"
               showIcon
             />

@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/components/admin/order/create-order/SaveOrderButton.tsx
 "use client";
 import { useState } from "react";
 import { Button, Modal, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { createOrder } from "@/lib/queries/orders/orderService";
-import { createCustomer } from "@/lib/queries/customers/createCustomer";
+import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 
 const { Text } = Typography;
@@ -97,12 +95,12 @@ export default function SaveOrderButton({
             throw new Error('Customer name, phone, email, and password are required to create a customer account');
           }
 
-          const newCustomer = await createCustomer({
+          const newCustomer = await dataService.createCustomer({
             store_id: storeId,
-            email: customerInfo.email, // This is now guaranteed to be string
+            email: customerInfo.email,
             first_name: customerInfo.name,
             phone: customerInfo.phone,
-            password: customerInfo.password, // Add password here
+            password: customerInfo.password,
             address_line_1: customerInfo.address,
             city: customerInfo.city,
             country: 'Bangladesh'
@@ -181,7 +179,7 @@ export default function SaveOrderButton({
 
       console.log('Creating order with final data:', orderData);
 
-      const result = await createOrder(orderData);
+      const result = await dataService.createOrder(orderData);
       
       if (result.success) {
         console.log("Order saved with ID:", result.orderId);

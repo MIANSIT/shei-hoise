@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/components/admin/order/create-order/CreateOrder.tsx
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -19,7 +18,7 @@ import {
   Avatar,
   Select,
   Descriptions,
-  App
+  App,
 } from "antd";
 import {
   UserAddOutlined,
@@ -27,36 +26,31 @@ import {
   SearchOutlined,
   PhoneOutlined,
   MailOutlined,
-  HomeOutlined
+  HomeOutlined,
 } from "@ant-design/icons";
 import CustomerInfo from "./CustomerInfo";
 import OrderDetails from "./OrderDetails";
 import OrderSummary from "./OrderSummary";
 import SaveOrderButton from "./SaveOrderButton";
-import { CustomerInfo as CustomerInfoType, OrderProduct } from "@/lib/types/order";
+import {
+  CustomerInfo as CustomerInfoType,
+  OrderProduct,
+} from "@/lib/types/order";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import { getProductsWithVariants, ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { getStoreCustomersSimple, StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSimple";
-import { supabaseAdmin } from "@/lib/supabase";
-
+import dataService from "@/lib/queries/dataService";
+import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
+import type { StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSimple";
+import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
 const { Title, Text } = Typography;
 const { Option } = Select;
-
-interface CustomerProfile {
-  user_id: string;
-  address_line_1?: string;
-  address_line_2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-}
 
 export default function CreateOrder() {
   const { notification } = App.useApp();
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [customers, setCustomers] = useState<StoreCustomer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<StoreCustomer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<StoreCustomer[]>(
+    []
+  );
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -71,7 +65,7 @@ export default function CreateOrder() {
     city: "",
     email: "",
     notes: "",
-    password: "",
+    password: "AdminCustomer1232*", // Set default password here
   });
 
   const [subtotal, setSubtotal] = useState(0);
@@ -80,45 +74,37 @@ export default function CreateOrder() {
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const [status, setStatus] = useState<"pending" | "confirmed" | "completed" | "cancelled">("pending");
-  const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid" | "failed" | "refunded">("pending");
+  const [status, setStatus] = useState<
+    "pending" | "confirmed" | "completed" | "cancelled"
+  >("pending");
+  const [paymentStatus, setPaymentStatus] = useState<
+    "pending" | "paid" | "failed" | "refunded"
+  >("pending");
   const [paymentMethod, setPaymentMethod] = useState("");
 
   const [orderId, setOrderId] = useState("");
   const [customerTab, setCustomerTab] = useState<string>("new");
-  const [selectedCustomer, setSelectedCustomer] = useState<StoreCustomer | null>(null);
-  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<StoreCustomer | null>(null);
+  const [customerProfile, setCustomerProfile] =
+    useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Fetch customer profile data from user_profiles table
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
     setProfileLoading(true);
     try {
-      console.log('Fetching profile for customer:', customerId);
-      const { data: profile, error } = await supabaseAdmin
-        .from('user_profiles') // Using the correct table name
-        .select('*')
-        .eq('user_id', customerId)
-        .single();
-
-      if (error) {
-        console.log('No profile found for customer:', error.message);
-        setCustomerProfile(null);
-      } else {
-        console.log('Profile found:', profile);
-        setCustomerProfile(profile);
-        
-        // Auto-populate address and city if available
-        if (profile) {
-          setCustomerInfo(prev => ({
-            ...prev,
-            address: profile.address_line_1 || "",
-            city: profile.city || ""
-          }));
-        }
+      const profile = await dataService.getCustomerProfile(customerId);
+      setCustomerProfile(profile);
+      if (profile) {
+        setCustomerInfo((prev) => ({
+          ...prev,
+          address: profile.address_line_1 || "",
+          city: profile.city || "",
+        }));
       }
     } catch (error) {
-      console.error('Error fetching customer profile:', error);
+      console.error("Error fetching customer profile:", error);
       setCustomerProfile(null);
     } finally {
       setProfileLoading(false);
@@ -128,18 +114,18 @@ export default function CreateOrder() {
   // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!user?.store_id) {
-      console.log('No store_id available for products fetch');
+      console.log("No store_id available for products fetch");
       return;
     }
     setLoading(true);
     try {
-      const res = await getProductsWithVariants(user.store_id);
+      const res = await dataService.getProductsWithVariants(user.store_id);
       setProducts(res);
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({
-        message: 'Error Loading Products',
-        description: 'Failed to load products. Please try again.',
+        message: "Error Loading Products",
+        description: "Failed to load products. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -149,36 +135,37 @@ export default function CreateOrder() {
   // Fetch customers with better error handling
   const fetchCustomers = useCallback(async () => {
     if (!user?.store_id) {
-      console.log('No store_id available for customer fetch');
+      console.log("No store_id available for customer fetch");
       return;
     }
-    
+
     setCustomerLoading(true);
     try {
-      console.log('Starting customer fetch for store:', user.store_id);
-      
-      const res = await getStoreCustomersSimple(user.store_id);
+      console.log("Starting customer fetch for store:", user.store_id);
+
+      const res = await dataService.getStoreCustomersSimple(user.store_id);
       setCustomers(res);
       setFilteredCustomers(res);
-      
+
       if (res.length > 0) {
         notification.success({
           message: `Loaded ${res.length} Customers`,
-          description: 'Customer list updated successfully.',
+          description: "Customer list updated successfully.",
         });
       } else {
         notification.info({
-          message: 'No Customers Found',
-          description: 'No existing customers found for your store.',
+          message: "No Customers Found",
+          description: "No existing customers found for your store.",
         });
       }
-      
     } catch (err: any) {
       console.error("Error fetching customers:", err);
-      
+
       notification.error({
-        message: 'Error Loading Customers',
-        description: `Failed to load customer list. Error: ${err?.message || 'Unknown error'}`,
+        message: "Error Loading Customers",
+        description: `Failed to load customer list. Error: ${
+          err?.message || "Unknown error"
+        }`,
         duration: 4,
       });
     } finally {
@@ -189,7 +176,7 @@ export default function CreateOrder() {
   // Load data when user is available
   useEffect(() => {
     if (user?.store_id && !userLoading) {
-      console.log('User loaded with store_id:', user.store_id);
+      console.log("User loaded with store_id:", user.store_id);
       fetchProducts();
       fetchCustomers();
     }
@@ -200,10 +187,13 @@ export default function CreateOrder() {
     if (!searchTerm.trim()) {
       setFilteredCustomers(customers);
     } else {
-      const filtered = customers.filter(customer =>
-        customer.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = customers.filter(
+        (customer) =>
+          customer.first_name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          customer.phone?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredCustomers(filtered);
     }
@@ -216,7 +206,9 @@ export default function CreateOrder() {
     const month = (now.getMonth() + 1).toString().padStart(2, "0");
     const day = now.getDate().toString().padStart(2, "0");
     const sessionCounter = Math.floor(Math.random() * 1000);
-    setOrderId(`SHEI${year}${month}${day}${sessionCounter.toString().padStart(3, "0")}`);
+    setOrderId(
+      `SHEI${year}${month}${day}${sessionCounter.toString().padStart(3, "0")}`
+    );
   }, []);
 
   // Update delivery cost based on city
@@ -228,17 +220,20 @@ export default function CreateOrder() {
 
   // Calculate totals
   useEffect(() => {
-    const newSubtotal = orderProducts.reduce((sum, item) => sum + item.total_price, 0);
+    const newSubtotal = orderProducts.reduce(
+      (sum, item) => sum + item.total_price,
+      0
+    );
     setSubtotal(newSubtotal);
     setTotalAmount(newSubtotal - discount + deliveryCost + taxAmount);
   }, [orderProducts, discount, deliveryCost, taxAmount]);
 
   // Handle customer selection from dropdown
   const handleCustomerSelect = async (customerId: string) => {
-    const customer = customers.find(c => c.id === customerId);
+    const customer = customers.find((c) => c.id === customerId);
     if (customer) {
       setSelectedCustomer(customer);
-      
+
       // Reset customer info first
       setCustomerInfo({
         name: customer.first_name,
@@ -249,7 +244,7 @@ export default function CreateOrder() {
         email: customer.email,
         customer_id: customer.id,
         notes: "",
-        password: "", // Not needed for existing customers
+        password: "AdminCustomer1232*", // Keep password for consistency
       });
 
       // Fetch and populate profile data
@@ -257,10 +252,11 @@ export default function CreateOrder() {
     }
   };
 
-  // Reset to new customer
+  // Reset to new customer - COMPLETELY reset all customer-related state
   const handleNewCustomer = () => {
     setSelectedCustomer(null);
     setCustomerProfile(null);
+    setSearchTerm(""); // Clear search term
     setCustomerInfo({
       name: "",
       phone: "",
@@ -269,23 +265,34 @@ export default function CreateOrder() {
       city: "",
       email: "",
       notes: "",
-      password: "",
+      password: "AdminCustomer1232*", // Set default password
     });
     setCustomerTab("new");
   };
 
-  const isFormValid = 
-    customerInfo.name && 
-    customerInfo.phone && 
-    customerInfo.address && 
-    customerInfo.city && 
-    customerInfo.deliveryMethod && 
+  // Handle tab change - reset customer data when switching to new customer tab
+  const handleTabChange = (activeKey: string) => {
+    if (activeKey === "new") {
+      // Only reset if we're switching FROM existing TO new tab
+      if (customerTab === "existing") {
+        handleNewCustomer();
+      }
+    }
+    setCustomerTab(activeKey);
+  };
+
+  const isFormValid =
+    customerInfo.name &&
+    customerInfo.phone &&
+    customerInfo.address &&
+    customerInfo.city &&
+    customerInfo.deliveryMethod &&
     orderProducts.length > 0;
 
   // Tabs configuration using items prop
   const tabItems = [
     {
-      key: 'new',
+      key: "new",
       label: (
         <span>
           <UserAddOutlined />
@@ -301,7 +308,7 @@ export default function CreateOrder() {
       ),
     },
     {
-      key: 'existing',
+      key: "existing",
       label: (
         <span>
           <UserOutlined />
@@ -309,7 +316,7 @@ export default function CreateOrder() {
         </span>
       ),
       children: (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
           <Row gutter={[16, 16]} align="middle">
             <Col flex="auto">
               <Text strong>Select Existing Customer</Text>
@@ -330,9 +337,9 @@ export default function CreateOrder() {
           />
 
           {customerLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
+            <div style={{ textAlign: "center", padding: "40px" }}>
               <Spin size="large" />
-              <div style={{ marginTop: '16px' }}>
+              <div style={{ marginTop: "16px" }}>
                 <Text type="secondary">Loading customers...</Text>
               </div>
             </div>
@@ -341,9 +348,13 @@ export default function CreateOrder() {
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
                 <Space direction="vertical">
-                  <Text>{searchTerm ? "No customers found matching your search" : "No customers found"}</Text>
-                  <Button 
-                    type="primary" 
+                  <Text>
+                    {searchTerm
+                      ? "No customers found matching your search"
+                      : "No customers found"}
+                  </Text>
+                  <Button
+                    type="primary"
                     onClick={fetchCustomers}
                     loading={customerLoading}
                   >
@@ -353,24 +364,26 @@ export default function CreateOrder() {
               }
             />
           ) : (
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space direction="vertical" style={{ width: "100%" }} size="large">
               {/* Customer Dropdown */}
               <Select
                 placeholder="Select a customer from the list..."
                 value={selectedCustomer?.id || undefined}
                 onChange={handleCustomerSelect}
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
                 size="large"
                 showSearch
                 filterOption={false}
-                notFoundContent={searchTerm ? "No customers found" : "Type to search customers"}
+                notFoundContent={
+                  searchTerm ? "No customers found" : "Type to search customers"
+                }
               >
-                {filteredCustomers.map(customer => (
+                {filteredCustomers.map((customer) => (
                   <Option key={customer.id} value={customer.id}>
                     <Space>
                       <Avatar icon={<UserOutlined />} size="small" />
                       <span>
-                        {customer.first_name} 
+                        {customer.first_name}
                         {customer.email && ` - ${customer.email}`}
                         {customer.phone && ` - ${customer.phone}`}
                       </span>
@@ -381,7 +394,7 @@ export default function CreateOrder() {
 
               {/* Selected Customer Information */}
               {selectedCustomer && (
-                <Card 
+                <Card
                   title={
                     <Space>
                       <UserOutlined />
@@ -390,7 +403,10 @@ export default function CreateOrder() {
                       {profileLoading && <Spin size="small" />}
                     </Space>
                   }
-                  style={{ border: '2px solid #1890ff', backgroundColor: '#f0f8ff' }}
+                  style={{
+                    border: "2px solid #1890ff",
+                    backgroundColor: "#f0f8ff",
+                  }}
                 >
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label="Name">
@@ -414,7 +430,9 @@ export default function CreateOrder() {
                           <HomeOutlined />
                           <Text>{customerProfile.address_line_1}</Text>
                           {customerProfile.address_line_2 && (
-                            <Text type="secondary">{customerProfile.address_line_2}</Text>
+                            <Text type="secondary">
+                              {customerProfile.address_line_2}
+                            </Text>
                           )}
                         </Space>
                       </Descriptions.Item>
@@ -435,7 +453,7 @@ export default function CreateOrder() {
                       description="Customer address and city have been auto-filled from their profile. You can modify these if needed for this specific order."
                       type="success"
                       showIcon
-                      style={{ marginTop: '16px' }}
+                      style={{ marginTop: "16px" }}
                     />
                   ) : (
                     <Alert
@@ -443,7 +461,7 @@ export default function CreateOrder() {
                       description="No address found in customer profile. Please manually enter the delivery address and city for this order."
                       type="info"
                       showIcon
-                      style={{ marginTop: '16px' }}
+                      style={{ marginTop: "16px" }}
                     />
                   )}
                 </Card>
@@ -476,9 +494,17 @@ export default function CreateOrder() {
 
   if (userLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', flexDirection: 'column' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+          flexDirection: "column",
+        }}
+      >
         <Spin size="large" />
-        <div style={{ marginTop: '16px' }}>
+        <div style={{ marginTop: "16px" }}>
           <Text type="secondary">Loading user information...</Text>
         </div>
       </div>
@@ -487,9 +513,17 @@ export default function CreateOrder() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', flexDirection: 'column' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+          flexDirection: "column",
+        }}
+      >
         <Spin size="large" />
-        <div style={{ marginTop: '16px' }}>
+        <div style={{ marginTop: "16px" }}>
           <Text type="secondary">Loading products...</Text>
         </div>
       </div>
@@ -497,10 +531,10 @@ export default function CreateOrder() {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ padding: "24px" }}>
       <Row gutter={[24, 24]}>
         <Col span={24}>
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
             <div>
               <Title level={2} style={{ margin: 0 }}>
                 Create New Order
@@ -511,9 +545,9 @@ export default function CreateOrder() {
             </div>
 
             <Card>
-              <Tabs 
-                activeKey={customerTab} 
-                onChange={setCustomerTab}
+              <Tabs
+                activeKey={customerTab}
+                onChange={handleTabChange} // Use the new handler
                 size="large"
                 items={tabItems}
               />
@@ -522,7 +556,7 @@ export default function CreateOrder() {
 
               <Row gutter={[24, 24]}>
                 <Col xs={24} lg={12}>
-                  <OrderDetails 
+                  <OrderDetails
                     products={products}
                     orderProducts={orderProducts}
                     setOrderProducts={setOrderProducts}

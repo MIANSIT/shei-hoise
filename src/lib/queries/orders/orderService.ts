@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/queries/orders/orderService.ts
 import { supabaseAdmin } from "@/lib/supabase";
 import { OrderProduct, CustomerInfo } from "../../types/order";
 
@@ -317,7 +316,6 @@ export async function createOrder(orderData: CreateOrderData): Promise<CreateOrd
   }
 }
 
-// Optional: Add a function to get order by ID
 export async function getOrderById(orderId: string) {
   try {
     const { data: order, error } = await supabaseAdmin
@@ -343,7 +341,6 @@ export async function getOrderById(orderId: string) {
   }
 }
 
-// Optional: Add a function to get orders by store
 export async function getOrdersByStore(storeId: string, limit = 50) {
   try {
     const { data: orders, error } = await supabaseAdmin
