@@ -2,44 +2,41 @@
 
 import React from "react";
 import { Tag } from "antd";
+import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
 
-// Combined types for order, delivery, payment
-export type StatusType =
-  | "pending"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "paid"
-  | "failed"
-  | "pathao"
-  | "courier"
-  | "other"
-  | "cod"
-  | "online";
+export type StatusType = OrderStatus | PaymentStatus | DeliveryOption | PaymentMethod;
 
 interface Props {
   status: StatusType;
 }
 
-// Colors for each type
 const statusColors: Record<StatusType, string> = {
+  // Order statuses
   pending: "orange",
-  processing: "gold",
+  confirmed: "blue",
   shipped: "purple",
   delivered: "green",
   cancelled: "red",
+  
+  // Payment statuses
   paid: "green",
   failed: "red",
+  refunded: "orange",
+  
+  // Delivery options
   pathao: "blue",
   courier: "cyan",
   other: "geekblue",
+  
+  // Payment methods
   cod: "magenta",
   online: "purple",
 };
 
 const StatusTag: React.FC<Props> = ({ status }) => (
-  <Tag color={statusColors[status]}>{status.toUpperCase()}</Tag>
+  <Tag color={statusColors[status]} className="capitalize">
+    {status}
+  </Tag>
 );
 
 export default StatusTag;

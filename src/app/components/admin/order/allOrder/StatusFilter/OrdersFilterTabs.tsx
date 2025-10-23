@@ -1,25 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, Input } from "antd";
-import { Order } from "@/lib/types/types";
+import { StoreOrder } from "@/lib/types/order";
 
 interface Props {
-  orders: Order[];
-  onFilter: (filteredOrders: Order[]) => void;
+  orders: StoreOrder[];
+  onFilter: (filteredOrders: StoreOrder[]) => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
 }
 
 // Color mapping for status
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  processing: "bg-blue-100 text-blue-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-  paid: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
+  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  confirmed: "bg-blue-100 text-blue-800 border-blue-200",
+  shipped: "bg-purple-100 text-purple-800 border-purple-200",
+  delivered: "bg-green-100 text-green-800 border-green-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+  paid: "bg-green-100 text-green-800 border-green-200",
+  failed: "bg-red-100 text-red-800 border-red-200",
+  refunded: "bg-orange-100 text-orange-800 border-orange-200",
+  all: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -36,36 +38,49 @@ const OrdersFilterTabs: React.FC<Props> = ({
   const orderStatuses = [
     "all",
     "pending",
-    "processing",
+    "confirmed",
     "shipped",
     "delivered",
     "cancelled",
   ];
-  const paymentStatuses = ["all", "paid", "pending", "failed"];
+  const paymentStatuses = ["all", "paid", "pending", "failed", "refunded"];
+
+  useEffect(() => {
+    handleStatusChange(activeStatus);
+  }, [category, orders]);
 
   const handleCategoryChange = (key: string) => {
     setCategory(key as "order" | "payment");
     setActiveStatus("all");
-    onFilter(orders);
   };
 
   const handleStatusChange = (status: string) => {
     setActiveStatus(status);
-    const filtered =
-      status === "all"
-        ? orders
-        : category === "order"
+    
+    let filtered = orders;
+    
+    if (status !== "all") {
+      filtered = category === "order" 
         ? orders.filter((o) => o.status === status)
-        : orders.filter((o) => o.paymentStatus === status);
+        : orders.filter((o) => o.payment_status === status);
+    }
 
-    // Apply search filter
     const finalFiltered = filtered.filter((o) =>
-      o.id.toString().includes(searchValue)
+      o.order_number.toLowerCase().includes(searchValue.toLowerCase())
     );
+    
     onFilter(finalFiltered);
   };
 
   const statuses = category === "order" ? orderStatuses : paymentStatuses;
+
+  const getStatusCount = (status: string) => {
+    if (status === "all") return orders.length;
+    
+    return category === "order"
+      ? orders.filter((o) => o.status === status).length
+      : orders.filter((o) => o.payment_status === status).length;
+  };
 
   return (
     <div className="mb-4">
@@ -74,39 +89,47 @@ const OrdersFilterTabs: React.FC<Props> = ({
         activeKey={category}
         onChange={handleCategoryChange}
         items={[
-          { key: "order", label: "Order" },
-          { key: "payment", label: "Payment" },
+          { key: "order", label: "Order Status" },
+          { key: "payment", label: "Payment Status" },
         ]}
         type="card"
       />
 
       {/* Search input left, status buttons right */}
-      <div className="flex justify-between items-center mt-2">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mt-4">
         {/* Search input */}
-        <Input
-          placeholder="Search by Order ID"
+        <Input.Search
+          placeholder="Search by Order Number"
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
-          style={{ width: 250 }}
+          style={{ width: 300 }}
           allowClear
+          size="middle"
         />
 
         {/* Status buttons */}
         <div className="flex flex-wrap gap-2">
           {statuses.map((status) => {
             const isActive = activeStatus === status;
+            const count = getStatusCount(status);
+            
             return (
               <button
                 key={status}
                 type="button"
                 onClick={() => handleStatusChange(status)}
                 aria-pressed={isActive}
-                className={`px-2 py-0.5 text-sm rounded-full font-medium transition-all duration-200
-                  ${statusColors[status] || "bg-gray-100 text-gray-800"}
-                  ${isActive ? "ring-2 ring-offset-1 ring-blue-500" : "hover:scale-105"}
+                className={`px-3 py-1.5 text-sm rounded-full border font-medium transition-all duration-200 flex items-center gap-2
+                  ${statusColors[status]}
+                  ${isActive ? 'ring-2 ring-offset-1 ring-blue-500 scale-105' : 'hover:scale-105 hover:shadow-sm'}
                 `}
               >
-                {capitalize(status)}
+                <span>{capitalize(status)}</span>
+                <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                  isActive ? 'bg-white text-gray-800' : 'bg-black bg-opacity-20 text-white'
+                }`}>
+                  {count}
+                </span>
               </button>
             );
           })}

@@ -7,24 +7,24 @@ import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
 import EditableDeliveryOption from "./EditableDeliveryOption";
 import EditablePaymentMethod from "./EditablePaymentMethod";
-import { Order } from "@/lib/types/types";
+import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
 
 interface Props {
-  status: Order["status"];
-  selectedStatus: Order["status"];
-  onSelectStatus: (v: Order["status"]) => void;
+  status: OrderStatus;
+  selectedStatus: OrderStatus;
+  onSelectStatus: (v: OrderStatus) => void;
 
-  paymentStatus: Order["paymentStatus"];
-  selectedPaymentStatus: Order["paymentStatus"];
-  onSelectPaymentStatus: (v: Order["paymentStatus"]) => void;
+  paymentStatus: PaymentStatus;
+  selectedPaymentStatus: PaymentStatus;
+  onSelectPaymentStatus: (v: PaymentStatus) => void;
 
-  deliveryOption: Order["deliveryOption"];
-  selectedDeliveryOption: Order["deliveryOption"];
-  onSelectDeliveryOption: (v: Order["deliveryOption"]) => void;
+  deliveryOption: DeliveryOption;
+  selectedDeliveryOption: DeliveryOption;
+  onSelectDeliveryOption: (v: DeliveryOption) => void;
 
-  paymentMethod: Order["paymentMethod"];
-  selectedPaymentMethod: Order["paymentMethod"];
-  onSelectPaymentMethod: (v: Order["paymentMethod"]) => void;
+  paymentMethod: PaymentMethod;
+  selectedPaymentMethod: PaymentMethod;
+  onSelectPaymentMethod: (v: PaymentMethod) => void;
 
   cancelNote?: string;
   onSelectCancelNote?: (note: string) => void;
@@ -78,7 +78,6 @@ const OrderControls: React.FC<Props> = ({
       </div>
 
       {/* Cancelled Note */}
-      {/* Cancelled Note */}
       {isCancelled && (
         <div className="flex flex-col">
           <span className="font-medium mb-1">Cancel Note:</span>
@@ -86,7 +85,7 @@ const OrderControls: React.FC<Props> = ({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Reason for cancellation"
-            rows={4} // height of textarea
+            rows={2}
             style={{ width: 300 }}
           />
         </div>
@@ -142,7 +141,7 @@ const OrderControls: React.FC<Props> = ({
             note === cancelNote
           }
         >
-          Save
+          Save Changes
         </Button>
       )}
     </div>

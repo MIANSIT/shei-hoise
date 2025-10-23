@@ -2,24 +2,41 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
+import { PaymentMethod } from "../../../../../../lib/types/order";
 
 interface Props {
-  method: "COD" | "Online";
-  onSave: (newMethod: Props["method"]) => void;
+  method: PaymentMethod;
+  onSave: (newMethod: PaymentMethod) => void;
 }
 
 const PAYMENT_METHODS = [
-  { value: "COD", label: "Cash on Delivery" },
-  { value: "Online", label: "Online Payment" },
+  { value: "cod", label: "Cash on Delivery" },
+  { value: "online", label: "Online Payment" },
 ];
 
-const PaymentMethodSelect: React.FC<Props> = ({ method, onSave }) => (
-  <Select
-    value={method}
-    style={{ width: 150 }}
-    onChange={v => onSave(v as Props["method"])}
-    options={PAYMENT_METHODS}
-  />
-);
+const PaymentMethodSelect: React.FC<{
+  value: PaymentMethod;
+  onChange: (v: PaymentMethod) => void;
+}> = ({ value, onChange }) => {
+  return (
+    <Select
+      value={value}
+      style={{ width: 150 }}
+      onChange={onChange}
+      options={PAYMENT_METHODS}
+    />
+  );
+};
 
-export default memo(PaymentMethodSelect);
+const MemoizedPaymentMethodSelect = memo(PaymentMethodSelect);
+
+const EditablePaymentMethod: React.FC<Props> = ({ method, onSave }) => {
+  return (
+    <MemoizedPaymentMethodSelect
+      value={method}
+      onChange={onSave}
+    />
+  );
+};
+
+export default EditablePaymentMethod;

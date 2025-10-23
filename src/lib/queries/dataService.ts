@@ -4,6 +4,8 @@ import { getStoreCustomersSimple, StoreCustomer } from "./customers/getStoreCust
 import { getCustomerProfile, CustomerProfile } from "./customers/getCustomerProfile";
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import { createOrder, CreateOrderData, CreateOrderResult } from "./orders/orderService";
+import { getStoreOrders } from "./orders/getStoreOrders";
+import { StoreOrder } from "@/lib/types/order";
 
 export interface DataService {
   // Product methods
@@ -16,6 +18,7 @@ export interface DataService {
   
   // Order methods
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
+  getStoreOrders: (storeId: string) => Promise<StoreOrder[]>;
 }
 
 export const dataService: DataService = {
@@ -24,6 +27,7 @@ export const dataService: DataService = {
   getCustomerProfile,
   createCustomer,
   createOrder,
+  getStoreOrders,
 };
 
 export default dataService;

@@ -3,139 +3,182 @@
 import React from "react";
 import DataTable from "@/app/components/admin/common/DataTable";
 import { ColumnsType } from "antd/es/table";
-import { Order, Product } from "@/lib/types/types";
+import { StoreOrder, OrderItem } from "@/lib/types/order";
 import StatusTag, { StatusType } from "../StatusFilter/StatusTag";
-import { Tooltip } from "antd";
+import { Tooltip, Typography } from "antd";
+
+const { Text } = Typography;
 
 interface Props {
-  order: Order;
+  order: StoreOrder;
 }
 
 const DetailedOrderView: React.FC<Props> = ({ order }) => {
-  const productColumns: ColumnsType<Product> = [
+  const productColumns: ColumnsType<OrderItem> = [
     {
       title: "Product",
-      dataIndex: "title",
-      key: "title",
-      render: (t) => <div className="truncate max-w-[250px]">{t}</div>,
+      dataIndex: "product_name",
+      key: "product_name",
+      render: (name: string, record: OrderItem) => (
+        <div>
+          <div className="font-medium">{name}</div>
+          {record.variant_details && (
+            <Text type="secondary" className="text-xs">
+              Variant: {JSON.stringify(record.variant_details)}
+            </Text>
+          )}
+        </div>
+      ),
     },
-    { title: "Quantity", dataIndex: "quantity", key: "quantity" },
+    { 
+      title: "Quantity", 
+      dataIndex: "quantity", 
+      key: "quantity",
+      align: 'center' as const,
+    },
     {
       title: "Unit Price",
-      dataIndex: "price",
-      key: "price",
-      render: (p) => `$${p.toFixed(2)}`,
+      dataIndex: "unit_price",
+      key: "unit_price",
+      render: (price: number) => `৳${price.toFixed(2)}`,
+      align: 'right' as const,
     },
     {
       title: "Total",
-      key: "lineTotal",
-      render: (_, p) => {
-        const total = p.price * p.quantity;
-        return (
-          <Tooltip
-            title={`(Unit Price)${p.price.toFixed(2)} ×   ${p.quantity} (Qty) `}
-          >
-            <span>${total.toFixed(2)}</span>
-          </Tooltip>
-        );
-      },
-    },
-
-    {
-      title: "Delivery Cost",
-      key: "deliveryCost",
-      render: () => `$${order.deliveryCost.toFixed(2)}`,
-    },
-    {
-      title: "Grand Total",
-      key: "grandTotal",
-      render: (_, p) => {
-        const total = p.price * p.quantity;
-        return (
-          <Tooltip
-            title={`(Products Total) ${total.toFixed(
-              2
-            )} + ${order.deliveryCost.toFixed(2)} (Delivery Cost)`}
-          >
-            <span>${(total + order.deliveryCost).toFixed(2)}</span>
-          </Tooltip>
-        );
-      },
+      dataIndex: "total_price",
+      key: "total_price",
+      render: (total: number) => `৳${total.toFixed(2)}`,
+      align: 'right' as const,
     },
   ];
 
-  const fullAddress =
-    `${order.user.address || ""}${
-      order.user.city ? ", " + order.user.city : ""
-    }${order.user.country ? ", " + order.user.country : ""}`.trim() ||
-    "Not Provided";
+  const address = order.shipping_address;
+  const fullAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
 
   const isCancelled = order.status === "cancelled";
+  const isDelivered = order.status === "delivered";
+
+  // Calculate delivery option and payment method from existing data
+  const deliveryOption = "courier" as const;
+  const paymentMethod = order.payment_method === "cod" ? "cod" : "online" as const;
 
   return (
-    <div className="space-y-6 p-4  rounded-lg shadow-sm">
+    <div className="space-y-6 p-4 bg-white rounded-lg border">
+      {/* Order Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md">
+        <div>
+          <strong>Order Number:</strong>
+          <div className="font-mono">#{order.order_number}</div>
+        </div>
+        <div>
+          <strong>Order Date:</strong>
+          <div>{new Date(order.created_at).toLocaleDateString()}</div>
+        </div>
+        <div>
+          <strong>Total Amount:</strong>
+          <div className="font-semibold text-lg">
+            ৳{order.total_amount.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
       {/* Products Table */}
       <div>
-        <h3 className="font-semibold mb-2">Products</h3>
+        <h3 className="font-semibold mb-3 text-lg">Order Items</h3>
         <DataTable
           columns={productColumns}
-          data={order.products}
+          data={order.order_items}
           pagination={false}
-          bordered={false}
-          size="small"
-          rowKey={(record) => record.key || record.title}
-          rowClassName={() => "hover:bg-gray-100"}
+          bordered={true}
+          size="middle"
+          rowKey={(record) => record.id}
         />
+      </div>
+
+      {/* Pricing Breakdown */}
+      <div className="bg-gray-50 p-4 rounded-md">
+        <h3 className="font-semibold mb-3">Pricing Breakdown</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>৳{order.subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Tax Amount:</span>
+              <span>৳{order.tax_amount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping Fee:</span>
+              <span>৳{order.shipping_fee.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 font-semibold">
+              <span>Total Amount:</span>
+              <span>৳{order.total_amount.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Delivery & Payment Info */}
       <div>
-        <h3 className="font-semibold mb-2">Delivery & Payment Info</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4  rounded-md">
-          <div>
-            <strong>Full Delivery Address:</strong>
-            <p className="truncate">{fullAddress}</p>
-          </div>
-          <div>
-            <strong>Phone Number:</strong>
-            <p>{order.user.phone || "Not Provided"}</p>
+        <h3 className="font-semibold mb-3 text-lg">Delivery & Payment Information</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 bg-white border rounded-md">
+          {/* Customer Information */}
+          <div className="space-y-3">
+            <div>
+              <strong className="block mb-1">Customer Information:</strong>
+              <div>{address.customer_name}</div>
+              <div className="text-sm text-gray-600">{order.customers?.email || 'No email'}</div>
+              <div className="text-sm text-gray-600">{address.phone}</div>
+            </div>
+            <div>
+              <strong className="block mb-1">Delivery Address:</strong>
+              <div className="text-sm">{fullAddress}</div>
+            </div>
+            {order.notes && (
+              <div>
+                <strong className="block mb-1">Order Notes:</strong>
+                <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
+                  {order.notes}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Cancel Note or Delivery/Payment statuses */}
-          <div className="sm:col-span-2 flex flex-wrap gap-6 mt-2">
-            {/* Always show Order Status */}
-            <div>
-              <strong>Order Status:&nbsp;</strong>
-              <StatusTag status={order.status.toLowerCase() as StatusType} />
+          {/* Status Information */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <strong className="block mb-1">Order Status:</strong>
+                <StatusTag status={order.status as StatusType} />
+              </div>
+              
+              <div>
+                <strong className="block mb-1">Payment Status:</strong>
+                <StatusTag status={order.payment_status as StatusType} />
+              </div>
+
+              {!isCancelled && !isDelivered && (
+                <div>
+                  <strong className="block mb-1">Delivery Method:</strong>
+                  <StatusTag status={deliveryOption} />
+                </div>
+              )}
+
+              <div>
+                <strong className="block mb-1">Payment Method:</strong>
+                <StatusTag status={paymentMethod} />
+              </div>
             </div>
 
-            {/* Conditional: Cancel Note vs Delivery/Payment */}
-            {isCancelled && order.cancelNote ? (
+            {isCancelled && order.notes && (
               <div>
-                <strong>Cancel Note:&nbsp;</strong>
-                <span>{order.cancelNote}</span>
+                <strong className="block mb-1">Cancellation Note:</strong>
+                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                  {order.notes}
+                </div>
               </div>
-            ) : (
-              <>
-                <div>
-                  <strong>Delivery Method:&nbsp;</strong>
-                  <StatusTag
-                    status={order.deliveryOption.toLowerCase() as StatusType}
-                  />
-                </div>
-                <div>
-                  <strong>Payment Method:&nbsp;</strong>
-                  <StatusTag
-                    status={order.paymentMethod.toLowerCase() as StatusType}
-                  />
-                </div>
-                <div>
-                  <strong>Payment Status:&nbsp;</strong>
-                  <StatusTag
-                    status={order.paymentStatus.toLowerCase() as StatusType}
-                  />
-                </div>
-              </>
             )}
           </div>
         </div>
