@@ -192,7 +192,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 />
               </div>
 
-              {!isCancelled && !isDelivered && (
+              {!isCancelled && (
                 <div>
                   <strong className="block mb-1 text-sm sm:text-base">
                     Delivery Method:
