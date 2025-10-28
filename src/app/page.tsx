@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   ShoppingCart,
-  Store,
   Package,
   TrendingUp,
   Shield,

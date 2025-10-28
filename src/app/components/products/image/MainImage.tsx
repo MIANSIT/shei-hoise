@@ -7,17 +7,20 @@ interface MainImageProps {
   src: string;
   alt?: string;
   discount?: number;
-  swipeHandlers: SwipeableHandlers; // ✅ properly typed
+  swipeHandlers: SwipeableHandlers;
 }
 
 const MainImage: FC<MainImageProps> = ({ src, alt, discount, swipeHandlers }) => {
+  // ✅ Only show discount badge if discount exists and is greater than 0
+  const showDiscount = discount !== undefined && discount > 0;
+
   return (
     <div
       {...swipeHandlers}
       ref={mergeRefs(swipeHandlers.ref as React.Ref<HTMLDivElement>)}
       className="relative w-full rounded-xl overflow-hidden shadow-xl group"
     >
-      {discount && (
+      {showDiscount && (
         <span className="absolute top-3 left-3 bg-red-600 text-white text-sm sm:text-base px-3 py-1 rounded-md z-30 shadow-md">
           -{discount}%
         </span>

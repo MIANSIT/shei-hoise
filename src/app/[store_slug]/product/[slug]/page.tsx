@@ -23,6 +23,7 @@ interface ApiProduct {
   description?: string;
   base_price: number;
   discounted_price: number | null;
+  discount_amount?: number; // ✅ Added discount_amount
   categories: {
     id: string;
     name: string;
@@ -37,6 +38,7 @@ interface ApiProduct {
     variant_name: string;
     base_price: number;
     discounted_price: number | null;
+    discount_amount?: number; // ✅ Added discount_amount for variants
     color: string | null;
     product_inventory: Array<{
       quantity_available: number;
@@ -59,7 +61,7 @@ interface CartProduct {
   discounted_price?: number;
   variants?: any[];
   images?: string[];
-  [key: string]: any; // Allow any other properties
+  [key: string]: any;
 }
 
 export default function ProductPage() {
@@ -117,20 +119,53 @@ export default function ProductPage() {
     (variant) => variant.id === selectedVariant
   );
 
+  // ✅ PERFECT DISCOUNT CALCULATION
+  const calculateDiscountPercentage = (originalPrice: number, discountedPrice: number | null, discountAmount?: number): number => {
+    // If we have discount_amount, use it directly for percentage calculation
+    if (discountAmount && discountAmount > 0) {
+      // Check if discount_amount is already a percentage or fixed amount
+      if (discountAmount <= 100) {
+        // Assume it's a percentage if <= 100
+        return Math.round(discountAmount);
+      } else {
+        // It's a fixed amount, calculate percentage
+        return Math.round((discountAmount / originalPrice) * 100);
+      }
+    }
+    
+    // Fallback to discounted_price vs base_price comparison
+    if (discountedPrice && discountedPrice < originalPrice) {
+      return Math.round(((originalPrice - discountedPrice) / originalPrice) * 100);
+    }
+    
+    return 0;
+  };
+
   // Calculate display price based on selected variant or product base price
   const displayPrice = selectedVariantData
     ? selectedVariantData.discounted_price || selectedVariantData.base_price
     : product?.discounted_price || product?.base_price || 0;
 
-  // Calculate discount percentage
+  // Calculate original price
   const originalPrice = selectedVariantData
     ? selectedVariantData.base_price
     : product?.base_price || 0;
 
-  const discount =
-    displayPrice < originalPrice
-      ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
-      : 0;
+  // ✅ Calculate discount percentage using the perfect function
+  const discount = selectedVariantData
+    ? calculateDiscountPercentage(
+        selectedVariantData.base_price,
+        selectedVariantData.discounted_price,
+        selectedVariantData.discount_amount
+      )
+    : calculateDiscountPercentage(
+        product?.base_price || 0,
+        product?.discounted_price || null,
+        product?.discount_amount
+      );
+
+  // Calculate actual discount amount in dollars
+  const discountAmountInDollars = originalPrice - displayPrice;
 
   // Get stock availability for selected variant
   const getStockBadge = () => {
@@ -213,14 +248,13 @@ export default function ProductPage() {
             id: selectedVariantData.id,
             base_price: selectedVariantData.base_price,
             discounted_price: selectedVariantData.discounted_price || undefined,
-            // Add minimal required properties
           },
         ];
       }
 
       // Add to cart with selected quantity
       for (let i = 0; i < quantity; i++) {
-        await addToCart(cartProduct as any); // Use type assertion to avoid TypeScript errors
+        await addToCart(cartProduct as any);
       }
 
       setShowSuccess(true);
@@ -290,7 +324,7 @@ export default function ProductPage() {
             <ProductImage
               images={images}
               alt={product.name}
-              discount={discount}
+              discount={discount} // ✅ Only shows if discount > 0
             />
           </div>
 
@@ -301,7 +335,11 @@ export default function ProductPage() {
               rating={0}
             />
 
-            <ProductPrice price={displayPrice} originalPrice={originalPrice} />
+            <ProductPrice 
+              price={displayPrice} 
+              originalPrice={originalPrice}
+              discount={discount} // ✅ Pass discount to show savings
+            />
 
             <p className="text-muted-foreground mt-4 text-sm sm:text-base md:text-lg">
               {product.description || "No description available."}
@@ -318,6 +356,11 @@ export default function ProductPage() {
                     const isAvailable =
                       variant.product_inventory[0]?.quantity_available > 0;
                     const isSelected = selectedVariant === variant.id;
+                    const variantDiscount = calculateDiscountPercentage(
+                      variant.base_price,
+                      variant.discounted_price,
+                      variant.discount_amount
+                    );
 
                     return (
                       <button
@@ -334,6 +377,11 @@ export default function ProductPage() {
                       >
                         {variant.variant_name}
                         {variant.color && ` - ${variant.color}`}
+                        {variantDiscount > 0 && (
+                          <span className="ml-1 text-xs text-green-600">
+                            (-{variantDiscount}%)
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -423,16 +471,16 @@ export default function ProductPage() {
                   <strong>Base Price:</strong> ${originalPrice.toFixed(2)}
                 </li>
                 {discount > 0 && (
-                  <li>
-                    <strong>Discounted Price:</strong> $
-                    {displayPrice.toFixed(2)}
-                  </li>
-                )}
-                {discount > 0 && (
-                  <li>
-                    <strong>You Save:</strong> $
-                    {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
-                  </li>
+                  <>
+                    <li>
+                      <strong>Discounted Price:</strong> $
+                      {displayPrice.toFixed(2)}
+                    </li>
+                    <li>
+                      <strong>You Save:</strong> $
+                      {discountAmountInDollars.toFixed(2)} ({discount}%)
+                    </li>
+                  </>
                 )}
               </ul>
             </div>
