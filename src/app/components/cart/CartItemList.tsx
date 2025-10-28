@@ -63,6 +63,8 @@ export default function CartItemsList() {
 
       {cart.map((item: CartItem) => {
         const variant = item.variants?.[0]; // First variant if exists
+        const hasVariants = item.variants && item.variants.length > 0;
+        
         const displayPrice =
           variant?.discounted_price && variant.discounted_price > 0
             ? variant.discounted_price
@@ -93,12 +95,22 @@ export default function CartItemsList() {
               </div>
               <div className="flex flex-col">
                 <h3 className="font-medium text-foreground md:text-xs text-sm">{item.name}</h3>
-                {variant && (
+                
+                {/* Show variant information only if variants exist */}
+                {hasVariants && variant && (
                   <p className="text-sm text-muted-foreground">
-                    {variant.variant_name} {variant.color ? `- ${variant.color}` : ""}
+                    {variant.variant_name} 
+                    {variant.color && ` - ${variant.color}`}
                   </p>
                 )}
-                <p className="text-sm text-muted-foreground">{item.category?.name || "Uncategorized"}</p>
+                
+                {/* Show category only if it exists */}
+                {item.category?.name && (
+                  <p className="text-sm text-muted-foreground">
+                    {item.category.name}
+                  </p>
+                )}
+
                 <div className="mt-2 flex items-center gap-2">
                   <Button
                     variant="outline"

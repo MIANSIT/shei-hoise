@@ -120,7 +120,11 @@ export default function ProductPage() {
   );
 
   // ✅ PERFECT DISCOUNT CALCULATION
-  const calculateDiscountPercentage = (originalPrice: number, discountedPrice: number | null, discountAmount?: number): number => {
+  const calculateDiscountPercentage = (
+    originalPrice: number,
+    discountedPrice: number | null,
+    discountAmount?: number
+  ): number => {
     // If we have discount_amount, use it directly for percentage calculation
     if (discountAmount && discountAmount > 0) {
       // Check if discount_amount is already a percentage or fixed amount
@@ -132,12 +136,14 @@ export default function ProductPage() {
         return Math.round((discountAmount / originalPrice) * 100);
       }
     }
-    
+
     // Fallback to discounted_price vs base_price comparison
     if (discountedPrice && discountedPrice < originalPrice) {
-      return Math.round(((originalPrice - discountedPrice) / originalPrice) * 100);
+      return Math.round(
+        ((originalPrice - discountedPrice) / originalPrice) * 100
+      );
     }
-    
+
     return 0;
   };
 
@@ -230,7 +236,7 @@ export default function ProductPage() {
 
     setIsAdding(true);
     try {
-      // Create a simple cart product that matches what your cart store expects
+      // Create a cart product with ALL necessary data
       const cartProduct: CartProduct = {
         id: selectedVariantData ? selectedVariantData.id : product.id,
         slug: product.slug,
@@ -239,23 +245,33 @@ export default function ProductPage() {
         discounted_price:
           displayPrice < originalPrice ? displayPrice : undefined,
         images: product.product_images.map((img) => img.image_url),
+        // ✅ ADD CATEGORY DATA
+        category: product.categories
+          ? {
+              id: product.categories.id,
+              name: product.categories.name,
+            }
+          : undefined,
+        // ✅ ADD QUANTITY (required for cart)
+        quantity: quantity,
       };
 
-      // Add variants if selected
+      // ✅ ADD COMPLETE VARIANT DATA
       if (selectedVariantData) {
         cartProduct.variants = [
           {
             id: selectedVariantData.id,
+            variant_name: selectedVariantData.variant_name, // ✅ ADD THIS
             base_price: selectedVariantData.base_price,
             discounted_price: selectedVariantData.discounted_price || undefined,
+            color: selectedVariantData.color || undefined, // ✅ ADD THIS
+            product_images: selectedVariantData.product_images || [], // ✅ ADD THIS
           },
         ];
       }
 
-      // Add to cart with selected quantity
-      for (let i = 0; i < quantity; i++) {
-        await addToCart(cartProduct as any);
-      }
+      // Add to cart - just once with the quantity
+      await addToCart(cartProduct as any);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
@@ -332,11 +348,11 @@ export default function ProductPage() {
             <ProductTitle
               name={product.name}
               category={product.categories?.name || "Uncategorized"}
-              rating={0}
+              rating={5}
             />
 
-            <ProductPrice 
-              price={displayPrice} 
+            <ProductPrice
+              price={displayPrice}
               originalPrice={originalPrice}
               discount={discount} // ✅ Pass discount to show savings
             />
