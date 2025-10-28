@@ -5,7 +5,6 @@ import {
   Card,
   Row,
   Col,
-  Tabs,
   Input,
   Button,
   Tag,
@@ -19,6 +18,7 @@ import {
   Select,
   Descriptions,
   App,
+  Dropdown,
 } from "antd";
 import {
   UserAddOutlined,
@@ -27,6 +27,7 @@ import {
   PhoneOutlined,
   MailOutlined,
   HomeOutlined,
+  DownOutlined,
 } from "@ant-design/icons";
 import CustomerInfo from "./CustomerInfo";
 import OrderDetails from "./OrderDetails";
@@ -41,8 +42,11 @@ import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import type { StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSimple";
 import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
+
 const { Title, Text } = Typography;
 const { Option } = Select;
+
+type CustomerType = "new" | "existing";
 
 export default function CreateOrder() {
   const { notification } = App.useApp();
@@ -65,7 +69,7 @@ export default function CreateOrder() {
     city: "",
     email: "",
     notes: "",
-    password: "AdminCustomer1232*", // Set default password here
+    password: "AdminCustomer1232*",
   });
 
   const [subtotal, setSubtotal] = useState(0);
@@ -83,7 +87,7 @@ export default function CreateOrder() {
   const [paymentMethod, setPaymentMethod] = useState("");
 
   const [orderId, setOrderId] = useState("");
-  const [customerTab, setCustomerTab] = useState<string>("new");
+  const [customerType, setCustomerType] = useState<CustomerType>("new");
   const [selectedCustomer, setSelectedCustomer] =
     useState<StoreCustomer | null>(null);
   const [customerProfile, setCustomerProfile] =
@@ -142,7 +146,6 @@ export default function CreateOrder() {
     setCustomerLoading(true);
     try {
       console.log("Starting customer fetch for store:", user.store_id);
-
       const res = await dataService.getStoreCustomersSimple(user.store_id);
       setCustomers(res);
       setFilteredCustomers(res);
@@ -160,7 +163,6 @@ export default function CreateOrder() {
       }
     } catch (err: any) {
       console.error("Error fetching customers:", err);
-
       notification.error({
         message: "Error Loading Customers",
         description: `Failed to load customer list. Error: ${
@@ -233,30 +235,26 @@ export default function CreateOrder() {
     const customer = customers.find((c) => c.id === customerId);
     if (customer) {
       setSelectedCustomer(customer);
-
-      // Reset customer info first
       setCustomerInfo({
         name: customer.first_name,
         phone: customer.phone || "",
-        address: "", // Will be populated from profile
-        city: "", // Will be populated from profile
+        address: "",
+        city: "",
         deliveryMethod: "courier",
         email: customer.email,
         customer_id: customer.id,
         notes: "",
-        password: "AdminCustomer1232*", // Keep password for consistency
+        password: "AdminCustomer1232*",
       });
-
-      // Fetch and populate profile data
       await fetchCustomerProfile(customer.id);
     }
   };
 
-  // Reset to new customer - COMPLETELY reset all customer-related state
+  // Reset to new customer
   const handleNewCustomer = () => {
     setSelectedCustomer(null);
     setCustomerProfile(null);
-    setSearchTerm(""); // Clear search term
+    setSearchTerm("");
     setCustomerInfo({
       name: "",
       phone: "",
@@ -265,21 +263,41 @@ export default function CreateOrder() {
       city: "",
       email: "",
       notes: "",
-      password: "AdminCustomer1232*", // Set default password
+      password: "AdminCustomer1232*",
     });
-    setCustomerTab("new");
+    setCustomerType("new");
   };
 
-  // Handle tab change - reset customer data when switching to new customer tab
-  const handleTabChange = (activeKey: string) => {
-    if (activeKey === "new") {
-      // Only reset if we're switching FROM existing TO new tab
-      if (customerTab === "existing") {
-        handleNewCustomer();
-      }
+  // Handle customer type change
+  const handleCustomerTypeChange = (type: CustomerType) => {
+    if (type === "new") {
+      handleNewCustomer();
+    } else {
+      setCustomerType("existing");
     }
-    setCustomerTab(activeKey);
   };
+
+  // Customer type dropdown items
+  const customerTypeItems = [
+    {
+      key: "new",
+      label: (
+        <Space>
+          <Text>New Customer</Text>
+        </Space>
+      ),
+      icon: <UserAddOutlined />,
+    },
+    {
+      key: "existing",
+      label: (
+        <Space>
+          <Text>Existing Customer</Text>
+        </Space>
+      ),
+      icon: <UserOutlined />,
+    },
+  ];
 
   const isFormValid =
     customerInfo.name &&
@@ -289,111 +307,89 @@ export default function CreateOrder() {
     customerInfo.deliveryMethod &&
     orderProducts.length > 0;
 
-  // Tabs configuration using items prop
-  const tabItems = [
-    {
-      key: "new",
-      label: (
-        <span>
-          <UserAddOutlined />
-          New Customer
-        </span>
-      ),
-      children: (
+  // Render customer content based on type
+  const renderCustomerContent = () => {
+    if (customerType === "new") {
+      return (
         <CustomerInfo
           customerInfo={customerInfo}
           setCustomerInfo={setCustomerInfo}
           orderId={orderId}
         />
-      ),
-    },
-    {
-      key: "existing",
-      label: (
-        <span>
-          <UserOutlined />
-          Existing Customer
-        </span>
-      ),
-      children: (
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-          <Row gutter={[16, 16]} align="middle">
-            <Col flex="auto">
-              <Text strong>Select Existing Customer</Text>
-            </Col>
-            <Col>
-              <Button type="default" onClick={handleNewCustomer}>
-                New Customer Instead
-              </Button>
-            </Col>
-          </Row>
+      );
+    }
 
-          <Input
-            placeholder="Search customers by name, email, or phone..."
-            prefix={<SearchOutlined />}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            size="large"
-          />
+    return (
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col flex="auto">
+            <Text strong>Select Existing Customer</Text>
+          </Col>
+          <Col>
+            <Button type="default" onClick={handleNewCustomer}>
+              New Customer Instead
+            </Button>
+          </Col>
+        </Row>
 
-          {customerLoading ? (
-            <div style={{ textAlign: "center", padding: "40px" }}>
-              <Spin size="large" />
-              <div style={{ marginTop: "16px" }}>
-                <Text type="secondary">Loading customers...</Text>
-              </div>
+
+        {customerLoading ? (
+          <div style={{ textAlign: "center", padding: "20px" }}>
+            <Spin size="large" />
+            <div style={{ marginTop: "16px" }}>
+              <Text type="secondary">Loading customers...</Text>
             </div>
-          ) : filteredCustomers.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                <Space direction="vertical">
-                  <Text>
-                    {searchTerm
-                      ? "No customers found matching your search"
-                      : "No customers found"}
-                  </Text>
-                  <Button
-                    type="primary"
-                    onClick={fetchCustomers}
-                    loading={customerLoading}
-                  >
-                    Refresh Customer List
-                  </Button>
-                </Space>
+          </div>
+        ) : filteredCustomers.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical">
+                <Text>
+                  {searchTerm
+                    ? "No customers found matching your search"
+                    : "No customers found"}
+                </Text>
+                <Button
+                  type="primary"
+                  onClick={fetchCustomers}
+                  loading={customerLoading}
+                >
+                  Refresh Customer List
+                </Button>
+              </Space>
+            }
+          />
+        ) : (
+          <Space direction="vertical" style={{ width: "100%" }} size="large">
+            <Select
+              placeholder="Select a customer from the list..."
+              value={selectedCustomer?.id || undefined}
+              onChange={handleCustomerSelect}
+              style={{ width: "100%" }}
+              size="large"
+              showSearch
+              filterOption={false}
+              notFoundContent={
+                searchTerm ? "No customers found" : "Type to search customers"
               }
-            />
-          ) : (
-            <Space direction="vertical" style={{ width: "100%" }} size="large">
-              {/* Customer Dropdown */}
-              <Select
-                placeholder="Select a customer from the list..."
-                value={selectedCustomer?.id || undefined}
-                onChange={handleCustomerSelect}
-                style={{ width: "100%" }}
-                size="large"
-                showSearch
-                filterOption={false}
-                notFoundContent={
-                  searchTerm ? "No customers found" : "Type to search customers"
-                }
-              >
-                {filteredCustomers.map((customer) => (
-                  <Option key={customer.id} value={customer.id}>
-                    <Space>
-                      <Avatar icon={<UserOutlined />} size="small" />
-                      <span>
-                        {customer.first_name}
-                        {customer.email && ` - ${customer.email}`}
-                        {customer.phone && ` - ${customer.phone}`}
-                      </span>
-                    </Space>
-                  </Option>
-                ))}
-              </Select>
+            >
+              {filteredCustomers.map((customer) => (
+                <Option key={customer.id} value={customer.id}>
+                  <Space>
+                    <Avatar icon={<UserOutlined />} size="small" />
+                    <span>
+                      {customer.first_name}
+                      {customer.email && ` - ${customer.email}`}
+                      {customer.phone && ` - ${customer.phone}`}
+                    </span>
+                  </Space>
+                </Option>
+              ))}
+            </Select>
 
-              {/* Selected Customer Information */}
-              {selectedCustomer && (
+            {selectedCustomer && (
+              <>
                 <Card
                   title={
                     <Space>
@@ -465,46 +461,35 @@ export default function CreateOrder() {
                     />
                   )}
                 </Card>
-              )}
 
-              {/* Customer Info Form for Address Details */}
-              {selectedCustomer && (
                 <CustomerInfo
                   customerInfo={customerInfo}
                   setCustomerInfo={setCustomerInfo}
                   orderId={orderId}
                   isExistingCustomer={true}
                 />
-              )}
-            </Space>
-          )}
+              </>
+            )}
 
-          {!selectedCustomer && filteredCustomers.length > 0 && (
-            <Alert
-              message="Select a Customer"
-              description="Choose a customer from the dropdown above to pre-fill their information."
-              type="info"
-              showIcon
-            />
-          )}
-        </Space>
-      ),
-    },
-  ];
+            {!selectedCustomer && filteredCustomers.length > 0 && (
+              <Alert
+                message="Select a Customer"
+                description="Choose a customer from the dropdown above to pre-fill their information."
+                type="info"
+                showIcon
+              />
+            )}
+          </Space>
+        )}
+      </Space>
+    );
+  };
 
   if (userLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-          flexDirection: "column",
-        }}
-      >
+      <div className="flex justify-center items-center min-h-64 flex-col">
         <Spin size="large" />
-        <div style={{ marginTop: "16px" }}>
+        <div className="mt-4">
           <Text type="secondary">Loading user information...</Text>
         </div>
       </div>
@@ -513,17 +498,9 @@ export default function CreateOrder() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-          flexDirection: "column",
-        }}
-      >
+      <div className="flex justify-center items-center min-h-64 flex-col">
         <Spin size="large" />
-        <div style={{ marginTop: "16px" }}>
+        <div className="mt-4">
           <Text type="secondary">Loading products...</Text>
         </div>
       </div>
@@ -531,85 +508,177 @@ export default function CreateOrder() {
   }
 
   return (
-    <div style={{ padding: "24px" }}>
-      <Row gutter={[24, 24]}>
-        <Col span={24}>
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
-            <div>
-              <Title level={2} style={{ margin: 0 }}>
-                Create New Order
-              </Title>
-              <Text type="secondary">
-                Create orders for new or existing customers
-              </Text>
+    <div className="h-full overflow-auto">
+      <div className="max-w-full mx-auto">
+        <Space direction="vertical" size="large" className="w-full">
+          <div>
+            <Title level={2} className="m-0">
+              Create New Order
+            </Title>
+            <Text type="secondary">
+              Create orders for new or existing customers
+            </Text>
+          </div>
+
+          <Card
+            className="w-full"
+            styles={{
+              body: {
+                padding: "10px",
+              },
+            }}
+          >
+            {/* Customer Type Selector - Beautiful Dropdown */}
+            <div className="mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <Text strong className="text-lg">
+                    Customer Type
+                  </Text>
+                </div>
+
+                {/* Mobile Dropdown */}
+                <div className="block sm:hidden w-full">
+                  <Dropdown
+                    menu={{
+                      items: customerTypeItems,
+                      onClick: (e) =>
+                        handleCustomerTypeChange(e.key as CustomerType),
+                      selectedKeys: [customerType],
+                    }}
+                    trigger={["click"]}
+                    placement="bottomRight"
+                  >
+                    <Button
+                      size="large"
+                      className="w-full flex items-center justify-between"
+                      style={{
+                        background: "var(--ant-primary-1)",
+                        borderColor: "var(--ant-primary-3)",
+                      }}
+                    >
+                      <Space>
+                        {customerType === "new" ? (
+                          <UserAddOutlined />
+                        ) : (
+                          <UserOutlined />
+                        )}
+                        <Text strong>
+                          {customerType === "new"
+                            ? "New Customer"
+                            : "Existing Customer"}
+                        </Text>
+                      </Space>
+                      <DownOutlined className="text-xs" />
+                    </Button>
+                  </Dropdown>
+                </div>
+
+                {/* Desktop Buttons */}
+                <div className="hidden sm:flex space-x-2">
+                  <Button
+                    type={customerType === "new" ? "primary" : "default"}
+                    icon={<UserAddOutlined />}
+                    onClick={() => handleCustomerTypeChange("new")}
+                    size="large"
+                  >
+                    New Customer
+                  </Button>
+                  <Button
+                    type={customerType === "existing" ? "primary" : "default"}
+                    icon={<UserOutlined />}
+                    onClick={() => handleCustomerTypeChange("existing")}
+                    size="large"
+                  >
+                    Existing Customer
+                  </Button>
+                </div>
+              </div>
+
+              {/* Current Selection Indicator */}
+              <div className="mt-3 p-3 rounded-lg border border-dashed border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+                <Space>
+                  {customerType === "new" ? (
+                    <>
+                      <UserAddOutlined className="text-blue-600" />
+                      <Text strong className="text-blue-600">
+                        Creating order for a new customer
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <UserOutlined className="text-green-600" />
+                      <Text strong className="text-green-600">
+                        {selectedCustomer
+                          ? `Selected: ${selectedCustomer.first_name}`
+                          : "Select an existing customer"}
+                      </Text>
+                    </>
+                  )}
+                </Space>
+              </div>
             </div>
 
-            <Card>
-              <Tabs
-                activeKey={customerTab}
-                onChange={handleTabChange} // Use the new handler
-                size="large"
-                items={tabItems}
-              />
+            {/* Customer Content */}
+            {renderCustomerContent()}
 
-              <Divider />
+            <Divider />
 
-              <Row gutter={[24, 24]}>
-                <Col xs={24} lg={12}>
-                  <OrderDetails
-                    products={products}
-                    orderProducts={orderProducts}
-                    setOrderProducts={setOrderProducts}
-                  />
-                </Col>
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={12}>
+                <OrderDetails
+                  products={products}
+                  orderProducts={orderProducts}
+                  setOrderProducts={setOrderProducts}
+                />
+              </Col>
 
-                <Col xs={24} lg={12}>
-                  <OrderSummary
-                    orderProducts={orderProducts}
-                    subtotal={subtotal}
-                    taxAmount={taxAmount}
-                    setTaxAmount={setTaxAmount}
-                    discount={discount}
-                    setDiscount={setDiscount}
-                    deliveryCost={deliveryCost}
-                    setDeliveryCost={setDeliveryCost}
-                    totalAmount={totalAmount}
-                    status={status}
-                    setStatus={setStatus}
-                    paymentStatus={paymentStatus}
-                    setPaymentStatus={setPaymentStatus}
-                    paymentMethod={paymentMethod}
-                    setPaymentMethod={setPaymentMethod}
-                  />
-                </Col>
-              </Row>
+              <Col xs={24} lg={12}>
+                <OrderSummary
+                  orderProducts={orderProducts}
+                  subtotal={subtotal}
+                  taxAmount={taxAmount}
+                  setTaxAmount={setTaxAmount}
+                  discount={discount}
+                  setDiscount={setDiscount}
+                  deliveryCost={deliveryCost}
+                  setDeliveryCost={setDeliveryCost}
+                  totalAmount={totalAmount}
+                  status={status}
+                  setStatus={setStatus}
+                  paymentStatus={paymentStatus}
+                  setPaymentStatus={setPaymentStatus}
+                  paymentMethod={paymentMethod}
+                  setPaymentMethod={setPaymentMethod}
+                />
+              </Col>
+            </Row>
 
-              <Divider />
+            <Divider />
 
-              <Row justify="end">
-                <Col>
-                  <SaveOrderButton
-                    storeId={user?.store_id || ""}
-                    orderId={orderId}
-                    orderProducts={orderProducts}
-                    customerInfo={customerInfo}
-                    subtotal={subtotal}
-                    taxAmount={taxAmount}
-                    discount={discount}
-                    deliveryCost={deliveryCost}
-                    totalAmount={totalAmount}
-                    status={status}
-                    paymentStatus={paymentStatus}
-                    paymentMethod={paymentMethod}
-                    disabled={!isFormValid || !user?.store_id}
-                    onCustomerCreated={fetchCustomers}
-                  />
-                </Col>
-              </Row>
-            </Card>
-          </Space>
-        </Col>
-      </Row>
+            <Row justify="end">
+              <Col>
+                <SaveOrderButton
+                  storeId={user?.store_id || ""}
+                  orderId={orderId}
+                  orderProducts={orderProducts}
+                  customerInfo={customerInfo}
+                  subtotal={subtotal}
+                  taxAmount={taxAmount}
+                  discount={discount}
+                  deliveryCost={deliveryCost}
+                  totalAmount={totalAmount}
+                  status={status}
+                  paymentStatus={paymentStatus}
+                  paymentMethod={paymentMethod}
+                  disabled={!isFormValid || !user?.store_id}
+                  onCustomerCreated={fetchCustomers}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Space>
+      </div>
     </div>
   );
 }

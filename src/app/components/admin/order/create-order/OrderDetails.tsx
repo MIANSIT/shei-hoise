@@ -165,7 +165,11 @@ export default function OrderDetails({
   const isAddButtonDisabled = !canAddProduct();
 
   return (
-    <Card>
+    <Card styles={{
+    body: {
+      padding: '10px'
+    }
+  }}>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Title level={4} style={{ margin: 0 }}>
           Order Items

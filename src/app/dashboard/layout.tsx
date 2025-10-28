@@ -104,13 +104,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <AntdApp>
-        <div
-          className='min-h-screen flex flex-col'
-          style={{ background: "var(--background)", color: "var(--foreground)" }}
-        >
+        <div className="min-h-screen flex flex-col">
           {/* Header */}
           <header
-            className='flex items-center justify-between p-4 shadow-md'
+            className='flex items-center justify-between p-4 shadow-md flex-shrink-0'
             style={{ background: "var(--card)", color: "var(--card-foreground)" }}
           >
             <div className='flex items-center gap-2'>
@@ -144,21 +141,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </button>
           </header>
 
-          <div className='flex flex-1'>
+          <div className='flex flex-1 overflow-hidden'>
             {/* Sidebar */}
             <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
 
             {/* Main content */}
             <main
-              className='flex-1 relative'
+              className='flex-1 flex flex-col overflow-hidden'
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
               }}
             >
               <Toaster position='top-right' />
-              <Breadcrumb />
-              <div className='mt-4'>{children}</div>
+              <div className="flex-shrink-0">
+                <Breadcrumb />
+              </div>
+              <div className='flex-1 overflow-auto p-4'>
+                {children}
+              </div>
             </main>
           </div>
         </div>

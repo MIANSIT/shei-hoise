@@ -8,8 +8,8 @@ interface Props {
   order: StoreOrder;
   onSaveStatus: (newStatus: OrderStatus) => void;
   onSavePaymentStatus: (newStatus: PaymentStatus) => void;
-  onSaveDeliveryOption?: (newOption: DeliveryOption) => void; // Make optional
-  onSavePaymentMethod?: (newMethod: PaymentMethod) => void; // Make optional
+  onSaveDeliveryOption?: (newOption: DeliveryOption) => void;
+  onSavePaymentMethod?: (newMethod: PaymentMethod) => void;
   onSaveCancelNote?: (note: string) => void;
 }
 
@@ -46,8 +46,8 @@ const OrderProductTable: React.FC<Props> = ({
   };
 
   return (
-    <div className="p-4 bg-blue-50 rounded-md space-y-4 border">
-      <h3 className="font-semibold text-lg">Order Management</h3>
+    <div className="p-3 sm:p-4 bg-blue-50 rounded-md space-y-3 sm:space-y-4 border">
+      <h3 className="font-semibold text-base sm:text-lg">Order Management</h3>
       <OrderControls
         status={order.status}
         selectedStatus={selectedStatus}

@@ -8,6 +8,7 @@ export type StatusType = OrderStatus | PaymentStatus | DeliveryOption | PaymentM
 
 interface Props {
   status: StatusType;
+  size?: "small" | "default" | "large"; // Optional size prop for custom styling
 }
 
 const statusColors: Record<StatusType, string> = {
@@ -33,8 +34,17 @@ const statusColors: Record<StatusType, string> = {
   online: "purple",
 };
 
-const StatusTag: React.FC<Props> = ({ status }) => (
-  <Tag color={statusColors[status]} className="capitalize">
+const sizeClasses = {
+  small: "text-xs px-1.5 py-0.5",
+  default: "text-sm px-2 py-1",
+  large: "text-base px-3 py-1.5"
+};
+
+const StatusTag: React.FC<Props> = ({ status, size = "default" }) => (
+  <Tag 
+    color={statusColors[status]} 
+    className={`capitalize ${sizeClasses[size]}`}
+  >
     {status}
   </Tag>
 );

@@ -9,7 +9,7 @@ export async function getProductsWithCategory(storeId: string) {
 
   const categories = categoriesRes.data ?? [];
   const categoryMap: Record<string, string> = {};
-  categories.forEach((c) => {
+  categories.forEach((c: { id: string | number; name: string; }) => {
     categoryMap[c.id] = c.name;
   });
   const productsWithCategory: ProductWithVariants[] = productsRes.map((p: any) => ({

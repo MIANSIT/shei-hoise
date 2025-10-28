@@ -60,7 +60,7 @@ const MainOrders: React.FC = () => {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <Alert
           message="Error Loading Orders"
           description={error}
@@ -80,10 +80,10 @@ const MainOrders: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">All Orders</h2>
-        <p className="text-gray-600 mt-1">
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">All Orders</h2>
+        <p className="text-gray-600 mt-1 text-sm sm:text-base">
           Manage and track your store orders
         </p>
       </div>
