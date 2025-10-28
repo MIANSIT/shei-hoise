@@ -1,76 +1,32 @@
 "use client";
 
 import React from "react";
-import DataTable from "@/app/components/admin/common/DataTable";
-import { ColumnsType } from "antd/es/table";
-import { StoreOrder, OrderItem } from "@/lib/types/order";
+import { StoreOrder } from "@/lib/types/order";
 import StatusTag, { StatusType } from "../StatusFilter/StatusTag";
-import { Tooltip, Typography } from "antd";
-
-const { Text } = Typography;
+import { ClipboardCheck, CreditCard, Truck, DollarSign } from "lucide-react";
 
 interface Props {
   order: StoreOrder;
 }
 
 const DetailedOrderView: React.FC<Props> = ({ order }) => {
-  const productColumns: ColumnsType<OrderItem> = [
-    {
-      title: "Product",
-      dataIndex: "product_name",
-      key: "product_name",
-      render: (name: string, record: OrderItem) => (
-        <div>
-          <div className="font-medium text-sm sm:text-base">{name}</div>
-          {record.variant_details && (
-            <Text type="secondary" className="text-xs">
-              Variant: {JSON.stringify(record.variant_details)}
-            </Text>
-          )}
-        </div>
-      ),
-      width: "40%",
-    },
-    {
-      title: "Qty",
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "center" as const,
-      width: "15%",
-    },
-    {
-      title: "Unit Price",
-      dataIndex: "unit_price",
-      key: "unit_price",
-      render: (price: number) => `৳${price.toFixed(2)}`,
-      align: "right" as const,
-      width: "20%",
-    },
-    {
-      title: "Total",
-      dataIndex: "total_price",
-      key: "total_price",
-      render: (total: number) => `৳${total.toFixed(2)}`,
-      align: "right" as const,
-      width: "25%",
-    },
-  ];
-
   const address = order.shipping_address;
   const fullAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
 
   const isCancelled = order.status === "cancelled";
-  const isDelivered = order.status === "delivered";
 
-  // ✅ FIX: Use actual delivery option from order data
-  const deliveryOption = order.delivery_option || "courier";
-  const paymentMethod =
-    order.payment_method === "cod" ? "cod" : ("online" as const);
+  // Use values directly from API
+  const deliveryOption: StatusType = (order.delivery_option ||
+    "courier") as StatusType;
+  const paymentMethod: StatusType =
+    order.payment_method === "cash"
+      ? ("Cash on Delivery" as StatusType)
+      : ("Online Payment" as StatusType);
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 bg-white rounded-lg border">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 rounded-lg border">
       {/* Order Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 rounded-md bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div>
           <strong className="text-sm sm:text-base">Order Number:</strong>
           <div className="font-mono text-sm sm:text-base">
@@ -92,27 +48,53 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Products Table */}
-      <div>
-        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
+      <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-6 shadow-md border border-gray-100 dark:border-gray-700">
+        <h3 className="font-semibold mb-6 text-lg text-gray-800 dark:text-gray-100">
           Order Items
         </h3>
-        <DataTable
-          columns={productColumns}
-          data={order.order_items}
-          pagination={false}
-          bordered={true}
-          size="small"
-          rowKey={(record) => record.id}
-          scroll={{ x: 400 }}
-        />
+        <div className="space-y-4">
+          {order.order_items.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200"
+            >
+              <div className="flex flex-col">
+                <div className="font-medium text-gray-800 dark:text-gray-100 text-base sm:text-lg">
+                  {item.product_name}
+                </div>
+                {item.variant_details &&
+                  Object.keys(item.variant_details).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {Object.entries(item.variant_details).map(
+                        ([key, value]) => (
+                          <span
+                            key={key}
+                            className="px-2 py-1 text-xs sm:text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full"
+                          >
+                            {key}: {String(value)}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  )}
+                <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  Qty: {item.quantity} × ৳{item.unit_price.toFixed(2)}
+                </div>
+              </div>
+              <div className="mt-3 sm:mt-0 font-semibold text-gray-900 dark:text-gray-100 text-right text-base sm:text-lg">
+                ৳{item.total_price.toFixed(2)}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Pricing Breakdown */}
-      <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
+      <div className="rounded-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
         <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
           Pricing Breakdown
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="flex justify-between text-sm sm:text-base">
             <span>Subtotal:</span>
             <span>৳{order.subtotal.toFixed(2)}</span>
@@ -133,59 +115,54 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Delivery & Payment Info */}
-      <div>
+      <div className="rounded-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-700">
         <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
           Delivery & Payment Information
         </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-3 sm:p-4 bg-white border rounded-md">
-          {/* Customer Information */}
-          <div className="space-y-2 sm:space-y-3">
-            <div>
-              <strong className="block mb-1 text-sm sm:text-base">
-                Customer Information:
-              </strong>
-              <div className="text-sm sm:text-base">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Left Column: Customer Info */}
+          <div className="space-y-4">
+            <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                Customer
+              </h4>
+              <p className="text-base font-medium text-gray-800 dark:text-gray-100">
                 {address.customer_name}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600">
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {order.customers?.email || "No email"}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600">
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {address.phone}
-              </div>
+              </p>
             </div>
-            <div>
-              <strong className="block mb-1 text-sm sm:text-base">
-                Delivery Address:
-              </strong>
-              <div className="text-xs sm:text-sm">{fullAddress}</div>
+
+            <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                Delivery Address
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {fullAddress}
+              </p>
             </div>
-            {order.notes && (
-              <div>
-                <strong className="block mb-1 text-sm sm:text-base">
-                  Order Notes:
-                </strong>
-                <div className="text-xs sm:text-sm text-gray-600 bg-yellow-50 p-2 rounded">
-                  {order.notes}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Status Information */}
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
-              <div>
-                <strong className="block mb-1 text-sm sm:text-base">
-                  Order Status:
-                </strong>
+          {/* Right Column: Status Info */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                <ClipboardCheck className="w-6 h-6 text-blue-500 mb-2" />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                  Order Status
+                </span>
                 <StatusTag status={order.status as StatusType} size="small" />
               </div>
 
-              <div>
-                <strong className="block mb-1 text-sm sm:text-base">
-                  Payment Status:
-                </strong>
+              <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                <CreditCard className="w-6 h-6 text-green-500 mb-2" />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                  Payment Status
+                </span>
                 <StatusTag
                   status={order.payment_status as StatusType}
                   size="small"
@@ -193,34 +170,33 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               </div>
 
               {!isCancelled && (
-                <div>
-                  <strong className="block mb-1 text-sm sm:text-base">
-                    Delivery Method:
-                  </strong>
-                  {/* ✅ FIX: Now using actual delivery option from order data */}
-                  <StatusTag
-                    status={deliveryOption as StatusType}
-                    size="small"
-                  />
+                <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                  <Truck className="w-6 h-6 text-orange-500 mb-2" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                    Delivery Method
+                  </span>
+                  <StatusTag status={deliveryOption} size="small" />
                 </div>
               )}
 
-              <div>
-                <strong className="block mb-1 text-sm sm:text-base">
-                  Payment Method:
-                </strong>
+              <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                <DollarSign className="w-6 h-6 text-yellow-500 mb-2" />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                  Payment Method
+                </span>
                 <StatusTag status={paymentMethod} size="small" />
               </div>
             </div>
 
+            {/* Notes */}
+            {order.notes && !isCancelled && (
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900 rounded-2xl border border-yellow-200 dark:border-yellow-700 text-sm text-gray-800 dark:text-yellow-200 shadow-sm">
+                <strong>Order Notes:</strong> {order.notes}
+              </div>
+            )}
             {isCancelled && order.notes && (
-              <div>
-                <strong className="block mb-1 text-sm sm:text-base">
-                  Cancellation Note:
-                </strong>
-                <div className="text-xs sm:text-sm text-red-600 bg-red-50 p-2 rounded">
-                  {order.notes}
-                </div>
+              <div className="p-4 bg-red-50 dark:bg-red-900 rounded-2xl border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-200 shadow-sm">
+                <strong>Cancellation Note:</strong> {order.notes}
               </div>
             )}
           </div>

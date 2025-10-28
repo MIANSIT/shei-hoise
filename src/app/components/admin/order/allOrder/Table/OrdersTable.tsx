@@ -340,7 +340,7 @@ const OrdersTable: React.FC<Props> = ({
           onExpand: (expanded, record) =>
             setExpandedRowKey(expanded ? record.id : null),
           expandedRowRender: (order: StoreOrder) => (
-            <div className="space-y-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+            <div className="space-y-4 p-3 sm:p-4  rounded-lg">
               {order.status !== "delivered" && order.status !== "cancelled" && (
                 <OrderProductTable
                   order={order}

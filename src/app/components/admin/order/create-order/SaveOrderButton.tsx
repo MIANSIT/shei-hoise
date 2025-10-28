@@ -46,7 +46,7 @@ export default function SaveOrderButton({
 
   const showConfirm = () => {
     modal.confirm({
-      title: 'Confirm Order Creation',
+      title: "Confirm Order Creation",
       icon: <ExclamationCircleOutlined />,
       content: (
         <Space direction="vertical">
@@ -61,25 +61,25 @@ export default function SaveOrderButton({
           )}
         </Space>
       ),
-      okText: 'Yes, Create Order',
-      cancelText: 'Cancel',
+      okText: "Yes, Create Order",
+      cancelText: "Cancel",
       onOk: handleSave,
     });
   };
 
   const handleSave = async () => {
     if (disabled) return;
-    
+
     setIsLoading(true);
     try {
-      console.log('Starting order creation process...');
-      console.log('Order data:', {
+      console.log("Starting order creation process...");
+      console.log("Order data:", {
         storeId,
         orderId,
         customerInfo,
         orderProductsCount: orderProducts.length,
         subtotal,
-        totalAmount
+        totalAmount,
       });
 
       const finalCustomerInfo = { ...customerInfo };
@@ -88,11 +88,18 @@ export default function SaveOrderButton({
       // If new customer (no customer_id), create customer first
       if (!customerInfo.customer_id) {
         try {
-          console.log('Creating new customer...');
-          
+          console.log("Creating new customer...");
+
           // Validate required customer fields
-          if (!customerInfo.name || !customerInfo.phone || !customerInfo.email || !customerInfo.password) {
-            throw new Error('Customer name, phone, email, and password are required to create a customer account');
+          if (
+            !customerInfo.name ||
+            !customerInfo.phone ||
+            !customerInfo.email ||
+            !customerInfo.password
+          ) {
+            throw new Error(
+              "Customer name, phone, email, and password are required to create a customer account"
+            );
           }
 
           const newCustomer = await dataService.createCustomer({
@@ -103,17 +110,19 @@ export default function SaveOrderButton({
             password: customerInfo.password,
             address_line_1: customerInfo.address,
             city: customerInfo.city,
-            country: 'Bangladesh'
+            country: "Bangladesh",
           });
 
           if (!newCustomer || !newCustomer.id) {
-            throw new Error('Customer creation failed - no customer ID returned');
+            throw new Error(
+              "Customer creation failed - no customer ID returned"
+            );
           }
 
           finalCustomerInfo.customer_id = newCustomer.id;
           customerCreated = true;
-          
-          console.log('New customer created successfully:', newCustomer.id);
+
+          console.log("New customer created successfully:", newCustomer.id);
 
           // Refresh customer list if callback provided
           if (onCustomerCreated) {
@@ -122,30 +131,33 @@ export default function SaveOrderButton({
 
           // Show success notification for customer creation
           notification.success({
-            message: 'Customer Created',
-            description: 'New customer account created successfully.',
+            message: "Customer Created",
+            description: "New customer account created successfully.",
           });
-
         } catch (customerError: any) {
-          console.error('Error creating customer:', customerError);
-          
+          console.error("Error creating customer:", customerError);
+
           // Show detailed error and ask if they want to continue
           const shouldContinue = await new Promise((resolve) => {
             modal.confirm({
-              title: 'Customer Creation Failed',
+              title: "Customer Creation Failed",
               content: (
                 <Space direction="vertical">
-                  <Text>Failed to create customer account: {customerError.message}</Text>
+                  <Text>
+                    Failed to create customer account: {customerError.message}
+                  </Text>
                   <Text type="warning">
-                    Do you want to create the order without linking it to a customer account?
+                    Do you want to create the order without linking it to a
+                    customer account?
                   </Text>
                   <Text type="secondary">
-                    The order will be created but no customer account will be created.
+                    The order will be created but no customer account will be
+                    created.
                   </Text>
                 </Space>
               ),
-              okText: 'Continue Without Customer',
-              cancelText: 'Cancel Order',
+              okText: "Continue Without Customer",
+              cancelText: "Cancel Order",
               onOk: () => resolve(true),
               onCancel: () => resolve(false),
             });
@@ -155,9 +167,9 @@ export default function SaveOrderButton({
             setIsLoading(false);
             return; // Stop the process if user cancels
           }
-          
+
           // Continue without customer_id
-          console.log('Continuing order creation without customer account...');
+          console.log("Continuing order creation without customer account...");
         }
       }
 
@@ -175,24 +187,25 @@ export default function SaveOrderButton({
         paymentStatus,
         paymentMethod,
         currency: "BDT" as const,
+        deliveryOption: finalCustomerInfo.deliveryMethod, // ✅ add this
       };
 
-      console.log('Creating order with final data:', orderData);
+      console.log("Creating order with final data:", orderData);
 
       const result = await dataService.createOrder(orderData);
-      
+
       if (result.success) {
         console.log("Order saved with ID:", result.orderId);
-        
+
         let successMessage = `Order ${orderId} has been created successfully.`;
         if (customerCreated) {
-          successMessage += ' A new customer account was also created.';
+          successMessage += " A new customer account was also created.";
         } else if (!customerInfo.customer_id) {
-          successMessage += ' Note: No customer account was created.';
+          successMessage += " Note: No customer account was created.";
         }
 
         modal.success({
-          title: 'Order Created Successfully',
+          title: "Order Created Successfully",
           content: (
             <Space direction="vertical">
               <Text>{successMessage}</Text>
@@ -209,8 +222,10 @@ export default function SaveOrderButton({
     } catch (error: any) {
       console.error("Error saving order:", error);
       modal.error({
-        title: 'Order Creation Failed',
-        content: error.message || 'Unknown error occurred. Please check the console for details.',
+        title: "Order Creation Failed",
+        content:
+          error.message ||
+          "Unknown error occurred. Please check the console for details.",
       });
     } finally {
       setIsLoading(false);
@@ -218,13 +233,13 @@ export default function SaveOrderButton({
   };
 
   return (
-    <Button 
+    <Button
       type="primary"
       size="large"
       loading={isLoading}
       disabled={disabled}
       onClick={showConfirm}
-      style={{ minWidth: '120px' }}
+      style={{ minWidth: "120px" }}
     >
       {isLoading ? "Creating..." : "Create Order"}
     </Button>

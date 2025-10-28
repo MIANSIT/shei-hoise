@@ -200,7 +200,7 @@ export default function CustomerInfo({
                     size="large"
                   >
                     <Option value="courier">Courier</Option>
-                    <Option value="pickup">Pickup</Option>
+                    <Option value="pathao">Pathao</Option>
                   </Select>
                 </Form.Item>
               </Col>
