@@ -2,25 +2,42 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
+import { DeliveryOption } from "../../../../../../lib/types/order";
 
 interface Props {
-  option: "Pathao" | "Courier" | "Other";
-  onSave: (newOption: Props["option"]) => void;
+  option: DeliveryOption;
+  onSave: (newOption: DeliveryOption) => void;
 }
 
 const DELIVERY_OPTIONS = [
-  { value: "Pathao", label: "Pathao" },
-  { value: "Courier", label: "Courier" },
-  { value: "Other", label: "Other" },
+  { value: "pathao", label: "Pathao" },
+  { value: "courier", label: "Courier" },
+  { value: "other", label: "Other" },
 ];
 
-const DeliveryOptionSelect: React.FC<Props> = ({ option, onSave }) => (
-  <Select
-    value={option}
-    style={{ width: 130 }}
-    onChange={v => onSave(v as Props["option"])}
-    options={DELIVERY_OPTIONS}
-  />
-);
+const DeliveryOptionSelect: React.FC<{
+  value: DeliveryOption;
+  onChange: (v: DeliveryOption) => void;
+}> = ({ value, onChange }) => {
+  return (
+    <Select
+      value={value}
+      style={{ width: 130 }}
+      onChange={onChange}
+      options={DELIVERY_OPTIONS}
+    />
+  );
+};
 
-export default memo(DeliveryOptionSelect);
+const MemoizedDeliveryOptionSelect = memo(DeliveryOptionSelect);
+
+const EditableDeliveryOption: React.FC<Props> = ({ option, onSave }) => {
+  return (
+    <MemoizedDeliveryOptionSelect
+      value={option}
+      onChange={onSave}
+    />
+  );
+};
+
+export default EditableDeliveryOption;

@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Order } from "@/lib/types/types";
+import { StoreOrder, OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
 
 interface Props {
-  order: Order;
-  onSaveStatus: (newStatus: Order["status"]) => void;
-  onSavePaymentStatus: (newStatus: Order["paymentStatus"]) => void;
-  onSaveDeliveryOption: (newOption: Order["deliveryOption"]) => void;
-  onSavePaymentMethod: (newMethod: Order["paymentMethod"]) => void;
+  order: StoreOrder;
+  onSaveStatus: (newStatus: OrderStatus) => void;
+  onSavePaymentStatus: (newStatus: PaymentStatus) => void;
+  onSaveDeliveryOption?: (newOption: DeliveryOption) => void; // Make optional
+  onSavePaymentMethod?: (newMethod: PaymentMethod) => void; // Make optional
   onSaveCancelNote?: (note: string) => void;
 }
 
@@ -21,48 +21,44 @@ const OrderProductTable: React.FC<Props> = ({
   onSavePaymentMethod,
   onSaveCancelNote,
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<Order["status"]>(
-    order.status
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>(order.status);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<PaymentStatus>(order.payment_status);
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<DeliveryOption>(
+    order.delivery_option || "courier"
   );
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<
-    Order["paymentStatus"]
-  >(order.paymentStatus);
-  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<
-    Order["deliveryOption"]
-  >(order.deliveryOption);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    Order["paymentMethod"]
-  >(order.paymentMethod);
-  const [cancelNote, setCancelNote] = useState(order.cancelNote || "");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(
+    order.payment_method === "cod" ? "cod" : "online"
+  );
+  const [cancelNote, setCancelNote] = useState(order.notes || "");
 
-  const isLocked =
-    (order.status === "delivered" || order.status === "cancelled") &&
-    order.paymentStatus === "paid";
+  const isLocked = order.status === "delivered" || order.status === "cancelled";
 
   const handleSaveAll = () => {
     if (selectedStatus !== order.status) onSaveStatus(selectedStatus);
-    if (selectedPaymentStatus !== order.paymentStatus)
-      onSavePaymentStatus(selectedPaymentStatus);
-    if (selectedDeliveryOption !== order.deliveryOption)
+    if (selectedPaymentStatus !== order.payment_status) onSavePaymentStatus(selectedPaymentStatus);
+    if (selectedDeliveryOption !== order.delivery_option && onSaveDeliveryOption) {
       onSaveDeliveryOption(selectedDeliveryOption);
-    if (selectedPaymentMethod !== order.paymentMethod)
+    }
+    if (selectedPaymentMethod !== (order.payment_method === "cod" ? "cod" : "online") && onSavePaymentMethod) {
       onSavePaymentMethod(selectedPaymentMethod);
-    if (cancelNote !== order.cancelNote) onSaveCancelNote?.(cancelNote);
+    }
+    if (cancelNote !== order.notes) onSaveCancelNote?.(cancelNote);
   };
 
   return (
-    <div className="p-4  rounded-md space-y-4">
+    <div className="p-4 bg-blue-50 rounded-md space-y-4 border">
+      <h3 className="font-semibold text-lg">Order Management</h3>
       <OrderControls
         status={order.status}
         selectedStatus={selectedStatus}
         onSelectStatus={setSelectedStatus}
-        paymentStatus={order.paymentStatus}
+        paymentStatus={order.payment_status}
         selectedPaymentStatus={selectedPaymentStatus}
         onSelectPaymentStatus={setSelectedPaymentStatus}
-        deliveryOption={order.deliveryOption}
+        deliveryOption={order.delivery_option || "courier"}
         selectedDeliveryOption={selectedDeliveryOption}
         onSelectDeliveryOption={setSelectedDeliveryOption}
-        paymentMethod={order.paymentMethod}
+        paymentMethod={order.payment_method === "cod" ? "cod" : "online"}
         selectedPaymentMethod={selectedPaymentMethod}
         onSelectPaymentMethod={setSelectedPaymentMethod}
         cancelNote={cancelNote}

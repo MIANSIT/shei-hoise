@@ -1,25 +1,28 @@
 import React from "react";
-import { Order } from "../../../../../../lib/types/types";
+import { StoreOrder, OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "../../../../../../lib/types/order";
 import OrderProductTable from "./OrderProductTable";
 
 interface Props {
-  order: Order;
-  onUpdate: (orderId: number, changes: Partial<Order>) => void;
+  order: StoreOrder;
+  onUpdate: (orderId: string, changes: Partial<StoreOrder>) => void;
 }
 
 const OrderExpandRow: React.FC<Props> = ({ order, onUpdate }) => {
   return (
     <OrderProductTable
       order={order}
-      onSaveStatus={(status) => onUpdate(order.id, { status })}
-      onSavePaymentStatus={(paymentStatus) =>
-        onUpdate(order.id, { paymentStatus })
+      onSaveStatus={(status: OrderStatus) => onUpdate(order.id, { status })}
+      onSavePaymentStatus={(paymentStatus: PaymentStatus) =>
+        onUpdate(order.id, { payment_status: paymentStatus })
       }
-      onSaveDeliveryOption={(deliveryOption) =>
-        onUpdate(order.id, { deliveryOption })
+      onSaveDeliveryOption={(deliveryOption: DeliveryOption) =>
+        onUpdate(order.id, { delivery_option: deliveryOption })
       }
-      onSavePaymentMethod={(paymentMethod) =>
-        onUpdate(order.id, { paymentMethod })
+      onSavePaymentMethod={(paymentMethod: PaymentMethod) =>
+        onUpdate(order.id, { payment_method: paymentMethod })
+      }
+      onSaveCancelNote={(note: string) =>
+        onUpdate(order.id, { notes: note })
       }
     />
   );

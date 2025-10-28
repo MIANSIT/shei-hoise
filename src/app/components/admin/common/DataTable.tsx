@@ -2,9 +2,11 @@
 "use client";
 
 import React from "react";
-import { Table } from "antd";
+import { Table, Grid } from "antd";
 import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
+
+const { useBreakpoint } = Grid;
 
 interface DataTableProps<T> {
   columns: ColumnsType<T>;
@@ -17,6 +19,8 @@ interface DataTableProps<T> {
   size?: "small" | "middle" | "large";
   expandable?: TableProps<T>["expandable"];
   rowClassName?: TableProps<T>["rowClassName"];
+  scroll?: TableProps<T>["scroll"];
+  renderCard?: (record: T) => React.ReactNode;
 }
 
 function DataTable<T extends object>({
@@ -30,10 +34,34 @@ function DataTable<T extends object>({
   size = "middle",
   expandable,
   rowClassName,
+  scroll,
+  renderCard,
 }: DataTableProps<T>) {
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
   const getRowKey =
     typeof rowKey === "function" ? rowKey : (record: T) => `${record[rowKey]}`;
 
+  // Mobile card view
+  if (isMobile && renderCard) {
+    return (
+      <div className="w-full space-y-4">
+        {data.map((record, index) => (
+          <div key={getRowKey(record)} className="bg-white rounded-lg border shadow-sm">
+            {renderCard(record)}
+          </div>
+        ))}
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop table view
   return (
     <div className="w-full overflow-x-auto">
       <Table<T>
@@ -47,6 +75,7 @@ function DataTable<T extends object>({
         size={size}
         expandable={expandable}
         rowClassName={rowClassName}
+        scroll={scroll}
       />
     </div>
   );
