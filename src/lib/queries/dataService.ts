@@ -5,7 +5,17 @@ import { getCustomerProfile, CustomerProfile } from "./customers/getCustomerProf
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import { createOrder, CreateOrderData, CreateOrderResult } from "./orders/orderService";
 import { getStoreOrders } from "./orders/getStoreOrders";
-import { StoreOrder } from "@/lib/types/order";
+import { 
+  updateOrder, 
+  updateOrderStatus, 
+  updatePaymentStatus, 
+  updateDeliveryOption, 
+  updatePaymentMethod, 
+  updateOrderNotes,
+  UpdateOrderData,
+  UpdateOrderResult 
+} from "./orders/updateOrder";
+import { StoreOrder, OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
 
 export interface DataService {
   // Product methods
@@ -19,6 +29,14 @@ export interface DataService {
   // Order methods
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
   getStoreOrders: (storeId: string) => Promise<StoreOrder[]>;
+  
+  // Order update methods - Fixed types
+  updateOrder: (orderId: string, updates: UpdateOrderData) => Promise<UpdateOrderResult>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<UpdateOrderResult>;
+  updatePaymentStatus: (orderId: string, paymentStatus: PaymentStatus) => Promise<UpdateOrderResult>;
+  updateDeliveryOption: (orderId: string, deliveryOption: DeliveryOption) => Promise<UpdateOrderResult>;
+  updatePaymentMethod: (orderId: string, paymentMethod: PaymentMethod) => Promise<UpdateOrderResult>;
+  updateOrderNotes: (orderId: string, notes: string) => Promise<UpdateOrderResult>;
 }
 
 export const dataService: DataService = {
@@ -28,6 +46,12 @@ export const dataService: DataService = {
   createCustomer,
   createOrder,
   getStoreOrders,
+  updateOrder,
+  updateOrderStatus,
+  updatePaymentStatus,
+  updateDeliveryOption,
+  updatePaymentMethod,
+  updateOrderNotes,
 };
 
 export default dataService;

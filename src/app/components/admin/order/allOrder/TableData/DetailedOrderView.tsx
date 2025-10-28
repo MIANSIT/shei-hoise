@@ -29,30 +29,30 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
           )}
         </div>
       ),
-      width: '40%',
+      width: "40%",
     },
-    { 
-      title: "Qty", 
-      dataIndex: "quantity", 
+    {
+      title: "Qty",
+      dataIndex: "quantity",
       key: "quantity",
-      align: 'center' as const,
-      width: '15%',
+      align: "center" as const,
+      width: "15%",
     },
     {
       title: "Unit Price",
       dataIndex: "unit_price",
       key: "unit_price",
       render: (price: number) => `৳${price.toFixed(2)}`,
-      align: 'right' as const,
-      width: '20%',
+      align: "right" as const,
+      width: "20%",
     },
     {
       title: "Total",
       dataIndex: "total_price",
       key: "total_price",
       render: (total: number) => `৳${total.toFixed(2)}`,
-      align: 'right' as const,
-      width: '25%',
+      align: "right" as const,
+      width: "25%",
     },
   ];
 
@@ -62,8 +62,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
   const isCancelled = order.status === "cancelled";
   const isDelivered = order.status === "delivered";
 
-  const deliveryOption = "courier" as const;
-  const paymentMethod = order.payment_method === "cod" ? "cod" : "online" as const;
+  // ✅ FIX: Use actual delivery option from order data
+  const deliveryOption = order.delivery_option || "courier";
+  const paymentMethod =
+    order.payment_method === "cod" ? "cod" : ("online" as const);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 bg-white rounded-lg border">
@@ -71,11 +73,15 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-md">
         <div>
           <strong className="text-sm sm:text-base">Order Number:</strong>
-          <div className="font-mono text-sm sm:text-base">#{order.order_number}</div>
+          <div className="font-mono text-sm sm:text-base">
+            #{order.order_number}
+          </div>
         </div>
         <div>
           <strong className="text-sm sm:text-base">Order Date:</strong>
-          <div className="text-sm sm:text-base">{new Date(order.created_at).toLocaleDateString()}</div>
+          <div className="text-sm sm:text-base">
+            {new Date(order.created_at).toLocaleDateString()}
+          </div>
         </div>
         <div>
           <strong className="text-sm sm:text-base">Total Amount:</strong>
@@ -87,7 +93,9 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
       {/* Products Table */}
       <div>
-        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Order Items</h3>
+        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
+          Order Items
+        </h3>
         <DataTable
           columns={productColumns}
           data={order.order_items}
@@ -101,7 +109,9 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
       {/* Pricing Breakdown */}
       <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
-        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Pricing Breakdown</h3>
+        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
+          Pricing Breakdown
+        </h3>
         <div className="space-y-2">
           <div className="flex justify-between text-sm sm:text-base">
             <span>Subtotal:</span>
@@ -124,23 +134,37 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
       {/* Delivery & Payment Info */}
       <div>
-        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Delivery & Payment Information</h3>
+        <h3 className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
+          Delivery & Payment Information
+        </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-3 sm:p-4 bg-white border rounded-md">
           {/* Customer Information */}
           <div className="space-y-2 sm:space-y-3">
             <div>
-              <strong className="block mb-1 text-sm sm:text-base">Customer Information:</strong>
-              <div className="text-sm sm:text-base">{address.customer_name}</div>
-              <div className="text-xs sm:text-sm text-gray-600">{order.customers?.email || 'No email'}</div>
-              <div className="text-xs sm:text-sm text-gray-600">{address.phone}</div>
+              <strong className="block mb-1 text-sm sm:text-base">
+                Customer Information:
+              </strong>
+              <div className="text-sm sm:text-base">
+                {address.customer_name}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600">
+                {order.customers?.email || "No email"}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600">
+                {address.phone}
+              </div>
             </div>
             <div>
-              <strong className="block mb-1 text-sm sm:text-base">Delivery Address:</strong>
+              <strong className="block mb-1 text-sm sm:text-base">
+                Delivery Address:
+              </strong>
               <div className="text-xs sm:text-sm">{fullAddress}</div>
             </div>
             {order.notes && (
               <div>
-                <strong className="block mb-1 text-sm sm:text-base">Order Notes:</strong>
+                <strong className="block mb-1 text-sm sm:text-base">
+                  Order Notes:
+                </strong>
                 <div className="text-xs sm:text-sm text-gray-600 bg-yellow-50 p-2 rounded">
                   {order.notes}
                 </div>
@@ -152,31 +176,48 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
           <div className="space-y-2 sm:space-y-3">
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
               <div>
-                <strong className="block mb-1 text-sm sm:text-base">Order Status:</strong>
+                <strong className="block mb-1 text-sm sm:text-base">
+                  Order Status:
+                </strong>
                 <StatusTag status={order.status as StatusType} size="small" />
               </div>
-              
+
               <div>
-                <strong className="block mb-1 text-sm sm:text-base">Payment Status:</strong>
-                <StatusTag status={order.payment_status as StatusType} size="small" />
+                <strong className="block mb-1 text-sm sm:text-base">
+                  Payment Status:
+                </strong>
+                <StatusTag
+                  status={order.payment_status as StatusType}
+                  size="small"
+                />
               </div>
 
               {!isCancelled && !isDelivered && (
                 <div>
-                  <strong className="block mb-1 text-sm sm:text-base">Delivery Method:</strong>
-                  <StatusTag status={deliveryOption} size="small" />
+                  <strong className="block mb-1 text-sm sm:text-base">
+                    Delivery Method:
+                  </strong>
+                  {/* ✅ FIX: Now using actual delivery option from order data */}
+                  <StatusTag
+                    status={deliveryOption as StatusType}
+                    size="small"
+                  />
                 </div>
               )}
 
               <div>
-                <strong className="block mb-1 text-sm sm:text-base">Payment Method:</strong>
+                <strong className="block mb-1 text-sm sm:text-base">
+                  Payment Method:
+                </strong>
                 <StatusTag status={paymentMethod} size="small" />
               </div>
             </div>
 
             {isCancelled && order.notes && (
               <div>
-                <strong className="block mb-1 text-sm sm:text-base">Cancellation Note:</strong>
+                <strong className="block mb-1 text-sm sm:text-base">
+                  Cancellation Note:
+                </strong>
                 <div className="text-xs sm:text-sm text-red-600 bg-red-50 p-2 rounded">
                   {order.notes}
                 </div>

@@ -194,6 +194,7 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
+                  onRefresh={onRefresh} // Add this line
                 />
               </div>
             )}
