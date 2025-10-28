@@ -13,7 +13,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="">
       <div className="flex justify-end  mb-6">
         <SheiButton
           onClick={handleAddProduct}

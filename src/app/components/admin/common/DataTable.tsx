@@ -20,6 +20,7 @@ interface DataTableProps<T> {
   expandable?: TableProps<T>["expandable"];
   rowClassName?: TableProps<T>["rowClassName"];
   scroll?: TableProps<T>["scroll"];
+  responsive?: boolean;
   renderCard?: (record: T) => React.ReactNode;
 }
 

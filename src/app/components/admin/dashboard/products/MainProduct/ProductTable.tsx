@@ -210,8 +210,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
   return (
     <>
-      <div className="rounded-2xl border border-gray-100 shadow-md overflow-hidden p-4">
-        <div className="mb-4 flex justify-between items-center">
+      <div className="rounded-2xl border border-gray-100 shadow-md overflow-hidden">
+        <div className="p-2.5 flex justify-between items-center">
           <h2 className="text-lg font-semibold">🛍️ Product List</h2>
           <span className="text-sm text-gray-500">
             Total: {products.length} items

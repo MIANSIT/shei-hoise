@@ -7,7 +7,12 @@ import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
 import EditableDeliveryOption from "./EditableDeliveryOption";
 import EditablePaymentMethod from "./EditablePaymentMethod";
-import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
+import {
+  OrderStatus,
+  PaymentStatus,
+  DeliveryOption,
+  PaymentMethod,
+} from "@/lib/types/order";
 
 interface Props {
   status: OrderStatus;
@@ -31,6 +36,7 @@ interface Props {
 
   isLocked: boolean;
   onSaveAll: () => void;
+  saving?: boolean; // Add saving state
 }
 
 const OrderControls: React.FC<Props> = ({
@@ -50,6 +56,7 @@ const OrderControls: React.FC<Props> = ({
   onSelectCancelNote,
   isLocked,
   onSaveAll,
+  saving = false,
 }) => {
   const [note, setNote] = useState(cancelNote || "");
 
@@ -62,10 +69,10 @@ const OrderControls: React.FC<Props> = ({
   const isDelivered = selectedStatus === "delivered";
 
   return (
-    <div className="flex gap-6 flex-wrap items-center mt-2">
+    <div className="flex gap-4 sm:gap-6 flex-col sm:flex-row sm:flex-wrap items-start sm:items-center mt-2">
       {/* Order Status */}
-      <div>
-        <span className="font-medium">Order Status:</span>{" "}
+      <div className="flex items-center gap-2">
+        <span className="font-medium text-sm sm:text-base">Order Status:</span>
         {isDelivered || isCancelled ? (
           <StatusTag status={selectedStatus} />
         ) : (
@@ -79,22 +86,27 @@ const OrderControls: React.FC<Props> = ({
 
       {/* Cancelled Note */}
       {isCancelled && (
-        <div className="flex flex-col">
-          <span className="font-medium mb-1">Cancel Note:</span>
+        <div className="flex flex-col w-full sm:w-auto">
+          <span className="font-medium mb-1 text-sm sm:text-base">
+            Cancel Note:
+          </span>
           <Input.TextArea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Reason for cancellation"
             rows={2}
-            style={{ width: 300 }}
+            style={{ width: "100%", maxWidth: "300px" }}
+            size="small"
           />
         </div>
       )}
 
       {/* Payment Status */}
       {!isCancelled && (
-        <div>
-          <span className="font-medium">Payment Status:</span>{" "}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm sm:text-base">
+            Payment Status:
+          </span>
           {paymentStatus === "paid" || isDelivered ? (
             <StatusTag status={selectedPaymentStatus} />
           ) : (
@@ -108,8 +120,10 @@ const OrderControls: React.FC<Props> = ({
 
       {/* Delivery Option */}
       {!isCancelled && !isDelivered && (
-        <div>
-          <span className="font-medium">Delivery Option:</span>{" "}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm sm:text-base">
+            Delivery Option:
+          </span>
           <EditableDeliveryOption
             option={selectedDeliveryOption}
             onSave={onSelectDeliveryOption}
@@ -119,8 +133,10 @@ const OrderControls: React.FC<Props> = ({
 
       {/* Payment Method */}
       {!isCancelled && (
-        <div>
-          <span className="font-medium">Payment Method:</span>{" "}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm sm:text-base">
+            Payment Method:
+          </span>
           <EditablePaymentMethod
             method={selectedPaymentMethod}
             onSave={onSelectPaymentMethod}
@@ -134,14 +150,17 @@ const OrderControls: React.FC<Props> = ({
           type="primary"
           onClick={onSaveAll}
           disabled={
-            selectedStatus === status &&
-            selectedPaymentStatus === paymentStatus &&
-            selectedDeliveryOption === deliveryOption &&
-            selectedPaymentMethod === paymentMethod &&
-            note === cancelNote
+            (selectedStatus === status &&
+              selectedPaymentStatus === paymentStatus &&
+              selectedDeliveryOption === deliveryOption &&
+              selectedPaymentMethod === paymentMethod &&
+              note === cancelNote) ||
+            saving
           }
+          loading={saving}
+          size="small"
         >
-          Save Changes
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
       )}
     </div>

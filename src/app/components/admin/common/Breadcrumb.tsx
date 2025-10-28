@@ -15,7 +15,7 @@ export default function Breadcrumb() {
   if (!isDashboard) return null; // Do not render for non-dashboard pages
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-4 ml-4 mt-4">
+    <nav aria-label="Breadcrumb" className="p-4">
       <ol className="flex items-center space-x-2 text-sm">
         {/* Root breadcrumb (Dashboard) */}
         <li>

@@ -17,11 +17,11 @@ interface Props {
   loading?: boolean;
 }
 
-const OrdersTable: React.FC<Props> = ({ 
-  orders, 
-  onUpdate, 
+const OrdersTable: React.FC<Props> = ({
+  orders,
+  onUpdate,
   onRefresh,
-  loading = false 
+  loading = false,
 }) => {
   const { notification } = App.useApp();
   const [searchOrderId, setSearchOrderId] = useState<string>("");
@@ -44,34 +44,38 @@ const OrdersTable: React.FC<Props> = ({
     setFilteredOrders(finalFiltered);
   };
 
-  const formatCurrency = (amount: number, currency: string = 'BDT') => {
-    return new Intl.NumberFormat('en-BD', {
-      style: 'currency',
+  const formatCurrency = (amount: number, currency: string = "BDT") => {
+    return new Intl.NumberFormat("en-BD", {
+      style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
     }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getCustomerName = (order: StoreOrder) => {
-    return order.customers?.first_name || order.shipping_address.customer_name || 'Unknown Customer';
+    return (
+      order.customers?.first_name ||
+      order.shipping_address.customer_name ||
+      "Unknown Customer"
+    );
   };
 
   const getCustomerEmail = (order: StoreOrder) => {
-    return order.customers?.email || 'No email';
+    return order.customers?.email || "No email";
   };
 
   const getCustomerPhone = (order: StoreOrder) => {
-    return order.customers?.phone || order.shipping_address.phone || 'No phone';
+    return order.customers?.phone || order.shipping_address.phone || "No phone";
   };
 
   const getCustomerInitial = (order: StoreOrder) => {
@@ -79,79 +83,105 @@ const OrdersTable: React.FC<Props> = ({
     return name.charAt(0).toUpperCase();
   };
 
-  // Mobile card renderer
+  // Mobile card renderer - IMPROVED
   const renderOrderCard = (order: StoreOrder) => {
     const address = order.shipping_address;
     const fullAddress = `${address.address_line_1}, ${address.city}`;
-    
+
     return (
-      <Card 
+      <Card
         key={order.id}
-        className="mb-4 p-4 shadow-sm hover:shadow-md transition-shadow"
+        className="mb-4 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow border"
+        styles={{
+          body: {
+            padding: "12px",
+          },
+        }}
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-3">
-          <div>
-            <div className="font-bold text-blue-600 text-lg">#{order.order_number}</div>
-            <div className="text-sm text-gray-500">{formatDate(order.created_at)}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-blue-600 text-base sm:text-lg truncate">
+              #{order.order_number}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-500">
+              {formatDate(order.created_at)}
+            </div>
           </div>
-          <div className="text-right">
-            <div className="font-bold text-lg">{formatCurrency(order.total_amount, order.currency)}</div>
+          <div className="text-right ml-2">
+            <div className="font-bold text-base sm:text-lg whitespace-nowrap">
+              {formatCurrency(order.total_amount, order.currency)}
+            </div>
           </div>
         </div>
 
         {/* Customer Info */}
         <div className="flex items-center mb-3">
-          <Avatar 
-            style={{ 
-              backgroundColor: '#1890ff',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              marginRight: '12px'
+          <Avatar
+            size="small"
+            style={{
+              backgroundColor: "#1890ff",
+              color: "#fff",
+              fontSize: "12px",
+              fontWeight: "bold",
+              marginRight: "8px",
+              flexShrink: 0,
             }}
           >
             {getCustomerInitial(order)}
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold truncate">{getCustomerName(order)}</div>
-            <div className="text-sm text-gray-600 truncate">{getCustomerEmail(order)}</div>
-            <div className="text-sm text-gray-600">{getCustomerPhone(order)}</div>
+            <div className="font-semibold text-sm truncate">
+              {getCustomerName(order)}
+            </div>
+            <div className="text-xs text-gray-600 truncate">
+              {getCustomerEmail(order)}
+            </div>
+            <div className="text-xs text-gray-600 truncate">
+              {getCustomerPhone(order)}
+            </div>
           </div>
         </div>
 
         {/* Address */}
         <div className="mb-3">
-          <div className="text-sm text-gray-600">
+          <div className="text-xs sm:text-sm text-gray-600">
             <span className="font-medium">Address: </span>
-            <span className="truncate">{fullAddress}</span>
+            <span className="line-clamp-2">{fullAddress}</span>
           </div>
         </div>
 
         {/* Status Tags */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <StatusTag status={order.status as OrderStatus} />
-          <StatusTag status={order.payment_status as PaymentStatus} />
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-3">
+          <StatusTag status={order.status as OrderStatus} size="small" />
+          <StatusTag
+            status={order.payment_status as PaymentStatus}
+            size="small"
+          />
         </div>
 
         {/* Expand Button */}
         <div className="text-right">
           <button
-            onClick={() => setExpandedRowKey(expandedRowKey === order.id ? null : order.id)}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            onClick={() =>
+              setExpandedRowKey(expandedRowKey === order.id ? null : order.id)
+            }
+            className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
           >
-            {expandedRowKey === order.id ? 'Hide Details' : 'View Details'}
+            {expandedRowKey === order.id ? "Hide Details" : "View Details"}
           </button>
         </div>
 
         {/* Expanded Content */}
         {expandedRowKey === order.id && (
-          <div className="mt-4 border-t pt-4">
+          <div className="mt-3 border-t pt-3">
             {order.status !== "delivered" && order.status !== "cancelled" && (
-              <div className="mb-4">
+              <div className="mb-3">
                 <OrderProductTable
                   order={order}
-                  onSaveStatus={(s: OrderStatus) => onUpdate(order.id, { status: s })}
+                  onSaveStatus={(s: OrderStatus) =>
+                    onUpdate(order.id, { status: s })
+                  }
                   onSavePaymentStatus={(s: PaymentStatus) =>
                     onUpdate(order.id, { payment_status: s })
                   }
@@ -164,6 +194,7 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
+                  onRefresh={onRefresh} // Add this line
                 />
               </div>
             )}
@@ -176,89 +207,106 @@ const OrdersTable: React.FC<Props> = ({
 
   const columns: ColumnsType<StoreOrder> = [
     {
-      title: "Order Number",
+      title: "Order #",
       dataIndex: "order_number",
       key: "order_number",
       render: (orderNumber: string) => (
-        <span className="font-medium text-blue-600">#{orderNumber}</span>
+        <span className="font-medium text-blue-600 text-sm">
+          #{orderNumber}
+        </span>
       ),
-      width: 120,
-      fixed: 'left' as const,
+      width: 100,
+      fixed: "left" as const,
+      responsive: ["md"],
     },
     {
-      title: "Customer Info",
+      title: "Customer",
       key: "customer",
       render: (_, order: StoreOrder) => (
-        <Space>
-          <Avatar 
-            style={{ 
-              backgroundColor: '#1890ff',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: 'bold'
+        <Space size="small">
+          <Avatar
+            size="small"
+            style={{
+              backgroundColor: "#1890ff",
+              color: "#fff",
+              fontSize: "12px",
+              fontWeight: "bold",
             }}
           >
             {getCustomerInitial(order)}
           </Avatar>
           <div className="min-w-0">
-            <div className="font-medium truncate max-w-[120px]">{getCustomerName(order)}</div>
-            <div className="text-xs text-gray-500 truncate max-w-[120px]">{getCustomerEmail(order)}</div>
-            <div className="text-xs text-gray-500">{getCustomerPhone(order)}</div>
+            <div className="font-medium text-sm truncate max-w-[100px] lg:max-w-[120px]">
+              {getCustomerName(order)}
+            </div>
+            <div className="text-xs text-gray-500 truncate max-w-[100px] lg:max-w-[120px]">
+              {getCustomerEmail(order)}
+            </div>
           </div>
         </Space>
       ),
-      width: 200,
+      width: 150,
+      responsive: ["md"],
     },
     {
-      title: "Delivery Address",
+      title: "Address",
       key: "address",
       render: (_, order: StoreOrder) => {
         const address = order.shipping_address;
-        const fullAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
+        const fullAddress = `${address.address_line_1}, ${address.city}`;
         return (
           <Tooltip title={fullAddress}>
-            <div className="truncate max-w-[180px] text-sm">
+            <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
               {address.address_line_1}, {address.city}
             </div>
           </Tooltip>
         );
       },
-      width: 200,
+      width: 150,
+      responsive: ["lg"],
     },
     {
-      title: "Total Amount",
+      title: "Total",
       key: "total",
       render: (_, order: StoreOrder) => (
-        <span className="font-semibold text-gray-900">
+        <span className="font-semibold text-gray-900 text-sm">
           {formatCurrency(order.total_amount, order.currency)}
         </span>
       ),
-      width: 120,
-      align: 'right' as const,
+      width: 100,
+      align: "right" as const,
+      responsive: ["sm"],
     },
     {
-      title: "Order Status",
+      title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: OrderStatus) => <StatusTag status={status} />,
-      width: 130,
+      render: (status: OrderStatus) => (
+        <StatusTag status={status} size="small" />
+      ),
+      width: 100,
+      responsive: ["sm"],
     },
     {
-      title: "Payment Status",
+      title: "Payment",
       dataIndex: "payment_status",
       key: "payment_status",
-      render: (status: PaymentStatus) => <StatusTag status={status} />,
-      width: 130,
+      render: (status: PaymentStatus) => (
+        <StatusTag status={status} size="small" />
+      ),
+      width: 100,
+      responsive: ["md"],
     },
     {
-      title: "Order Date",
+      title: "Date",
       key: "created_at",
       render: (_, order: StoreOrder) => (
-        <div className="text-sm text-gray-600">
+        <div className="text-xs text-gray-600">
           {formatDate(order.created_at)}
         </div>
       ),
-      width: 150,
+      width: 120,
+      responsive: ["lg"],
     },
   ];
 
@@ -278,12 +326,13 @@ const OrdersTable: React.FC<Props> = ({
         data={filteredOrders}
         loading={loading}
         rowKey={(record) => record.id}
-        pagination={{ 
+        pagination={{
           pageSize: 10,
           showSizeChanger: true,
           showQuickJumper: true,
-          showTotal: (total, range) => 
-            `${range[0]}-${range[1]} of ${total} orders`
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} orders`,
+          responsive: true,
         }}
         size="middle"
         expandable={{
@@ -291,11 +340,13 @@ const OrdersTable: React.FC<Props> = ({
           onExpand: (expanded, record) =>
             setExpandedRowKey(expanded ? record.id : null),
           expandedRowRender: (order: StoreOrder) => (
-            <div className="space-y-6 p-4 bg-gray-50 rounded-lg">
+            <div className="space-y-4 p-3 sm:p-4  rounded-lg">
               {order.status !== "delivered" && order.status !== "cancelled" && (
                 <OrderProductTable
                   order={order}
-                  onSaveStatus={(s: OrderStatus) => onUpdate(order.id, { status: s })}
+                  onSaveStatus={(s: OrderStatus) =>
+                    onUpdate(order.id, { status: s })
+                  }
                   onSavePaymentStatus={(s: PaymentStatus) =>
                     onUpdate(order.id, { payment_status: s })
                   }
@@ -314,7 +365,8 @@ const OrdersTable: React.FC<Props> = ({
             </div>
           ),
         }}
-        scroll={{ x: 1000 }}
+        scroll={{ x: 800 }}
+        responsive={true}
         renderCard={renderOrderCard}
       />
     </div>

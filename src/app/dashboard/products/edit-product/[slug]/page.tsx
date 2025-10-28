@@ -83,7 +83,7 @@ const EditProductPage = () => {
   if (!product) return <div className="p-6">Product not found!</div>;
 
   return (
-    <div className="p-6">
+    <div className="">
       <AddProductForm
         product={product}
         storeId={product.store_id}

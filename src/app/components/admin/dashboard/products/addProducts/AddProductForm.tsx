@@ -126,7 +126,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     }, [discountedPrice, setValue]);
     console.log("errors", form.formState.errors);
     return (
-      <div className="max-w-5xl mx-auto p-6 space-y-8 rounded-2xl shadow-lg">
+      <div className="">
         <form
           onSubmit={form.handleSubmit(
             (data) =>
