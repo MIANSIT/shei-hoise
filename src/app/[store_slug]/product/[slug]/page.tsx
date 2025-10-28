@@ -236,8 +236,8 @@ export default function ProductPage() {
 
     setIsAdding(true);
     try {
-      // Create a cart product with ALL necessary data
-      const cartProduct: CartProduct = {
+      // Create base cart product
+      const cartProduct: any = {
         id: selectedVariantData ? selectedVariantData.id : product.id,
         slug: product.slug,
         name: product.name,
@@ -245,15 +245,14 @@ export default function ProductPage() {
         discounted_price:
           displayPrice < originalPrice ? displayPrice : undefined,
         images: product.product_images.map((img) => img.image_url),
-        // ✅ ADD CATEGORY DATA
+        quantity: quantity,
+        store_slug: store_slug,
         category: product.categories
           ? {
               id: product.categories.id,
               name: product.categories.name,
             }
           : undefined,
-        // ✅ ADD QUANTITY (required for cart)
-        quantity: quantity,
       };
 
       // ✅ ADD COMPLETE VARIANT DATA
@@ -261,17 +260,17 @@ export default function ProductPage() {
         cartProduct.variants = [
           {
             id: selectedVariantData.id,
-            variant_name: selectedVariantData.variant_name, // ✅ ADD THIS
+            variant_name: selectedVariantData.variant_name,
             base_price: selectedVariantData.base_price,
             discounted_price: selectedVariantData.discounted_price || undefined,
-            color: selectedVariantData.color || undefined, // ✅ ADD THIS
-            product_images: selectedVariantData.product_images || [], // ✅ ADD THIS
+            color: selectedVariantData.color || undefined,
+            product_images: selectedVariantData.product_images || [],
           },
         ];
       }
 
-      // Add to cart - just once with the quantity
-      await addToCart(cartProduct as any);
+      // Add to cart
+      await addToCart(cartProduct);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);

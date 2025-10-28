@@ -6,7 +6,7 @@ import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 type CartBottomBarProps = {
   isOpen: boolean;
@@ -14,9 +14,17 @@ type CartBottomBarProps = {
 };
 
 export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
-  const { cart, totalPrice, totalItems } = useCartStore();
+  const { getCartByStore, totalPriceByStore, totalItemsByStore } = useCartStore();
+  const params = useParams();
+  const store_slug = params.store_slug as string;
+  
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
+
+  // Only access store after mounting
+  const storeCart = isMounted ? getCartByStore(store_slug) : [];
+  const storeTotalPrice = isMounted ? totalPriceByStore(store_slug) : 0;
+  const storeTotalItems = isMounted ? totalItemsByStore(store_slug) : 0;
 
   // Prevent background scrolling when open
   useEffect(() => {
@@ -35,9 +43,20 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   }, []);
 
   const handleCheckout = () => {
-   router.push("/checkout");
+    router.push(`/${store_slug}/checkout`);
   };
-  const displayCount = isMounted ? totalItems() : 0;
+
+  const handleContinueShopping = () => {
+    onClose();
+    router.push(`/${store_slug}`);
+  };
+
+  const displayCount = isMounted ? storeTotalItems : 0;
+
+  // Don't render anything if not mounted
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <>
@@ -66,23 +85,23 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
             </button>
           </div>
           <div className="max-h-[60vh] overflow-y-auto pb-4">
-            {cart.length === 0 ? (
+            {storeCart.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground">Your cart is empty</p>
                 <Button
                   className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
-                  onClick={onClose}
+                  onClick={handleContinueShopping}
                 >
-                  Continue Shopping
+                  Continue Shopping at {store_slug}
                 </Button>
               </div>
             ) : (
               <CartItemsList />
             )}
           </div>
-          {cart.length > 0 && (
+          {storeCart.length > 0 && (
             <CartCheckoutLayout
-              subtotal={totalPrice()}
+              subtotal={storeTotalPrice}
               onCheckout={handleCheckout}
               buttonText="Proceed to Checkout"
             />

@@ -1,4 +1,3 @@
-// components/cart/CartSidebar.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,7 +6,7 @@ import useCartStore from "@/lib/store/cartStore";
 import CartItemsList from "./CartItemList";
 import { Button } from "@/components/ui/button";
 import CartCheckoutLayout from "./CartCheckoutLayout";
-import {useRouter} from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -15,9 +14,28 @@ type CartSidebarProps = {
 };
 
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
-  const { cart, totalPrice, totalItems } = useCartStore();
+  const { getCartByStore, totalPriceByStore, totalItemsByStore } = useCartStore();
+  const params = useParams();
+  const store_slug = params.store_slug as string;
+  
   const [isMounted, setIsMounted] = useState(false);
+  const [currentStoreSlug, setCurrentStoreSlug] = useState(store_slug);
   const router = useRouter();
+
+  // Set mounted on component mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Update current store slug when params change
+  useEffect(() => {
+    setCurrentStoreSlug(store_slug);
+  }, [store_slug]);
+
+  // Get store-specific cart data
+  const storeCart = isMounted ? getCartByStore(currentStoreSlug) : [];
+  const storeTotalPrice = isMounted ? totalPriceByStore(currentStoreSlug) : 0;
+  const storeTotalItems = isMounted ? totalItemsByStore(currentStoreSlug) : 0;
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -31,27 +49,30 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const handleCheckout = () => {
-    router.push("/checkout");
+    router.push(`/${currentStoreSlug}/checkout`);
   };
-  const displayCount = isMounted ? totalItems() : 0;
+
+  const handleContinueShopping = () => {
+    onClose();
+    router.push(`/${currentStoreSlug}`);
+  };
+
+  const displayCount = isMounted ? storeTotalItems : 0;
+
+  // Don't render anything if not mounted or not open
+  if (!isMounted || !isOpen) {
+    return null;
+  }
 
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
         onClick={onClose}
       />
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md text-foreground bg-background shadow-xl z-50 transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className="fixed top-0 right-0 h-full w-full max-w-md text-foreground bg-background shadow-xl z-50 transition-transform duration-300 ease-in-out"
       >
         <div className='flex flex-col h-full'>
           <div className='flex items-center justify-between p-4 border-b border-border'>
@@ -65,14 +86,14 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             </button>
           </div>
           <div className='flex-1 p-4 overflow-y-auto'>
-            {cart.length === 0 ? (
+            {storeCart.length === 0 ? (
               <div className='text-center py-8'>
                 <p className='text-muted-foreground'>Your cart is empty</p>
                 <Button
                   className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
-                  onClick={onClose}
+                  onClick={handleContinueShopping}
                 >
-                  Continue Shopping
+                  Continue Shopping at {currentStoreSlug}
                 </Button>
               </div>
             ) : (
@@ -80,9 +101,9 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             )}
           </div>
 
-          {cart.length > 0 && (
+          {storeCart.length > 0 && (
             <CartCheckoutLayout
-              subtotal={totalPrice()}
+              subtotal={storeTotalPrice}
               onCheckout={handleCheckout}
               buttonText="Proceed to Checkout"
             />
