@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useState,use  } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug"; // your new query
 import { Product } from "@/lib/types/product";
+import NotFoundPage from "../not-found";
 
 interface StorePageProps {
   params: Promise<{ store_slug: string }>;
@@ -16,27 +18,37 @@ interface StorePageProps {
 export default function StorePage({ params }: StorePageProps) {
   const { success, error } = useSheiNotification();
   const { addToCart } = useCartStore();
+  const { store_slug } = use(params);
 
-  const { store_slug } = use(params); // ✅ unwrap promise safely
-
+  const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchData() {
       try {
+        // Check if store exists
+        const storeId = await getStoreIdBySlug(store_slug);
+        if (!storeId) {
+          setStoreExists(false); // store not found
+          return;
+        }
+
+        setStoreExists(true);
+
+        // Fetch products
         const data = await clientGetProducts(store_slug);
         setProducts(data);
       } catch (err) {
         console.error(err);
-        error("Failed to load products");
+        error("Failed to load store or products");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchProducts();
+    fetchData();
   }, [store_slug, error]);
 
   const handleAddToCart = async (product: Product) => {
@@ -62,17 +74,33 @@ export default function StorePage({ params }: StorePageProps) {
     }
   };
 
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="flex justify-center items-center py-20">
+          <span className="text-lg font-medium">Loading...</span>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  if (storeExists === false) {
+    return <NotFoundPage />;
+  }
+
   return (
     <>
       <Header />
       <div className="px-8 py-4">
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <span className="text-lg font-medium">Loading products...</span>
+        {products.length === 0 ? (
+          <div className="text-center py-20 text-lg font-medium">
+            No products available in this store.
           </div>
         ) : (
           <ProductGrid
-            store_slug={store_slug} // ✅ pass down store_slug
+            store_slug={store_slug}
             products={products}
             onAddToCart={handleAddToCart}
             loadingProductId={loadingProductId}

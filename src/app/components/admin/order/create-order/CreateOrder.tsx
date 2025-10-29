@@ -5,7 +5,6 @@ import {
   Card,
   Row,
   Col,
-  Input,
   Button,
   Tag,
   Empty,
@@ -23,7 +22,6 @@ import {
 import {
   UserAddOutlined,
   UserOutlined,
-  SearchOutlined,
   PhoneOutlined,
   MailOutlined,
   HomeOutlined,
@@ -331,7 +329,6 @@ export default function CreateOrder() {
             </Button>
           </Col>
         </Row>
-
 
         {customerLoading ? (
           <div style={{ textAlign: "center", padding: "20px" }}>
