@@ -1,4 +1,3 @@
-// app/not-found.tsx
 "use client";
 import React from "react";
 import { Button } from "antd";
@@ -10,30 +9,37 @@ export default function NotFoundPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 px-4 text-center">
-      <motion.div
+      {/* 404 SVG */}
+      <motion.img
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        className="text-9xl font-extrabold text-gray-800 dark:text-white mb-6"
-      >
-        404
-      </motion.div>
+        src="/404.svg"
+        alt="404"
+        className="w-48 sm:w-48 md:w-64 lg:w-96 mb-4 sm:mb-6 mx-auto"
+      />
+
+      {/* Description */}
       <motion.p
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8"
+        className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-4 sm:mb-6"
       >
         Oops! The page you’re looking for doesn’t exist or has been moved.
       </motion.p>
+
+      {/* Not Found Illustration */}
       <motion.img
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        src="/404-ecommerce-illustration.svg"
+        src="/notfound.svg"
         alt="Page not found"
-        className="w-64 md:w-80 mb-8 mx-auto"
+        className="w-32 sm:w-64 md:w-80 lg:w-72 mb-6 mx-auto"
       />
+
+      {/* Back Button */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -43,7 +49,7 @@ export default function NotFoundPage() {
           type="primary"
           size="large"
           onClick={() => router.push("/")}
-          className="shadow-lg hover:shadow-xl transition-shadow"
+          className="px-6 py-3 shadow-lg hover:shadow-xl transition-shadow text-sm sm:text-base"
         >
           Back to Store
         </Button>

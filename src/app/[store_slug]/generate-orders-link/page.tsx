@@ -5,7 +5,7 @@ import Footer from "../../components/common/Footer";
 
 export default function OrdersPage() {
   return (
-    <div className="h-full">
+    <div className="">
       <Header />
       <CustomOrder />
       <Footer />

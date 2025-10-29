@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Col, Typography, Space, App, Button, Empty } from "antd";
 import {
-  LinkOutlined,
-  CopyOutlined,
-  CheckOutlined,
-} from "@ant-design/icons";
+  Card,
+  Col,
+  Typography,
+  Space,
+  Button,
+  Empty,
+  notification,
+} from "antd";
+import { LinkOutlined, CopyOutlined, CheckOutlined } from "@ant-design/icons";
 import { getProductsWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { OrderProduct } from "@/lib/types/order";
@@ -17,7 +21,6 @@ import { useParams } from "next/navigation";
 const { Title, Text } = Typography;
 
 export default function CustomOrder() {
-  const { notification } = App.useApp();
   const params = useParams();
   const storeSlug = Array.isArray(params.store_slug)
     ? params.store_slug[0]
@@ -122,15 +125,15 @@ export default function CustomOrder() {
   }
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 rounded-xl">
+    <div className="h-full overflow-auto p-4 md:p-6 rounded-xl ">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
-            <Title level={3} className="!mb-0 text-gray-800 dark:text-gray-100">
+            <Title level={3} className="!text-gray-800 dark:!text-gray-100">
               Quick Order Link
             </Title>
-            <Text type="secondary">
+            <Text className="!text-gray-600 dark:!text-gray-300">
               Generate a unique order link for your customers instantly.
             </Text>
           </div>
@@ -138,7 +141,7 @@ export default function CustomOrder() {
 
         {/* Main Card */}
         <Card
-          className="shadow-md rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all hover:shadow-lg"
+          className="shadow-md rounded-2xl border  transition-all hover:shadow-lg"
           style={{ padding: "20px" }}
         >
           <Col xs={24} lg={24}>
