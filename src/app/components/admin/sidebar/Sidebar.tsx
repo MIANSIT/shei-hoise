@@ -5,6 +5,7 @@ import { Layout } from "antd";
 import SidebarBrand from "./SidebarBrand";
 import SidebarMenu from "./SidebarMenu";
 import SidebarProfile from "./SidebarProfile";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 
 const { Sider } = Layout;
 
@@ -17,6 +18,8 @@ export default function Sidebar({
   collapsed = false,
   themeMode,
 }: SidebarProps) {
+  const { storeSlug } = useCurrentUser(); // <-- get store slug
+
   return (
     <Sider
       collapsible
@@ -30,7 +33,8 @@ export default function Sidebar({
     >
       <div className="flex flex-col flex-1">
         <SidebarBrand collapsed={collapsed} />
-        <SidebarMenu themeMode={themeMode} />
+        {/* Pass storeSlug as prop */}
+        <SidebarMenu themeMode={themeMode} storeSlug={storeSlug} />
       </div>
       <SidebarProfile collapsed={collapsed} />
     </Sider>

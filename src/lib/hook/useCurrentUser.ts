@@ -14,6 +14,7 @@ export interface CurrentUserWithProfile extends CurrentUser {
 
 export function useCurrentUser() {
   const [user, setUser] = useState<CurrentUserWithProfile | null>(null);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null); // ✅ Added back storeSlug
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   
@@ -37,6 +38,7 @@ export function useCurrentUser() {
           if (authErr.message?.includes('Auth session missing') || authErr.name === 'AuthSessionMissingError') {
             console.log('🔐 No auth session found - user is not logged in (this is normal)');
             setUser(null);
+            setStoreSlug(null); // ✅ Reset storeSlug
             setLoading(false);
             return;
           }
@@ -47,6 +49,7 @@ export function useCurrentUser() {
         if (!authUser) {
           console.log('🔐 No auth user found - user is not logged in');
           setUser(null);
+          setStoreSlug(null); // ✅ Reset storeSlug
           setLoading(false);
           return;
         }
@@ -72,6 +75,7 @@ export function useCurrentUser() {
           };
           
           setUser(cachedUser);
+          setStoreSlug(null); // ✅ Set storeSlug to null for cached users
           setLoading(false);
           return;
         }
@@ -95,6 +99,24 @@ export function useCurrentUser() {
         // Parse and validate user data
         const parsedUser = userSchema.parse(userData);
         
+        // ✅ Fetch store slug (from previous version)
+        let userStoreSlug: string | null = null;
+        if (parsedUser.store_id) {
+          console.log("🔐 Fetching store slug for store_id:", parsedUser.store_id);
+          const { data: storeData, error: storeErr } = await supabase
+            .from("stores")
+            .select("store_slug")
+            .eq("id", parsedUser.store_id)
+            .single();
+
+          if (storeErr) {
+            console.error('🔐 Store slug fetch error:', storeErr);
+          } else {
+            userStoreSlug = storeData?.store_slug || null;
+            console.log('🔐 Store slug found:', userStoreSlug);
+          }
+        }
+
         // Fetch user profile data
         let userProfile: CustomerProfile | null = null;
         try {
@@ -112,10 +134,12 @@ export function useCurrentUser() {
 
         console.log("👤 Current User with Profile loaded:", userWithProfile);
         setUser(userWithProfile);
+        setStoreSlug(userStoreSlug); // ✅ Set the store slug
       } catch (err) {
         console.error("💥 useCurrentUser error:", err);
         setError(err as Error);
         setUser(null);
+        setStoreSlug(null); // ✅ Reset storeSlug on error
       } finally {
         setLoading(false);
       }
@@ -126,6 +150,7 @@ export function useCurrentUser() {
 
   return { 
     user, 
+    storeSlug, // ✅ Added back storeSlug
     loading, 
     error, 
     role: user?.user_type,
