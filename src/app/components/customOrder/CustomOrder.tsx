@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, Col, Typography, Space, App, Button, Empty } from "antd";
 import {
-  PlusOutlined,
   LinkOutlined,
   CopyOutlined,
   CheckOutlined,
