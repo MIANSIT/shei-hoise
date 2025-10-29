@@ -24,15 +24,6 @@ export default function StorePage({ params }: StorePageProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (store_slug) {
-      const currentSlug = localStorage.getItem("store_slug");
-      if (currentSlug !== store_slug) {
-        localStorage.setItem("store_slug", store_slug);
-      }
-    }
-  }, [store_slug]);
-
-  useEffect(() => {
     async function fetchProducts() {
       try {
         const data = await clientGetProducts(store_slug);

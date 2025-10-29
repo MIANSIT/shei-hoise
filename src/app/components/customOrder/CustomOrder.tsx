@@ -14,6 +14,7 @@ import { OrderProduct } from "@/lib/types/order";
 import OrderDetails from "../admin/order/create-order/OrderDetails";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { useParams } from "next/navigation";
 
 const { Title, Text } = Typography;
 
@@ -24,6 +25,10 @@ interface CustomOrderProps {
 export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
   const { notification } = App.useApp();
   const { user, loading: userLoading } = useCurrentUser({ guestMode });
+  const params = useParams();
+  const storeSlug = Array.isArray(params.store_slug)
+    ? params.store_slug[0]
+    : params.store_slug;
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
@@ -45,13 +50,12 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
       if (user?.store_id) {
         // Logged-in user
         storeId = user.store_id;
-      } else if (guestMode) {
-        // Guest: get store_slug from localStorage
-        const storeSlug = localStorage.getItem("store_slug");
+      } else {
+        // Get storeId from storeSlug in URL
         if (!storeSlug) {
           notification.error({
             message: "Store not found",
-            description: "Please select a store first.",
+            description: "Store slug missing in URL",
           });
           setLoading(false);
           return;
@@ -61,19 +65,11 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
         if (!storeId) {
           notification.error({
             message: "Store not found",
-            description: "Invalid store slug.",
+            description: "Invalid store slug",
           });
           setLoading(false);
           return;
         }
-      } else {
-        // Not logged-in and guest mode disabled
-        notification.error({
-          message: "Login required",
-          description: "You must be logged in to create an order link.",
-        });
-        setLoading(false);
-        return;
       }
 
       const res = await getProductsWithVariants(storeId);
@@ -87,7 +83,7 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, guestMode, notification]);
+  }, [user, storeSlug, notification]);
 
   useEffect(() => {
     if (!userLoading) fetchProducts();
@@ -97,6 +93,14 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
 
   const handleGenerateLink = () => {
     if (!isFormValid) return;
+
+    if (!storeSlug) {
+      notification.error({
+        message: "Store not found",
+        description: "Cannot generate link without store slug.",
+      });
+      return;
+    }
 
     const params = orderProducts
       .map((item, index) => {
@@ -109,7 +113,7 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
       })
       .join("&");
 
-    const url = `/checkout?${params}`;
+    const url = `/${storeSlug}/checkout?${params}`;
     setGeneratedLink(url);
 
     notification.success({
