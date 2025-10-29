@@ -1,80 +1,56 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { HiOutlineShoppingCart } from "react-icons/hi";
-
-interface NavLink {
-  name: string;
-  path: string;
-  isHighlighted?: boolean;
-}
+import { useState } from "react";
+import LogoTitle from "../header/LogoTitle";
+import NavMenu, { NavLink } from "../header/NavMenu";
+import ShoppingCartIcon from "../cart/ShoppingCartIcon";
+import CartSidebar from "../cart/CartSidebar";
+import AuthButtons from "../header/AuthButtons";
+import ThemeToggle from "../theme/ThemeToggle"; // Import the new component
 
 export default function DesktopHeader() {
-  const pathname = usePathname();
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const navLinks: NavLink[] = [
+  // Main navigation for users
+  const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Shop", path: "/shop" },
-    { name: "Products", path: "/products" },
+    { name: "Checkout", path: "/checkout" },
+  ];
+
+  // Auth links for users
+  const authLinksUser: NavLink[] = [
     { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/signup", isHighlighted: true },
+    { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];
 
   return (
-    <header className="hidden lg:block w-full bg-black text-white shadow-md">
-      <div className="flex items-center justify-between px-8 py-4">
+    <>
+      <header
+        className="
+          hidden md:flex fixed top-0 left-0 w-full h-16
+          items-center justify-between px-8 z-50
+          transition-colors duration-300
+          bg-transparent backdrop-blur-md
+        "
+      >
+        {/* Left side */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="Shei Hoise Logo"
-              width={32}
-              height={32}
-              priority
-            />
-          </Link>
-          <nav className="flex items-center gap-6">
-            {navLinks.slice(0, 3).map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`text-sm font-medium transition-colors ${
-                  pathname === link.path
-                    ? "text-white font-semibold"
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {link.name}
-              </Link>
-            ))}
-          </nav>
+          <LogoTitle showTitle={false} />
+          <NavMenu links={mainLinks} />
         </div>
+
+        {/* Right side */}
         <div className="flex items-center gap-5">
-          <div className="relative">
-            <Link
-              href="/cart"
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800"
-            >
-              <HiOutlineShoppingCart size={18} className="text-white text-sm" />
-            </Link>
-          </div>
-          {navLinks.slice(3).map((link) => (
-            <Link
-              key={link.path}
-              href={link.path}
-              className={`text-sm font-medium ${
-                link.isHighlighted
-                  ? "px-4 py-1.5 rounded-md bg-white text-black font-semibold hover:bg-gray-200"
-                  : "text-gray-200 hover:text-white"
-              }`}
-            >
-              {link.name}
-            </Link>
-          ))}
+          <ThemeToggle /> {/* Use the new component */}
+          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+          <AuthButtons links={authLinksUser} isAdminPanel={false} />
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Page content wrapper */}
+      <main className="pt-16">{/* Your page content */}</main>
+
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+    </>
   );
 }

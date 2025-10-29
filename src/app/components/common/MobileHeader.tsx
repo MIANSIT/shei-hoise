@@ -2,20 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { FaBars, FaTimes } from "react-icons/fa";
-import { HiOutlineShoppingCart } from "react-icons/hi";
+import ShoppingCartIcon from "../cart/ShoppingCartIcon";
+import CartBottomBar from "../cart/CartBottomBar";
 import { usePathname } from "next/navigation";
-
-interface NavLink {
-  name: string;
-  path: string;
-  isHighlighted?: boolean;
-}
+import LogoTitle from "../header/LogoTitle";
+import { NavLink } from "../header/NavMenu";
+import AuthButtons from "../header/AuthButtons";
+import ThemeToggle from "../theme/ThemeToggle";
+import { Button } from "@/components/ui/button";
+import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
 
 export default function MobileHeader() {
-  const [isHydrated, setIsHydrated] = useState<boolean>(false);
-  const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -24,73 +24,79 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Shop", path: "/shop" },
-    { name: "Products", path: "/products" },
+    { name: "Checkout", path: "/checkout" },
+  ];
+
+  const authLinksUser: NavLink[] = [
     { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/signup", isHighlighted: true },
+    { name: "Sign up", path: "/sign-up", isHighlighted: true },
   ];
 
   return (
-    <header className="bg-black px-4 py-3 shadow-md lg:hidden relative z-50">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="Shei Hoise Logo"
-            width={32}
-            height={32}
-            priority
-          />
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/cart"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800 transition-colors"
-          >
-            <HiOutlineShoppingCart className="text-white text-sm" />
-          </Link>
-          <button
-            onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            className="text-white focus:outline-none cursor-pointer text-sm"
-          >
-            {menuOpen ? <FaTimes size={16} /> : <FaBars size={16} />}
-          </button>
-        </div>
-      </div>
-      <nav
-        className={`overflow-hidden transition-all duration-300 ease-in-out bg-black ${
-          menuOpen ? "max-h-70 opacity-100 mt-2" : "max-h-0 opacity-0"
-        }`}
-      >
-        <ul className="space-y-2 p-3">
-          {navLinks.map((link, index) => (
-            <li key={link.path}>
-              {index === 3 && (
-                <div className="border-t border-white/20 my-2"></div>
+    <>
+      <header className="bg-background px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50">
+        <div className="flex items-center justify-between">
+          <LogoTitle showTitle={true} />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="text-foreground hover:bg-accent"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              {menuOpen ? (
+                <HiOutlineX size={18} />
+              ) : (
+                <HiOutlineMenu size={18} />
               )}
-              <Link
-                href={link.path}
-                className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
-                  link.isHighlighted
-                    ? "bg-white text-black hover:bg-gray-200 font-medium"
-                    : isHydrated && pathname === link.path
-                    ? "bg-gray-600 text-white"
-                    : "text-white hover:bg-gray-600"
-                } ${
-                  link.isHighlighted &&
-                  isHydrated &&
-                  pathname === link.path
-                    ? "bg-gray-300"
-                    : ""
-                }`}
-              >
-                {link.name}
-              </Link>
+            </Button>
+          </div>
+        </div>
+        <nav
+          className={`overflow-hidden transition-all duration-300 ease-in-out bg-background ${
+            menuOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"
+          }`}
+        >
+          <ul className="space-y-2 p-3">
+            {navLinks.map((link) => {
+              const isActive = isHydrated && pathname === link.path;
+              return (
+                <li key={link.path}>
+                  <Link
+                    href={link.path}
+                    className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              );
+            })}
+
+            <li>
+              <div className="border-t border-border my-2" />
             </li>
-          ))}
-        </ul>
-      </nav>
-    </header>
+
+            <li>
+              <AuthButtons
+                links={authLinksUser}
+                isAdminPanel={false}
+                isVertical={true}
+              />
+            </li>
+          </ul>
+        </nav>
+      </header>
+
+      <div className="h-[60px] lg:hidden" />
+      <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+    </>
   );
 }
