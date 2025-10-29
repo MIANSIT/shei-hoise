@@ -129,10 +129,10 @@ export default function CustomOrder() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
             <Title level={3} className="!mb-0 text-gray-800 dark:text-gray-100">
-              Create Order Link
+              Quick Order Link
             </Title>
             <Text type="secondary">
-             Generate a unique order link for your customers instantly.
+              Generate a unique order link for your customers instantly.
             </Text>
           </div>
         </div>
