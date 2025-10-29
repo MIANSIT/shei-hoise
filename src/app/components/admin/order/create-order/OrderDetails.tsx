@@ -5,7 +5,6 @@ import {
   Card,
   Button,
   Select,
-  Input,
   Row,
   Col,
   List,
@@ -177,7 +176,7 @@ export default function OrderDetails({
         <Text type="secondary">Add products to this order</Text>
 
         {/* Product Selection */}
-        <Card size="small" title="Add Product" style={{ backgroundColor: '#fafafa' }}>
+        <Card size="small" title="Add Product" >
           {/* Product Selection - First Line */}
           <Row gutter={[16, 16]}>
             <Col xs={24}>
