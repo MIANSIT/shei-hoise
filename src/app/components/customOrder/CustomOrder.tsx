@@ -132,17 +132,9 @@ export default function CustomOrder() {
               Create Order Link
             </Title>
             <Text type="secondary">
-              Quickly create an order link based on the store slug.
+             Generate a unique order link for your customers instantly.
             </Text>
           </div>
-          <Button
-            type="default"
-            icon={<PlusOutlined />}
-            onClick={fetchProducts}
-            className="shadow-sm"
-          >
-            Refresh Products
-          </Button>
         </div>
 
         {/* Main Card */}
