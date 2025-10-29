@@ -1,0 +1,186 @@
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import { Card, Col, Typography, Space, App, Button, Empty } from "antd";
+import {
+  PlusOutlined,
+  LinkOutlined,
+  CopyOutlined,
+  CheckOutlined,
+} from "@ant-design/icons";
+import { getProductsWithOptionalStore } from "@/lib/queries/products/getProductsWithOptionalStore";
+import { getProductsWithVariants } from "@/lib/queries/products/getProductsWithVariants";
+import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
+import { OrderProduct } from "@/lib/types/order";
+import OrderDetails from "../admin/order/create-order/OrderDetails";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+
+const { Title, Text } = Typography;
+
+export default function CustomOrder() {
+  const { notification } = App.useApp();
+  const { user, loading: userLoading } = useCurrentUser();
+
+  const [products, setProducts] = useState<ProductWithVariants[]>([]);
+  const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Reset link whenever order changes
+  useEffect(() => {
+    setGeneratedLink(null);
+  }, [orderProducts]);
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      let res: ProductWithVariants[] = [];
+
+      if (user?.store_id) {
+        // Logged in: fetch products for user's store
+        res = await getProductsWithVariants(user.store_id);
+      } else {
+        // Not logged in: fetch all products
+        res = await getProductsWithOptionalStore();
+      }
+
+      setProducts(res);
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      notification.error({
+        message: "Error Loading Products",
+        description: "Failed to load products. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, notification]);
+
+  useEffect(() => {
+    if (!userLoading) fetchProducts();
+  }, [user, userLoading, fetchProducts]);
+
+  const isFormValid = orderProducts.length > 0;
+
+  const handleGenerateLink = () => {
+    if (!isFormValid) return;
+
+    const params = orderProducts
+      .map((item, index) => {
+        const base = `product${index}=${item.product_id}`;
+        const variant = item.variant_id
+          ? `&variant${index}=${item.variant_id}`
+          : "";
+        const qty = `&quantity${index}=${item.quantity}`;
+        return `${base}${variant}${qty}`;
+      })
+      .join("&");
+
+    const url = `/checkout?${params}`;
+    setGeneratedLink(url);
+
+    notification.success({
+      message: "Order Link Generated",
+      description: "Link generated successfully!",
+    });
+  };
+
+  const handleCopyLink = () => {
+    if (!generatedLink) return;
+    navigator.clipboard.writeText(window.location.origin + generatedLink);
+    setCopied(true);
+    notification.success({
+      message: "Link Copied",
+      description: "The order link has been copied to your clipboard.",
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (loading || userLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <Text type="secondary" className="mt-3">
+          Loading products...
+        </Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-auto p-4 md:p-6 rounded-xl">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+          <div>
+            <Title level={3} className="!mb-0 text-gray-800 dark:text-gray-100">
+              Create Order Link
+            </Title>
+            <Text type="secondary">
+              Quickly create an order without customer info.
+            </Text>
+          </div>
+          <Button
+            type="default"
+            icon={<PlusOutlined />}
+            onClick={fetchProducts}
+            className="shadow-sm"
+          >
+            Refresh Products
+          </Button>
+        </div>
+
+        {/* Main Card */}
+        <Card
+          className="shadow-md rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all hover:shadow-lg"
+          style={{ padding: "20px" }}
+        >
+          <Col xs={24} lg={24}>
+            {products.length > 0 ? (
+              <OrderDetails
+                products={products}
+                orderProducts={orderProducts}
+                setOrderProducts={setOrderProducts}
+              />
+            ) : (
+              <Empty description="No products found" />
+            )}
+          </Col>
+
+          {/* Generate Link Section */}
+          <Col className="mt-4 justify-end flex">
+            <Space size="middle">
+              {!generatedLink ? (
+                <Button
+                  type="default"
+                  size="large"
+                  disabled={!isFormValid}
+                  icon={<LinkOutlined />}
+                  onClick={handleGenerateLink}
+                >
+                  Generate Order Link
+                </Button>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    readOnly
+                    value={window.location.origin + generatedLink}
+                    className="border rounded-lg px-3 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <Button
+                    type="primary"
+                    icon={copied ? <CheckOutlined /> : <CopyOutlined />}
+                    onClick={handleCopyLink}
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                </>
+              )}
+            </Space>
+          </Col>
+        </Card>
+      </div>
+    </div>
+  );
+}
