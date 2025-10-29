@@ -8,18 +8,22 @@ import {
   CopyOutlined,
   CheckOutlined,
 } from "@ant-design/icons";
-import { getProductsWithOptionalStore } from "@/lib/queries/products/getProductsWithOptionalStore";
 import { getProductsWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { OrderProduct } from "@/lib/types/order";
 import OrderDetails from "../admin/order/create-order/OrderDetails";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 
 const { Title, Text } = Typography;
 
-export default function CustomOrder() {
+interface CustomOrderProps {
+  guestMode?: boolean; // default = false
+}
+
+export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
   const { notification } = App.useApp();
-  const { user, loading: userLoading } = useCurrentUser();
+  const { user, loading: userLoading } = useCurrentUser({ guestMode });
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
@@ -32,19 +36,47 @@ export default function CustomOrder() {
     setGeneratedLink(null);
   }, [orderProducts]);
 
+  // Fetch products based on login status or guest mode
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      let res: ProductWithVariants[] = [];
+      let storeId: string | null = null;
 
       if (user?.store_id) {
-        // Logged in: fetch products for user's store
-        res = await getProductsWithVariants(user.store_id);
+        // Logged-in user
+        storeId = user.store_id;
+      } else if (guestMode) {
+        // Guest: get store_slug from localStorage
+        const storeSlug = localStorage.getItem("store_slug");
+        if (!storeSlug) {
+          notification.error({
+            message: "Store not found",
+            description: "Please select a store first.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        storeId = await getStoreIdBySlug(storeSlug);
+        if (!storeId) {
+          notification.error({
+            message: "Store not found",
+            description: "Invalid store slug.",
+          });
+          setLoading(false);
+          return;
+        }
       } else {
-        // Not logged in: fetch all products
-        res = await getProductsWithOptionalStore();
+        // Not logged-in and guest mode disabled
+        notification.error({
+          message: "Login required",
+          description: "You must be logged in to create an order link.",
+        });
+        setLoading(false);
+        return;
       }
 
+      const res = await getProductsWithVariants(storeId);
       setProducts(res);
     } catch (err) {
       console.error("Error fetching products:", err);
@@ -55,7 +87,7 @@ export default function CustomOrder() {
     } finally {
       setLoading(false);
     }
-  }, [user, notification]);
+  }, [user, guestMode, notification]);
 
   useEffect(() => {
     if (!userLoading) fetchProducts();

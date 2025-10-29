@@ -17,11 +17,20 @@ export default function StorePage({ params }: StorePageProps) {
   const { success, error } = useSheiNotification();
   const { addToCart } = useCartStore();
 
-  const { store_slug } = use(params); // ✅ unwrap promise safely
+  const { store_slug } = use(params); // unwrap promise safely
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (store_slug) {
+      const currentSlug = localStorage.getItem("store_slug");
+      if (currentSlug !== store_slug) {
+        localStorage.setItem("store_slug", store_slug);
+      }
+    }
+  }, [store_slug]);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -72,7 +81,7 @@ export default function StorePage({ params }: StorePageProps) {
           </div>
         ) : (
           <ProductGrid
-            store_slug={store_slug} // ✅ pass down store_slug
+            store_slug={store_slug}
             products={products}
             onAddToCart={handleAddToCart}
             loadingProductId={loadingProductId}
