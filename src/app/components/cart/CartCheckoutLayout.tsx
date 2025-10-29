@@ -15,6 +15,9 @@ export default function CartCheckoutLayout({
   onCheckout,
   buttonText = "Proceed to Checkout",
 }: CartCheckoutLayoutProps) {
+  // ✅ Simple formatting - your subtotal is already in correct dollars
+  const formattedSubtotal = subtotal.toFixed(2);
+
   return (
     <motion.div 
       className="pt-4 border-t border-gray-700 m-4"
@@ -31,7 +34,7 @@ export default function CartCheckoutLayout({
           animate={{ scale: 1 }}
           transition={{ duration: 0.2 }}
         >
-          ${subtotal.toFixed(2)}
+          ${formattedSubtotal}
         </motion.span>
       </div>
       <motion.div

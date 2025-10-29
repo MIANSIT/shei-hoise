@@ -17,20 +17,37 @@ export default function CartItemsList() {
     getCartByStore, 
     removeItem, 
     updateQuantity, 
-    clearStoreCart 
+    clearStoreCart,
+    cart // ✅ Get the entire cart from Zustand to trigger re-renders
   } = useCartStore();
   
-  const [isMounted, setIsMounted] = useState(false);
+  const [storeCart, setStoreCart] = useState<CartItem[]>([]);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [changingQuantities, setChangingQuantities] = useState<Record<string, "up" | "down">>({});
 
+  // ✅ Update cart data when store_slug changes OR when the global cart changes
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    const currentStoreCart = getCartByStore(store_slug);
+    setStoreCart(currentStoreCart);
+    console.log('🛒 CartItemsList - Store cart updated:', {
+      store_slug,
+      storeCart: currentStoreCart,
+      globalCart: cart
+    });
+  }, [store_slug, getCartByStore, cart]); // ✅ Added cart as dependency
 
-  // Only access store after mounting
-  const storeCart = isMounted ? getCartByStore(store_slug) : [];
+  // ✅ FIXED: Correct price display logic
+  const getDisplayPrice = (item: CartItem): number => {
+    // Priority order: discounted_price > currentPrice > base_price
+    if (item.discounted_price && item.discounted_price > 0) {
+      return item.discounted_price;
+    }
+    if (item.currentPrice && item.currentPrice > 0) {
+      return item.currentPrice;
+    }
+    return item.base_price;
+  };
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -64,19 +81,12 @@ export default function CartItemsList() {
     }, 300);
   };
 
-  // Show loading state during SSR and initial client render
-  if (!isMounted) {
-    return (
-      <div className="space-y-3">
-        <div className="text-center py-8">
-          <div className="animate-pulse">
-            <div className="h-4 bg-muted rounded w-1/2 mx-auto mb-2"></div>
-            <div className="h-3 bg-muted rounded w-1/3 mx-auto"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Debug: Log when component renders
+  console.log('🛒 CartItemsList - Rendering with:', {
+    store_slug,
+    storeCartLength: storeCart.length,
+    storeCartItems: storeCart
+  });
 
   return (
     <div className="space-y-3">
@@ -103,10 +113,22 @@ export default function CartItemsList() {
         </div>
       ) : (
         storeCart.map((item: CartItem) => {
-          const displayPrice = item.currentPrice ?? item.base_price;
+          // ✅ FIXED: Use the correct price display logic
+          const displayPrice = getDisplayPrice(item);
           const displayImage = item.imageUrl || "/placeholder.png";
           const variant = item.variants?.[0];
           const hasVariants = item.variants && item.variants.length > 0;
+
+          // ✅ DEBUG: Log price calculation for each item
+          console.log('🛒 Item price calculation:', {
+            name: item.name,
+            base_price: item.base_price,
+            discounted_price: item.discounted_price,
+            currentPrice: item.currentPrice,
+            finalDisplayPrice: displayPrice,
+            quantity: item.quantity,
+            total: displayPrice * item.quantity
+          });
 
           return (
             <div
@@ -139,6 +161,14 @@ export default function CartItemsList() {
                       {item.category.name}
                     </p>
                   )}
+
+                  {/* ✅ Show price per item */}
+                  <p className="text-sm text-muted-foreground">
+                    ${displayPrice.toFixed(2)} each
+                    {item.discounted_price && item.discounted_price < item.base_price && (
+                      <span className="line-through text-xs ml-1">${item.base_price.toFixed(2)}</span>
+                    )}
+                  </p>
 
                   <div className="mt-2 flex items-center gap-2">
                     <Button

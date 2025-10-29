@@ -11,12 +11,14 @@ import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser"; // Import your user hook
 
 export default function MobileHeader() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { user, loading } = useCurrentUser(); // Get current user
 
   useEffect(() => {
     setIsHydrated(true);
@@ -24,13 +26,22 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Checkout", path: "/checkout" },
+    { name: "Sore", path: "#" },
   ];
 
-  const authLinksUser: NavLink[] = [
-    { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/sign-up", isHighlighted: true },
-  ];
+  // ✅ Conditional auth links based on login status
+  const authLinksUser: NavLink[] = user 
+    ? [
+        { 
+          name: user.first_name || "Profile", 
+          path: "/profile", 
+          isHighlighted: true 
+        },
+      ]
+    : [
+        { name: "Log in", path: "/login" },
+        { name: "Sign up", path: "/sign-up", isHighlighted: true },
+      ];
 
   return (
     <>
@@ -85,11 +96,13 @@ export default function MobileHeader() {
             </li>
 
             <li>
-              <AuthButtons
-                links={authLinksUser}
-                isAdminPanel={false}
-                isVertical={true}
-              />
+              {!loading && ( // Only show when not loading
+                <AuthButtons
+                  links={authLinksUser}
+                  isAdminPanel={false}
+                  isVertical={true}
+                />
+              )}
             </li>
           </ul>
         </nav>

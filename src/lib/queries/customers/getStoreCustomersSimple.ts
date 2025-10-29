@@ -20,7 +20,7 @@ export async function getStoreCustomersSimple(storeId: string): Promise<StoreCus
     
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, first_name, phone, store_id, user_type')
+      .select('id, email, first_name, last_name, phone, store_id, user_type') // ✅ Added last_name
       .eq('store_id', storeId)
       .eq('user_type', 'customer')
       .order('first_name', { ascending: true });
@@ -37,6 +37,7 @@ export async function getStoreCustomersSimple(storeId: string): Promise<StoreCus
       id: user.id,
       email: user.email,
       first_name: user.first_name,
+      last_name: user.last_name, // ✅ Added last_name
       phone: user.phone,
       store_id: user.store_id,
       user_type: user.user_type,

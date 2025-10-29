@@ -14,7 +14,7 @@ const useCartStore = create<CartState>()(
             const existing = state.cart.find(
               (item) => item.id === product.id && item.store_slug === product.store_slug
             );
-            
+
             if (existing) {
               return {
                 cart: state.cart.map((item) =>
@@ -33,13 +33,13 @@ const useCartStore = create<CartState>()(
               name: product.name,
               base_price: product.base_price,
               discounted_price: product.discounted_price,
-              
+
               // Cart-specific fields
               quantity: product.quantity || 1,
               store_slug: product.store_slug,
               currentPrice: product.currentPrice ?? product.base_price,
               imageUrl: product.imageUrl || product.images?.[0] || "/placeholder.png",
-              
+
               // Optional fields
               images: product.images || [],
               category: product.category,
@@ -85,18 +85,27 @@ const useCartStore = create<CartState>()(
           .reduce((sum, item) => sum + item.quantity, 0),
 
       totalPrice: () =>
-        get().cart.reduce(
-          (sum, item) => sum + (item.currentPrice ?? item.base_price) * item.quantity,
-          0
-        ),
+        get().cart.reduce((sum, item) => {
+          // ✅ Use the same price logic
+          const displayPrice = item.discounted_price && item.discounted_price > 0
+            ? item.discounted_price
+            : (item.currentPrice ?? item.base_price);
 
+          return sum + displayPrice * item.quantity;
+        }, 0),
+
+      // In your cartStore.ts - update the totalPriceByStore function
       totalPriceByStore: (store_slug) =>
         get().cart
           .filter((item) => item.store_slug === store_slug)
-          .reduce(
-            (sum, item) => sum + (item.currentPrice ?? item.base_price) * item.quantity,
-            0
-          ),
+          .reduce((sum, item) => {
+            // ✅ Use the same price logic as in CartItemsList
+            const displayPrice = item.discounted_price && item.discounted_price > 0
+              ? item.discounted_price
+              : (item.currentPrice ?? item.base_price);
+
+            return sum + displayPrice * item.quantity;
+          }, 0),
     }),
     {
       name: "cart-storage",

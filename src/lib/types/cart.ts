@@ -4,6 +4,7 @@ import { Product } from "./product";
 export interface CartItem extends Product {
   quantity: number;
   currentPrice?: number; 
+  discounted_price? : number;
   imageUrl?: string;
   store_slug: string;
 }

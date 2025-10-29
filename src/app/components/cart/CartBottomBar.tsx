@@ -7,6 +7,7 @@ import CartItemsList from "./CartItemList";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { Button } from "@/components/ui/button";
 import { useRouter, useParams } from "next/navigation";
+import type { CartItem } from "@/lib/types/cart";
 
 type CartBottomBarProps = {
   isOpen: boolean;
@@ -18,13 +19,13 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   const params = useParams();
   const store_slug = params.store_slug as string;
   
-  const [isMounted, setIsMounted] = useState(false);
+  // ✅ Get the cart state directly from Zustand to trigger re-renders
+  const cart = useCartStore((state) => state.cart);
+  
+  const [storeCart, setStoreCart] = useState<CartItem[]>([]);
+  const [storeTotalPrice, setStoreTotalPrice] = useState<number>(0);
+  const [storeTotalItems, setStoreTotalItems] = useState<number>(0);
   const router = useRouter();
-
-  // Only access store after mounting
-  const storeCart = isMounted ? getCartByStore(store_slug) : [];
-  const storeTotalPrice = isMounted ? totalPriceByStore(store_slug) : 0;
-  const storeTotalItems = isMounted ? totalItemsByStore(store_slug) : 0;
 
   // Prevent background scrolling when open
   useEffect(() => {
@@ -38,9 +39,14 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
     };
   }, [isOpen]);
 
+  // ✅ FIX: Update cart data when store_slug changes OR when cart changes
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    console.log('🛒 CartBottomBar: Cart updated, recalculating...', cart);
+    
+    setStoreCart(getCartByStore(store_slug));
+    setStoreTotalPrice(totalPriceByStore(store_slug));
+    setStoreTotalItems(totalItemsByStore(store_slug));
+  }, [store_slug, cart, getCartByStore, totalPriceByStore, totalItemsByStore]); // ✅ Added cart as dependency
 
   const handleCheckout = () => {
     router.push(`/${store_slug}/checkout`);
@@ -50,13 +56,6 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
     onClose();
     router.push(`/${store_slug}`);
   };
-
-  const displayCount = isMounted ? storeTotalItems : 0;
-
-  // Don't render anything if not mounted
-  if (!isMounted) {
-    return null;
-  }
 
   return (
     <>
@@ -74,7 +73,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">
-              Your Cart ({displayCount})
+              Your Cart ({storeTotalItems})
             </h2>
             <button
               onClick={onClose}
