@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useState } from "react";
-import { Button, Modal, Space, Typography, App } from "antd";
+import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";

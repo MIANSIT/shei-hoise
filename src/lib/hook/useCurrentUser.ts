@@ -6,6 +6,7 @@ import { CurrentUser, userSchema } from "../types/users";
 
 export function useCurrentUser() {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -17,7 +18,11 @@ export function useCurrentUser() {
           error: authErr,
         } = await supabase.auth.getUser();
         if (authErr) throw authErr;
-        if (!authUser) return setUser(null);
+
+        if (!authUser) {
+          setUser(null);
+          return;
+        }
 
         const { data, error: dbErr } = await supabase
           .from("users")
@@ -26,11 +31,24 @@ export function useCurrentUser() {
           .single();
 
         if (dbErr) throw dbErr;
+
         const parsed = userSchema.parse(data);
-        // console.log("👤 Current User:", parsed);
         setUser(parsed);
+
+        // Fetch store slug using the correct column name
+        if (parsed.store_id) {
+          console.log("Fetching store slug for store_id:", parsed.store_id);
+          const { data: storeData, error: storeErr } = await supabase
+            .from("stores")
+            .select("store_slug") // <-- Use your actual slug column name here
+            .eq("id", parsed.store_id)
+            .single();
+
+          if (storeErr) throw storeErr;
+
+          setStoreSlug(storeData?.store_slug || null);
+        }
       } catch (err) {
-        console.error("useCurrentUser error:", err);
         setError(err as Error);
       } finally {
         setLoading(false);
@@ -40,5 +58,5 @@ export function useCurrentUser() {
     loadUser();
   }, []);
 
-  return { user, loading, error, role: user?.user_type };
+  return { user, storeSlug, loading, error, role: user?.user_type };
 }
