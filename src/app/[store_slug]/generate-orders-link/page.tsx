@@ -7,7 +7,7 @@ export default function OrdersPage() {
   return (
     <div className="h-full">
       <Header />
-      <CustomOrder guestMode={true} />
+      <CustomOrder />
       <Footer />
     </div>
   );

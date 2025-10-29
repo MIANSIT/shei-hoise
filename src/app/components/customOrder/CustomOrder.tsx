@@ -12,19 +12,13 @@ import { getProductsWithVariants } from "@/lib/queries/products/getProductsWithV
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { OrderProduct } from "@/lib/types/order";
 import OrderDetails from "../admin/order/create-order/OrderDetails";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { useParams } from "next/navigation";
 
 const { Title, Text } = Typography;
 
-interface CustomOrderProps {
-  guestMode?: boolean; // default = false
-}
-
-export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
+export default function CustomOrder() {
   const { notification } = App.useApp();
-  const { user, loading: userLoading } = useCurrentUser({ guestMode });
   const params = useParams();
   const storeSlug = Array.isArray(params.store_slug)
     ? params.store_slug[0]
@@ -36,40 +30,30 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Reset link whenever order changes
+  // Reset link when order changes
   useEffect(() => {
     setGeneratedLink(null);
   }, [orderProducts]);
 
-  // Fetch products based on login status or guest mode
+  // Fetch products using storeSlug
   const fetchProducts = useCallback(async () => {
+    if (!storeSlug) {
+      notification.error({
+        message: "Store not found",
+        description: "Store slug missing in URL.",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      let storeId: string | null = null;
-
-      if (user?.store_id) {
-        // Logged-in user
-        storeId = user.store_id;
-      } else {
-        // Get storeId from storeSlug in URL
-        if (!storeSlug) {
-          notification.error({
-            message: "Store not found",
-            description: "Store slug missing in URL",
-          });
-          setLoading(false);
-          return;
-        }
-
-        storeId = await getStoreIdBySlug(storeSlug);
-        if (!storeId) {
-          notification.error({
-            message: "Store not found",
-            description: "Invalid store slug",
-          });
-          setLoading(false);
-          return;
-        }
+      const storeId = await getStoreIdBySlug(storeSlug);
+      if (!storeId) {
+        notification.error({
+          message: "Invalid Store",
+          description: "Could not find a store with this slug.",
+        });
+        return;
       }
 
       const res = await getProductsWithVariants(storeId);
@@ -83,37 +67,32 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, storeSlug, notification]);
+  }, [storeSlug, notification]);
 
   useEffect(() => {
-    if (!userLoading) fetchProducts();
-  }, [user, userLoading, fetchProducts]);
+    fetchProducts();
+  }, [fetchProducts]);
 
   const isFormValid = orderProducts.length > 0;
 
   const handleGenerateLink = () => {
-    if (!isFormValid) return;
-
-    if (!storeSlug) {
+    if (!isFormValid || !storeSlug) {
       notification.error({
-        message: "Store not found",
-        description: "Cannot generate link without store slug.",
+        message: "Cannot generate link",
+        description: "Please select products first.",
       });
       return;
     }
 
+    // Build query string: ?product=product_id@variant_id@quantity&product=...
     const params = orderProducts
-      .map((item, index) => {
-        const base = `product${index}=${item.product_id}`;
-        const variant = item.variant_id
-          ? `&variant${index}=${item.variant_id}`
-          : "";
-        const qty = `&quantity${index}=${item.quantity}`;
-        return `${base}${variant}${qty}`;
+      .map((item) => {
+        const variantPart = item.variant_id ? item.variant_id : "none";
+        return `product=${item.product_id}@${variantPart}@${item.quantity}`;
       })
       .join("&");
 
-    const url = `/${storeSlug}/checkout?${params}`;
+    const url = `/${storeSlug}/prepare-order?${params}`;
     setGeneratedLink(url);
 
     notification.success({
@@ -133,7 +112,7 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading || userLoading) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh]">
         <Text type="secondary" className="mt-3">
@@ -153,7 +132,7 @@ export default function CustomOrder({ guestMode = false }: CustomOrderProps) {
               Create Order Link
             </Title>
             <Text type="secondary">
-              Quickly create an order without customer info.
+              Quickly create an order link based on the store slug.
             </Text>
           </div>
           <Button
