@@ -6,7 +6,8 @@ import { CurrentUser, userSchema } from "../types/users";
 
 export function useCurrentUser() {
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [storeSlug, setStoreSlug] = useState<string | null>(null);
+  const [storeId, setStoreId] = useState<string | null>(null); // UUID
+  const [storeSlug, setStoreSlug] = useState<string | null>(null); // slug for display
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -35,12 +36,12 @@ export function useCurrentUser() {
         const parsed = userSchema.parse(data);
         setUser(parsed);
 
-        // Fetch store slug using the correct column name
         if (parsed.store_id) {
-          console.log("Fetching store slug for store_id:", parsed.store_id);
+          setStoreId(parsed.store_id); // UUID for querying orders
+
           const { data: storeData, error: storeErr } = await supabase
             .from("stores")
-            .select("store_slug") // <-- Use your actual slug column name here
+            .select("store_slug") // slug for display purposes
             .eq("id", parsed.store_id)
             .single();
 
@@ -58,5 +59,5 @@ export function useCurrentUser() {
     loadUser();
   }, []);
 
-  return { user, storeSlug, loading, error, role: user?.user_type };
+  return { user, storeId, storeSlug, loading, error, role: user?.user_type };
 }
