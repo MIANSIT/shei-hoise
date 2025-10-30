@@ -18,7 +18,7 @@ import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -36,6 +36,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
   const { session, loading: authLoading } = useSupabaseAuth();
   
   const params = useParams();
+  const router = useRouter();
   const store_slug = params.store_slug as string;
 
   // ✅ Initialize form FIRST
@@ -154,74 +155,60 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         return;
       }
 
-      // Scenario 2: Check if customer already exists
-      const existingCustomer = await getCustomerByEmail(values.email);
-      
-      if (existingCustomer) {
-        // Account exists - try to log them in with provided password
-        try {
-          console.log('Account exists, attempting auto-login...');
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: values.email,
-            password: values.password,
-          });
+      // Scenario 2: Try to auto-login first (if user might have account)
+      try {
+        console.log('Attempting auto-login...');
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: values.email,
+          password: values.password,
+        });
 
-          if (error) {
-            console.error('Login error:', error);
-            if (error.message?.includes('Invalid login credentials')) {
-              setError('The password you entered is incorrect. Please try again or use password reset.');
-            } else {
-              setError(`Login failed: ${error.message}`);
-            }
-            return;
-          }
-          
+        if (!error) {
           console.log('Auto-login successful');
-          
-          // Wait a moment for auth state to update
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Proceed to payment with the form values
+          await new Promise(resolve => setTimeout(resolve, 500));
           onSubmit(values);
           return;
-        } catch (loginError: any) {
-          console.error('Login catch error:', loginError);
-          setError('Login failed. Please try again.');
+        }
+        
+        // If login fails, check if account exists
+        const existingCustomer = await getCustomerByEmail(values.email);
+        
+        if (existingCustomer) {
+          setError('The password you entered is incorrect. Please try again.');
           return;
         }
+
+        // Scenario 3: No account exists - create new one
+        console.log('Creating new customer account...');
+        const customerData = { 
+          ...values, 
+          store_slug 
+        };
+
+        const result = await createCheckoutCustomer(customerData);
+        console.log('Customer created successfully:', result);
+
+        // Auto-login the new customer
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: values.email,
+          password: values.password,
+        });
+
+        if (signInError) {
+          console.error('Auto-login error:', signInError);
+          throw new Error(`Account created but login failed: ${signInError.message}`);
+        }
+        
+        console.log('New customer auto-logged in');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        onSubmit(values);
+        
+      } catch (processError: any) {
+        console.error('Process error:', processError);
+        setError(processError.message || 'Failed to process checkout. Please try again.');
       }
-
-      // Scenario 3: No account exists - create new account
-      console.log('Creating new customer account...');
-      const customerData = {
-        ...values,
-        store_slug: store_slug
-      };
-
-      const result = await createCheckoutCustomer(customerData);
-      console.log('Customer created successfully:', result);
-
-      // Auto-login the new customer
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-      });
-
-      if (signInError) {
-        console.error('Auto-login error:', signInError);
-        throw new Error(`Account created but login failed: ${signInError.message}`);
-      }
-      
-      console.log('New customer auto-logged in');
-
-      // Wait for auth state to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Proceed to payment
-      onSubmit(values);
-      
     } catch (error: any) {
-      console.error('Failed in checkout process:', error);
+      console.error('Checkout error:', error);
       setError(error.message || 'Failed to process checkout. Please try again.');
     } finally {
       setIsCreatingAccount(false);
@@ -230,6 +217,11 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleLoginRedirect = () => {
+    const currentPath = window.location.pathname;
+  router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
   // Show loading while checking auth status
@@ -244,35 +236,12 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
     );
   }
 
-  // ✅ DEBUG: Log current state
-  console.log('🔐 CheckoutForm State:', {
-    isUserLoggedIn,
-    currentUser: currentUser?.email,
-    profile: profile,
-    session: !!session,
-    authLoading,
-    userLoading,
-    userError: userError?.message,
-    shouldShowForm: !isUserLoggedIn && !isLoadingAuth
-  });
-
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-      {/* Show message if user is already logged in */}
-      {isUserLoggedIn && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-sm text-green-600">
-            ✅ You are logged in as <strong>{currentUser!.email}</strong>. 
-            Your account information will be used for this order.
-          </p>
-        </div>
-      )}
-
       {/* Name (Full Width) */}
       <div className="grid gap-2">
         <Label htmlFor="name">
           Full Name 
-          {isUserLoggedIn && <span className="text-muted-foreground text-sm ml-2">(From your account)</span>}
         </Label>
         <Input
           {...nameField}
@@ -292,7 +261,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         <div className="grid gap-2">
           <Label htmlFor="email">
             Email 
-            {isUserLoggedIn && <span className="text-muted-foreground text-sm ml-2">(Account email)</span>}
           </Label>
           <Input
             {...emailField}
@@ -311,7 +279,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         <div className="grid gap-2">
           <Label htmlFor="phone">
             Phone Number
-            {isUserLoggedIn && currentUser?.phone && <span className="text-muted-foreground text-sm ml-2">(From your account)</span>}
           </Label>
           <Input
             {...phoneField}
@@ -328,38 +295,53 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         </div>
       </div>
 
-      {/* ✅ Password Field - Show for ALL unauthenticated users */}
+      {/* ✅ Ultra-Simple Password Flow - Show for ALL unauthenticated users */}
       {!isUserLoggedIn && (
-        <div className="grid gap-2">
-          <Label htmlFor="password">
-            Password <span className="text-sm text-muted-foreground">(For your account)</span>
-          </Label>
-          <div className="relative">
-            <Input
-              {...passwordField}
-              placeholder="Create a password (min 8 characters)"
-              type={showPassword ? "text" : "password"}
-              disabled={disabledStates.password}
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={togglePasswordVisibility}
-              disabled={disabledStates.password}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">
+                Account Password
+              </Label>
+              <Button
+                type="button"
+                variant="link"
+                className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
+                onClick={handleLoginRedirect}
+              >
+                Already have an account? Login
+              </Button>
+            </div>
+            <div className="relative">
+              <Input
+                {...passwordField}
+                placeholder="Enter your password"
+                type={showPassword ? "text" : "password"}
+                disabled={disabledStates.password}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                disabled={disabledStates.password}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {form.formState.errors.password && (
+              <p className="text-sm text-red-500 mt-1">
+                {form.formState.errors.password.message}
+              </p>
+            )}
           </div>
-          {form.formState.errors.password && (
-            <p className="text-sm text-red-500 mt-1">
-              {form.formState.errors.password.message}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            We&apos;ll automatically create your account or log you in if you already have one.
+          </p>
         </div>
       )}
 
@@ -368,11 +350,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         <div className="grid gap-2">
           <Label htmlFor="country">
             Country
-            {isUserLoggedIn && (
-              <span className="text-muted-foreground text-sm ml-2">
-                {profile?.country ? '(From your profile)' : '(Shipping address)'}
-              </span>
-            )}
           </Label>
           <CountryFlag
             value={form.watch("country")}
@@ -389,11 +366,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         <div className="grid gap-2">
           <Label htmlFor="city">
             City
-            {isUserLoggedIn && (
-              <span className="text-muted-foreground text-sm ml-2">
-                {profile?.city ? '(From your profile)' : '(Shipping address)'}
-              </span>
-            )}
           </Label>
           <Input
             {...cityField}
@@ -410,11 +382,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         <div className="grid gap-2">
           <Label htmlFor="postCode">
             Postal Code
-            {isUserLoggedIn && (
-              <span className="text-muted-foreground text-sm ml-2">
-                {profile?.postal_code ? '(From your profile)' : '(Shipping address)'}
-              </span>
-            )}
           </Label>
           <Input
             {...postCodeField}
@@ -433,11 +400,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
       <div className="grid gap-2">
         <Label htmlFor="shippingAddress">
           Shipping Address
-          {isUserLoggedIn && (
-            <span className="text-muted-foreground text-sm ml-2">
-              {profile?.address_line_1 ? '(From your profile)' : '(Shipping address)'}
-            </span>
-          )}
         </Label>
         <Input
           {...shippingAddressField}
@@ -474,7 +436,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             }
           />
         ) : (
-          isUserLoggedIn ? "Place Order with Account" : "Continue to Payment"
+          isUserLoggedIn ? "Place Order" : "Continue to Payment"
         )}
       </Button>
 
