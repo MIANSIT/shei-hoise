@@ -7,14 +7,14 @@ import WeeklySalesChart from "./WeeklySalesChart";
 import TopProducts from "./TopProducts";
 import RecentOrdersTable from "./RecentOrdersTable";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { Stat, ChartData, Product, Order } from "@/lib/hook/useDashboardData";
+import { Stat, ChartData, TopProduct, Order } from "@/lib/hook/useDashboardData";
 
 const { Title, Text } = Typography;
 
 interface MainDashboardProps {
   stats: Stat[];
   chartData: ChartData[];
-  topProducts: Product[];
+  topProducts: TopProduct[]; // <-- now it matches
   recentOrders: Order[];
   lowStockCount?: number;
 }
@@ -27,7 +27,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   lowStockCount,
 }) => {
   return (
-    <div className="p-6 min-h-screen ">
+    <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>

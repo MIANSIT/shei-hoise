@@ -25,6 +25,9 @@ export default function DashboardPage() {
 
   const [lowStockCount, setLowStockCount] = useState(0);
   const [totalInventoryProducts, setTotalInventoryProducts] = useState(0);
+  const [topProducts, setTopProducts] = useState<
+    { name: string; quantity: number; revenue: string }[]
+  >([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
@@ -37,13 +40,16 @@ export default function DashboardPage() {
 
         let lowStock = 0;
         let totalInventory = 0;
+        const productMap = new Map<
+          string,
+          { quantity: number; revenue: number }
+        >();
 
         products.forEach((product) => {
           const activeVariantsWithStock = product.variants.filter(
             (v) => v.is_active && v.stock?.quantity_available > 0
           ).length;
 
-          // Count main product if no active variants
           if (activeVariantsWithStock > 0) {
             totalInventory += activeVariantsWithStock;
           } else if (
@@ -59,8 +65,32 @@ export default function DashboardPage() {
           });
         });
 
+        // Calculate top products (both quantity & revenue)
+        orders.forEach((order) => {
+          order.order_items.forEach((item) => {
+            const prev = productMap.get(item.product_name) || {
+              quantity: 0,
+              revenue: 0,
+            };
+            productMap.set(item.product_name, {
+              quantity: prev.quantity + item.quantity,
+              revenue: prev.revenue + item.unit_price * item.quantity, // ✅ use unit_price
+            });
+          });
+        });
+
+        const topProductsArray = Array.from(productMap.entries())
+          .sort((a, b) => b[1].quantity - a[1].quantity) // sort by quantity sold
+          .slice(0, 5)
+          .map(([name, { quantity, revenue }]) => ({
+            name,
+            quantity,
+            revenue: `$${revenue.toFixed(2)}`,
+          }));
+
         setLowStockCount(lowStock);
         setTotalInventoryProducts(totalInventory);
+        setTopProducts(topProductsArray);
       } catch (err) {
         console.error("Error fetching products:", err);
       } finally {
@@ -69,7 +99,7 @@ export default function DashboardPage() {
     };
 
     fetchInventory();
-  }, [storeId]);
+  }, [storeId, orders]);
 
   if (userLoading || ordersLoading || loadingProducts)
     return (
@@ -109,18 +139,6 @@ export default function DashboardPage() {
       .reduce((sum, o) => sum + o.total_amount, 0),
   }));
 
-  const productMap = new Map<string, number>();
-  orders.forEach((order) =>
-    order.order_items.forEach((item) => {
-      const prev = productMap.get(item.product_name) || 0;
-      productMap.set(item.product_name, prev + item.quantity);
-    })
-  );
-  const topProducts = Array.from(productMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, quantity]) => ({ name, price: `$${quantity}` }));
-
   const recentOrders = orders.slice(0, 5).map((order) => ({
     id: order.order_number,
     customer: order.customers?.first_name || "Unknown",
@@ -134,7 +152,7 @@ export default function DashboardPage() {
       chartData={chartData}
       topProducts={topProducts}
       recentOrders={recentOrders}
-      lowStockCount={lowStockCount > 0 ? lowStockCount : undefined} // only pass if > 0
+      lowStockCount={lowStockCount > 0 ? lowStockCount : undefined}
     />
   );
 }

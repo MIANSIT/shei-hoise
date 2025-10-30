@@ -11,11 +11,11 @@ export interface ChartData {
   sales: number;
 }
 
-export interface Product {
+export interface TopProduct {
   name: string;
-  price: string;
+  quantity: number;
+  revenue: string;
 }
-
 export interface Order {
   id: string;
   customer: string;
@@ -26,6 +26,6 @@ export interface Order {
 export interface DashboardData {
   stats: Stat[];
   chartData: ChartData[];
-  topProducts: Product[];
+  topProducts: TopProduct[]; // <-- use TopProduct instead of Product
   recentOrders: Order[];
 }
