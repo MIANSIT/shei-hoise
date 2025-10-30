@@ -1,11 +1,9 @@
 "use client";
 
 import React from "react";
-import { Card, Table, Typography } from "antd";
+import { Card, Table } from "antd";
 import { Order } from "@/lib/hook/useDashboardData";
 import MobileOrderCard from "./MobileOrderCard"; // default export
-
-const { Text } = Typography;
 
 interface RecentOrdersTableProps {
   orders: Order[];
