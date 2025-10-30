@@ -92,7 +92,7 @@ export function UserForm({
             className={
               theme === "dark"
                 ? " border-gray-600 placeholder-gray-400 pr-14"
-                : " text-gray-900 border-gray-300 placeholder-gray-500 pr-14"
+                : " border-gray-300 placeholder-gray-500 pr-14"
             }
           />
           <div className="absolute inset-y-0 right-2 flex items-center">

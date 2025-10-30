@@ -315,7 +315,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           </Label>
           <Input
             {...phoneField}
-            placeholder="+1 234 567 8900"
+            placeholder="+880-1833228622"
             type="tel"
             disabled={disabledStates.phone}
             className={isUserLoggedIn && currentUser?.phone ? "bg-muted cursor-not-allowed" : ""}
