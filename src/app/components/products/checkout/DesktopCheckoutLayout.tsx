@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useParams } from "next/navigation";
 
 interface DesktopCheckoutProps {
   cartLength: number;
@@ -28,7 +29,10 @@ const DesktopCheckout = ({
   displayCount,
   onCheckout,
 }: DesktopCheckoutProps) => {
-  const { totalPrice } = useCartStore();
+  const { totalPriceByStore } = useCartStore();
+  const params = useParams();
+  const store_slug = params.store_slug as string;
+  
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -39,7 +43,8 @@ const DesktopCheckout = ({
     setIsMounted(true);
   }, []);
 
-  const subtotal = isMounted ? totalPrice() : 0;
+  // ✅ FIXED: Use totalPriceByStore with the current store_slug
+  const subtotal = isMounted ? totalPriceByStore(store_slug) : 0;
 
   const handleCheckoutSubmit = async (values: CheckoutFormValues) => {
     setIsProcessing(true);

@@ -12,6 +12,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
 import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
 import PaymentModule from "./PaymentModule";
+import { useParams } from "next/navigation";
 
 interface MobileCheckoutProps {
   cartLength: number;
@@ -25,7 +26,10 @@ const MobileCheckout = ({
   onCheckout,
 }: MobileCheckoutProps) => {
   const { clearFormData } = useCheckoutStore();
-  const { totalPrice } = useCartStore();
+  const { totalPriceByStore } = useCartStore();
+  const params = useParams();
+  const store_slug = params.store_slug as string;
+  
   const [isMounted, setIsMounted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -35,7 +39,9 @@ const MobileCheckout = ({
     setIsMounted(true);
   }, []);
 
-  const subtotal = isMounted ? totalPrice() : 0;
+  // ✅ FIXED: Use totalPriceByStore with the current store_slug
+  const subtotal = isMounted ? totalPriceByStore(store_slug) : 0;
+
   const nextStep = () => {
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
