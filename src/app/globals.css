@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "antd/dist/reset.css";
 
 /* Enable dark mode with class strategy */
 @custom-variant dark (&:is(.dark *));

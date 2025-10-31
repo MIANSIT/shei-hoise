@@ -3,19 +3,25 @@
 import { HiOutlineShoppingCart } from "react-icons/hi";
 import useCartStore from "@/lib/store/cartStore";
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 
 type ShoppingCartIconProps = {
   onClick?: () => void;
 };
 
 export default function ShoppingCartIcon({ onClick }: ShoppingCartIconProps) {
-  const { totalItems } = useCartStore();
+  const { totalItemsByStore } = useCartStore();
+  const params = useParams();
+  const store_slug = params.store_slug as string;
+  
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const displayCount = isMounted ? totalItems() : 0;
+
+  // Get store-specific cart count
+  const displayCount = isMounted ? totalItemsByStore(store_slug) : 0;
 
   return (
     <div className='relative'>

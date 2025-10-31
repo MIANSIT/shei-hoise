@@ -5,11 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Zap, Check } from "lucide-react";
+import { ShoppingCart, Check, Eye } from "lucide-react";
 import { Product } from "@/lib/types/product";
 
 interface ProductCardProps {
-  store_slug: string; // ✅ added
+  store_slug: string;
   product: Product;
   isLoading?: boolean;
   onAddToCart: () => Promise<void>;
@@ -25,6 +25,7 @@ export default function ProductCard({
   const [showSuccess, setShowSuccess] = useState(false);
 
   const variant = product.variants?.[0];
+  const hasVariants = product.variants && product.variants.length > 0;
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
       ? variant.discounted_price
@@ -60,24 +61,8 @@ export default function ProductCard({
     }
   };
 
-  const handleBuyNow = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (adding) return;
-    setAdding(true);
-    try {
-      await onAddToCart();
-      window.location.href = "/checkout";
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setAdding(false);
-    }
-  };
-
   return (
     <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border">
-      {/* ✅ Use store_slug dynamically in link */}
       <Link
         href={`${store_slug}/product/${product.slug}`}
         className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
@@ -125,68 +110,73 @@ export default function ProductCard({
         </div>
       </Link>
 
-      <div className="flex flex-col gap-2 px-4 pb-4">
-        <Button
-          variant="secondary"
-          size="lg"
-          className="gap-2 cursor-pointer"
-          onClick={handleBuyNow}
-          disabled={adding}
-        >
-          <Zap className="w-4 h-4" />
-          <span>Buy Now</span>
-        </Button>
-
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleAddToCart();
-          }}
-          disabled={adding}
-          variant="default"
-          size="lg"
-          className={`gap-2 relative overflow-hidden cursor-pointer ${
-            showSuccess
-              ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
-              : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
-          }`}
-        >
-          <div className="flex items-center justify-center w-full relative">
-            <div
-              className={`flex items-center gap-2 ${
-                adding || showSuccess
-                  ? "opacity-0 -translate-y-4"
-                  : "opacity-100 translate-y-0"
-              }`}
+      <div className="flex gap-2 px-4 pb-4">
+        {/* Conditional rendering based on variants */}
+        {hasVariants ? (
+          // View Details Button for products with variants
+          <Link href={`${store_slug}/product/${product.slug}`} className="w-full">
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full gap-2 cursor-pointer bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
             >
-              <ShoppingCart className="w-5 h-5" />
-              <span>Add to Cart</span>
-            </div>
+              <Eye className="w-5 h-5" />
+              <span>View Details</span>
+            </Button>
+          </Link>
+        ) : (
+          // Add to Cart Button for products without variants
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddToCart();
+            }}
+            disabled={adding}
+            variant="default"
+            size="lg"
+            className={`w-full gap-2 relative overflow-hidden cursor-pointer ${
+              showSuccess
+                ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
+                : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
+            }`}
+          >
+            <div className="flex items-center justify-center w-full relative">
+              <div
+                className={`flex items-center gap-2 ${
+                  adding || showSuccess
+                    ? "opacity-0 -translate-y-4"
+                    : "opacity-100 translate-y-0"
+                }`}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>Add to Cart</span>
+              </div>
 
-            <div
-              className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
-                adding && !showSuccess
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-4"
-              }`}
-            >
-              <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
-              <span>Adding...</span>
-            </div>
+              <div
+                className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                  adding && !showSuccess
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-4"
+                }`}
+              >
+                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
+                <span>Adding...</span>
+              </div>
 
-            <div
-              className={`absolute flex items-center gap-2 ${
-                showSuccess
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-4"
-              }`}
-            >
-              <Check className="w-5 h-5" />
-              <span>Added!</span>
+              <div
+                className={`absolute flex items-center gap-2 ${
+                  showSuccess
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-4"
+                }`}
+              >
+                <Check className="w-5 h-5" />
+                <span>Added!</span>
+              </div>
             </div>
-          </div>
-        </Button>
+          </Button>
+        )}
       </div>
     </Card>
   );
