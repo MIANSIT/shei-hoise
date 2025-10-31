@@ -1,4 +1,6 @@
+// File: lib/queries/products/getProductById.ts
 import { supabaseAdmin } from "@/lib/supabase";
+
 import type {
   Product,
   ProductVariant,
@@ -13,7 +15,10 @@ interface DbVariant {
   product_id: string;
   variant_name: string;
   sku?: string | null;
-  price: number;
+  base_price: number;
+  discounted_price?: number | null;
+  discount_amount?: number | null;
+  tp_price?: number | null;
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
   color?: string | null;
@@ -23,7 +28,7 @@ interface DbVariant {
 
 interface DbProduct {
   status: "draft" | "active" | "inactive" | "archived";
-  featured: boolean | string; // allow string from DB
+  featured: boolean | string;
   id: string;
   name: string;
   slug: string;
@@ -43,25 +48,36 @@ interface DbProduct {
   product_variants: DbVariant[] | null;
 }
 
-/* ---------- Map Variant Function ---------- */
+/* ---------- Helpers ---------- */
+function calculateLowStock(stock?: ProductStock | null): boolean {
+  if (!stock || !stock.track_inventory) return false;
+  const threshold = stock.low_stock_threshold ?? 0;
+  return stock.quantity_available <= threshold;
+}
+
 function mapVariant(v: DbVariant, allImages: ProductImage[]): ProductVariant {
   const variantImages = allImages.filter((img) => img.variant_id === v.id);
+
+  const stock = v.product_inventory?.[0] || {
+    quantity_available: 0,
+    quantity_reserved: 0,
+    low_stock_threshold: 0,
+    track_inventory: false,
+  };
 
   return {
     id: v.id,
     product_id: v.product_id,
     variant_name: v.variant_name,
     sku: v.sku || "",
-    price: Number(v.price),
+    price: Number(v.base_price),
     attributes: v.attributes || {},
     weight: v.weight ?? null,
     color: v.color ?? null,
     is_active: v.is_active ?? true,
-    stock: v.product_inventory?.[0] || {
-      quantity_available: 0,
-      quantity_reserved: 0,
-    },
+    stock,
     images: variantImages,
+    is_low_stock: calculateLowStock(stock),
   };
 }
 
@@ -88,19 +104,22 @@ export async function getProductById(
       category_id,
       created_at,
       categories!inner(id, name),
-      product_inventory(quantity_available, quantity_reserved),
+      product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
       product_images(id, product_id, variant_id, image_url, alt_text, sort_order, is_primary, created_at),
       product_variants(
         id,
         product_id,
         variant_name,
         sku,
-        price,
+        base_price,
+        discounted_price,
+        discount_amount,
+        tp_price,
         attributes,
         weight,
         color,
         is_active,
-        product_inventory(quantity_available, quantity_reserved)
+        product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory)
       )
     `
     )
@@ -112,13 +131,19 @@ export async function getProductById(
   if (!data) return null;
 
   const p = data as DbProduct;
-  const productImages = (p.product_images ?? []).filter(
-    (img) => img.variant_id === null
+
+  const productStock = p.product_inventory?.[0] || {
+    quantity_available: 0,
+    quantity_reserved: 0,
+    low_stock_threshold: 0,
+    track_inventory: false,
+  };
+
+  const isProductLowStock = calculateLowStock(productStock);
+
+  const variants = (p.product_variants ?? []).map((v) =>
+    mapVariant(v, p.product_images ?? [])
   );
-  const category =
-    p.categories && p.categories.length > 0
-      ? { id: p.categories[0].id, name: p.categories[0].name }
-      : null;
 
   return {
     id: p.id,
@@ -134,11 +159,13 @@ export async function getProductById(
     weight: p.weight ?? null,
     status: p.status,
     featured: p.featured === true || p.featured === "true",
-    category,
-    stock: p.product_inventory?.[0] || null,
-    images: productImages,
-    variants: (p.product_variants ?? []).map((v) =>
-      mapVariant(v, p.product_images ?? [])
-    ),
+    category:
+      p.categories && p.categories.length > 0
+        ? { id: p.categories[0].id, name: p.categories[0].name }
+        : null,
+    stock: productStock,
+    is_low_stock: isProductLowStock,
+    images: (p.product_images ?? []).filter((img) => img.variant_id === null),
+    variants,
   };
 }
