@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Card,
-  Col,
+  // Card,
+  // Col,
   Typography,
-  Space,
+  // Space,
   Button,
   Empty,
   notification,
@@ -140,11 +140,12 @@ export default function CustomOrder() {
         </div>
 
         {/* Main Card */}
-        <Card
-          className="shadow-md rounded-2xl border  transition-all hover:shadow-lg"
-          style={{ padding: "20px" }}
-        >
-          <Col xs={24} lg={24}>
+        {/* <Card
+          className="shadow-md rounded-2xl border transition-all hover:shadow-lg"
+          bodyStyle={{ padding: "20px" }}
+        > */}
+          {/* Order Details Section */}
+          <div className="w-full">
             {products.length > 0 ? (
               <OrderDetails
                 products={products}
@@ -154,41 +155,44 @@ export default function CustomOrder() {
             ) : (
               <Empty description="No products found" />
             )}
-          </Col>
+          </div>
+
+          {/* Divider / Spacing */}
+          <div className="border-t border-gray-200 mt-6 mb-4" />
 
           {/* Generate Link Section */}
-          <Col className="mt-4 justify-end flex">
-            <Space size="middle">
-              {!generatedLink ? (
+          <div className="flex flex-col sm:flex-row w-full justify-end sm:items-center gap-3">
+            {!generatedLink ? (
+              <Button
+                type="primary"
+                size="large"
+                disabled={!isFormValid}
+                icon={<LinkOutlined />}
+                onClick={handleGenerateLink}
+                className="w-full sm:w-auto"
+              >
+                Generate Order Link
+              </Button>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  readOnly
+                  value={window.location.origin + generatedLink}
+                  className="border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
                 <Button
-                  type="default"
-                  size="large"
-                  disabled={!isFormValid}
-                  icon={<LinkOutlined />}
-                  onClick={handleGenerateLink}
+                  type="primary"
+                  icon={copied ? <CheckOutlined /> : <CopyOutlined />}
+                  onClick={handleCopyLink}
+                  className="w-full sm:w-auto"
                 >
-                  Generate Order Link
+                  {copied ? "Copied" : "Copy"}
                 </Button>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    readOnly
-                    value={window.location.origin + generatedLink}
-                    className="border rounded-lg px-3 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <Button
-                    type="primary"
-                    icon={copied ? <CheckOutlined /> : <CopyOutlined />}
-                    onClick={handleCopyLink}
-                  >
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
-                </>
-              )}
-            </Space>
-          </Col>
-        </Card>
+              </>
+            )}
+          </div>
+        {/* </Card> */}
       </div>
     </div>
   );
