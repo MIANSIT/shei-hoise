@@ -3,10 +3,10 @@
 
 import { useState, useEffect } from "react";
 import useCartStore from "@/lib/store/cartStore";
-import Header from "../components/common/Header";
-import Footer from "../components/common/Footer";
-import DesktopCheckout from "../components/products/checkout/DesktopCheckoutLayout";
-import MobileCheckout from "../components/products/checkout/MobileCheckoutLayout";
+import Header from "../../components/common/Header";
+import Footer from "../../components/common/Footer";
+import DesktopCheckout from "../../components/products/checkout/DesktopCheckoutLayout";
+import MobileCheckout from "../../components/products/checkout/MobileCheckoutLayout";
 
 export default function CheckoutPage() {
   const { cart, totalItems } = useCartStore();

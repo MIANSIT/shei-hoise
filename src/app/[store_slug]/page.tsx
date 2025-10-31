@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState,use  } from "react";
@@ -54,21 +55,76 @@ export default function StorePage({ params }: StorePageProps) {
   const handleAddToCart = async (product: Product) => {
     setLoadingProductId(product.id);
     try {
-      await addToCart({
-        ...product,
-        imageUrl:
-          product.primary_image?.image_url ||
-          product.images?.[0] ||
-          "/placeholder.png",
-        currentPrice:
-          product.variants?.[0]?.discounted_price ??
-          product.variants?.[0]?.base_price ??
-          product.discounted_price ??
-          product.base_price,
-      });
+      // Get the first variant if exists
+      const variant = product.variants?.[0];
+
+      // Calculate display price
+      const displayPrice =
+        variant?.discounted_price && variant.discounted_price > 0
+          ? variant.discounted_price
+          : variant?.base_price ??
+            product.discounted_price ??
+            product.base_price;
+
+      // Get display image
+      const displayImage =
+        variant?.primary_image?.image_url ||
+        variant?.product_images?.[0]?.image_url ||
+        product.primary_image?.image_url ||
+        product.images?.[0] ||
+        "/placeholder.png";
+
+      // Create cart product with proper typing
+      const cartProduct: any = {
+        id: variant?.id || product.id,
+        slug: product.slug,
+        name: product.name,
+        base_price: variant?.base_price || product.base_price,
+        discounted_price:
+          displayPrice < (variant?.base_price || product.base_price)
+            ? displayPrice
+            : undefined,
+        images: product.images || [],
+        quantity: 1,
+        store_slug: store_slug,
+        category: product.category
+          ? {
+              id: product.category.id,
+              name: product.category.name,
+            }
+          : undefined,
+        imageUrl: displayImage,
+        currentPrice: displayPrice,
+      };
+
+      // Add variants with all required ProductVariant properties
+      if (variant) {
+        cartProduct.variants = [
+          {
+            id: variant.id,
+            variant_name: variant.variant_name,
+            base_price: variant.base_price,
+            discounted_price: variant.discounted_price || undefined,
+            color: variant.color || undefined,
+            product_images: variant.product_images || [],
+            // Add the missing required properties from ProductVariant type
+            product_id: variant.product_id || product.id, // Use variant's product_id or fallback to product id
+            stock: variant.stock || 0, // Default stock value
+            primary_image: variant.primary_image || {
+              // Default primary_image object
+              id: "",
+              image_url: displayImage,
+              is_primary: true,
+            },
+          },
+        ];
+      }
+
+      await addToCart(cartProduct);
       success(`${product.name} added to cart`);
     } catch (err) {
       console.error(err);
+      error("Failed to add product to cart");
     } finally {
       setLoadingProductId(null);
     }
