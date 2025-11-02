@@ -26,7 +26,7 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Sore", path: "#" },
+    { name: "Sore", path: "#stores" },
   ];
 
   // ✅ Conditional auth links based on login status
