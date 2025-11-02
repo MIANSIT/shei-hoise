@@ -1,14 +1,11 @@
 // app/admin/orders/page.tsx
-import CustomOrder from "../../components/orders/CustomOrder";
-import Header from "../../components/common/Header";
-import Footer from "../../components/common/Footer";
+import CustomOrder from "@/app/components/orders/CustomOrder";
+
 
 export default function OrdersPage() {
   return (
     <div className="">
-      <Header />
       <CustomOrder />
-      <Footer />
     </div>
   );
 }

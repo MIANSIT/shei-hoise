@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useCartStore from "@/lib/store/cartStore";
-import Header from "../../components/common/Header";
-import Footer from "../../components/common/Footer";
+
 import DesktopCheckout from "../../components/products/checkout/DesktopCheckoutLayout";
 import MobileCheckout from "../../components/products/checkout/MobileCheckoutLayout";
 import { useParams, useRouter } from "next/navigation";
@@ -97,8 +96,8 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Header />
-      
+
+
       {/* Desktop Version */}
       <div className="hidden md:block">
         <DesktopCheckout
@@ -117,7 +116,6 @@ export default function CheckoutPage() {
         />
       </div>
 
-      <Footer />
     </>
   );
 }
