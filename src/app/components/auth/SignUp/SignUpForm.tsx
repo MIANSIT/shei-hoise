@@ -14,7 +14,6 @@ export function SignUpForm() {
   const defaultValues: SignUpFormValues = { name: "", email: "", password: "" };
 
   const handleSubmit = async (values: SignUpFormValues) => {
-    console.log("Signup values:", values);
 
     try {
       // simulate API call

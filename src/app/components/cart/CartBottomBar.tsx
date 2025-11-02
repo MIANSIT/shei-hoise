@@ -1,13 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
-import useCartStore from "@/lib/store/cartStore";
+import { useEffect } from "react";
+import { useCartItems } from "@/lib/hook/useCartItems";
 import CartItemsList from "./CartItemList";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { Button } from "@/components/ui/button";
 import { useRouter, useParams } from "next/navigation";
-import type { CartItem } from "@/lib/types/cart";
 
 type CartBottomBarProps = {
   isOpen: boolean;
@@ -15,17 +14,12 @@ type CartBottomBarProps = {
 };
 
 export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
-  const { getCartByStore, totalPriceByStore, totalItemsByStore } = useCartStore();
   const params = useParams();
   const store_slug = params.store_slug as string;
-  
-  // ✅ Get the cart state directly from Zustand to trigger re-renders
-  const cart = useCartStore((state) => state.cart);
-  
-  const [storeCart, setStoreCart] = useState<CartItem[]>([]);
-  const [storeTotalPrice, setStoreTotalPrice] = useState<number>(0);
-  const [storeTotalItems, setStoreTotalItems] = useState<number>(0);
   const router = useRouter();
+
+  // Use the custom hook to get cart items with fresh data
+  const { items: cartItems, calculations, loading } = useCartItems(store_slug);
 
   // Prevent background scrolling when open
   useEffect(() => {
@@ -39,16 +33,8 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
     };
   }, [isOpen]);
 
-  // ✅ FIX: Update cart data when store_slug changes OR when cart changes
-  useEffect(() => {
-    console.log('🛒 CartBottomBar: Cart updated, recalculating...', cart);
-    
-    setStoreCart(getCartByStore(store_slug));
-    setStoreTotalPrice(totalPriceByStore(store_slug));
-    setStoreTotalItems(totalItemsByStore(store_slug));
-  }, [store_slug, cart, getCartByStore, totalPriceByStore, totalItemsByStore]); // ✅ Added cart as dependency
-
   const handleCheckout = () => {
+    onClose(); // Close the cart drawer first
     router.push(`/${store_slug}/checkout`);
   };
 
@@ -73,7 +59,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">
-              Your Cart ({storeTotalItems})
+              Your Cart ({calculations.totalItems})
             </h2>
             <button
               onClick={onClose}
@@ -83,8 +69,14 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
               <X className="h-5 w-5" />
             </button>
           </div>
+          
           <div className="max-h-[60vh] overflow-y-auto pb-4">
-            {storeCart.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground mt-2">Loading cart...</p>
+              </div>
+            ) : cartItems.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground">Your cart is empty</p>
                 <Button
@@ -98,9 +90,10 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
               <CartItemsList />
             )}
           </div>
-          {storeCart.length > 0 && (
+          
+          {!loading && cartItems.length > 0 && (
             <CartCheckoutLayout
-              subtotal={storeTotalPrice}
+              subtotal={calculations.totalPrice}
               onCheckout={handleCheckout}
               buttonText="Proceed to Checkout"
             />

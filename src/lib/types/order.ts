@@ -29,10 +29,24 @@ export interface OrderCustomer {
   phone: string | null;
 }
 
+export interface ProductImage {
+  id: string;
+  image_url: string;
+  is_primary: boolean;
+}
+
+export interface OrderItemProduct {
+  id: string;
+  name: string;
+  product_images?: ProductImage[];
+}
+
+export interface OrderItemVariant {
+  id: string;
+  product_images?: ProductImage[];
+}
+
 export interface OrderItem {
-  products: any;
-  variant: any;
-  discounted_price: any;
   id: string;
   product_id: string;
   variant_id: string | null;
@@ -41,7 +55,11 @@ export interface OrderItem {
   total_price: number;
   product_name: string;
   variant_details: any;
+  products?: OrderItemProduct | null; // Made optional
+  product_variants?: OrderItemVariant | null; // Made optional
+  discounted_price?: number; 
 }
+
 
 // ===== STATUS TYPES =====
 export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
@@ -96,9 +114,9 @@ export interface CustomerInfo {
   city: string;
   email: string;
   notes?: string;
-  customer_id?: string; // ✅ Made optional for customer orders
+  customer_id?: string;
   password: string;
-  country?: string; // ✅ Added for customer orders
+  country?: string;
 }
 
 export interface CreateOrderData {

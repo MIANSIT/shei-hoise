@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
-import Header from "../../components/common/Header";
-import Footer from "../../components/common/Footer";
-import OrdersTable from "../../components/orders/CustomerOrderTable";
+import Header from "../components/common/Header";
+import Footer from "../components/common/Footer";
+import OrdersTable from "../components/orders/CustomerOrderTable";
 
 // Simple loader component matching your theme
 const SimpleLoader = ({ loadingText }: { loadingText?: string }) => {

@@ -12,4 +12,12 @@ export const customerCheckoutSchema = z.object({
   shippingAddress: z.string().min(1, "Shipping address is required"),
 });
 
+export const addToCartSchema = z.object({
+  productId: z.string().min(1, "Product ID is required"),
+  variantId: z.string().nullable().optional(),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  storeSlug: z.string().min(1, "Store slug is required"),
+});
+
 export type CustomerCheckoutFormValues = z.infer<typeof customerCheckoutSchema>;
+export type AddToCartType = z.infer<typeof addToCartSchema>;
