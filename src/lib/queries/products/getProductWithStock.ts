@@ -1,4 +1,3 @@
-// lib/queries/products/getProductWithStock.ts
 import { supabaseAdmin } from "@/lib/supabase";
 
 export interface ProductImage {
@@ -57,11 +56,15 @@ interface SupabaseProductRow {
   product_variants: SupabaseProductVariantRow[];
 }
 
-export async function getProductWithStock(): Promise<ProductWithStock[]> {
-  const { data, error } = await supabaseAdmin.from<
-    "products",
-    SupabaseProductRow
-  >("products").select(`
+// ✅ UPDATED FUNCTION
+export async function getProductWithStock(
+  storeSlug: string
+): Promise<ProductWithStock[]> {
+  // Fetch products belonging to a specific store
+  const { data, error } = await supabaseAdmin
+    .from("products")
+    .select(
+      `
       id,
       name,
       base_price,
@@ -76,12 +79,22 @@ export async function getProductWithStock(): Promise<ProductWithStock[]> {
         color,
         product_inventory(quantity_available, quantity_reserved),
         product_images(id, product_id, variant_id, image_url, alt_text, is_primary)
+      ),
+      stores!inner (
+        id,
+          store_slug
       )
-    `);
+    `
+    )
+    .eq("stores.store_slug", storeSlug);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      `Error fetching products for store ${storeSlug}: ${error.message}`
+    );
+  }
 
-  return (data || []).map((p) => {
+  return (data || []).map((p: SupabaseProductRow) => {
     const primaryProductImage =
       p.product_images?.find((img) => img.is_primary) || null;
 

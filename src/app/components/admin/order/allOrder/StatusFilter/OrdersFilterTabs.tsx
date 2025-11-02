@@ -11,7 +11,7 @@ interface Props {
   onSearchChange: (value: string) => void;
 }
 
-// Color mapping for status
+// ✅ Color mapping for statuses
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   confirmed: "bg-blue-100 text-blue-800 border-blue-200",
@@ -56,19 +56,20 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
   const handleStatusChange = (status: string) => {
     setActiveStatus(status);
-    
+
     let filtered = orders;
-    
+
     if (status !== "all") {
-      filtered = category === "order" 
-        ? orders.filter((o) => o.status === status)
-        : orders.filter((o) => o.payment_status === status);
+      filtered =
+        category === "order"
+          ? orders.filter((o) => o.status === status)
+          : orders.filter((o) => o.payment_status === status);
     }
 
     const finalFiltered = filtered.filter((o) =>
       o.order_number.toLowerCase().includes(searchValue.toLowerCase())
     );
-    
+
     onFilter(finalFiltered);
   };
 
@@ -76,15 +77,15 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
   const getStatusCount = (status: string) => {
     if (status === "all") return orders.length;
-    
+
     return category === "order"
       ? orders.filter((o) => o.status === status).length
       : orders.filter((o) => o.payment_status === status).length;
   };
 
   return (
-    <div className="mb-4">
-      {/* Category tabs on top */}
+    <div className="mb-4 w-full">
+      {/* Category Tabs */}
       <Tabs
         activeKey={category}
         onChange={handleCategoryChange}
@@ -95,39 +96,61 @@ const OrdersFilterTabs: React.FC<Props> = ({
         type="card"
       />
 
-      {/* Search input left, status buttons right */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mt-4">
-        {/* Search input */}
-        <Input.Search
-          placeholder="Search by Order Number"
-          value={searchValue}
-          onChange={(e) => onSearchChange(e.target.value)}
-          style={{ width: 300 }}
-          allowClear
-          size="middle"
-        />
+      {/* Search + Status Buttons */}
+      <div
+        className="
+          flex flex-col sm:flex-row justify-between items-start sm:items-center 
+          gap-4 mt-4 flex-wrap
+        "
+      >
+        {/* Search Input */}
+        <div className="w-full sm:w-auto flex-1">
+          <Input.Search
+            placeholder="Search by Order Number"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            allowClear
+            size="middle"
+            className="w-full sm:w-72"
+          />
+        </div>
 
-        {/* Status buttons */}
-        <div className="flex flex-wrap gap-2">
+        {/* Status Buttons */}
+        <div
+          className="
+            flex flex-wrap justify-start sm:justify-end gap-2 
+            w-full sm:w-auto
+          "
+        >
           {statuses.map((status) => {
             const isActive = activeStatus === status;
             const count = getStatusCount(status);
-            
+
             return (
               <button
                 key={status}
                 type="button"
                 onClick={() => handleStatusChange(status)}
                 aria-pressed={isActive}
-                className={`px-3 py-1.5 text-sm rounded-full border font-medium transition-all duration-200 flex items-center gap-2
-                  ${statusColors[status]}
-                  ${isActive ? 'ring-2 ring-offset-1 ring-blue-500 scale-105' : 'hover:scale-105 hover:shadow-sm'}
+                className={`
+                  px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium 
+                  transition-all duration-200 flex items-center gap-2 
+                  ${statusColors[status]} 
+                  ${
+                    isActive
+                      ? "ring-2 ring-offset-1 ring-blue-500 scale-105"
+                      : "hover:scale-105 hover:shadow-sm"
+                  }
                 `}
               >
                 <span>{capitalize(status)}</span>
-                <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                  isActive ? 'bg-white text-gray-800' : 'bg-black bg-opacity-20 text-white'
-                }`}>
+                <span
+                  className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
+                    isActive
+                      ? "bg-white text-gray-800"
+                      : "bg-black bg-opacity-20 text-white"
+                  }`}
+                >
                   {count}
                 </span>
               </button>
