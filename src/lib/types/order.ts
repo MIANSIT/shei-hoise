@@ -31,6 +31,8 @@ export interface OrderCustomer {
 
 export interface OrderItem {
   products: any;
+  variant: any;
+  discounted_price: any;
   id: string;
   product_id: string;
   variant_id: string | null;

@@ -28,21 +28,14 @@ function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
     // Inject dynamic "Generate Order Link" under Orders
     if (item.title === "Orders" && storeSlug) {
       children.push({
-        key: `generate-order-link`,
+        key: `/${storeSlug}/generate-orders-link`,
         icon: <LucideIcon icon={Link2} />,
-        label: (
-          <Link
-            href={`/${storeSlug}/generate-orders-link`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2"
-          >
-            Generate Order Link
-          </Link>
-        ),
+        label: "Generate Order Link", // 👈 keep this plain text (for mobile & collapsed)
+        title: "Generate Order Link", // 👈 ensures tooltip shows
+        onClick: () =>
+          window.open(`/${storeSlug}/generate-orders-link`, "_blank"), // 👈 open in new tab
       });
     }
-
     return {
       key: item.title,
       icon,
