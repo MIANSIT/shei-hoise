@@ -18,7 +18,7 @@ export default function CartItemsList() {
     removeItem, 
     updateQuantity, 
     clearStoreCart,
-    cart // ✅ Get the entire cart from Zustand to trigger re-renders
+    cart
   } = useCartStore();
   
   const [storeCart, setStoreCart] = useState<CartItem[]>([]);
@@ -35,7 +35,7 @@ export default function CartItemsList() {
       storeCart: currentStoreCart,
       globalCart: cart
     });
-  }, [store_slug, getCartByStore, cart]); // ✅ Added cart as dependency
+  }, [store_slug, getCartByStore, cart]);
 
   // ✅ FIXED: Correct price display logic
   const getDisplayPrice = (item: CartItem): number => {
@@ -47,6 +47,41 @@ export default function CartItemsList() {
       return item.currentPrice;
     }
     return item.base_price;
+  };
+
+  // ✅ NEW: Get display image - prioritize variant images
+  const getDisplayImage = (item: CartItem): string => {
+    // Use variant image if available
+    if (item.variant_data?.product_images?.[0]?.image_url) {
+      return item.variant_data.product_images[0].image_url;
+    }
+    if (item.variant_data?.primary_image?.image_url) {
+      return item.variant_data.primary_image.image_url;
+    }
+    // Fallback to product image
+    return item.imageUrl || "/placeholder.png";
+  };
+
+  // ✅ NEW: Get display name with variant info
+  const getDisplayName = (item: CartItem): string => {
+    if (item.variant_data?.variant_name) {
+      return `${item.name} - ${item.variant_data.variant_name}`;
+    }
+    if (item.variant_data?.color) {
+      return `${item.name} - ${item.variant_data.color}`;
+    }
+    return item.name;
+  };
+
+  // ✅ NEW: Get variant details for display
+  const getVariantDetails = (item: CartItem): string | null => {
+    if (item.variant_data) {
+      const details = [];
+      if (item.variant_data.color) details.push(item.variant_data.color);
+      if (item.variant_data.size) details.push(item.variant_data.size);
+      return details.join(' • ');
+    }
+    return null;
   };
 
   const handleQuantityChange = (item: CartItem, newQuantity: number) => {
@@ -85,7 +120,12 @@ export default function CartItemsList() {
   console.log('🛒 CartItemsList - Rendering with:', {
     store_slug,
     storeCartLength: storeCart.length,
-    storeCartItems: storeCart
+    storeCartItems: storeCart.map(item => ({
+      id: item.id,
+      variant_id: item.variant_id,
+      name: item.name,
+      variant_data: item.variant_data
+    }))
   });
 
   return (
@@ -113,26 +153,28 @@ export default function CartItemsList() {
         </div>
       ) : (
         storeCart.map((item: CartItem) => {
-          // ✅ FIXED: Use the correct price display logic
+          // ✅ FIXED: Use the new helper functions
           const displayPrice = getDisplayPrice(item);
-          const displayImage = item.imageUrl || "/placeholder.png";
-          const variant = item.variants?.[0];
-          const hasVariants = item.variants && item.variants.length > 0;
+          const displayImage = getDisplayImage(item);
+          const displayName = getDisplayName(item);
+          const variantDetails = getVariantDetails(item);
 
-          // ✅ DEBUG: Log price calculation for each item
-          console.log('🛒 Item price calculation:', {
+          // ✅ DEBUG: Log detailed item info
+          console.log('🛒 Cart item details:', {
             name: item.name,
-            base_price: item.base_price,
-            discounted_price: item.discounted_price,
-            currentPrice: item.currentPrice,
-            finalDisplayPrice: displayPrice,
-            quantity: item.quantity,
-            total: displayPrice * item.quantity
+            product_id: item.id,
+            variant_id: item.variant_id,
+            variant_data: item.variant_data,
+            displayName,
+            displayImage,
+            variantDetails,
+            price: displayPrice,
+            quantity: item.quantity
           });
 
           return (
             <div
-              key={item.id}
+              key={`${item.id}-${item.variant_id || 'no-variant'}`} // ✅ Use composite key
               className={`relative flex items-center justify-between rounded-lg bg-card/50 p-3 transition-all duration-300 ease-in-out border border-border ${
                 removingId === item.id || isClearing ? "opacity-0 -translate-x-10" : "opacity-100 translate-x-0"
               }`}
@@ -141,21 +183,25 @@ export default function CartItemsList() {
                 <div className="relative w-20 h-20 rounded-lg overflow-hidden">
                   <Image
                     src={displayImage}
-                    alt={item.name}
+                    alt={displayName}
                     fill
                     className="object-cover"
                   />
                 </div>
                 <div className="flex flex-col">
-                  <h3 className="font-medium text-foreground md:text-xs text-sm">{item.name}</h3>
+                  {/* ✅ Use display name with variant info */}
+                  <h3 className="font-medium text-foreground md:text-xs text-sm">
+                    {displayName}
+                  </h3>
                   
-                  {hasVariants && variant && (
+                  {/* ✅ Show variant details if available */}
+                  {variantDetails && (
                     <p className="text-sm text-muted-foreground">
-                      {variant.variant_name} 
-                      {variant.color && ` - ${variant.color}`}
+                      {variantDetails}
                     </p>
                   )}
                   
+                  {/* ✅ Show category if available */}
                   {item.category?.name && (
                     <p className="text-sm text-muted-foreground">
                       {item.category.name}
