@@ -12,6 +12,7 @@ import AddToCartButton from "@/app/components/products/singleProduct/AddToCartBu
 import BackButton from "@/app/components/products/singleProduct/BackButton";
 import { motion } from "framer-motion";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
+import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton"; 
 
 interface ApiProduct {
   id: string;
@@ -97,6 +98,23 @@ export default function ProductPage() {
       fetchProduct();
     }
   }, [product_slug]);
+
+  // ✅ REPLACED: Now using your custom skeleton
+  if (loading) {
+    return <ProductPageSkeleton />;
+  }
+
+  if (!product) {
+    return (
+      <>
+        <div className="container mx-auto px-4 py-6">
+          <p className="text-center mt-20 text-lg md:text-xl text-foreground">
+            Product not found.
+          </p>
+        </div>
+      </>
+    );
+  }
 
   const selectedVariantData = product?.product_variants?.find(
     (variant) => variant.id === selectedVariant
@@ -234,31 +252,6 @@ export default function ProductPage() {
       setQuantity((prev) => prev - 1);
     }
   };
-
-  if (loading) {
-    return (
-      <>
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center mt-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-foreground">Loading product...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (!product) {
-    return (
-      <>
-        <div className="container mx-auto px-4 py-6">
-          <p className="text-center mt-20 text-lg md:text-xl text-foreground">
-            Product not found.
-          </p>
-        </div>
-      </>
-    );
-  }
 
   const totalPrice = displayPrice * quantity;
   const images = product.product_images.map((img) => img.image_url);

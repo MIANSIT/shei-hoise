@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
+import { StorePageSkeleton } from "../components/skeletons/StorePageSkeleton"; // Add this import
 
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
@@ -72,17 +73,9 @@ export default function StorePage({ params }: StorePageProps) {
     }
   };
 
+  // ✅ REPLACED: Now using your custom skeleton
   if (loading) {
-    return (
-      <>
-        <div className="flex justify-center items-center py-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <span className="text-lg font-medium mt-2">Loading store...</span>
-          </div>
-        </div>
-      </>
-    );
+    return <StorePageSkeleton />;
   }
 
   if (storeExists === false) {

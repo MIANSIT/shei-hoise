@@ -16,7 +16,7 @@ export default function DesktopHeader() {
   // Main navigation for users
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Stores", path: "#stores" },
+    { name: "Stores", path: "/#stores" },
   ];
 
   // Auth links for users - conditionally show based on login status

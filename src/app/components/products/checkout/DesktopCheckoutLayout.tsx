@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useParams } from "next/navigation";
+import { DesktopCheckoutSkeleton } from "../../skeletons/DesktopCheckoutSkeleton"; // Add this
 
 interface DesktopCheckoutProps {
   cartLength: number;
@@ -64,15 +65,9 @@ const DesktopCheckout = ({
     clearFormData();
   };
 
+  // ✅ REPLACED: Using custom skeleton
   if (loading) {
-    return (
-      <div className="container mx-auto p-8">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground mt-4">Loading checkout...</p>
-        </div>
-      </div>
-    );
+    return <DesktopCheckoutSkeleton />;
   }
 
   return (

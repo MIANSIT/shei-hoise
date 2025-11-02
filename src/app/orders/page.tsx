@@ -8,6 +8,9 @@ import { StoreOrder } from "@/lib/types/order";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
 import OrdersTable from "../components/orders/CustomerOrderTable";
+import { OrdersPageSkeleton } from "../components/skeletons/OrdersPageSkeleton"; // Add this
+import { EmptyOrdersSkeleton } from "../components/skeletons/EmptyOrdersSkeleton"; // Add this
+import { UserLoadingSkeleton } from "../components/skeletons/UserLoadingSkeleton"; // Add this
 
 // Simple loader component matching your theme
 const SimpleLoader = ({ loadingText }: { loadingText?: string }) => {
@@ -51,12 +54,9 @@ export default function OrdersPage() {
     }
   }, [user]);
 
+  // ✅ REPLACED: Using custom skeleton for user loading
   if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <SimpleLoader loadingText="Loading user information..." />
-      </div>
-    );
+    return <UserLoadingSkeleton />;
   }
 
   if (!user) {
@@ -85,42 +85,15 @@ export default function OrdersPage() {
             <p className="text-muted-foreground mt-2">View your order history and status</p>
           </div>
 
+          {/* ✅ REPLACED: Using custom skeletons */}
           {loading ? (
-            <div className="flex justify-center py-12">
-              <SimpleLoader loadingText="Loading your orders..." />
-            </div>
+            <OrdersPageSkeleton />
           ) : error ? (
             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-center">
               <p className="text-destructive">{error}</p>
             </div>
           ) : orders.length === 0 ? (
-            <div className="bg-card rounded-lg shadow-sm border border-border p-8 text-center">
-              <div className="max-w-md mx-auto">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg 
-                    className="w-8 h-8 text-muted-foreground" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" 
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">No orders yet</h3>
-                <p className="text-muted-foreground mb-4">You haven&apos;t placed any orders with this store.</p>
-                <a
-                  href={`/${store_slug}`}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-primary-foreground bg-primary hover:bg-primary/90 transition-colors"
-                >
-                  Start Shopping
-                </a>
-              </div>
-            </div>
+            <EmptyOrdersSkeleton />
           ) : (
             <OrdersTable orders={orders} />
           )}

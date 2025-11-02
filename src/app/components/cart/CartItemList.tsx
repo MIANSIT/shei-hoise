@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams } from "next/navigation";
+import { CartItemsListSkeleton } from "../skeletons/CartItemsListSkeleton"; // Add this import
 
 export default function CartItemsList() {
   const params = useParams();
@@ -63,16 +64,9 @@ export default function CartItemsList() {
     setTimeout(() => setIsClearing(false), 300);
   };
 
-  // Only show loading on initial load, not during updates
+  // ✅ REPLACED: Now using your custom skeleton
   if (loading && cartItems.length === 0) {
-    return (
-      <div className="space-y-3">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground mt-2">Loading cart items...</p>
-        </div>
-      </div>
-    );
+    return <CartItemsListSkeleton />;
   }
 
   if (error && cartItems.length === 0) {

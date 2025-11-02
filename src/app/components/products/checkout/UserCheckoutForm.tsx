@@ -11,7 +11,7 @@ import { customerCheckoutSchema, CustomerCheckoutFormValues } from "@/lib/schema
 import { CountryFlag } from "../../common/CountryFlag";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { useEffect, useState, useMemo } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, ArrowRight } from "lucide-react";
 import { createCheckoutCustomer } from "@/lib/queries/customers/createCheckoutCustomer";
 import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -19,7 +19,9 @@ import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import { useOrderProcess } from "@/lib/hook/useOrderProcess";
-import useCartStore from "@/lib/store/cartStore"; // ✅ Import cart store
+import useCartStore from "@/lib/store/cartStore";
+import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton"; // Add this
+import { OrderCompleteSkeleton } from "../../../components/skeletons/OrderCompleteSkeleton"; // Add this
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -28,10 +30,11 @@ interface CheckoutFormProps {
 
 const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
   const { formData, setFormData } = useCheckoutStore();
-  const { clearStoreCart } = useCartStore(); // ✅ Get cart clearing function
+  const { clearStoreCart } = useCartStore();
   
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [isOrderComplete, setIsOrderComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -135,6 +138,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
     setIsCreatingAccount(true);
     setError(null);
     setSuccess(null);
+    setIsOrderComplete(false);
     
     try {
       // Save form data to store
@@ -152,8 +156,18 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         
         if (result.success) {
           setSuccess(result.message || 'Order placed successfully!');
+          setIsOrderComplete(true);
+          
+          // ✅ Clear cart after successful order
+          clearStoreCart(store_slug);
+          
           // ✅ Call parent onSubmit to show payment modal or handle success
           onSubmit(values);
+          
+          // ✅ NEW: Redirect to orders page after 2 seconds
+          setTimeout(() => {
+            router.push('/orders');
+          }, 2000);
         } else {
           setError(result.error || 'Failed to place order');
         }
@@ -175,7 +189,17 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           
           if (result.success) {
             setSuccess(result.message || 'Order placed successfully!');
+            setIsOrderComplete(true);
+            
+            // ✅ Clear cart after successful order
+            clearStoreCart(store_slug);
+            
             onSubmit(values);
+            
+            // ✅ NEW: Redirect to orders page after 2 seconds
+            setTimeout(() => {
+              router.push('/orders');
+            }, 2000);
           } else {
             setError(result.error || 'Failed to place order');
           }
@@ -217,7 +241,17 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         
         if (orderResult.success) {
           setSuccess(orderResult.message || 'Order placed successfully!');
+          setIsOrderComplete(true);
+          
+          // ✅ Clear cart after successful order
+          clearStoreCart(store_slug);
+          
           onSubmit(values);
+          
+          // ✅ NEW: Redirect to orders page after 2 seconds
+          setTimeout(() => {
+            router.push('/orders');
+          }, 2000);
         } else {
           setError(orderResult.error || 'Failed to place order');
         }
@@ -243,16 +277,14 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
     router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
-  // Show loading while checking auth status
+  // ✅ REPLACED: Using custom skeleton for auth loading
   if (isLoadingAuth) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <SheiLoader
-          size="md"
-          loadingText="Loading your information..."
-        />
-      </div>
-    );
+    return <CheckoutFormSkeleton />;
+  }
+
+  // ✅ REPLACED: Using custom skeleton for order completion
+  if (isOrderComplete) {
+    return <OrderCompleteSkeleton />;
   }
 
   return (
@@ -460,16 +492,20 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <SheiLoader
-            size="sm"
-            loaderColor="white"
-            loadingText={
-              isUserLoggedIn ? "Placing Order..." : 
-              isCreatingAccount ? "Creating Account..." : "Processing..."
-            }
-          />
+          <div className="flex items-center justify-center gap-2">
+            <SheiLoader
+              size="sm"
+              loaderColor="white"
+              loadingText={
+                isUserLoggedIn ? "Completing Order..." : 
+                isCreatingAccount ? "Creating Account..." : "Processing..."
+              }
+            />
+          </div>
         ) : (
-          isUserLoggedIn ? "Place Order" : "Place Order"
+          <div className="flex items-center justify-center gap-2">
+            {isUserLoggedIn ? "Place Order" : "Place Order"}
+          </div>
         )}
       </Button>
 

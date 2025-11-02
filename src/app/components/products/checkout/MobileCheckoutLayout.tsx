@@ -12,6 +12,7 @@ import { CheckoutFormValues } from "@/lib/utils/formSchema";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import PaymentModule from "./PaymentModule";
 import { useParams } from "next/navigation";
+import { MobileCheckoutSkeleton } from "../../skeletons/MobileCheckoutSkeleton"; // Add this
 
 interface MobileCheckoutProps {
   cartLength: number;
@@ -145,15 +146,9 @@ const MobileCheckout = ({
     },
   ];
 
+  // ✅ REPLACED: Using custom skeleton
   if (loading && activeStep === 0) {
-    return (
-      <div className="container mx-auto px-4 py-4">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground mt-4">Loading checkout...</p>
-        </div>
-      </div>
-    );
+    return <MobileCheckoutSkeleton />;
   }
 
   return (
