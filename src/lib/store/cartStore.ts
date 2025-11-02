@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CartState, CartItem } from "../types/cart";
-import { AddToCartType } from "../schema/checkoutSchema";
+import { AddToCartType } from "../schema/checkoutSchema"; 
 
 const useCartStore = create<CartState>()(
   persist(
@@ -39,16 +39,18 @@ const useCartStore = create<CartState>()(
               variantId: product.variantId,
             };
 
-
             return { cart: [...state.cart, cartItem] };
           });
           resolve();
         });
       },
 
-      removeItem: (productId: string) =>
+      // FIXED: Remove specific item by productId AND variantId
+      removeItem: (productId: string, variantId?: string | null) =>
         set((state) => ({
-          cart: state.cart.filter((item) => item.productId !== productId),
+          cart: state.cart.filter((item) => 
+            !(item.productId === productId && item.variantId === variantId)
+          ),
         })),
 
       updateQuantity: (productId: string, variantId: string | null | undefined, quantity: number) =>

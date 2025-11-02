@@ -19,6 +19,7 @@ import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import { useOrderProcess } from "@/lib/hook/useOrderProcess";
+import useCartStore from "@/lib/store/cartStore"; // ✅ Import cart store
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -27,6 +28,8 @@ interface CheckoutFormProps {
 
 const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
   const { formData, setFormData } = useCheckoutStore();
+  const { clearStoreCart } = useCartStore(); // ✅ Get cart clearing function
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +130,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
     }
   }, [currentUser, profile, isUserLoggedIn, isLoadingAuth, form, setFormData, formData]);
 
-  // ✅ FIXED: Complete order creation in form submission
+  // ✅ FIXED: Complete order creation in form submission with cart clearing
   const handleSubmit = async (values: CustomerCheckoutFormValues) => {
     setIsCreatingAccount(true);
     setError(null);

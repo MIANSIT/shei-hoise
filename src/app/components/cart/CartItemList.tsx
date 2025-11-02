@@ -28,8 +28,10 @@ export default function CartItemsList() {
     
     setChangingQuantities((prev) => ({ ...prev, [itemKey]: direction }));
 
+    // Update quantity immediately
+    updateQuantity(productId, variantId, newQuantity);
+    
     setTimeout(() => {
-      updateQuantity(productId, variantId, newQuantity);
       setChangingQuantities((prev) => {
         const newState = { ...prev };
         delete newState[itemKey];
@@ -42,8 +44,10 @@ export default function CartItemsList() {
     const itemKey = `${productId}-${variantId || 'no-variant'}`;
     setRemovingIds(prev => new Set(prev).add(itemKey));
     
+    // Remove specific item by productId AND variantId
+    removeItem(productId, variantId);
+    
     setTimeout(() => {
-      removeItem(productId);
       setRemovingIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(itemKey);
@@ -55,13 +59,12 @@ export default function CartItemsList() {
   const handleClearCart = () => {
     if (cartItems.length === 0) return;
     setIsClearing(true);
-    setTimeout(() => {
-      clearStoreCart(store_slug);
-      setIsClearing(false);
-    }, 300);
+    clearStoreCart(store_slug);
+    setTimeout(() => setIsClearing(false), 300);
   };
 
-  if (loading) {
+  // Only show loading on initial load, not during updates
+  if (loading && cartItems.length === 0) {
     return (
       <div className="space-y-3">
         <div className="text-center py-8">
@@ -72,7 +75,7 @@ export default function CartItemsList() {
     );
   }
 
-  if (error) {
+  if (error && cartItems.length === 0) {
     return (
       <div className="space-y-3">
         <div className="text-center py-8 text-destructive">
@@ -133,12 +136,10 @@ export default function CartItemsList() {
                   />
                 </div>
                 <div className="flex flex-col">
-                  {/* Product name with variant info */}
                   <h3 className="font-medium text-foreground md:text-xs text-sm">
                     {item.productName}
                   </h3>
                   
-                  {/* Variant details if available */}
                   {item.variant && (
                     <div className="space-y-1 mt-1">
                       {item.variant.variant_name && (
@@ -154,14 +155,12 @@ export default function CartItemsList() {
                     </div>
                   )}
                   
-                  {/* Category if available */}
                   {item.product?.category?.name && (
                     <p className="text-sm text-muted-foreground">
                       {item.product.category.name}
                     </p>
                   )}
 
-                  {/* Price per item */}
                   <p className="text-sm text-muted-foreground">
                     ${item.displayPrice.toFixed(2)} each
                     {item.discountPercentage > 0 && (
@@ -171,7 +170,6 @@ export default function CartItemsList() {
                     )}
                   </p>
 
-                  {/* Stock status */}
                   {item.isOutOfStock ? (
                     <p className="text-sm text-destructive mt-1">Out of Stock</p>
                   ) : item.stock < 10 ? (
@@ -249,28 +247,6 @@ export default function CartItemsList() {
           );
         })
       )}
-
-      {/* Cart Summary
-      {cartItems.length > 0 && (
-        <div className="border-t border-border pt-4 mt-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Subtotal:</span>
-              <span>${calculations.subtotal.toFixed(2)}</span>
-            </div>
-            {calculations.totalDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Discount:</span>
-                <span>-${calculations.totalDiscount.toFixed(2)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-medium text-foreground border-t border-border pt-2">
-              <span>Total:</span>
-              <span>${calculations.totalPrice.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }

@@ -4,8 +4,8 @@ export type CartItem = AddToCartType;
 
 export interface CartState {
   cart: CartItem[];
-  addToCart: (product: AddToCartType) => Promise<void>;
-  removeItem: (productId: string) => void;
+  addToCart: (product: AddToCartType) => void;
+  removeItem: (productId: string, variantId?: string | null) => void; // Updated
   updateQuantity: (productId: string, variantId: string | null | undefined, quantity: number) => void;
   clearCart: () => void;
   clearStoreCart: (store_slug: string) => void;

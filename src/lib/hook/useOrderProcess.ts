@@ -4,10 +4,12 @@ import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/ord
 import { useCartItems } from './useCartItems';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
+import useCartStore from '../store/cartStore'; // Import cart store
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { clearStoreCart } = useCartStore(); // Get cart clearing function
   
   // Use the cart items hook to get fresh product data
   const { items: cartItems, calculations, refresh } = useCartItems(store_slug);
@@ -100,16 +102,16 @@ export function useOrderProcess(store_slug: string) {
       if (result.success && result.orderId) {
         console.log('✅ Order created successfully, order ID:', result.orderId);
         
-        // Refresh the cart to clear it (since we can't directly modify the cart store from here)
-        // The actual cart clearing should happen in the component after successful order
-        // by calling clearStoreCart from useCartStore
+        // ✅ CLEAR THE CART AFTER SUCCESSFUL ORDER
+        console.log('🛒 Clearing cart for store:', store_slug);
+        clearStoreCart(store_slug);
         
         console.log('🎉 Order completed successfully! Order ID:', result.orderId);
         
         return { 
           success: true, 
           orderId: result.orderId,
-          message: 'Order placed successfully!' 
+          message: 'Order placed successfully! Your cart has been cleared.' 
         };
       } else {
         throw new Error(result.error || 'Failed to create order');
