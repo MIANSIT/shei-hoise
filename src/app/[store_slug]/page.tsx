@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState,use  } from "react";
+import React, { useEffect, useState, use } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
-import Header from "../components/common/Header";
-import Footer from "../components/common/Footer";
+
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug"; // your new query
 import { Product } from "@/lib/types/product";
@@ -133,11 +132,9 @@ export default function StorePage({ params }: StorePageProps) {
   if (loading) {
     return (
       <>
-        <Header />
         <div className="flex justify-center items-center py-20">
           <span className="text-lg font-medium">Loading...</span>
         </div>
-        <Footer />
       </>
     );
   }
@@ -148,7 +145,6 @@ export default function StorePage({ params }: StorePageProps) {
 
   return (
     <>
-      <Header />
       <div className="px-8 py-4">
         {products.length === 0 ? (
           <div className="text-center py-20 text-lg font-medium">
@@ -163,7 +159,6 @@ export default function StorePage({ params }: StorePageProps) {
           />
         )}
       </div>
-      <Footer />
     </>
   );
 }

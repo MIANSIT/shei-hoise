@@ -3,7 +3,6 @@
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import useCartStore from "@/lib/store/cartStore";
-import Header from "@/app/components/common/Header";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
 
 // Import your components
@@ -53,16 +52,16 @@ interface ApiProduct {
 }
 
 // Simple interface for cart product to avoid type issues
-interface CartProduct {
-  id: string;
-  slug: string;
-  name: string;
-  base_price: number;
-  discounted_price?: number;
-  variants?: any[];
-  images?: string[];
-  [key: string]: any;
-}
+// interface CartProduct {
+//   id: string;
+//   slug: string;
+//   name: string;
+//   base_price: number;
+//   discounted_price?: number;
+//   variants?: any[];
+//   images?: string[];
+//   [key: string]: any;
+// }
 
 export default function ProductPage() {
   const params = useParams();
@@ -294,7 +293,6 @@ export default function ProductPage() {
   if (loading) {
     return (
       <>
-        <Header />
         <div className="container mx-auto px-4 py-6">
           <div className="text-center mt-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
@@ -308,7 +306,6 @@ export default function ProductPage() {
   if (!product) {
     return (
       <>
-        <Header />
         <div className="container mx-auto px-4 py-6">
           <p className="text-center mt-20 text-lg md:text-xl text-foreground">
             Product not found.
@@ -329,7 +326,6 @@ export default function ProductPage() {
 
   return (
     <>
-      <Header />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         <BackButton href={`/${store_slug}`} label="Back to Products" />
 

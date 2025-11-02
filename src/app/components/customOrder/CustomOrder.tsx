@@ -89,8 +89,13 @@ export default function CustomOrder() {
     // Build query string: ?product=product_id@variant_id@quantity&product=...
     const params = orderProducts
       .map((item) => {
-        const variantPart = item.variant_id ? item.variant_id : "none";
-        return `product=${item.product_id}@${variantPart}@${item.quantity}`;
+        if (item.variant_id) {
+          // product with variant → product_id@variant_id@quantity
+          return `product=${item.product_id}@${item.variant_id}@${item.quantity}`;
+        } else {
+          // product without variant → product_id@quantity
+          return `product=${item.product_id}@${item.quantity}`;
+        }
       })
       .join("&");
 
@@ -144,54 +149,54 @@ export default function CustomOrder() {
           className="shadow-md rounded-2xl border transition-all hover:shadow-lg"
           bodyStyle={{ padding: "20px" }}
         > */}
-          {/* Order Details Section */}
-          <div className="w-full">
-            {products.length > 0 ? (
-              <OrderDetails
-                products={products}
-                orderProducts={orderProducts}
-                setOrderProducts={setOrderProducts}
+        {/* Order Details Section */}
+        <div className="w-full">
+          {products.length > 0 ? (
+            <OrderDetails
+              products={products}
+              orderProducts={orderProducts}
+              setOrderProducts={setOrderProducts}
+            />
+          ) : (
+            <Empty description="No products found" />
+          )}
+        </div>
+
+        {/* Divider / Spacing */}
+        <div className="border-t border-gray-200 mt-6 mb-4" />
+
+        {/* Generate Link Section */}
+        <div className="flex flex-col sm:flex-row w-full justify-end sm:items-center gap-3">
+          {!generatedLink ? (
+            <Button
+              type="primary"
+              size="large"
+              disabled={!isFormValid}
+              icon={<LinkOutlined />}
+              onClick={handleGenerateLink}
+              className="w-full sm:w-auto"
+            >
+              Generate Order Link
+            </Button>
+          ) : (
+            <>
+              <input
+                type="text"
+                readOnly
+                value={window.location.origin + generatedLink}
+                className="border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
-            ) : (
-              <Empty description="No products found" />
-            )}
-          </div>
-
-          {/* Divider / Spacing */}
-          <div className="border-t border-gray-200 mt-6 mb-4" />
-
-          {/* Generate Link Section */}
-          <div className="flex flex-col sm:flex-row w-full justify-end sm:items-center gap-3">
-            {!generatedLink ? (
               <Button
                 type="primary"
-                size="large"
-                disabled={!isFormValid}
-                icon={<LinkOutlined />}
-                onClick={handleGenerateLink}
+                icon={copied ? <CheckOutlined /> : <CopyOutlined />}
+                onClick={handleCopyLink}
                 className="w-full sm:w-auto"
               >
-                Generate Order Link
+                {copied ? "Copied" : "Copy"}
               </Button>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  readOnly
-                  value={window.location.origin + generatedLink}
-                  className="border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                <Button
-                  type="primary"
-                  icon={copied ? <CheckOutlined /> : <CopyOutlined />}
-                  onClick={handleCopyLink}
-                  className="w-full sm:w-auto"
-                >
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-              </>
-            )}
-          </div>
+            </>
+          )}
+        </div>
         {/* </Card> */}
       </div>
     </div>
