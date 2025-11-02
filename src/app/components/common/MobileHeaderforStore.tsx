@@ -2,65 +2,86 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import ShoppingCartIcon from "../cart/ShoppingCartIcon";
-import CartBottomBar from "../cart/CartBottomBar";
 import { usePathname } from "next/navigation";
-import LogoTitle from "../header/LogoTitle";
+import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
 import { NavLink } from "../header/NavMenu";
 import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
+import ShoppingCartIcon from "../cart/ShoppingCartIcon";
+import CartBottomBar from "../cart/CartBottomBar";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import StoreLogoTitle from "../header/StoreLogoTitle";
+import {
+  getStoreBySlugWithLogo,
+  StoreWithLogo,
+} from "@/lib/queries/stores/getStoreBySlugWithLogo";
 
 interface MobileHeaderProps {
-  storeSlug: string; // ✅ added prop
+  storeSlug: string;
+  isAdmin?: boolean;
 }
 
-export default function MobileHeader({ storeSlug }: MobileHeaderProps) {
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
+export default function MobileHeader({
+  storeSlug,
+  isAdmin = false,
+}: MobileHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const { user, loading } = useCurrentUser();
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [store, setStore] = useState<StoreWithLogo | null>(null); // store state
 
+  const { user, loading } = useCurrentUser();
+  const pathname = usePathname();
+
+  // hydrate + fetch store
   useEffect(() => {
     setIsHydrated(true);
-  }, []);
 
-  // ✅ Dynamic store-based nav links
+    async function fetchStore() {
+      const storeData = await getStoreBySlugWithLogo(storeSlug);
+      setStore(storeData);
+    }
+
+    fetchStore();
+  }, [storeSlug]);
+
   const navLinks: NavLink[] = [
     { name: "Shop", path: `/${storeSlug}` },
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
 
-  // ✅ Conditional auth links
-  const authLinksUser: NavLink[] = user
-    ? [
-        {
-          name: user.first_name || "Profile",
-          path: `/profile`,
-          isHighlighted: true,
-        },
-      ]
-    : [
-        { name: "Log in", path: `/login` },
-        { name: "Sign up", path: `/sign-up`, isHighlighted: true },
-      ];
+  const authLinks: NavLink[] =
+    !isAdmin && user
+      ? [
+          {
+            name: user.first_name || "Profile",
+            path: "/profile",
+            isHighlighted: true,
+          },
+        ]
+      : !isAdmin
+      ? [
+          { name: "Log in", path: "/login" },
+          { name: "Sign up", path: "/sign-up", isHighlighted: true },
+        ]
+      : [];
 
   return (
     <>
       <header className="bg-background px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50">
         <div className="flex items-center justify-between">
-          <LogoTitle showTitle={true} />
+          <StoreLogoTitle
+            storeSlug={storeSlug}
+            storeName={store?.store_name}
+            logoUrl={store?.logo_url}
+            showTitle={true}
+          />
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
+              className="text-foreground hover:bg-accent p-2 rounded-md"
               onClick={() => setMenuOpen((prev) => !prev)}
-              className="text-foreground hover:bg-accent"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
               {menuOpen ? (
@@ -68,11 +89,10 @@ export default function MobileHeader({ storeSlug }: MobileHeaderProps) {
               ) : (
                 <HiOutlineMenu size={18} />
               )}
-            </Button>
+            </button>
           </div>
         </div>
 
-        {/* Collapsible mobile nav */}
         <nav
           className={`overflow-hidden transition-all duration-300 ease-in-out bg-background ${
             menuOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"
@@ -98,27 +118,25 @@ export default function MobileHeader({ storeSlug }: MobileHeaderProps) {
               );
             })}
 
-            <li>
-              <div className="border-t border-border my-2" />
-            </li>
-
-            <li>
-              {!loading && (
-                <AuthButtons
-                  links={authLinksUser}
-                  isAdminPanel={false}
-                  isVertical={true}
-                />
-              )}
-            </li>
+            {authLinks.length > 0 && !loading && (
+              <>
+                <li>
+                  <div className="border-t border-border my-2" />
+                </li>
+                <li>
+                  <AuthButtons
+                    links={authLinks}
+                    isVertical={true}
+                    isAdminPanel={false}
+                  />
+                </li>
+              </>
+            )}
           </ul>
         </nav>
       </header>
 
-      {/* Spacer to prevent content overlap */}
       <div className="h-[60px] lg:hidden" />
-
-      {/* Cart bottom sheet */}
       <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
