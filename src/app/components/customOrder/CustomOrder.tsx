@@ -94,7 +94,7 @@ export default function CustomOrder() {
       })
       .join("&");
 
-    const url = `/${storeSlug}/prepare-order?${params}`;
+    const url = `/${storeSlug}/confirm-order?${params}`;
     setGeneratedLink(url);
 
     notification.success({
