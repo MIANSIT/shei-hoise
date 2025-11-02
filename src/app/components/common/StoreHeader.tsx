@@ -1,27 +1,19 @@
-"use client";
-
 import MobileHeader from "./MobileHeaderforStore";
 import DesktopHeader from "./DesktopHeaderforStore";
 
-interface HeaderProps {
-  storeSlug: string; // ✅ required
+interface StoreHeaderProps {
+  storeSlug: string;
   isAdmin?: boolean;
-  onSidebarToggle?: () => void;
 }
 
 export default function StoreHeader({
   storeSlug,
   isAdmin = false,
-  onSidebarToggle,
-}: HeaderProps) {
+}: StoreHeaderProps) {
   return (
     <>
-      <div className="block md:hidden">
-        <MobileHeader storeSlug={storeSlug} />
-      </div>
-      <div className="hidden md:block">
-        <DesktopHeader storeSlug={storeSlug} />
-      </div>
+      <MobileHeader storeSlug={storeSlug} isAdmin={isAdmin} />
+      <DesktopHeader storeSlug={storeSlug} isAdmin={isAdmin} />
     </>
   );
 }
