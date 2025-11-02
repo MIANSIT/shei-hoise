@@ -4,14 +4,15 @@ import { Product } from "./product";
 export interface CartItem extends Product {
   quantity: number;
   currentPrice?: number; 
-  discounted_price? : number;
+  discounted_price?: number;
   imageUrl?: string;
   store_slug: string;
+  variant_id?: string; // ✅ ADD: Store variant ID separately
+  variant_data?: any; // ✅ ADD: Store complete variant data
 }
 
-// ✅ FIXED: Include all possible image properties
 export interface CartProductInput {
-  id: string;
+  id: string; // ✅ This should always be the MAIN product ID
   slug: string;
   name: string;
   base_price: number;
@@ -26,13 +27,14 @@ export interface CartProductInput {
   };
   imageUrl?: string;
   currentPrice?: number;
-  // ✅ Add image properties that might be accessed
   primary_image?: {
     image_url: string;
   };
   product_images?: Array<{
     image_url: string;
   }>;
+  variant_id?: string; // ✅ ADD: Variant ID if applicable
+  variant_data?: any; // ✅ ADD: Complete variant data
 }
 
 export interface CartState {

@@ -34,6 +34,7 @@ interface ApiProduct {
     is_primary: boolean;
   }>;
   product_variants: Array<{
+    primary_image: any;
     id: string;
     variant_name: string;
     base_price: number;
@@ -231,19 +232,18 @@ export default function ProductPage() {
     }
   };
 
-  const handleAddToCart = async (): Promise<void> => {
+const handleAddToCart = async (): Promise<void> => {
     if (!product) return;
 
     setIsAdding(true);
     try {
-      // Create base cart product
+      // ✅ FIX: Always use main product ID, store variant ID separately
       const cartProduct: any = {
-        id: selectedVariantData ? selectedVariantData.id : product.id,
+        id: product.id, // ✅ ALWAYS use main product ID
         slug: product.slug,
         name: product.name,
         base_price: originalPrice,
-        discounted_price:
-          displayPrice < originalPrice ? displayPrice : undefined,
+        discounted_price: displayPrice < originalPrice ? displayPrice : undefined,
         images: product.product_images.map((img) => img.image_url),
         quantity: quantity,
         store_slug: store_slug,
@@ -255,19 +255,25 @@ export default function ProductPage() {
           : undefined,
       };
 
-      // ✅ ADD COMPLETE VARIANT DATA
+      // ✅ FIX: Store variant ID separately and complete variant data
       if (selectedVariantData) {
-        cartProduct.variants = [
-          {
-            id: selectedVariantData.id,
-            variant_name: selectedVariantData.variant_name,
-            base_price: selectedVariantData.base_price,
-            discounted_price: selectedVariantData.discounted_price || undefined,
-            color: selectedVariantData.color || undefined,
-            product_images: selectedVariantData.product_images || [],
-          },
-        ];
+        cartProduct.variant_id = selectedVariantData.id; // ✅ Store variant ID separately
+        cartProduct.variant_data = selectedVariantData; // ✅ Store complete variant data
+        cartProduct.variants = [selectedVariantData];
+        
+        // Use variant image if available, otherwise use product image
+        const variantImage = selectedVariantData.product_images?.[0]?.image_url || 
+                           selectedVariantData.primary_image?.image_url;
+        if (variantImage) {
+          cartProduct.imageUrl = variantImage;
+        }
       }
+
+      console.log('🛒 Adding to cart with:', {
+        product_id: cartProduct.id,
+        variant_id: cartProduct.variant_id,
+        name: cartProduct.name
+      });
 
       // Add to cart
       await addToCart(cartProduct);

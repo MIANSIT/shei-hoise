@@ -1,5 +1,5 @@
 // app/admin/orders/page.tsx
-import CustomOrder from "@/app/components/customOrder/CustomOrder";
+import CustomOrder from "../../components/orders/CustomOrder";
 import Header from "../../components/common/Header";
 import Footer from "../../components/common/Footer";
 

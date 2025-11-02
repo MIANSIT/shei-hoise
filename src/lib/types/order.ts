@@ -15,6 +15,7 @@ export interface OrderProduct {
 export interface AddressJSON {
   customer_name: string;
   phone: string;
+  email?: string;
   address_line_1: string;
   city: string;
   postal_code?: string;
@@ -29,6 +30,7 @@ export interface OrderCustomer {
 }
 
 export interface OrderItem {
+  products: any;
   variant: any;
   discounted_price: any;
   id: string;
@@ -49,6 +51,7 @@ export type PaymentMethod = "cod" | "online";
 
 // ===== SUPABASE DATABASE TYPES =====
 export interface StoreOrder {
+  stores: any;
   id: string;
   order_number: string;
   customer_id: string | null;
@@ -93,8 +96,9 @@ export interface CustomerInfo {
   city: string;
   email: string;
   notes?: string;
-  customer_id?: string;
+  customer_id?: string; // ✅ Made optional for customer orders
   password: string;
+  country?: string; // ✅ Added for customer orders
 }
 
 export interface CreateOrderData {
@@ -111,4 +115,31 @@ export interface CreateOrderData {
   paymentStatus: PaymentStatus;
   paymentMethod: string;
   currency?: string;
+  deliveryOption: string;
+}
+
+// ===== CUSTOMER ORDER TYPES =====
+export interface CustomerOrderData {
+  storeId: string;
+  orderNumber: string;
+  customerInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    country?: string;
+    customer_id?: string;
+  };
+  orderProducts: OrderProduct[];
+  subtotal: number;
+  taxAmount: number;
+  discount: number;
+  deliveryCost: number;
+  totalAmount: number;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: string;
+  currency?: string;
+  deliveryOption: string;
 }
