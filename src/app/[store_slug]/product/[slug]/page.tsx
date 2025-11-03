@@ -4,8 +4,6 @@ import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
-
-// Import your components
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductTitle from "@/app/components/products/singleProduct/ProductTitle";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
@@ -13,8 +11,9 @@ import ProductQuantitySelector from "@/app/components/products/singleProduct/Pro
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
 import BackButton from "@/app/components/products/singleProduct/BackButton";
 import { motion } from "framer-motion";
+import { AddToCartType } from "@/lib/schema/checkoutSchema";
+import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton"; 
 
-// Define the product type based on your API response
 interface ApiProduct {
   id: string;
   name: string;
@@ -22,7 +21,7 @@ interface ApiProduct {
   description?: string;
   base_price: number;
   discounted_price: number | null;
-  discount_amount?: number; // ✅ Added discount_amount
+  discount_amount?: number;
   categories: {
     id: string;
     name: string;
@@ -38,7 +37,7 @@ interface ApiProduct {
     variant_name: string;
     base_price: number;
     discounted_price: number | null;
-    discount_amount?: number; // ✅ Added discount_amount for variants
+    discount_amount?: number;
     color: string | null;
     product_inventory: Array<{
       quantity_available: number;
@@ -51,18 +50,6 @@ interface ApiProduct {
     }>;
   }>;
 }
-
-// Simple interface for cart product to avoid type issues
-// interface CartProduct {
-//   id: string;
-//   slug: string;
-//   name: string;
-//   base_price: number;
-//   discounted_price?: number;
-//   variants?: any[];
-//   images?: string[];
-//   [key: string]: any;
-// }
 
 export default function ProductPage() {
   const params = useParams();
@@ -84,7 +71,6 @@ export default function ProductPage() {
         setLoading(true);
         const productData = await getClientProductBySlug(product_slug);
 
-        // Fix the categories structure - ensure it's an object, not array
         const fixedProductData = {
           ...productData,
           categories: Array.isArray(productData.categories)
@@ -94,7 +80,6 @@ export default function ProductPage() {
 
         setProduct(fixedProductData as ApiProduct);
 
-        // Auto-select first variant if available
         if (
           fixedProductData.product_variants &&
           fixedProductData.product_variants.length > 0
@@ -114,30 +99,40 @@ export default function ProductPage() {
     }
   }, [product_slug]);
 
-  // Get the selected variant data
+  // ✅ REPLACED: Now using your custom skeleton
+  if (loading) {
+    return <ProductPageSkeleton />;
+  }
+
+  if (!product) {
+    return (
+      <>
+        <div className="container mx-auto px-4 py-6">
+          <p className="text-center mt-20 text-lg md:text-xl text-foreground">
+            Product not found.
+          </p>
+        </div>
+      </>
+    );
+  }
+
   const selectedVariantData = product?.product_variants?.find(
     (variant) => variant.id === selectedVariant
   );
 
-  // ✅ PERFECT DISCOUNT CALCULATION
   const calculateDiscountPercentage = (
     originalPrice: number,
     discountedPrice: number | null,
     discountAmount?: number
   ): number => {
-    // If we have discount_amount, use it directly for percentage calculation
     if (discountAmount && discountAmount > 0) {
-      // Check if discount_amount is already a percentage or fixed amount
       if (discountAmount <= 100) {
-        // Assume it's a percentage if <= 100
         return Math.round(discountAmount);
       } else {
-        // It's a fixed amount, calculate percentage
         return Math.round((discountAmount / originalPrice) * 100);
       }
     }
 
-    // Fallback to discounted_price vs base_price comparison
     if (discountedPrice && discountedPrice < originalPrice) {
       return Math.round(
         ((originalPrice - discountedPrice) / originalPrice) * 100
@@ -147,17 +142,14 @@ export default function ProductPage() {
     return 0;
   };
 
-  // Calculate display price based on selected variant or product base price
   const displayPrice = selectedVariantData
     ? selectedVariantData.discounted_price || selectedVariantData.base_price
     : product?.discounted_price || product?.base_price || 0;
 
-  // Calculate original price
   const originalPrice = selectedVariantData
     ? selectedVariantData.base_price
     : product?.base_price || 0;
 
-  // ✅ Calculate discount percentage using the perfect function
   const discount = selectedVariantData
     ? calculateDiscountPercentage(
         selectedVariantData.base_price,
@@ -170,10 +162,8 @@ export default function ProductPage() {
         product?.discount_amount
       );
 
-  // Calculate actual discount amount in dollars
   const discountAmountInDollars = originalPrice - displayPrice;
 
-  // Get stock availability for selected variant
   const getStockBadge = () => {
     if (!selectedVariantData) return null;
 
@@ -201,7 +191,6 @@ export default function ProductPage() {
     }
   };
 
-  // Get stock availability for product without variants
   const getProductStockBadge = () => {
     if (!product?.product_variants || product.product_variants.length === 0)
       return null;
@@ -231,50 +220,18 @@ export default function ProductPage() {
     }
   };
 
-const handleAddToCart = async (): Promise<void> => {
+  const handleAddToCart = async (): Promise<void> => {
     if (!product) return;
 
     setIsAdding(true);
     try {
-      // ✅ FIX: Always use main product ID, store variant ID separately
-      const cartProduct: any = {
-        id: product.id, // ✅ ALWAYS use main product ID
-        slug: product.slug,
-        name: product.name,
-        base_price: originalPrice,
-        discounted_price: displayPrice < originalPrice ? displayPrice : undefined,
-        images: product.product_images.map((img) => img.image_url),
+      const cartProduct: AddToCartType = {
+        productId: product.id,
+        storeSlug: store_slug,
         quantity: quantity,
-        store_slug: store_slug,
-        category: product.categories
-          ? {
-              id: product.categories.id,
-              name: product.categories.name,
-            }
-          : undefined,
+        variantId: selectedVariantData?.id || null,
       };
 
-      // ✅ FIX: Store variant ID separately and complete variant data
-      if (selectedVariantData) {
-        cartProduct.variant_id = selectedVariantData.id; // ✅ Store variant ID separately
-        cartProduct.variant_data = selectedVariantData; // ✅ Store complete variant data
-        cartProduct.variants = [selectedVariantData];
-        
-        // Use variant image if available, otherwise use product image
-        const variantImage = selectedVariantData.product_images?.[0]?.image_url || 
-                           selectedVariantData.primary_image?.image_url;
-        if (variantImage) {
-          cartProduct.imageUrl = variantImage;
-        }
-      }
-
-      console.log('🛒 Adding to cart with:', {
-        product_id: cartProduct.id,
-        variant_id: cartProduct.variant_id,
-        name: cartProduct.name
-      });
-
-      // Add to cart
       await addToCart(cartProduct);
 
       setShowSuccess(true);
@@ -296,31 +253,6 @@ const handleAddToCart = async (): Promise<void> => {
     }
   };
 
-  if (loading) {
-    return (
-      <>
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center mt-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-foreground">Loading product...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (!product) {
-    return (
-      <>
-        <div className="container mx-auto px-4 py-6">
-          <p className="text-center mt-20 text-lg md:text-xl text-foreground">
-            Product not found.
-          </p>
-        </div>
-      </>
-    );
-  }
-
   const totalPrice = displayPrice * quantity;
   const images = product.product_images.map((img) => img.image_url);
   const hasVariants =
@@ -335,13 +267,12 @@ const handleAddToCart = async (): Promise<void> => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         <BackButton href={`/${store_slug}`} label="Back to Products" />
 
-        {/* Top section: image + details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start mt-6">
           <div className="w-full">
             <ProductImage
               images={images}
               alt={product.name}
-              discount={discount} // ✅ Only shows if discount > 0
+              discount={discount}
             />
           </div>
 
@@ -355,14 +286,13 @@ const handleAddToCart = async (): Promise<void> => {
             <ProductPrice
               price={displayPrice}
               originalPrice={originalPrice}
-              discount={discount} // ✅ Pass discount to show savings
+              discount={discount}
             />
 
             <p className="text-muted-foreground mt-4 text-sm sm:text-base md:text-lg">
               {product.description || "No description available."}
             </p>
 
-            {/* Variant Selection - only show if product has variants */}
             {hasVariants && (
               <div className="mt-6">
                 <h4 className="text-sm font-medium text-muted-foreground mb-3">
@@ -405,12 +335,10 @@ const handleAddToCart = async (): Promise<void> => {
                 </div>
               </div>
             )}
-            {/* Stock Badge */}
             <div className="mt-4">
               {hasVariants && selectedVariantData && getStockBadge()}
               {!hasVariants && getProductStockBadge()}
             </div>
-            {/* Quantity Selector and Add to Cart */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-6">
               <div className="flex items-center gap-4 flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground">
@@ -451,7 +379,6 @@ const handleAddToCart = async (): Promise<void> => {
           </div>
         </div>
 
-        {/* Product Details Section */}
         <div className="mt-12">
           <h3 className="text-xl font-semibold mb-4">Product Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

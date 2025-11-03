@@ -70,7 +70,6 @@ const OrderProductTable: React.FC<Props> = ({
 
       // Only update if there are changes
       if (Object.keys(updateData).length > 0) {
-        console.log('Saving order updates:', { orderId: order.id, updateData });
         
         const result = await dataService.updateOrder(order.id, updateData);
         
