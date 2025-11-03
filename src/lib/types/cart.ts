@@ -1,52 +1,76 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Product } from "./product";
+import { AddToCartType } from "../schema/checkoutSchema";
 
-export interface CartItem extends Product {
-  quantity: number;
-  currentPrice?: number; 
-  discounted_price?: number;
-  imageUrl?: string;
-  store_slug: string;
-  variant_id?: string; // ✅ ADD: Store variant ID separately
-  variant_data?: any; // ✅ ADD: Store complete variant data
-}
-
-export interface CartProductInput {
-  id: string; // ✅ This should always be the MAIN product ID
-  slug: string;
-  name: string;
-  base_price: number;
-  discounted_price?: number;
-  variants?: any[];
-  images?: string[];
-  quantity?: number;
-  store_slug: string;
-  category?: {
-    id: string;
-    name: string;
-  };
-  imageUrl?: string;
-  currentPrice?: number;
-  primary_image?: {
-    image_url: string;
-  };
-  product_images?: Array<{
-    image_url: string;
-  }>;
-  variant_id?: string; // ✅ ADD: Variant ID if applicable
-  variant_data?: any; // ✅ ADD: Complete variant data
-}
+export type CartItem = AddToCartType;
 
 export interface CartState {
   cart: CartItem[];
-  addToCart: (product: CartProductInput) => void;
-  removeItem: (id: string | number) => void;
-  updateQuantity: (id: string | number, quantity: number) => void;
+  addToCart: (product: AddToCartType) => void;
+  removeItem: (productId: string, variantId?: string | null) => void; // Updated
+  updateQuantity: (productId: string, variantId: string | null | undefined, quantity: number) => void;
   clearCart: () => void;
   clearStoreCart: (store_slug: string) => void;
   totalItems: () => number;
   totalItemsByStore: (store_slug: string) => number;
-  totalPrice: () => number;
-  totalPriceByStore: (store_slug: string) => number;
   getCartByStore: (store_slug: string) => CartItem[];
+}
+
+export interface CartProductWithDetails {
+  productId: string;
+  variantId: string | null | undefined;
+  quantity: number;
+  storeSlug: string;
+  
+  // Freshly fetched data
+  product?: {
+    id: string;
+    name: string;
+    slug: string;
+    base_price: number | null;
+    discounted_price: number | null;
+    category?: {
+      id: string;
+      name: string;
+    } | null;
+    product_images: Array<{
+      id: string;
+      image_url: string;
+      is_primary: boolean;
+    }>;
+  };
+  
+  // Allow null for variant to explicitly indicate no variant
+  variant?: {
+    id: string;
+    variant_name: string | null;
+    base_price: number | null;
+    discounted_price: number | null;
+    discount_amount: number | null;
+    color: string | null;
+    product_images: Array<{
+      id: string;
+      image_url: string;
+      is_primary: boolean;
+    }>;
+    product_inventory: Array<{
+      quantity_available: number;
+      quantity_reserved: number;
+    }>;
+  } | null; // Added null here
+  
+  // Calculated fields
+  displayPrice: number;
+  originalPrice: number;
+  discountPercentage: number;
+  stock: number;
+  isOutOfStock: boolean;
+  imageUrl: string;
+  productName: string;
+}
+
+export interface CartCalculations {
+  items: CartProductWithDetails[];
+  totalItems: number;
+  totalPrice: number;
+  totalDiscount: number;
+  subtotal: number;
 }

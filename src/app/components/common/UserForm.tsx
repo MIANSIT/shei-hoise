@@ -50,7 +50,6 @@ export function UserForm({
       finalRedirect = '/dashboard';
     }
 
-    console.log('🎯 Redirecting to:', finalRedirect);
     
     setTimeout(() => {
       router.push(finalRedirect);

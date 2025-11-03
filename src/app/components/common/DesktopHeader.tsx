@@ -16,7 +16,7 @@ export default function DesktopHeader() {
   // Main navigation for users
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Stores", path: "#" },
+    { name: "Stores", path: "/#stores" },
   ];
 
   // Auth links for users - conditionally show based on login status
@@ -52,7 +52,7 @@ export default function DesktopHeader() {
         {/* Right side */}
         <div className="flex items-center gap-5">
           <ThemeToggle />
-          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+          {/* <ShoppingCartIcon onClick={() => setIsCartOpen(true)} /> */}
           {!loading && ( // Only show when not loading
             <AuthButtons links={authLinksUser} isAdminPanel={false} />
           )}
@@ -62,7 +62,7 @@ export default function DesktopHeader() {
       {/* Page content wrapper */}
       <main className="pt-16">{/* Your page content */}</main>
 
-      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      {/* <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} /> */}
     </>
   );
 }

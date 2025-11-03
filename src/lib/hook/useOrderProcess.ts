@@ -1,19 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { createCustomerOrder, generateCustomerOrderNumber } from '../../lib/queries/orders/orderService';
-import useCartStore from '../../lib/store/cartStore';
-import { CustomerCheckoutFormValues } from '../../lib/schema/checkoutSchema';
-import { getStoreIdBySlug } from '../../lib/queries/stores/getStoreIdBySlug';
+import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
+import { useCartItems } from './useCartItems';
+import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
+import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
+import useCartStore from '../store/cartStore'; // Import cart store
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { clearStoreCart } = useCartStore(); // Get cart clearing function
   
-  const { 
-    getCartByStore, 
-    totalPriceByStore, 
-    clearStoreCart 
-  } = useCartStore();
+  // Use the cart items hook to get fresh product data
+  const { items: cartItems, calculations, refresh } = useCartItems(store_slug);
 
   const processOrder = async (
     formData: CustomerCheckoutFormValues, 
@@ -29,18 +28,17 @@ export function useOrderProcess(store_slug: string) {
       const storeId = await getStoreIdBySlug(store_slug);
       if (!storeId) throw new Error('Store not found');
 
-      // Get cart items for this store
-      const cartItems = getCartByStore(store_slug);
+      // Check if cart has items
       if (cartItems.length === 0) throw new Error('Cart is empty');
 
-      // Calculate totals
-      const subtotal = totalPriceByStore(store_slug);
-      const taxAmount = 0;
-      const discount = 0;
-      const deliveryCost = 0;
-      const totalAmount = subtotal + taxAmount + deliveryCost - discount;
+      // Check for out of stock items
+      const outOfStockItems = cartItems.filter(item => item.isOutOfStock);
+      if (outOfStockItems.length > 0) {
+        const itemNames = outOfStockItems.map(item => item.productName).join(', ');
+        throw new Error(`Some items are out of stock: ${itemNames}. Please update your cart.`);
+      }
 
-      // Prepare order data
+      // Prepare order data using fresh product data from useCartItems
       const orderData = {
         storeId: storeId,
         orderNumber: generateCustomerOrderNumber(store_slug),
@@ -54,31 +52,35 @@ export function useOrderProcess(store_slug: string) {
           customer_id: customerId,
         },
         orderProducts: cartItems.map(item => {
-          const unitPrice = item.currentPrice ?? item.base_price;
-          const totalPrice = unitPrice * item.quantity;
-          
-          console.log('📦 Order product:', {
-            product_id: item.id,
-            variant_id: item.variant_id,
-            name: item.name,
-            quantity: item.quantity
+          console.log('📦 Preparing order product:', {
+            product_id: item.productId,
+            variant_id: item.variantId,
+            name: item.productName,
+            quantity: item.quantity,
+            displayPrice: item.displayPrice,
+            originalPrice: item.originalPrice
           });
           
           return {
-            product_id: item.id,
-            variant_id: item.variant_id || null,
-            product_name: item.name,
+            product_id: item.productId, // Main product ID
+            variant_id: item.variantId || null, // Variant ID if exists
+            product_name: item.productName,
             quantity: item.quantity,
-            unit_price: unitPrice,
-            total_price: totalPrice,
-            variant_details: item.variant_data || null,
+            unit_price: item.displayPrice, // Use the calculated display price
+            total_price: item.displayPrice * item.quantity,
+            variant_details: item.variant ? {
+              variant_name: item.variant.variant_name,
+              color: item.variant.color,
+              base_price: item.variant.base_price,
+              discounted_price: item.variant.discounted_price,
+            } : null,
           };
         }),
-        subtotal,
-        taxAmount,
-        discount,
-        deliveryCost,
-        totalAmount,
+        subtotal: calculations.subtotal,
+        taxAmount: 0, // You can calculate this based on your business logic
+        discount: calculations.totalDiscount,
+        deliveryCost: 0, // You can calculate this based on delivery option
+        totalAmount: calculations.totalPrice,
         status: 'pending' as const,
         paymentStatus: 'pending' as const,
         paymentMethod,
@@ -86,24 +88,30 @@ export function useOrderProcess(store_slug: string) {
         deliveryOption,
       };
 
-      console.log('🔄 Creating order with products:', orderData.orderProducts);
+      console.log('🔄 Creating order with products:', {
+        orderNumber: orderData.orderNumber,
+        productCount: orderData.orderProducts.length,
+        subtotal: orderData.subtotal,
+        totalAmount: orderData.totalAmount,
+        products: orderData.orderProducts
+      });
 
       // Create the order
       const result = await createCustomerOrder(orderData);
 
       if (result.success && result.orderId) {
-        console.log('✅ Order created successfully, clearing cart...');
+        console.log('✅ Order created successfully, order ID:', result.orderId);
         
-        // Clear the cart for this store after successful order
+        // ✅ CLEAR THE CART AFTER SUCCESSFUL ORDER
+        console.log('🛒 Clearing cart for store:', store_slug);
         clearStoreCart(store_slug);
         
         console.log('🎉 Order completed successfully! Order ID:', result.orderId);
         
-        // ✅ NO REDIRECT - just return success
         return { 
           success: true, 
           orderId: result.orderId,
-          message: 'Order placed successfully!' 
+          message: 'Order placed successfully! Your cart has been cleared.' 
         };
       } else {
         throw new Error(result.error || 'Failed to create order');
@@ -124,5 +132,7 @@ export function useOrderProcess(store_slug: string) {
     processOrder,
     loading,
     error,
+    cartItems, // Expose cart items for the component to use
+    calculations, // Expose calculations for the component to use
   };
 }

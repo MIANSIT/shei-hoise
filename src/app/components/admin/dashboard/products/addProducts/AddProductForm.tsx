@@ -71,7 +71,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
 
-    // Reset form whenever product changes
     useEffect(() => {
       form.reset(initialValues);
     }, [form, initialValues]);
@@ -113,7 +112,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
     const { control, watch, setValue } = form;
 
-    // Discount calculation
     const basePrice = watch("base_price");
     const discountAmount = watch("discount_amount");
     const discountedPrice = useDiscountCalculation({
@@ -124,7 +122,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     useEffect(() => {
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
-    console.log("errors", form.formState.errors);
     return (
       <div className="">
         <form
@@ -143,7 +140,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           )}
           className="space-y-8"
         >
-          {/* ----------------- Product Info ----------------- */}
           <section className="p-6 rounded-xl shadow-inner space-y-4">
             <h2 className="text-xl font-semibold ">Product Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,7 +181,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             />
           </section>
 
-          {/* ----------------- Pricing Info ----------------- */}
           {variants.length === 0 && (
             <section className="p-6 rounded-xl shadow-inner space-y-4">
               <h2 className="text-xl font-semibold ">Pricing</h2>
@@ -235,14 +230,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               </div>
             </section>
           )}
-          {/* ----------------- Variants ----------------- */}
           <section className=" rounded-xl space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProductVariantsInline form={form} />
             </div>
           </section>
 
-          {/* ----------------- Images ----------------- */}
           <section className="p-6 rounded-xl shadow-inner space-y-4">
             <h2 className="text-xl font-semibold">Images</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -254,7 +247,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
           </section>
 
-          {/* ----------------- Featured & Status ----------------- */}
           <section className="p-6 rounded-xl shadow-inner flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="flex items-center space-x-3">
               <input
@@ -285,7 +277,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
           </section>
 
-          {/* ----------------- Submit Button ----------------- */}
           <div className="flex justify-end">
             <Button
               type="submit"

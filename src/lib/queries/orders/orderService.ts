@@ -12,7 +12,7 @@ export interface CreateOrderData {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   currency?: string;
@@ -30,68 +30,135 @@ async function validateStockAvailability(
   orderProducts: OrderProduct[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('🔍 validateStockAvailability called with:', orderProducts.map(p => ({
-      product_name: p.product_name,
-      product_id: p.product_id,
-      variant_id: p.variant_id,
-      quantity: p.quantity
-    })));
-    
+    console.log(
+      "🔍 validateStockAvailability called with:",
+      orderProducts.map((p) => ({
+        product_name: p.product_name,
+        product_id: p.product_id,
+        variant_id: p.variant_id,
+        quantity: p.quantity,
+      }))
+    );
+
     for (const item of orderProducts) {
-      
-      // ✅ CRITICAL FIX: Check the correct inventory based on variant
+      console.log(`🔍 Checking inventory for: "${item.product_name}"`, {
+        product_id: item.product_id,
+        variant_id: item.variant_id,
+        is_variant: !!item.variant_id
+      });
+
       let inventoryQuery;
-      
+
       if (item.variant_id) {
-        // ✅ Check VARIANT inventory only
+        // ✅ Check VARIANT inventory - should be unique per variant
         console.log(`🔍 Checking VARIANT inventory for variant ${item.variant_id}`);
         inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("quantity_available, quantity_reserved")
           .eq("variant_id", item.variant_id)
-          .single();
+          .single(); // Variants should have unique inventory records
       } else {
-        // ✅ Check BASE PRODUCT inventory only
+        // ✅ Check BASE PRODUCT inventory - FIXED: Use .maybeSingle() and handle duplicates
         console.log(`🔍 Checking BASE PRODUCT inventory for product ${item.product_id}`);
         inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("quantity_available, quantity_reserved")
           .eq("product_id", item.product_id)
           .is("variant_id", null)
-          .single();
+          .maybeSingle(); // Use maybeSingle to handle no records or multiple records
       }
 
       const { data: inventory, error } = await inventoryQuery;
 
-      console.log('📊 Inventory check result for', item.product_name, ':', {
+      console.log("📊 Inventory check result for", item.product_name, ":", {
         inventory,
         error,
         variant_id: item.variant_id,
         product_id: item.product_id,
-        is_variant: !!item.variant_id
+        is_variant: !!item.variant_id,
       });
 
+      // ✅ FIXED: Handle the case where there are multiple inventory records for base products
       if (error) {
+        // If it's a "Cardinality violation" error (multiple rows), we need to handle it
+        if (error.code === 'PGRST116' && !item.variant_id) {
+          console.log(`⚠️ Multiple inventory records found for base product "${item.product_name}". Checking all records...`);
+          
+          // Query for ALL inventory records for this base product
+          const { data: allInventory, error: multiError } = await supabaseAdmin
+            .from("product_inventory")
+            .select("quantity_available, quantity_reserved")
+            .eq("product_id", item.product_id)
+            .is("variant_id", null);
+
+          if (multiError) {
+            console.error('❌ Error fetching multiple inventory records:', multiError);
+            return {
+              success: false,
+              error: `Failed to check inventory for "${item.product_name}"`,
+            };
+          }
+
+          console.log(`📊 Found ${allInventory?.length || 0} inventory records for base product:`, allInventory);
+
+          if (!allInventory || allInventory.length === 0) {
+            return {
+              success: false,
+              error: `No inventory records found for "${item.product_name}"`,
+            };
+          }
+
+          // ✅ Use the FIRST inventory record (you might want to sum them instead)
+          const firstInventory = allInventory[0];
+          console.log(`✅ Using first inventory record for "${item.product_name}":`, firstInventory);
+
+          const availableStock = firstInventory.quantity_available || 0;
+
+          if (availableStock < item.quantity) {
+            return {
+              success: false,
+              error: `Insufficient stock for "${item.product_name}". Available: ${availableStock}, Requested: ${item.quantity}`,
+            };
+          }
+
+          // Continue to next item
+          continue;
+        }
+        
+        // Handle other errors
         const inventoryType = item.variant_id ? 'variant' : 'product';
         return {
           success: false,
-          error: `${inventoryType.charAt(0).toUpperCase() + inventoryType.slice(1)} "${item.product_name}" is out of stock or inventory record missing`,
+          error: `${inventoryType.charAt(0).toUpperCase() + inventoryType.slice(1)} "${item.product_name}" inventory error: ${error.message}`,
+        };
+      }
+
+      // ✅ Handle case where no inventory record is found
+      if (!inventory) {
+        return {
+          success: false,
+          error: `No inventory record found for "${item.product_name}"`,
         };
       }
 
       const availableStock = inventory.quantity_available || 0;
 
+      console.log(`📦 Stock check: "${item.product_name}" - Available: ${availableStock}, Required: ${item.quantity}`);
+
       if (availableStock < item.quantity) {
-        const inventoryType = item.variant_id ? 'variant' : 'product';
+        const inventoryType = item.variant_id ? "variant" : "product";
         return {
           success: false,
           error: `Insufficient stock for "${item.product_name}" ${inventoryType}. Available: ${availableStock}, Requested: ${item.quantity}`,
         };
       }
+
+      console.log(`✅ Sufficient stock available for "${item.product_name}"`);
     }
 
     return { success: true };
   } catch (error: any) {
+    console.error('❌ Unexpected error in validateStockAvailability:', error);
     return { success: false, error: error.message };
   }
 }
@@ -101,14 +168,14 @@ async function updateInventoryForOrder(
   orderProducts: OrderProduct[],
   action: "reserve" | "release"
 ): Promise<{ success: boolean; error?: string }> {
-  console.log('🔧 updateInventoryForOrder called with:', {
+  console.log("🔧 updateInventoryForOrder called with:", {
     action,
-    products: orderProducts.map(p => ({
+    products: orderProducts.map((p) => ({
       product_id: p.product_id,
       variant_id: p.variant_id,
       quantity: p.quantity,
-      product_name: p.product_name
-    }))
+      product_name: p.product_name,
+    })),
   });
 
   const inventoryUpdateResults = [];
@@ -119,14 +186,12 @@ async function updateInventoryForOrder(
         `🔄 Updating inventory for product "${item.product_name}", variant ${item.variant_id}, quantity ${item.quantity}, action: ${action}`
       );
 
-      // ✅ CRITICAL FIX: Only update inventory for the specific variant (if it exists)
-      // If variant_id exists, ONLY update that variant's inventory
-      // If no variant_id, update the main product's inventory
-      
       if (item.variant_id) {
         // ✅ VARIANT PRODUCT: Only update variant inventory
-        console.log(`📦 This is a VARIANT product. Only updating variant inventory for variant_id: ${item.variant_id}`);
-        
+        console.log(
+          `📦 This is a VARIANT product. Only updating variant inventory for variant_id: ${item.variant_id}`
+        );
+
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("id, quantity_available, quantity_reserved")
@@ -135,10 +200,13 @@ async function updateInventoryForOrder(
 
         const { data: inventoryData, error: fetchError } = await inventoryQuery;
 
-        console.log('📊 Variant inventory data:', inventoryData);
+        console.log("📊 Variant inventory data:", inventoryData);
 
         if (fetchError) {
-          console.error(`❌ Error fetching VARIANT inventory for variant ${item.variant_id}:`, fetchError);
+          console.error(
+            `❌ Error fetching VARIANT inventory for variant ${item.variant_id}:`,
+            fetchError
+          );
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
@@ -158,13 +226,17 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Reserving VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Reserving VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Releasing VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Releasing VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -176,7 +248,10 @@ async function updateInventoryForOrder(
           .eq("variant_id", item.variant_id);
 
         if (updateError) {
-          console.error(`❌ Error updating VARIANT inventory for variant ${item.variant_id}:`, updateError);
+          console.error(
+            `❌ Error updating VARIANT inventory for variant ${item.variant_id}:`,
+            updateError
+          );
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
@@ -184,31 +259,30 @@ async function updateInventoryForOrder(
             error: updateError.message,
           });
         } else {
-          console.log(`✅ Successfully updated VARIANT inventory for variant ${item.variant_id}`);
+          console.log(
+            `✅ Successfully updated VARIANT inventory for variant ${item.variant_id}`
+          );
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
             success: true,
           });
         }
-
       } else {
-        // ✅ BASE PRODUCT (no variants): Update main product inventory
-        console.log(`📦 This is a BASE product (no variants). Updating main product inventory for product_id: ${item.product_id}`);
+        // ✅ BASE PRODUCT (no variants): Handle multiple inventory records
+        console.log(`📦 This is a BASE product. Checking for inventory records for product_id: ${item.product_id}`);
         
+        // First, get ALL inventory records for this base product
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("id, quantity_available, quantity_reserved")
           .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
+          .is("variant_id", null);
 
-        const { data: inventoryData, error: fetchError } = await inventoryQuery;
-
-        console.log('📊 Base product inventory data:', inventoryData);
+        const { data: inventoryRecords, error: fetchError } = await inventoryQuery;
 
         if (fetchError) {
-          console.error(`❌ Error fetching BASE PRODUCT inventory for product ${item.product_id}:`, fetchError);
+          console.error(`❌ Error fetching BASE PRODUCT inventory records for product ${item.product_id}:`, fetchError);
           inventoryUpdateResults.push({
             type: "product",
             id: item.product_id,
@@ -217,6 +291,23 @@ async function updateInventoryForOrder(
           });
           continue;
         }
+
+        console.log(`📊 Found ${inventoryRecords?.length || 0} inventory records for base product:`, inventoryRecords);
+
+        if (!inventoryRecords || inventoryRecords.length === 0) {
+          console.error(`❌ No inventory records found for base product ${item.product_id}`);
+          inventoryUpdateResults.push({
+            type: "product",
+            id: item.product_id,
+            success: false,
+            error: `No inventory records found for product`,
+          });
+          continue;
+        }
+
+        // ✅ Use the FIRST inventory record (you might want to choose a different strategy)
+        const inventoryData = inventoryRecords[0];
+        console.log(`✅ Using first inventory record for base product update:`, inventoryData);
 
         // Calculate new quantities for BASE PRODUCT
         const updateData: any = {};
@@ -228,26 +319,29 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Reserving BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Reserving BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Releasing BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Releasing BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         }
 
         updateData.updated_at = new Date().toISOString();
 
-        // Update ONLY the base product inventory
+        // Update the specific inventory record
         const { error: updateError } = await supabaseAdmin
           .from("product_inventory")
           .update(updateData)
-          .eq("product_id", item.product_id)
-          .is("variant_id", null);
+          .eq("id", inventoryData.id); // ✅ Use the specific inventory record ID
 
         if (updateError) {
-          console.error(`❌ Error updating BASE PRODUCT inventory for product ${item.product_id}:`, updateError);
+          console.error(`❌ Error updating BASE PRODUCT inventory for record ${inventoryData.id}:`, updateError);
           inventoryUpdateResults.push({
             type: "product",
             id: item.product_id,
@@ -255,7 +349,7 @@ async function updateInventoryForOrder(
             error: updateError.message,
           });
         } else {
-          console.log(`✅ Successfully updated BASE PRODUCT inventory for product ${item.product_id}`);
+          console.log(`✅ Successfully updated BASE PRODUCT inventory for record ${inventoryData.id}`);
           inventoryUpdateResults.push({
             type: "product",
             id: item.product_id,
@@ -263,7 +357,6 @@ async function updateInventoryForOrder(
           });
         }
       }
-
     } catch (inventoryError: any) {
       console.error(
         `❌ Unexpected inventory update error for item:`,
@@ -292,7 +385,7 @@ async function updateInventoryForOrder(
   );
 
   if (failedUpdates.length > 0) {
-    const errorMessage = `Failed to update inventory for ${failedUpdates.length} items`;
+    const errorMessage = `Failed to update inventory for ${failedUpdates.length} items: ${failedUpdates.map(f => f.error).join(', ')}`;
     console.warn(errorMessage, failedUpdates);
     return { success: false, error: errorMessage };
   }
@@ -435,7 +528,10 @@ export async function createOrder(
     );
 
     if (!inventoryUpdateResult.success) {
-      console.error("❌ Failed to update inventory:", inventoryUpdateResult.error);
+      console.error(
+        "❌ Failed to update inventory:",
+        inventoryUpdateResult.error
+      );
       console.warn(
         "⚠️ Order created but inventory reservation failed. Manual intervention may be required."
       );
@@ -507,7 +603,7 @@ export async function createCustomerOrder(
       country: customerInfo.country || "Bangladesh",
     };
 
-    console.log('🔄 Creating customer order in database...');
+    console.log("🔄 Creating customer order in database...");
 
     // Create order
     const orderInsertData = {
@@ -568,7 +664,10 @@ export async function createCustomerOrder(
     );
 
     if (!inventoryUpdateResult.success) {
-      console.error("❌ Failed to update inventory:", inventoryUpdateResult.error);
+      console.error(
+        "❌ Failed to update inventory:",
+        inventoryUpdateResult.error
+      );
       console.warn(
         "⚠️ Customer order created but inventory reservation failed. Manual intervention may be required."
       );
@@ -576,7 +675,7 @@ export async function createCustomerOrder(
       console.log("✅ Inventory successfully reserved for customer order");
     }
 
-    console.log('✅ Customer order created successfully:', order.id);
+    console.log("✅ Customer order created successfully:", order.id);
 
     return {
       success: true,
