@@ -6,10 +6,7 @@ export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
   const products = searchParams.getAll("product");
 
-  console.log(products);
-
   const parsedProducts = parseConfirmOrder(products);
-  console.log(parsedProducts);
 
   return (
     <div>

@@ -32,11 +32,6 @@ const PaymentModule = ({ amount, onSuccess, onCancel }: PaymentModuleProps) => {
       return;
     }
 
-    console.log(
-      `Processing ${selectedMethod} payment of $${amount.toFixed(2)}`
-    );
-    console.log(`Transaction ID: ${transactionId}`);
-
     setTimeout(() => {
       setIsProcessing(false);
       notify.success("Payment successful! Your order has been confirmed.");

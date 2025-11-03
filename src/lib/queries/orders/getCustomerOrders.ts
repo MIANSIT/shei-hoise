@@ -9,9 +9,7 @@ export async function getCustomerOrders(customerId: string): Promise<StoreOrder[
       .from('orders')
       .select(`
         *,
-        order_items (*,
-          products (*)
-        ),
+        order_items (*),
         stores (
           id,
           store_name,

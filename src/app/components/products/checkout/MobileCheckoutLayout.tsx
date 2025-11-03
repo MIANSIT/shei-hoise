@@ -1,8 +1,7 @@
-// components/checkout/MobileCheckout.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import useCartStore from "@/lib/store/cartStore";
+import { useCartItems } from "@/lib/hook/useCartItems";
 import CartItemsList from "@/app/components/cart/CartItemList";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,9 +9,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
-import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
+import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import PaymentModule from "./PaymentModule";
 import { useParams } from "next/navigation";
+import { MobileCheckoutSkeleton } from "../../skeletons/MobileCheckoutSkeleton"; // Add this
 
 interface MobileCheckoutProps {
   cartLength: number;
@@ -26,21 +26,20 @@ const MobileCheckout = ({
   onCheckout,
 }: MobileCheckoutProps) => {
   const { clearFormData } = useCheckoutStore();
-  const { totalPriceByStore } = useCartStore();
   const params = useParams();
   const store_slug = params.store_slug as string;
-  
+
   const [isMounted, setIsMounted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const notify = useSheiNotification();
 
+  // Use the custom hook to get cart items with fresh data
+  const { items: cartItems, calculations, loading } = useCartItems(store_slug);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  // ✅ FIXED: Use totalPriceByStore with the current store_slug
-  const subtotal = isMounted ? totalPriceByStore(store_slug) : 0;
 
   const nextStep = () => {
     if (activeStep < steps.length - 1) {
@@ -57,9 +56,8 @@ const MobileCheckout = ({
   const handleCheckoutSubmit = async (values: CheckoutFormValues) => {
     setIsProcessing(true);
     try {
-      console.log("Checkout values:", values);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      notify.success("Shipping information saved!");
+      notify.success("🎉 Congratulations! Your Order has been placed 🎉");
       nextStep();
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
@@ -79,27 +77,43 @@ const MobileCheckout = ({
       content: (
         <div className="mt-4">
           <h2 className="text-lg font-semibold mb-3 text-foreground">
-            Your Cart ({displayCount} items)
+            Your Cart ({calculations.totalItems} items)
           </h2>
 
-          {cartLength === 0 ? (
+          {loading ? (
+            <div className="text-center py-6 bg-card rounded-lg shadow-md">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading cart...</p>
+            </div>
+          ) : cartItems.length === 0 ? (
             <div className="text-center py-6 bg-card rounded-lg shadow-md">
               <p className="text-muted-foreground">Your cart is empty</p>
             </div>
           ) : (
             <>
               <CartItemsList />
-              <div className="flex justify-between mt-4 text-foreground border-border border rounded-lg p-3 bg-muted">
-                <span className="font-bold">Subtotal :</span>
-                <motion.span
-                  className="font-bold"
-                  key={`subtotal-${subtotal}`}
-                  initial={{ scale: 1.1 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  ${subtotal.toFixed(2)}
-                </motion.span>
+              <div className="space-y-2 mt-4">
+                <div className="flex justify-between text-foreground border-border border rounded-lg p-3 bg-muted">
+                  <span>Subtotal:</span>
+                  <span>${calculations.subtotal.toFixed(2)}</span>
+                </div>
+                {calculations.totalDiscount > 0 && (
+                  <div className="flex justify-between text-green-600 border-border border rounded-lg p-3 bg-muted">
+                    <span>Discount:</span>
+                    <span>-${calculations.totalDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-foreground border-t border-border pt-3">
+                  <span>Total:</span>
+                  <motion.span
+                    key={`total-${calculations.totalPrice}`}
+                    initial={{ scale: 1.1 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    ${calculations.totalPrice.toFixed(2)}
+                  </motion.span>
+                </div>
               </div>
             </>
           )}
@@ -110,7 +124,9 @@ const MobileCheckout = ({
       title: "Customer Information",
       content: (
         <div className="bg-card rounded-lg shadow-md p-4 mt-4 border-border">
-          <h2 className="text-lg font-semibold mb-3 text-card-foreground">Customer Information</h2>
+          <h2 className="text-lg font-semibold mb-3 text-card-foreground">
+            Customer Information
+          </h2>
           <CheckoutForm
             onSubmit={handleCheckoutSubmit}
             isLoading={isProcessing}
@@ -123,7 +139,7 @@ const MobileCheckout = ({
       content: (
         <div className="mt-4">
           <PaymentModule
-            amount={subtotal}
+            amount={calculations.totalPrice}
             onSuccess={handlePaymentSuccess}
             onCancel={prevStep}
           />
@@ -131,6 +147,11 @@ const MobileCheckout = ({
       ),
     },
   ];
+
+  // ✅ REPLACED: Using custom skeleton
+  if (loading && activeStep === 0) {
+    return <MobileCheckoutSkeleton />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-4">
@@ -150,6 +171,7 @@ const MobileCheckout = ({
             <Button
               onClick={nextStep}
               className="flex items-center gap-1 cursor-pointer"
+              disabled={cartItems.length === 0 && activeStep === 0}
             >
               <ChevronRight size={8} />
             </Button>

@@ -14,7 +14,6 @@ export function LoginForm() {
   const defaultValues: LoginFormValues = { email: "", password: "" };
 
   const handleSubmit = async (values: LoginFormValues) => {
-    console.log("Login form submitted with values:", values);
 
     try {
       // Simulate API call

@@ -116,7 +116,6 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
   // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!user?.store_id) {
-      console.log("No store_id available for products fetch");
       return;
     }
     setLoading(true);
@@ -134,16 +133,13 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
     }
   }, [user?.store_id, notification]);
 
-  // Fetch customers with better error handling
   const fetchCustomers = useCallback(async () => {
     if (!user?.store_id) {
-      console.log("No store_id available for customer fetch");
       return;
     }
 
     setCustomerLoading(true);
     try {
-      console.log("Starting customer fetch for store:", user.store_id);
       const res = await dataService.getStoreCustomersSimple(user.store_id);
       setCustomers(res);
       setFilteredCustomers(res);
@@ -173,10 +169,8 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
     }
   }, [user?.store_id, notification]);
 
-  // Load data when user is available
   useEffect(() => {
     if (user?.store_id && !userLoading) {
-      console.log("User loaded with store_id:", user.store_id);
       fetchProducts();
       fetchCustomers();
     }
