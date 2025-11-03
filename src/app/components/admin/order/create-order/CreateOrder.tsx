@@ -82,7 +82,7 @@ export default function CreateOrder() {
   const [paymentStatus, setPaymentStatus] = useState<
     "pending" | "paid" | "failed" | "refunded"
   >("pending");
-  const [paymentMethod, setPaymentMethod] = useState("");
+const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
