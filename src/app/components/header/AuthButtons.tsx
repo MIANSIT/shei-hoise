@@ -7,14 +7,16 @@ import { useAuthStore } from "@/lib/store/authStore";
 
 interface AuthButtonsProps {
   links: NavLink[];
-  isAdminPanel?: boolean; 
-  isVertical?: boolean; // optional prop for stacking
+  isAdminPanel?: boolean;
+  isVertical?: boolean;
+  disableNavigation?: boolean; // Prevent automatic redirect param
 }
 
 export default function AuthButtons({
   links,
   isAdminPanel = false,
   isVertical = false,
+  disableNavigation = false,
 }: AuthButtonsProps) {
   const { isAdminLoggedIn, logout } = useAuthStore();
   const router = useRouter();
@@ -22,10 +24,10 @@ export default function AuthButtons({
 
   const handleLogout = () => {
     logout();
-    router.push("/admin-login");
+    router.push(isAdminPanel ? "/admin-login" : "/"); // Redirect after logout
   };
 
-  // Show Logout only if logged in AND in admin panel
+  // If admin is logged in AND in admin panel, show logout
   if (isAdminLoggedIn && isAdminPanel) {
     return (
       <button
@@ -37,11 +39,18 @@ export default function AuthButtons({
     );
   }
 
-  // Otherwise show login/signup links
+  // Otherwise, show links (for normal user or admin not in panel)
   return (
-    <div className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-2"}>
+    <div
+      className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-2"}
+    >
       {links.map((link) => {
-        const redirectParam = `?redirect=${encodeURIComponent(pathname)}`;
+        // Only add redirect for login/signup buttons, not for logged-in user
+        const redirectParam =
+          !disableNavigation && !link.isHighlighted
+            ? `?redirect=${encodeURIComponent(pathname)}`
+            : "";
+
         return (
           <Link
             key={link.path}

@@ -9,6 +9,7 @@ import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import UserDropdown from "./UserDropdownDesktop"; // adjust path
 import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
@@ -46,21 +47,16 @@ export default function DesktopHeader({
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
 
+  // AuthLinks for non-logged-in users
   const authLinks: NavLink[] =
-    !isAdmin && user
-      ? [
-          {
-            name: user.first_name || "Profile",
-            path: "/profile",
-            isHighlighted: true,
-          },
-        ]
-      : !isAdmin
+    !isAdmin && !user
       ? [
           { name: "Log in", path: "/login" },
           { name: "Sign up", path: "/sign-up", isHighlighted: true },
         ]
       : [];
+
+  // Dropdown menu items for logged-in user
 
   return (
     <>
@@ -95,12 +91,16 @@ export default function DesktopHeader({
         <div className="flex items-center gap-5">
           <ThemeToggle />
           <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-          {!loading && authLinks.length > 0 && (
+
+          {!loading && user ? (
+            <UserDropdown />
+          ) : (
             <AuthButtons links={authLinks} isAdminPanel={false} />
           )}
         </div>
       </header>
 
+      {/* Spacer to prevent content being hidden behind fixed header */}
       <div className="h-[64px] hidden md:block" />
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
