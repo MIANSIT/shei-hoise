@@ -28,7 +28,7 @@ const MobileCheckout = ({
   const { clearFormData } = useCheckoutStore();
   const params = useParams();
   const store_slug = params.store_slug as string;
-  
+
   const [isMounted, setIsMounted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,7 +57,7 @@ const MobileCheckout = ({
     setIsProcessing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      notify.success("Shipping information saved!");
+      notify.success("🎉 Congratulations! Your Order has been placed 🎉");
       nextStep();
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
@@ -124,7 +124,9 @@ const MobileCheckout = ({
       title: "Customer Information",
       content: (
         <div className="bg-card rounded-lg shadow-md p-4 mt-4 border-border">
-          <h2 className="text-lg font-semibold mb-3 text-card-foreground">Customer Information</h2>
+          <h2 className="text-lg font-semibold mb-3 text-card-foreground">
+            Customer Information
+          </h2>
           <CheckoutForm
             onSubmit={handleCheckoutSubmit}
             isLoading={isProcessing}

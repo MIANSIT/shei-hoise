@@ -50,7 +50,7 @@ const DesktopCheckout = ({
     setIsProcessing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      notify.success("Shipping information saved!");
+      notify.success("🎉 Congratulations! Your Order has been placed 🎉");
       setShowPaymentModal(true);
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
