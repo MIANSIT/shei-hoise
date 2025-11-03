@@ -1,4 +1,3 @@
-// components/checkout/CheckoutForm.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -10,15 +9,19 @@ import { Label } from "@/components/ui/label";
 import { SheiLoader } from "../../ui/SheiLoader/loader";
 import { customerCheckoutSchema, CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { CountryFlag } from "../../common/CountryFlag";
-import { useCheckoutStore } from "../../../../lib/store/userInformationStore";
+import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { useEffect, useState, useMemo } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, ArrowRight } from "lucide-react";
 import { createCheckoutCustomer } from "@/lib/queries/customers/createCheckoutCustomer";
 import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
+import { useOrderProcess } from "@/lib/hook/useOrderProcess";
+import useCartStore from "@/lib/store/cartStore";
+import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton"; // Add this
+import { OrderCompleteSkeleton } from "../../../components/skeletons/OrderCompleteSkeleton"; // Add this
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -27,17 +30,23 @@ interface CheckoutFormProps {
 
 const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
   const { formData, setFormData } = useCheckoutStore();
+  const { clearStoreCart } = useCartStore();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [isOrderComplete, setIsOrderComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
-  // Use your updated hook that includes profile data
   const { user: currentUser, loading: userLoading, error: userError, profile } = useCurrentUser();
   const { session, loading: authLoading } = useSupabaseAuth();
   
   const params = useParams();
   const router = useRouter();
   const store_slug = params.store_slug as string;
+
+  // Order process hook
+  const { processOrder, loading: orderLoading, error: orderError } = useOrderProcess(store_slug);
 
   // ✅ Initialize form FIRST
   const form = useForm<CustomerCheckoutFormValues>({
@@ -48,7 +57,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
   // ✅ Memoize computed values to prevent unnecessary re-renders
   const isLoadingAuth = authLoading || userLoading;
   const isUserLoggedIn = Boolean(currentUser && session);
-  const isSubmitting = isLoading || isCreatingAccount;
+  const isSubmitting = isLoading || isCreatingAccount || orderLoading;
 
   // ✅ Create clean boolean disabled states
   const disabledStates = useMemo(() => ({
@@ -58,15 +67,6 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
     password: Boolean(isSubmitting),
     addressFields: Boolean(isSubmitting),
   }), [isSubmitting, isUserLoggedIn, currentUser?.phone]);
-
-  // ✅ Extract form registration to separate variables AFTER form initialization
-  const nameField = form.register("name");
-  const emailField = form.register("email");
-  const phoneField = form.register("phone");
-  const passwordField = form.register("password");
-  const cityField = form.register("city");
-  const postCodeField = form.register("postCode");
-  const shippingAddressField = form.register("shippingAddress");
 
   // ✅ Handle auth errors gracefully - missing session is normal!
   useEffect(() => {
@@ -133,25 +133,44 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
     }
   }, [currentUser, profile, isUserLoggedIn, isLoadingAuth, form, setFormData, formData]);
 
+  // ✅ FIXED: Complete order creation in form submission with cart clearing
   const handleSubmit = async (values: CustomerCheckoutFormValues) => {
     setIsCreatingAccount(true);
     setError(null);
+    setSuccess(null);
+    setIsOrderComplete(false);
     
     try {
       // Save form data to store
       setFormData(values);
 
+      let customerId: string | undefined;
+
       // Scenario 1: User is already logged in
-      if (isUserLoggedIn) {
-        console.log('Using logged-in user account for order');
+      if (isUserLoggedIn && currentUser) {
+        customerId = currentUser.id;
+        console.log('Using logged-in user account for order:', customerId);
         
-        // For logged-in users, we don't need to validate password
-        const orderData = {
-          ...values,
-          password: 'account-password-not-needed' // Bypass password validation
-        };
+        // Process order directly for logged-in users
+        const result = await processOrder(values, customerId);
         
-        onSubmit(orderData);
+        if (result.success) {
+          setSuccess(result.message || 'Order placed successfully!');
+          setIsOrderComplete(true);
+          
+          // ✅ Clear cart after successful order
+          clearStoreCart(store_slug);
+          
+          // ✅ Call parent onSubmit to show payment modal or handle success
+          onSubmit(values);
+          
+          // ✅ NEW: Redirect to orders page after 2 seconds
+          setTimeout(() => {
+            router.push('/orders');
+          }, 2000);
+        } else {
+          setError(result.error || 'Failed to place order');
+        }
         return;
       }
 
@@ -163,10 +182,27 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           password: values.password,
         });
 
-        if (!error) {
+        if (!error && data.user) {
           console.log('Auto-login successful');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          onSubmit(values);
+          customerId = data.user.id;
+          const result = await processOrder(values, customerId);
+          
+          if (result.success) {
+            setSuccess(result.message || 'Order placed successfully!');
+            setIsOrderComplete(true);
+            
+            // ✅ Clear cart after successful order
+            clearStoreCart(store_slug);
+            
+            onSubmit(values);
+            
+            // ✅ NEW: Redirect to orders page after 2 seconds
+            setTimeout(() => {
+              router.push('/orders');
+            }, 2000);
+          } else {
+            setError(result.error || 'Failed to place order');
+          }
           return;
         }
         
@@ -189,7 +225,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         console.log('Customer created successfully:', result);
 
         // Auto-login the new customer
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
           email: values.email,
           password: values.password,
         });
@@ -200,8 +236,25 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         }
         
         console.log('New customer auto-logged in');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        onSubmit(values);
+        customerId = signInData.user.id;
+        const orderResult = await processOrder(values, customerId);
+        
+        if (orderResult.success) {
+          setSuccess(orderResult.message || 'Order placed successfully!');
+          setIsOrderComplete(true);
+          
+          // ✅ Clear cart after successful order
+          clearStoreCart(store_slug);
+          
+          onSubmit(values);
+          
+          // ✅ NEW: Redirect to orders page after 2 seconds
+          setTimeout(() => {
+            router.push('/orders');
+          }, 2000);
+        } else {
+          setError(orderResult.error || 'Failed to place order');
+        }
         
       } catch (processError: any) {
         console.error('Process error:', processError);
@@ -221,19 +274,17 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
 
   const handleLoginRedirect = () => {
     const currentPath = window.location.pathname;
-  router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+    router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
-  // Show loading while checking auth status
+  // ✅ REPLACED: Using custom skeleton for auth loading
   if (isLoadingAuth) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <SheiLoader
-          size="md"
-          loadingText="Loading your information..."
-        />
-      </div>
-    );
+    return <CheckoutFormSkeleton />;
+  }
+
+  // ✅ REPLACED: Using custom skeleton for order completion
+  if (isOrderComplete) {
+    return <OrderCompleteSkeleton />;
   }
 
   return (
@@ -244,7 +295,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           Full Name 
         </Label>
         <Input
-          {...nameField}
+          {...form.register("name")}
           placeholder="John Doe"
           disabled={disabledStates.name}
           className={isUserLoggedIn ? "bg-muted cursor-not-allowed" : ""}
@@ -263,7 +314,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             Email 
           </Label>
           <Input
-            {...emailField}
+            {...form.register("email")}
             placeholder="john.doe@example.com"
             type="email"
             disabled={disabledStates.email}
@@ -281,7 +332,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             Phone Number
           </Label>
           <Input
-            {...phoneField}
+            {...form.register("phone")}
             placeholder="+880-1833228622"
             type="tel"
             disabled={disabledStates.phone}
@@ -314,7 +365,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             </div>
             <div className="relative">
               <Input
-                {...passwordField}
+                {...form.register("password")}
                 placeholder="Enter your password"
                 type={showPassword ? "text" : "password"}
                 disabled={disabledStates.password}
@@ -368,7 +419,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             City
           </Label>
           <Input
-            {...cityField}
+            {...form.register("city")}
             placeholder="New York"
             disabled={disabledStates.addressFields}
           />
@@ -384,7 +435,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             Postal Code
           </Label>
           <Input
-            {...postCodeField}
+            {...form.register("postCode")}
             placeholder="10001"
             disabled={disabledStates.addressFields}
           />
@@ -402,7 +453,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           Shipping Address
         </Label>
         <Input
-          {...shippingAddressField}
+          {...form.register("shippingAddress")}
           placeholder="123 Main St, Apt 4B"
           disabled={disabledStates.addressFields}
         />
@@ -413,10 +464,24 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         )}
       </div>
 
+      {/* Success Message */}
+      {success && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-sm text-green-600">{success}</p>
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-md">
           <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      {/* Order Error Message */}
+      {orderError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-600">{orderError}</p>
         </div>
       )}
 
@@ -427,16 +492,20 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <SheiLoader
-            size="sm"
-            loaderColor="white"
-            loadingText={
-              isUserLoggedIn ? "Processing Order..." : 
-              isCreatingAccount ? "Creating Account..." : "Processing..."
-            }
-          />
+          <div className="flex items-center justify-center gap-2">
+            <SheiLoader
+              size="sm"
+              loaderColor="white"
+              loadingText={
+                isUserLoggedIn ? "Completing Order..." : 
+                isCreatingAccount ? "Creating Account..." : "Processing..."
+              }
+            />
+          </div>
         ) : (
-          isUserLoggedIn ? "Place Order" : "Continue to Payment"
+          <div className="flex items-center justify-center gap-2">
+            {isUserLoggedIn ? "Place Order" : "Place Order"}
+          </div>
         )}
       </Button>
 

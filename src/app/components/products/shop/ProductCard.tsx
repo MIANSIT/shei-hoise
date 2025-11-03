@@ -29,9 +29,7 @@ export default function ProductCard({
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
       ? variant.discounted_price
-      : variant?.base_price ??
-        product.discounted_price ??
-        product.base_price;
+      : variant?.base_price ?? product.discounted_price ?? product.base_price;
 
   const displayImage =
     variant?.primary_image?.image_url ||
@@ -114,7 +112,10 @@ export default function ProductCard({
         {/* Conditional rendering based on variants */}
         {hasVariants ? (
           // View Details Button for products with variants
-          <Link href={`${store_slug}/product/${product.slug}`} className="w-full">
+          <Link
+            href={`${store_slug}/product/${product.slug}`}
+            className="w-full"
+          >
             <Button
               variant="default"
               size="lg"
@@ -125,57 +126,79 @@ export default function ProductCard({
             </Button>
           </Link>
         ) : (
-          // Add to Cart Button for products without variants
-          <Button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleAddToCart();
-            }}
-            disabled={adding}
-            variant="default"
-            size="lg"
-            className={`w-full gap-2 relative overflow-hidden cursor-pointer ${
-              showSuccess
-                ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
-                : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
-            }`}
-          >
-            <div className="flex items-center justify-center w-full relative">
-              <div
-                className={`flex items-center gap-2 ${
-                  adding || showSuccess
-                    ? "opacity-0 -translate-y-4"
-                    : "opacity-100 translate-y-0"
-                }`}
-              >
-                <ShoppingCart className="w-5 h-5" />
-                <span>Add to Cart</span>
-              </div>
-
-              <div
-                className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
-                  adding && !showSuccess
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
-                }`}
-              >
-                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
-                <span>Adding...</span>
-              </div>
-
-              <div
-                className={`absolute flex items-center gap-2 ${
+          // FIXED: Proper responsive layout for Add to Cart and View Details buttons
+          <div className="flex gap-2 w-full">
+            {/* Add to Cart Button */}
+            <div className="flex-1 min-w-0">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAddToCart();
+                }}
+                disabled={adding}
+                variant="default"
+                size="sm"
+                className={`w-full gap-2 overflow-hidden cursor-pointer ${
                   showSuccess
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
+                    ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
+                    : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
                 }`}
               >
-                <Check className="w-5 h-5" />
-                <span>Added!</span>
-              </div>
+                <div className="flex items-center justify-center w-full">
+                  <div
+                    className={`flex items-center gap-2 ${
+                      adding || showSuccess
+                        ? "opacity-0 -translate-y-4"
+                        : "opacity-100 translate-y-0"
+                    }`}
+                  >
+                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs sm:text-sm">Add to Cart</span>
+                  </div>
+
+                  <div
+                    className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                      adding && !showSuccess
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4"
+                    }`}
+                  >
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
+                    <span className="text-xs sm:text-sm">Adding...</span>
+                  </div>
+
+                  <div
+                    className={`absolute flex items-center gap-2 ${
+                      showSuccess
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4"
+                    }`}
+                  >
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs sm:text-sm">Added!</span>
+                  </div>
+                </div>
+              </Button>
             </div>
-          </Button>
+
+            {/* View Details Button */}
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`${store_slug}/product/${product.slug}`}
+                className="w-full"
+              >
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full gap-2 cursor-pointer bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
+                >
+                  <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-sm">View Details</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
         )}
       </div>
     </Card>

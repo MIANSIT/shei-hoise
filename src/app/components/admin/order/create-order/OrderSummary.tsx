@@ -41,6 +41,7 @@ interface OrderSummaryProps {
   setPaymentMethod: (method: string) => void;
 }
 
+
 export default function OrderSummary({
   orderProducts,
   subtotal,
@@ -58,6 +59,7 @@ export default function OrderSummary({
   paymentMethod,
   setPaymentMethod,
 }: OrderSummaryProps) {
+  
   return (
     <Card
       styles={{
@@ -156,7 +158,8 @@ export default function OrderSummary({
                 >
                   <Option value="pending">Pending</Option>
                   <Option value="confirmed">Confirmed</Option>
-                  <Option value="completed">Completed</Option>
+                  <Option value="completed">Delivered</Option>
+                  <Option value="shipped">Shipped</Option>
                   <Option value="cancelled">Cancelled</Option>
                 </Select>
               </Form.Item>
@@ -188,10 +191,10 @@ export default function OrderSummary({
               placeholder="Select payment method"
             >
               <Option value="cash">Cash on Delivery</Option>
-              <Option value="card">Credit/Debit Card</Option>
+              {/* <Option value="card">Credit/Debit Card</Option>
               <Option value="bkash">bKash</Option>
               <Option value="nagad">Nagad</Option>
-              <Option value="bank">Bank Transfer</Option>
+              <Option value="bank">Bank Transfer</Option> */}
             </Select>
           </Form.Item>
         </Space>

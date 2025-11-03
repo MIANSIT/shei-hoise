@@ -1,49 +1,42 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { CartState, CartItem, CartProductInput } from "../types/cart";
+import { CartState, CartItem } from "../types/cart";
+import { AddToCartType } from "../schema/checkoutSchema"; 
 
 const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       cart: [],
 
-      addToCart: (product: CartProductInput) => {
+      addToCart: (product: AddToCartType) => {
         return new Promise<void>((resolve) => {
           set((state) => {
-            // Find existing item with same ID AND same store_slug
+            // Find existing item with same product ID AND variant ID AND storeSlug
             const existing = state.cart.find(
-              (item) => item.id === product.id && item.store_slug === product.store_slug
+              (item) => 
+                item.productId === product.productId && 
+                item.variantId === product.variantId &&
+                item.storeSlug === product.storeSlug
             );
 
             if (existing) {
               return {
                 cart: state.cart.map((item) =>
-                  item.id === product.id && item.store_slug === product.store_slug
+                  item.productId === product.productId && 
+                  item.variantId === product.variantId && 
+                  item.storeSlug === product.storeSlug
                     ? { ...item, quantity: item.quantity + (product.quantity || 1) }
                     : item
                 ),
               };
             }
 
-            // ✅ CLEAN: Only use properties that exist in CartItem
+            // Store minimal cart data
             const cartItem: CartItem = {
-              // Basic product info
-              id: product.id,
-              slug: product.slug,
-              name: product.name,
-              base_price: product.base_price,
-              discounted_price: product.discounted_price,
-
-              // Cart-specific fields
+              productId: product.productId,
+              storeSlug: product.storeSlug,
               quantity: product.quantity || 1,
-              store_slug: product.store_slug,
-              currentPrice: product.currentPrice ?? product.base_price,
-              imageUrl: product.imageUrl || product.images?.[0] || "/placeholder.png",
-
-              // Optional fields
-              images: product.images || [],
-              category: product.category,
-              variants: product.variants,
+              variantId: product.variantId,
             };
 
             return { cart: [...state.cart, cartItem] };
@@ -52,60 +45,41 @@ const useCartStore = create<CartState>()(
         });
       },
 
-      // ... rest of the functions remain the same
-      removeItem: (id) =>
+      // FIXED: Remove specific item by productId AND variantId
+      removeItem: (productId: string, variantId?: string | null) =>
         set((state) => ({
-          cart: state.cart.filter((item) => item.id !== id),
+          cart: state.cart.filter((item) => 
+            !(item.productId === productId && item.variantId === variantId)
+          ),
         })),
 
-      updateQuantity: (id, quantity) =>
+      updateQuantity: (productId: string, variantId: string | null | undefined, quantity: number) =>
         set((state) => ({
           cart: state.cart.map((item) =>
-            item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+            item.productId === productId && item.variantId === variantId
+              ? { ...item, quantity: Math.max(1, quantity) }
+              : item
           ),
         })),
 
       clearCart: () => set({ cart: [] }),
 
-      clearStoreCart: (store_slug) =>
+      clearStoreCart: (storeSlug: string) =>
         set((state) => ({
-          cart: state.cart.filter((item) => item.store_slug !== store_slug),
+          cart: state.cart.filter((item) => item.storeSlug !== storeSlug),
         })),
 
-      getCartByStore: (store_slug) => {
-        return get().cart.filter((item) => item.store_slug === store_slug);
+      getCartByStore: (storeSlug: string) => {
+        return get().cart.filter((item) => item.storeSlug === storeSlug);
       },
 
       totalItems: () =>
         get().cart.reduce((sum, item) => sum + item.quantity, 0),
 
-      totalItemsByStore: (store_slug) =>
+      totalItemsByStore: (storeSlug: string) =>
         get().cart
-          .filter((item) => item.store_slug === store_slug)
+          .filter((item) => item.storeSlug === storeSlug)
           .reduce((sum, item) => sum + item.quantity, 0),
-
-      totalPrice: () =>
-        get().cart.reduce((sum, item) => {
-          // ✅ Use the same price logic
-          const displayPrice = item.discounted_price && item.discounted_price > 0
-            ? item.discounted_price
-            : (item.currentPrice ?? item.base_price);
-
-          return sum + displayPrice * item.quantity;
-        }, 0),
-
-      // In your cartStore.ts - update the totalPriceByStore function
-      totalPriceByStore: (store_slug) =>
-        get().cart
-          .filter((item) => item.store_slug === store_slug)
-          .reduce((sum, item) => {
-            // ✅ Use the same price logic as in CartItemsList
-            const displayPrice = item.discounted_price && item.discounted_price > 0
-              ? item.discounted_price
-              : (item.currentPrice ?? item.base_price);
-
-            return sum + displayPrice * item.quantity;
-          }, 0),
     }),
     {
       name: "cart-storage",

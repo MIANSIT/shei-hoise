@@ -11,6 +11,7 @@ import {
 } from "@/lib/hook/products/stock/mapProductsForTable";
 import { updateInventory } from "@/lib/queries/inventory/updateInventory";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser"; // ✅ import user hook
 
 const StockChangeTable: React.FC = () => {
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -20,20 +21,30 @@ const StockChangeTable: React.FC = () => {
   const [bulkActive, setBulkActive] = useState(false);
 
   const notify = useSheiNotification();
+  const { storeSlug, loading: userLoading } = useCurrentUser(); // ✅ get storeSlug from user
 
   const fetchProducts = async () => {
+    if (!storeSlug) {
+      console.warn("⚠️ No store slug found, skipping product fetch");
+      return;
+    }
     setLoading(true);
     try {
-      const data = await getProductWithStock();
+      const data = await getProductWithStock(storeSlug); // ✅ pass slug to query
       setProducts(mapProductsForModernTable(data));
+    } catch (err) {
+      console.error("❌ Failed to fetch products:", err);
+      notify.error("Failed to load product stock");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (!userLoading && storeSlug) {
+      fetchProducts();
+    }
+  }, [userLoading, storeSlug]); // ✅ refetch when user data or slug changes
 
   const handleStockChange = (
     productId: string,
@@ -55,24 +66,11 @@ const StockChangeTable: React.FC = () => {
     }
 
     // Check for negative stock
-    if (variantId && product.variants?.length) {
-      const variant = product.variants.find((v) => v.id === variantId);
-      if (!variant) {
-        notify.error("Variant not found");
-        return;
-      }
-      if (quantity < 0) {
-        notify.error(
-          `Cannot set stock of "${product.title}" variant "${variant.title}" below 0`
-        );
-        return;
-      }
-    } else {
-      if (quantity < 0) {
-        notify.error(`Cannot set stock of "${product.title}" below 0`);
-        return;
-      }
+    if (quantity < 0) {
+      notify.error("Stock cannot be negative");
+      return;
     }
+
     try {
       await updateInventory({
         product_id: productId,
@@ -85,26 +83,10 @@ const StockChangeTable: React.FC = () => {
         return copy;
       });
       await fetchProducts();
-      notify.success(
-        `Stock updated successfully for "${product.title}"${
-          variantId
-            ? ` variant "${
-                product.variants?.find((v) => v.id === variantId)?.title
-              }"`
-            : ""
-        }`
-      );
+      notify.success("Stock updated successfully");
     } catch (err) {
       console.error("Failed to update stock:", err);
-      notify.error(
-        `Failed to update stock for "${product.title}"${
-          variantId
-            ? ` variant "${
-                product.variants?.find((v) => v.id === variantId)?.title
-              }"`
-            : ""
-        }`
-      );
+      notify.error("Failed to update stock");
     }
   };
 
@@ -141,6 +123,16 @@ const StockChangeTable: React.FC = () => {
     await fetchProducts();
     setBulkActive(false);
   };
+
+  if (userLoading) {
+    return <p className="text-center text-gray-500">Loading user...</p>;
+  }
+
+  if (!storeSlug) {
+    return (
+      <p className="text-center text-gray-500">No store found for this user.</p>
+    );
+  }
 
   return (
     <div className="space-y-4">

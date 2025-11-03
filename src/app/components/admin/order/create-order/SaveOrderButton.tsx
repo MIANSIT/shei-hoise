@@ -18,7 +18,7 @@ interface SaveOrderButtonProps {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   disabled?: boolean;
@@ -72,25 +72,14 @@ export default function SaveOrderButton({
 
     setIsLoading(true);
     try {
-      console.log("Starting order creation process...");
-      console.log("Order data:", {
-        storeId,
-        orderId,
-        customerInfo,
-        orderProductsCount: orderProducts.length,
-        subtotal,
-        totalAmount,
-      });
+      
 
       const finalCustomerInfo = { ...customerInfo };
       let customerCreated = false;
 
-      // If new customer (no customer_id), create customer first
       if (!customerInfo.customer_id) {
         try {
-          console.log("Creating new customer...");
 
-          // Validate required customer fields
           if (
             !customerInfo.name ||
             !customerInfo.phone ||
@@ -122,14 +111,11 @@ export default function SaveOrderButton({
           finalCustomerInfo.customer_id = newCustomer.id;
           customerCreated = true;
 
-          console.log("New customer created successfully:", newCustomer.id);
 
-          // Refresh customer list if callback provided
           if (onCustomerCreated) {
             onCustomerCreated();
           }
 
-          // Show success notification for customer creation
           notification.success({
             message: "Customer Created",
             description: "New customer account created successfully.",
@@ -169,7 +155,6 @@ export default function SaveOrderButton({
           }
 
           // Continue without customer_id
-          console.log("Continuing order creation without customer account...");
         }
       }
 
@@ -190,12 +175,10 @@ export default function SaveOrderButton({
         deliveryOption: finalCustomerInfo.deliveryMethod, // ✅ add this
       };
 
-      console.log("Creating order with final data:", orderData);
 
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
-        console.log("Order saved with ID:", result.orderId);
 
         let successMessage = `Order ${orderId} has been created successfully.`;
         if (customerCreated) {
