@@ -40,6 +40,11 @@ import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import type { StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSimple";
 import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
+import {
+  getStoreSettings,
+  type StoreSettings,
+  type ShippingFee,
+} from "@/lib/queries/stores/getStoreSettings";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -82,7 +87,7 @@ export default function CreateOrder() {
   const [paymentStatus, setPaymentStatus] = useState<
     "pending" | "paid" | "failed" | "refunded"
   >("pending");
-const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
@@ -91,6 +96,40 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
   const [customerProfile, setCustomerProfile] =
     useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // Store settings states
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(
+    null
+  );
+  const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  // Fetch store settings with shipping fees
+  const fetchStoreSettings = useCallback(async () => {
+    if (!user?.store_id) return;
+
+    setSettingsLoading(true);
+    try {
+      const settings = await getStoreSettings(user.store_id);
+      if (settings) {
+        setStoreSettings(settings);
+        setShippingFees(settings.shipping_fees || []);
+
+        // Set tax amount from store settings if available
+        if (settings.tax_rate) {
+          setTaxAmount(settings.tax_rate);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching store settings:", error);
+      notification.error({
+        message: "Error Loading Store Settings",
+        description: "Failed to load shipping fees and tax rates.",
+      });
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [user?.store_id, notification]);
 
   // Fetch customer profile data from user_profiles table
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
@@ -173,8 +212,15 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
     if (user?.store_id && !userLoading) {
       fetchProducts();
       fetchCustomers();
+      fetchStoreSettings();
     }
-  }, [user?.store_id, userLoading, fetchProducts, fetchCustomers]);
+  }, [
+    user?.store_id,
+    userLoading,
+    fetchProducts,
+    fetchCustomers,
+    fetchStoreSettings,
+  ]);
 
   // Filter customers based on search
   useEffect(() => {
@@ -205,12 +251,33 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
     );
   }, []);
 
-  // Update delivery cost based on city
+  // Update delivery cost based on city from shipping fees
+  // Update delivery cost based on city from shipping fees
   useEffect(() => {
-    if (customerInfo.city === "inside-dhaka") setDeliveryCost(80);
-    else if (customerInfo.city === "outside-dhaka") setDeliveryCost(150);
-    else setDeliveryCost(0);
-  }, [customerInfo.city]);
+    if (
+      customerInfo.city &&
+      Array.isArray(shippingFees) &&
+      shippingFees.length > 0
+    ) {
+      const shippingFee = shippingFees.find((fee) => {
+        if (!fee || typeof fee !== "object" || !fee.location) return false;
+
+        const feeLocation = String(fee.location)
+          .toLowerCase()
+          .replace(/\s+/g, "-");
+        const customerCity = String(customerInfo.city).toLowerCase();
+
+        return (
+          feeLocation.includes(customerCity) ||
+          customerCity.includes(feeLocation)
+        );
+      });
+
+      setDeliveryCost(shippingFee?.fee || 0); // Changed from .price to .fee
+    } else {
+      setDeliveryCost(0);
+    }
+  }, [customerInfo.city, shippingFees]);
 
   // Calculate totals
   useEffect(() => {
@@ -307,6 +374,8 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
           customerInfo={customerInfo}
           setCustomerInfo={setCustomerInfo}
           orderId={orderId}
+          shippingFees={shippingFees}
+          settingsLoading={settingsLoading}
         />
       );
     }
@@ -458,6 +527,8 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
                   setCustomerInfo={setCustomerInfo}
                   orderId={orderId}
                   isExistingCustomer={true}
+                  shippingFees={shippingFees}
+                  settingsLoading={settingsLoading}
                 />
               </>
             )}
@@ -641,6 +712,8 @@ const [paymentMethod, setPaymentMethod] = useState("cash");
                   setPaymentStatus={setPaymentStatus}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
+                  shippingFees={shippingFees}
+                  customerCity={customerInfo.city}
                 />
               </Col>
             </Row>

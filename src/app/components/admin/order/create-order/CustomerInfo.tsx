@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/components/admin/order/create-order/CustomerInfo.tsx
 "use client";
 import React from "react";
 import {
@@ -15,6 +14,7 @@ import {
   Typography,
 } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
+import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -25,6 +25,8 @@ interface CustomerInfoProps {
   setCustomerInfo: React.Dispatch<React.SetStateAction<CustomerInfoType>>;
   orderId: string;
   isExistingCustomer?: boolean;
+  shippingFees?: ShippingFee[];
+  settingsLoading?: boolean;
 }
 
 export default function CustomerInfo({
@@ -32,6 +34,8 @@ export default function CustomerInfo({
   setCustomerInfo,
   orderId,
   isExistingCustomer = false,
+  shippingFees = [],
+  settingsLoading = false,
 }: CustomerInfoProps) {
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(?:\+88|01)?\d{9,11}$/;
@@ -52,6 +56,42 @@ export default function CustomerInfo({
       setCustomerInfo((prev) => ({ ...prev, password: "AdminCustomer1232*" }));
     }
   }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
+
+  // Get selected shipping fee details with proper null checks
+  const selectedShippingFee = React.useMemo(() => {
+    if (!customerInfo.city || !Array.isArray(shippingFees)) return undefined;
+
+    return shippingFees.find((fee) => {
+      if (!fee || typeof fee !== "object" || !fee.location) return false;
+
+      const feeLocation = String(fee.location)
+        .toLowerCase()
+        .replace(/\s+/g, "-");
+      const customerCity = String(customerInfo.city).toLowerCase();
+
+      return (
+        feeLocation.includes(customerCity) || customerCity.includes(feeLocation)
+      );
+    });
+  }, [customerInfo.city, shippingFees]);
+
+  // Filter valid shipping fees with proper locations
+  const validShippingFees = React.useMemo(() => {
+    if (!Array.isArray(shippingFees)) return [];
+
+    return shippingFees.filter(
+      (fee) =>
+        fee &&
+        typeof fee === "object" &&
+        fee.location &&
+        typeof fee.location === "string" &&
+        fee.location.trim() !== "" &&
+        typeof fee.fee === "number"
+    );
+  }, [shippingFees]);
+
+  console.log("Shipping Fees:", shippingFees); // Debug log
+  console.log("Valid Shipping Fees:", validShippingFees); // Debug log
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -170,13 +210,34 @@ export default function CustomerInfo({
                   help={!customerInfo.city ? "City is required" : ""}
                 >
                   <Select
-                    placeholder="Select city"
+                    placeholder={
+                      settingsLoading
+                        ? "Loading shipping options..."
+                        : "Select city"
+                    }
                     value={customerInfo.city || undefined}
                     onChange={(value) => handleFieldChange("city", value)}
                     size="large"
+                    loading={settingsLoading}
+                    disabled={settingsLoading}
                   >
-                    <Option value="inside-dhaka">Inside Dhaka</Option>
-                    <Option value="outside-dhaka">Outside Dhaka</Option>
+                    {validShippingFees.map((fee) => (
+                      <Option
+                        key={fee.location}
+                        value={fee.location.toLowerCase().replace(/\s+/g, "-")}
+                      >
+                        <Space>
+                          <span>{fee.location}</span>
+                          <Tag color="blue">৳{fee.fee}</Tag>
+                        </Space>
+                      </Option>
+                    ))}
+
+                    {validShippingFees.length === 0 && !settingsLoading && (
+                      <Option disabled value="no-options">
+                        No shipping options configured
+                      </Option>
+                    )}
                   </Select>
                 </Form.Item>
               </Col>
