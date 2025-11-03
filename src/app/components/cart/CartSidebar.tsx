@@ -76,12 +76,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
           </div>
           
           <div className='flex-1 p-4 overflow-y-auto'>
-            {loading ? (
-              <div className='text-center py-8'>
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted-foreground mt-2">Loading cart...</p>
-              </div>
-            ) : cartItems.length === 0 ? (
+             {cartItems.length === 0 ? (
               <div className='text-center py-8'>
                 <p className='text-muted-foreground'>Your cart is empty</p>
                 <Button

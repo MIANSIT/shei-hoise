@@ -79,13 +79,7 @@ const MobileCheckout = ({
           <h2 className="text-lg font-semibold mb-3 text-foreground">
             Your Cart ({calculations.totalItems} items)
           </h2>
-
-          {loading ? (
-            <div className="text-center py-6 bg-card rounded-lg shadow-md">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading cart...</p>
-            </div>
-          ) : cartItems.length === 0 ? (
+{cartItems.length === 0 ? (
             <div className="text-center py-6 bg-card rounded-lg shadow-md">
               <p className="text-muted-foreground">Your cart is empty</p>
             </div>
