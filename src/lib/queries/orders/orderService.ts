@@ -12,7 +12,7 @@ export interface CreateOrderData {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   currency?: string;
@@ -30,13 +30,16 @@ async function validateStockAvailability(
   orderProducts: OrderProduct[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('🔍 validateStockAvailability called with:', orderProducts.map(p => ({
-      product_name: p.product_name,
-      product_id: p.product_id,
-      variant_id: p.variant_id,
-      quantity: p.quantity
-    })));
-    
+    console.log(
+      "🔍 validateStockAvailability called with:",
+      orderProducts.map((p) => ({
+        product_name: p.product_name,
+        product_id: p.product_id,
+        variant_id: p.variant_id,
+        quantity: p.quantity,
+      }))
+    );
+
     for (const item of orderProducts) {
       console.log(`🔍 Checking inventory for: "${item.product_name}"`, {
         product_id: item.product_id,
@@ -45,7 +48,7 @@ async function validateStockAvailability(
       });
 
       let inventoryQuery;
-      
+
       if (item.variant_id) {
         // ✅ Check VARIANT inventory - should be unique per variant
         console.log(`🔍 Checking VARIANT inventory for variant ${item.variant_id}`);
@@ -67,12 +70,12 @@ async function validateStockAvailability(
 
       const { data: inventory, error } = await inventoryQuery;
 
-      console.log('📊 Inventory check result for', item.product_name, ':', {
+      console.log("📊 Inventory check result for", item.product_name, ":", {
         inventory,
         error,
         variant_id: item.variant_id,
         product_id: item.product_id,
-        is_variant: !!item.variant_id
+        is_variant: !!item.variant_id,
       });
 
       // ✅ FIXED: Handle the case where there are multiple inventory records for base products
@@ -143,7 +146,7 @@ async function validateStockAvailability(
       console.log(`📦 Stock check: "${item.product_name}" - Available: ${availableStock}, Required: ${item.quantity}`);
 
       if (availableStock < item.quantity) {
-        const inventoryType = item.variant_id ? 'variant' : 'product';
+        const inventoryType = item.variant_id ? "variant" : "product";
         return {
           success: false,
           error: `Insufficient stock for "${item.product_name}" ${inventoryType}. Available: ${availableStock}, Requested: ${item.quantity}`,
@@ -165,14 +168,14 @@ async function updateInventoryForOrder(
   orderProducts: OrderProduct[],
   action: "reserve" | "release"
 ): Promise<{ success: boolean; error?: string }> {
-  console.log('🔧 updateInventoryForOrder called with:', {
+  console.log("🔧 updateInventoryForOrder called with:", {
     action,
-    products: orderProducts.map(p => ({
+    products: orderProducts.map((p) => ({
       product_id: p.product_id,
       variant_id: p.variant_id,
       quantity: p.quantity,
-      product_name: p.product_name
-    }))
+      product_name: p.product_name,
+    })),
   });
 
   const inventoryUpdateResults = [];
@@ -185,8 +188,10 @@ async function updateInventoryForOrder(
 
       if (item.variant_id) {
         // ✅ VARIANT PRODUCT: Only update variant inventory
-        console.log(`📦 This is a VARIANT product. Only updating variant inventory for variant_id: ${item.variant_id}`);
-        
+        console.log(
+          `📦 This is a VARIANT product. Only updating variant inventory for variant_id: ${item.variant_id}`
+        );
+
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("id, quantity_available, quantity_reserved")
@@ -195,10 +200,13 @@ async function updateInventoryForOrder(
 
         const { data: inventoryData, error: fetchError } = await inventoryQuery;
 
-        console.log('📊 Variant inventory data:', inventoryData);
+        console.log("📊 Variant inventory data:", inventoryData);
 
         if (fetchError) {
-          console.error(`❌ Error fetching VARIANT inventory for variant ${item.variant_id}:`, fetchError);
+          console.error(
+            `❌ Error fetching VARIANT inventory for variant ${item.variant_id}:`,
+            fetchError
+          );
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
@@ -218,13 +226,17 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Reserving VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Reserving VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Releasing VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Releasing VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -236,7 +248,10 @@ async function updateInventoryForOrder(
           .eq("variant_id", item.variant_id);
 
         if (updateError) {
-          console.error(`❌ Error updating VARIANT inventory for variant ${item.variant_id}:`, updateError);
+          console.error(
+            `❌ Error updating VARIANT inventory for variant ${item.variant_id}:`,
+            updateError
+          );
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
@@ -244,14 +259,15 @@ async function updateInventoryForOrder(
             error: updateError.message,
           });
         } else {
-          console.log(`✅ Successfully updated VARIANT inventory for variant ${item.variant_id}`);
+          console.log(
+            `✅ Successfully updated VARIANT inventory for variant ${item.variant_id}`
+          );
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
             success: true,
           });
         }
-
       } else {
         // ✅ BASE PRODUCT (no variants): Handle multiple inventory records
         console.log(`📦 This is a BASE product. Checking for inventory records for product_id: ${item.product_id}`);
@@ -303,13 +319,17 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Reserving BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Reserving BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(`📦 Releasing BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`);
+          console.log(
+            `📦 Releasing BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
+          );
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -337,7 +357,6 @@ async function updateInventoryForOrder(
           });
         }
       }
-
     } catch (inventoryError: any) {
       console.error(
         `❌ Unexpected inventory update error for item:`,
@@ -509,7 +528,10 @@ export async function createOrder(
     );
 
     if (!inventoryUpdateResult.success) {
-      console.error("❌ Failed to update inventory:", inventoryUpdateResult.error);
+      console.error(
+        "❌ Failed to update inventory:",
+        inventoryUpdateResult.error
+      );
       console.warn(
         "⚠️ Order created but inventory reservation failed. Manual intervention may be required."
       );
@@ -581,7 +603,7 @@ export async function createCustomerOrder(
       country: customerInfo.country || "Bangladesh",
     };
 
-    console.log('🔄 Creating customer order in database...');
+    console.log("🔄 Creating customer order in database...");
 
     // Create order
     const orderInsertData = {
@@ -642,7 +664,10 @@ export async function createCustomerOrder(
     );
 
     if (!inventoryUpdateResult.success) {
-      console.error("❌ Failed to update inventory:", inventoryUpdateResult.error);
+      console.error(
+        "❌ Failed to update inventory:",
+        inventoryUpdateResult.error
+      );
       console.warn(
         "⚠️ Customer order created but inventory reservation failed. Manual intervention may be required."
       );
@@ -650,7 +675,7 @@ export async function createCustomerOrder(
       console.log("✅ Inventory successfully reserved for customer order");
     }
 
-    console.log('✅ Customer order created successfully:', order.id);
+    console.log("✅ Customer order created successfully:", order.id);
 
     return {
       success: true,

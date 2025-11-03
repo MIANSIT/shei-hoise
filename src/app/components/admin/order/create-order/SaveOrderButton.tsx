@@ -18,7 +18,7 @@ interface SaveOrderButtonProps {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   disabled?: boolean;
