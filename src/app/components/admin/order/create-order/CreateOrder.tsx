@@ -42,7 +42,6 @@ import type { StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSim
 import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
 import {
   getStoreSettings,
-  type StoreSettings,
   type ShippingFee,
 } from "@/lib/queries/stores/getStoreSettings";
 
@@ -100,9 +99,7 @@ export default function CreateOrder() {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Store settings states
-  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(
-    null
-  );
+
   const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
 
@@ -114,7 +111,7 @@ export default function CreateOrder() {
     try {
       const settings = await getStoreSettings(user.store_id);
       if (settings) {
-        setStoreSettings(settings);
+        // Remove this line: setStoreSettings(settings);
         setShippingFees(settings.shipping_fees || []);
 
         // Set tax amount from store settings if available
@@ -144,6 +141,7 @@ export default function CreateOrder() {
           ...prev,
           address: profile.address_line_1 || "",
           city: profile.city || "",
+          postal_code: profile.postal_code || "", // Add this line
         }));
       }
     } catch (error) {
@@ -299,19 +297,18 @@ export default function CreateOrder() {
     const customer = customers.find((c) => c.id === customerId);
     if (customer) {
       setSelectedCustomer(customer);
-      setCustomerInfo({
+
+      // Use functional update to only change what's needed
+      setCustomerInfo((prev) => ({
+        ...prev, // Keep existing values
         name: customer.first_name,
-        deliveryOption: "", // Add this new field
         phone: customer.phone || "",
-        address: "",
-        city: "",
-        deliveryMethod: "courier",
         email: customer.email,
         customer_id: customer.id,
-        notes: "",
-        password: "AdminCustomer1232*",
-        postal_code: "", // Add this line
-      });
+        // Don't reset address, city, deliveryOption, postal_code here
+        // Let fetchCustomerProfile handle them
+      }));
+
       await fetchCustomerProfile(customer.id);
     }
   };
@@ -516,8 +513,8 @@ export default function CreateOrder() {
 
                   {customerProfile ? (
                     <Alert
-                      message="Address Auto-filled"
-                      description="Customer address and city have been auto-filled from their profile. You can modify these if needed for this specific order."
+                      message="Profile Auto-filled"
+                      description="Customer address, city, and postal code have been auto-filled from their profile. You can modify these if needed for this specific order."
                       type="success"
                       showIcon
                       style={{ marginTop: "16px" }}
@@ -525,7 +522,7 @@ export default function CreateOrder() {
                   ) : (
                     <Alert
                       message="Address Required"
-                      description="No address found in customer profile. Please manually enter the delivery address and city for this order."
+                      description="No address found in customer profile. Please manually enter the delivery address, city, and postal code for this order."
                       type="info"
                       showIcon
                       style={{ marginTop: "16px" }}

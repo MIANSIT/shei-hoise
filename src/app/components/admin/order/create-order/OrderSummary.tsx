@@ -11,7 +11,6 @@ import {
   Typography,
   Divider,
   Statistic,
-  Tag,
   Alert,
 } from "antd";
 import { ShoppingCartOutlined } from "@ant-design/icons";

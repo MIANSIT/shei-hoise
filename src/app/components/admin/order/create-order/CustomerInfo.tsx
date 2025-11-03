@@ -58,24 +58,6 @@ export default function CustomerInfo({
   }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
 
   // Get selected shipping fee based on delivery option
-  const selectedShippingFee = React.useMemo(() => {
-    if (!customerInfo.deliveryOption || !Array.isArray(shippingFees))
-      return undefined;
-
-    return shippingFees.find((fee) => {
-      if (!fee || typeof fee !== "object" || !fee.location) return false;
-
-      const feeLocation = String(fee.location)
-        .toLowerCase()
-        .replace(/\s+/g, "-");
-      const deliveryOption = String(customerInfo.deliveryOption).toLowerCase();
-
-      return (
-        feeLocation.includes(deliveryOption) ||
-        deliveryOption.includes(feeLocation)
-      );
-    });
-  }, [customerInfo.deliveryOption, shippingFees]);
 
   // Filter valid shipping fees with proper locations
   const validShippingFees = React.useMemo(() => {
