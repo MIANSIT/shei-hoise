@@ -13,39 +13,59 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
     }).format(amount);
   };
 
   // Format date
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
-  // Get status badge color
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'delivered':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'processing':
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+  // Reusable badge color function for order & payment
+  const getBadgeColor = (
+    status: string,
+    type: "order" | "payment" = "order"
+  ) => {
+    const s = status?.toLowerCase();
+
+    if (type === "order") {
+      switch (s) {
+        case "completed":
+        case "delivered":
+          return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+        case "pending":
+          return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+        case "processing":
+        case "confirmed":
+          return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+        case "cancelled":
+          return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+        case "shipped":
+          return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+        default:
+          return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+      }
+    } else if (type === "payment") {
+      switch (s) {
+        case "paid":
+          return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+        case "pending":
+          return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+        case "failed":
+          return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+        default:
+          return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+      }
     }
+
+    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
   };
 
   // Copy order ID to clipboard
@@ -55,7 +75,7 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
       setCopiedOrderId(orderId);
       setTimeout(() => setCopiedOrderId(null), 2000);
     } catch (err) {
-      console.error('Failed to copy order ID:', err);
+      console.error("Failed to copy order ID:", err);
     }
   };
 
@@ -70,23 +90,30 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
         <table className="min-w-full divide-y divide-border">
           <thead className="bg-muted">
             <tr>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Order
               </th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Total
               </th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Status
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Order Status
               </th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Payment Status
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Store
               </th>
             </tr>
           </thead>
           <tbody className="bg-card divide-y divide-border">
             {orders.map((order) => (
-              <tr key={order.id} className="hover:bg-accent/50 transition-colors">
+              <tr
+                key={order.id}
+                className="hover:bg-accent/50 transition-colors"
+              >
+                {/* Order ID */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button
@@ -110,22 +137,78 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                     </div>
                   </div>
                 </td>
+
+                {/* Total */}
                 <td className="px-4 py-3">
                   <div className="text-sm font-medium text-foreground">
                     {formatCurrency(order.total_amount || 0)}
                   </div>
                 </td>
+
+                {/* Order Status */}
                 <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                    {order.status || 'Pending'}
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(
+                      order.status,
+                      "order"
+                    )}`}
+                  >
+                    {order.status
+                      ? order.status.charAt(0).toUpperCase() +
+                        order.status.slice(1)
+                      : "Pending"}
                   </span>
                 </td>
+
+                {/* Payment Status */}
                 <td className="px-4 py-3">
-                  <div className="text-sm text-foreground">
-                    {order.stores?.store_name || 'Store'}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {order.stores?.store_slug || ''}
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(
+                      order.payment_status,
+                      "payment"
+                    )}`}
+                  >
+                    {order.payment_status
+                      ? order.payment_status.charAt(0).toUpperCase() +
+                        order.payment_status.slice(1)
+                      : "Pending"}
+                  </span>
+                </td>
+
+                {/* Store */}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm text-foreground truncate">
+                        {order.stores?.store_name || "Store"}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                        {order.stores?.store_slug || ""}
+                        {order.stores?.store_slug && (
+                          <button
+                            onClick={async () => {
+                              const storeUrl = `${window.location.origin}/${order.stores.store_slug}`;
+                              try {
+                                await navigator.clipboard.writeText(storeUrl);
+                                setCopiedOrderId(storeUrl);
+                                setTimeout(() => setCopiedOrderId(null), 2000);
+                              } catch (err) {
+                                console.error("Failed to copy store URL:", err);
+                              }
+                            }}
+                            className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer flex-shrink-0"
+                            title="Copy Store URL"
+                          >
+                            {copiedOrderId ===
+                            `${window.location.origin}/${order.stores.store_slug}` ? (
+                              <Check className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <Copy className="h-3 w-3 text-muted-foreground" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </td>
               </tr>
