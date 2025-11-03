@@ -42,7 +42,7 @@ interface OrderSummaryProps {
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   shippingFees?: ShippingFee[];
-  customerCity?: string;
+  customerDeliveryOption?: string; // Change from customerCity to customerDeliveryOption
 }
 
 export default function OrderSummary({
@@ -62,18 +62,26 @@ export default function OrderSummary({
   paymentMethod,
   setPaymentMethod,
   shippingFees = [],
-  customerCity,
+  customerDeliveryOption,
 }: OrderSummaryProps) {
   // Get selected shipping fee details
+  // Get selected shipping fee details
   const selectedShippingFee = shippingFees.find((fee) => {
-    if (!fee || typeof fee !== "object" || !fee.location || !customerCity)
+    if (
+      !fee ||
+      typeof fee !== "object" ||
+      !fee.location ||
+      !customerDeliveryOption
+    )
       return false;
 
     const feeLocation = String(fee.location).toLowerCase().replace(/\s+/g, "-");
-    const customerCityNormalized = String(customerCity).toLowerCase();
+    const customerDeliveryOptionNormalized = String(
+      customerDeliveryOption
+    ).toLowerCase();
     return (
-      feeLocation.includes(customerCityNormalized) ||
-      customerCityNormalized.includes(feeLocation)
+      feeLocation.includes(customerDeliveryOptionNormalized) ||
+      customerDeliveryOptionNormalized.includes(feeLocation)
     );
   });
 
@@ -91,7 +99,7 @@ export default function OrderSummary({
         </Title>
 
         {/* Shipping Fee Alert */}
-        {selectedShippingFee && customerCity && (
+        {selectedShippingFee && customerDeliveryOption && (
           <Alert
             message="Shipping Fee Applied"
             description={
@@ -168,10 +176,10 @@ export default function OrderSummary({
                     onChange={(value) => setDeliveryCost(value || 0)}
                     style={{ width: "100%" }}
                     addonAfter="৳"
-                    disabled={!!customerCity} // Disable manual input when city is selected
+                    disabled={!!customerDeliveryOption} // Disable manual input when city is selected
                   />
                 </Form.Item>
-                {customerCity && (
+                {customerDeliveryOption && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
                     Delivery cost is automatically set based on selected city
                   </Text>

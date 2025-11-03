@@ -69,10 +69,12 @@ export default function CreateOrder() {
     phone: "",
     address: "",
     deliveryMethod: "",
+    deliveryOption: "", // Add this new field
     city: "",
     email: "",
     notes: "",
     password: "AdminCustomer1232*",
+    postal_code: "", // Add this line
   });
 
   const [subtotal, setSubtotal] = useState(0);
@@ -253,9 +255,10 @@ export default function CreateOrder() {
 
   // Update delivery cost based on city from shipping fees
   // Update delivery cost based on city from shipping fees
+  // Update delivery cost based on delivery option from shipping fees
   useEffect(() => {
     if (
-      customerInfo.city &&
+      customerInfo.deliveryOption &&
       Array.isArray(shippingFees) &&
       shippingFees.length > 0
     ) {
@@ -265,19 +268,21 @@ export default function CreateOrder() {
         const feeLocation = String(fee.location)
           .toLowerCase()
           .replace(/\s+/g, "-");
-        const customerCity = String(customerInfo.city).toLowerCase();
+        const deliveryOption = String(
+          customerInfo.deliveryOption
+        ).toLowerCase();
 
         return (
-          feeLocation.includes(customerCity) ||
-          customerCity.includes(feeLocation)
+          feeLocation.includes(deliveryOption) ||
+          deliveryOption.includes(feeLocation)
         );
       });
 
-      setDeliveryCost(shippingFee?.fee || 0); // Changed from .price to .fee
+      setDeliveryCost(shippingFee?.fee || 0);
     } else {
       setDeliveryCost(0);
     }
-  }, [customerInfo.city, shippingFees]);
+  }, [customerInfo.deliveryOption, shippingFees]);
 
   // Calculate totals
   useEffect(() => {
@@ -296,6 +301,7 @@ export default function CreateOrder() {
       setSelectedCustomer(customer);
       setCustomerInfo({
         name: customer.first_name,
+        deliveryOption: "", // Add this new field
         phone: customer.phone || "",
         address: "",
         city: "",
@@ -304,6 +310,7 @@ export default function CreateOrder() {
         customer_id: customer.id,
         notes: "",
         password: "AdminCustomer1232*",
+        postal_code: "", // Add this line
       });
       await fetchCustomerProfile(customer.id);
     }
@@ -318,11 +325,13 @@ export default function CreateOrder() {
       name: "",
       phone: "",
       address: "",
+      deliveryOption: "", // Add this new field
       deliveryMethod: "",
       city: "",
       email: "",
       notes: "",
       password: "AdminCustomer1232*",
+      postal_code: "", // Add this line
     });
     setCustomerType("new");
   };
@@ -362,8 +371,10 @@ export default function CreateOrder() {
     customerInfo.name &&
     customerInfo.phone &&
     customerInfo.address &&
+    customerInfo.postal_code && // Add this line
     customerInfo.city &&
     customerInfo.deliveryMethod &&
+    customerInfo.deliveryOption && // Add this line
     orderProducts.length > 0;
 
   // Render customer content based on type
@@ -713,7 +724,7 @@ export default function CreateOrder() {
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
                   shippingFees={shippingFees}
-                  customerCity={customerInfo.city}
+                  customerDeliveryOption={customerInfo.deliveryOption} // Change from customerCity
                 />
               </Col>
             </Row>

@@ -57,12 +57,16 @@ export interface OrderItem {
   variant_details: any;
   products?: OrderItemProduct | null; // Made optional
   product_variants?: OrderItemVariant | null; // Made optional
-  discounted_price?: number; 
+  discounted_price?: number;
 }
 
-
 // ===== STATUS TYPES =====
-export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type DeliveryOption = "pathao" | "courier" | "other";
 export type PaymentMethod = "cod" | "online";
@@ -111,12 +115,14 @@ export interface CustomerInfo {
   phone: string;
   address: string;
   deliveryMethod: string;
+  deliveryOption: string; // Add this new field
   city: string;
   email: string;
   notes?: string;
   customer_id?: string;
   password: string;
   country?: string;
+  postal_code: string; // Add this line
 }
 
 export interface CreateOrderData {

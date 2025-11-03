@@ -57,9 +57,10 @@ export default function CustomerInfo({
     }
   }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
 
-  // Get selected shipping fee details with proper null checks
+  // Get selected shipping fee based on delivery option
   const selectedShippingFee = React.useMemo(() => {
-    if (!customerInfo.city || !Array.isArray(shippingFees)) return undefined;
+    if (!customerInfo.deliveryOption || !Array.isArray(shippingFees))
+      return undefined;
 
     return shippingFees.find((fee) => {
       if (!fee || typeof fee !== "object" || !fee.location) return false;
@@ -67,13 +68,14 @@ export default function CustomerInfo({
       const feeLocation = String(fee.location)
         .toLowerCase()
         .replace(/\s+/g, "-");
-      const customerCity = String(customerInfo.city).toLowerCase();
+      const deliveryOption = String(customerInfo.deliveryOption).toLowerCase();
 
       return (
-        feeLocation.includes(customerCity) || customerCity.includes(feeLocation)
+        feeLocation.includes(deliveryOption) ||
+        deliveryOption.includes(feeLocation)
       );
     });
-  }, [customerInfo.city, shippingFees]);
+  }, [customerInfo.deliveryOption, shippingFees]);
 
   // Filter valid shipping fees with proper locations
   const validShippingFees = React.useMemo(() => {
@@ -92,6 +94,7 @@ export default function CustomerInfo({
 
   console.log("Shipping Fees:", shippingFees); // Debug log
   console.log("Valid Shipping Fees:", validShippingFees); // Debug log
+  console.log("Selected Delivery Option:", customerInfo.deliveryOption); // Debug log
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -209,14 +212,53 @@ export default function CustomerInfo({
                   validateStatus={!customerInfo.city ? "error" : ""}
                   help={!customerInfo.city ? "City is required" : ""}
                 >
-                  <Select
-                    placeholder={
-                      settingsLoading
-                        ? "Loading shipping options..."
-                        : "Select city"
+                  <Input
+                    placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
+                    value={customerInfo.city}
+                    onChange={(e) => handleFieldChange("city", e.target.value)}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label="Postal Code"
+                  required
+                  validateStatus={!customerInfo.postal_code ? "error" : ""}
+                  help={
+                    !customerInfo.postal_code ? "Postal code is required" : ""
+                  }
+                >
+                  <Input
+                    placeholder="Enter postal code (e.g., 1200, 1216)"
+                    value={customerInfo.postal_code || ""}
+                    onChange={(e) =>
+                      handleFieldChange("postal_code", e.target.value)
                     }
-                    value={customerInfo.city || undefined}
-                    onChange={(value) => handleFieldChange("city", value)}
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label="Delivery City Option"
+                  required
+                  validateStatus={!customerInfo.deliveryOption ? "error" : ""}
+                  help={
+                    !customerInfo.deliveryOption
+                      ? "Delivery option is required"
+                      : ""
+                  }
+                >
+                  <Select
+                    placeholder="Select delivery option"
+                    value={customerInfo.deliveryOption || undefined}
+                    onChange={(value) =>
+                      handleFieldChange("deliveryOption", value)
+                    }
                     size="large"
                     loading={settingsLoading}
                     disabled={settingsLoading}
@@ -228,14 +270,13 @@ export default function CustomerInfo({
                       >
                         <Space>
                           <span>{fee.location}</span>
-                          <Tag color="blue">৳{fee.fee}</Tag>
                         </Space>
                       </Option>
                     ))}
 
                     {validShippingFees.length === 0 && !settingsLoading && (
                       <Option disabled value="no-options">
-                        No shipping options configured
+                        No delivery options configured
                       </Option>
                     )}
                   </Select>
@@ -262,6 +303,8 @@ export default function CustomerInfo({
                   >
                     <Option value="courier">Courier</Option>
                     <Option value="pathao">Pathao</Option>
+                    <Option value="redx">RedX</Option>
+                    <Option value="steadfast">Steadfast</Option>
                   </Select>
                 </Form.Item>
               </Col>
