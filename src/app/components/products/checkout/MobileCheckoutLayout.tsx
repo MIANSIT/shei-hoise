@@ -79,7 +79,7 @@ const MobileCheckout = ({
           <h2 className="text-lg font-semibold mb-3 text-foreground">
             Your Cart ({calculations.totalItems} items)
           </h2>
-{cartItems.length === 0 ? (
+          {cartItems.length === 0 ? (
             <div className="text-center py-6 bg-card rounded-lg shadow-md">
               <p className="text-muted-foreground">Your cart is empty</p>
             </div>
@@ -108,7 +108,7 @@ const MobileCheckout = ({
                     ${calculations.totalPrice.toFixed(2)}
                   </motion.span>
                 </div>
-                
+
                 {/* Continue to Details Button - Only show on cart step */}
                 <Button
                   onClick={nextStep}
