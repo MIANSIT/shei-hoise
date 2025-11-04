@@ -1,5 +1,5 @@
 // app/admin/orders/page.tsx
-import CustomOrder from "../../components/orders/CustomOrder";
+import CustomOrder from "@/app/components/orders/CustomOrder";
 
 
 export default function OrdersPage() {

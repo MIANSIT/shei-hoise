@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/components/admin/order/create-order/CustomerInfo.tsx
 "use client";
 import React from "react";
 import {
@@ -15,6 +14,7 @@ import {
   Typography,
 } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
+import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -25,6 +25,8 @@ interface CustomerInfoProps {
   setCustomerInfo: React.Dispatch<React.SetStateAction<CustomerInfoType>>;
   orderId: string;
   isExistingCustomer?: boolean;
+  shippingFees?: ShippingFee[];
+  settingsLoading?: boolean;
 }
 
 export default function CustomerInfo({
@@ -32,6 +34,8 @@ export default function CustomerInfo({
   setCustomerInfo,
   orderId,
   isExistingCustomer = false,
+  shippingFees = [],
+  settingsLoading = false,
 }: CustomerInfoProps) {
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(?:\+88|01)?\d{9,11}$/;
@@ -52,6 +56,27 @@ export default function CustomerInfo({
       setCustomerInfo((prev) => ({ ...prev, password: "AdminCustomer1232*" }));
     }
   }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
+
+  // Get selected shipping fee based on delivery option
+
+  // Filter valid shipping fees with proper locations
+  const validShippingFees = React.useMemo(() => {
+    if (!Array.isArray(shippingFees)) return [];
+
+    return shippingFees.filter(
+      (fee) =>
+        fee &&
+        typeof fee === "object" &&
+        fee.location &&
+        typeof fee.location === "string" &&
+        fee.location.trim() !== "" &&
+        typeof fee.fee === "number"
+    );
+  }, [shippingFees]);
+
+  console.log("Shipping Fees:", shippingFees); // Debug log
+  console.log("Valid Shipping Fees:", validShippingFees); // Debug log
+  console.log("Selected Delivery Option:", customerInfo.deliveryOption); // Debug log
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -169,14 +194,73 @@ export default function CustomerInfo({
                   validateStatus={!customerInfo.city ? "error" : ""}
                   help={!customerInfo.city ? "City is required" : ""}
                 >
-                  <Select
-                    placeholder="Select city"
-                    value={customerInfo.city || undefined}
-                    onChange={(value) => handleFieldChange("city", value)}
+                  <Input
+                    placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
+                    value={customerInfo.city}
+                    onChange={(e) => handleFieldChange("city", e.target.value)}
                     size="large"
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label="Postal Code"
+                  required
+                  validateStatus={!customerInfo.postal_code ? "error" : ""}
+                  help={
+                    !customerInfo.postal_code ? "Postal code is required" : ""
+                  }
+                >
+                  <Input
+                    placeholder="Enter postal code (e.g., 1200, 1216)"
+                    value={customerInfo.postal_code || ""}
+                    onChange={(e) =>
+                      handleFieldChange("postal_code", e.target.value)
+                    }
+                    size="large"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  label="Delivery City Option"
+                  required
+                  validateStatus={!customerInfo.deliveryOption ? "error" : ""}
+                  help={
+                    !customerInfo.deliveryOption
+                      ? "Delivery option is required"
+                      : ""
+                  }
+                >
+                  <Select
+                    placeholder="Select delivery option"
+                    value={customerInfo.deliveryOption || undefined}
+                    onChange={(value) =>
+                      handleFieldChange("deliveryOption", value)
+                    }
+                    size="large"
+                    loading={settingsLoading}
+                    disabled={settingsLoading}
                   >
-                    <Option value="inside-dhaka">Inside Dhaka</Option>
-                    <Option value="outside-dhaka">Outside Dhaka</Option>
+                    {validShippingFees.map((fee) => (
+                      <Option
+                        key={fee.location}
+                        value={fee.location.toLowerCase().replace(/\s+/g, "-")}
+                      >
+                        <Space>
+                          <span>{fee.location}</span>
+                        </Space>
+                      </Option>
+                    ))}
+
+                    {validShippingFees.length === 0 && !settingsLoading && (
+                      <Option disabled value="no-options">
+                        No delivery options configured
+                      </Option>
+                    )}
                   </Select>
                 </Form.Item>
               </Col>
@@ -201,6 +285,8 @@ export default function CustomerInfo({
                   >
                     <Option value="courier">Courier</Option>
                     <Option value="pathao">Pathao</Option>
+                    <Option value="redx">RedX</Option>
+                    <Option value="steadfast">Steadfast</Option>
                   </Select>
                 </Form.Item>
               </Col>
