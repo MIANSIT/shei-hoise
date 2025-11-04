@@ -6,7 +6,7 @@ export interface ParsedOrderItem {
 
 export function parseConfirmOrder(products: string[]): ParsedOrderItem[] {
   return products.map((item) => {
-    const parts = item.split("@").filter(Boolean); // sanity check to remove empty strings
+    const parts = item.split("%").filter(Boolean); // sanity check to remove empty strings
     if (parts.length === 3) {
       const [productId, variantId, quantity] = parts;
       return {
