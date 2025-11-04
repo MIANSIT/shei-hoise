@@ -73,9 +73,17 @@ export default function ProductCard({
             className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
           />
           <div className="absolute inset-0 flex justify-between items-start p-4">
-            <span className="text-card-foreground text-xs uppercase tracking-wider bg-background/80 px-2 py-1 rounded-md">
+            {/* Category Badge - Top Left */}
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-background/80 px-2 py-1 rounded-lg">
               {product.category?.name || "Uncategorized"}
             </span>
+            
+            {/* Discount Badge - Top Right */}
+            {calculatedDiscount > 0 && (
+              <span className="text-card-foreground text-xs font-medium bg-destructive px-2 py-1 rounded-lg">
+                -{calculatedDiscount}%
+              </span>
+            )}
           </div>
         </div>
 
@@ -98,11 +106,7 @@ export default function ProductCard({
                   </span>
                 )}
               </div>
-              {calculatedDiscount > 0 && (
-                <span className="text-xs font-medium text-primary-foreground bg-primary px-2 py-0.5 rounded-full">
-                  -{calculatedDiscount}%
-                </span>
-              )}
+              {/* Removed the discount badge from here since it's now at the top right */}
             </div>
           </div>
         </div>
