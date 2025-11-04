@@ -1,35 +1,34 @@
 // app/components/admin/order/create-order/OrderDetails.tsx
 "use client";
 import { useState } from "react";
-import {
-  Card,
-  Button,
-  Select,
-  Row,
-  Col,
-  List,
-  Tag,
-  Space,
-  Typography,
-  Divider,
-  Empty,
-  InputNumber,
-  Image,
-  Alert,
-} from "antd";
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  ShoppingCartOutlined,
-} from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import {
   ProductWithVariants,
   ProductVariant,
 } from "@/lib/queries/products/getProductsWithVariants";
-
-const { Option } = Select;
-const { Title, Text } = Typography;
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../ui/SheiCard/SheiCard";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  SheiAlert,
+  SheiAlertDescription,
+} from "../../../ui/sheiAlert/SheiAlert";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Trash2, ShoppingCart, Minus } from "lucide-react";
+import Image from "next/image";
 
 interface OrderDetailsProps {
   products: ProductWithVariants[];
@@ -120,9 +119,16 @@ export default function OrderDetails({
   const handleAddProduct = () => {
     if (!canAddProduct() || !selectedProduct) return;
 
+    // Calculate unit price - use discounted_price if available, otherwise base_price
     const unitPrice =
-      selectedVariantId !== "no-variant" && selectedVariant?.base_price
-        ? selectedVariant.base_price
+      selectedVariantId !== "no-variant" && selectedVariant
+        ? selectedVariant.discounted_price &&
+          selectedVariant.discounted_price > 0
+          ? selectedVariant.discounted_price
+          : selectedVariant.base_price || 0
+        : selectedProduct.discounted_price &&
+          selectedProduct.discounted_price > 0
+        ? selectedProduct.discounted_price
         : selectedProduct.base_price || 0;
 
     const totalPrice = unitPrice * quantity;
@@ -192,139 +198,155 @@ export default function OrderDetails({
 
   const isAddButtonDisabled = !canAddProduct();
 
-  return (
-    <Card
-      styles={{
-        body: {
-          padding: "10px",
-        },
-      }}
-    >
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <Title level={4} style={{ margin: 0 }}>
-          Order Items
-        </Title>
-        <Text type="secondary">Add products to this order</Text>
+  const subtotal = orderProducts.reduce(
+    (sum, item) => sum + item.total_price,
+    0
+  );
 
-        {/* Product Selection */}
-        <Card size="small" title="Add Product">
-          {/* Product Selection - First Line */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24}>
-              <Space
-                direction="vertical"
-                style={{ width: "100%" }}
-                size="small"
+  return (
+    <Card className="bg-card text-card-foreground border-border shadow-sm">
+      <CardHeader className="pb-4 border-b border-border">
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <ShoppingCart className="w-5 h-5" />
+          Order Items
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Add products to this order
+        </p>
+      </CardHeader>
+      
+      <CardContent className="p-6 space-y-6">
+        {/* Product Selection Card */}
+        <Card className="bg-muted/30 border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold">Add Product</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Product Selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-card-foreground">
+                Product *
+              </label>
+              <Select
+                value={selectedProductId}
+                onValueChange={(value) => {
+                  setSelectedProductId(value);
+                  setSelectedVariantId("no-variant");
+                  setQuantity(1);
+                }}
               >
-                <Text strong>Product</Text>
-                <Select
-                  placeholder="Select product"
-                  value={selectedProductId || undefined}
-                  onChange={(value) => {
-                    setSelectedProductId(value);
-                    setSelectedVariantId("no-variant");
-                    setQuantity(1);
-                  }}
-                  style={{ width: "100%" }}
-                  size="large"
-                >
+                <SelectTrigger className="w-full h-11">
+                  <SelectValue placeholder="Select a product" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover text-popover-foreground border-border max-h-60">
                   {availableProducts.map((product) => {
                     const primaryImage = getPrimaryImage(product);
                     return (
-                      <Option key={product.id} value={product.id}>
-                        <Space>
+                      <SelectItem key={product.id} value={product.id} className="py-2">
+                        <div className="flex items-center gap-3">
                           {primaryImage && (
-                            <Image
-                              src={primaryImage.image_url}
-                              alt={product.name}
-                              width={20}
-                              height={20}
-                              style={{ borderRadius: "4px" }}
-                              preview={false}
-                            />
+                            <div className="flex-shrink-0 w-8 h-8 relative">
+                              <Image
+                                src={primaryImage.image_url}
+                                alt={product.name}
+                                fill
+                                className="rounded-md object-cover"
+                              />
+                            </div>
                           )}
-                          <span>
-                            {product.name} - ৳{product.base_price || 0}
-                            {product.product_variants &&
-                              product.product_variants.length > 0 &&
-                              ` (${product.product_variants.length} variants)`}
-                          </span>
-                        </Space>
-                      </Option>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{product.name}</p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              {product.discounted_price ? (
+                                <>
+                                  <span className="text-foreground font-semibold">
+                                    ৳{product.discounted_price}
+                                  </span>
+                                  <span className="line-through">
+                                    ৳{product.base_price}
+                                  </span>
+                                </>
+                              ) : (
+                                <span>৳{product.base_price || 0}</span>
+                              )}
+                              {product.product_variants &&
+                                product.product_variants.length > 0 && (
+                                  <span className="text-blue-600">
+                                    • {product.product_variants.length} variants
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                        </div>
+                      </SelectItem>
                     );
                   })}
-                </Select>
-              </Space>
-            </Col>
-          </Row>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Variant and Quantity - Second Line */}
-          <Row gutter={[16, 16]} style={{ marginTop: "16px" }}>
-            <Col xs={24} md={12}>
-              <Space
-                direction="vertical"
-                style={{ width: "100%" }}
-                size="small"
-              >
-                <Text strong>Variant</Text>
+            {/* Variant and Quantity Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Variant Selection */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-card-foreground">
+                  Variant
+                </label>
                 <Select
-                  placeholder="Select variant"
                   value={selectedVariantId}
-                  onChange={(value) => {
+                  onValueChange={(value) => {
                     setSelectedVariantId(value);
                     setQuantity(1);
                   }}
-                  style={{ width: "100%" }}
-                  size="large"
                   disabled={
                     !selectedProductId || availableVariants.length === 0
                   }
                 >
-                  <Option value="no-variant">Base Product</Option>
-                  {availableVariants.map((variant) => {
-                    const primaryImage = getPrimaryImage(
-                      selectedProduct,
-                      variant
-                    );
-                    return (
-                      <Option key={variant.id} value={variant.id}>
-                        <Space>
-                          {primaryImage && (
-                            <Image
-                              src={primaryImage.image_url}
-                              alt={variant.variant_name || "Variant"}
-                              width={20}
-                              height={20}
-                              style={{ borderRadius: "4px" }}
-                              preview={false}
-                            />
-                          )}
-                          <span>
-                            {variant.variant_name} - ৳{variant.base_price || 0}
-                          </span>
-                        </Space>
-                      </Option>
-                    );
-                  })}
+                  <SelectTrigger className="w-full h-11">
+                    <SelectValue placeholder="Select variant" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground border-border">
+                    <SelectItem value="no-variant">Base Product</SelectItem>
+                    {availableVariants.map((variant) => {
+                      const primaryImage = getPrimaryImage(
+                        selectedProduct,
+                        variant
+                      );
+                      return (
+                        <SelectItem key={variant.id} value={variant.id} className="py-2">
+                          <div className="flex items-center gap-3">
+                            {primaryImage && (
+                              <div className="flex-shrink-0 w-6 h-6 relative">
+                                <Image
+                                  src={primaryImage.image_url}
+                                  alt={variant.variant_name || "Variant"}
+                                  fill
+                                  className="rounded object-cover"
+                                />
+                              </div>
+                            )}
+                            <span className="font-medium">{variant.variant_name}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
                 </Select>
                 {selectedProductId && availableVariants.length === 0 && (
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                  <p className="text-xs text-muted-foreground">
                     No variants available
-                  </Text>
+                  </p>
                 )}
-              </Space>
-            </Col>
+              </div>
 
-            <Col xs={24} md={12}>
-              <Space
-                direction="vertical"
-                style={{ width: "100%" }}
-                size="small"
-              >
-                <Text strong>Quantity</Text>
-                <Space.Compact style={{ width: "100%" }}>
-                  <InputNumber
-                    placeholder="Qty"
+              {/* Quantity Selection */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-card-foreground">
+                  Quantity *
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
                     min={1}
                     max={
                       selectedVariantId !== "no-variant" && selectedVariant
@@ -333,176 +355,169 @@ export default function OrderDetails({
                           100
                     }
                     value={quantity}
-                    onChange={(value) => setQuantity(value || 1)}
-                    style={{ width: "70%" }}
-                    size="large"
+                    onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+                    className="flex-1 h-11 text-center"
                   />
                   <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
                     onClick={handleAddProduct}
                     disabled={isAddButtonDisabled}
-                    style={{ width: "30%" }}
-                    size="large"
+                    className="h-11 px-6 bg-primary hover:bg-primary/90"
                   >
-                    Add
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Item
                   </Button>
-                </Space.Compact>
-                <Text type="secondary" style={{ fontSize: "12px" }}>
-                  Max:{" "}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Available:{" "}
                   {selectedVariantId !== "no-variant" && selectedVariant
                     ? getAvailableQuantity(selectedVariant)
                     : getBaseProductAvailableQuantity(selectedProduct) ||
                       "N/A"}{" "}
-                  available
-                </Text>
-              </Space>
-            </Col>
-          </Row>
+                  units
+                </p>
+              </div>
+            </div>
 
-          {selectedProductId &&
-            availableVariants.length > 0 &&
-            selectedVariantId === "no-variant" && (
-              <Alert
-                message="Variant Required"
-                description="Please select a variant for this product"
-                type="warning"
-                showIcon
-                style={{ marginTop: "16px" }}
-              />
-            )}
+            {/* Variant Required Warning */}
+            {selectedProductId &&
+              availableVariants.length > 0 &&
+              selectedVariantId === "no-variant" && (
+                <SheiAlert className="bg-amber-50 border-amber-200">
+                  <SheiAlertDescription className="text-amber-800">
+                    Please select a variant for this product
+                  </SheiAlertDescription>
+                </SheiAlert>
+              )}
+          </CardContent>
         </Card>
 
         {/* Order Items List */}
         {orderProducts.length > 0 ? (
-          <Space direction="vertical" style={{ width: "100%" }} size="middle">
-            <Divider />
-            <Space style={{ width: "100%", justifyContent: "space-between" }}>
-              <Text strong>Added Items ({orderProducts.length})</Text>
-              <Text strong>
-                Subtotal: ৳
-                {orderProducts
-                  .reduce((sum, item) => sum + item.total_price, 0)
-                  .toFixed(2)}
-              </Text>
-            </Space>
+          <div className="space-y-4">
+            <Separator className="bg-border" />
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold text-card-foreground">
+                  Order Items ({orderProducts.length})
+                </h3>
+                <Badge variant="secondary" className="bg-primary/10 text-primary">
+                  {orderProducts.length} items
+                </Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">Subtotal:</span>
+                <span className="text-xl font-bold text-card-foreground">
+                  ৳{subtotal.toFixed(2)}
+                </span>
+              </div>
+            </div>
 
-            <List
-              dataSource={orderProducts}
-              renderItem={(item, index) => (
-                <List.Item
-                  style={{
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    padding: "12px 8px",
-                  }}
-                >
-                  <Row
-                    style={{ width: "100%" }}
-                    gutter={[8, 8]}
-                    justify="space-between"
-                    align="middle"
-                  >
-                    {/* Product Info */}
-                    <Col xs={24} sm={16} md={16} lg={18}>
-                      <List.Item.Meta
-                        title={
-                          <Space wrap>
-                            <Text strong>{item.product_name}</Text>
-                            {item.variant_name && (
-                              <Tag color="blue" style={{ marginLeft: 4 }}>
-                                {item.variant_name}
-                              </Tag>
-                            )}
-                          </Space>
-                        }
-                        description={
-                          <Text>
-                            ৳{item.unit_price} × {item.quantity} ={" "}
-                            <Text strong>৳{item.total_price}</Text>
-                          </Text>
-                        }
-                      />
-                    </Col>
+            {/* Items List */}
+            <div className="space-y-3">
+              {orderProducts.map((item, index) => (
+                <Card key={index} className="bg-card border-border hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4">
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-card-foreground text-base">
+                                {item.product_name}
+                              </h4>
+                              {item.variant_name && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-blue-100 text-blue-800 border-blue-200"
+                                >
+                                  {item.variant_name}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-muted-foreground">
+                                Unit: ৳{item.unit_price.toFixed(2)}
+                              </span>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground">
+                                Qty: {item.quantity}
+                              </span>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="font-semibold text-card-foreground">
+                                Total: ৳{item.total_price.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-                    {/* Quantity Controls */}
-                    <Col
-                      xs={24}
-                      sm={8}
-                      md={8}
-                      lg={6}
-                      style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Space
-                        size="small"
-                        style={{
-                          width: "100%",
-                          justifyContent: "space-between",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <Space.Compact>
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <Button
-                            size="small"
+                            variant="outline"
+                            size="sm"
                             onClick={() =>
                               handleQuantityChange(index, item.quantity - 1)
                             }
                             disabled={item.quantity <= 1}
+                            className="h-9 w-9 p-0 border-border"
                           >
-                            -
+                            <Minus className="w-4 h-4" />
                           </Button>
-                          <InputNumber
-                            size="small"
-                            min={1}
-                            value={item.quantity}
-                            onChange={(value) =>
-                              handleQuantityChange(index, value || 1)
-                            }
-                            style={{
-                              width: "60px",
-                              textAlign: "center",
-                            }}
-                          />
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(
+                                  index,
+                                  Number(e.target.value) || 1
+                                )
+                              }
+                              className="w-20 h-9 text-center font-medium"
+                            />
+                          </div>
                           <Button
-                            size="small"
+                            variant="outline"
+                            size="sm"
                             onClick={() =>
                               handleQuantityChange(index, item.quantity + 1)
                             }
+                            className="h-9 w-9 p-0 border-border"
                           >
-                            +
+                            <Plus className="w-4 h-4" />
                           </Button>
-                        </Space.Compact>
-
+                        </div>
                         <Button
-                          key="delete"
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined />}
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleRemoveProduct(index)}
-                          size="small"
-                        />
-                      </Space>
-                    </Col>
-                  </Row>
-                </List.Item>
-              )}
-            />
-          </Space>
+                          className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         ) : (
-          <Empty
-            image={
-              <ShoppingCartOutlined
-                style={{ fontSize: "48px", color: "#d9d9d9" }}
-              />
-            }
-            description="No products added to order"
-          />
+          <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-muted/20">
+            <ShoppingCart className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground text-lg mb-2">No products added</p>
+            <p className="text-sm text-muted-foreground">
+              Select products above to add them to the order
+            </p>
+          </div>
         )}
-      </Space>
+      </CardContent>
     </Card>
   );
 }

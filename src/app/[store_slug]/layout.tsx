@@ -28,7 +28,7 @@ export default async function StoreLayout({
       <main>{children}</main>
 
       {/* Footer */}
-      <Footer />
+      {/* <Footer /> */}
     </>
   );
 }
