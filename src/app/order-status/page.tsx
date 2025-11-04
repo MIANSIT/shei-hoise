@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
@@ -11,33 +11,48 @@ import { OrdersPageSkeleton } from "../components/skeletons/OrdersPageSkeleton";
 import { EmptyOrdersSkeleton } from "../components/skeletons/EmptyOrdersSkeleton"; 
 import { UserLoadingSkeleton } from "../components/skeletons/UserLoadingSkeleton"; 
 
-
 export default function OrdersPage() {
   const { user, loading: userLoading } = useCurrentUser();
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use useMemo to get a stable user ID reference
+  const userId = useMemo(() => user?.id, [user?.id]);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!user?.id) return;
+    // Only fetch if we have a user ID and we haven't fetched yet
+    if (!userId || userLoading) return;
 
-      try {
-        setLoading(true);
-        const customerOrders = await getCustomerOrders(user.id);
-        setOrders(customerOrders);
-      } catch (err) {
-        console.error('Error fetching orders:', err);
-        setError('Failed to load orders. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!hasFetchedRef.current) {
+      const fetchOrders = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const customerOrders = await getCustomerOrders(userId);
+          setOrders(customerOrders);
+          hasFetchedRef.current = true;
+        } catch (err) {
+          console.error('Error fetching orders:', err);
+          setError('Failed to load orders. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    if (user) {
       fetchOrders();
     }
-  }, [user]);
+  }, [userId, userLoading]); // Only depend on userId string, not the entire user object
+
+  // Reset when user changes (logs out)
+  useEffect(() => {
+    if (!userId) {
+      hasFetchedRef.current = false;
+      setOrders([]);
+      setLoading(true);
+    }
+  }, [userId]);
 
   if (userLoading) {
     return <UserLoadingSkeleton />;

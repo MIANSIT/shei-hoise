@@ -1,8 +1,9 @@
+// lib/queries/stores/getStoreSettings.ts
 import { supabase } from "@/lib/supabase";
 
 export interface ShippingFee {
-  name: string; // Changed from 'name'
-  price: number; // Changed from 'price'
+  name: string; // Changed from location
+  price: number; // Changed from fee
   description?: string;
   min_order_amount?: number;
   max_order_amount?: number;

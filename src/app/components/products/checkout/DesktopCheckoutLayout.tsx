@@ -6,6 +6,7 @@ import { useCartItems } from "@/lib/hook/useCartItems";
 import { motion } from "framer-motion";
 import CartItemsList from "@/app/components/cart/CartItemList";
 import CheckoutForm from "./UserCheckoutForm";
+import ShippingMethod from "./ShippingMethod"; // Add this import
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import PaymentModule from "./PaymentModule";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useParams } from "next/navigation";
-import { DesktopCheckoutSkeleton } from "../../skeletons/DesktopCheckoutSkeleton"; // Add this
+import { DesktopCheckoutSkeleton } from "../../skeletons/DesktopCheckoutSkeleton";
 
 interface DesktopCheckoutProps {
   cartLength: number;
@@ -32,10 +33,13 @@ const DesktopCheckout = ({
 }: DesktopCheckoutProps) => {
   const params = useParams();
   const store_slug = params.store_slug as string;
-  
+
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedShipping, setSelectedShipping] = useState<string>("");
+  const [shippingFee, setShippingFee] = useState<number>(0);
+
   const notify = useSheiNotification();
   const { clearFormData } = useCheckoutStore();
 
@@ -46,9 +50,21 @@ const DesktopCheckout = ({
     setIsMounted(true);
   }, []);
 
+  const handleShippingChange = (shippingMethod: string, fee: number) => {
+    setSelectedShipping(shippingMethod);
+    setShippingFee(fee);
+  };
+
   const handleCheckoutSubmit = async (values: any) => {
     setIsProcessing(true);
     try {
+      // Add shipping information to form data
+      const formDataWithShipping = {
+        ...values,
+        shippingMethod: selectedShipping,
+        shippingFee: shippingFee,
+      };
+
       await new Promise((resolve) => setTimeout(resolve, 1000));
       notify.success("Congratulations! Order has placed");
       setShowPaymentModal(true);
@@ -64,6 +80,9 @@ const DesktopCheckout = ({
     onCheckout();
     clearFormData();
   };
+
+  // Calculate total with shipping
+  const totalWithShipping = calculations.totalPrice + shippingFee;
 
   // ✅ REPLACED: Using custom skeleton
   if (loading) {
@@ -96,43 +115,50 @@ const DesktopCheckout = ({
                   <span>Subtotal:</span>
                   <span>৳{calculations.subtotal.toFixed(2)}</span>
                 </div>
-                {calculations.totalDiscount > 0 && (
-                  <div className="flex justify-between text-green-600 border-border border rounded-lg p-3">
-                    <span>Discount:</span>
-                    <span>-৳{calculations.totalDiscount.toFixed(2)}</span>
-                  </div>
-                )}
+                <ShippingMethod
+                  storeSlug={store_slug}
+                  subtotal={calculations.subtotal}
+                  selectedShipping={selectedShipping}
+                  onShippingChange={handleShippingChange}
+                />
                 <div className="flex justify-between font-bold text-foreground border-t border-border pt-3">
                   <span>Total:</span>
                   <motion.span
-                    key={`total-${calculations.totalPrice}`}
+                    key={`total-${totalWithShipping}`}
                     initial={{ scale: 1.1 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {calculations.totalPrice.toFixed(2)} BDT
+                    ৳{totalWithShipping.toFixed(2)}
                   </motion.span>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
-        
+
         {/* Customer Information Card */}
-        <Card className="bg-card">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-card-foreground">
-              Customer Information
-            </CardTitle>
-            <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30"></div>
-          </CardHeader>
-          <CardContent>
-            <CheckoutForm
-              onSubmit={handleCheckoutSubmit}
-              isLoading={isProcessing}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {/* Shipping Method Component */}
+
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-card-foreground">
+                Customer Information
+              </CardTitle>
+              <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30"></div>
+            </CardHeader>
+            <CardContent>
+              <CheckoutForm
+                onSubmit={handleCheckoutSubmit}
+                isLoading={isProcessing}
+                shippingMethod={selectedShipping}
+                shippingFee={shippingFee}
+                totalAmount={totalWithShipping}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Payment Modal using Shadcn Dialog */}
@@ -144,7 +170,7 @@ const DesktopCheckout = ({
             </DialogTitle>
           </DialogHeader>
           <PaymentModule
-            amount={calculations.totalPrice}
+            amount={totalWithShipping}
             onSuccess={handlePaymentSuccess}
             onCancel={() => setShowPaymentModal(false)}
           />

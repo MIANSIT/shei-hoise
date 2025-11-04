@@ -215,7 +215,7 @@ export default function OrderDetails({
         </p>
       </CardHeader>
       
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-6 space-y-6 mt-4">
         {/* Product Selection Card */}
         <Card className="bg-muted/30 border-border">
           <CardHeader className="pb-4">
