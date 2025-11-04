@@ -9,6 +9,9 @@ import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
+import MobileDetailedView from "../TableData/MobileDetailedView"; // Add this import
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 
 interface Props {
   orders: StoreOrder[];
@@ -27,6 +30,7 @@ const OrdersTable: React.FC<Props> = ({
   const [searchOrderId, setSearchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const filtered = orders.filter((o) =>
@@ -43,6 +47,33 @@ const OrdersTable: React.FC<Props> = ({
     );
     setFilteredOrders(finalFiltered);
   };
+
+  const handleEdit = (order: StoreOrder) => {
+    // Navigate to the edit page using order_number
+    router.push(`/dashboard/orders/edit-order/${order.order_number}`);
+  };
+
+  const handleDelete = (order: StoreOrder) => {
+    notification.warning({
+      message: "Delete",
+      description: `Are you sure you want to delete order #${order.id}?`,
+    });
+    // Call your delete API or callback here
+    console.log("Delete order", order.id);
+  };
+
+  const renderActionButtons = (order: StoreOrder) => (
+    <div className="flex items-center gap-2 justify-center">
+      <EditOutlined
+        className="!text-blue-600 cursor-pointer hover:!text-blue-800"
+        onClick={() => handleEdit(order)}
+      />
+      <DeleteOutlined
+        className="!text-red-600 cursor-pointer hover:!text-red-800"
+        onClick={() => handleDelete(order)}
+      />
+    </div>
+  );
 
   const formatCurrency = (amount: number, currency: string = "BDT") => {
     return new Intl.NumberFormat("en-BD", {
@@ -83,7 +114,10 @@ const OrdersTable: React.FC<Props> = ({
     return name.charAt(0).toUpperCase();
   };
 
-  // Mobile card renderer - IMPROVED
+  // Mobile card renderer
+  // Mobile card renderer - FIXED VERSION
+  // inside OrdersTable component, after const { notification } = App.useApp();
+
   const renderOrderCard = (order: StoreOrder) => {
     const address = order.shipping_address;
     const fullAddress = `${address.address_line_1}, ${address.city}`;
@@ -92,11 +126,7 @@ const OrdersTable: React.FC<Props> = ({
       <Card
         key={order.id}
         className="mb-4 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow border"
-        styles={{
-          body: {
-            padding: "12px",
-          },
-        }}
+        style={{ padding: "12px" }}
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-3">
@@ -108,9 +138,13 @@ const OrdersTable: React.FC<Props> = ({
               {formatDate(order.created_at)}
             </div>
           </div>
+
           <div className="text-right ml-2">
             <div className="font-bold text-base sm:text-lg whitespace-nowrap">
               {formatCurrency(order.total_amount, order.currency)}
+            </div>
+            <div className="text-xs text-gray-600">
+              Shipping: {formatCurrency(order.shipping_fee, order.currency)}
             </div>
           </div>
         </div>
@@ -160,6 +194,11 @@ const OrdersTable: React.FC<Props> = ({
           />
         </div>
 
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 mb-3">
+          {renderActionButtons(order)}
+        </div>
+
         {/* Expand Button */}
         <div className="text-right">
           <button
@@ -191,14 +230,20 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveShippingFee={(fee) =>
+                    onUpdate(order.id, {
+                      shipping_fee: fee,
+                      total_amount: order.subtotal + order.tax_amount + fee,
+                    })
+                  }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh} // Add this line
+                  onRefresh={onRefresh}
                 />
               </div>
             )}
-            <DetailedOrderView order={order} />
+            <MobileDetailedView order={order} />
           </div>
         )}
       </Card>
@@ -269,9 +314,20 @@ const OrdersTable: React.FC<Props> = ({
       title: "Total",
       key: "total",
       render: (_, order: StoreOrder) => (
-        <span className="font-semibold text-gray-900 text-sm">
-          {formatCurrency(order.total_amount, order.currency)}
-        </span>
+        <div className="text-right">
+          <div className="font-semibold text-gray-900 text-sm">
+            {formatCurrency(order.total_amount, order.currency)}
+          </div>
+          <div className="text-xs text-gray-600">
+            Ship: {formatCurrency(order.shipping_fee, order.currency)}
+          </div>
+
+          {order.tax_amount && order.tax_amount > 0 && (
+            <div className="text-xs text-gray-600">
+              Tax: {formatCurrency(order.tax_amount, order.currency)}
+            </div>
+          )}
+        </div>
       ),
       width: 100,
       align: "right" as const,
@@ -298,15 +354,12 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
-      title: "Date",
-      key: "created_at",
-      render: (_, order: StoreOrder) => (
-        <div className="text-xs text-gray-600">
-          {formatDate(order.created_at)}
-        </div>
-      ),
-      width: 120,
-      responsive: ["lg"],
+      title: "Actions",
+      key: "actions",
+      render: (_, order: StoreOrder) => renderActionButtons(order),
+      width: 100,
+      align: "center" as const,
+      responsive: ["sm"],
     },
   ];
 
@@ -340,7 +393,7 @@ const OrdersTable: React.FC<Props> = ({
           onExpand: (expanded, record) =>
             setExpandedRowKey(expanded ? record.id : null),
           expandedRowRender: (order: StoreOrder) => (
-            <div className="space-y-4 p-3 sm:p-4  rounded-lg">
+            <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {order.status !== "delivered" && order.status !== "cancelled" && (
                 <OrderProductTable
                   order={order}
@@ -356,9 +409,16 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveShippingFee={(fee) =>
+                    onUpdate(order.id, {
+                      shipping_fee: fee,
+                      total_amount: order.subtotal + order.tax_amount + fee,
+                    })
+                  }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
+                  onRefresh={onRefresh}
                 />
               )}
               <DetailedOrderView order={order} />
