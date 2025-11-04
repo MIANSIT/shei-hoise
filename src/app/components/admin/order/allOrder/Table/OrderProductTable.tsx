@@ -156,7 +156,7 @@ const OrderProductTable: React.FC<Props> = ({
   };
 
   return (
-    <div className="p-3 sm:p-4 bg-blue-50 rounded-md space-y-3 sm:space-y-4 border">
+    <div className="p-3 sm:p-4  rounded-md space-y-3 sm:space-y-4 border">
       <h3 className="font-semibold text-base sm:text-lg">Order Management</h3>
       <OrderControls
         status={order.status}

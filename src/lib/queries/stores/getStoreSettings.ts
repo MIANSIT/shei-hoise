@@ -1,8 +1,8 @@
 import { supabase } from "@/lib/supabase";
 
 export interface ShippingFee {
-  location: string; // Changed from 'name'
-  fee: number; // Changed from 'price'
+  name: string; // Changed from 'name'
+  price: number; // Changed from 'price'
   description?: string;
   min_order_amount?: number;
   max_order_amount?: number;
