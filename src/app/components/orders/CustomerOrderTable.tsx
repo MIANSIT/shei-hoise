@@ -84,25 +84,6 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
     return order.order_number || `#${order.id.slice(-8)}`;
   };
 
-  // Get shipping fee display with free shipping indicator
-  const getShippingDisplay = (order: StoreOrder) => {
-    const shippingFee = order.shipping_fee || 0;
-
-    if (shippingFee === 0) {
-      return {
-        text: "Free",
-        className: "text-green-600 dark:text-green-400 font-medium",
-        icon: <Truck className="h-3 w-3" />,
-      };
-    }
-
-    return {
-      text: formatCurrency(shippingFee),
-      className: "text-foreground",
-      icon: null,
-    };
-  };
-
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -131,7 +112,6 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
           </thead>
           <tbody className="bg-card divide-y divide-border">
             {orders.map((order) => {
-              const shippingDisplay = getShippingDisplay(order);
 
               return (
                 <tr
@@ -169,23 +149,11 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                       {formatCurrency(order.total_amount || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Subtotal: {formatCurrency(order.subtotal || 0)}
+                      Product Total: {formatCurrency(order.subtotal || 0)}
                     </div>
-                  </td>
-
-                  {/* Shipping Fee */}
-                  <td className="px-4 py-3">
-                    <div
-                      className={`flex items-center gap-1.5 text-sm ${shippingDisplay.className}`}
-                    >
-                      {shippingDisplay.icon}
-                      {shippingDisplay.text}
+                    <div className="text-xs text-muted-foreground">
+                      Shipping Fee: {order.shipping_fee} | {order.delivery_option}
                     </div>
-                    {order.delivery_option && (
-                      <div className="text-xs text-muted-foreground capitalize mt-1">
-                        {order.delivery_option.replace("_", " ")}
-                      </div>
-                    )}
                   </td>
 
                   {/* Order Status */}

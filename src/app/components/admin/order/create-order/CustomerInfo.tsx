@@ -67,10 +67,10 @@ export default function CustomerInfo({
       (fee) =>
         fee &&
         typeof fee === "object" &&
-        fee.location &&
-        typeof fee.location === "string" &&
-        fee.location.trim() !== "" &&
-        typeof fee.fee === "number"
+        fee.name &&
+        typeof fee.name === "string" &&
+        fee.name.trim() !== "" &&
+        typeof fee.price === "number"
     );
   }, [shippingFees]);
 
@@ -247,11 +247,11 @@ export default function CustomerInfo({
                   >
                     {validShippingFees.map((fee) => (
                       <Option
-                        key={fee.location}
-                        value={fee.location.toLowerCase().replace(/\s+/g, "-")}
+                        key={fee.name}
+                        value={fee.name.toLowerCase().replace(/\s+/g, "-")}
                       >
                         <Space>
-                          <span>{fee.location}</span>
+                          <span>{fee.name}</span>
                         </Space>
                       </Option>
                     ))}

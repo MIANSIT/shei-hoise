@@ -261,9 +261,9 @@ export default function CreateOrder() {
       shippingFees.length > 0
     ) {
       const shippingFee = shippingFees.find((fee) => {
-        if (!fee || typeof fee !== "object" || !fee.location) return false;
+        if (!fee || typeof fee !== "object" || !fee.name) return false;
 
-        const feeLocation = String(fee.location)
+        const feeLocation = String(fee.name)
           .toLowerCase()
           .replace(/\s+/g, "-");
         const deliveryOption = String(
@@ -276,7 +276,7 @@ export default function CreateOrder() {
         );
       });
 
-      setDeliveryCost(shippingFee?.fee || 0);
+      setDeliveryCost(shippingFee?.price || 0);
     } else {
       setDeliveryCost(0);
     }

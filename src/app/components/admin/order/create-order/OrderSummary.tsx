@@ -69,12 +69,12 @@ export default function OrderSummary({
     if (
       !fee ||
       typeof fee !== "object" ||
-      !fee.location ||
+      !fee.name ||
       !customerDeliveryOption
     )
       return false;
 
-    const feeLocation = String(fee.location).toLowerCase().replace(/\s+/g, "-");
+    const feeLocation = String(fee.name).toLowerCase().replace(/\s+/g, "-");
     const customerDeliveryOptionNormalized = String(
       customerDeliveryOption
     ).toLowerCase();
@@ -104,8 +104,8 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>{selectedShippingFee.location}</strong>: ৳
-                  {selectedShippingFee.fee} {/* Changed from .price to .fee */}
+                  <strong>{selectedShippingFee.name}</strong>: ৳
+                  {selectedShippingFee.price} {/* Changed from .price to .fee */}
                 </Text>
                 {selectedShippingFee.description && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>

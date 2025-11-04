@@ -18,7 +18,8 @@ export function useOrderProcess(store_slug: string) {
     formData: CustomerCheckoutFormValues, 
     customerId?: string,
     paymentMethod: string = 'cod',
-    deliveryOption: string = 'standard'
+    deliveryOption: string = 'standard',
+    shippingFee: number = 0
   ) => {
     setLoading(true);
     setError(null);
@@ -52,14 +53,6 @@ export function useOrderProcess(store_slug: string) {
           customer_id: customerId,
         },
         orderProducts: cartItems.map(item => {
-          console.log('📦 Preparing order product:', {
-            product_id: item.productId,
-            variant_id: item.variantId,
-            name: item.productName,
-            quantity: item.quantity,
-            displayPrice: item.displayPrice,
-            originalPrice: item.originalPrice
-          });
           
           return {
             product_id: item.productId, // Main product ID
@@ -79,8 +72,8 @@ export function useOrderProcess(store_slug: string) {
         subtotal: calculations.subtotal,
         taxAmount: 0, // You can calculate this based on your business logic
         discount: calculations.totalDiscount,
-        deliveryCost: 0, // You can calculate this based on delivery option
-        totalAmount: calculations.totalPrice,
+        deliveryCost: shippingFee, // You can calculate this based on delivery option
+        totalAmount: calculations.totalPrice + shippingFee,
         status: 'pending' as const,
         paymentStatus: 'pending' as const,
         paymentMethod,
@@ -88,26 +81,11 @@ export function useOrderProcess(store_slug: string) {
         deliveryOption,
       };
 
-      console.log('🔄 Creating order with products:', {
-        orderNumber: orderData.orderNumber,
-        productCount: orderData.orderProducts.length,
-        subtotal: orderData.subtotal,
-        totalAmount: orderData.totalAmount,
-        products: orderData.orderProducts
-      });
-
       // Create the order
       const result = await createCustomerOrder(orderData);
 
       if (result.success && result.orderId) {
-        console.log('✅ Order created successfully, order ID:', result.orderId);
-        
-        // ✅ CLEAR THE CART AFTER SUCCESSFUL ORDER
-        console.log('🛒 Clearing cart for store:', store_slug);
         clearStoreCart(store_slug);
-        
-        console.log('🎉 Order completed successfully! Order ID:', result.orderId);
-        
         return { 
           success: true, 
           orderId: result.orderId,
@@ -132,7 +110,7 @@ export function useOrderProcess(store_slug: string) {
     processOrder,
     loading,
     error,
-    cartItems, // Expose cart items for the component to use
-    calculations, // Expose calculations for the component to use
+    cartItems,
+    calculations,
   };
 }
