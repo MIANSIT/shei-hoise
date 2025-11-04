@@ -159,7 +159,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         const price = getLowestBasePrice(record);
         return (
           <span className="font-medium">
-            {price ? `$${price.toFixed(2)}` : "—"}
+            {price ? `৳${price.toFixed(2)}` : "—"}
           </span>
         );
       },
@@ -177,7 +177,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               price ? "text-green-600" : "text-gray-400"
             }`}
           >
-            {price ? `$${price.toFixed(2)}` : "—"}
+            {price ? `৳${price.toFixed(2)}` : "—"}
           </span>
         );
       },
@@ -279,7 +279,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                     <div className="flex gap-2 mt-2">
                       <span className="font-medium">
-                        {basePrice ? `$${basePrice.toFixed(2)}` : "—"}
+                        {basePrice ? `৳${basePrice.toFixed(2)}` : "—"}
                       </span>
                       <span
                         className={`font-medium ${
@@ -287,7 +287,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         }`}
                       >
                         {discountedPrice
-                          ? `$${discountedPrice.toFixed(2)}`
+                          ? `৳${discountedPrice.toFixed(2)}`
                           : "—"}
                       </span>
                     </div>

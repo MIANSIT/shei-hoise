@@ -5,14 +5,14 @@ import { useCartItems } from "@/lib/hook/useCartItems";
 import CartItemsList from "@/app/components/cart/CartItemList";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import PaymentModule from "./PaymentModule";
 import { useParams } from "next/navigation";
-import { MobileCheckoutSkeleton } from "../../skeletons/MobileCheckoutSkeleton"; // Add this
+import { MobileCheckoutSkeleton } from "../../skeletons/MobileCheckoutSkeleton";
 
 interface MobileCheckoutProps {
   cartLength: number;
@@ -57,7 +57,7 @@ const MobileCheckout = ({
     setIsProcessing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      notify.success("🎉 Congratulations! Your Order has been placed 🎉");
+      notify.success("Congratulations! Order has placed");
       nextStep();
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
@@ -79,13 +79,7 @@ const MobileCheckout = ({
           <h2 className="text-lg font-semibold mb-3 text-foreground">
             Your Cart ({calculations.totalItems} items)
           </h2>
-
-          {loading ? (
-            <div className="text-center py-6 bg-card rounded-lg shadow-md">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading cart...</p>
-            </div>
-          ) : cartItems.length === 0 ? (
+          {cartItems.length === 0 ? (
             <div className="text-center py-6 bg-card rounded-lg shadow-md">
               <p className="text-muted-foreground">Your cart is empty</p>
             </div>
@@ -95,12 +89,12 @@ const MobileCheckout = ({
               <div className="space-y-2 mt-4">
                 <div className="flex justify-between text-foreground border-border border rounded-lg p-3 bg-muted">
                   <span>Subtotal:</span>
-                  <span>${calculations.subtotal.toFixed(2)}</span>
+                  <span>৳{calculations.subtotal.toFixed(2)}</span>
                 </div>
                 {calculations.totalDiscount > 0 && (
                   <div className="flex justify-between text-green-600 border-border border rounded-lg p-3 bg-muted">
                     <span>Discount:</span>
-                    <span>-${calculations.totalDiscount.toFixed(2)}</span>
+                    <span>-৳{calculations.totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground border-t border-border pt-3">
@@ -111,9 +105,19 @@ const MobileCheckout = ({
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    ${calculations.totalPrice.toFixed(2)}
+                    ৳{calculations.totalPrice.toFixed(2)}
                   </motion.span>
                 </div>
+
+                {/* Continue to Details Button - Only show on cart step */}
+                <Button
+                  onClick={nextStep}
+                  className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 cursor-pointer"
+                  disabled={cartItems.length === 0}
+                >
+                  Continue to Details
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
             </>
           )}

@@ -89,12 +89,12 @@ export default function ProductCard({
               <div className="flex items-center gap-2">
                 <span className="text-xl font-semibold text-foreground">
                   {product.variants?.length
-                    ? `Starts from $${displayPrice.toFixed(2)}`
-                    : `$${displayPrice.toFixed(2)}`}
+                    ? `Starts from ৳ ${displayPrice.toFixed(2)}`
+                    : `৳ ${displayPrice.toFixed(2)}`}
                 </span>
                 {calculatedDiscount > 0 && (
                   <span className="text-sm text-muted-foreground line-through">
-                    ${product.base_price.toFixed(2)}
+                    ৳ {product.base_price.toFixed(2)}
                   </span>
                 )}
               </div>

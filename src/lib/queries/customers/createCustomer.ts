@@ -11,6 +11,7 @@ export interface CreateCustomerData {
   address_line_1?: string;
   city?: string;
   country?: string;
+  postal_code?: string; // Added postal_code
 }
 
 export async function createCustomer(customerData: CreateCustomerData) {
@@ -78,21 +79,23 @@ export async function createCustomer(customerData: CreateCustomerData) {
     console.log('User record created:', userData);
 
     // Create profile in user_profiles table if address data is provided
-    if (customerData.address_line_1 || customerData.city) {
+    if (customerData.address_line_1 || customerData.city || customerData.postal_code) {
       try {
         console.log('Creating profile in user_profiles table with data:', {
           user_id: authData.user.id,
           address_line_1: customerData.address_line_1,
           city: customerData.city,
+          postal_code: customerData.postal_code, // Added postal_code
           country: customerData.country || 'Bangladesh'
         });
 
         const { data: profileData, error: profileError } = await supabaseAdmin
-          .from('user_profiles') // Using the correct table name
+          .from('user_profiles')
           .insert({
             user_id: authData.user.id,
             address_line_1: customerData.address_line_1,
             city: customerData.city,
+            postal_code: customerData.postal_code, // Added postal_code
             country: customerData.country || 'Bangladesh'
           })
           .select()

@@ -71,12 +71,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
           </div>
           
           <div className="max-h-[60vh] overflow-y-auto pb-4">
-            {loading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted-foreground mt-2">Loading cart...</p>
-              </div>
-            ) : cartItems.length === 0 ? (
+            {cartItems.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground">Your cart is empty</p>
                 <Button

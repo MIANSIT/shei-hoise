@@ -50,7 +50,7 @@ const DesktopCheckout = ({
     setIsProcessing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      notify.success("🎉 Congratulations! Your Order has been placed 🎉");
+      notify.success("Congratulations! Order has placed");
       setShowPaymentModal(true);
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
@@ -94,12 +94,12 @@ const DesktopCheckout = ({
               <div className="space-y-3 mt-4">
                 <div className="flex justify-between text-foreground border-border border rounded-lg p-3">
                   <span>Subtotal:</span>
-                  <span>${calculations.subtotal.toFixed(2)}</span>
+                  <span>৳{calculations.subtotal.toFixed(2)}</span>
                 </div>
                 {calculations.totalDiscount > 0 && (
                   <div className="flex justify-between text-green-600 border-border border rounded-lg p-3">
                     <span>Discount:</span>
-                    <span>-${calculations.totalDiscount.toFixed(2)}</span>
+                    <span>-৳{calculations.totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground border-t border-border pt-3">
@@ -110,7 +110,7 @@ const DesktopCheckout = ({
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    ${calculations.totalPrice.toFixed(2)}
+                    {calculations.totalPrice.toFixed(2)} BDT
                   </motion.span>
                 </div>
               </div>
