@@ -15,6 +15,7 @@ import {
   Empty,
   InputNumber,
   Image,
+  notification, // Add this import
   Alert,
 } from "antd";
 import {
@@ -46,6 +47,7 @@ export default function AdminOrderDetails({
   const [selectedVariantId, setSelectedVariantId] =
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
+  const [api, contextHolder] = notification.useNotification(); // Add this
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const selectedVariant = selectedProduct?.product_variants?.find(
@@ -167,7 +169,14 @@ export default function AdminOrderDetails({
     };
 
     setOrderProducts((prev) => [...prev, newOrderProduct]);
-
+    api.success({
+      message: "Product Added Successfully",
+      description: `${selectedProduct.name}${
+        selectedVariant ? ` - ${selectedVariant.variant_name}` : ""
+      } (Qty: ${quantity}) has been added to the order.`,
+      placement: "topRight",
+      duration: 3,
+    });
     // Reset form
     setSelectedProductId("");
     setSelectedVariantId("no-variant");
@@ -253,317 +262,320 @@ export default function AdminOrderDetails({
   const isAddButtonDisabled = !canAddProduct();
 
   return (
-    <Card
-      styles={{
-        body: {
-          padding: "10px",
-        },
-      }}
-    >
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <Title level={4} style={{ margin: 0 }}>
-          Order Items
-        </Title>
-        <Text type="secondary">Add products to this order</Text>
+    <>
+      {contextHolder}
+      <Card
+        styles={{
+          body: {
+            padding: "10px",
+          },
+        }}
+      >
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <Title level={4} style={{ margin: 0 }}>
+            Order Items
+          </Title>
+          <Text type="secondary">Add products to this order</Text>
 
-        {/* Product Selection */}
-        <Card size="small" title="Add Product">
-          {/* Product Selection - First Line */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24}>
-              <Space
-                direction="vertical"
-                style={{ width: "100%" }}
-                size="small"
-              >
-                <Text strong>Product</Text>
-                <Select
-                  placeholder="Select product"
-                  value={selectedProductId || undefined}
-                  onChange={(value) => {
-                    setSelectedProductId(value);
-                    setSelectedVariantId("no-variant");
-                    setQuantity(1);
-                  }}
+          {/* Product Selection */}
+          <Card size="small" title="Add Product">
+            {/* Product Selection - First Line */}
+            <Row gutter={[16, 16]}>
+              <Col xs={24}>
+                <Space
+                  direction="vertical"
                   style={{ width: "100%" }}
-                  size="large"
+                  size="small"
                 >
-                  {availableProducts.map((product) => {
-                    const primaryImage = getPrimaryImage(product);
-                    return (
-                      <Option key={product.id} value={product.id}>
-                        <Space>
-                          {primaryImage && (
-                            <Image
-                              src={primaryImage.image_url}
-                              alt={product.name}
-                              width={20}
-                              height={20}
-                              style={{ borderRadius: "4px" }}
-                              preview={false}
-                            />
-                          )}
-                          <span>
-                            {product.name} - {formatPriceDisplay(product)}
-                            {product.product_variants &&
-                              product.product_variants.length > 0 &&
-                              ` (${product.product_variants.length} variants)`}
-                          </span>
-                        </Space>
-                      </Option>
-                    );
-                  })}
-                </Select>
-              </Space>
-            </Col>
-          </Row>
-
-          {/* Variant and Quantity - Second Line */}
-          <Row gutter={[16, 16]} style={{ marginTop: "16px" }}>
-            <Col xs={24} md={12}>
-              <Space
-                direction="vertical"
-                style={{ width: "100%" }}
-                size="small"
-              >
-                <Text strong>Variant</Text>
-                <Select
-                  placeholder="Select variant"
-                  value={selectedVariantId}
-                  onChange={(value) => {
-                    setSelectedVariantId(value);
-                    setQuantity(1);
-                  }}
-                  style={{ width: "100%" }}
-                  size="large"
-                  disabled={
-                    !selectedProductId || availableVariants.length === 0
-                  }
-                >
-                  <Option value="no-variant">Base Product</Option>
-                  {availableVariants.map((variant) => {
-                    const primaryImage = getPrimaryImage(
-                      selectedProduct,
-                      variant
-                    );
-                    return (
-                      <Option key={variant.id} value={variant.id}>
-                        <Space>
-                          {primaryImage && (
-                            <Image
-                              src={primaryImage.image_url}
-                              alt={variant.variant_name || "Variant"}
-                              width={20}
-                              height={20}
-                              style={{ borderRadius: "4px" }}
-                              preview={false}
-                            />
-                          )}
-                          <span>
-                            {variant.variant_name} -{" "}
-                            {formatPriceDisplay(selectedProduct, variant)}
-                          </span>
-                        </Space>
-                      </Option>
-                    );
-                  })}
-                </Select>
-                {selectedProductId && availableVariants.length === 0 && (
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
-                    No variants available
-                  </Text>
-                )}
-              </Space>
-            </Col>
-
-            <Col xs={24} md={12}>
-              <Space
-                direction="vertical"
-                style={{ width: "100%" }}
-                size="small"
-              >
-                <Text strong>Quantity</Text>
-                <Space.Compact style={{ width: "100%" }}>
-                  <InputNumber
-                    placeholder="Qty"
-                    min={1}
-                    max={
-                      selectedVariantId !== "no-variant" && selectedVariant
-                        ? getAvailableQuantity(selectedVariant)
-                        : getBaseProductAvailableQuantity(selectedProduct) ||
-                          100
-                    }
-                    value={quantity}
-                    onChange={(value) => setQuantity(value || 1)}
-                    style={{ width: "70%" }}
-                    size="large"
-                  />
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={handleAddProduct}
-                    disabled={isAddButtonDisabled}
-                    style={{ width: "30%" }}
+                  <Text strong>Product</Text>
+                  <Select
+                    placeholder="Select product"
+                    value={selectedProductId || undefined}
+                    onChange={(value) => {
+                      setSelectedProductId(value);
+                      setSelectedVariantId("no-variant");
+                      setQuantity(1);
+                    }}
+                    style={{ width: "100%" }}
                     size="large"
                   >
-                    Add
-                  </Button>
-                </Space.Compact>
-                <Text type="secondary" style={{ fontSize: "12px" }}>
-                  Max:{" "}
-                  {selectedVariantId !== "no-variant" && selectedVariant
-                    ? getAvailableQuantity(selectedVariant)
-                    : getBaseProductAvailableQuantity(selectedProduct) ||
-                      "N/A"}{" "}
-                  available
+                    {availableProducts.map((product) => {
+                      const primaryImage = getPrimaryImage(product);
+                      return (
+                        <Option key={product.id} value={product.id}>
+                          <Space>
+                            {primaryImage && (
+                              <Image
+                                src={primaryImage.image_url}
+                                alt={product.name}
+                                width={20}
+                                height={20}
+                                style={{ borderRadius: "4px" }}
+                                preview={false}
+                              />
+                            )}
+                            <span>
+                              {product.name} - {formatPriceDisplay(product)}
+                              {product.product_variants &&
+                                product.product_variants.length > 0 &&
+                                ` (${product.product_variants.length} variants)`}
+                            </span>
+                          </Space>
+                        </Option>
+                      );
+                    })}
+                  </Select>
+                </Space>
+              </Col>
+            </Row>
+
+            {/* Variant and Quantity - Second Line */}
+            <Row gutter={[16, 16]} style={{ marginTop: "16px" }}>
+              <Col xs={24} md={12}>
+                <Space
+                  direction="vertical"
+                  style={{ width: "100%" }}
+                  size="small"
+                >
+                  <Text strong>Variant</Text>
+                  <Select
+                    placeholder="Select variant"
+                    value={selectedVariantId}
+                    onChange={(value) => {
+                      setSelectedVariantId(value);
+                      setQuantity(1);
+                    }}
+                    style={{ width: "100%" }}
+                    size="large"
+                    disabled={
+                      !selectedProductId || availableVariants.length === 0
+                    }
+                  >
+                    <Option value="no-variant">Base Product</Option>
+                    {availableVariants.map((variant) => {
+                      const primaryImage = getPrimaryImage(
+                        selectedProduct,
+                        variant
+                      );
+                      return (
+                        <Option key={variant.id} value={variant.id}>
+                          <Space>
+                            {primaryImage && (
+                              <Image
+                                src={primaryImage.image_url}
+                                alt={variant.variant_name || "Variant"}
+                                width={20}
+                                height={20}
+                                style={{ borderRadius: "4px" }}
+                                preview={false}
+                              />
+                            )}
+                            <span>
+                              {variant.variant_name} -{" "}
+                              {formatPriceDisplay(selectedProduct, variant)}
+                            </span>
+                          </Space>
+                        </Option>
+                      );
+                    })}
+                  </Select>
+                  {selectedProductId && availableVariants.length === 0 && (
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      No variants available
+                    </Text>
+                  )}
+                </Space>
+              </Col>
+
+              <Col xs={24} md={12}>
+                <Space
+                  direction="vertical"
+                  style={{ width: "100%" }}
+                  size="small"
+                >
+                  <Text strong>Quantity</Text>
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      placeholder="Qty"
+                      min={1}
+                      max={
+                        selectedVariantId !== "no-variant" && selectedVariant
+                          ? getAvailableQuantity(selectedVariant)
+                          : getBaseProductAvailableQuantity(selectedProduct) ||
+                            100
+                      }
+                      value={quantity}
+                      onChange={(value) => setQuantity(value || 1)}
+                      style={{ width: "70%" }}
+                      size="large"
+                    />
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={handleAddProduct}
+                      disabled={isAddButtonDisabled}
+                      style={{ width: "50%" }}
+                      size="large"
+                    >
+                      Add
+                    </Button>
+                  </Space.Compact>
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    Max:{" "}
+                    {selectedVariantId !== "no-variant" && selectedVariant
+                      ? getAvailableQuantity(selectedVariant)
+                      : getBaseProductAvailableQuantity(selectedProduct) ||
+                        "N/A"}{" "}
+                    available
+                  </Text>
+                </Space>
+              </Col>
+            </Row>
+
+            {selectedProductId &&
+              availableVariants.length > 0 &&
+              selectedVariantId === "no-variant" && (
+                <Alert
+                  message="Variant Required"
+                  description="Please select a variant for this product"
+                  type="warning"
+                  showIcon
+                  style={{ marginTop: "16px" }}
+                />
+              )}
+          </Card>
+
+          {/* Order Items List */}
+          {orderProducts.length > 0 ? (
+            <Space direction="vertical" style={{ width: "100%" }} size="middle">
+              <Divider />
+              <Space style={{ width: "100%", justifyContent: "space-between" }}>
+                <Text strong>Added Items ({orderProducts.length})</Text>
+                <Text strong>
+                  Subtotal: ৳
+                  {orderProducts
+                    .reduce((sum, item) => sum + item.total_price, 0)
+                    .toFixed(2)}
                 </Text>
               </Space>
-            </Col>
-          </Row>
 
-          {selectedProductId &&
-            availableVariants.length > 0 &&
-            selectedVariantId === "no-variant" && (
-              <Alert
-                message="Variant Required"
-                description="Please select a variant for this product"
-                type="warning"
-                showIcon
-                style={{ marginTop: "16px" }}
-              />
-            )}
-        </Card>
-
-        {/* Order Items List */}
-        {orderProducts.length > 0 ? (
-          <Space direction="vertical" style={{ width: "100%" }} size="middle">
-            <Divider />
-            <Space style={{ width: "100%", justifyContent: "space-between" }}>
-              <Text strong>Added Items ({orderProducts.length})</Text>
-              <Text strong>
-                Subtotal: ৳
-                {orderProducts
-                  .reduce((sum, item) => sum + item.total_price, 0)
-                  .toFixed(2)}
-              </Text>
-            </Space>
-
-            <List
-              dataSource={orderProducts}
-              renderItem={(item, index) => (
-                <List.Item
-                  style={{
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    padding: "12px 8px",
-                  }}
-                >
-                  <Row
-                    style={{ width: "100%" }}
-                    gutter={[8, 8]}
-                    justify="space-between"
-                    align="middle"
+              <List
+                dataSource={orderProducts}
+                renderItem={(item, index) => (
+                  <List.Item
+                    style={{
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      padding: "12px 8px",
+                    }}
                   >
-                    {/* Product Info */}
-                    <Col xs={24} sm={16} md={16} lg={18}>
-                      <List.Item.Meta
-                        title={
-                          <Space wrap>
-                            <Text strong>{item.product_name}</Text>
-                            {item.variant_name && (
-                              <Tag color="blue" style={{ marginLeft: 4 }}>
-                                {item.variant_name}
-                              </Tag>
-                            )}
-                          </Space>
-                        }
-                        description={
-                          <Text>
-                            ৳{item.unit_price} × {item.quantity} ={" "}
-                            <Text strong>৳{item.total_price}</Text>
-                          </Text>
-                        }
-                      />
-                    </Col>
-
-                    {/* Quantity Controls */}
-                    <Col
-                      xs={24}
-                      sm={8}
-                      md={8}
-                      lg={6}
-                      style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        alignItems: "center",
-                      }}
+                    <Row
+                      style={{ width: "100%" }}
+                      gutter={[8, 8]}
+                      justify="space-between"
+                      align="middle"
                     >
-                      <Space
-                        size="small"
+                      {/* Product Info */}
+                      <Col xs={24} sm={16} md={16} lg={18}>
+                        <List.Item.Meta
+                          title={
+                            <Space wrap>
+                              <Text strong>{item.product_name}</Text>
+                              {item.variant_name && (
+                                <Tag color="blue" style={{ marginLeft: 4 }}>
+                                  {item.variant_name}
+                                </Tag>
+                              )}
+                            </Space>
+                          }
+                          description={
+                            <Text>
+                              ৳{item.unit_price} × {item.quantity} ={" "}
+                              <Text strong>৳{item.total_price}</Text>
+                            </Text>
+                          }
+                        />
+                      </Col>
+
+                      {/* Quantity Controls */}
+                      <Col
+                        xs={24}
+                        sm={8}
+                        md={8}
+                        lg={6}
                         style={{
-                          width: "100%",
-                          justifyContent: "space-between",
-                          flexWrap: "wrap",
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          alignItems: "center",
                         }}
                       >
-                        <Space.Compact>
-                          <Button
-                            size="small"
-                            onClick={() =>
-                              handleQuantityChange(index, item.quantity - 1)
-                            }
-                            disabled={item.quantity <= 1}
-                          >
-                            -
-                          </Button>
-                          <InputNumber
-                            size="small"
-                            min={1}
-                            value={item.quantity}
-                            onChange={(value) =>
-                              handleQuantityChange(index, value || 1)
-                            }
-                            style={{
-                              width: "60px",
-                              textAlign: "center",
-                            }}
-                          />
-                          <Button
-                            size="small"
-                            onClick={() =>
-                              handleQuantityChange(index, item.quantity + 1)
-                            }
-                          >
-                            +
-                          </Button>
-                        </Space.Compact>
-
-                        <Button
-                          key="delete"
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => handleRemoveProduct(index)}
+                        <Space
                           size="small"
-                        />
-                      </Space>
-                    </Col>
-                  </Row>
-                </List.Item>
-              )}
-            />
-          </Space>
-        ) : (
-          <Empty
-            image={
-              <ShoppingCartOutlined
-                style={{ fontSize: "48px", color: "#d9d9d9" }}
+                          style={{
+                            width: "100%",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <Space.Compact>
+                            <Button
+                              size="small"
+                              onClick={() =>
+                                handleQuantityChange(index, item.quantity - 1)
+                              }
+                              disabled={item.quantity <= 1}
+                            >
+                              -
+                            </Button>
+                            <InputNumber
+                              size="small"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(value) =>
+                                handleQuantityChange(index, value || 1)
+                              }
+                              style={{
+                                width: "60px",
+                                textAlign: "center",
+                              }}
+                            />
+                            <Button
+                              size="small"
+                              onClick={() =>
+                                handleQuantityChange(index, item.quantity + 1)
+                              }
+                            >
+                              +
+                            </Button>
+                          </Space.Compact>
+
+                          <Button
+                            key="delete"
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveProduct(index)}
+                            size="small"
+                          />
+                        </Space>
+                      </Col>
+                    </Row>
+                  </List.Item>
+                )}
               />
-            }
-            description="No products added to order"
-          />
-        )}
-      </Space>
-    </Card>
+            </Space>
+          ) : (
+            <Empty
+              image={
+                <ShoppingCartOutlined
+                  style={{ fontSize: "48px", color: "#d9d9d9" }}
+                />
+              }
+              description="No products added to order"
+            />
+          )}
+        </Space>
+      </Card>
+    </>
   );
 }
