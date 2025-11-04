@@ -15,6 +15,7 @@ import {
   SheiAlertDescription,
 } from "../../components/ui/sheiAlert/SheiAlert";
 import { Link, Copy, Check } from "lucide-react";
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 
 export default function CustomOrder() {
   const params = useParams();
@@ -95,7 +96,7 @@ export default function CustomOrder() {
 
   const isFormValid = orderProducts.length > 0;
 
-  // Even better approach - use JSON encoding
+  // Ultra-compact encoding with compression
   const handleGenerateLink = () => {
     if (!isFormValid || !storeSlug) {
       showToast(
@@ -106,10 +107,19 @@ export default function CustomOrder() {
       return;
     }
 
-    // Convert order products to JSON and encode
-    const orderData = JSON.stringify(orderProducts);
-    const encodedData = btoa(encodeURIComponent(orderData)); // Base64 encode
-    const url = `/${storeSlug}/confirm-order?data=${encodedData}`;
+    // Ultra-compact format
+    const compactData = orderProducts.map(item => [
+      item.product_id,    // [0] = product_id
+      item.variant_id,    // [1] = variant_id (can be null)
+      item.quantity       // [2] = quantity
+    ]);
+
+    const jsonString = JSON.stringify(compactData);
+    
+    // Compress the data (reduces size by 60-80%)
+    const compressed = compressToEncodedURIComponent(jsonString);
+    
+    const url = `/${storeSlug}/confirm-order?o=${compressed}`;
     setGeneratedLink(url);
 
     showToast("Order Link Generated", "Link generated successfully!");
