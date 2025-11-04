@@ -4,33 +4,65 @@ import React, { useMemo } from "react";
 import { Menu } from "antd";
 import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { sideMenu } from "@/lib/menu";
+import { sideMenu, MenuItem } from "@/lib/menu";
 import { LucideIcon } from "@/lib/LucideIcon";
+import { Link2 } from "lucide-react";
+import Link from "next/link";
+
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
+  storeSlug?: string | null;
 }
+
+// AntD Menu item type
 type AntdMenuItem = Required<MenuProps>["items"][number];
 
-const buildMenuItems = (menu: typeof sideMenu): AntdMenuItem[] =>
-  menu.map((item) => {
-    const icon = item.icon ? <LucideIcon icon={item.icon} /> : null;
+function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
+  const icon = item.icon ? <LucideIcon icon={item.icon} /> : null;
 
-    if (item.children?.length) {
-      return {
-        key: item.title,
-        icon,
-        label: item.title,
-        children: buildMenuItems(item.children),
-      };
+  if (item.children?.length) {
+    const children: AntdMenuItem[] = item.children.map((child) =>
+      mapMenuItem(child, storeSlug)
+    );
+
+    // Inject dynamic "Generate Order Link" under Orders
+    if (item.title === "Orders" && storeSlug) {
+      children.push({
+        key: `/${storeSlug}/generate-orders-link`,
+        icon: <LucideIcon icon={Link2} />,
+        label: "Generate Order Link", // 👈 keep this plain text (for mobile & collapsed)
+        title: "Generate Order Link", // 👈 ensures tooltip shows
+        onClick: () =>
+          window.open(`/${storeSlug}/generate-orders-link`, "_blank"), // 👈 open in new tab
+      });
     }
-    return { key: item.href || item.title, icon, label: item.title };
-  });
+    return {
+      key: item.title,
+      icon,
+      label: item.title,
+      children,
+    };
+  }
 
-export default function SidebarMenu({ themeMode }: SidebarMenuProps) {
+  return {
+    key: item.href || item.title,
+    icon,
+    label: item.title,
+  };
+}
+
+export default function SidebarMenu({
+  themeMode,
+  storeSlug,
+}: SidebarMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const items = useMemo(() => buildMenuItems(sideMenu), []);
+  const items = useMemo(
+    () => sideMenu.map((i) => mapMenuItem(i, storeSlug)),
+    [storeSlug]
+  );
+
   const defaultOpenKeys = useMemo(() => {
     const keys: string[] = [];
     sideMenu.forEach((menu) => {
@@ -42,9 +74,19 @@ export default function SidebarMenu({ themeMode }: SidebarMenuProps) {
   }, [pathname]);
 
   const handleClick: MenuProps["onClick"] = (e) => {
-    const clicked = sideMenu
-      .flatMap((i) => i.children || [i])
-      .find((i) => i.href === e.key);
+    const flatten = sideMenu.flatMap((i) => i.children || [i]);
+
+    if (storeSlug) {
+      const ordersMenu = sideMenu.find((i) => i.title === "Orders");
+      if (ordersMenu) {
+        flatten.push({
+          title: "Generate Order Link",
+          href: `/${storeSlug}/generate-orders-link`,
+        });
+      }
+    }
+
+    const clicked = flatten.find((i) => i.href === e.key);
     if (clicked?.href) router.push(clicked.href);
   };
 

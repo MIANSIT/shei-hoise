@@ -6,23 +6,32 @@ import NavMenu, { NavLink } from "../header/NavMenu";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
 import AuthButtons from "../header/AuthButtons";
-import ThemeToggle from "../theme/ThemeToggle"; // Import the new component
+import ThemeToggle from "../theme/ThemeToggle";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser"; // Import your user hook
 
 export default function DesktopHeader() {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { user, loading } = useCurrentUser(); // Get current user
 
   // Main navigation for users
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Shop", path: "/shop" },
-    { name: "Checkout", path: "/checkout" },
+    { name: "Stores", path: "/#stores" },
   ];
 
-  // Auth links for users
-  const authLinksUser: NavLink[] = [
-    { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/sign-up", isHighlighted: true },
-  ];
+  // Auth links for users - conditionally show based on login status
+  const authLinksUser: NavLink[] = user 
+    ? [
+        { 
+          name: user.first_name || "Profile", 
+          path: "/profile", 
+          isHighlighted: true 
+        },
+      ]
+    : [
+        { name: "Log in", path: "/login" },
+        { name: "Sign up", path: "/sign-up", isHighlighted: true },
+      ];
 
   return (
     <>
@@ -42,16 +51,18 @@ export default function DesktopHeader() {
 
         {/* Right side */}
         <div className="flex items-center gap-5">
-          <ThemeToggle /> {/* Use the new component */}
-          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-          <AuthButtons links={authLinksUser} isAdminPanel={false} />
+          <ThemeToggle />
+          {/* <ShoppingCartIcon onClick={() => setIsCartOpen(true)} /> */}
+          {!loading && ( // Only show when not loading
+            <AuthButtons links={authLinksUser} isAdminPanel={false} />
+          )}
         </div>
       </header>
 
       {/* Page content wrapper */}
       <main className="pt-16">{/* Your page content */}</main>
 
-      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      {/* <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} /> */}
     </>
   );
 }

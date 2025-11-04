@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 import { LoginFormSchema, LoginFormType } from "../../../lib/schema/auth";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { PasswordToggle } from "../common/PasswordToggle";
 import { SheiLoader } from "../ui/SheiLoader/loader";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
 interface LoginFormProps {
@@ -25,9 +25,12 @@ export function UserForm({
 }: LoginFormProps) {
   const { success, error } = useSheiNotification();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
+
   const handleAdminLogin = async (values: LoginFormType) => {
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: values.username, // we renamed username → email in schema
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({
+      email: values.username,
       password: values.password,
     });
 
@@ -37,7 +40,20 @@ export function UserForm({
     }
 
     success("Login successful!");
-    router.push("/dashboard");
+
+    // ✅ Simple redirect logic without waiting for user data
+    const isFromAdminLogin = window.location.pathname === '/admin-login';
+    let finalRedirect = redirectTo;
+
+    // If from admin login, assume they're an admin and redirect to dashboard
+    if (isFromAdminLogin) {
+      finalRedirect = '/dashboard';
+    }
+
+    
+    setTimeout(() => {
+      router.push(finalRedirect);
+    }, 500);
   };
 
   const form = useForm<LoginFormType>({
@@ -48,7 +64,7 @@ export function UserForm({
 
   const {
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = form;
 
   const [showPassword, setShowPassword] = useState(false);
@@ -67,7 +83,7 @@ export function UserForm({
           type="email"
           placeholder="Enter your email"
           {...form.register("username")}
-          disabled={form.formState.isSubmitting}
+          disabled={isSubmitting}
           className={
             theme === "dark"
               ? "  border-gray-600 placeholder-gray-400"
@@ -88,11 +104,11 @@ export function UserForm({
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
             {...form.register("password")}
-            disabled={form.formState.isSubmitting}
+            disabled={isSubmitting}
             className={
               theme === "dark"
                 ? " border-gray-600 placeholder-gray-400 pr-14"
-                : " text-gray-900 border-gray-300 placeholder-gray-500 pr-14"
+                : " border-gray-300 placeholder-gray-500 pr-14"
             }
           />
           <div className="absolute inset-y-0 right-2 flex items-center">
@@ -111,9 +127,9 @@ export function UserForm({
       <Button
         type="submit"
         className="w-full mt-2 relative overflow-hidden"
-        disabled={!form.formState.isValid || form.formState.isSubmitting}
+        disabled={!form.formState.isValid || isSubmitting}
       >
-        {form.formState.isSubmitting ? (
+        {isSubmitting ? (
           <SheiLoader size="sm" loaderColor="current" />
         ) : (
           <span className="text-white">{submitText}</span>

@@ -1,13 +1,12 @@
-// components/cart/CartSidebar.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { X } from "lucide-react";
-import useCartStore from "@/lib/store/cartStore";
+import { useCartItems } from "@/lib/hook/useCartItems";
 import CartItemsList from "./CartItemList";
 import { Button } from "@/components/ui/button";
 import CartCheckoutLayout from "./CartCheckoutLayout";
-import {useRouter} from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -15,9 +14,12 @@ type CartSidebarProps = {
 };
 
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
-  const { cart, totalPrice, totalItems } = useCartStore();
-  const [isMounted, setIsMounted] = useState(false);
+  const params = useParams();
+  const store_slug = params.store_slug as string;
   const router = useRouter();
+
+  // Use the custom hook to get cart items with fresh data
+  const { items: cartItems, calculations, loading } = useCartItems(store_slug);
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -31,14 +33,20 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const handleCheckout = () => {
-    router.push("/checkout");
+    onClose(); // Close the sidebar first
+    router.push(`/${store_slug}/checkout`);
   };
-  const displayCount = isMounted ? totalItems() : 0;
+
+  const handleContinueShopping = () => {
+    onClose();
+    router.push(`/${store_slug}`);
+  };
+
+  // Don't render anything if not open
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <>
@@ -55,7 +63,9 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
       >
         <div className='flex flex-col h-full'>
           <div className='flex items-center justify-between p-4 border-b border-border'>
-            <h2 className='text-lg font-semibold'>Your Cart ({displayCount})</h2>
+            <h2 className='text-lg font-semibold'>
+              Your Cart ({calculations.totalItems})
+            </h2>
             <button
               onClick={onClose}
               className='p-1 rounded-md hover:bg-accent cursor-pointer transition-colors'
@@ -64,15 +74,21 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
               <X className='h-5 w-5' />
             </button>
           </div>
+          
           <div className='flex-1 p-4 overflow-y-auto'>
-            {cart.length === 0 ? (
+            {loading ? (
+              <div className='text-center py-8'>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground mt-2">Loading cart...</p>
+              </div>
+            ) : cartItems.length === 0 ? (
               <div className='text-center py-8'>
                 <p className='text-muted-foreground'>Your cart is empty</p>
                 <Button
                   className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
-                  onClick={onClose}
+                  onClick={handleContinueShopping}
                 >
-                  Continue Shopping
+                  Continue Shopping at {store_slug}
                 </Button>
               </div>
             ) : (
@@ -80,9 +96,9 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             )}
           </div>
 
-          {cart.length > 0 && (
+          {!loading && cartItems.length > 0 && (
             <CartCheckoutLayout
-              subtotal={totalPrice()}
+              subtotal={calculations.totalPrice}
               onCheckout={handleCheckout}
               buttonText="Proceed to Checkout"
             />

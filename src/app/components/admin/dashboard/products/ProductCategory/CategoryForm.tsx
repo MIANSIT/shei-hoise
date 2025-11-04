@@ -49,12 +49,11 @@ export default function AddCategoryCardForm({
     is_active: true,
   });
 
-  // Watch the name value so the effect can react to it
+  // Watch name value to auto-generate slug
   const nameValue = form.watch("name");
 
-  // ✅ Single effect handles BOTH: editing reset and slug generation
+  // ✅ Reset when editingCategory changes
   useEffect(() => {
-    // 1️⃣ Reset fields if editingCategory changes
     if (editingCategory) {
       form.reset({
         name: (editingCategory as any).name ?? "",
@@ -66,18 +65,11 @@ export default function AddCategoryCardForm({
           null,
         is_active: (editingCategory as any).is_active ?? true,
       });
-    } else if (!nameValue) {
-      // reset only when no name value and no editing category
-      form.reset({
-        name: "",
-        slug: "",
-        description: "",
-        parent_id: null as any,
-        is_active: true,
-      });
     }
+  }, [editingCategory, form]);
 
-    // 2️⃣ Auto-generate slug whenever name changes
+  // ✅ Auto-generate slug when name changes
+  useEffect(() => {
     const slugValue = nameValue
       ? nameValue
           .toLowerCase()
@@ -86,8 +78,9 @@ export default function AddCategoryCardForm({
           .replace(/\s+/g, "-")
           .replace(/-+/g, "-")
       : "";
-    form.setValue("slug", slugValue);
-  }, [editingCategory, nameValue, form]); // one dependency array
+
+    form.setValue("slug", slugValue, { shouldValidate: true });
+  }, [nameValue, form]);
 
   const handleSubmit = async (data: CreateCategoryType) => {
     const normalized: CreateCategoryType = {
@@ -142,6 +135,7 @@ export default function AddCategoryCardForm({
                   {...form.register("slug")}
                   placeholder="Auto Generated Slug"
                   readOnly
+                  className="cursor-not-allowed bg-gray-100"
                 />
               </FormControl>
               <FormMessage>{form.formState.errors.slug?.message}</FormMessage>

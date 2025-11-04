@@ -2,24 +2,25 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
+import { OrderStatus } from "../../../../../../lib/types/order";
 
 interface Props {
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
-  onSave: (newStatus: Props["status"]) => void;
-  hideDelivered?: boolean; // new prop
+  status: OrderStatus;
+  onSave: (newStatus: OrderStatus) => void;
+  hideDelivered?: boolean;
 }
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
-  { value: "processing", label: "Processing" },
+  { value: "confirmed", label: "Confirmed" },
   { value: "shipped", label: "Shipped" },
   { value: "delivered", label: "Delivered" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
 const OrderStatusSelect: React.FC<{
-  value: Props["status"];
-  onChange: (v: Props["status"]) => void;
+  value: OrderStatus;
+  onChange: (v: OrderStatus) => void;
   hideDelivered?: boolean;
 }> = ({ value, onChange, hideDelivered = false }) => {
   const options = hideDelivered
@@ -30,7 +31,7 @@ const OrderStatusSelect: React.FC<{
     <Select
       value={value}
       style={{ width: 130 }}
-      onChange={v => onChange(v as Props["status"])}
+      onChange={onChange}
       options={options}
     />
   );
@@ -43,7 +44,7 @@ const EditableOrderStatus: React.FC<Props> = ({ status, onSave, hideDelivered })
     <MemoizedOrderStatusSelect
       value={status}
       onChange={onSave}
-      hideDelivered={hideDelivered} // pass prop
+      hideDelivered={hideDelivered}
     />
   );
 };

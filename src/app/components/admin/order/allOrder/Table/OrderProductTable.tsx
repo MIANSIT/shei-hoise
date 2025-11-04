@@ -1,16 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
-import { Order } from "@/lib/types/types";
+import { App } from "antd"; // Remove message import
+import { StoreOrder, OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
+import dataService from "@/lib/queries/dataService";
 
 interface Props {
-  order: Order;
-  onSaveStatus: (newStatus: Order["status"]) => void;
-  onSavePaymentStatus: (newStatus: Order["paymentStatus"]) => void;
-  onSaveDeliveryOption: (newOption: Order["deliveryOption"]) => void;
-  onSavePaymentMethod: (newMethod: Order["paymentMethod"]) => void;
+  order: StoreOrder;
+  onSaveStatus: (newStatus: OrderStatus) => void;
+  onSavePaymentStatus: (newStatus: PaymentStatus) => void;
+  onSaveDeliveryOption?: (newOption: DeliveryOption) => void;
+  onSavePaymentMethod?: (newMethod: PaymentMethod) => void;
   onSaveCancelNote?: (note: string) => void;
+  onRefresh?: () => void;
 }
 
 const OrderProductTable: React.FC<Props> = ({
@@ -20,55 +24,122 @@ const OrderProductTable: React.FC<Props> = ({
   onSaveDeliveryOption,
   onSavePaymentMethod,
   onSaveCancelNote,
+  onRefresh,
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<Order["status"]>(
-    order.status
+  const { notification, message } = App.useApp(); // Get both notification and message
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>(order.status);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<PaymentStatus>(order.payment_status);
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<DeliveryOption>(
+    order.delivery_option || "courier"
   );
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<
-    Order["paymentStatus"]
-  >(order.paymentStatus);
-  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<
-    Order["deliveryOption"]
-  >(order.deliveryOption);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    Order["paymentMethod"]
-  >(order.paymentMethod);
-  const [cancelNote, setCancelNote] = useState(order.cancelNote || "");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(
+    order.payment_method === "cod" ? "cod" : "online"
+  );
+  const [cancelNote, setCancelNote] = useState(order.notes || "");
+  const [saving, setSaving] = useState(false);
 
-  const isLocked =
-    (order.status === "delivered" || order.status === "cancelled") &&
-    order.paymentStatus === "paid";
+  const isLocked = order.status === "delivered" || order.status === "cancelled";
 
-  const handleSaveAll = () => {
-    if (selectedStatus !== order.status) onSaveStatus(selectedStatus);
-    if (selectedPaymentStatus !== order.paymentStatus)
-      onSavePaymentStatus(selectedPaymentStatus);
-    if (selectedDeliveryOption !== order.deliveryOption)
-      onSaveDeliveryOption(selectedDeliveryOption);
-    if (selectedPaymentMethod !== order.paymentMethod)
-      onSavePaymentMethod(selectedPaymentMethod);
-    if (cancelNote !== order.cancelNote) onSaveCancelNote?.(cancelNote);
+  const handleSaveAll = async () => {
+    if (saving) return;
+
+    setSaving(true);
+    try {
+      // Prepare update data
+      const updateData: any = {};
+      
+      if (selectedStatus !== order.status) {
+        updateData.status = selectedStatus;
+      }
+      
+      if (selectedPaymentStatus !== order.payment_status) {
+        updateData.payment_status = selectedPaymentStatus;
+      }
+      
+      if (selectedDeliveryOption !== order.delivery_option && onSaveDeliveryOption) {
+        updateData.delivery_option = selectedDeliveryOption;
+      }
+      
+      if (selectedPaymentMethod !== (order.payment_method === "cod" ? "cod" : "online") && onSavePaymentMethod) {
+        updateData.payment_method = selectedPaymentMethod;
+      }
+      
+      if (cancelNote !== order.notes) {
+        updateData.notes = cancelNote;
+      }
+
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
+        
+        const result = await dataService.updateOrder(order.id, updateData);
+        
+        if (result.success) {
+          message.success('Order updated successfully!');
+          
+          // Update local state through parent callbacks
+          if (selectedStatus !== order.status) onSaveStatus(selectedStatus);
+          if (selectedPaymentStatus !== order.payment_status) onSavePaymentStatus(selectedPaymentStatus);
+          if (selectedDeliveryOption !== order.delivery_option && onSaveDeliveryOption) {
+            onSaveDeliveryOption(selectedDeliveryOption);
+          }
+          if (selectedPaymentMethod !== (order.payment_method === "cod" ? "cod" : "online") && onSavePaymentMethod) {
+            onSavePaymentMethod(selectedPaymentMethod);
+          }
+          if (cancelNote !== order.notes) onSaveCancelNote?.(cancelNote);
+          
+          // Refresh the orders list
+          if (onRefresh) {
+            setTimeout(() => {
+              onRefresh();
+            }, 500);
+          }
+        } else {
+          message.error(`Failed to update order: ${result.error}`);
+          // Revert local state changes on error
+          setSelectedStatus(order.status);
+          setSelectedPaymentStatus(order.payment_status);
+          setSelectedDeliveryOption(order.delivery_option || "courier");
+          setSelectedPaymentMethod(order.payment_method === "cod" ? "cod" : "online");
+          setCancelNote(order.notes || "");
+        }
+      } else {
+        message.info('No changes to save.');
+      }
+    } catch (error: any) {
+      console.error('Error saving order changes:', error);
+      message.error('Failed to save changes. Please try again.');
+      // Revert local state changes on error
+      setSelectedStatus(order.status);
+      setSelectedPaymentStatus(order.payment_status);
+      setSelectedDeliveryOption(order.delivery_option || "courier");
+      setSelectedPaymentMethod(order.payment_method === "cod" ? "cod" : "online");
+      setCancelNote(order.notes || "");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="p-4  rounded-md space-y-4">
+    <div className="p-3 sm:p-4 bg-blue-50 rounded-md space-y-3 sm:space-y-4 border">
+      <h3 className="font-semibold text-base sm:text-lg">Order Management</h3>
       <OrderControls
         status={order.status}
         selectedStatus={selectedStatus}
         onSelectStatus={setSelectedStatus}
-        paymentStatus={order.paymentStatus}
+        paymentStatus={order.payment_status}
         selectedPaymentStatus={selectedPaymentStatus}
         onSelectPaymentStatus={setSelectedPaymentStatus}
-        deliveryOption={order.deliveryOption}
+        deliveryOption={order.delivery_option || "courier"}
         selectedDeliveryOption={selectedDeliveryOption}
         onSelectDeliveryOption={setSelectedDeliveryOption}
-        paymentMethod={order.paymentMethod}
+        paymentMethod={order.payment_method === "cod" ? "cod" : "online"}
         selectedPaymentMethod={selectedPaymentMethod}
         onSelectPaymentMethod={setSelectedPaymentMethod}
         cancelNote={cancelNote}
         onSelectCancelNote={setCancelNote}
         isLocked={isLocked}
         onSaveAll={handleSaveAll}
+        saving={saving}
       />
     </div>
   );

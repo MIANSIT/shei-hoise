@@ -5,77 +5,99 @@ import React, { useEffect, useState } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
-import Header from "../components/common/Header";
-import Footer from "../components/common/Footer";
-import { getProductsWithStoreSlug } from "@/lib/queries/products/getProductsWithStoreSlug";
+import { StorePageSkeleton } from "../components/skeletons/StorePageSkeleton"; // Add this import
 
-export default function StorePage({
-  params,
-}: {
+import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { Product } from "@/lib/types/product";
+import NotFoundPage from "../not-found";
+import { AddToCartType } from "@/lib/schema/checkoutSchema";
+
+interface StorePageProps {
   params: Promise<{ store_slug: string }>;
-}) {
+}
+
+export default function StorePage({ params }: StorePageProps) {
   const { success, error } = useSheiNotification();
   const { addToCart } = useCartStore();
+  const { store_slug } = React.use(params);
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [storeExists, setStoreExists] = useState<boolean | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const resolvedParams = React.use(params);
-
   useEffect(() => {
-    async function fetchStoreProducts() {
+    async function fetchData() {
       try {
-        const productData = await getProductsWithStoreSlug(
-          resolvedParams.store_slug
-        );
-        setProducts(productData);
+        const storeId = await getStoreIdBySlug(store_slug);
+        if (!storeId) {
+          setStoreExists(false);
+          return;
+        }
+
+        setStoreExists(true);
+
+        const data = await clientGetProducts(store_slug);
+        setProducts(data);
       } catch (err) {
         console.error(err);
-        error("Failed to load products");
+        error("Failed to load store or products");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchStoreProducts();
-  }, [resolvedParams.store_slug, error]);
+    fetchData();
+  }, [store_slug, error]);
 
-  const handleAddToCart = async (product: any) => {
+  const handleAddToCart = async (product: Product) => {
     setLoadingProductId(product.id);
     try {
-      await addToCart({ ...product, imageUrl: "" });
+      const variant = product.variants?.[0];
+
+      const cartProduct: AddToCartType = {
+        productId: product.id,
+        storeSlug: store_slug,
+        quantity: 1,
+        variantId: variant?.id || null,
+      };
+
+      await addToCart(cartProduct);
       success(`${product.name} added to cart`);
     } catch (err) {
       console.error(err);
+      error("Failed to add product to cart");
     } finally {
       setLoadingProductId(null);
     }
   };
 
-  const mappedProducts = products.map((p) => ({
-    id: p.id,
-    title: p.name,
-    category: p.categories?.name || "Uncategorized",
-    currentPrice: p.discounted_price ?? p.base_price,
-    originalPrice: p.base_price,
-    rating: 0,
-    slug: p.slug,
-    images: p.images || [],
-    discount: p.base_price - (p.discounted_price ?? p.base_price),
-  }));
+  // ✅ REPLACED: Now using your custom skeleton
+  if (loading) {
+    return <StorePageSkeleton />;
+  }
+
+  if (storeExists === false) {
+    return <NotFoundPage />;
+  }
 
   return (
     <>
-      <Header />
       <div className="px-8 py-4">
-        <ProductGrid
-          products={mappedProducts}
-          onAddToCart={handleAddToCart}
-          loadingProductId={loadingProductId}
-        />
+        {products.length === 0 ? (
+          <div className="text-center py-20 text-lg font-medium">
+            No products available in this store.
+          </div>
+        ) : (
+          <ProductGrid
+            store_slug={store_slug}
+            products={products}
+            onAddToCart={handleAddToCart}
+            loadingProductId={loadingProductId}
+          />
+        )}
       </div>
-      <Footer />
     </>
   );
 }

@@ -1,22 +1,27 @@
 "use client";
-import React from "react";
 
-import Footer from "./components/common/Footer";
-import Header from "./components/common/Header";
+import HeroSection from "@/app/components/landing/HeroSection";
+import FeaturesSection from "@/app/components/landing/FeaturesSection";
+import HowItWorksSection from "@/app/components/landing/HowItWorksSection";
+// import PricingSection from "@/app/components/landing/PricingSection";
+import CTASection from "@/app/components/landing/CTASection";
+import Header from "@/app/components/common/Header";
+import Footer from "@/app/components/common/Footer";
+import StoresSection from "@/app/components/landing/StoresSection"
 
-const Home = () => {
+export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Mobile Header: hidden on md screens */}
-   <Header isAdmin={false} />
-
-      <main className="flex-grow">
-        <h1 className="text-center mt-10">This is Home Page</h1>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <HeroSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        {/* <PricingSection /> */}
+        <StoresSection />
+        <CTASection />
       </main>
-
       <Footer />
     </div>
   );
-};
-
-export default Home;
+}

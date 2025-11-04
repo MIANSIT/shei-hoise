@@ -1,222 +1,206 @@
+"use client";
+
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, ShoppingCart, Zap, Check } from "lucide-react";
-import { useState } from "react";
+import { ShoppingCart, Check, Eye } from "lucide-react";
+import { Product } from "@/lib/types/product";
 
 interface ProductCardProps {
-  title: string;
-  category: string;
-  currentPrice: number;
-  originalPrice: number;
-  rating: number;
-  // imageUrl: string;
-  productLink: string;
+  store_slug: string;
+  product: Product;
   isLoading?: boolean;
   onAddToCart: () => Promise<void>;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({
-  title,
-  category,
-  currentPrice,
-  originalPrice,
-  rating,
-  // imageUrl,
-  productLink,
+export default function ProductCard({
+  store_slug,
+  product,
   onAddToCart,
-}) => {
-  const [isAdding, setIsAdding] = useState(false);
+  isLoading = false,
+}: ProductCardProps) {
+  const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // ✅ Auto calculate discount
+  const variant = product.variants?.[0];
+  const hasVariants = product.variants && product.variants.length > 0;
+  const displayPrice =
+    variant?.discounted_price && variant.discounted_price > 0
+      ? variant.discounted_price
+      : variant?.base_price ?? product.discounted_price ?? product.base_price;
+
+  const displayImage =
+    variant?.primary_image?.image_url ||
+    variant?.product_images?.[0]?.image_url ||
+    product.primary_image?.image_url ||
+    product.images?.[0] ||
+    "/placeholder.png";
+
   const calculatedDiscount =
-    originalPrice > 0
-      ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+    product.base_price > displayPrice
+      ? Math.round(
+          ((product.base_price - displayPrice) / product.base_price) * 100
+        )
       : 0;
 
-  const renderStars = () => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Star
-          key={i}
-          className={`w-4 h-4 ${
-            i <= fullStars
-              ? "fill-yellow-400 text-yellow-400"
-              : "fill-muted text-muted-foreground"
-          }`}
-        />
-      );
-    }
-    return stars;
-  };
-
   const handleAddToCart = async () => {
-    if (isAdding) return;
-
-    setIsAdding(true);
-
+    if (adding) return;
+    setAdding(true);
     try {
       await onAddToCart();
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
-    } catch (error) {
-      console.error("Error adding to cart:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setIsAdding(false);
-    }
-  };
-
-  const handleBuyNow = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (isAdding) return;
-
-    setIsAdding(true);
-
-    try {
-      await onAddToCart();
-      window.location.href = "/checkout";
-    } catch (error) {
-      console.error("Error buying product:", error);
-    } finally {
-      setIsAdding(false);
+      setAdding(false);
     }
   };
 
   return (
     <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border">
       <Link
-        href={productLink}
+        href={`${store_slug}/product/${product.slug}`}
         className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
       >
-        {/* Product Image */}
         <div className="relative w-full h-80 overflow-hidden group">
-          {/* <Image
-            src={imageUrl}
-            alt={title}
+          <Image
+            src={displayImage}
+            alt={product.name}
             fill
             className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
-            sizes="(max-width: 640px) 100vw, 300px"
-          /> */}
+          />
           <div className="absolute inset-0 flex justify-between items-start p-4">
             <span className="text-card-foreground text-xs uppercase tracking-wider bg-background/80 px-2 py-1 rounded-md">
-              {category}
+              {product.category?.name || "Uncategorized"}
             </span>
           </div>
         </div>
 
-        {/* Info Section */}
         <div className="flex flex-col p-4 gap-3">
-          <h3 className="font-semibold text-lg line-clamp-1 text-foreground">{title}</h3>
+          <h3 className="font-semibold text-lg line-clamp-1 text-foreground">
+            {product.name}
+          </h3>
 
-          {/* Price + Discount + Rating */}
           <div className="flex flex-col gap-1">
-            {/* Price + Discount */}
             <div className="flex items-center justify-between">
-              {/* Left side: Price + Old Price */}
               <div className="flex items-center gap-2">
                 <span className="text-xl font-semibold text-foreground">
-                  ${currentPrice}
+                  {product.variants?.length
+                    ? `Starts from $${displayPrice.toFixed(2)}`
+                    : `$${displayPrice.toFixed(2)}`}
                 </span>
-                {originalPrice > currentPrice && (
+                {calculatedDiscount > 0 && (
                   <span className="text-sm text-muted-foreground line-through">
-                    ${originalPrice}
+                    ${product.base_price.toFixed(2)}
                   </span>
                 )}
               </div>
-
-              {/* Right side: Discount */}
               {calculatedDiscount > 0 && (
                 <span className="text-xs font-medium text-primary-foreground bg-primary px-2 py-0.5 rounded-full">
                   -{calculatedDiscount}%
                 </span>
               )}
             </div>
-
-            {/* Rating */}
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <div className="flex">{renderStars()}</div>
-              <span className="text-xs">{rating.toFixed(1)}</span>
-            </div>
           </div>
         </div>
       </Link>
 
-      {/* Buttons */}
-      <div className="flex flex-col gap-2 px-4 pb-4">
-        <Button
-          variant="secondary"
-          size="lg"
-          className="gap-2 cursor-pointer"
-          onClick={handleBuyNow}
-          disabled={isAdding}
-        >
-          <Zap className="w-4 h-4" />
-          <span className="relative top-[-1px]">Buy Now</span>
-        </Button>
-
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleAddToCart();
-          }}
-          disabled={isAdding}
-          variant="default"
-          size="lg"
-          className={`gap-2 relative overflow-hidden cursor-pointer ${
-            showSuccess
-              ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
-              : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
-          }`}
-        >
-          <div className="flex items-center justify-center w-full relative">
-            {/* Default text */}
-            <div
-              className={`flex items-center gap-2 ${
-                isAdding || showSuccess
-                  ? "opacity-0 -translate-y-4"
-                  : "opacity-100 translate-y-0"
-              }`}
+      <div className="flex gap-2 px-4 pb-4">
+        {/* Conditional rendering based on variants */}
+        {hasVariants ? (
+          // View Details Button for products with variants
+          <Link
+            href={`${store_slug}/product/${product.slug}`}
+            className="w-full"
+          >
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full gap-2 cursor-pointer bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
             >
-              <ShoppingCart className="w-5 h-5" />
-              <span className="relative top-[-1px]">Add to Cart</span>
+              <Eye className="w-5 h-5" />
+              <span>View Details</span>
+            </Button>
+          </Link>
+        ) : (
+          // FIXED: Proper responsive layout for Add to Cart and View Details buttons
+          <div className="flex gap-2 w-full">
+            {/* Add to Cart Button */}
+            <div className="flex-1 min-w-0">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAddToCart();
+                }}
+                disabled={adding}
+                variant="default"
+                size="sm"
+                className={`w-full gap-2 overflow-hidden cursor-pointer ${
+                  showSuccess
+                    ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
+                    : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
+                }`}
+              >
+                <div className="flex items-center justify-center w-full">
+                  <div
+                    className={`flex items-center gap-2 ${
+                      adding || showSuccess
+                        ? "opacity-0 -translate-y-4"
+                        : "opacity-100 translate-y-0"
+                    }`}
+                  >
+                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs sm:text-sm">Add to Cart</span>
+                  </div>
+
+                  <div
+                    className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                      adding && !showSuccess
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4"
+                    }`}
+                  >
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
+                    <span className="text-xs sm:text-sm">Adding...</span>
+                  </div>
+
+                  <div
+                    className={`absolute flex items-center gap-2 ${
+                      showSuccess
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4"
+                    }`}
+                  >
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-xs sm:text-sm">Added!</span>
+                  </div>
+                </div>
+              </Button>
             </div>
 
-            {/* Loading state */}
-            <div
-              className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
-                isAdding && !showSuccess
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-4"
-              }`}
-            >
-              <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
-              <span>Adding...</span>
-            </div>
-
-            {/* Success state */}
-            <div
-              className={`absolute flex items-center gap-2 ${
-                showSuccess
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-4"
-              }`}
-            >
-              <Check className="w-5 h-5" />
-              <span className="relative top-[-1px]">Added!</span>
+            {/* View Details Button */}
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`${store_slug}/product/${product.slug}`}
+                className="w-full"
+              >
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full gap-2 cursor-pointer bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
+                >
+                  <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-sm">View Details</span>
+                </Button>
+              </Link>
             </div>
           </div>
-        </Button>
+        )}
       </div>
     </Card>
   );
-};
-
-export default ProductCard;
+}

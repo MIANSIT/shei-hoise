@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import ProductTable from "./ProductTable";
 import {
   getProductsWithVariants,
@@ -13,27 +13,31 @@ const Products: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { user } = useCurrentUser();
 
-  const storeId = user?.store_id;
+  // ✅ wrap fetch in useCallback so it can be reused
+  const fetchProducts = useCallback(async () => {
+    if (!user?.store_id) return;
+    setLoading(true);
+    try {
+      const res = await getProductsWithVariants(user.store_id);
+      setProducts(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.store_id]);
 
   useEffect(() => {
-    if (!storeId) return;
-
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const res = await getProductsWithVariants(storeId);
-        setProducts(res);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProducts();
-  }, [storeId]);
+  }, [fetchProducts]);
 
-  return <ProductTable products={products} loading={loading} />;
+  return (
+    <ProductTable
+      products={products}
+      loading={loading}
+      onDeleteSuccess={fetchProducts} // 🔹 refresh after delete
+    />
+  );
 };
 
 export default Products;

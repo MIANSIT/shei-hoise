@@ -1,16 +1,76 @@
-import { Product } from "./product";
+import { AddToCartType } from "../schema/checkoutSchema";
 
-export interface CartItem extends Product {
-  quantity: number;
-}
+export type CartItem = AddToCartType;
 
-// If you have a separate CartState interface, make sure it uses the updated CartItem
 export interface CartState {
   cart: CartItem[];
-  addToCart: (product: Omit<CartItem, "quantity">) => void;
+  addToCart: (product: AddToCartType) => void;
+  removeItem: (productId: string, variantId?: string | null) => void; // Updated
+  updateQuantity: (productId: string, variantId: string | null | undefined, quantity: number) => void;
   clearCart: () => void;
+  clearStoreCart: (store_slug: string) => void;
   totalItems: () => number;
-  totalPrice: () => number;
-  removeItem: (id: string | number) => void;
-  updateQuantity: (id: string | number, quantity: number) => void;
+  totalItemsByStore: (store_slug: string) => number;
+  getCartByStore: (store_slug: string) => CartItem[];
+}
+
+export interface CartProductWithDetails {
+  productId: string;
+  variantId: string | null | undefined;
+  quantity: number;
+  storeSlug: string;
+  
+  // Freshly fetched data
+  product?: {
+    id: string;
+    name: string;
+    slug: string;
+    base_price: number | null;
+    discounted_price: number | null;
+    category?: {
+      id: string;
+      name: string;
+    } | null;
+    product_images: Array<{
+      id: string;
+      image_url: string;
+      is_primary: boolean;
+    }>;
+  };
+  
+  // Allow null for variant to explicitly indicate no variant
+  variant?: {
+    id: string;
+    variant_name: string | null;
+    base_price: number | null;
+    discounted_price: number | null;
+    discount_amount: number | null;
+    color: string | null;
+    product_images: Array<{
+      id: string;
+      image_url: string;
+      is_primary: boolean;
+    }>;
+    product_inventory: Array<{
+      quantity_available: number;
+      quantity_reserved: number;
+    }>;
+  } | null; // Added null here
+  
+  // Calculated fields
+  displayPrice: number;
+  originalPrice: number;
+  discountPercentage: number;
+  stock: number;
+  isOutOfStock: boolean;
+  imageUrl: string;
+  productName: string;
+}
+
+export interface CartCalculations {
+  items: CartProductWithDetails[];
+  totalItems: number;
+  totalPrice: number;
+  totalDiscount: number;
+  subtotal: number;
 }

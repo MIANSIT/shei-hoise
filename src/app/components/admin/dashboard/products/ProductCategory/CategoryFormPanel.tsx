@@ -21,7 +21,7 @@ export default function CategoryFormPanel({
   if (!showForm) return null;
 
   return (
-    <div className="w-1/3">
+    <div className="">
       <AddCategoryCardForm
         onSubmit={onSubmit}
         editingCategory={editingCategory}

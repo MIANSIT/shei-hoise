@@ -47,7 +47,11 @@ export const sideMenu: MenuItem[] = [
         icon: Edit,
       },
       { title: "All Products", href: "/dashboard/products", icon: List },
-      { title: "All Categories", href: "/dashboard/products/view-category", icon: FolderPlus },
+      {
+        title: "All Categories",
+        href: "/dashboard/products/view-category",
+        icon: FolderPlus,
+      },
     ],
   },
   {
@@ -64,9 +68,9 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/orders/view-order",
         icon: Clipboard,
       },
+     
     ],
   },
-
   {
     title: "Financial",
     icon: DollarSign,

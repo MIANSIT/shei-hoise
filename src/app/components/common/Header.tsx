@@ -8,14 +8,17 @@ interface HeaderProps {
   onSidebarToggle?: () => void; // new prop for mobile admin
 }
 
-export default function Header({ isAdmin = false, onSidebarToggle }: HeaderProps) {
+export default function Header({
+  isAdmin = false,
+  onSidebarToggle,
+}: HeaderProps) {
   return (
     <>
-      <div className="block md:hidden">
-        <MobileHeader isAdmin={isAdmin} onSidebarToggle={onSidebarToggle} />
+      <div className='block md:hidden'>
+        <MobileHeader />
       </div>
-      <div className="hidden md:block">
-        <DesktopHeader isAdmin={isAdmin} />
+      <div className='hidden md:block'>
+        <DesktopHeader />
       </div>
     </>
   );

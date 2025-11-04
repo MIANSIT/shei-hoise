@@ -5,27 +5,36 @@ import { Layout } from "antd";
 import SidebarBrand from "./SidebarBrand";
 import SidebarMenu from "./SidebarMenu";
 import SidebarProfile from "./SidebarProfile";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 
 const { Sider } = Layout;
 
 interface SidebarProps {
   collapsed?: boolean;
-  themeMode: "light" | "dark"; // new prop
+  themeMode: "light" | "dark";
 }
 
-export default function Sidebar({ collapsed = false, themeMode }: SidebarProps) {
+export default function Sidebar({
+  collapsed = false,
+  themeMode,
+}: SidebarProps) {
+  const { storeSlug } = useCurrentUser(); // <-- get store slug
+
   return (
     <Sider
       collapsible
       collapsed={collapsed}
       trigger={null}
-      width={240}
+      width={240} // desktop width
+      collapsedWidth={70} // collapsed width for mobile/tablet
+      breakpoint="md" // auto collapse on <768px
       className="flex flex-col shadow-md"
       style={{ background: "var(--sidebar)" }}
     >
       <div className="flex flex-col flex-1">
         <SidebarBrand collapsed={collapsed} />
-        <SidebarMenu themeMode={themeMode} /> {/* pass theme down */}
+        {/* Pass storeSlug as prop */}
+        <SidebarMenu themeMode={themeMode} storeSlug={storeSlug} />
       </div>
       <SidebarProfile collapsed={collapsed} />
     </Sider>

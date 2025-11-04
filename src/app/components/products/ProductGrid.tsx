@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "./shop/ProductCard";
+import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/types/product";
 
 interface ProductGridProps {
   products: Product[];
-  onAddToCart: (product: Product) => Promise<void>; // ✅ change void → Promise<void>
+  store_slug: string;
+  onAddToCart: (product: Product) => Promise<void>;
   loadingProductId: string | null;
 }
 
@@ -15,14 +16,14 @@ export default function ProductGrid({
   products,
   onAddToCart,
   loadingProductId,
+  store_slug,
 }: ProductGridProps) {
-  if (products.length === 0) {
+  if (!products.length)
     return (
-      <div className="text-center text-gray-500 py-12 text-lg font-medium">
+      <div className="text-center py-12 text-gray-500">
         🚫 No Products Available
       </div>
     );
-  }
 
   return (
     <motion.div
@@ -34,9 +35,9 @@ export default function ProductGrid({
           <motion.div
             key={product.id}
             layout
-            initial={{ opacity: 0, scale: 0.5, rotate: -10, x: -50, y: -50 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0, x: 0, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, rotate: 10, x: 50, y: 50 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
             transition={{
               type: "spring",
               stiffness: 200,
@@ -45,15 +46,10 @@ export default function ProductGrid({
             }}
           >
             <ProductCard
-              title={product.title}
-              category={product.category}
-              currentPrice={Number(product.currentPrice)} // 👈 also convert string → number
-              originalPrice={Number(product.originalPrice)} // 👈 fix type mismatch
-              rating={product.rating}
-              // imageUrl={product.imageUrl}
-              productLink={`/product/${product.id}`}
+              product={product}
+              store_slug={store_slug}
               onAddToCart={() => onAddToCart(product)}
-              isLoading={loadingProductId === String(product.id)}
+              isLoading={loadingProductId === product.id}
             />
           </motion.div>
         ))}
