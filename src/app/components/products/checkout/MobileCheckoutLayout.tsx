@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCartItems } from "@/lib/hook/useCartItems";
 import CartItemsList from "@/app/components/cart/CartItemList";
+import ShippingMethod from "./ShippingMethod";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
@@ -10,7 +11,6 @@ import CheckoutForm from "./UserCheckoutForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { CheckoutFormValues } from "@/lib/utils/formSchema";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
-import PaymentModule from "./PaymentModule";
 import { useParams } from "next/navigation";
 import { MobileCheckoutSkeleton } from "../../skeletons/MobileCheckoutSkeleton";
 
@@ -32,6 +32,8 @@ const MobileCheckout = ({
   const [isMounted, setIsMounted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedShipping, setSelectedShipping] = useState<string>("");
+  const [shippingFee, setShippingFee] = useState<number>(0);
   const notify = useSheiNotification();
 
   // Use the custom hook to get cart items with fresh data
@@ -40,6 +42,11 @@ const MobileCheckout = ({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const handleShippingChange = (shippingMethod: string, fee: number) => {
+    setSelectedShipping(shippingMethod);
+    setShippingFee(fee);
+  };
 
   const nextStep = () => {
     if (activeStep < steps.length - 1) {
@@ -56,9 +63,10 @@ const MobileCheckout = ({
   const handleCheckoutSubmit = async (values: CheckoutFormValues) => {
     setIsProcessing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      notify.success("Congratulations! Order has placed");
-      nextStep();
+      // The order processing now happens in CheckoutForm
+      // Just show success message
+      notify.success("Congratulations! Order has been placed");
+      // The CheckoutForm will handle the redirect
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
     } finally {
@@ -66,10 +74,8 @@ const MobileCheckout = ({
     }
   };
 
-  const handlePaymentSuccess = () => {
-    onCheckout();
-    clearFormData();
-  };
+  // Calculate total with shipping
+  const totalWithShipping = calculations.totalPrice + shippingFee;
 
   const steps = [
     {
@@ -91,21 +97,22 @@ const MobileCheckout = ({
                   <span>Subtotal:</span>
                   <span>৳{calculations.subtotal.toFixed(2)}</span>
                 </div>
-                {calculations.totalDiscount > 0 && (
-                  <div className="flex justify-between text-green-600 border-border border rounded-lg p-3 bg-muted">
-                    <span>Discount:</span>
-                    <span>-৳{calculations.totalDiscount.toFixed(2)}</span>
-                  </div>
-                )}
+                <ShippingMethod
+                  storeSlug={store_slug}
+                  subtotal={calculations.subtotal}
+                  selectedShipping={selectedShipping}
+                  onShippingChange={handleShippingChange}
+                />
+
                 <div className="flex justify-between font-bold text-foreground border-t border-border pt-3">
                   <span>Total:</span>
                   <motion.span
-                    key={`total-${calculations.totalPrice}`}
+                    key={`total-${totalWithShipping}`}
                     initial={{ scale: 1.1 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    ৳{calculations.totalPrice.toFixed(2)}
+                    ৳{totalWithShipping.toFixed(2)}
                   </motion.span>
                 </div>
 
@@ -125,28 +132,33 @@ const MobileCheckout = ({
       ),
     },
     {
-      title: "Customer Information",
+      title: "Shipping & Details",
       content: (
-        <div className="bg-card rounded-lg shadow-md p-4 mt-4 border-border">
-          <h2 className="text-lg font-semibold mb-3 text-card-foreground">
-            Customer Information
-          </h2>
-          <CheckoutForm
-            onSubmit={handleCheckoutSubmit}
-            isLoading={isProcessing}
-          />
-        </div>
-      ),
-    },
-    {
-      title: "Payment",
-      content: (
-        <div className="mt-4">
-          <PaymentModule
-            amount={calculations.totalPrice}
-            onSuccess={handlePaymentSuccess}
-            onCancel={prevStep}
-          />
+        <div className="space-y-4 mt-4">
+          {/* Customer Information */}
+          <div className="bg-card rounded-lg shadow-md p-4 border-border">
+            <h2 className="text-lg font-semibold mb-3 text-card-foreground">
+              Customer Information
+            </h2>
+            <CheckoutForm
+              onSubmit={handleCheckoutSubmit}
+              isLoading={isProcessing}
+              shippingMethod={selectedShipping}
+              shippingFee={shippingFee}
+              totalAmount={totalWithShipping}
+            />
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className="flex gap-3 mt-4">
+            <Button
+              onClick={prevStep}
+              variant="outline"
+              className="flex-1 cursor-pointer"
+            >
+              Back to Cart
+            </Button>
+          </div>
         </div>
       ),
     },

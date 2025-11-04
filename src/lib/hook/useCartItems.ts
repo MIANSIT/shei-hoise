@@ -249,6 +249,7 @@ function calculateDiscountPercentage(originalPrice: number, displayPrice: number
 }
 
 // Helper function to calculate cart totals
+// Helper function to calculate cart totals
 function calculateCartTotals(items: CartProductWithDetails[]): CartCalculations {
   let totalItems = 0;
   let totalPrice = 0;
@@ -256,14 +257,16 @@ function calculateCartTotals(items: CartProductWithDetails[]): CartCalculations 
   let subtotal = 0;
 
   items.forEach(item => {
-    const itemSubtotal = item.originalPrice * item.quantity;
-    const itemTotal = item.displayPrice * item.quantity;
-    const itemDiscount = itemSubtotal - itemTotal;
+    // Use displayPrice if available, otherwise fall back to originalPrice
+    const effectivePrice = item.displayPrice || item.originalPrice || 0;
+    const itemSubtotal = effectivePrice * item.quantity;
+    const itemTotal = effectivePrice * item.quantity;
+    const itemDiscount = ((item.originalPrice || 0) - effectivePrice) * item.quantity;
 
     totalItems += item.quantity;
     subtotal += itemSubtotal;
     totalPrice += itemTotal;
-    totalDiscount += itemDiscount;
+    totalDiscount += Math.max(0, itemDiscount); // Ensure discount is never negative
   });
 
   return {

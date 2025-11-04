@@ -8,7 +8,7 @@ export type StatusType = OrderStatus | PaymentStatus | DeliveryOption | PaymentM
 
 interface Props {
   status: StatusType;
-  size?: "small" | "default" | "large"; // Optional size prop for custom styling
+  size?: "small" | "default" | "large";
 }
 
 // Map status to AntD color
@@ -32,10 +32,11 @@ const statusColors: Record<StatusType, string> = {
 
   // Payment methods
   cod: "magenta",
+  cash: "magenta",
   online: "purple",
 };
 
-// Friendly labels for statuses
+// Friendly labels for statuses - SHORTENED VERSIONS
 const statusLabels: Record<StatusType, string> = {
   // Order statuses
   pending: "Pending",
@@ -54,22 +55,23 @@ const statusLabels: Record<StatusType, string> = {
   courier: "Courier",
   other: "Other",
 
-  // Payment methods
-  cod: "Cash on Delivery",
-  online: "Online Payment",
+  // Payment methods - SHORTENED
+  cod: "COD",
+  cash: "COD",
+  online: "Online",
 };
 
 // Tailwind size classes
 const sizeClasses = {
-  small: "text-xs px-1.5 py-0.5",
-  default: "text-sm px-2 py-1",
-  large: "text-base px-3 py-1.5",
+  small: "text-xs px-1.5 py-0.5  text-center",
+  default: "text-sm px-2 py-1 min-w-[60px] text-center",
+  large: "text-base px-3 py-1.5 min-w-[70px] text-center",
 };
 
 const StatusTag: React.FC<Props> = ({ status, size = "default" }) => (
   <Tag
     color={statusColors[status]}
-    className={`capitalize ${sizeClasses[size]}`}
+    className={`capitalize ${sizeClasses[size]} break-keep whitespace-nowrap`}
   >
     {statusLabels[status]}
   </Tag>
