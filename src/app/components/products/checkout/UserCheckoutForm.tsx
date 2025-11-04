@@ -69,11 +69,21 @@ const CheckoutForm = ({
     error: orderError,
   } = useOrderProcess(store_slug);
 
-  // ✅ Initialize form FIRST
-  const form = useForm<CustomerCheckoutFormValues>({
-    resolver: zodResolver(customerCheckoutSchema),
-    defaultValues: formData,
-  });
+ const defaultValues: CustomerCheckoutFormValues = {
+  name: formData.name || "",
+  email: formData.email || "",
+  phone: formData.phone || "",
+  password: formData.password || "",
+  country: formData.country || "Bangladesh",
+  city: formData.city || "Dhaka",
+  postCode: formData.postCode || "",
+  shippingAddress: formData.shippingAddress || "",
+};
+
+const form = useForm<CustomerCheckoutFormValues>({
+  resolver: zodResolver(customerCheckoutSchema),
+  defaultValues,
+});
 
   // ✅ Memoize computed values to prevent unnecessary re-renders
   const isLoadingAuth = authLoading || userLoading;
@@ -110,7 +120,7 @@ const CheckoutForm = ({
     }
   }, [userError]);
 
-  // ✅ UPDATED: Optimized auto-population with profile data
+  // ✅ FIXED: Optimized auto-population with proper typing
   useEffect(() => {
     // Only run if we're done loading and have changes to apply
     if (isLoadingAuth) return;
@@ -123,16 +133,15 @@ const CheckoutForm = ({
       });
 
       // Combine user data with profile data for address fields
-      const userFormData: Partial<CustomerCheckoutFormValues> = {
+      const userFormData: CustomerCheckoutFormValues = {
         name: `${currentUser.first_name} ${currentUser.last_name || ""}`.trim(),
         email: currentUser.email || "",
         phone: currentUser.phone || "",
         password: "********", // Placeholder for validation
-        country: profile?.country || formData.country || "",
-        city: profile?.city || formData.city || "",
-        postCode: profile?.postal_code || formData.postCode || "",
-        shippingAddress:
-          profile?.address_line_1 || formData.shippingAddress || "",
+        country: profile?.country || "Bangladesh",
+        city: profile?.city || "Dhaka",
+        postCode: profile?.postal_code || "",
+        shippingAddress: profile?.address_line_1 || "",
       };
 
       // Only reset if there are actual changes to prevent loops
@@ -147,10 +156,10 @@ const CheckoutForm = ({
       if (hasChanges) {
         console.log("Resetting form with user and profile data");
         form.reset(userFormData);
-        setFormData(userFormData as CustomerCheckoutFormValues);
+        setFormData(userFormData);
       }
     }
-    // Scenario 2: Guest user - ensure form has stored data
+    // Scenario 2: Guest user - ensure form has stored data with defaults
     else if (!isUserLoggedIn && !isLoadingAuth) {
       const currentFormValues = form.getValues();
       const hasStoredData = Object.keys(formData).length > 0;
@@ -161,6 +170,20 @@ const CheckoutForm = ({
       ) {
         console.log("Resetting form with stored guest data");
         form.reset(formData);
+      } else if (!hasStoredData) {
+        // Set default values for new users
+        const defaultFormData: CustomerCheckoutFormValues = {
+          name: "",
+          email: "",
+          phone: "",
+          password: "",
+          country: "Bangladesh",
+          city: "Dhaka",
+          postCode: "",
+          shippingAddress: "",
+        };
+        form.reset(defaultFormData);
+        setFormData(defaultFormData);
       }
     }
   }, [
@@ -173,7 +196,7 @@ const CheckoutForm = ({
     formData,
   ]);
 
-  // ✅ FIXED: Complete order creation with shipping fee
+  // ✅ FIXED: Properly typed submit handler
   const handleSubmit = async (values: CustomerCheckoutFormValues) => {
     setIsCreatingAccount(true);
     setError(null);
@@ -336,6 +359,85 @@ const CheckoutForm = ({
     router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
+  // ✅ Password strength indicator
+  const PasswordStrengthIndicator = ({ password }: { password: string }) => {
+    const checks = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    };
+
+    const strength = Object.values(checks).filter(Boolean).length;
+    const strengthText = ["Very Weak", "Weak", "Fair", "Good", "Strong"][
+      strength - 1
+    ] || "Very Weak";
+
+    return (
+      <div className="mt-2 space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span>Password strength: {strengthText}</span>
+          <span>{strength}/5</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full transition-all duration-300 ${
+              strength <= 2
+                ? "bg-red-500"
+                : strength <= 3
+                ? "bg-yellow-500"
+                : "bg-green-500"
+            }`}
+            style={{ width: `${(strength / 5) * 100}%` }}
+          ></div>
+        </div>
+        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <CheckCircle
+              className={`h-3 w-3 ${
+                checks.length ? "text-green-500" : "text-gray-300"
+              }`}
+            />
+            <span>8+ characters</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <CheckCircle
+              className={`h-3 w-3 ${
+                checks.uppercase ? "text-green-500" : "text-gray-300"
+              }`}
+            />
+            <span>Uppercase letter</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <CheckCircle
+              className={`h-3 w-3 ${
+                checks.lowercase ? "text-green-500" : "text-gray-300"
+              }`}
+            />
+            <span>Lowercase letter</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <CheckCircle
+              className={`h-3 w-3 ${
+                checks.number ? "text-green-500" : "text-gray-300"
+              }`}
+            />
+            <span>Number</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <CheckCircle
+              className={`h-3 w-3 ${
+                checks.special ? "text-green-500" : "text-gray-300"
+              }`}
+            />
+            <span>Special character</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ✅ REPLACED: Using custom skeleton for auth loading
   if (isLoadingAuth) {
     return <CheckoutFormSkeleton />;
@@ -386,7 +488,7 @@ const CheckoutForm = ({
           <Label htmlFor="phone">Phone Number</Label>
           <Input
             {...form.register("phone")}
-            placeholder="+880-1833228622"
+            placeholder="+8801XXXXXXXXX"
             type="tel"
             disabled={disabledStates.phone}
             className={
@@ -444,6 +546,10 @@ const CheckoutForm = ({
                 {form.formState.errors.password.message}
               </p>
             )}
+            {/* Password Strength Indicator */}
+            {form.watch("password") && (
+              <PasswordStrengthIndicator password={form.watch("password")} />
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             We&apos;ll automatically create your account or log you in if you
@@ -472,7 +578,7 @@ const CheckoutForm = ({
           <Label htmlFor="city">City</Label>
           <Input
             {...form.register("city")}
-            placeholder="New York"
+            placeholder="Dhaka"
             disabled={disabledStates.addressFields}
           />
           {form.formState.errors.city && (
@@ -486,7 +592,7 @@ const CheckoutForm = ({
           <Label htmlFor="postCode">Postal Code</Label>
           <Input
             {...form.register("postCode")}
-            placeholder="10001"
+            placeholder="1000"
             disabled={disabledStates.addressFields}
           />
           {form.formState.errors.postCode && (
