@@ -28,7 +28,7 @@ import {
   DownOutlined,
 } from "@ant-design/icons";
 import CustomerInfo from "./CustomerInfo";
-import OrderDetails from "./OrderDetails";
+import AdminOrderDetails from "./AdminOrderDetails";
 import OrderSummary from "./OrderSummary";
 import SaveOrderButton from "./SaveOrderButton";
 import {
@@ -694,7 +694,7 @@ export default function CreateOrder() {
 
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
-                <OrderDetails
+                <AdminOrderDetails
                   products={products}
                   orderProducts={orderProducts}
                   setOrderProducts={setOrderProducts}

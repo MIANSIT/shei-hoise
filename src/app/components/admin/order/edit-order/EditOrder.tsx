@@ -24,7 +24,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import CustomerInfo from "../create-order/CustomerInfo";
-import OrderDetails from "../create-order/OrderDetails";
+import AdminOrderDetails from "../create-order/AdminOrderDetails";
 import OrderSummary from "../create-order/OrderSummary";
 import UpdateOrderButton from "./UpdateOrderButton";
 import {
@@ -627,7 +627,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
-                <OrderDetails
+                <AdminOrderDetails
                   products={products}
                   orderProducts={orderProducts}
                   setOrderProducts={setOrderProducts}
