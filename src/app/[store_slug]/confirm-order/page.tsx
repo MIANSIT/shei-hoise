@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/confirm-order/page.tsx - UPDATED WITH SHIPPING
+// app/confirm-order/page.tsx - UPDATED WITH JSON PARSING
 "use client";
 import { useSearchParams, useParams } from "next/navigation";
-import { parseConfirmOrder } from "@/lib/utils/parseConfirmOrder";
 import { useState, useEffect, useRef } from "react";
 import { useCartItems } from "@/lib/hook/useCartItems";
 import { motion } from "framer-motion";
 import CheckoutForm from "../../components/products/checkout/UserCheckoutForm";
-import ShippingMethod from "../../components/products/checkout/ShippingMethod"; // Add this import
+import ShippingMethod from "../../components/products/checkout/ShippingMethod";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,18 +16,24 @@ import useCartStore from "@/lib/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ShoppingBag, User } from "lucide-react";
 
+// Define the product structure from URL
+interface UrlOrderProduct {
+  product_id: string;
+  variant_id?: string;
+  quantity: number;
+}
+
 export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
   const params = useParams();
-  const products = searchParams.getAll("product");
+  const encodedData = searchParams.get("data"); // Get the encoded data parameter
   const store_slug = params.store_slug as string;
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeSection, setActiveSection] = useState<"cart" | "customer">(
-    "cart"
-  );
+  const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
+  const [parsingError, setParsingError] = useState<string | null>(null);
 
   const notify = useSheiNotification();
   const { clearFormData } = useCheckoutStore();
@@ -45,16 +50,27 @@ export default function ConfirmOrderPage() {
   // Refs to track state
   const initializationAttempted = useRef(false);
 
-  // Parse URL products and populate cart store - RUN ONLY ONCE
+  // Parse URL encoded data and populate cart store - RUN ONLY ONCE
   useEffect(() => {
-    if (products.length === 0 || initializationAttempted.current) {
+    if (!encodedData || initializationAttempted.current) {
+      if (!encodedData) {
+        setParsingError("No order data found in the link");
+      }
       return;
     }
 
     const initializeCart = async () => {
       try {
         initializationAttempted.current = true;
-        const parsedProducts = parseConfirmOrder(products);
+        
+        // Decode the base64 and parse JSON
+        const decodedData = decodeURIComponent(atob(encodedData));
+        const parsedProducts: UrlOrderProduct[] = JSON.parse(decodedData);
+
+        if (!parsedProducts || !Array.isArray(parsedProducts) || parsedProducts.length === 0) {
+          setParsingError("Invalid order data format");
+          return;
+        }
 
         // Clear existing cart for this store
         clearStoreCart(store_slug);
@@ -62,19 +78,23 @@ export default function ConfirmOrderPage() {
         // Add each product from URL to cart
         for (const product of parsedProducts) {
           await addToCart({
-            productId: product.productId,
-            variantId: product.variantId,
+            productId: product.product_id,
+            variantId: product.variant_id,
             quantity: product.quantity,
             storeSlug: store_slug,
           });
         }
+
+        notify.success("Order loaded successfully!");
       } catch (error) {
         console.error("Cart initialization failed:", error);
+        setParsingError("Failed to load order data. The link may be invalid or expired.");
+        notify.warning("Failed to load order data");
       }
     };
 
     initializeCart();
-  }, [products, store_slug, clearStoreCart, addToCart, getCartByStore]);
+  }, [encodedData, store_slug, clearStoreCart, addToCart, notify]);
 
   const handleShippingChange = (shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
@@ -97,6 +117,24 @@ export default function ConfirmOrderPage() {
 
   // Calculate total with shipping
   const totalWithShipping = calculations.totalPrice + shippingFee;
+
+  // Show error state
+  if (parsingError) {
+    return (
+      <div className="container mx-auto p-4 lg:p-8">
+        <div className="text-center py-12">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-red-800 mb-2">Invalid Order Link</h2>
+            <p className="text-red-600 mb-4">{parsingError}</p>
+            <p className="text-sm text-muted-foreground">
+              Please ask the seller to generate a new order link.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state
   if (loading && cartItems.length === 0) {
@@ -266,8 +304,6 @@ export default function ConfirmOrderPage() {
           } lg:block`}
         >
           <div className="space-y-6">
-            {/* Shipping Method Component - Only show when cart section is active on mobile */}
-
             <Card className="bg-card">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
