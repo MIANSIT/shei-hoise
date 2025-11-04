@@ -97,9 +97,6 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                 Total
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Shipping
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Order Status
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -152,7 +149,7 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                       Product Total: {formatCurrency(order.subtotal || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Shipping Fee: {order.shipping_fee} | {order.delivery_option}
+                      Shipping Fee: {formatCurrency(order.shipping_fee) || 0} | <span className="uppercase">{order.delivery_option}</span>
                     </div>
                   </td>
 

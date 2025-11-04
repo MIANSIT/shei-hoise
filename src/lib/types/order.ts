@@ -55,8 +55,8 @@ export interface OrderItem {
   total_price: number;
   product_name: string;
   variant_details: any;
-  products?: OrderItemProduct | null; // Made optional
-  product_variants?: OrderItemVariant | null; // Made optional
+  products?: OrderItemProduct | null;
+  product_variants?: OrderItemVariant | null;
   discounted_price?: number;
 }
 
@@ -69,7 +69,7 @@ export type OrderStatus =
   | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type DeliveryOption = "pathao" | "courier" | "other";
-export type PaymentMethod = "cod" | "online";
+export type PaymentMethod = "cod" | "cash" | "online";
 
 // ===== SUPABASE DATABASE TYPES =====
 export interface StoreOrder {
@@ -115,14 +115,14 @@ export interface CustomerInfo {
   phone: string;
   address: string;
   deliveryMethod: string;
-  deliveryOption: string; // Add this new field
+  deliveryOption: string;
   city: string;
   email: string;
   notes?: string;
   customer_id?: string;
   password: string;
   country?: string;
-  postal_code: string; // Add this line
+  postal_code: string;
 }
 
 export interface CreateOrderData {

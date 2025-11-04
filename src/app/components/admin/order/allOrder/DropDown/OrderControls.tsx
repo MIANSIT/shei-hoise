@@ -67,6 +67,13 @@ const OrderControls: React.FC<Props> = ({
   const isCancelled = selectedStatus === "cancelled";
   const isDelivered = selectedStatus === "delivered";
 
+  const hasChanges =
+    selectedStatus !== status ||
+    selectedPaymentStatus !== paymentStatus ||
+    selectedDeliveryOption !== deliveryOption ||
+    selectedPaymentMethod !== paymentMethod ||
+    note !== (cancelNote || "");
+
   return (
     <div
       className="
@@ -91,6 +98,9 @@ const OrderControls: React.FC<Props> = ({
             hideDelivered={selectedPaymentStatus !== "paid"}
           />
         )}
+        {selectedStatus !== status && (
+          <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+        )}
       </div>
 
       {/* Cancel Note */}
@@ -107,6 +117,11 @@ const OrderControls: React.FC<Props> = ({
             className="w-full sm:w-72 md:w-80"
             size="small"
           />
+          {note !== (cancelNote || "") && (
+            <span className="text-xs text-orange-500 font-medium mt-1">
+              Unsaved
+            </span>
+          )}
         </div>
       )}
 
@@ -124,6 +139,9 @@ const OrderControls: React.FC<Props> = ({
               onSave={onSelectPaymentStatus}
             />
           )}
+          {selectedPaymentStatus !== paymentStatus && (
+            <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+          )}
         </div>
       )}
 
@@ -137,6 +155,9 @@ const OrderControls: React.FC<Props> = ({
             option={selectedDeliveryOption}
             onSave={onSelectDeliveryOption}
           />
+          {selectedDeliveryOption !== deliveryOption && (
+            <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+          )}
         </div>
       )}
 
@@ -150,26 +171,21 @@ const OrderControls: React.FC<Props> = ({
             method={selectedPaymentMethod}
             onSave={onSelectPaymentMethod}
           />
+          {selectedPaymentMethod !== paymentMethod && (
+            <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+          )}
         </div>
       )}
 
       {/* Save Button */}
-      {!isLocked && (
-        <div className="w-full sm:w-auto">
+      {hasChanges && !isLocked && (
+        <div className="w-full sm:w-auto flex justify-end pt-2 border-t sm:border-t-0 sm:pt-0">
           <Button
             type="primary"
             onClick={onSaveAll}
-            disabled={
-              (selectedStatus === status &&
-                selectedPaymentStatus === paymentStatus &&
-                selectedDeliveryOption === deliveryOption &&
-                selectedPaymentMethod === paymentMethod &&
-                note === cancelNote) ||
-              saving
-            }
             loading={saving}
             size="middle"
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
           >
             {saving ? "Saving..." : "Save Changes"}
           </Button>

@@ -57,8 +57,6 @@ export default function CustomerInfo({
     }
   }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
 
-  // Get selected shipping fee based on delivery option
-
   // Filter valid shipping fees with proper locations
   const validShippingFees = React.useMemo(() => {
     if (!Array.isArray(shippingFees)) return [];
@@ -74,9 +72,22 @@ export default function CustomerInfo({
     );
   }, [shippingFees]);
 
+  // Get the selected shipping fee for display
+  const selectedShippingFee = React.useMemo(() => {
+    if (!customerInfo.deliveryOption || validShippingFees.length === 0)
+      return null;
+
+    return validShippingFees.find(
+      (fee) =>
+        fee.name.toLowerCase().replace(/\s+/g, "-") ===
+        customerInfo.deliveryOption
+    );
+  }, [customerInfo.deliveryOption, validShippingFees]);
+
   console.log("Shipping Fees:", shippingFees); // Debug log
   console.log("Valid Shipping Fees:", validShippingFees); // Debug log
   console.log("Selected Delivery Option:", customerInfo.deliveryOption); // Debug log
+  console.log("Selected Shipping Fee:", selectedShippingFee); // Debug log
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -250,8 +261,14 @@ export default function CustomerInfo({
                         key={fee.name}
                         value={fee.name.toLowerCase().replace(/\s+/g, "-")}
                       >
-                        <Space>
-                          <span>{fee.name}</span>
+                        <Space
+                          direction="vertical"
+                          size={0}
+                          style={{ width: "100%" }}
+                        >
+                          <Space>
+                            <span>{fee.name}</span>
+                          </Space>
                         </Space>
                       </Option>
                     ))}
@@ -291,6 +308,8 @@ export default function CustomerInfo({
                 </Form.Item>
               </Col>
             </Row>
+
+            {/* Show selected shipping fee details */}
 
             <Form.Item label="Order Notes">
               <TextArea

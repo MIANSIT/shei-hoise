@@ -83,7 +83,7 @@ export default function CreateOrder() {
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [status, setStatus] = useState<
-    "pending" | "confirmed" | "completed" | "cancelled"
+    "pending" | "confirmed" | "completed" | "cancelled" | "shipped"
   >("pending");
   const [paymentStatus, setPaymentStatus] = useState<
     "pending" | "paid" | "failed" | "refunded"
@@ -254,6 +254,7 @@ export default function CreateOrder() {
   // Update delivery cost based on city from shipping fees
   // Update delivery cost based on city from shipping fees
   // Update delivery cost based on delivery option from shipping fees
+  // Update delivery cost based on delivery option from shipping fees
   useEffect(() => {
     if (
       customerInfo.deliveryOption &&
@@ -263,16 +264,13 @@ export default function CreateOrder() {
       const shippingFee = shippingFees.find((fee) => {
         if (!fee || typeof fee !== "object" || !fee.name) return false;
 
-        const feeLocation = String(fee.name)
-          .toLowerCase()
-          .replace(/\s+/g, "-");
+        const feeName = String(fee.name).toLowerCase().replace(/\s+/g, "-");
         const deliveryOption = String(
           customerInfo.deliveryOption
         ).toLowerCase();
 
         return (
-          feeLocation.includes(deliveryOption) ||
-          deliveryOption.includes(feeLocation)
+          feeName.includes(deliveryOption) || deliveryOption.includes(feeName)
         );
       });
 

@@ -1,7 +1,7 @@
 // components/products/checkout/ShippingMethod.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,13 @@ export default function ShippingMethod({
     number | null
   >(null);
 
+  // Filter out "custom" shipping options
+  const filteredShippingOptions = useMemo(() => {
+    return shippingOptions.filter(option => 
+      option.name.toLowerCase() !== "custom"
+    );
+  }, [shippingOptions]);
+
   // Fetch shipping options only once when component mounts
   useEffect(() => {
     const fetchShippingOptions = async () => {
@@ -44,8 +51,13 @@ export default function ShippingMethod({
             setFreeShippingThreshold(storeSettings.free_shipping_threshold);
 
             // Set default shipping method only if nothing is selected
-            if (storeSettings.shipping_fees?.length > 0 && !selectedShipping) {
-              const defaultShipping = storeSettings.shipping_fees[0];
+            // Use filtered options for default selection
+            const filteredOptions = storeSettings.shipping_fees?.filter(option => 
+              option.name.toLowerCase() !== "custom"
+            ) || [];
+            
+            if (filteredOptions.length > 0 && !selectedShipping) {
+              const defaultShipping = filteredOptions[0];
               onShippingChange(defaultShipping.name, defaultShipping.price);
             }
           }
@@ -59,7 +71,7 @@ export default function ShippingMethod({
   }, [storeSlug]); // Only depend on storeSlug
 
   const handleShippingChange = useCallback((value: string) => {
-    const selectedOption = shippingOptions.find(
+    const selectedOption = filteredShippingOptions.find(
       (option) => option.name === value
     );
     if (selectedOption) {
@@ -69,13 +81,13 @@ export default function ShippingMethod({
           : selectedOption.price;
       onShippingChange(value, shippingFee);
     }
-  }, [shippingOptions, freeShippingThreshold, subtotal, onShippingChange]);
+  }, [filteredShippingOptions, freeShippingThreshold, subtotal, onShippingChange]);
 
   const isFreeShipping =
     freeShippingThreshold && subtotal >= freeShippingThreshold;
 
   // If no shipping options available, don't show anything
-  if (shippingOptions.length === 0) {
+  if (filteredShippingOptions.length === 0) {
     return null;
   }
 
@@ -93,7 +105,7 @@ export default function ShippingMethod({
           onValueChange={handleShippingChange}
           className="space-y-3"
         >
-          {shippingOptions.map((option, index) => (
+          {filteredShippingOptions.map((option, index) => (
             <div key={index} className="flex items-center space-x-3">
               <RadioGroupItem
                 value={option.name}
