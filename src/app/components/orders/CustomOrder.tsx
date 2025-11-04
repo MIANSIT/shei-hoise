@@ -10,7 +10,10 @@ import { useParams } from "next/navigation";
 import { CustomOrderSkeleton } from "../../components/skeletons/CustomOrderSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SheiAlert, SheiAlertDescription } from "../../components/ui/sheiAlert/SheiAlert";
+import {
+  SheiAlert,
+  SheiAlertDescription,
+} from "../../components/ui/sheiAlert/SheiAlert";
 import { Link, Copy, Check } from "lucide-react";
 
 export default function CustomOrder() {
@@ -24,16 +27,28 @@ export default function CustomOrder() {
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; title: string; description: string; variant?: "destructive" }>({ 
-    show: false, 
-    title: "", 
-    description: "" 
+  const [toast, setToast] = useState<{
+    show: boolean;
+    title: string;
+    description: string;
+    variant?: "destructive";
+  }>({
+    show: false,
+    title: "",
+    description: "",
   });
 
   // Show toast
-  const showToast = (title: string, description: string, variant?: "destructive") => {
+  const showToast = (
+    title: string,
+    description: string,
+    variant?: "destructive"
+  ) => {
     setToast({ show: true, title, description, variant });
-    setTimeout(() => setToast({ show: false, title: "", description: "" }), 3000);
+    setTimeout(
+      () => setToast({ show: false, title: "", description: "" }),
+      3000
+    );
   };
 
   // Reset link when order changes
@@ -52,7 +67,11 @@ export default function CustomOrder() {
     try {
       const storeId = await getStoreIdBySlug(storeSlug);
       if (!storeId) {
-        showToast("Invalid Store", "Could not find a store with this slug.", "destructive");
+        showToast(
+          "Invalid Store",
+          "Could not find a store with this slug.",
+          "destructive"
+        );
         return;
       }
 
@@ -60,7 +79,11 @@ export default function CustomOrder() {
       setProducts(res);
     } catch (err) {
       console.error("Error fetching products:", err);
-      showToast("Error Loading Products", "Failed to load products. Please try again.", "destructive");
+      showToast(
+        "Error Loading Products",
+        "Failed to load products. Please try again.",
+        "destructive"
+      );
     } finally {
       setLoading(false);
     }
@@ -72,26 +95,21 @@ export default function CustomOrder() {
 
   const isFormValid = orderProducts.length > 0;
 
+  // Even better approach - use JSON encoding
   const handleGenerateLink = () => {
     if (!isFormValid || !storeSlug) {
-      showToast("Cannot generate link", "Please select products first.", "destructive");
+      showToast(
+        "Cannot generate link",
+        "Please select products first.",
+        "destructive"
+      );
       return;
     }
 
-    // Build query string: ?product=product_id@variant_id@quantity&product=...
-    const params = orderProducts
-      .map((item) => {
-        if (item.variant_id) {
-          // product with variant → product_id@variant_id@quantity
-          return `product=${item.product_id}%${item.variant_id}%${item.quantity}`;
-        } else {
-          // product without variant → product_id@quantity
-          return `product=${item.product_id}%${item.quantity}`;
-        }
-      })
-      .join("&");
-
-    const url = `/${storeSlug}/confirm-order?${params}`;
+    // Convert order products to JSON and encode
+    const orderData = JSON.stringify(orderProducts);
+    const encodedData = btoa(encodeURIComponent(orderData)); // Base64 encode
+    const url = `/${storeSlug}/confirm-order?data=${encodedData}`;
     setGeneratedLink(url);
 
     showToast("Order Link Generated", "Link generated successfully!");
@@ -101,7 +119,10 @@ export default function CustomOrder() {
     if (!generatedLink) return;
     navigator.clipboard.writeText(window.location.origin + generatedLink);
     setCopied(true);
-    showToast("Link Copied", "The order link has been copied to your clipboard.");
+    showToast(
+      "Link Copied",
+      "The order link has been copied to your clipboard."
+    );
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -173,10 +194,7 @@ export default function CustomOrder() {
                 value={window.location.origin + generatedLink}
                 className="border border-border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
               />
-              <Button
-                onClick={handleCopyLink}
-                className="w-full sm:w-auto"
-              >
+              <Button onClick={handleCopyLink} className="w-full sm:w-auto">
                 {copied ? (
                   <Check className="w-4 h-4 mr-2" />
                 ) : (
