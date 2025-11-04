@@ -5,16 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
 import { NavLink } from "../header/NavMenu";
-import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartBottomBar from "../cart/CartBottomBar";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import StoreLogoTitle from "../header/StoreLogoTitle";
-import {
-  getStoreBySlugWithLogo,
-  StoreWithLogo,
-} from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import UserDropdownMobile from "./UserDropdownMobile";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { getStoreBySlugWithLogo, StoreWithLogo } from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import AuthButtons from "../header/AuthButtons";
 
 interface MobileHeaderProps {
   storeSlug: string;
@@ -28,12 +26,11 @@ export default function MobileHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [store, setStore] = useState<StoreWithLogo | null>(null); // store state
+  const [store, setStore] = useState<StoreWithLogo | null>(null);
 
-  const { user, loading } = useCurrentUser();
+  const { user } = useCurrentUser();
   const pathname = usePathname();
 
-  // hydrate + fetch store
   useEffect(() => {
     setIsHydrated(true);
 
@@ -49,22 +46,6 @@ export default function MobileHeader({
     { name: "Shop", path: `/${storeSlug}` },
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
-
-  const authLinks: NavLink[] =
-    !isAdmin && user
-      ? [
-          {
-            name: user.first_name || "Profile",
-            path: "/profile",
-            isHighlighted: true,
-          },
-        ]
-      : !isAdmin
-      ? [
-          { name: "Log in", path: "/login" },
-          { name: "Sign up", path: "/sign-up", isHighlighted: true },
-        ]
-      : [];
 
   return (
     <>
@@ -84,11 +65,7 @@ export default function MobileHeader({
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
-              {menuOpen ? (
-                <HiOutlineX size={18} />
-              ) : (
-                <HiOutlineMenu size={18} />
-              )}
+              {menuOpen ? <HiOutlineX size={18} /> : <HiOutlineMenu size={18} />}
             </button>
           </div>
         </div>
@@ -118,14 +95,28 @@ export default function MobileHeader({
               );
             })}
 
-            {authLinks.length > 0 && !loading && (
+            {user && (
+              <>
+                <li>
+                  <div className="border-t border-border my-2" />
+                </li>
+                <li>
+                  <UserDropdownMobile />
+                </li>
+              </>
+            )}
+
+            {!user && (
               <>
                 <li>
                   <div className="border-t border-border my-2" />
                 </li>
                 <li>
                   <AuthButtons
-                    links={authLinks}
+                    links={[
+                      { name: "Log in", path: "/login" },
+                      { name: "Sign up", path: "/sign-up", isHighlighted: true },
+                    ]}
                     isVertical={true}
                     isAdminPanel={false}
                   />

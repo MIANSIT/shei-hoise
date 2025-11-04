@@ -358,7 +358,7 @@ export default function ProductPage() {
                     transition={{ duration: 0.2 }}
                     className="text-lg font-semibold text-foreground"
                   >
-                    ${totalPrice.toFixed(2)}
+                    ৳{totalPrice.toFixed(2)}
                   </motion.span>
                   {quantity > 1 && (
                     <span className="text-sm text-muted-foreground ml-2">

@@ -72,19 +72,17 @@ export default function SaveOrderButton({
 
     setIsLoading(true);
     try {
-      
-
       const finalCustomerInfo = { ...customerInfo };
       let customerCreated = false;
 
       if (!customerInfo.customer_id) {
         try {
-
           if (
             !customerInfo.name ||
             !customerInfo.phone ||
             !customerInfo.email ||
-            !customerInfo.password
+            !customerInfo.password ||
+            !customerInfo.postal_code // Add this line
           ) {
             throw new Error(
               "Customer name, phone, email, and password are required to create a customer account"
@@ -100,6 +98,7 @@ export default function SaveOrderButton({
             address_line_1: customerInfo.address,
             city: customerInfo.city,
             country: "Bangladesh",
+            postal_code: customerInfo.postal_code, // Add this line
           });
 
           if (!newCustomer || !newCustomer.id) {
@@ -110,7 +109,6 @@ export default function SaveOrderButton({
 
           finalCustomerInfo.customer_id = newCustomer.id;
           customerCreated = true;
-
 
           if (onCustomerCreated) {
             onCustomerCreated();
@@ -175,11 +173,9 @@ export default function SaveOrderButton({
         deliveryOption: finalCustomerInfo.deliveryMethod, // ✅ add this
       };
 
-
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
-
         let successMessage = `Order ${orderId} has been created successfully.`;
         if (customerCreated) {
           successMessage += " A new customer account was also created.";

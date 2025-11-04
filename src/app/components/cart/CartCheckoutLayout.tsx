@@ -34,7 +34,7 @@ export default function CartCheckoutLayout({
           animate={{ scale: 1 }}
           transition={{ duration: 0.2 }}
         >
-          ${formattedSubtotal}
+         {formattedSubtotal} BDT
         </motion.span>
       </div>
       <motion.div

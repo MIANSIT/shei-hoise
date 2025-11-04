@@ -83,7 +83,7 @@ const StockTable: React.FC<StockTableProps> = ({
         // 🟢 For variant or product without variants → show proper price
         const price =
           typeof record.currentPrice === "number" ? record.currentPrice : 0;
-        return <span>${price.toFixed(2)}</span>;
+        return <span>৳{price.toFixed(2)}</span>;
       },
     },
     {

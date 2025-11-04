@@ -156,10 +156,10 @@ export default function CartItemsList() {
                   )}
 
                   <p className="text-sm text-muted-foreground">
-                    ${item.displayPrice.toFixed(2)} each
+                    ৳{item.displayPrice.toFixed(2)} each
                     {item.discountPercentage > 0 && (
                       <span className="line-through text-xs ml-1">
-                        ${item.originalPrice.toFixed(2)}
+                        ৳{item.originalPrice.toFixed(2)}
                       </span>
                     )}
                   </p>
@@ -234,7 +234,7 @@ export default function CartItemsList() {
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.2 }}
                 >
-                  ${(item.displayPrice * item.quantity).toFixed(2)}
+                  ৳{(item.displayPrice * item.quantity).toFixed(2)}
                 </motion.p>
               </div>
             </div>

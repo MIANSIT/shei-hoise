@@ -40,6 +40,10 @@ import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import type { StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSimple";
 import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
+import {
+  getStoreSettings,
+  type ShippingFee,
+} from "@/lib/queries/stores/getStoreSettings";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -64,10 +68,12 @@ export default function CreateOrder() {
     phone: "",
     address: "",
     deliveryMethod: "",
+    deliveryOption: "", // Add this new field
     city: "",
     email: "",
     notes: "",
     password: "AdminCustomer1232*",
+    postal_code: "", // Add this line
   });
 
   const [subtotal, setSubtotal] = useState(0);
@@ -92,6 +98,38 @@ export default function CreateOrder() {
     useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
+  // Store settings states
+
+  const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  // Fetch store settings with shipping fees
+  const fetchStoreSettings = useCallback(async () => {
+    if (!user?.store_id) return;
+
+    setSettingsLoading(true);
+    try {
+      const settings = await getStoreSettings(user.store_id);
+      if (settings) {
+        // Remove this line: setStoreSettings(settings);
+        setShippingFees(settings.shipping_fees || []);
+
+        // Set tax amount from store settings if available
+        if (settings.tax_rate) {
+          setTaxAmount(settings.tax_rate);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching store settings:", error);
+      notification.error({
+        message: "Error Loading Store Settings",
+        description: "Failed to load shipping fees and tax rates.",
+      });
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [user?.store_id, notification]);
+
   // Fetch customer profile data from user_profiles table
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
     setProfileLoading(true);
@@ -103,6 +141,7 @@ export default function CreateOrder() {
           ...prev,
           address: profile.address_line_1 || "",
           city: profile.city || "",
+          postal_code: profile.postal_code || "", // Add this line
         }));
       }
     } catch (error) {
@@ -173,8 +212,15 @@ export default function CreateOrder() {
     if (user?.store_id && !userLoading) {
       fetchProducts();
       fetchCustomers();
+      fetchStoreSettings();
     }
-  }, [user?.store_id, userLoading, fetchProducts, fetchCustomers]);
+  }, [
+    user?.store_id,
+    userLoading,
+    fetchProducts,
+    fetchCustomers,
+    fetchStoreSettings,
+  ]);
 
   // Filter customers based on search
   useEffect(() => {
@@ -205,12 +251,36 @@ export default function CreateOrder() {
     );
   }, []);
 
-  // Update delivery cost based on city
+  // Update delivery cost based on city from shipping fees
+  // Update delivery cost based on city from shipping fees
+  // Update delivery cost based on delivery option from shipping fees
   useEffect(() => {
-    if (customerInfo.city === "inside-dhaka") setDeliveryCost(80);
-    else if (customerInfo.city === "outside-dhaka") setDeliveryCost(150);
-    else setDeliveryCost(0);
-  }, [customerInfo.city]);
+    if (
+      customerInfo.deliveryOption &&
+      Array.isArray(shippingFees) &&
+      shippingFees.length > 0
+    ) {
+      const shippingFee = shippingFees.find((fee) => {
+        if (!fee || typeof fee !== "object" || !fee.location) return false;
+
+        const feeLocation = String(fee.location)
+          .toLowerCase()
+          .replace(/\s+/g, "-");
+        const deliveryOption = String(
+          customerInfo.deliveryOption
+        ).toLowerCase();
+
+        return (
+          feeLocation.includes(deliveryOption) ||
+          deliveryOption.includes(feeLocation)
+        );
+      });
+
+      setDeliveryCost(shippingFee?.fee || 0);
+    } else {
+      setDeliveryCost(0);
+    }
+  }, [customerInfo.deliveryOption, shippingFees]);
 
   // Calculate totals
   useEffect(() => {
@@ -227,17 +297,18 @@ export default function CreateOrder() {
     const customer = customers.find((c) => c.id === customerId);
     if (customer) {
       setSelectedCustomer(customer);
-      setCustomerInfo({
+
+      // Use functional update to only change what's needed
+      setCustomerInfo((prev) => ({
+        ...prev, // Keep existing values
         name: customer.first_name,
         phone: customer.phone || "",
-        address: "",
-        city: "",
-        deliveryMethod: "courier",
         email: customer.email,
         customer_id: customer.id,
-        notes: "",
-        password: "AdminCustomer1232*",
-      });
+        // Don't reset address, city, deliveryOption, postal_code here
+        // Let fetchCustomerProfile handle them
+      }));
+
       await fetchCustomerProfile(customer.id);
     }
   };
@@ -251,11 +322,13 @@ export default function CreateOrder() {
       name: "",
       phone: "",
       address: "",
+      deliveryOption: "", // Add this new field
       deliveryMethod: "",
       city: "",
       email: "",
       notes: "",
       password: "AdminCustomer1232*",
+      postal_code: "", // Add this line
     });
     setCustomerType("new");
   };
@@ -295,8 +368,10 @@ export default function CreateOrder() {
     customerInfo.name &&
     customerInfo.phone &&
     customerInfo.address &&
+    customerInfo.postal_code && // Add this line
     customerInfo.city &&
     customerInfo.deliveryMethod &&
+    customerInfo.deliveryOption && // Add this line
     orderProducts.length > 0;
 
   // Render customer content based on type
@@ -307,6 +382,8 @@ export default function CreateOrder() {
           customerInfo={customerInfo}
           setCustomerInfo={setCustomerInfo}
           orderId={orderId}
+          shippingFees={shippingFees}
+          settingsLoading={settingsLoading}
         />
       );
     }
@@ -436,8 +513,8 @@ export default function CreateOrder() {
 
                   {customerProfile ? (
                     <Alert
-                      message="Address Auto-filled"
-                      description="Customer address and city have been auto-filled from their profile. You can modify these if needed for this specific order."
+                      message="Profile Auto-filled"
+                      description="Customer address, city, and postal code have been auto-filled from their profile. You can modify these if needed for this specific order."
                       type="success"
                       showIcon
                       style={{ marginTop: "16px" }}
@@ -445,7 +522,7 @@ export default function CreateOrder() {
                   ) : (
                     <Alert
                       message="Address Required"
-                      description="No address found in customer profile. Please manually enter the delivery address and city for this order."
+                      description="No address found in customer profile. Please manually enter the delivery address, city, and postal code for this order."
                       type="info"
                       showIcon
                       style={{ marginTop: "16px" }}
@@ -458,6 +535,8 @@ export default function CreateOrder() {
                   setCustomerInfo={setCustomerInfo}
                   orderId={orderId}
                   isExistingCustomer={true}
+                  shippingFees={shippingFees}
+                  settingsLoading={settingsLoading}
                 />
               </>
             )}
@@ -641,6 +720,8 @@ export default function CreateOrder() {
                   setPaymentStatus={setPaymentStatus}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
+                  shippingFees={shippingFees}
+                  customerDeliveryOption={customerInfo.deliveryOption} // Change from customerCity
                 />
               </Col>
             </Row>
