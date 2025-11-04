@@ -83,10 +83,10 @@ export default function CustomOrder() {
       .map((item) => {
         if (item.variant_id) {
           // product with variant → product_id@variant_id@quantity
-          return `product=${item.product_id}@${item.variant_id}@${item.quantity}`;
+          return `product=${item.product_id}%${item.variant_id}%${item.quantity}`;
         } else {
           // product without variant → product_id@quantity
-          return `product=${item.product_id}@${item.quantity}`;
+          return `product=${item.product_id}%${item.quantity}`;
         }
       })
       .join("&");
