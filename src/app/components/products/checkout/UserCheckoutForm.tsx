@@ -166,7 +166,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           
           // ✅ NEW: Redirect to orders page after 2 seconds
           setTimeout(() => {
-            router.push('/orders');
+            router.push('/order-status');
           }, 2000);
         } else {
           setError(result.error || 'Failed to place order');
@@ -198,7 +198,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
             
             // ✅ NEW: Redirect to orders page after 2 seconds
             setTimeout(() => {
-              router.push('/orders');
+              router.push('/order-status');
             }, 2000);
           } else {
             setError(result.error || 'Failed to place order');
@@ -250,7 +250,7 @@ const CheckoutForm = ({ onSubmit, isLoading = false }: CheckoutFormProps) => {
           
           // ✅ NEW: Redirect to orders page after 2 seconds
           setTimeout(() => {
-            router.push('/orders');
+            router.push('/order-status');
           }, 2000);
         } else {
           setError(orderResult.error || 'Failed to place order');

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/components/admin/order/create-order/OrderSummary.tsx
 "use client";
 import {
   Card,
@@ -12,9 +11,11 @@ import {
   Typography,
   Divider,
   Statistic,
+  Alert,
 } from "antd";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
+import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -39,8 +40,9 @@ interface OrderSummaryProps {
   ) => void;
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
+  shippingFees?: ShippingFee[];
+  customerDeliveryOption?: string; // Change from customerCity to customerDeliveryOption
 }
-
 
 export default function OrderSummary({
   orderProducts,
@@ -58,8 +60,30 @@ export default function OrderSummary({
   setPaymentStatus,
   paymentMethod,
   setPaymentMethod,
+  shippingFees = [],
+  customerDeliveryOption,
 }: OrderSummaryProps) {
-  
+  // Get selected shipping fee details
+  // Get selected shipping fee details
+  const selectedShippingFee = shippingFees.find((fee) => {
+    if (
+      !fee ||
+      typeof fee !== "object" ||
+      !fee.location ||
+      !customerDeliveryOption
+    )
+      return false;
+
+    const feeLocation = String(fee.location).toLowerCase().replace(/\s+/g, "-");
+    const customerDeliveryOptionNormalized = String(
+      customerDeliveryOption
+    ).toLowerCase();
+    return (
+      feeLocation.includes(customerDeliveryOptionNormalized) ||
+      customerDeliveryOptionNormalized.includes(feeLocation)
+    );
+  });
+
   return (
     <Card
       styles={{
@@ -72,6 +96,34 @@ export default function OrderSummary({
         <Title level={4} style={{ margin: 0 }}>
           Order Summary
         </Title>
+
+        {/* Shipping Fee Alert */}
+        {selectedShippingFee && customerDeliveryOption && (
+          <Alert
+            message="Shipping Fee Applied"
+            description={
+              <Space direction="vertical" size={0}>
+                <Text>
+                  <strong>{selectedShippingFee.location}</strong>: ৳
+                  {selectedShippingFee.fee} {/* Changed from .price to .fee */}
+                </Text>
+                {selectedShippingFee.description && (
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    {selectedShippingFee.description}
+                  </Text>
+                )}
+                {selectedShippingFee.estimated_days && (
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    Estimated delivery: {selectedShippingFee.estimated_days}{" "}
+                    days
+                  </Text>
+                )}
+              </Space>
+            }
+            type="info"
+            showIcon
+          />
+        )}
 
         {/* Order Totals */}
         <Space direction="vertical" style={{ width: "100%" }} size="small">
@@ -123,8 +175,14 @@ export default function OrderSummary({
                     onChange={(value) => setDeliveryCost(value || 0)}
                     style={{ width: "100%" }}
                     addonAfter="৳"
+                    disabled={!!customerDeliveryOption} // Disable manual input when city is selected
                   />
                 </Form.Item>
+                {customerDeliveryOption && (
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    Delivery cost is automatically set based on selected city
+                  </Text>
+                )}
               </Col>
             </Row>
           </Form>
@@ -215,6 +273,11 @@ export default function OrderSummary({
             <Col xs={12} md={6}>
               <Statistic title="Products" value={orderProducts.length} />
             </Col>
+            {shippingFees.length > 0 && (
+              <Col xs={12} md={6}>
+                <Statistic title="Shipping Zones" value={shippingFees.length} />
+              </Col>
+            )}
           </Row>
         </Card>
       </Space>

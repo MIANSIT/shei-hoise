@@ -89,12 +89,12 @@ const MobileCheckout = ({
               <div className="space-y-2 mt-4">
                 <div className="flex justify-between text-foreground border-border border rounded-lg p-3 bg-muted">
                   <span>Subtotal:</span>
-                  <span>${calculations.subtotal.toFixed(2)}</span>
+                  <span>৳{calculations.subtotal.toFixed(2)}</span>
                 </div>
                 {calculations.totalDiscount > 0 && (
                   <div className="flex justify-between text-green-600 border-border border rounded-lg p-3 bg-muted">
                     <span>Discount:</span>
-                    <span>-${calculations.totalDiscount.toFixed(2)}</span>
+                    <span>-৳{calculations.totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground border-t border-border pt-3">
@@ -105,7 +105,7 @@ const MobileCheckout = ({
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    ${calculations.totalPrice.toFixed(2)}
+                    ৳{calculations.totalPrice.toFixed(2)}
                   </motion.span>
                 </div>
 
