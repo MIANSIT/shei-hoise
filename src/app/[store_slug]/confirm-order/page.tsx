@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/confirm-order/page.tsx - UPDATED WITH JSON PARSING
+// app/confirm-order/page.tsx - UPDATED WITH COMPRESSION
 "use client";
 import { useSearchParams, useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -14,46 +14,38 @@ import CartItemsList from "../../components/cart/CartItemList";
 import { DesktopCheckoutSkeleton } from "../../components/skeletons/DesktopCheckoutSkeleton";
 import useCartStore from "@/lib/store/cartStore";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ShoppingBag, User } from "lucide-react";
-
-// Define the product structure from URL
-interface UrlOrderProduct {
-  product_id: string;
-  variant_id?: string;
-  quantity: number;
-}
+import { ShoppingBag, User } from "lucide-react";
+import { decompressFromEncodedURIComponent } from "lz-string";
 
 export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
   const params = useParams();
-  const encodedData = searchParams.get("data"); // Get the encoded data parameter
+  const compressedData = searchParams.get("o"); // Get compressed data
   const store_slug = params.store_slug as string;
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
   const [parsingError, setParsingError] = useState<string | null>(null);
 
   const notify = useSheiNotification();
   const { clearFormData } = useCheckoutStore();
-  const { clearStoreCart, addToCart, getCartByStore } = useCartStore();
+  const { clearStoreCart, addToCart } = useCartStore();
 
   // Use the existing custom hook
   const {
     items: cartItems,
     calculations,
     loading,
-    error,
   } = useCartItems(store_slug);
 
   // Refs to track state
   const initializationAttempted = useRef(false);
 
-  // Parse URL encoded data and populate cart store - RUN ONLY ONCE
+  // Parse compressed data and populate cart store
   useEffect(() => {
-    if (!encodedData || initializationAttempted.current) {
-      if (!encodedData) {
+    if (!compressedData || initializationAttempted.current) {
+      if (!compressedData) {
         setParsingError("No order data found in the link");
       }
       return;
@@ -63,19 +55,30 @@ export default function ConfirmOrderPage() {
       try {
         initializationAttempted.current = true;
         
-        // Decode the base64 and parse JSON
-        const decodedData = decodeURIComponent(atob(encodedData));
-        const parsedProducts: UrlOrderProduct[] = JSON.parse(decodedData);
+        // Decompress the data
+        const decompressed = decompressFromEncodedURIComponent(compressedData);
+        if (!decompressed) {
+          throw new Error("Failed to decompress order data");
+        }
 
-        if (!parsedProducts || !Array.isArray(parsedProducts) || parsedProducts.length === 0) {
+        const compactProducts: Array<[string, string | undefined, number]> = JSON.parse(decompressed);
+
+        if (!compactProducts || !Array.isArray(compactProducts) || compactProducts.length === 0) {
           setParsingError("Invalid order data format");
           return;
         }
 
+        // Convert compact format to full format
+        const parsedProducts = compactProducts.map(item => ({
+          product_id: item[0],
+          variant_id: item[1] || undefined,
+          quantity: item[2]
+        }));
+
         // Clear existing cart for this store
         clearStoreCart(store_slug);
 
-        // Add each product from URL to cart
+        // Add each product to cart
         for (const product of parsedProducts) {
           await addToCart({
             productId: product.product_id,
@@ -94,7 +97,7 @@ export default function ConfirmOrderPage() {
     };
 
     initializeCart();
-  }, [encodedData, store_slug, clearStoreCart, addToCart, notify]);
+  }, [compressedData, store_slug, clearStoreCart, addToCart, notify]);
 
   const handleShippingChange = (shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
@@ -104,10 +107,7 @@ export default function ConfirmOrderPage() {
   const handleCheckoutSubmit = async (values: any) => {
     setIsProcessing(true);
     try {
-      // The order processing now happens in CheckoutForm
-      // Just show success message
       notify.success("Congratulations! Order has been placed");
-      // The CheckoutForm will handle the redirect
     } catch (error) {
       notify.warning("Failed to save information. Please try again.");
     } finally {
@@ -141,38 +141,8 @@ export default function ConfirmOrderPage() {
     return <DesktopCheckoutSkeleton />;
   }
 
-  // Mobile section toggle component
-  const MobileSectionToggle = () => (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-10 shadow-lg">
-      <div className="flex gap-2">
-        <Button
-          className={`flex-1 flex items-center gap-2 ${
-            activeSection === "cart"
-              ? "bg-yellow-500 text-white hover:bg-yellow-600"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-          onClick={() => setActiveSection("cart")}
-        >
-          <ShoppingBag className="h-4 w-4" />
-          Cart ({calculations.totalItems})
-        </Button>
-        <Button
-          className={`flex-1 flex items-center gap-2 ${
-            activeSection === "customer"
-              ? "bg-yellow-500 text-white hover:bg-yellow-600"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-          onClick={() => setActiveSection("customer")}
-        >
-          <User className="h-4 w-4" />
-          Details
-        </Button>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="container mx-auto p-4 lg:p-8 pb-20 lg:pb-8">
+    <div className="container mx-auto p-4 lg:p-8">
       {/* Header */}
       <div className="text-center lg:text-left mb-6 lg:mb-8">
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
@@ -183,43 +153,9 @@ export default function ConfirmOrderPage() {
         </p>
       </div>
 
-      {/* Progress Indicator - Mobile Only */}
-      <div className="lg:hidden mb-6">
-        <div className="flex items-center justify-between text-sm mb-2">
-          <span
-            className={
-              activeSection === "cart"
-                ? "text-yellow-600 font-semibold"
-                : "text-muted-foreground"
-            }
-          >
-            Cart
-          </span>
-          <span
-            className={
-              activeSection === "customer"
-                ? "text-yellow-600 font-semibold"
-                : "text-muted-foreground"
-            }
-          >
-            Details
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: activeSection === "cart" ? "50%" : "100%" }}
-          ></div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-        {/* Cart Items Card - Show on mobile when active */}
-        <div
-          className={`${
-            activeSection === "cart" ? "block" : "hidden"
-          } lg:block`}
-        >
+        {/* Cart Items Card */}
+        <div>
           <Card className="bg-card lg:sticky lg:top-8">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
@@ -259,11 +195,8 @@ export default function ConfirmOrderPage() {
                     <span>৳{calculations.subtotal.toFixed(2)}</span>
                   </div>
 
-                  <div
-                    className={`${
-                      activeSection === "cart" ? "lg:block hidden" : "block"
-                    }`}
-                  >
+                  {/* Shipping Method */}
+                  <div className="border-t border-border pt-3">
                     <ShippingMethod
                       storeSlug={store_slug}
                       subtotal={calculations.subtotal}
@@ -283,26 +216,14 @@ export default function ConfirmOrderPage() {
                       ৳{totalWithShipping.toFixed(2)}
                     </motion.span>
                   </div>
-                  {/* Continue Button - Mobile Only */}
-                  <Button
-                    className="w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4"
-                    onClick={() => setActiveSection("customer")}
-                  >
-                    Continue to Details
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Customer Information Card - Show on mobile when active */}
-        <div
-          className={`${
-            activeSection === "customer" ? "block" : "hidden"
-          } lg:block`}
-        >
+        {/* Customer Information Card */}
+        <div>
           <div className="space-y-6">
             <Card className="bg-card">
               <CardHeader className="pb-4">
@@ -329,26 +250,11 @@ export default function ConfirmOrderPage() {
                   shippingFee={shippingFee}
                   totalAmount={totalWithShipping}
                 />
-
-                {/* Back Button - Mobile Only */}
-                {activeSection === "customer" && (
-                  <Button
-                    variant="outline"
-                    className="w-full lg:hidden mt-4"
-                    onClick={() => setActiveSection("cart")}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back to Cart
-                  </Button>
-                )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <MobileSectionToggle />
     </div>
   );
 }
