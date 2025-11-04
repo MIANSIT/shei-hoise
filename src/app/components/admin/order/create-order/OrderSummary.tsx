@@ -248,7 +248,7 @@ export default function OrderSummary({
               size="large"
               placeholder="Select payment method"
             >
-              <Option value="cash">Cash on Delivery</Option>
+              <Option value="cod">Cash on Delivery</Option>
               {/* <Option value="card">Credit/Debit Card</Option>
               <Option value="bkash">bKash</Option>
               <Option value="nagad">Nagad</Option>

@@ -1,15 +1,29 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { App } from "antd";
 import { StoreOrder } from "@/lib/types/order";
 import StatusTag, { StatusType } from "../StatusFilter/StatusTag";
-import { ClipboardCheck, CreditCard, Truck, DollarSign } from "lucide-react";
+import {
+  ClipboardCheck,
+  CreditCard,
+  Truck,
+  DollarSign,
+  Copy,
+  MapPin,
+  Phone,
+  User,
+  Check,
+} from "lucide-react";
 
 interface Props {
   order: StoreOrder;
 }
 
 const DetailedOrderView: React.FC<Props> = ({ order }) => {
+  const { message } = App.useApp();
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
   const address = order.shipping_address;
   const fullAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
   const isCancelled = order.status === "cancelled";
@@ -17,13 +31,27 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
   const deliveryOption: StatusType = (order.delivery_option ||
     "courier") as StatusType;
   const paymentMethod: StatusType =
-    order.payment_method === "cash"
-      ? ("Cash on Delivery" as StatusType)
-      : ("Online Payment" as StatusType);
+    (order.payment_method as StatusType) || "cod";
+
+  const copyToClipboard = (text: string, label: string, fieldId: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      message.success(`${label} copied to clipboard!`);
+      setCopiedField(fieldId);
+      setTimeout(() => {
+        setCopiedField(null);
+      }, 2000);
+    });
+  };
+
+  const CopyIcon = ({ fieldId }: { fieldId: string }) => {
+    if (copiedField === fieldId) {
+      return <Check size={14} className="text-green-500" />;
+    }
+    return <Copy size={14} />;
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full">
-      {/* Order Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-3 sm:p-4 rounded-md bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div>
           <strong className="text-sm sm:text-base">Order Number:</strong>
@@ -129,47 +157,119 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         <h3 className="font-semibold mb-3 text-base sm:text-lg">
           Delivery & Payment Information
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Left Column: Customer Info */}
           <div className="space-y-4">
             <div className="p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                Customer
-              </h4>
-              <p className="text-base font-medium text-gray-800 dark:text-gray-100">
-                {address.customer_name}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {order.customers?.email || "No email"}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {address.phone}
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <User className="w-5 h-5 text-blue-500" />
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  Customer Information
+                </h4>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-base font-medium text-gray-800 dark:text-gray-100 flex items-center justify-between">
+                    {address.customer_name}
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          address.customer_name,
+                          "Customer name",
+                          "customer-name"
+                        )
+                      }
+                      className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                    >
+                      <CopyIcon fieldId="customer-name" />
+                    </button>
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between">
+                    {order.customers?.email || "No email"}
+                    {order.customers?.email && (
+                      <button
+                        onClick={() =>
+                          copyToClipboard(
+                            order.customers!.email,
+                            "Email",
+                            "customer-email"
+                          )
+                        }
+                        className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                      >
+                        <CopyIcon fieldId="customer-email" />
+                      </button>
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Phone size={14} />
+                      {address.phone}
+                    </span>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          address.phone,
+                          "Phone number",
+                          "customer-phone"
+                        )
+                      }
+                      className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                    >
+                      <CopyIcon fieldId="customer-phone" />
+                    </button>
+                  </p>
+                </div>
+              </div>
             </div>
+
             <div className="p-4 sm:p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                Delivery Address
-              </h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {fullAddress}
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin className="w-5 h-5 text-green-500" />
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  Delivery Address
+                </h4>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {address.address_line_1}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {address.city}, {address.country}
+                </p>
+                <button
+                  onClick={() =>
+                    copyToClipboard(fullAddress, "Full address", "full-address")
+                  }
+                  className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors mt-2 cursor-pointer"
+                >
+                  {copiedField === "full-address" ? (
+                    <Check size={12} className="text-green-500" />
+                  ) : (
+                    <Copy size={12} />
+                  )}
+                  {copiedField === "full-address"
+                    ? "Copied!"
+                    : "Copy Full Address"}
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Right Column: Status Info */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col items-center justify-center p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-                <ClipboardCheck className="w-6 h-6 text-blue-500 mb-1 sm:mb-2" />
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
-                  Order Status
-                </span>
-                <StatusTag status={order.status as StatusType} size="small" />
-              </div>
-
-              <div className="flex flex-col items-center justify-center p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-                <CreditCard className="w-6 h-6 text-green-500 mb-1 sm:mb-2" />
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                <CreditCard className="w-6 h-6 text-green-500 mb-2" />
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2 text-center">
                   Payment Status
                 </span>
                 <StatusTag
@@ -178,37 +278,86 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 />
               </div>
 
-              {!isCancelled && (
-                <div className="flex flex-col items-center justify-center p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-                  <Truck className="w-6 h-6 text-orange-500 mb-1 sm:mb-2" />
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
-                    Delivery Method
-                  </span>
-                  <StatusTag status={deliveryOption} size="small" />
-                </div>
-              )}
-
-              <div className="flex flex-col items-center justify-center p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
-                <DollarSign className="w-6 h-6 text-yellow-500 mb-1 sm:mb-2" />
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+              <div className="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+                <DollarSign className="w-6 h-6 text-yellow-500 mb-2" />
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2 text-center">
                   Payment Method
                 </span>
                 <StatusTag status={paymentMethod} size="small" />
               </div>
             </div>
 
-            {/* Notes */}
-            {order.notes && !isCancelled && (
-              <div className="p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900 rounded-2xl border border-yellow-200 dark:border-yellow-700 text-sm text-gray-800 dark:text-yellow-200 shadow-sm">
-                <strong>Order Notes:</strong> {order.notes}
-              </div>
-            )}
+            {/* Additional Info Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Order Summary */}
+              <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                  Order Summary
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Items:</span>
+                    <span>{order.order_items.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Currency:</span>
+                    <span>{order.currency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Order Status</span>
 
-            {isCancelled && order.notes && (
-              <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900 rounded-2xl border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-200 shadow-sm">
-                <strong>Cancellation Note:</strong> {order.notes}
+                    <StatusTag
+                      status={order.status as StatusType}
+                      size="small"
+                    />
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Last Updated:</span>
+                    <span className="text-xs">
+                      {new Date(order.updated_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Delivery Info */}
+              {!isCancelled && (
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                    Delivery Info
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Service:</span>
+                      <StatusTag status={deliveryOption} size="small" />
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">City:</span>
+                      <span>{address.city}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Country:</span>
+                      <span>{address.country}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Notes Section */}
+            <div className="space-y-3">
+              {order.notes && !isCancelled && (
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900 rounded-2xl border border-yellow-200 dark:border-yellow-700 text-sm text-gray-800 dark:text-yellow-200 shadow-sm">
+                  <strong>Order Notes:</strong> {order.notes}
+                </div>
+              )}
+
+              {isCancelled && order.notes && (
+                <div className="p-4 bg-red-50 dark:bg-red-900 rounded-2xl border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-200 shadow-sm">
+                  <strong>Cancellation Note:</strong> {order.notes}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

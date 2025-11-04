@@ -9,6 +9,7 @@ import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
+import MobileDetailedView from "../TableData/MobileDetailedView"; // Add this import
 
 interface Props {
   orders: StoreOrder[];
@@ -83,7 +84,8 @@ const OrdersTable: React.FC<Props> = ({
     return name.charAt(0).toUpperCase();
   };
 
-  // Mobile card renderer - IMPROVED
+  // Mobile card renderer
+  // Mobile card renderer - FIXED VERSION
   const renderOrderCard = (order: StoreOrder) => {
     const address = order.shipping_address;
     const fullAddress = `${address.address_line_1}, ${address.city}`;
@@ -111,6 +113,9 @@ const OrdersTable: React.FC<Props> = ({
           <div className="text-right ml-2">
             <div className="font-bold text-base sm:text-lg whitespace-nowrap">
               {formatCurrency(order.total_amount, order.currency)}
+            </div>
+            <div className="text-xs text-gray-600">
+              Shipping: {formatCurrency(order.shipping_fee, order.currency)}
             </div>
           </div>
         </div>
@@ -172,9 +177,10 @@ const OrdersTable: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* Expanded Content */}
+        {/* Expanded Content - SIMPLIFIED FOR MOBILE */}
         {expandedRowKey === order.id && (
           <div className="mt-3 border-t pt-3">
+            {/* Order Management - Only show if not delivered/cancelled */}
             {order.status !== "delivered" && order.status !== "cancelled" && (
               <div className="mb-3">
                 <OrderProductTable
@@ -191,20 +197,27 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveShippingFee={(fee) =>
+                    onUpdate(order.id, {
+                      shipping_fee: fee,
+                      total_amount: order.subtotal + order.tax_amount + fee,
+                    })
+                  }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh} // Add this line
+                  onRefresh={onRefresh}
                 />
               </div>
             )}
-            <DetailedOrderView order={order} />
+
+            {/* Simplified Mobile Detailed View */}
+            <MobileDetailedView order={order} />
           </div>
         )}
       </Card>
     );
   };
-
   const columns: ColumnsType<StoreOrder> = [
     {
       title: "Order #",
@@ -269,9 +282,20 @@ const OrdersTable: React.FC<Props> = ({
       title: "Total",
       key: "total",
       render: (_, order: StoreOrder) => (
-        <span className="font-semibold text-gray-900 text-sm">
-          {formatCurrency(order.total_amount, order.currency)}
-        </span>
+        <div className="text-right">
+          <div className="font-semibold text-gray-900 text-sm">
+            {formatCurrency(order.total_amount, order.currency)}
+          </div>
+          <div className="text-xs text-gray-600">
+            Ship: {formatCurrency(order.shipping_fee, order.currency)}
+          </div>
+
+          {order.tax_amount && order.tax_amount > 0 && (
+            <div className="text-xs text-gray-600">
+              Tax: {formatCurrency(order.tax_amount, order.currency)}
+            </div>
+          )}
+        </div>
       ),
       width: 100,
       align: "right" as const,
@@ -340,7 +364,7 @@ const OrdersTable: React.FC<Props> = ({
           onExpand: (expanded, record) =>
             setExpandedRowKey(expanded ? record.id : null),
           expandedRowRender: (order: StoreOrder) => (
-            <div className="space-y-4 p-3 sm:p-4  rounded-lg">
+            <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {order.status !== "delivered" && order.status !== "cancelled" && (
                 <OrderProductTable
                   order={order}
@@ -356,9 +380,16 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveShippingFee={(fee) =>
+                    onUpdate(order.id, {
+                      shipping_fee: fee,
+                      total_amount: order.subtotal + order.tax_amount + fee,
+                    })
+                  }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
+                  onRefresh={onRefresh}
                 />
               )}
               <DetailedOrderView order={order} />
