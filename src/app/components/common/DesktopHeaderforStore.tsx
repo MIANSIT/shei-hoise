@@ -9,11 +9,12 @@ import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import UserDropdown from "./UserDropdownDesktop"; // adjust path
+import UserDropdown from "./UserDropdownDesktop";
 import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import { SheiSkeleton } from "../ui/shei-skeleton";
 
 interface DesktopHeaderProps {
   storeSlug: string;
@@ -27,6 +28,7 @@ export default function DesktopHeader({
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [store, setStore] = useState<StoreWithLogo | null>(null);
+  const [isStoreLoading, setIsStoreLoading] = useState(true);
 
   const { user, loading } = useCurrentUser();
   const pathname = usePathname();
@@ -35,8 +37,16 @@ export default function DesktopHeader({
     setIsHydrated(true);
 
     async function fetchStore() {
-      const storeData = await getStoreBySlugWithLogo(storeSlug);
-      setStore(storeData);
+      try {
+        setIsStoreLoading(true);
+        const storeData = await getStoreBySlugWithLogo(storeSlug);
+        setStore(storeData);
+      } catch (error) {
+        console.error("Failed to fetch store:", error);
+        setStore(null);
+      } finally {
+        setIsStoreLoading(false);
+      }
     }
 
     fetchStore();
@@ -56,46 +66,91 @@ export default function DesktopHeader({
         ]
       : [];
 
-  // Dropdown menu items for logged-in user
+  // Skeleton for store logo/title
+  const StoreLogoSkeleton = () => (
+    <div className="flex items-center gap-3">
+      <SheiSkeleton className="w-8 h-8 rounded" />
+      <SheiSkeleton className="w-32 h-6 rounded" />
+    </div>
+  );
+
+  // Skeleton for navigation links
+  const NavLinksSkeleton = () => (
+    <div className="flex gap-4">
+      {[1, 2].map((item) => (
+        <SheiSkeleton key={item} className="w-20 h-10 rounded-md" />
+      ))}
+    </div>
+  );
+
+  // Skeleton for user auth section
+  const UserAuthSkeleton = () => (
+    <div className="flex items-center gap-5">
+      <SheiSkeleton className="w-6 h-6 rounded" />
+      <SheiSkeleton className="w-6 h-6 rounded" />
+      <div className="flex gap-2">
+        <SheiSkeleton className="w-16 h-10 rounded-md" />
+        <SheiSkeleton className="w-16 h-10 rounded-md" />
+      </div>
+    </div>
+  );
 
   return (
     <>
       <header className="hidden md:flex fixed top-0 left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md">
         <div className="flex items-center gap-8">
-          <StoreLogoTitle
-            storeSlug={storeSlug}
-            storeName={store?.store_name}
-            logoUrl={store?.logo_url}
-            showTitle={true}
-          />
-          <div className="flex gap-4">
-            {navLinks.map((link) => {
-              const isActive = isHydrated && pathname === link.path;
-              return (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-foreground hover:bg-accent"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              );
-            })}
-          </div>
+          {/* Store Logo & Title - Show skeleton while loading */}
+          {isStoreLoading ? (
+            <StoreLogoSkeleton />
+          ) : (
+            <StoreLogoTitle
+              storeSlug={storeSlug}
+              storeName={store?.store_name}
+              logoUrl={store?.logo_url}
+              showTitle={true}
+            />
+          )}
+
+          {/* Navigation Links - Show skeleton while loading */}
+          {isStoreLoading ? (
+            <NavLinksSkeleton />
+          ) : (
+            <div className="flex gap-4">
+              {navLinks.map((link) => {
+                const isActive = isHydrated && pathname === link.path;
+                return (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-5">
-          <ThemeToggle />
-          <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-
-          {!loading && user ? (
-            <UserDropdown />
+          {/* Show skeleton for entire right section while user data is loading */}
+          {loading ? (
+            <UserAuthSkeleton />
           ) : (
-            <AuthButtons links={authLinks} isAdminPanel={false} />
+            <>
+              <ThemeToggle />
+              <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+
+              {user ? (
+                <UserDropdown />
+              ) : (
+                <AuthButtons links={authLinks} isAdminPanel={false} />
+              )}
+            </>
           )}
         </div>
       </header>

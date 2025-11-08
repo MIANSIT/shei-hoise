@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { LogoutOutlined } from "@ant-design/icons";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
+import { useParams } from "next/navigation"; // Add this import
 
 interface UserDropdownProps {
   className?: string;
@@ -20,6 +21,8 @@ export default function UserDropdownDesktop({
   const { user, loading } = useCurrentUser();
   const { logout } = useAuthStore();
   const { success, error } = useSheiNotification();
+  const params = useParams(); // Get route params
+  const store_slug = params.store_slug as string; // Get store_slug from URL
 
   const handleLogout = async () => {
     try {
@@ -50,11 +53,11 @@ export default function UserDropdownDesktop({
   const items: MenuProps["items"] = [
     {
       key: "profile",
-      label: <Link href="/user-profile">Profile</Link>,
+      label: <Link href={`/${store_slug}/user-profile`}>Profile</Link>, // Updated
     },
     {
       key: "orders",
-      label: <Link href="/order-status">Order Status</Link>,
+      label: <Link href={`/${store_slug}/order-status`}>Order Status</Link>, // Updated
     },
     {
       type: "divider",
