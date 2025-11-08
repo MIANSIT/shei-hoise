@@ -15,7 +15,10 @@ import {
   SheiAlertDescription,
 } from "../../components/ui/sheiAlert/SheiAlert";
 import { Link, Copy, Check } from "lucide-react";
-import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
+import {
+  compressToEncodedURIComponent,
+  // decompressFromEncodedURIComponent,
+} from "lz-string";
 
 export default function CustomOrder() {
   const params = useParams();
@@ -96,6 +99,17 @@ export default function CustomOrder() {
 
   const isFormValid = orderProducts.length > 0;
 
+  // Copy link to clipboard
+  const copyLinkToClipboard = (link: string) => {
+    navigator.clipboard.writeText(window.location.origin + link);
+    setCopied(true);
+    showToast(
+      "Link Copied",
+      "The order link has been copied to your clipboard."
+    );
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // Ultra-compact encoding with compression
   const handleGenerateLink = () => {
     if (!isFormValid || !storeSlug) {
@@ -108,32 +122,32 @@ export default function CustomOrder() {
     }
 
     // Ultra-compact format
-    const compactData = orderProducts.map(item => [
-      item.product_id,    // [0] = product_id
-      item.variant_id,    // [1] = variant_id (can be null)
-      item.quantity       // [2] = quantity
+    const compactData = orderProducts.map((item) => [
+      item.product_id, // [0] = product_id
+      item.variant_id, // [1] = variant_id (can be null)
+      item.quantity, // [2] = quantity
     ]);
 
     const jsonString = JSON.stringify(compactData);
-    
+
     // Compress the data (reduces size by 60-80%)
     const compressed = compressToEncodedURIComponent(jsonString);
-    
+
     const url = `/${storeSlug}/confirm-order?o=${compressed}`;
     setGeneratedLink(url);
 
-    showToast("Order Link Generated", "Link generated successfully!");
+    // Auto-copy the generated link
+    copyLinkToClipboard(url);
+
+    showToast(
+      "Order Link Generated",
+      "Link generated and copied successfully!"
+    );
   };
 
   const handleCopyLink = () => {
     if (!generatedLink) return;
-    navigator.clipboard.writeText(window.location.origin + generatedLink);
-    setCopied(true);
-    showToast(
-      "Link Copied",
-      "The order link has been copied to your clipboard."
-    );
-    setTimeout(() => setCopied(false), 2000);
+    copyLinkToClipboard(generatedLink);
   };
 
   if (loading) {
@@ -194,7 +208,7 @@ export default function CustomOrder() {
               className="w-full sm:w-auto"
             >
               <Link className="w-4 h-4 mr-2" />
-              Generate Order Link
+              Generate & Copy Order Link
             </Button>
           ) : (
             <>

@@ -1,3 +1,4 @@
+// SidebarMenu component - Fix the icon issue
 "use client";
 
 import React, { useMemo } from "react";
@@ -6,36 +7,48 @@ import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { sideMenu, MenuItem } from "@/lib/menu";
 import { LucideIcon } from "@/lib/LucideIcon";
-import { Link2 } from "lucide-react";
-import Link from "next/link";
 
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
   storeSlug?: string | null;
 }
 
-// AntD Menu item type
 type AntdMenuItem = Required<MenuProps>["items"][number];
 
+// Helper function to safely render icons
+function renderIcon(
+  IconComponent?: React.ComponentType<React.SVGProps<SVGSVGElement>>
+) {
+  return IconComponent ? <LucideIcon icon={IconComponent} /> : null;
+}
+
 function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
-  const icon = item.icon ? <LucideIcon icon={item.icon} /> : null;
+  const icon = renderIcon(item.icon);
 
   if (item.children?.length) {
-    const children: AntdMenuItem[] = item.children.map((child) =>
-      mapMenuItem(child, storeSlug)
-    );
+    const children: AntdMenuItem[] = item.children.map((child) => {
+      // Handle Generate Order Link specially
+      if (child.title === "Generate Order Link" && storeSlug) {
+        return {
+          key: `/${storeSlug}/generate-orders-link`,
+          icon: renderIcon(child.icon),
+          label: "Generate Order Link", // Plain text label for both states
+          title: "Generate Order Link",
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            window.open(`/${storeSlug}/generate-orders-link`, "_blank");
+          },
+        };
+      }
 
-    // Inject dynamic "Generate Order Link" under Orders
-    if (item.title === "Orders" && storeSlug) {
-      children.push({
-        key: `/${storeSlug}/generate-orders-link`,
-        icon: <LucideIcon icon={Link2} />,
-        label: "Generate Order Link", // 👈 keep this plain text (for mobile & collapsed)
-        title: "Generate Order Link", // 👈 ensures tooltip shows
-        onClick: () =>
-          window.open(`/${storeSlug}/generate-orders-link`, "_blank"), // 👈 open in new tab
-      });
-    }
+      // Regular menu items
+      return {
+        key: child.href || child.title,
+        icon: renderIcon(child.icon),
+        label: child.title,
+      };
+    });
+
     return {
       key: item.title,
       icon,
@@ -52,7 +65,7 @@ function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
 }
 
 export default function SidebarMenu({
-  themeMode,
+  // themeMode,
   storeSlug,
 }: SidebarMenuProps) {
   const pathname = usePathname();
@@ -74,18 +87,12 @@ export default function SidebarMenu({
   }, [pathname]);
 
   const handleClick: MenuProps["onClick"] = (e) => {
-    const flatten = sideMenu.flatMap((i) => i.children || [i]);
-
-    if (storeSlug) {
-      const ordersMenu = sideMenu.find((i) => i.title === "Orders");
-      if (ordersMenu) {
-        flatten.push({
-          title: "Generate Order Link",
-          href: `/${storeSlug}/generate-orders-link`,
-        });
-      }
+    // Skip navigation for Generate Order Link (it has its own onClick)
+    if (e.key.includes("generate-orders-link")) {
+      return;
     }
 
+    const flatten = sideMenu.flatMap((i) => i.children || [i]);
     const clicked = flatten.find((i) => i.href === e.key);
     if (clicked?.href) router.push(clicked.href);
   };

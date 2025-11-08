@@ -12,6 +12,7 @@ import {
   Edit,
   BarChart2,
   FolderPlus,
+  Link2, // 👈 Add Link2 import
 } from "lucide-react";
 import React from "react";
 
@@ -68,7 +69,12 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/orders/view-order",
         icon: Clipboard,
       },
-     
+      // 👇 Add Generate Order Link directly in the menu structure
+      {
+        title: "Generate Order Link",
+        href: "/generate-orders-link",
+        icon: Link2,
+      },
     ],
   },
   {

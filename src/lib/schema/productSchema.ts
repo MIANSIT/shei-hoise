@@ -141,3 +141,4 @@ export const productSchema = z
 
 export type ProductType = z.infer<typeof productSchema>;
 export type ProductVariantType = VariantType;
+export type CreateProductType = Omit<ProductType, "id">;
