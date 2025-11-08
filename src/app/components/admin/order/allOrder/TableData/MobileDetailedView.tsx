@@ -12,8 +12,8 @@ import {
   Package,
   Calendar,
   FileText,
-  MapPin,
-  Phone,
+  // MapPin,
+  // Phone,
   User,
   BadgeCheck,
   Shield,
@@ -37,7 +37,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
   const billingAddress = order.billing_address || address;
   const fullShippingAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
   const fullBillingAddress = `${billingAddress.address_line_1}, ${billingAddress.city}, ${billingAddress.country}`;
-  const isCancelled = order.status === "cancelled";
+  // const isCancelled = order.status === "cancelled";
   const isPaid = order.payment_status === "paid";
 
   const deliveryOption: StatusType = (order.delivery_option ||
@@ -53,12 +53,12 @@ const MobileDetailedViewFull: React.FC<Props> = ({
     });
   };
 
-  const CopyIcon = ({ fieldId }: { fieldId: string }) =>
-    copiedField === fieldId ? (
-      <Check size={14} className="text-green-500" />
-    ) : (
-      <Copy size={14} />
-    );
+  // const CopyIcon = ({ fieldId }: { fieldId: string }) =>
+  //   copiedField === fieldId ? (
+  //     <Check size={14} className="text-green-500" />
+  //   ) : (
+  //     <Copy size={14} />
+  //   );
 
   // Calculate savings
   const totalSavings = order.order_items.reduce((acc, item) => {
