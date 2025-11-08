@@ -5,7 +5,7 @@ import type { ColumnsType } from "antd/es/table";
 import type { TableRowSelection } from "antd/es/table/interface";
 import DataTable from "@/app/components/admin/common/DataTable";
 import Image from "next/image";
-import { InputNumber } from "antd";
+import { InputNumber, Tag, Tooltip } from "antd";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
   ProductRow,
@@ -25,7 +25,7 @@ interface StockTableProps {
     variantId: string | null,
     quantity: number
   ) => void;
-  rowSelection?: TableRowSelection<ProductRow>;
+  rowSelection?: TableRowSelection<ProductRow | VariantRow>; // Updated type
   loading?: boolean;
   bulkActive?: boolean;
 }
@@ -46,17 +46,42 @@ const StockTable: React.FC<StockTableProps> = ({
       width: 80,
       render: (_value, record) => {
         const imageUrl = record.imageUrl ?? null;
+        const isProductRow = "variants" in record;
+        const shouldHighlight = isProductRow
+          ? (record as ProductRow).isLowStock ||
+            (record as ProductRow).hasLowStockVariant
+          : (record as VariantRow).isLowStock;
 
-        return imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={record.title}
-            width={50}
-            height={50}
-            className="rounded-md object-cover"
-          />
-        ) : (
-          <div className="w-12 h-12 bg-gray-200 rounded-md" />
+        return (
+          <div className="relative">
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt={record.title}
+                width={50}
+                height={50}
+                className="rounded-md object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-gray-200 rounded-md" />
+            )}
+            {/* Low Stock Badge on Image */}
+            {shouldHighlight && (
+              <Tooltip
+                title={
+                  isProductRow && (record as ProductRow).hasLowStockVariant
+                    ? "Has low stock variants"
+                    : `Low stock! Threshold: ${record.lowStockThreshold}`
+                }
+              >
+                <div className="absolute -top-1 -right-1">
+                  <div className="bg-red-500 text-white text-xs px-1 py-0.5 rounded-full">
+                    !
+                  </div>
+                </div>
+              </Tooltip>
+            )}
+          </div>
         );
       },
     },
@@ -65,13 +90,39 @@ const StockTable: React.FC<StockTableProps> = ({
       dataIndex: "title",
       key: "title",
       className: "font-semibold",
+      render: (title: string, record: ProductRow | VariantRow) => {
+        const isProductRow = "variants" in record;
+        const shouldHighlight = isProductRow
+          ? (record as ProductRow).isLowStock ||
+            (record as ProductRow).hasLowStockVariant
+          : (record as VariantRow).isLowStock;
+
+        const tooltipTitle =
+          isProductRow && (record as ProductRow).hasLowStockVariant
+            ? "One or more variants are low on stock"
+            : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
+
+        return (
+          <div className="flex items-center gap-2">
+            <span>{title}</span>
+            {shouldHighlight && (
+              <Tooltip title={tooltipTitle}>
+                <Tag color="red" className="text-xs">
+                  {isProductRow && (record as ProductRow).hasLowStockVariant
+                    ? "Has Low Stock"
+                    : "Low Stock"}
+                </Tag>
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Price",
       dataIndex: "currentPrice",
       key: "currentPrice",
       render: (_price: number | null, record: ProductRow | VariantRow) => {
-        // 🟡 If this record has variants → show message
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="italic text-gray-400">
@@ -80,7 +131,6 @@ const StockTable: React.FC<StockTableProps> = ({
           );
         }
 
-        // 🟢 For variant or product without variants → show proper price
         const price =
           typeof record.currentPrice === "number" ? record.currentPrice : 0;
         return <span>৳{price.toFixed(2)}</span>;
@@ -90,7 +140,6 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Stock",
       key: "stock",
       render: (_value, record) => {
-        // 🟡 If product has variants → show message
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="italic text-gray-400">
@@ -99,12 +148,13 @@ const StockTable: React.FC<StockTableProps> = ({
           );
         }
 
-        // 🟢 Otherwise editable stock
         const key = record.id;
         const editedValue = editedStocks[key] ?? record.stock;
         const showUpdateButton = key in editedStocks && !bulkActive;
+        const isLowStock = record.isLowStock;
+        const currentStock = record.stock;
+        const threshold = record.lowStockThreshold || 10;
 
-        // Determine correct parent + variant IDs
         const parentId =
           "variants" in record ? record.id : (record as VariantRow).productId;
         const variantId =
@@ -115,14 +165,36 @@ const StockTable: React.FC<StockTableProps> = ({
             className="flex items-center gap-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <InputNumber
-              min={0}
-              value={editedValue}
-              onChange={(value) =>
-                onStockChange(parentId, variantId, Number(value ?? 0))
+            <Tooltip
+              title={
+                isLowStock
+                  ? `Current: ${currentStock} / Threshold: ${threshold}`
+                  : `Current stock: ${currentStock}`
               }
-              className="!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold"
-            />
+            >
+              <InputNumber
+                min={0}
+                value={editedValue}
+                onChange={(value) =>
+                  onStockChange(parentId, variantId, Number(value ?? 0))
+                }
+                className={`!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold ${
+                  isLowStock
+                    ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
+                    : ""
+                }`}
+                status={isLowStock ? "warning" : undefined}
+              />
+            </Tooltip>
+
+            {isLowStock && (
+              <Tooltip title={`Below threshold (${threshold})`}>
+                <span className="text-xs text-red-500 font-medium px-2 py-1 bg-red-50 rounded">
+                  Low
+                </span>
+              </Tooltip>
+            )}
+
             {showUpdateButton && (
               <SheiButton
                 onClick={async (e) => {
@@ -148,6 +220,15 @@ const StockTable: React.FC<StockTableProps> = ({
       rowSelection={rowSelection}
       pagination={false}
       loading={loading}
+      // Add row className for low stock highlighting - highlight products with low stock variants
+      rowClassName={(record) => {
+        const isProductRow = "variants" in record;
+        const shouldHighlight = isProductRow
+          ? (record as ProductRow).isLowStock ||
+            (record as ProductRow).hasLowStockVariant
+          : (record as VariantRow).isLowStock;
+        return shouldHighlight ? "bg-red-50 hover:bg-red-100" : "";
+      }}
       expandable={{
         expandedRowRender: (record) =>
           "variants" in record && record.variants?.length ? (
@@ -155,10 +236,15 @@ const StockTable: React.FC<StockTableProps> = ({
               columns={columns}
               data={record.variants.map((v) => ({
                 ...v,
-                productId: record.id, // ✅ ensures variants know their parent
+                productId: record.id,
               }))}
               rowKey="id"
               pagination={false}
+              rowClassName={(variantRecord) =>
+                (variantRecord as VariantRow).isLowStock
+                  ? "bg-red-50 hover:bg-red-100"
+                  : ""
+              }
             />
           ) : null,
         rowExpandable: (record) =>
