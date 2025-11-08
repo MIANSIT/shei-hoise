@@ -62,7 +62,7 @@ export default function OrdersPage() {
     return (
       <>
         {/* <Header /> */}
-        <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center justify-center ">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4 text-foreground">Access Denied</h1>
             <p className="text-muted-foreground">Please log in to view your orders.</p>

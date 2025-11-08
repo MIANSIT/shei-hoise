@@ -12,7 +12,7 @@ import AddToCartButton from "@/app/components/products/singleProduct/AddToCartBu
 import BackButton from "@/app/components/products/singleProduct/BackButton";
 import { motion } from "framer-motion";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
-import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton"; 
+import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
 
 interface ApiProduct {
   id: string;
@@ -69,7 +69,20 @@ export default function ProductPage() {
     async function fetchProduct() {
       try {
         setLoading(true);
+
+        if (!product_slug) {
+          console.error("No product slug provided");
+          return;
+        }
+
         const productData = await getClientProductBySlug(product_slug);
+
+        // Handle case where product is not found (returns null)
+        if (!productData) {
+          console.log("Product not found for slug:", product_slug);
+          setProduct(null);
+          return;
+        }
 
         const fixedProductData = {
           ...productData,
@@ -99,20 +112,43 @@ export default function ProductPage() {
     }
   }, [product_slug]);
 
-  // ✅ REPLACED: Now using your custom skeleton
   if (loading) {
     return <ProductPageSkeleton />;
   }
 
+  // Handle product not found case
   if (!product) {
     return (
-      <>
-        <div className="container mx-auto px-4 py-6">
-          <p className="text-center mt-20 text-lg md:text-xl text-foreground">
-            Product not found.
-          </p>
+      <div className="container mx-auto px-4 py-6">
+        <BackButton href={`/${store_slug}`} label="Back to Products" />
+
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+          <div className="max-w-md mx-auto">
+            <div className="w-24 h-24 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+              <svg
+                className="w-12 h-12 text-muted-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Product Not Found
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Sorry, we couldn&apos;t find the product you&apos;re looking for.
+              It may have been removed or the URL might be incorrect.
+            </p>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 

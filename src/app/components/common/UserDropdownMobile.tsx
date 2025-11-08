@@ -51,7 +51,7 @@ export default function UserDropdownMobile() {
         {open && (
           <div className="mt-2 bg-background border border-border rounded-md shadow-lg flex flex-col overflow-hidden">
             <Link
-              href={`/${storeSlug}/user-profile`}
+              href={`/${storeSlug}/my-profile`}
               className="flex items-center px-4 py-2 hover:bg-accent transition duration-200 ease-in-out font-medium rounded-md"
             >
               👤 Profile

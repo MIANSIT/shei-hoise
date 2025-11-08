@@ -53,7 +53,7 @@ export default function UserDropdownDesktop({
   const items: MenuProps["items"] = [
     {
       key: "profile",
-      label: <Link href={`/${store_slug}/user-profile`}>Profile</Link>, // Updated
+      label: <Link href={`/${store_slug}/my-profile`}>Profile</Link>, // Updated
     },
     {
       key: "orders",
