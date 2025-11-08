@@ -151,7 +151,9 @@ const StockChangeTable: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <LowStockSummary products={products} />
+      <div>
+        <LowStockSummary products={products} />
+      </div>
       <BulkStockUpdate
         selectedCount={selectedRowKeys.length}
         onUpdate={handleBulkUpdate}

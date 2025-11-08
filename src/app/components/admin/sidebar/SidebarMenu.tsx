@@ -65,7 +65,7 @@ function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
 }
 
 export default function SidebarMenu({
-  themeMode,
+  // themeMode,
   storeSlug,
 }: SidebarMenuProps) {
   const pathname = usePathname();
