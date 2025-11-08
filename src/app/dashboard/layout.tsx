@@ -5,7 +5,8 @@ import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { PanelLeft, Sun, Moon } from "lucide-react";
+import { PanelLeft } from "lucide-react";
+// import { Sun, Moon } from "lucide-react";
 import { ConfigProvider, theme as antdTheme, App as AntdApp, Spin } from "antd";
 import "@ant-design/v5-patch-for-react-19";
 import "antd/dist/reset.css";
@@ -63,12 +64,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [mounted]);
 
   // Toggle light/dark mode
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-  };
+  // const toggleTheme = () => {
+  //   const newTheme = theme === "light" ? "dark" : "light";
+  //   setTheme(newTheme);
+  //   localStorage.setItem("theme", newTheme);
+  //   document.documentElement.classList.toggle("dark", newTheme === "dark");
+  // };
 
   // Show loading state
   if (loading || (!loading && !session) || !mounted) {
@@ -128,7 +129,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Theme toggle */}
-            <button
+            {/* <button
               onClick={toggleTheme}
               className='p-2 rounded hover:opacity-70'
               style={{ background: "var(--muted)" }}
@@ -138,7 +139,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               ) : (
                 <Sun className='w-5 h-5' />
               )}
-            </button>
+            </button> */}
           </header>
 
           <div className='flex flex-1 overflow-hidden'>

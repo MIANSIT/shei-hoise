@@ -44,6 +44,12 @@ import {
   PaymentMethod,
 } from "@/lib/types/order";
 
+import {
+  bulkUpdateOrders,
+  BulkUpdateData,
+  BulkUpdateResult,
+} from "./orders/bulkUpdateOrders";
+
 export interface DataService {
   // Product methods
   getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
@@ -89,6 +95,7 @@ export interface DataService {
     orderId: string,
     notes: string
   ) => Promise<UpdateOrderResult>;
+  bulkUpdateOrders: (updateData: BulkUpdateData) => Promise<BulkUpdateResult>;
 }
 
 // Implementation for getOrderByNumber
@@ -143,6 +150,7 @@ export const dataService: DataService = {
   updateDeliveryOption,
   updatePaymentMethod,
   updateOrderNotes,
+  bulkUpdateOrders,
 };
 
 export default dataService;

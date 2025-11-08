@@ -5,7 +5,7 @@ import { Button, Input } from "antd";
 import StatusTag from "../StatusFilter/StatusTag";
 import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
-import EditableDeliveryOption from "./EditableDeliveryOption";
+// import EditableDeliveryOption from "./EditableDeliveryOption";
 import EditablePaymentMethod from "./EditablePaymentMethod";
 import {
   OrderStatus,
@@ -146,7 +146,7 @@ const OrderControls: React.FC<Props> = ({
       )}
 
       {/* Delivery Option */}
-      {!isCancelled && !isDelivered && (
+      {/* {!isCancelled && !isDelivered && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
           <span className="font-medium text-sm sm:text-base whitespace-nowrap">
             Delivery Option:
@@ -159,7 +159,7 @@ const OrderControls: React.FC<Props> = ({
             <span className="text-xs text-orange-500 font-medium">Unsaved</span>
           )}
         </div>
-      )}
+      )} */}
 
       {/* Payment Method */}
       {!isCancelled && (
