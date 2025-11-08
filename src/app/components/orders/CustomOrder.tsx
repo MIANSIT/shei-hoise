@@ -1,24 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  // Card,
-  // Col,
-  Typography,
-  // Space,
-  Button,
-  Empty,
-  notification,
-} from "antd";
-import { LinkOutlined, CopyOutlined, CheckOutlined } from "@ant-design/icons";
 import { getProductsWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { OrderProduct } from "@/lib/types/order";
 import OrderDetails from "../admin/order/create-order/OrderDetails";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { useParams } from "next/navigation";
-
-const { Title, Text } = Typography;
+import { CustomOrderSkeleton } from "../../components/skeletons/CustomOrderSkeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  SheiAlert,
+  SheiAlertDescription,
+} from "../../components/ui/sheiAlert/SheiAlert";
+import { Link, Copy, Check } from "lucide-react";
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 
 export default function CustomOrder() {
   const params = useParams();
@@ -31,6 +28,29 @@ export default function CustomOrder() {
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    title: string;
+    description: string;
+    variant?: "destructive";
+  }>({
+    show: false,
+    title: "",
+    description: "",
+  });
+
+  // Show toast
+  const showToast = (
+    title: string,
+    description: string,
+    variant?: "destructive"
+  ) => {
+    setToast({ show: true, title, description, variant });
+    setTimeout(
+      () => setToast({ show: false, title: "", description: "" }),
+      3000
+    );
+  };
 
   // Reset link when order changes
   useEffect(() => {
@@ -40,10 +60,7 @@ export default function CustomOrder() {
   // Fetch products using storeSlug
   const fetchProducts = useCallback(async () => {
     if (!storeSlug) {
-      notification.error({
-        message: "Store not found",
-        description: "Store slug missing in URL.",
-      });
+      showToast("Store not found", "Store slug missing in URL.", "destructive");
       return;
     }
 
@@ -51,10 +68,11 @@ export default function CustomOrder() {
     try {
       const storeId = await getStoreIdBySlug(storeSlug);
       if (!storeId) {
-        notification.error({
-          message: "Invalid Store",
-          description: "Could not find a store with this slug.",
-        });
+        showToast(
+          "Invalid Store",
+          "Could not find a store with this slug.",
+          "destructive"
+        );
         return;
       }
 
@@ -62,14 +80,15 @@ export default function CustomOrder() {
       setProducts(res);
     } catch (err) {
       console.error("Error fetching products:", err);
-      notification.error({
-        message: "Error Loading Products",
-        description: "Failed to load products. Please try again.",
-      });
+      showToast(
+        "Error Loading Products",
+        "Failed to load products. Please try again.",
+        "destructive"
+      );
     } finally {
       setLoading(false);
     }
-  }, [storeSlug, notification]);
+  }, [storeSlug]);
 
   useEffect(() => {
     fetchProducts();
@@ -77,79 +96,80 @@ export default function CustomOrder() {
 
   const isFormValid = orderProducts.length > 0;
 
+  // Ultra-compact encoding with compression
   const handleGenerateLink = () => {
     if (!isFormValid || !storeSlug) {
-      notification.error({
-        message: "Cannot generate link",
-        description: "Please select products first.",
-      });
+      showToast(
+        "Cannot generate link",
+        "Please select products first.",
+        "destructive"
+      );
       return;
     }
 
-    // Build query string: ?product=product_id@variant_id@quantity&product=...
-    const params = orderProducts
-      .map((item) => {
-        if (item.variant_id) {
-          // product with variant → product_id@variant_id@quantity
-          return `product=${item.product_id}@${item.variant_id}@${item.quantity}`;
-        } else {
-          // product without variant → product_id@quantity
-          return `product=${item.product_id}@${item.quantity}`;
-        }
-      })
-      .join("&");
+    // Ultra-compact format
+    const compactData = orderProducts.map(item => [
+      item.product_id,    // [0] = product_id
+      item.variant_id,    // [1] = variant_id (can be null)
+      item.quantity       // [2] = quantity
+    ]);
 
-    const url = `/${storeSlug}/confirm-order?${params}`;
+    const jsonString = JSON.stringify(compactData);
+    
+    // Compress the data (reduces size by 60-80%)
+    const compressed = compressToEncodedURIComponent(jsonString);
+    
+    const url = `/${storeSlug}/confirm-order?o=${compressed}`;
     setGeneratedLink(url);
 
-    notification.success({
-      message: "Order Link Generated",
-      description: "Link generated successfully!",
-    });
+    showToast("Order Link Generated", "Link generated successfully!");
   };
 
   const handleCopyLink = () => {
     if (!generatedLink) return;
     navigator.clipboard.writeText(window.location.origin + generatedLink);
     setCopied(true);
-    notification.success({
-      message: "Link Copied",
-      description: "The order link has been copied to your clipboard.",
-    });
+    showToast(
+      "Link Copied",
+      "The order link has been copied to your clipboard."
+    );
     setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <Text type="secondary" className="mt-3">
-          Loading products...
-        </Text>
-      </div>
-    );
+    return <CustomOrderSkeleton />;
   }
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 rounded-xl ">
+    <div className="h-full overflow-auto p-4 md:p-6 rounded-xl bg-background">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm">
+          <SheiAlert variant={toast.variant}>
+            <SheiAlertDescription>
+              <div className="flex flex-col">
+                <span className="font-medium">{toast.title}</span>
+                <span>{toast.description}</span>
+              </div>
+            </SheiAlertDescription>
+          </SheiAlert>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
-            <Title level={3} className="!text-gray-800 dark:!text-gray-100">
+            <h3 className="text-lg font-semibold text-foreground">
               Quick Order Link
-            </Title>
-            <Text className="!text-gray-600 dark:!text-gray-300">
+            </h3>
+            <p className="text-sm text-muted-foreground">
               Generate a unique order link for your customers instantly.
-            </Text>
+            </p>
           </div>
         </div>
 
-        {/* Main Card */}
-        {/* <Card
-          className="shadow-md rounded-2xl border transition-all hover:shadow-lg"
-          bodyStyle={{ padding: "20px" }}
-        > */}
-        {/* Order Details Section */}
+        {/* Main Content */}
         <div className="w-full">
           {products.length > 0 ? (
             <OrderDetails
@@ -158,46 +178,43 @@ export default function CustomOrder() {
               setOrderProducts={setOrderProducts}
             />
           ) : (
-            <Empty description="No products found" />
+            <CustomOrderSkeleton />
           )}
         </div>
 
         {/* Divider / Spacing */}
-        <div className="border-t border-gray-200 mt-6 mb-4" />
+        <div className="border-t border-border mt-6 mb-4" />
 
         {/* Generate Link Section */}
         <div className="flex flex-col sm:flex-row w-full justify-end sm:items-center gap-3">
           {!generatedLink ? (
             <Button
-              type="primary"
-              size="large"
               disabled={!isFormValid}
-              icon={<LinkOutlined />}
               onClick={handleGenerateLink}
               className="w-full sm:w-auto"
             >
+              <Link className="w-4 h-4 mr-2" />
               Generate Order Link
             </Button>
           ) : (
             <>
-              <input
+              <Input
                 type="text"
                 readOnly
                 value={window.location.origin + generatedLink}
-                className="border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="border border-border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
               />
-              <Button
-                type="primary"
-                icon={copied ? <CheckOutlined /> : <CopyOutlined />}
-                onClick={handleCopyLink}
-                className="w-full sm:w-auto"
-              >
+              <Button onClick={handleCopyLink} className="w-full sm:w-auto">
+                {copied ? (
+                  <Check className="w-4 h-4 mr-2" />
+                ) : (
+                  <Copy className="w-4 h-4 mr-2" />
+                )}
                 {copied ? "Copied" : "Copy"}
               </Button>
             </>
           )}
         </div>
-        {/* </Card> */}
       </div>
     </div>
   );

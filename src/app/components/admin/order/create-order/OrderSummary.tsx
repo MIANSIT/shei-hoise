@@ -16,6 +16,7 @@ import {
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
+import { useState, useEffect } from "react";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -30,9 +31,9 @@ interface OrderSummaryProps {
   deliveryCost: number;
   setDeliveryCost: (cost: number) => void;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped";
   setStatus: (
-    status: "pending" | "confirmed" | "completed" | "cancelled"
+    status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped"
   ) => void;
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   setPaymentStatus: (
@@ -41,7 +42,7 @@ interface OrderSummaryProps {
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   shippingFees?: ShippingFee[];
-  customerDeliveryOption?: string; // Change from customerCity to customerDeliveryOption
+  customerDeliveryOption?: string;
 }
 
 export default function OrderSummary({
@@ -63,26 +64,62 @@ export default function OrderSummary({
   shippingFees = [],
   customerDeliveryOption,
 }: OrderSummaryProps) {
-  // Get selected shipping fee details
+  const [isManualDeliveryCost, setIsManualDeliveryCost] = useState(false);
+
+  // Check if delivery option is custom
+  const isCustomDelivery = customerDeliveryOption === "custom";
+
   // Get selected shipping fee details
   const selectedShippingFee = shippingFees.find((fee) => {
-    if (
-      !fee ||
-      typeof fee !== "object" ||
-      !fee.location ||
-      !customerDeliveryOption
-    )
+    if (!fee || typeof fee !== "object" || !fee.name || !customerDeliveryOption)
       return false;
 
-    const feeLocation = String(fee.location).toLowerCase().replace(/\s+/g, "-");
+    const feeName = String(fee.name).toLowerCase().replace(/\s+/g, "-");
     const customerDeliveryOptionNormalized = String(
       customerDeliveryOption
     ).toLowerCase();
     return (
-      feeLocation.includes(customerDeliveryOptionNormalized) ||
-      customerDeliveryOptionNormalized.includes(feeLocation)
+      feeName.includes(customerDeliveryOptionNormalized) ||
+      customerDeliveryOptionNormalized.includes(feeName)
     );
   });
+
+  // Auto-set delivery cost when customer delivery option changes (only for standard options)
+  useEffect(() => {
+    if (selectedShippingFee && !isManualDeliveryCost && !isCustomDelivery) {
+      setDeliveryCost(selectedShippingFee.price);
+    }
+  }, [
+    selectedShippingFee,
+    isManualDeliveryCost,
+    setDeliveryCost,
+    isCustomDelivery,
+  ]);
+
+  // Handle manual delivery cost changes - only for custom delivery
+  const handleDeliveryCostChange = (value: number | null) => {
+    if (!isCustomDelivery) return; // Only allow changes for custom delivery
+
+    const newCost = value || 0;
+    setDeliveryCost(newCost);
+
+    // Check if this is a manual change (different from the auto-calculated fee)
+    if (selectedShippingFee && newCost !== selectedShippingFee.price) {
+      setIsManualDeliveryCost(true);
+    } else {
+      setIsManualDeliveryCost(false);
+    }
+  };
+
+  // Determine which shipping fee details to display
+  const displayShippingFee = isManualDeliveryCost
+    ? {
+        name: "Custom Shipping Fee",
+        price: deliveryCost,
+        description: "Manually adjusted shipping fee",
+        estimated_days: selectedShippingFee?.estimated_days || "3-5",
+      }
+    : selectedShippingFee;
 
   return (
     <Card
@@ -98,26 +135,50 @@ export default function OrderSummary({
         </Title>
 
         {/* Shipping Fee Alert */}
-        {selectedShippingFee && customerDeliveryOption && (
+        {displayShippingFee && customerDeliveryOption && !isCustomDelivery && (
           <Alert
-            message="Shipping Fee Applied"
+            message={
+              isManualDeliveryCost
+                ? "Custom Shipping Fee"
+                : "Shipping Fee Applied"
+            }
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>{selectedShippingFee.location}</strong>: ৳
-                  {selectedShippingFee.fee} {/* Changed from .price to .fee */}
+                  <strong>{displayShippingFee.name}</strong>: ৳
+                  {displayShippingFee.price}
                 </Text>
-                {selectedShippingFee.description && (
+                {displayShippingFee.description && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    {selectedShippingFee.description}
+                    {displayShippingFee.description}
                   </Text>
                 )}
-                {selectedShippingFee.estimated_days && (
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
-                    Estimated delivery: {selectedShippingFee.estimated_days}{" "}
-                    days
+
+                {isManualDeliveryCost && (
+                  <Text type="warning" style={{ fontSize: "12px" }}>
+                    Manual delivery cost override in effect
                   </Text>
                 )}
+              </Space>
+            }
+            type={isManualDeliveryCost ? "warning" : "info"}
+            showIcon
+          />
+        )}
+
+        {/* Custom Delivery Alert */}
+        {isCustomDelivery && (
+          <Alert
+            message="Custom Delivery Fee"
+            description={
+              <Space direction="vertical" size={0}>
+                <Text>
+                  <strong>Custom Delivery</strong>: ৳{deliveryCost}
+                </Text>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  You can manually adjust the delivery cost for custom delivery
+                  Price
+                </Text>
               </Space>
             }
             type="info"
@@ -172,15 +233,27 @@ export default function OrderSummary({
                   <InputNumber
                     min={0}
                     value={deliveryCost}
-                    onChange={(value) => setDeliveryCost(value || 0)}
+                    onChange={handleDeliveryCostChange}
                     style={{ width: "100%" }}
                     addonAfter="৳"
-                    disabled={!!customerDeliveryOption} // Disable manual input when city is selected
+                    disabled={!isCustomDelivery}
+                    readOnly={!isCustomDelivery}
                   />
                 </Form.Item>
-                {customerDeliveryOption && (
+                {customerDeliveryOption && !isCustomDelivery && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    Delivery cost is automatically set based on selected city
+                    Delivery cost is automatically set based on selected
+                    location
+                  </Text>
+                )}
+                {isCustomDelivery && (
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    Enter custom delivery cost for this order
+                  </Text>
+                )}
+                {isManualDeliveryCost && !isCustomDelivery && (
+                  <Text type="warning" style={{ fontSize: "12px" }}>
+                    Manual delivery cost override in effect
                   </Text>
                 )}
               </Col>
@@ -248,11 +321,7 @@ export default function OrderSummary({
               size="large"
               placeholder="Select payment method"
             >
-              <Option value="cash">Cash on Delivery</Option>
-              {/* <Option value="card">Credit/Debit Card</Option>
-              <Option value="bkash">bKash</Option>
-              <Option value="nagad">Nagad</Option>
-              <Option value="bank">Bank Transfer</Option> */}
+              <Option value="cod">Cash on Delivery</Option>
             </Select>
           </Form.Item>
         </Space>

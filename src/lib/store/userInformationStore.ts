@@ -1,15 +1,15 @@
 // lib/store/checkoutStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CheckoutFormValues } from '@/lib/utils/formSchema';
+import { CustomerCheckoutFormValues } from '@/lib/schema/checkoutSchema'; // Import from your schema
 
 interface CheckoutStore {
-  formData: CheckoutFormValues;
-  setFormData: (data: CheckoutFormValues) => void;
+  formData: Partial<CustomerCheckoutFormValues>; // Use Partial since password might not be stored
+  setFormData: (data: Partial<CustomerCheckoutFormValues>) => void;
   clearFormData: () => void;
 }
 
-const defaultFormData: CheckoutFormValues = {
+const defaultFormData: Partial<CustomerCheckoutFormValues> = {
   email: '',
   phone: '',
   name: '',
@@ -17,6 +17,7 @@ const defaultFormData: CheckoutFormValues = {
   city: '',
   shippingAddress: '',
   postCode: '',
+  // Don't include password in default for security reasons
 };
 
 export const useCheckoutStore = create<CheckoutStore>()(
@@ -27,7 +28,7 @@ export const useCheckoutStore = create<CheckoutStore>()(
       clearFormData: () => set({ formData: defaultFormData }),
     }),
     {
-      name: 'userInformation-storage', // name of the item in the storage (must be unique)
+      name: 'userInformation-storage',
     }
   )
 );
