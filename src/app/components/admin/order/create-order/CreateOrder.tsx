@@ -504,9 +504,9 @@ export default function CreateOrder() {
                         <Text>{customerProfile.city}</Text>
                       </Descriptions.Item>
                     )}
-                    <Descriptions.Item label="Customer ID">
+                    {/* <Descriptions.Item label="Customer ID">
                       <Text type="secondary">{selectedCustomer.id}</Text>
-                    </Descriptions.Item>
+                    </Descriptions.Item> */}
                   </Descriptions>
 
                   {customerProfile ? (

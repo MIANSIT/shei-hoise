@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 interface BackButtonProps {
   href: string;
   label?: string;
+  className?: string; // Add this line
 }
 
 const BackButton: FC<BackButtonProps> = ({ href, label = "Back" }) => {

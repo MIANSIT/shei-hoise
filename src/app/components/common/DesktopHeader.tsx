@@ -2,13 +2,13 @@
 
 import LogoTitle from "../header/LogoTitle";
 import NavMenu, { NavLink } from "../header/NavMenu";
-import AuthButtons from "../header/AuthButtons";
+// import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import UserDropdown from "./UserDropdownDesktop"; // adjust path
+// import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+// import UserDropdown from "./UserDropdownDesktop"; // adjust path
 
 export default function DesktopHeader() {
-  const { user, loading } = useCurrentUser();
+  // const { user, loading } = useCurrentUser();
 
   // Main navigation
   const mainLinks: NavLink[] = [
@@ -17,10 +17,10 @@ export default function DesktopHeader() {
   ];
 
   // Auth links for non-logged-in users
-  const authLinksUser: NavLink[] = [
-    { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/sign-up", isHighlighted: true },
-  ];
+  // const authLinksUser: NavLink[] = [
+  //   { name: "Log in", path: "/login" },
+  //   { name: "Sign up", path: "/sign-up", isHighlighted: true },
+  // ];
 
   // Dropdown menu for logged-in user
 
@@ -37,11 +37,11 @@ export default function DesktopHeader() {
         <div className="flex items-center gap-5">
           <ThemeToggle />
 
-          {!loading && user ? (
+          {/* {!loading && user ? (
             <UserDropdown />
           ) : (
             <AuthButtons links={authLinksUser} isAdminPanel={false} />
-          )}
+          )} */}
         </div>
       </header>
 

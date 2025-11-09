@@ -57,7 +57,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (isMounted && storeCartItems.length === 0 && !isLoading) {
       const redirectTimer = setTimeout(() => {
-        router.push(`/order-status`);
+        router.push(`/${store_slug}/order-status`);
       }, 2000);
 
       return () => clearTimeout(redirectTimer);

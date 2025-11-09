@@ -3,11 +3,11 @@
 
 import React, { useState } from "react";
 import { Button, Select, Modal, App, Space, Tag, Alert } from "antd";
-import { OrderStatus, PaymentStatus } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus, StoreOrder } from "@/lib/types/order"; // Import StoreOrder
 import dataService from "@/lib/queries/dataService";
 
 interface Props {
-  selectedOrders: string[];
+  selectedOrders: StoreOrder[]; // Change from string[] to StoreOrder[]
   onSuccess: () => void;
   onClearSelection: () => void;
 }
@@ -37,7 +37,7 @@ const PAYMENT_STATUS_OPTIONS = [
 
 const PAYMENT_METHODS = [
   { value: "cod", label: "Cash on Delivery" },
-  { value: "online", label: "Online Payment" },
+  // { value: "online", label: "Online Payment" },
 ];
 
 const BulkActions: React.FC<Props> = ({
@@ -51,7 +51,7 @@ const BulkActions: React.FC<Props> = ({
   const [updates, setUpdates] = useState<UpdatesState>({
     status: undefined,
     payment_status: undefined,
-    payment_method: undefined,
+    payment_method: "cod", // Set "cod" as default
   });
 
   const handleUpdate = async () => {
@@ -63,7 +63,7 @@ const BulkActions: React.FC<Props> = ({
     setLoading(true);
     try {
       const result = await dataService.bulkUpdateOrders({
-        orderIds: selectedOrders,
+        orderIds: selectedOrders.map((order) => order.id), // Extract IDs for API call
         status: updates.status,
         payment_status: updates.payment_status,
         payment_method: updates.payment_method,
@@ -77,7 +77,7 @@ const BulkActions: React.FC<Props> = ({
         setUpdates({
           status: undefined,
           payment_status: undefined,
-          payment_method: undefined,
+          payment_method: "cod", // Reset to "cod" when modal closes
         });
         onSuccess();
         onClearSelection();
@@ -110,9 +110,9 @@ const BulkActions: React.FC<Props> = ({
             showIcon
             className="mb-3"
           />
-          <div className="space-y-3">
+          <div className="space-y-3 ">
             {updates.status && (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mt-4">
                 <span className="font-medium text-sm">Order Status:</span>
                 <Tag color="blue" className="w-fit">
                   {
@@ -201,10 +201,10 @@ const BulkActions: React.FC<Props> = ({
           setUpdates({
             status: undefined,
             payment_status: undefined,
-            payment_method: undefined,
+            payment_method: "cod", // Reset to "cod" when modal closes
           });
         }}
-        footer={null} // Remove default footer to use custom one
+        footer={null}
         width="90%"
         style={{ maxWidth: "500px" }}
         className="bulk-actions-modal"
@@ -267,6 +267,7 @@ const BulkActions: React.FC<Props> = ({
               <Select
                 placeholder="Keep current method"
                 value={updates.payment_method}
+                defaultValue="cod" // Set default value
                 onChange={(value: string) =>
                   handleChange("payment_method", value)
                 }
@@ -284,13 +285,13 @@ const BulkActions: React.FC<Props> = ({
             </p>
             <div className="max-h-32 overflow-y-auto">
               <Space wrap size={[4, 8]} className="w-full">
-                {selectedOrders.slice(0, 15).map((orderId) => (
+                {selectedOrders.slice(0, 15).map((order) => (
                   <Tag
-                    key={orderId}
+                    key={order.id}
                     className="text-xs mb-1 break-all"
                     style={{ maxWidth: "100%" }}
                   >
-                    #{orderId.slice(-8)}
+                    #{order.order_number}
                   </Tag>
                 ))}
                 {selectedOrders.length > 15 && (
@@ -312,7 +313,6 @@ const BulkActions: React.FC<Props> = ({
             />
           )}
 
-          {/* Custom responsive footer buttons */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4 border-t border-gray-200">
             <Button
               onClick={() => setIsModalOpen(false)}

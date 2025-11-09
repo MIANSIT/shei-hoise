@@ -2,23 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import ShoppingCartIcon from "../cart/ShoppingCartIcon";
-import CartBottomBar from "../cart/CartBottomBar";
+// import ShoppingCartIcon from "../cart/ShoppingCartIcon";
+// import CartBottomBar from "../cart/CartBottomBar";
 import { usePathname } from "next/navigation";
 import LogoTitle from "../header/LogoTitle";
 import { NavLink } from "../header/NavMenu";
-import AuthButtons from "../header/AuthButtons";
+// import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
 import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import UserDropdownMobile from "./UserDropdownMobile";
+// import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+// import UserDropdownMobile from "./UserDropdownMobile";
 
 export default function MobileHeader() {
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  // const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { user, loading } = useCurrentUser();
+  // const { user, loading } = useCurrentUser();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -29,10 +29,10 @@ export default function MobileHeader() {
     { name: "Stores", path: "#stores" },
   ];
 
-  const authLinksUser: NavLink[] = [
-    { name: "Log in", path: "/login" },
-    { name: "Sign up", path: "/sign-up", isHighlighted: true },
-  ];
+  // const authLinksUser: NavLink[] = [
+  //   { name: "Log in", path: "/login" },
+  //   { name: "Sign up", path: "/sign-up", isHighlighted: true },
+  // ];
 
   return (
     <>
@@ -42,7 +42,7 @@ export default function MobileHeader() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+            {/* <ShoppingCartIcon onClick={() => setIsCartOpen(true)} /> */}
 
             <button
               className="text-foreground hover:bg-accent rounded-full p-1 transition"
@@ -84,11 +84,11 @@ export default function MobileHeader() {
               );
             })}
 
-            <li>
+            {/* <li>
               <div className="border-t border-border my-2" />
-            </li>
+            </li> */}
 
-            <li>
+            {/* <li>
               {!loading && user ? (
                 <UserDropdownMobile />
               ) : (
@@ -98,13 +98,13 @@ export default function MobileHeader() {
                   isVertical={true}
                 />
               )}
-            </li>
+            </li> */}
           </ul>
         </nav>
       </header>
 
       <div className="h-[60px] lg:hidden" />
-      <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      {/* <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} /> */}
     </>
   );
 }

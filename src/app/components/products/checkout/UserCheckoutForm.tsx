@@ -69,21 +69,21 @@ const CheckoutForm = ({
     error: orderError,
   } = useOrderProcess(store_slug);
 
- const defaultValues: CustomerCheckoutFormValues = {
-  name: formData.name || "",
-  email: formData.email || "",
-  phone: formData.phone || "",
-  password: formData.password || "",
-  country: formData.country || "Bangladesh",
-  city: formData.city || "Dhaka",
-  postCode: formData.postCode || "",
-  shippingAddress: formData.shippingAddress || "",
-};
+  const defaultValues: CustomerCheckoutFormValues = {
+    name: formData.name || "",
+    email: formData.email || "",
+    phone: formData.phone || "",
+    password: formData.password || "",
+    country: formData.country || "Bangladesh",
+    city: formData.city || "Dhaka",
+    postCode: formData.postCode || "",
+    shippingAddress: formData.shippingAddress || "",
+  };
 
-const form = useForm<CustomerCheckoutFormValues>({
-  resolver: zodResolver(customerCheckoutSchema),
-  defaultValues,
-});
+  const form = useForm<CustomerCheckoutFormValues>({
+    resolver: zodResolver(customerCheckoutSchema),
+    defaultValues,
+  });
 
   // ✅ Memoize computed values to prevent unnecessary re-renders
   const isLoadingAuth = authLoading || userLoading;
@@ -233,7 +233,7 @@ const form = useForm<CustomerCheckoutFormValues>({
           clearStoreCart(store_slug);
           onSubmit(values);
           setTimeout(() => {
-            router.push("/order-status");
+            router.push(`/${store_slug}/order-status`);
           }, 2000);
         } else {
           setError(result.error || "Failed to place order");
@@ -269,7 +269,7 @@ const form = useForm<CustomerCheckoutFormValues>({
             clearStoreCart(store_slug);
             onSubmit(values);
             setTimeout(() => {
-              router.push("/order-status");
+              router.push(`/${store_slug}/order-status`);
             }, 2000);
           } else {
             setError(result.error || "Failed to place order");
@@ -328,7 +328,7 @@ const form = useForm<CustomerCheckoutFormValues>({
           clearStoreCart(store_slug);
           onSubmit(values);
           setTimeout(() => {
-            router.push("/order-status");
+            router.push(`/${store_slug}/order-status`);
           }, 2000);
         } else {
           setError(orderResult.error || "Failed to place order");
@@ -370,9 +370,9 @@ const form = useForm<CustomerCheckoutFormValues>({
     };
 
     const strength = Object.values(checks).filter(Boolean).length;
-    const strengthText = ["Very Weak", "Weak", "Fair", "Good", "Strong"][
-      strength - 1
-    ] || "Very Weak";
+    const strengthText =
+      ["Very Weak", "Weak", "Fair", "Good", "Strong"][strength - 1] ||
+      "Very Weak";
 
     return (
       <div className="mt-2 space-y-2">

@@ -255,7 +255,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 title={record.name}
                 subtitle={record.category?.name || "Uncategorized"}
                 content={
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap gap-1">
                       {variants.length > 0 ? (
                         <>
@@ -274,41 +274,45 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           )}
                         </>
                       ) : (
-                        <span className="italic">—</span>
+                        <span className="italic"></span>
                       )}
                     </div>
-                    <div className="flex gap-2 mt-2">
-                      <span className="font-medium">
-                        {basePrice ? `৳${basePrice.toFixed(2)}` : "—"}
-                      </span>
-                      <span
-                        className={`font-medium ${
-                          discountedPrice ? "text-green-600" : "text-gray-400"
-                        }`}
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                        <span className="font-medium">
+                          {basePrice ? `৳${basePrice.toFixed(2)}` : "—"}
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            discountedPrice ? "text-green-600" : "text-gray-400"
+                          }`}
+                        >
+                          {discountedPrice
+                            ? `৳${discountedPrice.toFixed(2)}`
+                            : ""}
+                        </span>
+                      </div>
+                      <div
+                        className="flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {discountedPrice
-                          ? `৳${discountedPrice.toFixed(2)}`
-                          : "—"}
-                      </span>
+                        <button
+                          className="p-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
+                          onClick={() => handleEdit(record.slug)}
+                        >
+                          <Edit className="w-5 h-5 text-blue-600" />
+                        </button>
+                        <button
+                          className="p-2 bg-red-50 rounded-lg hover:bg-red-100 transition"
+                          onClick={() => showDeleteModal(record.id)}
+                        >
+                          <Trash2 className="w-5 h-5 text-red-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 }
-                actions={
-                  <>
-                    <button
-                      className="p-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
-                      onClick={() => handleEdit(record.slug)}
-                    >
-                      <Edit className="w-5 h-5 text-blue-600" />
-                    </button>
-                    <button
-                      className="p-2 bg-red-50 rounded-lg hover:bg-red-100 transition"
-                      onClick={() => showDeleteModal(record.id)}
-                    >
-                      <Trash2 className="w-5 h-5 text-red-600" />
-                    </button>
-                  </>
-                }
+                // Remove the actions prop since buttons are now in content
               />
             );
           })}
