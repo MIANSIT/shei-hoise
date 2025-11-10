@@ -16,7 +16,7 @@ import { EditProfileForm } from "../../components/user-profile/EditProfileForm";
 import { UserWithProfile } from "@/lib/queries/user/getUserProfile";
 import { ProfileFormData } from "@/lib/types/profile";
 
-export default function UserProfilePage() {
+export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserWithProfile | null>(null);
@@ -27,9 +27,9 @@ export default function UserProfilePage() {
     }
   }, [user]);
 
-  // ✅ USER SIDE: Only allow customers to edit, block store_owner and admin
+  // ✅ STORE OWNER SIDE: Only allow store_owners to edit, block customers and admin
   const showEditButton = Boolean(
-    user?.profile && user?.user_type === "customer" // Only customers can edit on user side
+    user?.profile && user?.user_type === "store_owner" // Only store_owners can edit on store owner side
   );
 
   const handleEdit = () => {
@@ -76,6 +76,18 @@ export default function UserProfilePage() {
       throw error;
     }
   };
+
+  // Additional check: Only store_owners should access this page
+  if (user && user.user_type !== "store_owner") {
+    return (
+      <AccessDenied
+        title="Access Restricted"
+        message="This page is only accessible to store owners."
+        showHomeButton={true}
+        showLoginButton={false}
+      />
+    );
+  }
 
   if (loading) {
     return <UserLoadingSkeleton />;
@@ -151,7 +163,7 @@ export default function UserProfilePage() {
                     phone={displayUser?.phone}
                     emailVerified={displayUser?.email_verified}
                     userType={displayUser?.user_type}
-                    showAdminMessage={user?.user_type !== "customer"} // Show message for non-customers
+                    showAdminMessage={false} // Store owners can edit, so no admin message
                   />
 
                   <ProfileDetailsCard profile={displayUser?.profile} />

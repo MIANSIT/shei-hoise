@@ -15,6 +15,7 @@ interface PersonalInfoCardProps {
   phone?: string | null;
   emailVerified?: boolean;
   userType?: string | null;
+  showAdminMessage?: boolean; // New boolean prop
 }
 
 export function PersonalInfoCard({
@@ -24,6 +25,7 @@ export function PersonalInfoCard({
   phone,
   emailVerified,
   userType,
+  showAdminMessage = true, // Default to false since it's also used on user side
 }: PersonalInfoCardProps) {
   const isAdminOrVendor = userType === "admin" || userType === "store_owner";
 
@@ -51,24 +53,26 @@ export function PersonalInfoCard({
               {lastName || <span className="text-gray-400">Not provided</span>}
             </div>
           </div>
-          <div>
+          <div className="md:col-span-1">
             <div className="text-sm font-medium text-gray-700">
               Email Address
             </div>
-            <div className="mt-1 text-gray-900 flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              <span>{email}</span>
+            <div className="mt-1 text-gray-900 space-y-2">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span className="break-all">{email}</span>
+              </div>
               {emailVerified && (
                 <Badge
                   variant="default"
-                  className="bg-green-100 text-green-800 text-xs"
+                  className="bg-green-100 text-green-800 text-xs w-full sm:w-fit justify-center sm:justify-start"
                 >
-                  Verified
+                  ✓ Email Verified
                 </Badge>
               )}
             </div>
           </div>
-          <div>
+          <div className="md:col-span-1">
             <div className="text-sm font-medium text-gray-700">
               Phone Number
             </div>
@@ -86,19 +90,24 @@ export function PersonalInfoCard({
                 <Shield className="w-4 h-4" />
                 Account Role
               </div>
-              <div className="mt-2 flex items-center gap-2">
+
+              <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
                 <Badge
                   variant={userType === "admin" ? "destructive" : "default"}
+                  className="w-fit"
                 >
                   {userType?.toUpperCase()}
                 </Badge>
-                <span className="text-sm text-gray-600">
-                  {userType === "admin"
-                    ? "Full system access"
-                    : "Store management access"}
-                </span>
+                {showAdminMessage && (
+                  <span className="text-sm text-gray-600">
+                    {userType === "admin"
+                      ? "Full system access"
+                      : "Store management access"}
+                  </span>
+                )}
               </div>
-              {isAdminOrVendor && (
+
+              {isAdminOrVendor && showAdminMessage && (
                 <div className="text-sm text-gray-500 mt-2">
                   Profile editing is managed through the administrative system.
                 </div>

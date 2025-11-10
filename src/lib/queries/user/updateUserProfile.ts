@@ -7,7 +7,7 @@ interface UpdateUserData {
 }
 
 interface UpdateProfileData {
-//   avatar_url: string;
+  //   avatar_url: string;
   date_of_birth: string;
   gender: string;
   address_line_1: string;
@@ -68,10 +68,7 @@ export async function updateUserProfile(
       throw new Error("User not found");
     }
 
-    if (
-      currentUser.user_type === "admin" ||
-      currentUser.user_type === "store_owner"
-    ) {
+    if (currentUser.user_type === "admin") {
       throw new Error("Unauthorized: User role cannot edit profile");
     }
 
@@ -101,7 +98,7 @@ export async function updateUserProfile(
 
     // Process profile data
     const processedProfileData = {
-    //   avatar_url: emptyToNull(profileData.avatar_url),
+      //   avatar_url: emptyToNull(profileData.avatar_url),
       date_of_birth: processDateField(profileData.date_of_birth),
       gender: emptyToNull(profileData.gender),
       address_line_1: emptyToNull(profileData.address_line_1),

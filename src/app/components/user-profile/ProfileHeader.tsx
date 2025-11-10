@@ -49,16 +49,18 @@ export function ProfileHeader({
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              My Profile
+            </h1>
             <p className="text-gray-600 mt-2">
               {firstName && lastName
                 ? `Welcome back, ${firstName} ${lastName}`
                 : "Manage your account information and preferences"}
             </p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
             {getUserStatusBadge()}
             {getUserTypeBadge()}
           </div>
