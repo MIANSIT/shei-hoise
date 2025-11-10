@@ -98,7 +98,7 @@ export default function ConfirmOrderPage() {
         if (result.success) {
           notify.success("Order placed successfully!");
           clearFormData();
-          setTimeout(() => router.push("/order-status"), 2000);
+          setTimeout(() => router.push(`/${store_slug}/order-status`), 2000);
         } else {
           notify.error(result.error || "Failed to place order");
         }
@@ -139,7 +139,7 @@ export default function ConfirmOrderPage() {
         if (result.success) {
           notify.success("Order placed successfully!");
           clearFormData();
-          setTimeout(() => router.push("/order-status"), 2000);
+          setTimeout(() => router.push(`/${store_slug}/order-status`), 2000);
         } else {
           notify.error(result.error || "Failed to place order");
         }
@@ -189,7 +189,7 @@ export default function ConfirmOrderPage() {
       if (orderResult.success) {
         notify.success("Account created and order placed successfully!");
         clearFormData();
-        setTimeout(() => router.push("/order-status"), 2000);
+        setTimeout(() => router.push(`/${store_slug}/order-status`), 2000);
       } else {
         notify.error(orderResult.error || "Failed to place order");
       }

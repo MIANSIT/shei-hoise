@@ -463,7 +463,6 @@ const CheckoutForm = ({
         </div>
       )}
 
-
       {/* Submit Button */}
       <Button
         type="submit"

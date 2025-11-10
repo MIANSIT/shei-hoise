@@ -128,6 +128,10 @@ const OrdersTable: React.FC<Props> = ({
     return name.charAt(0).toUpperCase();
   };
 
+  const selectedOrderObjects = filteredOrders.filter((order) =>
+    selectedRowKeys.includes(order.id)
+  );
+
   // Updated columns - REMOVED the custom selection column
   const columns: ColumnsType<StoreOrder> = [
     {
@@ -469,7 +473,7 @@ const OrdersTable: React.FC<Props> = ({
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <BulkActions
-                selectedOrders={selectedRowKeys}
+                selectedOrders={selectedOrderObjects}
                 onSuccess={handleBulkUpdateSuccess}
                 onClearSelection={() => setSelectedRowKeys([])}
               />

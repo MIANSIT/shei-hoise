@@ -66,7 +66,7 @@ export const sideMenu: MenuItem[] = [
       },
       {
         title: "All Orders",
-        href: "/dashboard/orders/view-order",
+        href: "/dashboard/orders",
         icon: Clipboard,
       },
       // 👇 Add Generate Order Link directly in the menu structure

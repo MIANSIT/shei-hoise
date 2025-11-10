@@ -80,7 +80,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (isMounted && cartItems.length === 0 && !isLoadingOverall) {
       const redirectTimer = setTimeout(() => {
-        router.push(`/order-status`);
+        router.push(`/${store_slug}/order-status`);
       }, 2000);
 
       return () => clearTimeout(redirectTimer);
@@ -145,7 +145,7 @@ export default function CheckoutPage() {
           notify.success("Congratulations! Your order has been placed successfully.");
           clearStoreCart(store_slug);
           clearFormData();
-          setTimeout(() => router.push("/order-status"), 2000);
+          setTimeout(() => router.push(`/${store_slug}/order-status`), 2000);
         } else {
           notify.error(result.error || "Failed to place order. Please try again.");
         }
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
           notify.success("Congratulations! Your order has been placed successfully.");
           clearStoreCart(store_slug);
           clearFormData();
-          setTimeout(() => router.push("/order-status"), 2000);
+          setTimeout(() => router.push(`/${store_slug}/order-status`), 2000);
         } else {
           notify.error(result.error || "Failed to place order. Please try again.");
         }
@@ -242,7 +242,7 @@ export default function CheckoutPage() {
           notify.success("Congratulations! Your account has been created and order placed successfully.");
           clearStoreCart(store_slug);
           clearFormData();
-          setTimeout(() => router.push("/order-status"), 2000);
+          setTimeout(() => router.push(`/${store_slug}/order-status`), 2000);
         } else {
           notify.error(orderResult.error || "Failed to place order after account creation.");
         }

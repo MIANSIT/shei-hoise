@@ -4,12 +4,12 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
-import Header from "../components/common/Header";
-import Footer from "../components/common/Footer";
-import OrdersTable from "../components/orders/CustomerOrderTable";
-import { OrdersPageSkeleton } from "../components/skeletons/OrdersPageSkeleton"; 
-import { EmptyOrdersSkeleton } from "../components/skeletons/EmptyOrdersSkeleton"; 
-import { UserLoadingSkeleton } from "../components/skeletons/UserLoadingSkeleton"; 
+// import Header from "../../components/common/Header";
+import Footer from "../../components/common/Footer";
+import OrdersTable from "../../components/orders/CustomerOrderTable";
+import { OrdersPageSkeleton } from "../../components/skeletons/OrdersPageSkeleton"; 
+import { EmptyOrdersSkeleton } from "../../components/skeletons/EmptyOrdersSkeleton"; 
+import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton"; 
 
 export default function OrdersPage() {
   const { user, loading: userLoading } = useCurrentUser();
@@ -61,8 +61,8 @@ export default function OrdersPage() {
   if (!user) {
     return (
       <>
-        <Header />
-        <div className="min-h-screen flex items-center justify-center bg-background">
+        {/* <Header /> */}
+        <div className="flex items-center justify-center ">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4 text-foreground">Access Denied</h1>
             <p className="text-muted-foreground">Please log in to view your orders.</p>
@@ -74,7 +74,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <Header />
+      {/* <Header /> */}
       
       <div className="min-h-screen bg-background py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -7,6 +7,14 @@ import { motion } from "framer-motion";
 export default function NotFoundPage() {
   const router = useRouter();
 
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back(); // Go back if there's history
+    } else {
+      router.push("/"); // Otherwise go to home
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 px-4 text-center">
       {/* 404 SVG */}
@@ -48,10 +56,10 @@ export default function NotFoundPage() {
         <Button
           type="primary"
           size="large"
-          onClick={() => router.push("/")}
+          onClick={handleBack}
           className="px-6 py-3 shadow-lg hover:shadow-xl transition-shadow text-sm sm:text-base"
         >
-          Back to Store
+          Go Back
         </Button>
       </motion.div>
     </div>
