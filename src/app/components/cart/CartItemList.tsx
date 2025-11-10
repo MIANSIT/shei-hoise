@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { CartProductWithDetails } from "@/lib/types/cart";
 
@@ -32,24 +32,58 @@ export default function CartItemsList({
   
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [changingQuantities, setChangingQuantities] = useState<Record<string, "up" | "down">>({});
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [showMaxQuantityError, setShowMaxQuantityError] = useState<string | null>(null);
+  const debounceRefs = useRef<Record<string, NodeJS.Timeout>>({});
 
-  console.log("📦 CartItemsList Debug:", {
-    receivedItems: items,
-    itemsCount: items.length,
-    currentStoreSlug
-  });
+  // Cleanup debounce timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debounceRefs.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  // Clear error message after 3 seconds
+  useEffect(() => {
+    if (showMaxQuantityError) {
+      const timer = setTimeout(() => {
+        setShowMaxQuantityError(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showMaxQuantityError]);
 
   const handleQuantityChange = (productId: string, variantId: string | null | undefined, currentQuantity: number, newQuantity: number) => {
     if (newQuantity < 1) return;
     
-    const direction = newQuantity > currentQuantity ? "up" : "down";
     const itemKey = `${productId}-${variantId || 'no-variant'}`;
+    const item = items.find(item => 
+      `${item.productId}-${item.variantId || 'no-variant'}` === itemKey
+    );
     
+    // Check stock limit
+    if (item && newQuantity > item.stock) {
+      newQuantity = item.stock;
+    }
+    
+    // Limit maximum quantity to 999
+    if (newQuantity > 999) {
+      newQuantity = 999;
+    }
+
+    const direction = newQuantity > currentQuantity ? "up" : "down";
     setChangingQuantities((prev) => ({ ...prev, [itemKey]: direction }));
 
     if (onQuantityChange) {
       onQuantityChange(productId, variantId ?? null, newQuantity);
     }
+    
+    // Clear input value when changing via buttons
+    setInputValues(prev => {
+      const newValues = { ...prev };
+      delete newValues[itemKey];
+      return newValues;
+    });
     
     setTimeout(() => {
       setChangingQuantities((prev) => {
@@ -60,9 +94,117 @@ export default function CartItemsList({
     }, 300);
   };
 
+  const handleInputChange = (productId: string, variantId: string | null | undefined, value: string) => {
+    const itemKey = `${productId}-${variantId || 'no-variant'}`;
+    const item = items.find(item => 
+      `${item.productId}-${item.variantId || 'no-variant'}` === itemKey
+    );
+    
+    if (!item) return;
+
+    // Only allow numbers
+    const numericValue = value.replace(/[^0-9]/g, '');
+    
+    // Update input value immediately for responsive typing
+    setInputValues(prev => ({
+      ...prev,
+      [itemKey]: numericValue
+    }));
+
+    // Clear existing debounce for this item
+    if (debounceRefs.current[itemKey]) {
+      clearTimeout(debounceRefs.current[itemKey]);
+    }
+
+    // If empty or invalid, don't update quantity yet
+    if (!numericValue || numericValue === '0') {
+      return;
+    }
+
+    let newQuantity = parseInt(numericValue, 10);
+    
+    // Validate quantity
+    if (isNaN(newQuantity) || newQuantity < 1) {
+      return;
+    }
+
+    // Check stock limit and show error if exceeded
+    if (newQuantity > item.stock) {
+      newQuantity = item.stock;
+      // Update input to show the corrected value
+      setInputValues(prev => ({
+        ...prev,
+        [itemKey]: item.stock.toString()
+      }));
+      // Show error message
+      setShowMaxQuantityError(itemKey);
+    }
+    
+    // Limit maximum quantity to 999
+    if (newQuantity > 999) {
+      newQuantity = 999;
+      setInputValues(prev => ({
+        ...prev,
+        [itemKey]: '999'
+      }));
+    }
+
+    // Debounce the quantity update to avoid too many rapid API calls
+    debounceRefs.current[itemKey] = setTimeout(() => {
+      if (onQuantityChange) {
+        const currentItem = items.find(item => 
+          `${item.productId}-${item.variantId || 'no-variant'}` === itemKey
+        );
+        
+        // Only update if quantity actually changed from the current value
+        if (currentItem && newQuantity !== currentItem.quantity) {
+          const direction = newQuantity > currentItem.quantity ? "up" : "down";
+          setChangingQuantities((prev) => ({ ...prev, [itemKey]: direction }));
+          
+          onQuantityChange(productId, variantId ?? null, newQuantity);
+          
+          setTimeout(() => {
+            setChangingQuantities((prev) => {
+              const newState = { ...prev };
+              delete newState[itemKey];
+              return newState;
+            });
+          }, 300);
+        }
+      }
+    }, 500);
+  };
+
+  const handleInputBlur = (productId: string, variantId: string | null | undefined) => {
+    const itemKey = `${productId}-${variantId || 'no-variant'}`;
+    const inputValue = inputValues[itemKey];
+    
+    if (!inputValue || inputValue === '0') {
+      // If input is empty or zero, reset to current quantity and clear input
+      setInputValues(prev => {
+        const newValues = { ...prev };
+        delete newValues[itemKey];
+        return newValues;
+      });
+    }
+  };
+
   const handleRemoveItem = (productId: string, variantId: string | null | undefined) => {
     const itemKey = `${productId}-${variantId || 'no-variant'}`;
     setRemovingIds(prev => new Set(prev).add(itemKey));
+    
+    // Clear input value when removing
+    setInputValues(prev => {
+      const newValues = { ...prev };
+      delete newValues[itemKey];
+      return newValues;
+    });
+
+    // Clear any pending debounce
+    if (debounceRefs.current[itemKey]) {
+      clearTimeout(debounceRefs.current[itemKey]);
+      delete debounceRefs.current[itemKey];
+    }
     
     if (onRemoveItem) {
       onRemoveItem(productId, variantId ?? null);
@@ -113,13 +255,8 @@ export default function CartItemsList({
         const itemKey = `${item.productId}-${item.variantId || 'no-variant'}`;
         const isRemoving = removingIds.has(itemKey);
         const isChangingQuantity = changingQuantities[itemKey];
-
-        console.log("🛍️ Rendering cart item:", {
-          itemKey,
-          productName: item.productName,
-          quantity: item.quantity,
-          price: item.displayPrice
-        });
+        const inputValue = inputValues[itemKey];
+        const showError = showMaxQuantityError === itemKey;
 
         return (
           <div
@@ -128,7 +265,6 @@ export default function CartItemsList({
               isRemoving || isClearing ? "opacity-0 -translate-x-10" : "opacity-100 translate-x-0"
             }`}
           >
-            {/* Rest of your cart item rendering code */}
             <div className="flex items-center gap-4">
               <div className="relative w-20 h-20 rounded-lg overflow-hidden">
                 <Image
@@ -177,12 +313,6 @@ export default function CartItemsList({
                   )}
                 </p>
 
-                {item.isOutOfStock ? (
-                  <p className="text-sm text-destructive mt-1">Out of Stock</p>
-                ) : item.stock < 10 ? (
-                  <p className="text-sm text-yellow-600 mt-1">Only {item.stock} left</p>
-                ) : null}
-
                 <div className="mt-2 flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -194,25 +324,16 @@ export default function CartItemsList({
                     <Minus className="h-3 w-3" />
                   </Button>
 
-                  <div className="relative w-6 h-6 flex items-center justify-center">
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={item.quantity}
-                        initial={{ 
-                          y: isChangingQuantity === "up" ? -20 : 20, 
-                          opacity: 0 
-                        }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ 
-                          y: isChangingQuantity === "up" ? 20 : -20, 
-                          opacity: 0 
-                        }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="absolute text-center text-foreground"
-                      >
-                        {item.quantity}
-                      </motion.span>
-                    </AnimatePresence>
+                  <div className="relative w-12 h-7 flex items-center justify-center">
+                    <input
+                      type="text"
+                      value={inputValue !== undefined ? inputValue : item.quantity}
+                      onChange={(e) => handleInputChange(item.productId, item.variantId, e.target.value)}
+                      onBlur={() => handleInputBlur(item.productId, item.variantId)}
+                      className="w-full h-full text-center border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                      disabled={isClearing || item.isOutOfStock}
+                      maxLength={3}
+                    />
                   </div>
 
                   <Button
@@ -225,6 +346,19 @@ export default function CartItemsList({
                     <Plus className="h-3 w-3" />
                   </Button>
                 </div>
+
+                {/* Show max quantity error */}
+                {showError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="text-xs text-destructive mt-1"
+                  >
+                    {/* Max quantity exceeded. Set to {item.stock}. */}
+                    Max quantity exceeded. Set to max quantity in the stock.
+                  </motion.p>
+                )}
               </div>
             </div>
 

@@ -12,13 +12,16 @@ export async function getClientProductBySlug(product_slug: string) {
       description,
       base_price,
       discounted_price,
+      discount_amount,
       categories(id, name),
       product_images(id, image_url, is_primary),
+      product_inventory(quantity_available, quantity_reserved),
       product_variants(
         id,
         variant_name,
         base_price,
         discounted_price,
+        discount_amount,
         color,
         product_inventory(quantity_available, quantity_reserved),
         product_images(id, image_url, is_primary)

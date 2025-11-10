@@ -6,16 +6,18 @@ interface AddToCartButtonProps {
   onClick: () => void;
   isLoading?: boolean;
   showSuccess?: boolean;
-  disabled?: boolean; // Add disabled prop
+  disabled?: boolean;
   className?: string;
+  label?: string; // Add label prop
 }
 
 const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   onClick,
   isLoading = false,
   showSuccess = false,
-  disabled = false, // Default to false
-  className = ""
+  disabled = false,
+  className = "",
+  label = "Add to Cart" // Default label
 }) => {
   const handleClick = () => {
     if (disabled || isLoading) return;
@@ -48,7 +50,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
               className="absolute flex items-center gap-2"
             >
               <ShoppingCart className="w-5 h-5" />
-              <span>Add to Cart</span>
+              <span>{label}</span>
             </motion.div>
           )}
         </AnimatePresence>
