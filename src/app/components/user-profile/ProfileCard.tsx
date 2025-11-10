@@ -9,7 +9,8 @@ interface ProfileCardProps {
   phone?: string | null;
   avatarUrl?: string | null;
   userType?: string | null;
-  hasProfile?: boolean; // Add this prop
+  hasProfile?: boolean; // This should only be boolean | undefined
+  showEditButton?: boolean; // Changed from canEdit to showEditButton
   onEdit: () => void;
 }
 
@@ -20,7 +21,8 @@ export function ProfileCard({
   phone,
   avatarUrl,
   userType,
-  hasProfile,
+  hasProfile = false, // Provide default value
+  showEditButton = false, // Provide default value
   onEdit,
 }: ProfileCardProps) {
   const getInitials = () => {
@@ -35,9 +37,6 @@ export function ProfileCard({
     }
     return "User profile picture";
   };
-
-  const canEdit =
-    userType !== "admin" && userType !== "store_owner" && hasProfile;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -75,7 +74,7 @@ export function ProfileCard({
           )}
         </div>
 
-        {canEdit ? (
+        {showEditButton ? (
           <Button
             onClick={onEdit}
             variant="outline"

@@ -22,7 +22,7 @@ const profileSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   phone: z.string(),
   email: z.string().email("Invalid email address"),
-  avatar_url: z.string(),
+//   avatar_url: z.string(),
   date_of_birth: z.string(),
   gender: z.string(),
   address_line_1: z.string(),
@@ -41,7 +41,7 @@ interface EditProfileFormProps {
     last_name: string | null;
     phone: string | null;
     profile?: {
-      avatar_url: string | null;
+    //   avatar_url: string | null;
       date_of_birth: string | null;
       gender: string | null;
       address_line_1: string | null;
@@ -74,7 +74,7 @@ export function EditProfileForm({
       last_name: user.last_name || "",
       phone: user.phone || "",
       email: user.email,
-      avatar_url: user.profile?.avatar_url || "",
+    //   avatar_url: user.profile?.avatar_url || "",
       date_of_birth: user.profile?.date_of_birth || "",
       gender: user.profile?.gender || "",
       address_line_1: user.profile?.address_line_1 || "",
@@ -170,7 +170,7 @@ export function EditProfileForm({
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="avatar_url">Profile Picture URL</Label>
               <Input
                 id="avatar_url"
@@ -183,7 +183,7 @@ export function EditProfileForm({
                   {errors.avatar_url.message}
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
 
           <div className="space-y-4">

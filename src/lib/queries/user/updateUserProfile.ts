@@ -7,7 +7,7 @@ interface UpdateUserData {
 }
 
 interface UpdateProfileData {
-  avatar_url: string;
+//   avatar_url: string;
   date_of_birth: string;
   gender: string;
   address_line_1: string;
@@ -43,6 +43,38 @@ export async function updateUserProfile(
   profileData: UpdateProfileData
 ) {
   try {
+    // 🔐 SECURITY FIX: Get current authenticated user
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error("Authentication required");
+    }
+
+    // 🔐 SECURITY FIX: Verify the authenticated user matches the target user
+    if (session.user.id !== userId) {
+      throw new Error("Unauthorized: You can only edit your own profile");
+    }
+
+    // 🔐 SECURITY FIX: Server-side role validation
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("id", userId)
+      .single();
+
+    if (!currentUser) {
+      throw new Error("User not found");
+    }
+
+    if (
+      currentUser.user_type === "admin" ||
+      currentUser.user_type === "store_owner"
+    ) {
+      throw new Error("Unauthorized: User role cannot edit profile");
+    }
+
     // Process user data
     const processedUserData = {
       first_name: userData.first_name.trim(),
@@ -69,7 +101,7 @@ export async function updateUserProfile(
 
     // Process profile data
     const processedProfileData = {
-      avatar_url: emptyToNull(profileData.avatar_url),
+    //   avatar_url: emptyToNull(profileData.avatar_url),
       date_of_birth: processDateField(profileData.date_of_birth),
       gender: emptyToNull(profileData.gender),
       address_line_1: emptyToNull(profileData.address_line_1),

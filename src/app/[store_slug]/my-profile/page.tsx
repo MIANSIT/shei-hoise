@@ -5,7 +5,7 @@ import { useUserProfile } from "@/lib/hook/profile-user/useUserProfile";
 import { updateUserProfile } from "@/lib/queries/user/updateUserProfile";
 import Footer from "../../components/common/Footer";
 import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton";
-import { AccessDenied } from "../../components/user-profile/AccessDenied"; // Import the component
+import { AccessDenied } from "../../components/user-profile/AccessDenied";
 import { ProfileHeader } from "../../components/user-profile/ProfileHeader";
 import { ProfileCard } from "../../components/user-profile/ProfileCard";
 import { StoreInfoCard } from "../../components/user-profile/StoreInfoCard";
@@ -27,13 +27,16 @@ export default function UserProfilePage() {
     }
   }, [user]);
 
-  const canEditProfile =
-    user?.user_type !== "admin" &&
-    user?.user_type !== "store_owner" &&
-    user?.profile;
+  // ✅ SECURITY FIX: Remove client-side authorization logic
+  // This is now just UI logic, security is handled server-side
+  const showEditButton = Boolean(
+    user?.profile &&
+      user?.user_type !== "admin" &&
+      user?.user_type !== "store_owner"
+  );
 
   const handleEdit = () => {
-    if (!canEditProfile) return;
+    // Let server handle authorization, just trigger UI state
     setIsEditing(true);
   };
 
@@ -42,9 +45,10 @@ export default function UserProfilePage() {
   };
 
   const handleSave = async (formData: ProfileFormData) => {
-    if (!currentUser || !canEditProfile) return;
+    if (!currentUser) return;
 
     try {
+      // Server will handle all authorization checks
       const { user: updatedUser, profile: updatedProfile } =
         await updateUserProfile(
           currentUser.id,
@@ -54,7 +58,7 @@ export default function UserProfilePage() {
             phone: formData.phone,
           },
           {
-            avatar_url: formData.avatar_url,
+            // avatar_url: formData.avatar_url,
             date_of_birth: formData.date_of_birth,
             gender: formData.gender,
             address_line_1: formData.address_line_1,
@@ -93,7 +97,7 @@ export default function UserProfilePage() {
             : "Please log in to access this page."
         }
         showHomeButton={true}
-        showLoginButton={!error} // Don't show login button if it's an error
+        showLoginButton={!error}
       />
     );
   }
@@ -119,9 +123,10 @@ export default function UserProfilePage() {
                 lastName={displayUser?.last_name}
                 email={displayUser?.email}
                 phone={displayUser?.phone}
-                avatarUrl={displayUser?.profile?.avatar_url}
+                // avatarUrl={displayUser?.profile?.avatar_url}
                 userType={displayUser?.user_type}
                 hasProfile={!!displayUser?.profile}
+                showEditButton={showEditButton} // Pass UI state only
                 onEdit={handleEdit}
               />
 
