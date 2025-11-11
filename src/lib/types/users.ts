@@ -1,6 +1,6 @@
 // lib/types/users.ts
 import { z } from "zod";
-import { CustomerProfile } from "./customer";
+// import { CustomerProfile } from "./customer";
 
 export enum USERTYPE {
   STORE_OWNER = "store_owner",
