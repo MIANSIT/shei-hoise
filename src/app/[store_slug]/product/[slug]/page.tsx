@@ -73,6 +73,69 @@ export default function ProductPage() {
 
   const { cart, addToCart } = useCartStore();
 
+  // Calculate selectedVariantData based on current state
+  const selectedVariantData = product?.product_variants?.find(
+    (variant) => variant.id === selectedVariant
+  );
+
+  // Fixed: Robust cart quantity calculation
+  const getCartQuantity = () => {
+    if (!product) return 0;
+
+    // Handle both cases: with variant and without variant
+    if (selectedVariantData) {
+      // For products with variants
+      const cartItem = cart.find(
+        (item) =>
+          item.productId === product.id &&
+          item.variantId === selectedVariantData.id && // Must match the variant ID
+          item.storeSlug === store_slug
+      );
+      return cartItem?.quantity || 0;
+    } else {
+      // For products without variants - variantId should be null
+      const cartItem = cart.find(
+        (item) =>
+          item.productId === product.id &&
+          item.variantId === null && // Important: variantId should be null for main product
+          item.storeSlug === store_slug
+      );
+      return cartItem?.quantity || 0;
+    }
+  };
+
+  // Get available stock - handles both variant and main product inventory
+  const getAvailableStock = () => {
+    if (selectedVariantData) {
+      return (
+        selectedVariantData.product_inventory?.[0]?.quantity_available || 0
+      );
+    }
+    // For products without variants, use main product inventory
+    return product?.product_inventory?.[0]?.quantity_available || 0;
+  };
+
+  const cartQuantity = getCartQuantity();
+  const availableStock = getAvailableStock();
+  const remainingStock = Math.max(0, availableStock - cartQuantity);
+  const isOutOfStock = remainingStock <= 0;
+  const isQuantityExceeded = quantity > remainingStock;
+
+  // Simplified stock status without numbers
+  const getStockStatus = () => {
+    if (availableStock <= 0) {
+      return "out-of-stock";
+    } else if (remainingStock === 0) {
+      return "max-in-cart";
+    } else if (availableStock <= 10) {
+      return "limited";
+    } else {
+      return "available";
+    }
+  };
+
+  const stockStatus = getStockStatus();
+
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -104,7 +167,16 @@ export default function ProductPage() {
           fixedProductData.product_variants &&
           fixedProductData.product_variants.length > 0
         ) {
-          setSelectedVariant(fixedProductData.product_variants[0].id);
+          // Find the first available variant instead of just the first one
+          const firstAvailableVariant = fixedProductData.product_variants.find(
+            (variant) =>
+              (variant.product_inventory?.[0]?.quantity_available || 0) > 0
+          );
+
+          // Set to first available variant, or first variant if none are available
+          setSelectedVariant(
+            firstAvailableVariant?.id || fixedProductData.product_variants[0].id
+          );
         }
       } catch (error) {
         console.error("Error fetching product:", error);
@@ -129,6 +201,32 @@ export default function ProductPage() {
     }
   }, [showMaxQuantityError]);
 
+  // Debug effect for cart changes - MOVED AFTER variable definitions
+  useEffect(() => {
+    console.log("🛒 Cart Debug:", {
+      productId: product?.id,
+      variantId: selectedVariantData?.id,
+      availableStock,
+      cartQuantity,
+      remainingStock,
+      isOutOfStock,
+      isQuantityExceeded,
+      quantity,
+      stockStatus,
+    });
+  }, [
+    cart,
+    quantity,
+    product,
+    selectedVariantData,
+    availableStock,
+    cartQuantity,
+    remainingStock,
+    isOutOfStock,
+    isQuantityExceeded,
+    stockStatus,
+  ]);
+
   if (loading) {
     return <ProductPageSkeleton />;
   }
@@ -140,11 +238,23 @@ export default function ProductPage() {
         <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
           <div className="max-w-md mx-auto">
             <div className="w-24 h-24 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-              <svg className="w-12 h-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-12 h-12 text-muted-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Product Not Found</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Product Not Found
+            </h2>
             <p className="text-muted-foreground mb-6">
               Sorry, we couldn&apos;t find the product you&apos;re looking for.
             </p>
@@ -153,23 +263,6 @@ export default function ProductPage() {
       </div>
     );
   }
-
-  const selectedVariantData = product?.product_variants?.find(
-    (variant) => variant.id === selectedVariant
-  );
-
-  // Get current cart quantity for this product+variant
-  const getCartQuantity = () => {
-    const cartItem = cart.find(
-      (item) => 
-        item.productId === product.id && 
-        item.variantId === selectedVariantData?.id &&
-        item.storeSlug === store_slug
-    );
-    return cartItem?.quantity || 0;
-  };
-
-  const cartQuantity = getCartQuantity();
 
   const calculateDiscountPercentage = (
     originalPrice: number,
@@ -185,7 +278,9 @@ export default function ProductPage() {
     }
 
     if (discountedPrice && discountedPrice < originalPrice) {
-      return Math.round(((originalPrice - discountedPrice) / originalPrice) * 100);
+      return Math.round(
+        ((originalPrice - discountedPrice) / originalPrice) * 100
+      );
     }
 
     return 0;
@@ -211,49 +306,76 @@ export default function ProductPage() {
         product?.discount_amount
       );
 
-  // Get available stock - handles both variant and main product inventory
-  const getAvailableStock = () => {
-    if (selectedVariantData) {
-      return selectedVariantData.product_inventory?.[0]?.quantity_available || 0;
-    }
-    // For products without variants, use main product inventory
-    return product.product_inventory?.[0]?.quantity_available || 0;
-  };
-
-  const availableStock = getAvailableStock();
-  const remainingStock = availableStock - cartQuantity;
-  const isOutOfStock = remainingStock <= 0;
-  const isQuantityExceeded = quantity > remainingStock;
-
   // Check if variant is available (for variant buttons)
   const isVariantAvailable = (variant: any) => {
     return variant.product_inventory?.[0]?.quantity_available > 0;
   };
 
+  // Updated stock badge function - No numbers shown
   const getStockBadge = () => {
-    if (availableStock <= 0) {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-          Out of Stock
-        </span>
-      );
-    } else if (availableStock < 10) {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-          Limited quantities remaining
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-          Available
-        </span>
-      );
+    switch (stockStatus) {
+      case "out-of-stock":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+            Out of Stock
+          </span>
+        );
+      case "max-in-cart":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+            Max quantity is already in your cart
+          </span>
+        );
+      case "limited":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+            Limited Stock
+          </span>
+        );
+      case "available":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+            In Stock
+          </span>
+        );
+      default:
+        return null;
     }
   };
 
+  // Fixed: Strict add to cart logic
   const handleAddToCart = async (): Promise<void> => {
-    if (!product || isOutOfStock || isQuantityExceeded) return;
+    if (!product) return;
+
+    // Get fresh cart quantity
+    const currentCartQty = getCartQuantity();
+    const currentRemaining = Math.max(0, availableStock - currentCartQty);
+
+    // Emergency fallback - double check everything
+    if (currentRemaining <= 0) {
+      console.log("🚨 EMERGENCY BLOCK: No remaining stock");
+      setShowMaxQuantityError(true);
+      return;
+    }
+
+    if (quantity > currentRemaining) {
+      console.log("🚨 EMERGENCY BLOCK: Quantity exceeds remaining");
+      setShowMaxQuantityError(true);
+      return;
+    }
+
+    // Original validation
+    if (isOutOfStock || isQuantityExceeded || quantity > remainingStock) {
+      console.log("❌ Add to cart blocked:", {
+        isOutOfStock,
+        isQuantityExceeded,
+        quantity,
+        remainingStock,
+        currentCartQty,
+        currentRemaining,
+      });
+      return;
+    }
 
     setIsAdding(true);
     try {
@@ -261,14 +383,15 @@ export default function ProductPage() {
         productId: product.id,
         storeSlug: store_slug,
         quantity: quantity,
-        variantId: selectedVariantData?.id || null,
+        variantId: selectedVariantData?.id || null, // Explicitly set to null if no variant
       };
 
-      await addToCart(cartProduct);
+      console.log("🛒 Adding to cart:", cartProduct);
+      addToCart(cartProduct); // Remove await since we fixed the cart store
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
-      
+
       // Reset quantity after successful add
       setQuantity(1);
       setInputValue("");
@@ -280,7 +403,8 @@ export default function ProductPage() {
   };
 
   const handleIncrement = () => {
-    if (quantity < remainingStock) {
+    const currentRemaining = Math.max(0, availableStock - getCartQuantity());
+    if (quantity < currentRemaining) {
       setQuantity((prev) => prev + 1);
       setInputValue("");
       setIsEditing(false);
@@ -314,33 +438,37 @@ export default function ProductPage() {
       setInputValue("");
     } else {
       let newQuantity = parseInt(inputValue, 10);
-      
+
       // Validate quantity
       if (isNaN(newQuantity) || newQuantity < 1) {
         newQuantity = 1;
       }
-      
+
       // Check if quantity exceeds remaining stock
-      if (newQuantity > remainingStock) {
-        newQuantity = remainingStock;
+      const currentRemaining = Math.max(0, availableStock - getCartQuantity());
+      if (newQuantity > currentRemaining) {
+        newQuantity = currentRemaining;
         setShowMaxQuantityError(true);
       }
-      
+
       setQuantity(newQuantity);
       setInputValue("");
     }
     setIsEditing(false);
   };
 
-  const handleInputKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
+  const handleInputKeyPress = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === "Enter") {
       event.currentTarget.blur();
     }
   };
 
   const totalPrice = displayPrice * quantity;
   const images = product.product_images.map((img) => img.image_url);
-  const hasVariants = product.product_variants && product.product_variants.length > 0;
+  const hasVariants =
+    product.product_variants && product.product_variants.length > 0;
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
@@ -348,7 +476,11 @@ export default function ProductPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start mt-6">
         <div className="w-full">
-          <ProductImage images={images} alt={product.name} discount={discount} />
+          <ProductImage
+            images={images}
+            alt={product.name}
+            discount={discount}
+          />
         </div>
 
         <div className="flex flex-col justify-start w-full">
@@ -370,10 +502,14 @@ export default function ProductPage() {
 
           {hasVariants && (
             <div className="mt-6">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">Select Variant:</h4>
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                Select Variant:
+              </h4>
               <div className="flex flex-wrap gap-2">
                 {product.product_variants.map((variant) => {
-                  const isAvailable = isVariantAvailable(variant);
+                  const variantStock =
+                    variant.product_inventory?.[0]?.quantity_available || 0;
+                  const isAvailable = variantStock > 0;
                   const isSelected = selectedVariant === variant.id;
                   const variantDiscount = calculateDiscountPercentage(
                     variant.base_price,
@@ -385,6 +521,7 @@ export default function ProductPage() {
                     <button
                       key={variant.id}
                       onClick={() => {
+                        if (!isAvailable) return; // Prevent selection if out of stock
                         setSelectedVariant(variant.id);
                         setQuantity(1);
                         setInputValue("");
@@ -394,32 +531,42 @@ export default function ProductPage() {
                       className={`px-3 py-2 border rounded-md text-sm transition-all ${
                         isSelected
                           ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:bg-accent"
-                      } ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
+                          : isAvailable
+                          ? "border-border hover:bg-accent text-foreground"
+                          : "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+                      } ${!isAvailable ? "opacity-50" : ""}`}
                     >
-                      {variant.variant_name}
-                      {variant.color && ` - ${variant.color}`}
-                      {variantDiscount > 0 && (
-                        <span className="ml-1 text-xs text-green-600">(-{variantDiscount}%)</span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <span>{variant.variant_name}</span>
+                        {variant.color && <span>- {variant.color}</span>}
+                        {variantDiscount > 0 && (
+                          <span className="ml-1 text-xs text-green-600">
+                            (-{variantDiscount}%)
+                          </span>
+                        )}
+                        {!isAvailable && (
+                          <span className="ml-1 text-xs text-red-600">
+                            (Out of Stock)
+                          </span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
           )}
-          
-          <div className="mt-4">
-            {getStockBadge()}
-          </div>
 
+          <div className="mt-4">{getStockBadge()}</div>
+
+          {/* Updated Quantity and Cart Management Section */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-6">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4 flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground">
                   Quantity:
                 </span>
-                
+
                 {/* Quantity Selector */}
                 <div className="flex items-center gap-2">
                   <Button
@@ -432,7 +579,7 @@ export default function ProductPage() {
                     <Minus className="h-3 w-3" />
                   </Button>
 
-                  <div 
+                  <div
                     className="relative w-12 h-7 flex items-center justify-center cursor-pointer"
                     onClick={handleInputClick}
                   >
@@ -445,7 +592,6 @@ export default function ProductPage() {
                         onKeyPress={handleInputKeyPress}
                         className="w-full h-full text-center border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                         autoFocus
-                        maxLength={3}
                       />
                     ) : (
                       <span className="text-sm font-medium">{quantity}</span>
@@ -484,17 +630,23 @@ export default function ProductPage() {
                   exit={{ opacity: 0, y: -10 }}
                   className="text-xs text-destructive mt-1"
                 >
-                  Max quantity exceeded. Set to {remainingStock}.
+                  Maximum quantity reached
                 </motion.p>
               )}
             </div>
 
-            {/* Add to Cart Button */}
+            {/* Updated AddToCartButton with strict validation */}
             <AddToCartButton
               onClick={handleAddToCart}
               isLoading={isAdding}
               showSuccess={showSuccess}
-              disabled={isOutOfStock || isQuantityExceeded}
+              disabled={
+                isOutOfStock || isQuantityExceeded || quantity > remainingStock
+              }
+              isMaxInCart={
+                (isQuantityExceeded || remainingStock === 0) && !isOutOfStock
+              }
+              currentCartQuantity={cartQuantity}
               className=""
             />
           </div>
@@ -507,12 +659,23 @@ export default function ProductPage() {
           <div>
             <h4 className="font-medium mb-2">Product Information</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><strong>Category:</strong> {product.categories?.name || "Uncategorized"}</li>
-              <li><strong>SKU:</strong> {product.id}</li>
+              <li>
+                <strong>Category:</strong>{" "}
+                {product.categories?.name || "Uncategorized"}
+              </li>
+              <li>
+                <strong>SKU:</strong> {product.id}
+              </li>
               {hasVariants && selectedVariantData && (
                 <>
-                  <li><strong>Variant:</strong> {selectedVariantData.variant_name}</li>
-                  {selectedVariantData.color && <li><strong>Color:</strong> {selectedVariantData.color}</li>}
+                  <li>
+                    <strong>Variant:</strong> {selectedVariantData.variant_name}
+                  </li>
+                  {selectedVariantData.color && (
+                    <li>
+                      <strong>Color:</strong> {selectedVariantData.color}
+                    </li>
+                  )}
                 </>
               )}
             </ul>
@@ -521,11 +684,19 @@ export default function ProductPage() {
           <div>
             <h4 className="font-medium mb-2">Pricing</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><strong>Base Price:</strong> ৳{originalPrice.toFixed(2)}</li>
+              <li>
+                <strong>Base Price:</strong> ৳{originalPrice.toFixed(2)}
+              </li>
               {discount > 0 && (
                 <>
-                  <li><strong>Discounted Price:</strong> ৳{displayPrice.toFixed(2)}</li>
-                  <li><strong>You Save:</strong> ৳{(originalPrice - displayPrice).toFixed(2)} ({discount}%)</li>
+                  <li>
+                    <strong>Discounted Price:</strong> ৳
+                    {displayPrice.toFixed(2)}
+                  </li>
+                  <li>
+                    <strong>You Save:</strong> ৳
+                    {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
+                  </li>
                 </>
               )}
             </ul>

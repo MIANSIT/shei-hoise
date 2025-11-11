@@ -34,7 +34,7 @@ import {
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
+import type { CustomerProfile } from "@/lib/types/customer"; // FIXED IMPORT
 import {
   getStoreSettings,
   type ShippingFee,
@@ -132,10 +132,10 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
-  const [customerProfile, setCustomerProfile] =
-    useState<CustomerProfile | null>(null);
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [originalOrder, setOriginalOrder] = useState<OrderData | null>(null);
+  const [hasFetchedData, setHasFetchedData] = useState(false); // ADDED: Prevent multiple fetches
 
   // Store settings states
   const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
@@ -143,7 +143,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || settingsLoading) return;
 
     setSettingsLoading(true);
     try {
@@ -189,9 +189,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
-    if (!user?.store_id) {
-      return;
-    }
+    if (!user?.store_id || loading) return;
+    
     setLoading(true);
     try {
       const res = await dataService.getProductsWithVariants(user.store_id);
@@ -295,7 +294,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     } finally {
       setOrderLoading(false);
     }
-  }, [user?.store_id, orderNumber, fetchCustomerProfile]);
+  }, [user?.store_id, orderNumber, fetchCustomerProfile, notification]);
 
   // Auto-select delivery option based on shipping fee from backend
   useEffect(() => {
@@ -394,12 +393,15 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     }
   }, [customerInfo.deliveryOption, shippingFees]);
 
-  // Initialize data
+  // Initialize data - FIXED: Only fetch once
   useEffect(() => {
-    if (user?.store_id && !userLoading) {
+    if (user?.store_id && !userLoading && !hasFetchedData) {
+      console.log('🔄 Initializing EditOrder data');
+      setHasFetchedData(true);
+      
       const initializeData = async () => {
         try {
-          // Fetch all data
+          // Fetch all data in parallel
           await Promise.all([
             fetchProducts(),
             fetchStoreSettings(),
@@ -412,7 +414,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
       initializeData();
     }
-  }, [user?.store_id, userLoading]);
+  }, [user?.store_id, userLoading, hasFetchedData, fetchProducts, fetchStoreSettings, fetchOrderData]);
 
   // Debug logging
   useEffect(() => {
