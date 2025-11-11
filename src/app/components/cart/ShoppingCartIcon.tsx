@@ -10,7 +10,7 @@ type ShoppingCartIconProps = {
 };
 
 export default function ShoppingCartIcon({ onClick }: ShoppingCartIconProps) {
-  const { totalItemsByStore } = useCartStore();
+  const { getCartByStore } = useCartStore();
   const params = useParams();
   const store_slug = params.store_slug as string;
   
@@ -20,8 +20,9 @@ export default function ShoppingCartIcon({ onClick }: ShoppingCartIconProps) {
     setIsMounted(true);
   }, []);
 
-  // Get store-specific cart count
-  const displayCount = isMounted ? totalItemsByStore(store_slug) : 0;
+  // Get store-specific cart items and count unique products
+  const cartItems = isMounted ? getCartByStore(store_slug) : [];
+  const uniqueProductCount = cartItems.length; // Each item is a unique product+variant combination
 
   return (
     <div className='relative'>
@@ -31,9 +32,9 @@ export default function ShoppingCartIcon({ onClick }: ShoppingCartIconProps) {
         aria-label='Shopping cart'
       >
         <HiOutlineShoppingCart size={18} className='text-background text-sm' />
-        {displayCount > 0 && (
+        {uniqueProductCount > 0 && (
           <span className='absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center'>
-            {displayCount}
+            {uniqueProductCount}
           </span>
         )}
       </button>

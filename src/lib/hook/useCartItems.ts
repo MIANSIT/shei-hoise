@@ -1,9 +1,34 @@
+// lib/hook/useCartItems.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useRef } from "react";
 import useCartStore from "../../lib/store/cartStore";
 import { getProductsWithVariants } from "../../lib/queries/products/getProductsWithVariants";
 import { getStoreIdBySlug } from "../../lib/queries/stores/getStoreIdBySlug";
 import { CartProductWithDetails, CartCalculations, CartItem } from "../../lib/types/cart";
+
+// ✅ FIX: Group duplicate items and sum quantities
+const groupAndSumCartItems = (items: CartProductWithDetails[]): CartProductWithDetails[] => {
+  const groupedMap = new Map();
+  
+  items.forEach(item => {
+    const key = `${item.productId}-${item.variantId || 'no-variant'}`;
+    
+    if (groupedMap.has(key)) {
+      // If item already exists, sum the quantities
+      const existingItem = groupedMap.get(key);
+      groupedMap.set(key, {
+        ...existingItem,
+        quantity: existingItem.quantity + item.quantity
+      });
+      console.log(`🔄 Grouped duplicate item: ${key}, new quantity: ${existingItem.quantity + item.quantity}`);
+    } else {
+      // If item doesn't exist, add it
+      groupedMap.set(key, item);
+    }
+  });
+  
+  return Array.from(groupedMap.values());
+};
 
 export function useCartItems(storeSlug?: string) {
   const { cart, getCartByStore } = useCartStore();
@@ -94,10 +119,27 @@ export function useCartItems(storeSlug?: string) {
           }
         }
 
+        // ✅ FIX: First group the raw cart items by productId and variantId
+        const groupedRawCart = targetCart.reduce((acc, cartItem) => {
+          const key = `${cartItem.productId}-${cartItem.variantId || 'no-variant'}`;
+          if (acc.has(key)) {
+            const existing = acc.get(key);
+            acc.set(key, {
+              ...existing,
+              quantity: existing.quantity + cartItem.quantity
+            });
+          } else {
+            acc.set(key, { ...cartItem });
+          }
+          return acc;
+        }, new Map());
+
+        const groupedCartItems = Array.from(groupedRawCart.values());
+
         // Enrich cart items with fresh product data
         const enrichedItems: CartProductWithDetails[] = [];
 
-        for (const cartItem of targetCart) {
+        for (const cartItem of groupedCartItems) {
           const storeProducts = storeProductsMap.get(cartItem.storeSlug);
           if (!storeProducts) continue;
 
@@ -153,12 +195,15 @@ export function useCartItems(storeSlug?: string) {
           });
         }
 
-        setCartItems(enrichedItems);
+        // ✅ FIX: Group enriched items to ensure no duplicates
+        const groupedEnrichedItems = groupAndSumCartItems(enrichedItems);
+        
+        setCartItems(groupedEnrichedItems);
         previousCartRef.current = [...targetCart];
         hasLoadedRef.current = true;
 
-        // Calculate totals
-        const calculations = calculateCartTotals(enrichedItems);
+        // Calculate totals with grouped items
+        const calculations = calculateCartTotals(groupedEnrichedItems);
         setCalculations(calculations);
 
       } catch (err) {
@@ -207,10 +252,24 @@ export function useCartItems(storeSlug?: string) {
 
       // Handle quantity updates
       if (quantitiesChanged) {
+        // ✅ FIX: Group the target cart first to get correct quantities
+        const groupedTargetCart = targetCart.reduce((acc, cartItem) => {
+          const key = `${cartItem.productId}-${cartItem.variantId || 'no-variant'}`;
+          if (acc.has(key)) {
+            const existing = acc.get(key);
+            acc.set(key, {
+              ...existing,
+              quantity: existing.quantity + cartItem.quantity
+            });
+          } else {
+            acc.set(key, { ...cartItem });
+          }
+          return acc;
+        }, new Map());
+
         updatedItems = updatedItems.map(item => {
-          const currentCartItem = targetCart.find(
-            cartItem => cartItem.productId === item.productId && cartItem.variantId === item.variantId
-          );
+          const key = `${item.productId}-${item.variantId || 'no-variant'}`;
+          const currentCartItem = groupedTargetCart.get(key);
           
           if (currentCartItem && currentCartItem.quantity !== item.quantity) {
             return {
@@ -248,7 +307,6 @@ function calculateDiscountPercentage(originalPrice: number, displayPrice: number
   return Math.round(((originalPrice - displayPrice) / originalPrice) * 100);
 }
 
-// Helper function to calculate cart totals
 // Helper function to calculate cart totals
 function calculateCartTotals(items: CartProductWithDetails[]): CartCalculations {
   let totalItems = 0;

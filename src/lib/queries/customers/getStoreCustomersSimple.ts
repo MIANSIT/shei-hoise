@@ -1,52 +1,50 @@
 // lib/queries/customers/getStoreCustomersSimple.ts
 import { supabase } from "@/lib/supabase";
-import { CurrentUser } from "../../../lib/types/users";
+import { CurrentUser } from "@/lib/types/users";
+import { CustomerProfile } from "@/lib/types/customer";
 
-// Define proper types for user profile
-interface UserProfile {
-  address_line_1?: string;
-  address_line_2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-}
-
-export interface StoreCustomer extends CurrentUser {
+// Create a compatible StoreCustomer interface that matches the actual data
+export interface StoreCustomer {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  store_id: string;
+  user_type: string;
+  profile?: CustomerProfile;
   address?: string;
-  profile?: UserProfile | null;
-  order_count?: number;
-  last_order_date?: string;
-  source?: "direct" | "orders";
+  source: "direct";
 }
 
-// Helper function to format address from user_profiles
-function formatAddress(
-  userProfile: UserProfile | null | undefined
-): string | null {
-  if (!userProfile) {
-    console.log("No userProfile provided to formatAddress");
-    return null;
-  }
+// Define a type for the address formatting
+interface AddressFields {
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
 
-  console.log("Raw userProfile in formatAddress:", userProfile);
-
-  const { address_line_1, address_line_2, city, state, postal_code, country } =
-    userProfile;
-
-  const addressParts: string[] = [];
-
-  if (address_line_1) addressParts.push(address_line_1);
-  if (address_line_2) addressParts.push(address_line_2);
-  if (city) addressParts.push(city);
-  if (state) addressParts.push(state);
-  if (postal_code) addressParts.push(postal_code);
-  if (country) addressParts.push(country);
-
-  const result = addressParts.length > 0 ? addressParts.join(", ") : null;
-  console.log("Formatted address result:", result);
-
-  return result;
+// Type for the raw data from Supabase
+interface UserWithProfile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  store_id: string;
+  user_type: string;
+  user_profiles: Array<{
+    user_id: string;
+    address_line_1?: string | null;
+    address_line_2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country?: string | null;
+  }> | null;
 }
 
 export async function getStoreCustomersSimple(
@@ -67,6 +65,7 @@ export async function getStoreCustomersSimple(
         store_id, 
         user_type,
         user_profiles (
+          user_id,
           address_line_1,
           address_line_2,
           city,
@@ -87,33 +86,49 @@ export async function getStoreCustomersSimple(
 
     console.log(`Found ${data?.length || 0} simple customers`);
 
-    const customers: StoreCustomer[] = (data || []).map((user) => {
-      // Handle user_profiles array - take the first one or null
-      const userProfile = Array.isArray(user.user_profiles)
-        ? user.user_profiles[0] || null
-        : user.user_profiles;
+    const formatAddress = (profile: AddressFields | null): string | null => {
+      if (!profile) return null;
 
-      // Format address from user_profiles
-      const address = formatAddress(userProfile);
+      const parts = [
+        profile.address_line_1,
+        profile.address_line_2,
+        profile.city,
+        profile.state,
+        profile.postal_code,
+        profile.country,
+      ].filter((part): part is string => part != null && part !== "");
 
-      console.log(`Customer: ${user.first_name} ${user.last_name}`, {
-        userProfile,
-        formattedAddress: address,
-      });
+      return parts.length > 0 ? parts.join(", ") : null;
+    };
 
-      return {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        phone: user.phone,
-        store_id: user.store_id,
-        user_type: user.user_type,
-        profile: userProfile || undefined,
-        address: address || undefined,
-        source: "direct" as const,
-      };
-    });
+    const customers: StoreCustomer[] = (data || []).map(
+      (user: UserWithProfile) => {
+        const userProfile =
+          user.user_profiles && user.user_profiles.length > 0
+            ? user.user_profiles[0]
+            : null;
+
+        const address = formatAddress(userProfile);
+
+        console.log(`Customer: ${user.first_name} ${user.last_name}`, {
+          userProfile,
+          formattedAddress: address,
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone,
+          store_id: user.store_id,
+          user_type: user.user_type,
+          profile: userProfile || undefined,
+          address: address || undefined,
+          source: "direct" as const,
+        };
+      }
+    );
 
     return customers;
   } catch (error) {

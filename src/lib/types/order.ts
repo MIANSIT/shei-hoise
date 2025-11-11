@@ -111,7 +111,7 @@ export interface StoreOrder {
 
 // ===== FORM DATA TYPES =====
 export interface CustomerInfo {
-  name: string;
+  name: string; // Changed from string | null
   phone: string;
   address: string;
   deliveryMethod: string;
@@ -122,7 +122,7 @@ export interface CustomerInfo {
   customer_id?: string;
   password: string;
   country?: string;
-  postal_code: string;
+  postal_code: string; // Changed from string | null
 }
 
 export interface CreateOrderData {

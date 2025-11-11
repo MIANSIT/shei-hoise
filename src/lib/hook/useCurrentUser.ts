@@ -1,18 +1,27 @@
+// lib/hook/useCurrentUser.ts
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { CurrentUser, userSchema } from "../types/users";
-import {
-  getCustomerProfile,
-  CustomerProfile,
-} from "../queries/customers/getCustomerProfile";
+import { CustomerProfile } from "../types/customer";
+import { getCustomerProfile } from "../queries/customers/getCustomerProfile";
 import { useCheckoutStore } from "../store/userInformationStore";
 import { User } from "@supabase/supabase-js";
 
 export interface CurrentUserWithProfile extends CurrentUser {
   profile?: CustomerProfile | null;
 }
+
+// Global cache to prevent multiple API calls across the entire app
+let globalUserCache: {
+  user: CurrentUserWithProfile | null;
+  storeSlug: string | null;
+  storeId: string | null;
+  timestamp: number;
+} | null = null;
+
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 export function useCurrentUser() {
   const [user, setUser] = useState<CurrentUserWithProfile | null>(null);
@@ -25,25 +34,40 @@ export function useCurrentUser() {
 
   useEffect(() => {
     let mounted = true;
+    let currentAuthUser: User | null = null;
 
     const fetchUser = async (authUser: User | null) => {
+      if (!mounted) return;
+      
+      currentAuthUser = authUser;
+
       try {
         if (!authUser) {
-          if (mounted) {
-            setUser(null);
-            setStoreSlug(null);
-            setStoreId(null);
-            setLoading(false);
-          }
+          setUser(null);
+          setStoreSlug(null);
+          setStoreId(null);
+          setLoading(false);
+          globalUserCache = null;
           return;
         }
+
+        // Check global cache first - works across all files using useCurrentUser
+        if (globalUserCache && Date.now() - globalUserCache.timestamp < CACHE_DURATION) {
+          console.log('📦 Using global cached user data for:', authUser.id);
+          setUser(globalUserCache.user);
+          setStoreSlug(globalUserCache.storeSlug);
+          setStoreId(globalUserCache.storeId);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
 
         // Fetch user from DB
         const { data: userData, error: dbErr } = await supabase
           .from("users")
-          .select(
-            "id, email, first_name, last_name, phone, store_id, user_type"
-          )
+          .select("id, email, first_name, last_name, phone, store_id, user_type")
           .eq("id", authUser.id)
           .single();
 
@@ -56,50 +80,82 @@ export function useCurrentUser() {
         if (parsedUser.store_id) {
           const { data: storeData } = await supabase
             .from("stores")
-            .select("store_slug")
+            .select("store_slug, store_name")
             .eq("id", parsedUser.store_id)
             .single();
           userStoreSlug = storeData?.store_slug || null;
         }
 
-        // Fetch profile
+        // Fetch profile using cached version
         let userProfile: CustomerProfile | null = null;
         try {
           userProfile = await getCustomerProfile(authUser.id);
-        } catch {
-          /* ignore */
+        } catch (profileError) {
+          console.warn('Failed to fetch user profile:', profileError);
+          // Don't throw, just continue without profile
         }
 
+        const userWithProfile: CurrentUserWithProfile = { 
+          ...parsedUser, 
+          profile: userProfile 
+        };
+
         if (mounted) {
-          setUser({ ...parsedUser, profile: userProfile });
+          // Update global cache - this will be shared across all components
+          globalUserCache = {
+            user: userWithProfile,
+            storeSlug: userStoreSlug,
+            storeId: parsedUser.store_id || null,
+            timestamp: Date.now()
+          };
+          
+          setUser(userWithProfile);
           setStoreSlug(userStoreSlug);
           setStoreId(parsedUser.store_id || null);
+          setLoading(false);
         }
       } catch (err) {
         if (mounted) {
+          console.error('Error in useCurrentUser:', err);
           setError(err as Error);
           setUser(null);
           setStoreSlug(null);
           setStoreId(null);
+          setLoading(false);
+          globalUserCache = null;
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
     };
 
-    // Initial load
+    // Initial load - only run once
     supabase.auth
       .getUser()
-      .then(({ data: { user: authUser } }) => fetchUser(authUser));
+      .then(({ data: { user: authUser } }) => {
+        if (mounted) {
+          fetchUser(authUser);
+        }
+      })
+      .catch(err => {
+        if (mounted) {
+          setError(err);
+          setLoading(false);
+        }
+      });
 
-    // ✅ Subscribe to auth changes
+    // Subscribe to auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      fetchUser(session?.user ?? null);
+      if (mounted) {
+        // Clear cache if user changes
+        if (currentAuthUser && session?.user?.id !== currentAuthUser.id) {
+          globalUserCache = null;
+        }
+        fetchUser(session?.user ?? null);
+      }
     });
 
-    // ✅ Cleanup: properly unsubscribe
+    // Cleanup
     return () => {
       mounted = false;
       subscription.unsubscribe();
@@ -115,4 +171,9 @@ export function useCurrentUser() {
     role: user?.user_type,
     profile: user?.profile,
   };
+}
+
+// Export function to clear user cache if needed
+export function clearUserCache() {
+  globalUserCache = null;
 }

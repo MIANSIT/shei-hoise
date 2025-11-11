@@ -1,36 +1,46 @@
+// lib/hook/useOrderProcess.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
-import { useCartItems } from './useCartItems';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
 import useCartStore from '../store/cartStore'; // Import cart store
+import { CartProductWithDetails, CartCalculations } from '../types/cart';
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { clearStoreCart } = useCartStore(); // Get cart clearing function
   
-  // Use the cart items hook to get fresh product data
-  const { items: cartItems, calculations, refresh } = useCartItems(store_slug);
-
   const processOrder = async (
     formData: CustomerCheckoutFormValues, 
     customerId?: string,
     paymentMethod: string = 'cod',
     deliveryOption: string = 'standard',
-    shippingFee: number = 0
+    shippingFee: number = 0,
+    cartItems?: CartProductWithDetails[],
+    calculations?: CartCalculations
   ) => {
     setLoading(true);
     setError(null);
 
     try {
+      console.log("🚀 Processing order with data:", {
+        store_slug,
+        customerId,
+        paymentMethod,
+        deliveryOption,
+        shippingFee,
+        cartItems: cartItems?.length,
+        calculations: calculations?.totalPrice
+      });
+
       // Get store ID first
       const storeId = await getStoreIdBySlug(store_slug);
       if (!storeId) throw new Error('Store not found');
 
       // Check if cart has items
-      if (cartItems.length === 0) throw new Error('Cart is empty');
+      if (!cartItems || cartItems.length === 0) throw new Error('Cart is empty');
 
       // Check for out of stock items
       const outOfStockItems = cartItems.filter(item => item.isOutOfStock);
@@ -53,7 +63,6 @@ export function useOrderProcess(store_slug: string) {
           customer_id: customerId,
         },
         orderProducts: cartItems.map(item => {
-          
           return {
             product_id: item.productId, // Main product ID
             variant_id: item.variantId || null, // Variant ID if exists
@@ -69,11 +78,11 @@ export function useOrderProcess(store_slug: string) {
             } : null,
           };
         }),
-        subtotal: calculations.subtotal,
+        subtotal: calculations?.subtotal || 0,
         taxAmount: 0, // You can calculate this based on your business logic
-        discount: calculations.totalDiscount,
+        discount: calculations?.totalDiscount || 0,
         deliveryCost: shippingFee, // You can calculate this based on delivery option
-        totalAmount: calculations.totalPrice + shippingFee,
+        totalAmount: (calculations?.totalPrice || 0) + shippingFee,
         status: 'pending' as const,
         paymentStatus: 'pending' as const,
         paymentMethod,
@@ -81,11 +90,19 @@ export function useOrderProcess(store_slug: string) {
         deliveryOption,
       };
 
+      console.log("📦 Creating order with data:", orderData);
+
       // Create the order
       const result = await createCustomerOrder(orderData);
+      console.log("📝 Order creation result:", result);
 
       if (result.success && result.orderId) {
-        clearStoreCart(store_slug);
+        // Only clear cart if we're in checkout mode (not confirm mode)
+        if (cartItems && cartItems.length > 0) {
+          console.log("🧹 Clearing cart for store:", store_slug);
+          clearStoreCart(store_slug);
+        }
+        
         return { 
           success: true, 
           orderId: result.orderId,
@@ -110,7 +127,5 @@ export function useOrderProcess(store_slug: string) {
     processOrder,
     loading,
     error,
-    cartItems,
-    calculations,
   };
 }

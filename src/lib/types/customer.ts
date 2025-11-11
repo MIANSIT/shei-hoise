@@ -1,10 +1,20 @@
-import { ReactNode } from "react";
-
 // lib/types/customer.ts
+
+import { ReactNode } from "react";
+export interface CustomerProfile {
+  user_id: string;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
+
 export interface Customer {
   id: string;
   email: string;
-  first_name: string;
+  first_name: string | null;
   phone?: string;
   store_id: string;
   user_type: "customer";

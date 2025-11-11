@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// app/components/products/checkout/UserCheckoutForm.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -9,22 +10,16 @@ import { Label } from "@/components/ui/label";
 import { SheiLoader } from "../../ui/SheiLoader/loader";
 import {
   customerCheckoutSchema,
+  customerCheckoutSchemaForLoggedIn,
   CustomerCheckoutFormValues,
 } from "@/lib/schema/checkoutSchema";
 import { CountryFlag } from "../../common/CountryFlag";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
-import { useEffect, useState, useMemo } from "react";
-import { Eye, EyeOff, CheckCircle, ArrowRight } from "lucide-react";
-import { createCheckoutCustomer } from "@/lib/queries/customers/createCheckoutCustomer";
-import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Eye, EyeOff, CheckCircle, ArrowRight, UserPlus, ShoppingBag } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
-import { supabase } from "@/lib/supabase";
-import { useParams, useRouter } from "next/navigation";
-import { useOrderProcess } from "@/lib/hook/useOrderProcess";
-import useCartStore from "@/lib/store/cartStore";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
-import { OrderCompleteSkeleton } from "../../../components/skeletons/OrderCompleteSkeleton";
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -32,6 +27,7 @@ interface CheckoutFormProps {
   shippingMethod?: string;
   shippingFee?: number;
   totalAmount?: number;
+  mode?: "checkout" | "confirm";
 }
 
 const CheckoutForm = ({
@@ -40,13 +36,10 @@ const CheckoutForm = ({
   shippingMethod = "",
   shippingFee = 0,
   totalAmount = 0,
+  mode = "checkout",
 }: CheckoutFormProps) => {
   const { formData, setFormData } = useCheckoutStore();
-  const { clearStoreCart } = useCartStore();
-
   const [showPassword, setShowPassword] = useState(false);
-  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
-  const [isOrderComplete, setIsOrderComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -58,17 +51,39 @@ const CheckoutForm = ({
   } = useCurrentUser();
   const { session, loading: authLoading } = useSupabaseAuth();
 
-  const params = useParams();
-  const router = useRouter();
-  const store_slug = params.store_slug as string;
+  // ✅ Memoize computed values
+  const isLoadingAuth = authLoading || userLoading;
+  const isUserLoggedIn = Boolean(currentUser && session);
+  const isSubmitting = isLoading;
 
-  // Order process hook
-  const {
-    processOrder,
-    loading: orderLoading,
-    error: orderError,
-  } = useOrderProcess(store_slug);
+  // ✅ Create clean boolean disabled states
+  const disabledStates = useMemo(
+    () => ({
+      name: Boolean(isSubmitting || isUserLoggedIn),
+      email: Boolean(isSubmitting || isUserLoggedIn),
+      phone: Boolean(isSubmitting || (isUserLoggedIn && currentUser?.phone)),
+      password: Boolean(isSubmitting || isUserLoggedIn), // ✅ FIX: Disable password for logged-in users
+      addressFields: Boolean(isSubmitting),
+    }),
+    [isSubmitting, isUserLoggedIn, currentUser?.phone]
+  );
 
+  // ✅ Handle auth errors gracefully
+  useEffect(() => {
+    if (userError) {
+      const isMissingSessionError =
+        userError.message?.includes("Auth session missing") ||
+        userError.name === "AuthSessionMissingError";
+
+      if (isMissingSessionError) {
+        console.log("🔐 No auth session - user is not logged in (this is normal)");
+        return;
+      }
+      console.error("User hook error:", userError);
+    }
+  }, [userError]);
+
+  // ✅ FIXED: Create form with proper schema based on login status
   const defaultValues: CustomerCheckoutFormValues = {
     name: formData.name || "",
     email: formData.email || "",
@@ -80,49 +95,28 @@ const CheckoutForm = ({
     shippingAddress: formData.shippingAddress || "",
   };
 
+  // ✅ FIXED: Use different schema based on login status
+  const formSchema = isUserLoggedIn ? customerCheckoutSchemaForLoggedIn : customerCheckoutSchema;
+
   const form = useForm<CustomerCheckoutFormValues>({
-    resolver: zodResolver(customerCheckoutSchema),
+    resolver: zodResolver(formSchema), // ✅ FIX: Use conditional schema
     defaultValues,
   });
 
-  // ✅ Memoize computed values to prevent unnecessary re-renders
-  const isLoadingAuth = authLoading || userLoading;
-  const isUserLoggedIn = Boolean(currentUser && session);
-  const isSubmitting = isLoading || isCreatingAccount || orderLoading;
-
-  // ✅ Create clean boolean disabled states
-  const disabledStates = useMemo(
-    () => ({
-      name: Boolean(isSubmitting || isUserLoggedIn),
-      email: Boolean(isSubmitting || isUserLoggedIn),
-      phone: Boolean(isSubmitting || (isUserLoggedIn && currentUser?.phone)),
-      password: Boolean(isSubmitting),
-      addressFields: Boolean(isSubmitting),
-    }),
-    [isSubmitting, isUserLoggedIn, currentUser?.phone]
-  );
-
-  // ✅ Handle auth errors gracefully - missing session is normal!
-  useEffect(() => {
-    if (userError) {
-      const isMissingSessionError =
-        userError.message?.includes("Auth session missing") ||
-        userError.name === "AuthSessionMissingError";
-
-      if (isMissingSessionError) {
-        console.log(
-          "🔐 No auth session - user is not logged in (this is normal)"
-        );
-        return;
-      }
-
-      console.error("User hook error:", userError);
+  // ✅ FIXED: Use useCallback for form submission
+  const handleSubmit = useCallback((values: CustomerCheckoutFormValues) => {
+    console.log("Form submitted with values:", values);
+    
+    // ✅ FIX: For logged-in users, set a dummy password that passes validation
+    if (isUserLoggedIn) {
+      values.password = "logged-in-user-password";
     }
-  }, [userError]);
+    
+    onSubmit(values);
+  }, [onSubmit, isUserLoggedIn]);
 
-  // ✅ FIXED: Optimized auto-population with proper typing
+  // ✅ FIXED: Optimized auto-population
   useEffect(() => {
-    // Only run if we're done loading and have changes to apply
     if (isLoadingAuth) return;
 
     // Scenario 1: User is logged in - populate with their data AND profile data
@@ -137,20 +131,20 @@ const CheckoutForm = ({
         name: `${currentUser.first_name} ${currentUser.last_name || ""}`.trim(),
         email: currentUser.email || "",
         phone: currentUser.phone || "",
-        password: "********", // Placeholder for validation
+        password: "logged-in-user-password", // ✅ FIX: Use valid password for validation
         country: profile?.country || "Bangladesh",
         city: profile?.city || "Dhaka",
         postCode: profile?.postal_code || "",
         shippingAddress: profile?.address_line_1 || "",
       };
 
-      // Only reset if there are actual changes to prevent loops
+      // Only reset if there are actual changes
       const currentFormValues = form.getValues();
       const hasChanges =
         JSON.stringify(userFormData) !==
         JSON.stringify({
           ...currentFormValues,
-          password: "********", // Normalize password comparison
+          password: "logged-in-user-password",
         });
 
       if (hasChanges) {
@@ -191,176 +185,15 @@ const CheckoutForm = ({
     profile,
     isUserLoggedIn,
     isLoadingAuth,
-    form,
     setFormData,
     formData,
+    form,
   ]);
 
-  // ✅ FIXED: Properly typed submit handler
-  const handleSubmit = async (values: CustomerCheckoutFormValues) => {
-    setIsCreatingAccount(true);
-    setError(null);
-    setSuccess(null);
-    setIsOrderComplete(false);
-
-    try {
-      // Save form data to store
-      setFormData(values);
-
-      let customerId: string | undefined;
-
-      // Scenario 1: User is already logged in
-      if (isUserLoggedIn && currentUser) {
-        customerId = currentUser.id;
-        console.log("Using logged-in user account for order with shipping:", {
-          shippingMethod,
-          shippingFee,
-          totalAmount,
-        });
-
-        // Process order with shipping fee
-        const result = await processOrder(
-          values,
-          customerId,
-          "cod",
-          shippingMethod, // Pass shipping method as delivery option
-          shippingFee // Pass shipping fee
-        );
-
-        if (result.success) {
-          setSuccess(result.message || "Order placed successfully!");
-          setIsOrderComplete(true);
-          clearStoreCart(store_slug);
-          onSubmit(values);
-          setTimeout(() => {
-            router.push(`/${store_slug}/order-status`);
-          }, 2000);
-        } else {
-          setError(result.error || "Failed to place order");
-        }
-        return;
-      }
-
-      // Scenario 2: Try to auto-login first (if user might have account)
-      try {
-        console.log("Attempting auto-login with shipping:", {
-          shippingMethod,
-          shippingFee,
-        });
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: values.email,
-          password: values.password,
-        });
-
-        if (!error && data.user) {
-          console.log("Auto-login successful");
-          customerId = data.user.id;
-          const result = await processOrder(
-            values,
-            customerId,
-            "cod",
-            shippingMethod, // Pass shipping method as delivery option
-            shippingFee // Pass shipping fee
-          );
-
-          if (result.success) {
-            setSuccess(result.message || "Order placed successfully!");
-            setIsOrderComplete(true);
-            clearStoreCart(store_slug);
-            onSubmit(values);
-            setTimeout(() => {
-              router.push(`/${store_slug}/order-status`);
-            }, 2000);
-          } else {
-            setError(result.error || "Failed to place order");
-          }
-          return;
-        }
-
-        // If login fails, check if account exists
-        const existingCustomer = await getCustomerByEmail(values.email);
-
-        if (existingCustomer) {
-          setError("The password you entered is incorrect. Please try again.");
-          return;
-        }
-
-        // Scenario 3: No account exists - create new one
-        console.log("Creating new customer account with shipping:", {
-          shippingMethod,
-          shippingFee,
-        });
-        const customerData = {
-          ...values,
-          store_slug,
-        };
-
-        const result = await createCheckoutCustomer(customerData);
-        console.log("Customer created successfully:", result);
-
-        // Auto-login the new customer
-        const { error: signInError, data: signInData } =
-          await supabase.auth.signInWithPassword({
-            email: values.email,
-            password: values.password,
-          });
-
-        if (signInError) {
-          console.error("Auto-login error:", signInError);
-          throw new Error(
-            `Account created but login failed: ${signInError.message}`
-          );
-        }
-
-        console.log("New customer auto-logged in");
-        customerId = signInData.user.id;
-        const orderResult = await processOrder(
-          values,
-          customerId,
-          "cod",
-          shippingMethod, // Pass shipping method as delivery option
-          shippingFee // Pass shipping fee
-        );
-
-        if (orderResult.success) {
-          setSuccess(orderResult.message || "Order placed successfully!");
-          setIsOrderComplete(true);
-          clearStoreCart(store_slug);
-          onSubmit(values);
-          setTimeout(() => {
-            router.push(`/${store_slug}/order-status`);
-          }, 2000);
-        } else {
-          setError(orderResult.error || "Failed to place order");
-        }
-      } catch (processError: any) {
-        console.error("Process error:", processError);
-        setError(
-          processError.message ||
-            "Failed to process checkout. Please try again."
-        );
-      }
-    } catch (error: any) {
-      console.error("Checkout error:", error);
-      setError(
-        error.message || "Failed to process checkout. Please try again."
-      );
-    } finally {
-      setIsCreatingAccount(false);
-    }
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const handleLoginRedirect = () => {
-    const currentPath = window.location.pathname;
-    router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
-  };
-
-  // ✅ Password strength indicator
+  // ✅ Password strength indicator (only for non-logged-in users)
   const PasswordStrengthIndicator = ({ password }: { password: string }) => {
+    if (isUserLoggedIn) return null; // ✅ FIX: Don't show for logged-in users
+
     const checks = {
       length: password.length >= 8,
       uppercase: /[A-Z]/.test(password),
@@ -370,9 +203,9 @@ const CheckoutForm = ({
     };
 
     const strength = Object.values(checks).filter(Boolean).length;
-    const strengthText =
-      ["Very Weak", "Weak", "Fair", "Good", "Strong"][strength - 1] ||
-      "Very Weak";
+    const strengthText = ["Very Weak", "Weak", "Fair", "Good", "Strong"][
+      strength - 1
+    ] || "Very Weak";
 
     return (
       <div className="mt-2 space-y-2">
@@ -438,14 +271,9 @@ const CheckoutForm = ({
     );
   };
 
-  // ✅ REPLACED: Using custom skeleton for auth loading
+  // ✅ Show loading state
   if (isLoadingAuth) {
     return <CheckoutFormSkeleton />;
-  }
-
-  // ✅ REPLACED: Using custom skeleton for order completion
-  if (isOrderComplete) {
-    return <OrderCompleteSkeleton />;
   }
 
   return (
@@ -505,7 +333,7 @@ const CheckoutForm = ({
         </div>
       </div>
 
-      {/* ✅ Ultra-Simple Password Flow - Show for ALL unauthenticated users */}
+      {/* ✅ FIXED: Only show password field for non-logged-in users */}
       {!isUserLoggedIn && (
         <div className="space-y-3">
           <div className="grid gap-2">
@@ -515,7 +343,10 @@ const CheckoutForm = ({
                 type="button"
                 variant="link"
                 className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
-                onClick={handleLoginRedirect}
+                onClick={() => {
+                  const currentPath = window.location.pathname;
+                  window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                }}
               >
                 Already have an account? Login
               </Button>
@@ -530,7 +361,7 @@ const CheckoutForm = ({
               />
               <button
                 type="button"
-                onClick={togglePasswordVisibility}
+                onClick={() => setShowPassword(!showPassword)}
                 disabled={disabledStates.password}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -632,18 +463,11 @@ const CheckoutForm = ({
         </div>
       )}
 
-      {/* Order Error Message */}
-      {orderError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{orderError}</p>
-        </div>
-      )}
-
       {/* Submit Button */}
       <Button
         type="submit"
         className="w-full mt-6 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !form.formState.isValid} // ✅ FIX: Disable if form is invalid
       >
         {isSubmitting ? (
           <div className="flex items-center justify-center gap-2">
@@ -653,25 +477,27 @@ const CheckoutForm = ({
               loadingText={
                 isUserLoggedIn
                   ? "Completing Order..."
-                  : isCreatingAccount
-                  ? "Creating Account..."
-                  : "Processing..."
+                  : "Creating Account & Placing Order..."
               }
             />
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
-            {isUserLoggedIn ? "Place Order" : "Place Order"}
+            {isUserLoggedIn ? (
+              <>
+                <ShoppingBag className="h-4 w-4" />
+                Place Order
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Create Account & Place Order
+              </>
+            )}
             <ArrowRight className="h-4 w-4" />
           </div>
         )}
       </Button>
-
-      {isCreatingAccount && !isUserLoggedIn && (
-        <p className="text-sm text-center text-muted-foreground">
-          Creating your account and logging you in...
-        </p>
-      )}
     </form>
   );
 };

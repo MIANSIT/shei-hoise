@@ -9,7 +9,6 @@ import {
 } from "./customers/getStoreCustomersSimple";
 import {
   getCustomerProfile,
-  CustomerProfile,
 } from "./customers/getCustomerProfile";
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import {
@@ -53,6 +52,10 @@ import {
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { TableCustomer } from "@/lib/types/users";
 
+// Import CustomerProfile from the shared types file
+import { CustomerProfile } from "@/lib/types/customer";
+import { supabase } from "@/lib/supabase";
+
 export interface DataService {
   // Product methods
   getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
@@ -61,6 +64,9 @@ export interface DataService {
   getStoreCustomersSimple: (storeId: string) => Promise<StoreCustomer[]>;
   getCustomerProfile: (customerId: string) => Promise<CustomerProfile | null>;
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
+
+  // Store methods
+  getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
 
   // Order methods
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
@@ -104,6 +110,22 @@ export interface DataService {
   bulkUpdateOrders: (updateData: BulkUpdateData) => Promise<BulkUpdateResult>;
 }
 
+// Implementation for getStoreById
+const getStoreByIdImpl = async (storeId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('id, store_name, store_slug')
+      .eq('id', storeId)
+      .single();
+
+    return { data, error };
+  } catch (error: any) {
+    console.error('Error in dataService.getStoreById:', error);
+    return { data: null, error };
+  }
+};
+
 // Implementation for getOrderByNumber
 const getOrderByNumberImpl = async (
   storeId: string,
@@ -146,6 +168,7 @@ export const dataService: DataService = {
   getStoreCustomersSimple,
   getCustomerProfile,
   createCustomer,
+  getStoreById: getStoreByIdImpl, // Add this line
   createOrder,
   getStoreOrders,
   getOrderByNumber: getOrderByNumberImpl,

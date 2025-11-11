@@ -1,5 +1,6 @@
-// lib/types/user.ts
+// lib/types/users.ts
 import { z } from "zod";
+import { CustomerProfile } from "./customer";
 
 export enum USERTYPE {
   STORE_OWNER = "store_owner",
@@ -28,7 +29,8 @@ export const userSchema = z.object({
 });
 
 export type CurrentUser = z.infer<typeof userSchema>;
-export type CustomerProfile = z.infer<typeof customerProfileSchema>;
+// Remove the duplicate CustomerProfile type definition here
+// export type CustomerProfile = z.infer<typeof customerProfileSchema>;
 
 export interface TableCustomer {
   id: string;
