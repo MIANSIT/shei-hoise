@@ -39,16 +39,15 @@ interface CustomerTableProps {
   isLoading?: boolean;
 }
 
-const CustomerTable: React.FC<CustomerTableProps> = ({
+export function CustomerTable({
   customers,
   onEdit,
   onDelete,
   onViewDetails,
   isLoading = false,
-}) => {
-  const { notification, modal } = App.useApp(); // Get modal from App context
+}: CustomerTableProps) {
+  const { notification, modal } = App.useApp();
 
-  // Handle delete with confirmation using App context modal
   const handleDelete = (customer: Customer) => {
     modal.confirm({
       title: "Delete Customer",
@@ -67,7 +66,6 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
     });
   };
 
-  // Table columns for desktop
   const columns = [
     {
       title: "Customer",
@@ -213,79 +211,91 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         />
       </div>
 
-      {/* Mobile Cards */}
-      <div className="md:hidden">
-        <Space direction="vertical" style={{ width: "100%" }} size={16}>
+      {/* Mobile Cards - Fixed Button Layout */}
+      <div className="md:hidden ">
+        <div className="flex flex-col gap-2">
           {customers.map((customer) => (
             <Card
               key={customer.id}
               size="small"
-              hoverable
-              actions={[
-                <EyeOutlined
-                  key="view"
-                  onClick={() => onViewDetails(customer)}
-                />,
-                <EditOutlined key="edit" onClick={() => onEdit(customer)} />,
-                <DeleteOutlined
-                  key="delete"
-                  onClick={() => handleDelete(customer)}
-                />,
-              ]}
+              className="w-full"
+              styles={{
+                body: { padding: "12px" },
+              }}
             >
-              <Card.Meta
-                avatar={
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      backgroundColor: "#1890ff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white",
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                    }}
-                  >
+              {/* Header with Avatar and Name */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
-                }
-                title={customer.name}
-                description={
-                  <Space direction="vertical" size={0}>
-                    <Space>
-                      <MailOutlined style={{ fontSize: "12px" }} />
-                      <Text type="secondary" style={{ fontSize: "12px" }}>
-                        {customer.email}
-                      </Text>
-                    </Space>
-                    {customer.phone && (
-                      <Space>
-                        <PhoneOutlined style={{ fontSize: "12px" }} />
-                        <Text type="secondary" style={{ fontSize: "12px" }}>
-                          {customer.phone}
-                        </Text>
-                      </Space>
-                    )}
-                    {customer.address && (
-                      <Text type="secondary" style={{ fontSize: "12px" }}>
-                        {customer.address}
-                      </Text>
-                    )}
-                    <Tag color={customer.status === "active" ? "green" : "red"}>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-gray-900 truncate text-sm">
+                      {customer.name}
+                    </div>
+                    <Tag
+                      color={customer.status === "active" ? "green" : "red"}
+                      className="text-xs mt-1"
+                    >
                       {customer.status?.toUpperCase() || "ACTIVE"}
                     </Tag>
-                  </Space>
-                }
-              />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <MailOutlined className="text-blue-500 text-xs" />
+                  <Text className="text-xs text-gray-600 truncate">
+                    {customer.email}
+                  </Text>
+                </div>
+                {customer.phone && (
+                  <div className="flex items-center gap-2">
+                    <PhoneOutlined className="text-green-500 text-xs" />
+                    <Text className="text-xs text-gray-600 truncate">
+                      {customer.phone}
+                    </Text>
+                  </div>
+                )}
+                {customer.address && (
+                  <div className="text-xs text-gray-500 line-clamp-2">
+                    {customer.address}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons - Fixed Layout */}
+              <div className="flex justify-center gap-2 pt-2 border-t border-gray-100">
+                <Button
+                  type="primary"
+                  icon={<EyeOutlined />}
+                  size="small"
+                  onClick={() => onViewDetails(customer)}
+                  className="h-8 w-8 flex items-center justify-center"
+                  title="View"
+                />
+                <Button
+                  icon={<EditOutlined />}
+                  size="small"
+                  onClick={() => onEdit(customer)}
+                  className="h-8 w-8 flex items-center justify-center"
+                  title="Edit"
+                />
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  size="small"
+                  onClick={() => handleDelete(customer)}
+                  className="h-8 w-8 flex items-center justify-center"
+                  title="Delete"
+                />
+              </div>
             </Card>
           ))}
-        </Space>
+        </div>
       </div>
     </div>
   );
-};
-
-export default CustomerTable;
+}

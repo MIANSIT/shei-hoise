@@ -23,7 +23,7 @@ import {
   EditOutlined,
   ExclamationCircleOutlined,
 } from "@ant-design/icons";
-import CustomerTable from "@/app/components/admin/customers/view/CustomerTable";
+import { CustomerTable } from "@/app/components/admin/customers/view/CustomerTable";
 import { useRouter } from "next/navigation";
 
 const { Title, Text } = Typography;
@@ -38,8 +38,8 @@ interface Customer {
   status?: "active" | "inactive";
 }
 
-const CustomerPage: React.FC = () => {
-  const { notification } = App.useApp(); // Use App context for notifications
+export default function CustomerPage() {
+  const { notification } = App.useApp();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -47,11 +47,10 @@ const CustomerPage: React.FC = () => {
     null
   );
   const router = useRouter();
-  // Fetch customers data
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        // Replace with your actual API call
         setTimeout(() => {
           const mockCustomers: Customer[] = [
             {
@@ -158,7 +157,6 @@ const CustomerPage: React.FC = () => {
 
   return (
     <div style={{ padding: "24px" }}>
-      {/* Custom Header Section */}
       <div style={{ marginBottom: 24 }}>
         <div
           style={{
@@ -189,7 +187,6 @@ const CustomerPage: React.FC = () => {
         <Divider style={{ margin: "16px 0" }} />
       </div>
 
-      {/* Stats Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
           <Card>
@@ -223,7 +220,6 @@ const CustomerPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Customer Table */}
       <Card
         title={
           <Space>
@@ -231,7 +227,11 @@ const CustomerPage: React.FC = () => {
             Customer List
           </Space>
         }
-        extra={<Text type="secondary">{customers.length} customers found</Text>}
+        extra={
+          <div className="hidden md:block">
+            <Text type="secondary">{customers.length} customers found</Text>
+          </div>
+        }
       >
         <CustomerTable
           customers={customers}
@@ -241,8 +241,6 @@ const CustomerPage: React.FC = () => {
           isLoading={loading}
         />
       </Card>
-
-      {/* Customer Details Modal */}
       <Modal
         title={
           <Space>
@@ -316,6 +314,4 @@ const CustomerPage: React.FC = () => {
       </Modal>
     </div>
   );
-};
-
-export default CustomerPage;
+}

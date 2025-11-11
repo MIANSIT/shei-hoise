@@ -38,7 +38,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
       initialFetchRef.current = true;
       refetch();
     }
-  }, [storeSlug, loading]); // Remove refetch from dependencies
+  }, [storeSlug, loading, refetch]); // Remove refetch from dependencies
 
   useEffect(() => {
     if (shippingConfig) {

@@ -1,4 +1,4 @@
-import { Trash2, Move } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { ShippingOption } from "@/lib/queries/deliveryCost/getShippingFees";
 
 interface ShippingOptionItemProps {
