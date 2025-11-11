@@ -1,9 +1,7 @@
 // lib/queries/customers/getStoreCustomersSimple.ts
 import { supabase } from "@/lib/supabase";
-import { CurrentUser } from "@/lib/types/users";
 import { CustomerProfile } from "@/lib/types/customer";
 
-// Create a compatible StoreCustomer interface that matches the actual data
 export interface StoreCustomer {
   id: string;
   email: string;
@@ -15,10 +13,22 @@ export interface StoreCustomer {
   profile?: CustomerProfile;
   address?: string;
   source: "direct";
+  profile_details?: {
+    date_of_birth?: string | null;
+    gender?: string | null;
+    address_line_1?: string | null;
+    address_line_2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country?: string | null;
+  } | null;
 }
 
-// Define a type for the address formatting
-interface AddressFields {
+interface UserProfile {
+  user_id: string;
+  date_of_birth?: string | null;
+  gender?: string | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;
@@ -27,7 +37,6 @@ interface AddressFields {
   country?: string | null;
 }
 
-// Type for the raw data from Supabase
 interface UserWithProfile {
   id: string;
   email: string;
@@ -36,15 +45,16 @@ interface UserWithProfile {
   phone: string | null;
   store_id: string;
   user_type: string;
-  user_profiles: Array<{
-    user_id: string;
-    address_line_1?: string | null;
-    address_line_2?: string | null;
-    city?: string | null;
-    state?: string | null;
-    postal_code?: string | null;
-    country?: string | null;
-  }> | null;
+  user_profiles: UserProfile[] | null;
+}
+
+interface AddressFields {
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
 }
 
 export async function getStoreCustomersSimple(
@@ -66,6 +76,8 @@ export async function getStoreCustomersSimple(
         user_type,
         user_profiles (
           user_id,
+          date_of_birth,
+          gender,
           address_line_1,
           address_line_2,
           city,
@@ -126,6 +138,18 @@ export async function getStoreCustomersSimple(
           profile: userProfile || undefined,
           address: address || undefined,
           source: "direct" as const,
+          profile_details: userProfile
+            ? {
+                date_of_birth: userProfile.date_of_birth || null,
+                gender: userProfile.gender || null,
+                address_line_1: userProfile.address_line_1 || null,
+                address_line_2: userProfile.address_line_2 || null,
+                city: userProfile.city || null,
+                state: userProfile.state || null,
+                postal_code: userProfile.postal_code || null,
+                country: userProfile.country || null,
+              }
+            : null,
         };
       }
     );

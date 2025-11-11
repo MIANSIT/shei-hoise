@@ -133,6 +133,7 @@ export default function StoreOwnerProfilePage() {
                 hasProfile={!!displayUser?.profile}
                 showEditButton={showEditButton}
                 onEdit={handleEdit}
+                isEditing={isEditing}
               />
 
               <StoreInfoCard

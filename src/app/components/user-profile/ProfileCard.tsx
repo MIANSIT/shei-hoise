@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, Edit, Shield } from "lucide-react";
+import { Mail, Phone, Edit, Shield, Loader2 } from "lucide-react";
 
 interface ProfileCardProps {
   firstName?: string | null;
@@ -9,8 +9,9 @@ interface ProfileCardProps {
   phone?: string | null;
   avatarUrl?: string | null;
   userType?: string | null;
-  hasProfile?: boolean; // This should only be boolean | undefined
-  showEditButton?: boolean; // Changed from canEdit to showEditButton
+  hasProfile?: boolean;
+  showEditButton?: boolean;
+  isEditing?: boolean; // 👈 new prop
   onEdit: () => void;
 }
 
@@ -21,8 +22,9 @@ export function ProfileCard({
   phone,
   avatarUrl,
   userType,
-  hasProfile = false, // Provide default value
-  showEditButton = false, // Provide default value
+  hasProfile = false,
+  showEditButton = false,
+  isEditing = false, // 👈 default false
   onEdit,
 }: ProfileCardProps) {
   const getInitials = () => {
@@ -54,6 +56,7 @@ export function ProfileCard({
               ? `${firstName} ${lastName}`
               : "Complete Your Profile"}
           </h2>
+
           <div className="text-gray-600 flex items-center justify-center gap-2">
             <Mail className="w-4 h-4" />
             <span>{email}</span>
@@ -74,7 +77,13 @@ export function ProfileCard({
           )}
         </div>
 
-        {showEditButton ? (
+        {/* 👇 Dynamic section based on editing status */}
+        {isEditing ? (
+          <div className="flex items-center justify-center gap-2 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-lg w-full">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Editing Profile...</span>
+          </div>
+        ) : showEditButton ? (
           <Button
             onClick={onEdit}
             variant="outline"

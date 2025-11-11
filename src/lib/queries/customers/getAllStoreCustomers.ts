@@ -1,12 +1,12 @@
 // lib/queries/customers/getAllStoreCustomers.ts
-import { StoreCustomer } from "./getStoreCustomersSimple";
-import { TableCustomer } from "@/lib/types/users";
+// import { StoreCustomer } from "./getStoreCustomersSimple";
+import { DetailedCustomer } from "@/lib/types/users";
 import { getCustomersFromOrders } from "./getCustomersFromOrders";
 import { getStoreCustomersSimple } from "./getStoreCustomersSimple";
 
 export async function getAllStoreCustomers(
   storeId: string
-): Promise<TableCustomer[]> {
+): Promise<DetailedCustomer[]> {
   try {
     if (!storeId) {
       throw new Error("Store ID is required");
@@ -19,9 +19,9 @@ export async function getAllStoreCustomers(
       getCustomersFromOrders(storeId),
     ]);
 
-    const customerMap = new Map<string, TableCustomer>();
+    const customerMap = new Map<string, DetailedCustomer>();
 
-    // Convert direct customers to TableCustomer format
+    // Convert direct customers to DetailedCustomer format
     directCustomers.forEach((customer) => {
       customerMap.set(customer.id, {
         id: customer.id,
@@ -32,6 +32,11 @@ export async function getAllStoreCustomers(
         order_count: 0,
         source: "direct",
         address: customer.address || undefined,
+        // Add DetailedCustomer fields
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        user_type: customer.user_type,
+        profile_details: customer.profile_details || null,
       });
     });
 
@@ -48,9 +53,26 @@ export async function getAllStoreCustomers(
         if (!existingCustomer.address && orderCustomer.address) {
           existingCustomer.address = orderCustomer.address;
         }
+        // Keep profile_details from order customer if it has more data
+        if (
+          orderCustomer.profile_details &&
+          !existingCustomer.profile_details
+        ) {
+          existingCustomer.profile_details = orderCustomer.profile_details;
+        }
       } else {
-        // Add new customer from orders
-        customerMap.set(orderCustomer.id, orderCustomer);
+        // Add new customer from orders as DetailedCustomer
+        customerMap.set(orderCustomer.id, {
+          ...orderCustomer,
+          first_name:
+            orderCustomer.first_name ||
+            orderCustomer.name?.split(" ")[0] ||
+            null,
+          last_name:
+            orderCustomer.last_name ||
+            orderCustomer.name?.split(" ").slice(1).join(" ") ||
+            null,
+        });
       }
     });
 
@@ -59,6 +81,14 @@ export async function getAllStoreCustomers(
     console.log(
       `Total customers: ${allCustomers.length} (${directCustomers.length} direct, ${orderCustomers.length} from orders)`
     );
+
+    // Debug: Log profile details for first few customers
+    allCustomers.slice(0, 3).forEach((customer, index) => {
+      console.log(
+        `Customer ${index + 1} profile details:`,
+        customer.profile_details
+      );
+    });
 
     return allCustomers;
   } catch (error) {

@@ -1,19 +1,43 @@
 // lib/queries/customers/getCustomersFromOrders.ts
 import { supabase } from "@/lib/supabase";
-import { TableCustomer } from "@/lib/types/users";
+import { DetailedCustomer } from "@/lib/types/users";
 
 interface UserProfile {
-  address_line_1?: string;
-  address_line_2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
+
+interface CustomerWithProfile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  user_profiles: UserProfile[] | null;
+}
+
+interface Order {
+  id: string;
+  customer_id: string;
+  created_at: string;
+  status: string;
+}
+
+interface CustomerStats {
+  order_count: number;
+  last_order_date: string | null;
+  status: string;
 }
 
 export async function getCustomersFromOrders(
   storeId: string
-): Promise<TableCustomer[]> {
+): Promise<DetailedCustomer[]> {
   try {
     console.log("Fetching customers from orders for store:", storeId);
 
@@ -39,12 +63,14 @@ export async function getCustomersFromOrders(
 
     // Step 2: Get unique customer IDs from orders
     const customerIds = [
-      ...new Set(orders.map((order) => order.customer_id).filter(Boolean)),
+      ...new Set(
+        orders.map((order: Order) => order.customer_id).filter(Boolean)
+      ),
     ];
     console.log(`Unique customer IDs from orders:`, customerIds);
     console.log(`Number of unique customer IDs: ${customerIds.length}`);
 
-    // Step 3: Fetch customer details for these IDs - NO filters on user_type or store_id
+    // Step 3: Fetch customer details for these IDs - include date_of_birth and gender
     const { data: customers, error: customersError } = await supabase
       .from("users")
       .select(
@@ -55,6 +81,8 @@ export async function getCustomersFromOrders(
         last_name,
         phone,
         user_profiles (
+          date_of_birth,
+          gender,
           address_line_1,
           address_line_2,
           city,
@@ -65,7 +93,6 @@ export async function getCustomersFromOrders(
       `
       )
       .in("id", customerIds);
-    // Removed: .eq("store_id", storeId) and .eq("user_type", "customer")
 
     if (customersError) {
       console.error("Error fetching customers:", customersError);
@@ -75,9 +102,9 @@ export async function getCustomersFromOrders(
     console.log(`Found ${customers?.length || 0} customer records`);
 
     // Step 4: Calculate order statistics for each customer
-    const customerStats = new Map();
+    const customerStats = new Map<string, CustomerStats>();
 
-    orders.forEach((order) => {
+    orders.forEach((order: Order) => {
       if (order.customer_id) {
         if (!customerStats.has(order.customer_id)) {
           customerStats.set(order.customer_id, {
@@ -87,11 +114,15 @@ export async function getCustomersFromOrders(
           });
         }
         const stats = customerStats.get(order.customer_id);
-        stats.order_count += 1;
+        if (stats) {
+          stats.order_count += 1;
 
-        // Update last order date if this order is more recent
-        if (new Date(order.created_at) > new Date(stats.last_order_date)) {
-          stats.last_order_date = order.created_at;
+          // Update last order date if this order is more recent
+          if (
+            new Date(order.created_at) > new Date(stats.last_order_date || "")
+          ) {
+            stats.last_order_date = order.created_at;
+          }
         }
       }
     });
@@ -100,9 +131,9 @@ export async function getCustomersFromOrders(
       `Customer stats calculated for ${customerStats.size} customers`
     );
 
-    // Step 5: Combine customer data with order statistics
-    const tableCustomers: TableCustomer[] = (customers || []).map(
-      (customer) => {
+    // Step 5: Combine customer data with order statistics as DetailedCustomer
+    const detailedCustomers: DetailedCustomer[] = (customers || []).map(
+      (customer: CustomerWithProfile) => {
         const userProfile = Array.isArray(customer.user_profiles)
           ? customer.user_profiles[0] || null
           : customer.user_profiles;
@@ -122,27 +153,31 @@ export async function getCustomersFromOrders(
           status:
             stats.order_count > 0 ? ("active" as const) : ("inactive" as const),
           order_count: stats.order_count,
-          last_order_date: stats.last_order_date,
+          last_order_date: stats.last_order_date || undefined,
           source: "orders" as const,
           address: address || undefined,
+          // DetailedCustomer fields
+          first_name: customer.first_name || null,
+          last_name: customer.last_name || null,
+          profile_details: userProfile
+            ? {
+                date_of_birth: userProfile.date_of_birth || null,
+                gender: userProfile.gender || null,
+                address_line_1: userProfile.address_line_1 || null,
+                address_line_2: userProfile.address_line_2 || null,
+                city: userProfile.city || null,
+                state: userProfile.state || null,
+                postal_code: userProfile.postal_code || null,
+                country: userProfile.country || null,
+              }
+            : null,
         };
       }
     );
 
-    console.log(`Returning ${tableCustomers.length} customers from orders`);
+    console.log(`Returning ${detailedCustomers.length} customers from orders`);
 
-    // Debug: Log the actual customer details found
-    console.log(
-      "Actual customer details found:",
-      tableCustomers.map((c) => ({
-        id: c.id,
-        name: c.name,
-        email: c.email,
-        order_count: c.order_count,
-      }))
-    );
-
-    return tableCustomers;
+    return detailedCustomers;
   } catch (error) {
     console.error("Unexpected error in orders customer query:", error);
     throw error;

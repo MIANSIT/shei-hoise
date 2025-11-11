@@ -18,18 +18,17 @@ import {
   MailOutlined,
   PhoneOutlined,
   ExclamationCircleOutlined,
-  // EnvironmentOutlined,
   ShoppingOutlined,
 } from "@ant-design/icons";
-import { TableCustomer } from "@/lib/types/users";
+import { DetailedCustomer } from "@/lib/types/users"; // Change to DetailedCustomer
 
 const { Text, Title } = Typography;
 
 interface CustomerTableProps {
-  customers: TableCustomer[];
-  onEdit: (customer: TableCustomer) => void;
-  onDelete: (customer: TableCustomer) => void;
-  onViewDetails: (customer: TableCustomer) => void;
+  customers: DetailedCustomer[]; // Change to DetailedCustomer[]
+  onEdit: (customer: DetailedCustomer) => void; // Update parameter type
+  onDelete: (customer: DetailedCustomer) => void; // Update parameter type
+  onViewDetails: (customer: DetailedCustomer) => void; // Update parameter type
   isLoading?: boolean;
 }
 
@@ -42,7 +41,8 @@ export function CustomerTable({
 }: CustomerTableProps) {
   const { notification, modal } = App.useApp();
 
-  const handleDelete = (customer: TableCustomer) => {
+  const handleDelete = (customer: DetailedCustomer) => {
+    // Update parameter type
     modal.confirm({
       title: "Delete Customer",
       icon: <ExclamationCircleOutlined />,
@@ -65,7 +65,10 @@ export function CustomerTable({
       title: "Customer",
       dataIndex: "name",
       key: "name",
-      render: (name: string, record: TableCustomer) => (
+      render: (
+        name: string,
+        record: DetailedCustomer // Update type
+      ) => (
         <Space>
           <div
             style={{
@@ -94,7 +97,6 @@ export function CustomerTable({
                   From Orders
                 </Tag>
               )}
-              {/* Only show order count if it's greater than 0 */}
               {typeof record.order_count === "number" &&
                 record.order_count > 0 && (
                   <Tag color="green" className="text-xs">
@@ -102,14 +104,6 @@ export function CustomerTable({
                   </Tag>
                 )}
             </Space>
-            {/* {record.address && (
-              <Text
-                type="secondary"
-                style={{ fontSize: "12px", display: "block", marginTop: 4 }}
-              >
-                {record.address}
-              </Text>
-            )} */}
           </div>
         </Space>
       ),
@@ -118,7 +112,10 @@ export function CustomerTable({
       title: "Contact",
       dataIndex: "email",
       key: "email",
-      render: (email: string, record: TableCustomer) => (
+      render: (
+        email: string,
+        record: DetailedCustomer // Update type
+      ) => (
         <Space direction="vertical" size={0}>
           <Space>
             <MailOutlined style={{ color: "#1890ff" }} />
@@ -146,7 +143,9 @@ export function CustomerTable({
     {
       title: "Actions",
       key: "actions",
-      render: (record: TableCustomer) => (
+      render: (
+        record: DetailedCustomer // Update type
+      ) => (
         <Space>
           <Button
             type="primary"
@@ -261,7 +260,6 @@ export function CustomerTable({
                           Orders
                         </Tag>
                       )}
-                      {/* Only show order count if it's greater than 0 */}
                       {typeof customer.order_count === "number" &&
                         customer.order_count > 0 && (
                           <Tag color="green" className="text-xs">
@@ -289,15 +287,6 @@ export function CustomerTable({
                     </Text>
                   </div>
                 )}
-
-                {/* {customer.address && (
-                  <div className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
-                    <EnvironmentOutlined className="text-orange-500 text-sm flex-shrink-0 mt-0.5" />
-                    <Text className="text-sm text-gray-600 flex-1 line-clamp-2">
-                      {customer.address}
-                    </Text>
-                  </div>
-                )} */}
               </div>
 
               <div className="flex justify-between gap-2 pt-3 border-t border-gray-200">

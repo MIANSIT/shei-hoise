@@ -121,6 +121,7 @@ export default function UserProfilePage() {
                 hasProfile={!!displayUser?.profile}
                 showEditButton={showEditButton}
                 onEdit={handleEdit}
+                isEditing={isEditing}
               />
 
               <StoreInfoCard
