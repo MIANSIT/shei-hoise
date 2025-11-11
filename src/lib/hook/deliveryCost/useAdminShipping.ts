@@ -1,5 +1,4 @@
-// hooks/useAdminShipping.ts
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   getShippingFees,
   StoreShippingConfig,
@@ -7,84 +6,150 @@ import {
 } from "@/lib/queries/deliveryCost/getShippingFees";
 import { updateShippingFees } from "@/lib/queries/deliveryCost/updateShippingFees";
 import { createShippingFees } from "@/lib/queries/deliveryCost/createShippingFees";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
-export function useAdminShipping(storeSlug: string) {
+interface UseAdminShippingReturn {
+  shippingConfig: StoreShippingConfig | null;
+  loading: boolean;
+  error: string | null;
+  fetchShippingFees: () => Promise<void>;
+  updateFees: (updates: {
+    shipping_options?: ShippingOption[];
+    free_shipping_threshold?: number;
+    processing_time_days?: number;
+  }) => Promise<boolean>;
+  createFees: (config: {
+    currency: string;
+    shipping_options: ShippingOption[];
+    free_shipping_threshold?: number;
+    processing_time_days?: number;
+  }) => Promise<boolean>;
+  refetch: () => Promise<void>;
+  clearError: () => void;
+  isUpdating: boolean;
+}
+
+export function useAdminShipping(storeSlug: string): UseAdminShippingReturn {
   const [shippingConfig, setShippingConfig] =
     useState<StoreShippingConfig | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { success, error: errorToast, info } = useSheiNotification();
 
-  // View shipping fees
-  const fetchShippingFees = async () => {
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const fetchShippingFees = useCallback(async () => {
+    if (!storeSlug) {
+      setError("Store slug is required");
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       const config = await getShippingFees(storeSlug);
       setShippingConfig(config);
+
+      if (config?.shipping_options.length === 0) {
+        info("No shipping options configured. Add your first shipping method.");
+      }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch shipping fees"
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch shipping fees";
+      setError(errorMessage);
+      errorToast(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [storeSlug, errorToast, info]);
 
-  // Update shipping fees
-  const updateFees = async (updates: {
-    shipping_options?: ShippingOption[];
-    free_shipping_threshold?: number;
-    processing_time_days?: number;
-  }): Promise<boolean> => {
-    try {
+  const updateFees = useCallback(
+    async (updates: {
+      shipping_options?: ShippingOption[];
+      free_shipping_threshold?: number;
+      processing_time_days?: number;
+    }): Promise<boolean> => {
       if (!shippingConfig?.store_id) {
-        throw new Error("Store ID not found");
+        const errorMsg = "Store ID not found";
+        setError(errorMsg);
+        errorToast(errorMsg);
+        return false;
       }
 
-      const result = await updateShippingFees(shippingConfig.store_id, updates);
+      try {
+        setIsUpdating(true);
+        setError(null);
 
-      if (result.success) {
-        // Refresh the data
-        await fetchShippingFees();
-        return true;
-      } else {
-        throw new Error(result.error);
+        const result = await updateShippingFees(
+          shippingConfig.store_id,
+          updates
+        );
+
+        if (result.success) {
+          success("Shipping options updated successfully!");
+          await fetchShippingFees();
+          return true;
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to update shipping fees";
+        setError(errorMessage);
+        errorToast(errorMessage);
+        return false;
+      } finally {
+        setIsUpdating(false);
       }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update shipping fees"
-      );
-      return false;
-    }
-  };
+    },
+    [shippingConfig?.store_id, fetchShippingFees, success, errorToast]
+  );
 
-  // Create shipping fees
-  const createFees = async (config: {
-    currency: string;
-    shipping_options: ShippingOption[];
-    free_shipping_threshold?: number;
-    processing_time_days?: number;
-  }): Promise<boolean> => {
-    try {
+  const createFees = useCallback(
+    async (config: {
+      currency: string;
+      shipping_options: ShippingOption[];
+      free_shipping_threshold?: number;
+      processing_time_days?: number;
+    }): Promise<boolean> => {
       if (!shippingConfig?.store_id) {
-        throw new Error("Store ID not found");
+        const errorMsg = "Store ID not found";
+        setError(errorMsg);
+        errorToast(errorMsg);
+        return false;
       }
 
-      const result = await createShippingFees(shippingConfig.store_id, config);
+      try {
+        setIsUpdating(true);
+        setError(null);
 
-      if (result.success) {
-        await fetchShippingFees();
-        return true;
-      } else {
-        throw new Error(result.error);
+        const result = await createShippingFees(
+          shippingConfig.store_id,
+          config
+        );
+
+        if (result.success) {
+          success("Shipping configuration created successfully!");
+          await fetchShippingFees();
+          return true;
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to create shipping fees";
+        setError(errorMessage);
+        errorToast(errorMessage);
+        return false;
+      } finally {
+        setIsUpdating(false);
       }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create shipping fees"
-      );
-      return false;
-    }
-  };
+    },
+    [shippingConfig?.store_id, fetchShippingFees, success, errorToast]
+  );
 
   return {
     shippingConfig,
@@ -94,5 +159,7 @@ export function useAdminShipping(storeSlug: string) {
     updateFees,
     createFees,
     refetch: fetchShippingFees,
+    clearError,
+    isUpdating,
   };
 }
