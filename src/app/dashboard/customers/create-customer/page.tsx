@@ -3,7 +3,7 @@
 import React from "react";
 import { Space, Typography, App } from "antd";
 import { useRouter } from "next/navigation";
-import CustomerCreateForm from "@/app/components/admin/customers/CustomerCreateForm";
+import CustomerCreateForm from "@/app/components/admin/storeCustomers/CustomerCreateForm";
 import type { CreateCustomerResponse } from "@/lib/types/customer";
 
 const { Title, Text } = Typography;

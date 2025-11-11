@@ -1,4 +1,4 @@
-// lib/types/user.ts
+// lib/types/customer.ts
 import { z } from "zod";
 
 export enum USERTYPE {
@@ -18,7 +18,7 @@ export const customerProfileSchema = z.object({
 });
 
 export const userSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid(), // Changed to string for UUID
   email: z.string().email(),
   first_name: z.string(),
   last_name: z.string(),
@@ -30,8 +30,9 @@ export const userSchema = z.object({
 export type CurrentUser = z.infer<typeof userSchema>;
 export type CustomerProfile = z.infer<typeof customerProfileSchema>;
 
+// For table display
 export interface TableCustomer {
-  id: string;
+  id: string; // Changed to string
   name: string;
   email: string;
   phone?: string;

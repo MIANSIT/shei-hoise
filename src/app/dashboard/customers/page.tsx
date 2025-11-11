@@ -2,142 +2,71 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  Row,
-  Col,
-  Button,
-  Statistic,
-  Typography,
-  Space,
-  Divider,
-  Modal,
-  App,
-} from "antd";
-import {
-  UserAddOutlined,
-  TeamOutlined,
-  CheckCircleOutlined,
-  RiseOutlined,
-  EyeOutlined,
-  EditOutlined,
-  ExclamationCircleOutlined,
-} from "@ant-design/icons";
-import { CustomerTable } from "@/app/components/admin/customers/view/CustomerTable";
+import { Card, Typography, App, Tag } from "antd";
+import { TeamOutlined, ShoppingOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
+import { TableCustomer } from "@/lib/types/users";
+import { PageHeader } from "@/app/components/admin/storeCustomers/view/PageHeader";
+import { CustomerStats } from "@/app/components/admin/storeCustomers/view/CustomerStats";
+import { CustomerTable } from "@/app/components/admin/storeCustomers/view/CustomerTable";
+import { CustomerDetailsModal } from "@/app/components/admin/storeCustomers/view/CustomerDetailsModal";
+import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 
-const { Title, Text } = Typography;
-const { confirm } = Modal;
-
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  status?: "active" | "inactive";
-}
+const { Text } = Typography;
 
 export default function CustomerPage() {
   const { notification } = App.useApp();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<TableCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
-  );
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<TableCustomer | null>(null);
   const router = useRouter();
+
+  // Use the hook to get store ID
+  const { storeId, loading: userLoading } = useCurrentUser();
 
   useEffect(() => {
     const fetchCustomers = async () => {
+      // Don't fetch if we don't have a store ID yet
+      if (!storeId || userLoading) return;
+
       try {
-        setTimeout(() => {
-          const mockCustomers: Customer[] = [
-            {
-              id: 1,
-              name: "John Doe",
-              email: "john.doe@example.com",
-              phone: "+1-555-0101",
-              address: "123 Main St, New York, NY",
-              status: "active",
-            },
-            {
-              id: 2,
-              name: "Jane Smith",
-              email: "jane.smith@example.com",
-              phone: "+1-555-0102",
-              address: "456 Oak Ave, Los Angeles, CA",
-              status: "active",
-            },
-            {
-              id: 3,
-              name: "Bob Johnson",
-              email: "bob.johnson@example.com",
-              phone: "+1-555-0103",
-              address: "789 Pine Rd, Chicago, IL",
-              status: "inactive",
-            },
-            {
-              id: 4,
-              name: "Alice Brown",
-              email: "alice.brown@example.com",
-              phone: "+1-555-0104",
-              address: "321 Elm St, Houston, TX",
-              status: "active",
-            },
-            {
-              id: 5,
-              name: "Charlie Wilson",
-              email: "charlie.wilson@example.com",
-              phone: "+1-555-0105",
-              address: "654 Maple Dr, Phoenix, AZ",
-              status: "active",
-            },
-          ];
-          setCustomers(mockCustomers);
-          setLoading(false);
-        }, 1500);
+        setLoading(true);
+        console.log("Fetching customers for store:", storeId);
+        const allCustomers = await getAllStoreCustomers(storeId);
+        setCustomers(allCustomers);
       } catch (error) {
         console.error("Error fetching customers:", error);
         notification.error({
           message: "Error",
           description: "Failed to load customers. Please try again.",
         });
+      } finally {
         setLoading(false);
       }
     };
 
     fetchCustomers();
-  }, [notification]);
+  }, [storeId, userLoading, notification]);
 
-  const handleEdit = (customer: Customer) => {
-    console.log("Edit customer:", customer);
+  const handleEdit = (customer: TableCustomer) => {
     notification.info({
       message: "Edit Customer",
       description: `Editing ${customer.name}`,
     });
   };
 
-  const handleDelete = (customer: Customer) => {
-    confirm({
-      title: "Are you sure you want to delete this customer?",
-      icon: <ExclamationCircleOutlined />,
-      content: `Customer: ${customer.name}`,
-      okText: "Yes, Delete",
-      okType: "danger",
-      cancelText: "Cancel",
-      onOk() {
-        setCustomers(customers.filter((c) => c.id !== customer.id));
-        console.log("Deleted customer:", customer);
-        notification.success({
-          message: "Customer Deleted",
-          description: `${customer.name} has been deleted successfully.`,
-        });
-      },
+  const handleDelete = (customer: TableCustomer) => {
+    setCustomers(customers.filter((c) => c.id !== customer.id));
+    notification.success({
+      message: "Customer Deleted",
+      description: `${customer.name} has been deleted successfully.`,
     });
   };
 
-  const handleViewDetails = (customer: Customer) => {
+  const handleViewDetails = (customer: TableCustomer) => {
     setSelectedCustomer(customer);
     setDetailModalVisible(true);
   };
@@ -151,81 +80,35 @@ export default function CustomerPage() {
     setSelectedCustomer(null);
   };
 
-  const activeCustomers = customers.filter(
-    (customer) => customer.status === "active"
+  const activeCustomers = customers.length;
+  const customersFromOrders = customers.filter(
+    (c) => c.source === "orders"
   ).length;
 
   return (
     <div style={{ padding: "24px" }}>
-      <div style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: 16,
-          }}
-        >
-          <div>
-            <Title level={2} style={{ margin: 0 }}>
-              Customers
-            </Title>
-            <Text type="secondary">
-              Manage your customer information and details
-            </Text>
-          </div>
-          <Button
-            type="primary"
-            icon={<UserAddOutlined />}
-            size="large"
-            onClick={handleAddCustomer}
-          >
-            Add Customer
-          </Button>
-        </div>
-        <Divider style={{ margin: "16px 0" }} />
-      </div>
+      <PageHeader onAddCustomer={handleAddCustomer} />
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Total Customers"
-              value={customers.length}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: "#1890ff" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Active Customers"
-              value={activeCustomers}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: "#52c41a" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="This Month"
-              value={customers.length}
-              prefix={<RiseOutlined />}
-              valueStyle={{ color: "#722ed1" }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <CustomerStats
+        totalCustomers={customers.length}
+        activeCustomers={activeCustomers}
+      />
 
       <Card
         title={
-          <Space>
-            <TeamOutlined />
-            Customer List
-          </Space>
+          <div className="flex flex-col md:flex-row md:items-center md:gap-2">
+            <div className="flex items-center gap-2 mb-1 md:mb-0">
+              <TeamOutlined />
+              <span>Customer List</span>
+            </div>
+            <Tag
+              icon={<ShoppingOutlined />}
+              color="blue"
+              className="w-fit text-center"
+            >
+              {customersFromOrders} from orders
+            </Tag>
+          </div>
         }
         extra={
           <div className="hidden md:block">
@@ -241,77 +124,13 @@ export default function CustomerPage() {
           isLoading={loading}
         />
       </Card>
-      <Modal
-        title={
-          <Space>
-            <EyeOutlined />
-            Customer Details
-          </Space>
-        }
-        open={detailModalVisible}
-        onCancel={closeDetailModal}
-        footer={[
-          <Button key="close" onClick={closeDetailModal}>
-            Close
-          </Button>,
-          <Button
-            key="edit"
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={() => {
-              if (selectedCustomer) {
-                closeDetailModal();
-                handleEdit(selectedCustomer);
-              }
-            }}
-          >
-            Edit Customer
-          </Button>,
-        ]}
-        width={600}
-      >
-        {selectedCustomer && (
-          <div style={{ padding: "16px 0" }}>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Text strong>Name:</Text>
-                <br />
-                <Text>{selectedCustomer.name}</Text>
-              </Col>
-              <Col span={12}>
-                <Text strong>Email:</Text>
-                <br />
-                <Text>{selectedCustomer.email}</Text>
-              </Col>
-              <Col span={12}>
-                <Text strong>Phone:</Text>
-                <br />
-                <Text>{selectedCustomer.phone || "N/A"}</Text>
-              </Col>
-              <Col span={12}>
-                <Text strong>Status:</Text>
-                <br />
-                <Text
-                  style={{
-                    color:
-                      selectedCustomer.status === "active"
-                        ? "#52c41a"
-                        : "#ff4d4f",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {selectedCustomer.status?.toUpperCase() || "ACTIVE"}
-                </Text>
-              </Col>
-              <Col span={24}>
-                <Text strong>Address:</Text>
-                <br />
-                <Text>{selectedCustomer.address || "N/A"}</Text>
-              </Col>
-            </Row>
-          </div>
-        )}
-      </Modal>
+
+      <CustomerDetailsModal
+        visible={detailModalVisible}
+        customer={selectedCustomer}
+        onClose={closeDetailModal}
+        onEdit={handleEdit}
+      />
     </div>
   );
 }

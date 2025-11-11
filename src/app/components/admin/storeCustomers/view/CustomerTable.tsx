@@ -18,24 +18,18 @@ import {
   MailOutlined,
   PhoneOutlined,
   ExclamationCircleOutlined,
+  // EnvironmentOutlined,
+  ShoppingOutlined,
 } from "@ant-design/icons";
+import { TableCustomer } from "@/lib/types/users";
 
-const { Title, Text } = Typography;
-
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  status?: "active" | "inactive";
-}
+const { Text, Title } = Typography;
 
 interface CustomerTableProps {
-  customers: Customer[];
-  onEdit: (customer: Customer) => void;
-  onDelete: (customer: Customer) => void;
-  onViewDetails: (customer: Customer) => void;
+  customers: TableCustomer[];
+  onEdit: (customer: TableCustomer) => void;
+  onDelete: (customer: TableCustomer) => void;
+  onViewDetails: (customer: TableCustomer) => void;
   isLoading?: boolean;
 }
 
@@ -48,7 +42,7 @@ export function CustomerTable({
 }: CustomerTableProps) {
   const { notification, modal } = App.useApp();
 
-  const handleDelete = (customer: Customer) => {
+  const handleDelete = (customer: TableCustomer) => {
     modal.confirm({
       title: "Delete Customer",
       icon: <ExclamationCircleOutlined />,
@@ -71,7 +65,7 @@ export function CustomerTable({
       title: "Customer",
       dataIndex: "name",
       key: "name",
-      render: (name: string, record: Customer) => (
+      render: (name: string, record: TableCustomer) => (
         <Space>
           <div
             style={{
@@ -90,11 +84,32 @@ export function CustomerTable({
           </div>
           <div>
             <div style={{ fontWeight: 500 }}>{name}</div>
-            {record.address && (
-              <Text type="secondary" style={{ fontSize: "12px" }}>
+            <Space size={4} wrap>
+              {record.source === "orders" && (
+                <Tag
+                  icon={<ShoppingOutlined />}
+                  color="blue"
+                  className="text-xs"
+                >
+                  From Orders
+                </Tag>
+              )}
+              {/* Only show order count if it's greater than 0 */}
+              {typeof record.order_count === "number" &&
+                record.order_count > 0 && (
+                  <Tag color="green" className="text-xs">
+                    {record.order_count} orders
+                  </Tag>
+                )}
+            </Space>
+            {/* {record.address && (
+              <Text
+                type="secondary"
+                style={{ fontSize: "12px", display: "block", marginTop: 4 }}
+              >
                 {record.address}
               </Text>
-            )}
+            )} */}
           </div>
         </Space>
       ),
@@ -103,7 +118,7 @@ export function CustomerTable({
       title: "Contact",
       dataIndex: "email",
       key: "email",
-      render: (email: string, record: Customer) => (
+      render: (email: string, record: TableCustomer) => (
         <Space direction="vertical" size={0}>
           <Space>
             <MailOutlined style={{ color: "#1890ff" }} />
@@ -131,7 +146,7 @@ export function CustomerTable({
     {
       title: "Actions",
       key: "actions",
-      render: (record: Customer) => (
+      render: (record: TableCustomer) => (
         <Space>
           <Button
             type="primary"
@@ -192,7 +207,6 @@ export function CustomerTable({
 
   return (
     <div>
-      {/* Desktop Table */}
       <div className="hidden md:block">
         <Table
           columns={columns}
@@ -211,86 +225,102 @@ export function CustomerTable({
         />
       </div>
 
-      {/* Mobile Cards - Fixed Button Layout */}
-      <div className="md:hidden ">
-        <div className="flex flex-col gap-2">
+      <div className="md:hidden">
+        <div className="flex flex-col gap-3">
           {customers.map((customer) => (
             <Card
               key={customer.id}
               size="small"
-              className="w-full"
+              className="w-full shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100"
               styles={{
-                body: { padding: "12px" },
+                body: { padding: "16px" },
               }}
             >
-              {/* Header with Avatar and Name */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-gray-900 truncate text-sm">
+                    <div className="font-semibold text-gray-900 truncate text-base mb-1">
                       {customer.name}
                     </div>
-                    <Tag
-                      color={customer.status === "active" ? "green" : "red"}
-                      className="text-xs mt-1"
-                    >
-                      {customer.status?.toUpperCase() || "ACTIVE"}
-                    </Tag>
+                    <div className="flex flex-wrap gap-1">
+                      <Tag
+                        color={customer.status === "active" ? "green" : "red"}
+                        className="text-xs border-0 font-medium"
+                      >
+                        {customer.status?.toUpperCase() || "ACTIVE"}
+                      </Tag>
+                      {customer.source === "orders" && (
+                        <Tag
+                          icon={<ShoppingOutlined />}
+                          color="blue"
+                          className="text-xs"
+                        >
+                          Orders
+                        </Tag>
+                      )}
+                      {/* Only show order count if it's greater than 0 */}
+                      {typeof customer.order_count === "number" &&
+                        customer.order_count > 0 && (
+                          <Tag color="green" className="text-xs">
+                            {customer.order_count} orders
+                          </Tag>
+                        )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Contact Information */}
-              <div className="space-y-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <MailOutlined className="text-blue-500 text-xs" />
-                  <Text className="text-xs text-gray-600 truncate">
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <MailOutlined className="text-blue-500 text-sm flex-shrink-0" />
+                  <Text className="text-sm text-gray-700 truncate">
                     {customer.email}
                   </Text>
                 </div>
+
                 {customer.phone && (
-                  <div className="flex items-center gap-2">
-                    <PhoneOutlined className="text-green-500 text-xs" />
-                    <Text className="text-xs text-gray-600 truncate">
+                  <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                    <PhoneOutlined className="text-green-500 text-sm flex-shrink-0" />
+                    <Text className="text-sm text-gray-700 truncate">
                       {customer.phone}
                     </Text>
                   </div>
                 )}
-                {customer.address && (
-                  <div className="text-xs text-gray-500 line-clamp-2">
-                    {customer.address}
+
+                {/* {customer.address && (
+                  <div className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
+                    <EnvironmentOutlined className="text-orange-500 text-sm flex-shrink-0 mt-0.5" />
+                    <Text className="text-sm text-gray-600 flex-1 line-clamp-2">
+                      {customer.address}
+                    </Text>
                   </div>
-                )}
+                )} */}
               </div>
 
-              {/* Action Buttons - Fixed Layout */}
-              <div className="flex justify-center gap-2 pt-2 border-t border-gray-100">
+              <div className="flex justify-between gap-2 pt-3 border-t border-gray-200">
                 <Button
                   type="primary"
                   icon={<EyeOutlined />}
-                  size="small"
+                  size="middle"
                   onClick={() => onViewDetails(customer)}
-                  className="h-8 w-8 flex items-center justify-center"
-                  title="View"
-                />
+                  className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium"
+                ></Button>
                 <Button
                   icon={<EditOutlined />}
-                  size="small"
+                  size="middle"
                   onClick={() => onEdit(customer)}
-                  className="h-8 w-8 flex items-center justify-center"
-                  title="Edit"
-                />
+                  className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium border-gray-300 text-gray-700"
+                ></Button>
                 <Button
                   danger
                   icon={<DeleteOutlined />}
-                  size="small"
+                  size="middle"
                   onClick={() => handleDelete(customer)}
-                  className="h-8 w-8 flex items-center justify-center"
-                  title="Delete"
-                />
+                  className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium"
+                ></Button>
               </div>
             </Card>
           ))}
