@@ -1,44 +1,75 @@
+// components/products/singleProduct/AddToCartButton.tsx
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Check } from "lucide-react";
+import { ShoppingCart, Check, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AddToCartButtonProps {
   onClick: () => void;
   isLoading?: boolean;
   showSuccess?: boolean;
-  disabled?: boolean; // Add disabled prop
+  disabled?: boolean;
+  isMaxInCart?: boolean;
+  currentCartQuantity?: number;
   className?: string;
+  label?: string;
 }
 
 const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   onClick,
   isLoading = false,
   showSuccess = false,
-  disabled = false, // Default to false
-  className = ""
+  disabled = false,
+  isMaxInCart = false,
+  currentCartQuantity = 0,
+  className = "",
+  label = "Add to Cart"
 }) => {
   const handleClick = () => {
-    if (disabled || isLoading) return;
+    if (disabled || isLoading || isMaxInCart) return;
     onClick();
   };
+
+  // Determine button state and styling
+  const getButtonState = () => {
+    if (showSuccess) {
+      return {
+        bg: "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground",
+        disabled: true
+      };
+    }
+    if (isMaxInCart) {
+      return {
+        bg: "bg-blue-500 hover:bg-blue-600 text-white",
+        disabled: true
+      };
+    }
+    if (disabled) {
+      return {
+        bg: "bg-gray-400 text-gray-200",
+        disabled: true
+      };
+    }
+    return {
+      bg: "bg-primary hover:bg-primary/90 text-primary-foreground",
+      disabled: false
+    };
+  };
+
+  const buttonState = getButtonState();
 
   return (
     <Button
       onClick={handleClick}
-      disabled={isLoading || disabled}
+      disabled={buttonState.disabled || isLoading}
       size="lg"
-      className={`gap-2 relative overflow-hidden cursor-pointer min-w-[140px] ${className} ${
-        showSuccess
-          ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground"
-          : "bg-primary hover:bg-primary/90 text-primary-foreground"
-      } ${
-        disabled ? "opacity-50 cursor-not-allowed" : ""
+      className={`gap-2 relative overflow-hidden cursor-pointer min-w-[140px] ${className} ${buttonState.bg} ${
+        (isLoading || buttonState.disabled) ? "cursor-not-allowed" : ""
       }`}
     >
       <div className="flex items-center justify-center w-full relative h-6">
         {/* Default state */}
         <AnimatePresence mode="wait">
-          {!isLoading && !showSuccess && !disabled && (
+          {!isLoading && !showSuccess && !isMaxInCart && !disabled && (
             <motion.div
               key="default"
               initial={{ opacity: 0, y: 20 }}
@@ -48,7 +79,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
               className="absolute flex items-center gap-2"
             >
               <ShoppingCart className="w-5 h-5" />
-              <span>Add to Cart</span>
+              <span>{label}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -87,11 +118,28 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Disabled state */}
+        {/* Max in Cart state */}
         <AnimatePresence mode="wait">
-          {disabled && !isLoading && !showSuccess && (
+          {isMaxInCart && (
             <motion.div
-              key="disabled"
+              key="max-in-cart"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="absolute flex items-center gap-2"
+            >
+              <Info className="w-5 h-5" />
+              <span>Max in Cart ({currentCartQuantity})</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Out of Stock state */}
+        <AnimatePresence mode="wait">
+          {disabled && !isMaxInCart && !isLoading && !showSuccess && (
+            <motion.div
+              key="out-of-stock"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
