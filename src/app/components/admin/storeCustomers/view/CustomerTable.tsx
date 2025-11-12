@@ -21,6 +21,7 @@ import {
   ShoppingOutlined,
 } from "@ant-design/icons";
 import { DetailedCustomer } from "@/lib/types/users"; // Change to DetailedCustomer
+import { deleteUserWithCheck } from "@/lib/queries/user/deleteUserWithCheck";
 
 const { Text, Title } = Typography;
 
@@ -42,7 +43,6 @@ export function CustomerTable({
   const { notification, modal } = App.useApp();
 
   const handleDelete = (customer: DetailedCustomer) => {
-    // Update parameter type
     modal.confirm({
       title: "Delete Customer",
       icon: <ExclamationCircleOutlined />,
@@ -50,12 +50,25 @@ export function CustomerTable({
       okText: "Yes, Delete",
       okType: "danger",
       cancelText: "Cancel",
-      onOk() {
+      async onOk() {
+        const result = await deleteUserWithCheck(customer.id);
+
+        if (!result.success) {
+          notification.error({
+            message: "Delete Failed",
+            description: result.message,
+          });
+          return;
+        }
+
+        // ✅ Only here
+        // notification.success({
+        //   message: "Customer Deleted",
+        //   description: result.message,
+        // });
+
+        // Update table (no notification)
         onDelete(customer);
-        notification.success({
-          message: "Customer Deleted",
-          description: `${customer.name} has been deleted successfully.`,
-        });
       },
     });
   };
