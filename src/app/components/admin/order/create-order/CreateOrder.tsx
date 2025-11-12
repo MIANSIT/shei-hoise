@@ -45,6 +45,8 @@ import {
   getStoreSettings,
   type ShippingFee,
 } from "@/lib/queries/stores/getStoreSettings";
+import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import { DetailedCustomer } from "@/lib/types/users";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -54,10 +56,11 @@ type CustomerType = "new" | "existing";
 export default function CreateOrder() {
   const { notification } = App.useApp();
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
-  const [customers, setCustomers] = useState<StoreCustomer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<StoreCustomer[]>(
-    []
-  );
+  const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<
+    DetailedCustomer[]
+  >([]);
+
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -94,7 +97,7 @@ export default function CreateOrder() {
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
   const [selectedCustomer, setSelectedCustomer] =
-    useState<StoreCustomer | null>(null);
+    useState<DetailedCustomer | null>(null);
   const [customerProfile, setCustomerProfile] =
     useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -204,11 +207,12 @@ export default function CreateOrder() {
 
     setCustomerLoading(true);
     try {
-      const res = await dataService.getStoreCustomersSimple(user.store_id);
+      // Combine customers from users + orders
+      const res = await getAllStoreCustomers(user.store_id);
       setCustomers(res);
       setFilteredCustomers(res);
     } catch (err: any) {
-      console.error("Error fetching customers:", err);
+      console.error("Error fetching all customers:", err);
       notification.error({
         message: "Error Loading Customers",
         description: `Failed to load customer list. Error: ${
@@ -271,11 +275,13 @@ export default function CreateOrder() {
     } else {
       const filtered = customers.filter(
         (customer) =>
-          customer.first_name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
+          (customer.first_name?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase()
+          ) ||
           customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+          (customer.phone?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase()
+          )
       );
       setFilteredCustomers(filtered);
     }
@@ -325,7 +331,7 @@ export default function CreateOrder() {
 
       setCustomerInfo((prev) => ({
         ...prev,
-        name: customer.first_name,
+        name: customer.first_name || "",
         phone: customer.phone || "",
         email: customer.email,
         customer_id: customer.id,
@@ -469,7 +475,7 @@ export default function CreateOrder() {
                   <Space>
                     <Avatar icon={<UserOutlined />} size="small" />
                     <span>
-                      {customer.first_name}
+                      {customer.first_name || "Unnamed Customer"}
                       {customer.email && ` - ${customer.email}`}
                       {customer.phone && ` - ${customer.phone}`}
                     </span>
@@ -496,7 +502,9 @@ export default function CreateOrder() {
                 >
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label="Name">
-                      <Text strong>{selectedCustomer.first_name}</Text>
+                      <Text strong>
+                        {selectedCustomer.first_name || "Unnamed Customer"}
+                      </Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="Email">
                       <Space>
@@ -664,7 +672,7 @@ export default function CreateOrder() {
                 </div>
 
                 {/* Desktop Buttons */}
-                <div className="hidden sm:flex space-x-2">
+                <div className="hidden sm:flex gap-x-4">
                   <Button
                     type={customerType === "new" ? "primary" : "default"}
                     icon={<UserAddOutlined />}

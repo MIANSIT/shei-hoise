@@ -68,7 +68,7 @@ export default function ShippingMethod({
     };
 
     fetchShippingOptions();
-  }, [storeSlug]); // Only depend on storeSlug
+  }, [onShippingChange, selectedShipping, storeSlug]); // Only depend on storeSlug
 
   const handleShippingChange = useCallback((value: string) => {
     const selectedOption = filteredShippingOptions.find(

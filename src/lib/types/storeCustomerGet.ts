@@ -1,6 +1,5 @@
-// lib/types/users.ts
+// lib/types/customer.ts
 import { z } from "zod";
-// import { CustomerProfile } from "./customer";
 
 export enum USERTYPE {
   STORE_OWNER = "store_owner",
@@ -19,7 +18,7 @@ export const customerProfileSchema = z.object({
 });
 
 export const userSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid(), // Changed to string for UUID
   email: z.string().email(),
   first_name: z.string(),
   last_name: z.string(),
@@ -29,9 +28,11 @@ export const userSchema = z.object({
 });
 
 export type CurrentUser = z.infer<typeof userSchema>;
+export type CustomerProfile = z.infer<typeof customerProfileSchema>;
 
+// For table display
 export interface TableCustomer {
-  id: string;
+  id: string; // Changed to string
   name: string;
   email: string;
   phone?: string;
@@ -40,26 +41,4 @@ export interface TableCustomer {
   order_count?: number;
   last_order_date?: string;
   source?: "direct" | "orders";
-}
-
-export interface DetailedCustomer extends TableCustomer {
-  first_name?: string | null; // Change to allow null
-  last_name?: string | null; // Change to allow null
-  user_type?: USERTYPE | string;
-  email_verified?: boolean;
-  avatar_url?: string;
-  created_at?: string;
-  updated_at?: string;
-  store_slug?: string;
-  store_name?: string;
-  profile_details?: {
-    date_of_birth?: string | null;
-    gender?: string | null;
-    address_line_1?: string | null;
-    address_line_2?: string | null;
-    city?: string | null;
-    state?: string | null;
-    postal_code?: string | null;
-    country?: string | null;
-  } | null;
 }

@@ -45,9 +45,10 @@ export default function AuthButtons({
       className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-2"}
     >
       {links.map((link) => {
-        // Only add redirect for login/signup buttons, not for logged-in user
+        // Add redirect parameter for login/signup links unless disabled
+        const isAuthLink = link.path === "/login" || link.path === "/sign-up";
         const redirectParam =
-          !disableNavigation && !link.isHighlighted
+          !disableNavigation && isAuthLink
             ? `?redirect=${encodeURIComponent(pathname)}`
             : "";
 

@@ -17,6 +17,7 @@ import {
   CreateOrderResult,
 } from "./orders/orderService";
 import { getStoreOrders } from "./orders/getStoreOrders";
+
 import {
   updateOrder,
   updateOrderStatus,
@@ -48,6 +49,8 @@ import {
   BulkUpdateData,
   BulkUpdateResult,
 } from "./orders/bulkUpdateOrders";
+import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import { TableCustomer } from "@/lib/types/users";
 
 // Import CustomerProfile from the shared types file
 import { CustomerProfile } from "@/lib/types/customer";
@@ -72,6 +75,9 @@ export interface DataService {
     storeId: string,
     orderNumber: string
   ) => Promise<OrderWithItems | null>;
+
+  getAllStoreCustomers: (storeId: string) => Promise<TableCustomer[]>;
+
   updateOrderByNumber: (
     updateData: UpdateOrderByNumberData
   ) => Promise<{ success: boolean; error?: string }>;
@@ -174,6 +180,7 @@ export const dataService: DataService = {
   updatePaymentMethod,
   updateOrderNotes,
   bulkUpdateOrders,
+  getAllStoreCustomers,
 };
 
 export default dataService;
