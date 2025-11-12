@@ -48,7 +48,7 @@ export default function ProductCard({
         )
       : 0;
 
-  // Check if product is in stock
+  // Check if product is in stock - FIXED: Check all variants
   const isInStock = (): boolean => {
     if (product.variants && product.variants.length > 0) {
       return product.variants.some(variant => {
@@ -76,18 +76,20 @@ export default function ProductCard({
     return false;
   };
 
-  // Get available stock for this product
-  const getAvailableStock = (): number => {
+  // Get total available stock for this product - FIXED: Sum all variants
+  const getTotalAvailableStock = (): number => {
     if (product.variants && product.variants.length > 0) {
-      const variant = product.variants[0];
-      const productInventory = variant.product_inventory?.[0];
-      if (productInventory) {
-        return productInventory.quantity_available;
-      }
-      const stock = variant.stock;
-      if (stock) {
-        return stock.quantity_available;
-      }
+      return product.variants.reduce((total, variant) => {
+        const productInventory = variant.product_inventory?.[0];
+        if (productInventory) {
+          return total + productInventory.quantity_available;
+        }
+        const stock = variant.stock;
+        if (stock) {
+          return total + stock.quantity_available;
+        }
+        return total;
+      }, 0);
     }
     
     const mainProductInventory = product.product_inventory?.[0];
@@ -102,45 +104,56 @@ export default function ProductCard({
     return 0;
   };
 
-  // Get current cart quantity for this product - FIXED
-  const getCartQuantity = (): number => {
-    const cartItem = cart.find(
-      (item) => {
-        const productMatch = item.productId === product.id;
-        const storeMatch = item.storeSlug === store_slug;
-        
-        // Handle variant matching: both null/undefined or same ID
-        let variantMatch = false;
-        if (item.variantId === null && !variant?.id) {
-          variantMatch = true; // Both are null/undefined
-        } else if (item.variantId === variant?.id) {
-          variantMatch = true; // Both have same ID
+  // Get current cart quantity for this product - FIXED: Sum all variants in cart
+  const getTotalCartQuantity = (): number => {
+    if (hasVariants) {
+      // For products with variants, sum quantities of all variants in cart
+      return cart
+        .filter(item => item.productId === product.id && item.storeSlug === store_slug)
+        .reduce((total, item) => total + item.quantity, 0);
+    } else {
+      // For products without variants, use the original logic
+      const cartItem = cart.find(
+        (item) => {
+          const productMatch = item.productId === product.id;
+          const storeMatch = item.storeSlug === store_slug;
+          
+          // Handle variant matching: both null/undefined or same ID
+          let variantMatch = false;
+          if (item.variantId === null && !variant?.id) {
+            variantMatch = true; // Both are null/undefined
+          } else if (item.variantId === variant?.id) {
+            variantMatch = true; // Both have same ID
+          }
+          
+          return productMatch && storeMatch && variantMatch;
         }
-        
-        return productMatch && storeMatch && variantMatch;
-      }
-    );
-    
-    return cartItem?.quantity || 0;
+      );
+      
+      return cartItem?.quantity || 0;
+    }
   };
 
-  const availableStock = getAvailableStock();
-  const cartQuantity = getCartQuantity();
-  const remainingStock = availableStock - cartQuantity;
+  const totalAvailableStock = getTotalAvailableStock();
+  const totalCartQuantity = getTotalCartQuantity();
+  const remainingStock = totalAvailableStock - totalCartQuantity;
   const isOutOfStock = remainingStock <= 0;
-  const isMaxInCart = cartQuantity >= availableStock;
+  
+  // Only show "Max in Cart" for products WITHOUT variants
+  // For products WITH variants, we can't determine max per variant from the card view
+  const isMaxInCart = !hasVariants && totalCartQuantity >= totalAvailableStock;
 
   // Debug logs
   console.log("🛒 ProductCard Debug:", {
     productName: product.name,
     productId: product.id,
-    variantId: variant?.id,
-    availableStock,
-    cartQuantity,
+    hasVariants,
+    totalAvailableStock,
+    totalCartQuantity,
     remainingStock,
     isOutOfStock,
     isMaxInCart,
-    hasVariants
+    variantCount: product.variants?.length || 0
   });
 
   const handleAddToCart = async () => {
@@ -193,7 +206,8 @@ export default function ProductCard({
               </span>
             )}
             
-            {productInStock && isMaxInCart && (
+            {/* Only show "Max in Cart" for products WITHOUT variants */}
+            {!hasVariants && productInStock && isMaxInCart && (
               <span className="text-card-foreground text-xs font-medium bg-blue-500 px-2 py-1 rounded-lg">
                 Max in Cart
               </span>
