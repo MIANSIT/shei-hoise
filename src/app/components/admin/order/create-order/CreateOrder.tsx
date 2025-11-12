@@ -1,3 +1,4 @@
+// app/components/admin/order/create-order/CreateOrder.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
@@ -39,11 +40,13 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import type { StoreCustomer } from "@/lib/queries/customers/getStoreCustomersSimple";
-import type { CustomerProfile } from "@/lib/queries/customers/getCustomerProfile";
+import type { CustomerProfile } from "@/lib/types/customer";
 import {
   getStoreSettings,
   type ShippingFee,
 } from "@/lib/queries/stores/getStoreSettings";
+import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import { DetailedCustomer } from "@/lib/types/users";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -53,27 +56,28 @@ type CustomerType = "new" | "existing";
 export default function CreateOrder() {
   const { notification } = App.useApp();
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
-  const [customers, setCustomers] = useState<StoreCustomer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<StoreCustomer[]>(
-    []
-  );
+  const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<
+    DetailedCustomer[]
+  >([]);
+
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { user, loading: userLoading } = useCurrentUser();
+  const { user, loading: userLoading, storeSlug } = useCurrentUser();
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfoType>({
     name: "",
     phone: "",
     address: "",
     deliveryMethod: "",
-    deliveryOption: "", // Add this new field
+    deliveryOption: "",
     city: "",
     email: "",
     notes: "",
     password: "AdminCustomer1232*",
-    postal_code: "", // Add this line
+    postal_code: "",
   });
 
   const [subtotal, setSubtotal] = useState(0);
@@ -93,28 +97,27 @@ export default function CreateOrder() {
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
   const [selectedCustomer, setSelectedCustomer] =
-    useState<StoreCustomer | null>(null);
+    useState<DetailedCustomer | null>(null);
   const [customerProfile, setCustomerProfile] =
     useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Store settings states
-
   const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [hasFetchedData, setHasFetchedData] = useState(false);
+
+  // Fetch store name for order ID prefix
+  const [storeName, setStoreName] = useState<string>("SHEI");
 
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || settingsLoading) return;
 
     setSettingsLoading(true);
     try {
       const settings = await getStoreSettings(user.store_id);
       if (settings) {
-        // Remove this line: setStoreSettings(settings);
         setShippingFees(settings.shipping_fees || []);
-
-        // Set tax amount from store settings if available
         if (settings.tax_rate) {
           setTaxAmount(settings.tax_rate);
         }
@@ -130,6 +133,34 @@ export default function CreateOrder() {
     }
   }, [user?.store_id, notification]);
 
+  // Fetch store name for order ID
+  const fetchStoreName = useCallback(async () => {
+    if (!user?.store_id) return;
+
+    try {
+      const { data: storeData, error } = await dataService.getStoreById(
+        user.store_id
+      );
+      if (error) {
+        console.error("Error fetching store:", error);
+        setStoreName("SHEI");
+        return;
+      }
+
+      if (storeData?.store_name) {
+        // Get first 4 characters of store name in uppercase, or use SHEI as fallback
+        const prefix = storeData.store_name
+          .replace(/\s+/g, "") // Remove spaces
+          .substring(0, 4)
+          .toUpperCase();
+        setStoreName(prefix || "SHEI");
+      }
+    } catch (error) {
+      console.error("Error fetching store name:", error);
+      setStoreName("SHEI"); // Fallback to SHEI
+    }
+  }, [user?.store_id]);
+
   // Fetch customer profile data from user_profiles table
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
     setProfileLoading(true);
@@ -141,7 +172,7 @@ export default function CreateOrder() {
           ...prev,
           address: profile.address_line_1 || "",
           city: profile.city || "",
-          postal_code: profile.postal_code || "", // Add this line
+          postal_code: profile.postal_code || "",
         }));
       }
     } catch (error) {
@@ -154,9 +185,8 @@ export default function CreateOrder() {
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
-    if (!user?.store_id) {
-      return;
-    }
+    if (!user?.store_id || loading) return;
+
     setLoading(true);
     try {
       const res = await dataService.getProductsWithVariants(user.store_id);
@@ -173,29 +203,16 @@ export default function CreateOrder() {
   }, [user?.store_id, notification]);
 
   const fetchCustomers = useCallback(async () => {
-    if (!user?.store_id) {
-      return;
-    }
+    if (!user?.store_id || customerLoading) return;
 
     setCustomerLoading(true);
     try {
-      const res = await dataService.getStoreCustomersSimple(user.store_id);
+      // Combine customers from users + orders
+      const res = await getAllStoreCustomers(user.store_id);
       setCustomers(res);
       setFilteredCustomers(res);
-
-      if (res.length > 0) {
-        notification.success({
-          message: `Loaded ${res.length} Customers`,
-          description: "Customer list updated successfully.",
-        });
-      } else {
-        notification.info({
-          message: "No Customers Found",
-          description: "No existing customers found for your store.",
-        });
-      }
     } catch (err: any) {
-      console.error("Error fetching customers:", err);
+      console.error("Error fetching all customers:", err);
       notification.error({
         message: "Error Loading Customers",
         description: `Failed to load customer list. Error: ${
@@ -208,19 +225,48 @@ export default function CreateOrder() {
     }
   }, [user?.store_id, notification]);
 
+  // Main data fetching effect - runs only once
   useEffect(() => {
-    if (user?.store_id && !userLoading) {
-      fetchProducts();
-      fetchCustomers();
-      fetchStoreSettings();
+    if (user?.store_id && !userLoading && !hasFetchedData) {
+      console.log("🔄 Initial data fetch for store:", user.store_id);
+      setHasFetchedData(true);
+
+      // Fetch store name first for order ID
+      fetchStoreName().then(() => {
+        // Then fetch all other data
+        Promise.all([
+          fetchProducts(),
+          fetchCustomers(),
+          fetchStoreSettings(),
+        ]).catch((error) => {
+          console.error("Error in initial data fetch:", error);
+        });
+      });
     }
   }, [
     user?.store_id,
     userLoading,
+    hasFetchedData,
     fetchProducts,
     fetchCustomers,
     fetchStoreSettings,
+    fetchStoreName,
   ]);
+
+  // Generate order ID with store name prefix
+  useEffect(() => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, "0");
+    const day = now.getDate().toString().padStart(2, "0");
+    const sessionCounter = Math.floor(Math.random() * 1000);
+
+    setOrderId(
+      `${storeName}${year}${month}${day}${sessionCounter
+        .toString()
+        .padStart(3, "0")}`
+    );
+  }, [storeName]); // Regenerate when store name changes
 
   // Filter customers based on search
   useEffect(() => {
@@ -229,31 +275,18 @@ export default function CreateOrder() {
     } else {
       const filtered = customers.filter(
         (customer) =>
-          customer.first_name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
+          (customer.first_name?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase()
+          ) ||
           customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+          (customer.phone?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase()
+          )
       );
       setFilteredCustomers(filtered);
     }
   }, [searchTerm, customers]);
 
-  // Generate order ID
-  useEffect(() => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const day = now.getDate().toString().padStart(2, "0");
-    const sessionCounter = Math.floor(Math.random() * 1000);
-    setOrderId(
-      `SHEI${year}${month}${day}${sessionCounter.toString().padStart(3, "0")}`
-    );
-  }, []);
-
-  // Update delivery cost based on city from shipping fees
-  // Update delivery cost based on city from shipping fees
-  // Update delivery cost based on delivery option from shipping fees
   // Update delivery cost based on delivery option from shipping fees
   useEffect(() => {
     if (
@@ -296,15 +329,12 @@ export default function CreateOrder() {
     if (customer) {
       setSelectedCustomer(customer);
 
-      // Use functional update to only change what's needed
       setCustomerInfo((prev) => ({
-        ...prev, // Keep existing values
-        name: customer.first_name,
+        ...prev,
+        name: customer.first_name || "",
         phone: customer.phone || "",
         email: customer.email,
         customer_id: customer.id,
-        // Don't reset address, city, deliveryOption, postal_code here
-        // Let fetchCustomerProfile handle them
       }));
 
       await fetchCustomerProfile(customer.id);
@@ -320,13 +350,13 @@ export default function CreateOrder() {
       name: "",
       phone: "",
       address: "",
-      deliveryOption: "", // Add this new field
+      deliveryOption: "",
       deliveryMethod: "",
       city: "",
       email: "",
       notes: "",
       password: "AdminCustomer1232*",
-      postal_code: "", // Add this line
+      postal_code: "",
     });
     setCustomerType("new");
   };
@@ -366,10 +396,10 @@ export default function CreateOrder() {
     customerInfo.name &&
     customerInfo.phone &&
     customerInfo.address &&
-    customerInfo.postal_code && // Add this line
+    customerInfo.postal_code &&
     customerInfo.city &&
     customerInfo.deliveryMethod &&
-    customerInfo.deliveryOption && // Add this line
+    customerInfo.deliveryOption &&
     orderProducts.length > 0;
 
   // Render customer content based on type
@@ -445,7 +475,7 @@ export default function CreateOrder() {
                   <Space>
                     <Avatar icon={<UserOutlined />} size="small" />
                     <span>
-                      {customer.first_name}
+                      {customer.first_name || "Unnamed Customer"}
                       {customer.email && ` - ${customer.email}`}
                       {customer.phone && ` - ${customer.phone}`}
                     </span>
@@ -472,7 +502,9 @@ export default function CreateOrder() {
                 >
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label="Name">
-                      <Text strong>{selectedCustomer.first_name}</Text>
+                      <Text strong>
+                        {selectedCustomer.first_name || "Unnamed Customer"}
+                      </Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="Email">
                       <Space>
@@ -504,9 +536,6 @@ export default function CreateOrder() {
                         <Text>{customerProfile.city}</Text>
                       </Descriptions.Item>
                     )}
-                    <Descriptions.Item label="Customer ID">
-                      <Text type="secondary">{selectedCustomer.id}</Text>
-                    </Descriptions.Item>
                   </Descriptions>
 
                   {customerProfile ? (
@@ -643,7 +672,7 @@ export default function CreateOrder() {
                 </div>
 
                 {/* Desktop Buttons */}
-                <div className="hidden sm:flex space-x-2">
+                <div className="hidden sm:flex gap-x-4">
                   <Button
                     type={customerType === "new" ? "primary" : "default"}
                     icon={<UserAddOutlined />}
@@ -719,7 +748,7 @@ export default function CreateOrder() {
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
                   shippingFees={shippingFees}
-                  customerDeliveryOption={customerInfo.deliveryOption} // Change from customerCity
+                  customerDeliveryOption={customerInfo.deliveryOption}
                 />
               </Col>
             </Row>

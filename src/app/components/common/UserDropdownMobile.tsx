@@ -8,12 +8,15 @@ import { supabase } from "@/lib/supabase";
 import { LogoutOutlined } from "@ant-design/icons";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { ButtonSkeleton } from "@/app/components/skeletons/ButtonSkeleton";
+import { useParams } from "next/navigation";
 
 export default function UserDropdownMobile() {
   const { user, loading } = useCurrentUser(); // ✅ use 'loading' from your hook
   const { logout } = useAuthStore();
   const [open, setOpen] = useState(false);
   const { success, error } = useSheiNotification();
+  const params = useParams();
+  const storeSlug = params.store_slug as string;
 
   const handleLogout = async () => {
     try {
@@ -48,13 +51,13 @@ export default function UserDropdownMobile() {
         {open && (
           <div className="mt-2 bg-background border border-border rounded-md shadow-lg flex flex-col overflow-hidden">
             <Link
-              href="/profile"
+              href={`/${storeSlug}/my-profile`}
               className="flex items-center px-4 py-2 hover:bg-accent transition duration-200 ease-in-out font-medium rounded-md"
             >
               👤 Profile
             </Link>
             <Link
-              href="/order-status"
+              href={`/${storeSlug}/order-status`}
               className="flex items-center px-4 py-2 hover:bg-accent transition duration-200 ease-in-out font-medium rounded-md"
             >
               📦 Order Status

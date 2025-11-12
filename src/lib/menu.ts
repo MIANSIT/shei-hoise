@@ -12,6 +12,10 @@ import {
   Edit,
   BarChart2,
   FolderPlus,
+  Link2,
+  Settings,
+  Truck,
+  UserCircle,
 } from "lucide-react";
 import React from "react";
 
@@ -28,8 +32,8 @@ export const sideMenu: MenuItem[] = [
     title: "Users",
     icon: User,
     children: [
-      { title: "All Users", href: "/account/profile", icon: User },
-      { title: "Create Users", href: "/account/settings", icon: UserPlus },
+      { title: "All Users", href: "/dashboard/customers", icon: User },
+      { title: "Create Users", href: "/dashboard/customers/create-customer", icon: UserPlus },
     ],
   },
   {
@@ -65,10 +69,22 @@ export const sideMenu: MenuItem[] = [
       },
       {
         title: "All Orders",
-        href: "/dashboard/orders/view-order",
+        href: "/dashboard/orders",
         icon: Clipboard,
       },
-     
+      {
+        title: "Generate Order Link",
+        href: "/generate-orders-link",
+        icon: Link2,
+      },
+    ],
+  },
+  {
+    title: "Setting",
+    icon: Settings,
+    children: [
+      { title: "Profile", href: "/dashboard/profile-Setting", icon: UserCircle },
+      { title: "Shipping", href: "/dashboard/shipping-Management", icon: Truck },
     ],
   },
   {

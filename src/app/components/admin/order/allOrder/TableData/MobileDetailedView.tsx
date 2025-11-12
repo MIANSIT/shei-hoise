@@ -12,8 +12,8 @@ import {
   Package,
   Calendar,
   FileText,
-  MapPin,
-  Phone,
+  // MapPin,
+  // Phone,
   User,
   BadgeCheck,
   Shield,
@@ -21,9 +21,15 @@ import {
 
 interface Props {
   order: StoreOrder;
+  selected?: boolean;
+  onSelect?: (orderId: string, selected: boolean) => void;
 }
 
-const MobileDetailedViewFull: React.FC<Props> = ({ order }) => {
+const MobileDetailedViewFull: React.FC<Props> = ({
+  order,
+  selected = false,
+  onSelect,
+}) => {
   const { message } = App.useApp();
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -31,7 +37,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({ order }) => {
   const billingAddress = order.billing_address || address;
   const fullShippingAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
   const fullBillingAddress = `${billingAddress.address_line_1}, ${billingAddress.city}, ${billingAddress.country}`;
-  const isCancelled = order.status === "cancelled";
+  // const isCancelled = order.status === "cancelled";
   const isPaid = order.payment_status === "paid";
 
   const deliveryOption: StatusType = (order.delivery_option ||
@@ -47,12 +53,12 @@ const MobileDetailedViewFull: React.FC<Props> = ({ order }) => {
     });
   };
 
-  const CopyIcon = ({ fieldId }: { fieldId: string }) =>
-    copiedField === fieldId ? (
-      <Check size={14} className="text-green-500" />
-    ) : (
-      <Copy size={14} />
-    );
+  // const CopyIcon = ({ fieldId }: { fieldId: string }) =>
+  //   copiedField === fieldId ? (
+  //     <Check size={14} className="text-green-500" />
+  //   ) : (
+  //     <Copy size={14} />
+  //   );
 
   // Calculate savings
   const totalSavings = order.order_items.reduce((acc, item) => {
@@ -69,18 +75,35 @@ const MobileDetailedViewFull: React.FC<Props> = ({ order }) => {
     return acc + (discounted < base ? discounted : base) * item.quantity;
   }, 0);
 
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onSelect) {
+      onSelect(order.id, e.target.checked);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header with Checkbox */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-3 text-white shadow-sm">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="font-bold text-base">
-              Order #{order.order_number}
-            </div>
-            <div className="text-xs flex items-center gap-1 mt-1">
-              <Calendar size={12} />{" "}
-              {new Date(order.created_at).toLocaleDateString()}
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-2 flex-1">
+            {onSelect && (
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={handleCheckboxChange}
+                className="h-4 w-4 text-blue-600 rounded mt-1 flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-base">
+                Order #{order.order_number}
+              </div>
+              <div className="text-xs flex items-center gap-1 mt-1">
+                <Calendar size={12} />{" "}
+                {new Date(order.created_at).toLocaleDateString()}
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -93,6 +116,14 @@ const MobileDetailedViewFull: React.FC<Props> = ({ order }) => {
             </div>
           </div>
         </div>
+
+        {/* Selection indicator */}
+        {onSelect && selected && (
+          <div className="flex items-center gap-1 mt-2 text-blue-200 text-xs">
+            <Check size={12} />
+            Selected for bulk action
+          </div>
+        )}
       </div>
 
       {/* Quick Stats */}

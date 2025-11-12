@@ -5,8 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
-import { StorePageSkeleton } from "../components/skeletons/StorePageSkeleton"; // Add this import
-
+import { StorePageSkeleton } from "../components/skeletons/StorePageSkeleton";
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { Product } from "@/lib/types/product";
@@ -39,7 +38,18 @@ export default function StorePage({ params }: StorePageProps) {
         setStoreExists(true);
 
         const data = await clientGetProducts(store_slug);
-        setProducts(data);
+
+        // Sort products: in-stock first, out-of-stock last
+        const sortedProducts = data.sort((a, b) => {
+          const aInStock = isProductInStock(a);
+          const bInStock = isProductInStock(b);
+
+          if (aInStock && !bInStock) return -1; // a comes first
+          if (!aInStock && bInStock) return 1; // b comes first
+          return 0; // keep original order
+        });
+
+        setProducts(sortedProducts);
       } catch (err) {
         console.error(err);
         error("Failed to load store or products");
@@ -51,11 +61,49 @@ export default function StorePage({ params }: StorePageProps) {
     fetchData();
   }, [store_slug, error]);
 
+  // Helper function to check if product is in stock - FIXED with proper null checks
+  const isProductInStock = (product: Product): boolean => {
+    if (product.variants && product.variants.length > 0) {
+      // Check if any variant has stock (check both stock and product_inventory)
+      return product.variants.some((variant) => {
+        // First check product_inventory (API response)
+        const productInventory = variant.product_inventory?.[0];
+        if (productInventory && productInventory.quantity_available > 0) {
+          return true;
+        }
+        // Fallback to stock (TypeScript interface)
+        const stock = variant.stock;
+        if (stock && stock.quantity_available > 0) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // For products without variants, check main product stock (both fields)
+    // First check product_inventory (API response)
+    const mainProductInventory = product.product_inventory?.[0];
+    if (mainProductInventory && mainProductInventory.quantity_available > 0) {
+      return true;
+    }
+    // Fallback to stock (TypeScript interface)
+    const mainStock = product.stock;
+    if (mainStock && mainStock.quantity_available > 0) {
+      return true;
+    }
+
+    return false;
+  };
+
   const handleAddToCart = async (product: Product) => {
+    if (!isProductInStock(product)) {
+      error("This product is out of stock");
+      return;
+    }
+
     setLoadingProductId(product.id);
     try {
       const variant = product.variants?.[0];
-
       const cartProduct: AddToCartType = {
         productId: product.id,
         storeSlug: store_slug,
@@ -63,7 +111,7 @@ export default function StorePage({ params }: StorePageProps) {
         variantId: variant?.id || null,
       };
 
-      await addToCart(cartProduct);
+      addToCart(cartProduct); // ✅ Remove await
       success(`${product.name} added to cart`);
     } catch (err) {
       console.error(err);
@@ -73,7 +121,6 @@ export default function StorePage({ params }: StorePageProps) {
     }
   };
 
-  // ✅ REPLACED: Now using your custom skeleton
   if (loading) {
     return <StorePageSkeleton />;
   }

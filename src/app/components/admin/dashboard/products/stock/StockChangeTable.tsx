@@ -8,10 +8,13 @@ import BulkStockUpdate from "./BulkStockUpdate";
 import {
   mapProductsForModernTable,
   ProductRow,
+  VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
 import { updateInventory } from "@/lib/queries/inventory/updateInventory";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser"; // ✅ import user hook
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
+import type { TableRowSelection } from "antd/es/table/interface";
 
 const StockChangeTable: React.FC = () => {
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -21,7 +24,7 @@ const StockChangeTable: React.FC = () => {
   const [bulkActive, setBulkActive] = useState(false);
 
   const notify = useSheiNotification();
-  const { storeSlug, loading: userLoading } = useCurrentUser(); // ✅ get storeSlug from user
+  const { storeSlug, loading: userLoading } = useCurrentUser();
 
   const fetchProducts = async () => {
     if (!storeSlug) {
@@ -30,7 +33,7 @@ const StockChangeTable: React.FC = () => {
     }
     setLoading(true);
     try {
-      const data = await getProductWithStock(storeSlug); // ✅ pass slug to query
+      const data = await getProductWithStock(storeSlug);
       setProducts(mapProductsForModernTable(data));
     } catch (err) {
       console.error("❌ Failed to fetch products:", err);
@@ -44,7 +47,7 @@ const StockChangeTable: React.FC = () => {
     if (!userLoading && storeSlug) {
       fetchProducts();
     }
-  }, [userLoading, storeSlug]); // ✅ refetch when user data or slug changes
+  }, [userLoading, storeSlug]);
 
   const handleStockChange = (
     productId: string,
@@ -124,6 +127,18 @@ const StockChangeTable: React.FC = () => {
     setBulkActive(false);
   };
 
+  // Fixed rowSelection with proper typing
+  const rowSelection: TableRowSelection<ProductRow | VariantRow> = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+    },
+    // Optional: Only allow selecting products (not variants)
+    getCheckboxProps: (record: ProductRow | VariantRow) => ({
+      disabled: !("variants" in record), // Disable selection for variants
+    }),
+  };
+
   if (userLoading) {
     return <p className="text-center text-gray-500">Loading user...</p>;
   }
@@ -136,6 +151,9 @@ const StockChangeTable: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <div>
+        <LowStockSummary products={products} />
+      </div>
       <BulkStockUpdate
         selectedCount={selectedRowKeys.length}
         onUpdate={handleBulkUpdate}
@@ -160,10 +178,7 @@ const StockChangeTable: React.FC = () => {
           editedStocks={editedStocks}
           onStockChange={handleStockChange}
           onSingleUpdate={handleSingleUpdate}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: setSelectedRowKeys,
-          }}
+          rowSelection={rowSelection} // Use the properly typed rowSelection
           loading={loading}
           bulkActive={bulkActive}
         />

@@ -7,6 +7,7 @@ import CartItemsList from "./CartItemList";
 import { Button } from "@/components/ui/button";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { useRouter, useParams } from "next/navigation";
+import useCartStore from "@/lib/store/cartStore";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -19,7 +20,25 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const router = useRouter();
 
   // Use the custom hook to get cart items with fresh data
-  const { items: cartItems, calculations, loading } = useCartItems(store_slug);
+  const { items: cartItems, calculations, loading, error } = useCartItems(store_slug);
+  
+  // Get cart store functions for handling cart operations
+  const { removeItem, updateQuantity, clearStoreCart, getCartByStore } = useCartStore();
+
+  // Debug: Check what's in the cart
+  useEffect(() => {
+    if (isOpen) {
+      console.log("🛒 CartSidebar Debug:", {
+        store_slug,
+        cartItems,
+        calculations,
+        loading,
+        error,
+        rawCart: getCartByStore(store_slug),
+        cartItemsLength: cartItems.length
+      });
+    }
+  }, [isOpen, store_slug, cartItems, calculations, loading, error, getCartByStore]);
 
   // Prevent background scrolling when sidebar is open
   useEffect(() => {
@@ -34,7 +53,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   }, [isOpen]);
 
   const handleCheckout = () => {
-    onClose(); // Close the sidebar first
+    onClose();
     router.push(`/${store_slug}/checkout`);
   };
 
@@ -43,7 +62,21 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     router.push(`/${store_slug}`);
   };
 
-  // Don't render anything if not open
+  const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
+    console.log("🔄 Changing quantity:", { productId, variantId, newQuantity });
+    updateQuantity(productId, variantId, newQuantity);
+  };
+
+  const handleRemoveItem = (productId: string, variantId: string | null) => {
+    console.log("🗑️ Removing item:", { productId, variantId });
+    removeItem(productId, variantId);
+  };
+
+  const handleClearCart = () => {
+    console.log("🧹 Clearing cart for store:", store_slug);
+    clearStoreCart(store_slug);
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -76,9 +109,26 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
           </div>
           
           <div className='flex-1 p-4 overflow-y-auto'>
-             {cartItems.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Loading cart...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-destructive">Error: {error}</p>
+                <Button
+                  className="mt-4 w-full"
+                  onClick={() => window.location.reload()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : cartItems.length === 0 ? (
               <div className='text-center py-8'>
                 <p className='text-muted-foreground'>Your cart is empty</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Add some products to get started!
+                </p>
                 <Button
                   className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
                   onClick={handleContinueShopping}
@@ -87,11 +137,18 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                 </Button>
               </div>
             ) : (
-              <CartItemsList />
+              <CartItemsList 
+                items={cartItems}
+                onQuantityChange={handleQuantityChange}
+                onRemoveItem={handleRemoveItem}
+                onClearCart={handleClearCart}
+                showStoreInfo={false}
+                storeSlug={store_slug}
+              />
             )}
           </div>
 
-          {!loading && cartItems.length > 0 && (
+          {!loading && !error && cartItems.length > 0 && (
             <CartCheckoutLayout
               subtotal={calculations.totalPrice}
               onCheckout={handleCheckout}

@@ -1,3 +1,4 @@
+// File: components/product/ImageUploader.tsx
 "use client";
 
 import React from "react";
@@ -26,7 +27,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       altText: file.name,
       isPrimary: images.length + index === 0,
     }));
-
     setImages([...images, ...newImages]);
   };
 

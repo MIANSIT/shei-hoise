@@ -13,6 +13,9 @@ const passwordValidation = z
     "Password must contain at least one special character"
   );
 
+// Simple password validation for logged-in users (dummy validation)
+const simplePasswordValidation = z.string().min(1, "Password is required");
+
 // Bangladesh phone number validation
 const bangladeshPhoneValidation = z
   .string()
@@ -27,11 +30,24 @@ const emailValidation = z
     message: "Email must contain @ and .com domain",
   });
 
+// Schema for non-logged-in users (full validation)
 export const customerCheckoutSchema = z.object({
   name: z.string().min(1, "Full name is required"),
   email: emailValidation,
   phone: bangladeshPhoneValidation,
   password: passwordValidation,
+  country: z.string().min(1, "Country is required"),
+  city: z.string().min(1, "City is required"),
+  postCode: z.string().min(1, "Postal code is required"),
+  shippingAddress: z.string().min(1, "Shipping address is required"),
+});
+
+// Schema for logged-in users (password validation relaxed)
+export const customerCheckoutSchemaForLoggedIn = z.object({
+  name: z.string().min(1, "Full name is required"),
+  email: emailValidation,
+  phone: bangladeshPhoneValidation,
+  password: simplePasswordValidation, // ✅ FIX: Simple validation for logged-in users
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   postCode: z.string().min(1, "Postal code is required"),

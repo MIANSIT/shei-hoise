@@ -9,7 +9,6 @@ import {
 } from "./customers/getStoreCustomersSimple";
 import {
   getCustomerProfile,
-  CustomerProfile,
 } from "./customers/getCustomerProfile";
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import {
@@ -18,6 +17,7 @@ import {
   CreateOrderResult,
 } from "./orders/orderService";
 import { getStoreOrders } from "./orders/getStoreOrders";
+
 import {
   updateOrder,
   updateOrderStatus,
@@ -44,6 +44,18 @@ import {
   PaymentMethod,
 } from "@/lib/types/order";
 
+import {
+  bulkUpdateOrders,
+  BulkUpdateData,
+  BulkUpdateResult,
+} from "./orders/bulkUpdateOrders";
+import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import { TableCustomer } from "@/lib/types/users";
+
+// Import CustomerProfile from the shared types file
+import { CustomerProfile } from "@/lib/types/customer";
+import { supabase } from "@/lib/supabase";
+
 export interface DataService {
   // Product methods
   getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
@@ -53,6 +65,9 @@ export interface DataService {
   getCustomerProfile: (customerId: string) => Promise<CustomerProfile | null>;
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
 
+  // Store methods
+  getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
+
   // Order methods
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
   getStoreOrders: (storeId: string) => Promise<StoreOrder[]>;
@@ -60,6 +75,9 @@ export interface DataService {
     storeId: string,
     orderNumber: string
   ) => Promise<OrderWithItems | null>;
+
+  getAllStoreCustomers: (storeId: string) => Promise<TableCustomer[]>;
+
   updateOrderByNumber: (
     updateData: UpdateOrderByNumberData
   ) => Promise<{ success: boolean; error?: string }>;
@@ -89,7 +107,24 @@ export interface DataService {
     orderId: string,
     notes: string
   ) => Promise<UpdateOrderResult>;
+  bulkUpdateOrders: (updateData: BulkUpdateData) => Promise<BulkUpdateResult>;
 }
+
+// Implementation for getStoreById
+const getStoreByIdImpl = async (storeId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('id, store_name, store_slug')
+      .eq('id', storeId)
+      .single();
+
+    return { data, error };
+  } catch (error: any) {
+    console.error('Error in dataService.getStoreById:', error);
+    return { data: null, error };
+  }
+};
 
 // Implementation for getOrderByNumber
 const getOrderByNumberImpl = async (
@@ -133,6 +168,7 @@ export const dataService: DataService = {
   getStoreCustomersSimple,
   getCustomerProfile,
   createCustomer,
+  getStoreById: getStoreByIdImpl, // Add this line
   createOrder,
   getStoreOrders,
   getOrderByNumber: getOrderByNumberImpl,
@@ -143,6 +179,8 @@ export const dataService: DataService = {
   updateDeliveryOption,
   updatePaymentMethod,
   updateOrderNotes,
+  bulkUpdateOrders,
+  getAllStoreCustomers,
 };
 
 export default dataService;

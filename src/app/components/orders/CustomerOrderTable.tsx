@@ -1,8 +1,9 @@
 "use client";
 
 import { StoreOrder } from "../../../lib/types/order";
-import { Copy, Check, Truck } from "lucide-react";
+import { Copy, Check, Truck, ExternalLink } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 interface OrdersTableProps {
   orders: StoreOrder[];
@@ -84,6 +85,11 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
     return order.order_number || `#${order.id.slice(-8)}`;
   };
 
+  // Get store URL
+  const getStoreUrl = (storeSlug: string) => {
+    return `/${storeSlug}`;
+  };
+
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -109,6 +115,9 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
           </thead>
           <tbody className="bg-card divide-y divide-border">
             {orders.map((order) => {
+              const storeUrl = order.stores?.store_slug
+                ? getStoreUrl(order.stores.store_slug)
+                : null;
 
               return (
                 <tr
@@ -149,7 +158,8 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                       Product Total: {formatCurrency(order.subtotal || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Shipping Fee: {formatCurrency(order.shipping_fee) || 0} | <span className="uppercase">{order.delivery_option}</span>
+                      Shipping Fee: {formatCurrency(order.shipping_fee) || 0} |{" "}
+                      <span className="uppercase">{order.delivery_option}</span>
                     </div>
                   </td>
 
@@ -191,35 +201,49 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                           {order.stores?.store_name || "Store"}
                         </div>
                         <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                          {order.stores?.store_slug || ""}
-                          {order.stores?.store_slug && (
-                            <button
-                              onClick={async () => {
-                                const storeUrl = `${window.location.origin}/${order.stores.store_slug}`;
-                                try {
-                                  await navigator.clipboard.writeText(storeUrl);
-                                  setCopiedOrderId(storeUrl);
-                                  setTimeout(
-                                    () => setCopiedOrderId(null),
-                                    2000
-                                  );
-                                } catch (err) {
-                                  console.error(
-                                    "Failed to copy store URL:",
-                                    err
-                                  );
-                                }
-                              }}
-                              className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer flex-shrink-0"
-                              title="Copy Store URL"
-                            >
-                              {copiedOrderId ===
-                              `${window.location.origin}/${order.stores.store_slug}` ? (
-                                <Check className="h-3 w-3 text-green-600" />
-                              ) : (
-                                <Copy className="h-3 w-3 text-muted-foreground" />
-                              )}
-                            </button>
+                          {order.stores?.store_slug ? (
+                            <div className="flex items-center gap-1">
+                              <Link
+                                href={storeUrl!}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline flex items-center gap-1 transition-colors"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {order.stores.store_slug}
+                                <ExternalLink className="h-3 w-3" />
+                              </Link>
+                              <button
+                                onClick={async () => {
+                                  const storeUrl = `${window.location.origin}/${order.stores.store_slug}`;
+                                  try {
+                                    await navigator.clipboard.writeText(
+                                      storeUrl
+                                    );
+                                    setCopiedOrderId(storeUrl);
+                                    setTimeout(
+                                      () => setCopiedOrderId(null),
+                                      2000
+                                    );
+                                  } catch (err) {
+                                    console.error(
+                                      "Failed to copy store URL:",
+                                      err
+                                    );
+                                  }
+                                }}
+                                className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer flex-shrink-0"
+                                title="Copy Store URL"
+                              >
+                                {copiedOrderId ===
+                                `${window.location.origin}/${order.stores.store_slug}` ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </button>
+                            </div>
+                          ) : (
+                            "N/A"
                           )}
                         </div>
                       </div>
