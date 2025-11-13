@@ -4,18 +4,22 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
-// import Header from "../../components/common/Header";
 import Footer from "../../components/common/Footer";
 import OrdersTable from "../../components/orders/CustomerOrderTable";
+import OrdersCard from "../../components/orders/CustomerOrderCard";
 import { OrdersPageSkeleton } from "../../components/skeletons/OrdersPageSkeleton"; 
 import { EmptyOrdersSkeleton } from "../../components/skeletons/EmptyOrdersSkeleton"; 
 import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton"; 
+import { AnimatePresence } from "framer-motion";
+import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 
 export default function OrdersPage() {
   const { user, loading: userLoading } = useCurrentUser();
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
   
   // Use useMemo to get a stable user ID reference
   const userId = useMemo(() => user?.id, [user?.id]);
@@ -43,7 +47,7 @@ export default function OrdersPage() {
 
       fetchOrders();
     }
-  }, [userId, userLoading]); // Only depend on userId string, not the entire user object
+  }, [userId, userLoading]);
 
   // Reset when user changes (logs out)
   useEffect(() => {
@@ -54,6 +58,11 @@ export default function OrdersPage() {
     }
   }, [userId]);
 
+  const handleViewInvoice = (order: StoreOrder) => {
+    setSelectedOrder(order);
+    setShowInvoice(true);
+  };
+
   if (userLoading) {
     return <UserLoadingSkeleton />;
   }
@@ -61,8 +70,7 @@ export default function OrdersPage() {
   if (!user) {
     return (
       <>
-        {/* <Header /> */}
-        <div className="flex items-center justify-center ">
+        <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4 text-foreground">Access Denied</h1>
             <p className="text-muted-foreground">Please log in to view your orders.</p>
@@ -74,8 +82,6 @@ export default function OrdersPage() {
 
   return (
     <>
-      {/* <Header /> */}
-      
       <div className="min-h-screen bg-background py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -93,10 +99,33 @@ export default function OrdersPage() {
           ) : orders.length === 0 ? (
             <EmptyOrdersSkeleton />
           ) : (
-            <OrdersTable orders={orders} />
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden lg:block">
+                <OrdersTable orders={orders} onViewInvoice={handleViewInvoice} />
+              </div>
+              
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-4">
+                <OrdersCard orders={orders} onViewInvoice={handleViewInvoice} />
+              </div>
+            </>
           )}
         </div>
       </div>
+
+      {/* Invoice Modal */}
+      <AnimatePresence>
+        {showInvoice && selectedOrder && (
+          <AnimatedInvoice
+            isOpen={showInvoice}
+            onClose={() => setShowInvoice(false)}
+            orderData={selectedOrder}
+            showCloseButton={true}
+            autoShow={false}
+          />
+        )}
+      </AnimatePresence>
 
       <Footer />
     </>
