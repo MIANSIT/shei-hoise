@@ -1,15 +1,17 @@
+// components/orders/CustomerOrderTable.tsx
 "use client";
 
 import { StoreOrder } from "../../../lib/types/order";
-import { Copy, Check, Truck, ExternalLink } from "lucide-react";
+import { Copy, Check, ExternalLink, Receipt, DollarSign } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 
 interface OrdersTableProps {
   orders: StoreOrder[];
+  onViewInvoice?: (order: StoreOrder) => void;
 }
 
-export default function OrdersTable({ orders }: OrdersTableProps) {
+export default function OrdersTable({ orders, onViewInvoice }: OrdersTableProps) {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
   // Format currency
@@ -111,6 +113,9 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Store
               </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-card divide-y divide-border">
@@ -186,6 +191,7 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                         "payment"
                       )}`}
                     >
+                      <DollarSign className="h-3 w-3 mr-1" />
                       {order.payment_status
                         ? order.payment_status.charAt(0).toUpperCase() +
                           order.payment_status.slice(1)
@@ -248,6 +254,18 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                         </div>
                       </div>
                     </div>
+                  </td>
+
+                  {/* Actions - Invoice Button */}
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => onViewInvoice?.(order)}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors cursor-pointer"
+                      title="View Invoice"
+                    >
+                      <Receipt className="h-4 w-4" />
+                      Invoice
+                    </button>
                   </td>
                 </tr>
               );
