@@ -34,18 +34,29 @@ export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
   const store_slug = params.store_slug as string;
-  
+
   const notify = useSheiNotification();
   const { clearFormData } = useCheckoutStore();
   const { clearStoreCart } = useCartStore();
-  
-  const { cartItems, calculations, loading: cartLoading, error: cartError } = useUnifiedCartData({
+
+  const {
+    cartItems,
+    calculations,
+    loading: cartLoading,
+    error: cartError,
+  } = useUnifiedCartData({
     storeSlug: store_slug,
     useZustand: true,
   });
 
   // Use the custom hook for store data
-  const { storeData: invoiceStoreData, loading: storeLoading, error: storeError } = useInvoiceData(store_slug);
+  const {
+    storeData: invoiceStoreData,
+    loading: storeLoading,
+    error: storeError,
+  } = useInvoiceData({
+    storeSlug: store_slug,
+  });
 
   // Order process hook
   const {
@@ -60,23 +71,36 @@ export default function CheckoutPage() {
 
   const isUserLoggedIn = Boolean(session && currentUser);
   const isSubmitting = isProcessing || isCreatingAccount || orderLoading;
-  
+
   // ✅ Combined loading state
-  const isLoadingOverall = cartLoading || authLoading || userLoading || storeLoading;
+  const isLoadingOverall =
+    cartLoading || authLoading || userLoading || storeLoading;
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    if (isMounted && cartItems.length === 0 && !isLoadingOverall && !showInvoice) {
+    if (
+      isMounted &&
+      cartItems.length === 0 &&
+      !isLoadingOverall &&
+      !showInvoice
+    ) {
       const redirectTimer = setTimeout(() => {
         router.push(`/${store_slug}/order-status`);
       }, 2000);
 
       return () => clearTimeout(redirectTimer);
     }
-  }, [isMounted, cartItems.length, store_slug, router, isLoadingOverall, showInvoice]);
+  }, [
+    isMounted,
+    cartItems.length,
+    store_slug,
+    router,
+    isLoadingOverall,
+    showInvoice,
+  ]);
 
   const handleShippingChange = (shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
@@ -84,9 +108,13 @@ export default function CheckoutPage() {
   };
 
   // Create temporary order data for invoice
-  const createTempOrderData = (values: any, customerId: string | undefined, result: any): StoreOrder => {
+  const createTempOrderData = (
+    values: any,
+    customerId: string | undefined,
+    result: any
+  ): StoreOrder => {
     // Fix the order items to match the OrderItem type
-    const orderItems: OrderItem[] = cartItems.map(item => ({
+    const orderItems: OrderItem[] = cartItems.map((item) => ({
       id: `temp-item-${Date.now()}-${item.productId}`,
       product_id: item.productId,
       variant_id: item.variantId || null,
@@ -95,20 +123,25 @@ export default function CheckoutPage() {
       total_price: item.displayPrice * item.quantity,
       product_name: item.productName,
       variant_details: item.variant || null,
-      products: item.product ? {
-        id: item.product.id,
-        name: item.product.name,
-        product_images: item.product.product_images || []
-      } : undefined,
-      product_variants: item.variant ? {
-        id: item.variant.id,
-        product_images: item.variant.product_images || []
-      } : undefined
+      products: item.product
+        ? {
+            id: item.product.id,
+            name: item.product.name,
+            product_images: item.product.product_images || [],
+          }
+        : undefined,
+      product_variants: item.variant
+        ? {
+            id: item.variant.id,
+            product_images: item.variant.product_images || [],
+          }
+        : undefined,
     }));
 
     // Use the actual order data from processOrder result
     const orderId = result.orderId || `order-${Date.now()}`;
-    const orderNumber = result.orderNumber || `ORD-${Date.now().toString().slice(-6)}`;
+    const orderNumber =
+      result.orderNumber || `ORD-${Date.now().toString().slice(-6)}`;
 
     // Create proper address objects
     const shippingAddress = {
@@ -130,15 +163,15 @@ export default function CheckoutPage() {
     return {
       id: orderId,
       order_number: orderNumber,
-      customer_id: customerId || 'temp-customer',
-      store_id: invoiceStoreData?.id || 'temp-store-id',
-      status: 'pending',
+      customer_id: customerId || "temp-customer",
+      store_id: invoiceStoreData?.id || "temp-store-id",
+      status: "pending",
       subtotal: calculations.subtotal,
       tax_amount: 0,
       shipping_fee: shippingFee,
       total_amount: calculations.totalPrice + shippingFee,
-      currency: 'BDT',
-      payment_status: 'pending',
+      currency: "BDT",
+      payment_status: "pending",
       payment_method: "cod",
       shipping_address: shippingAddress,
       billing_address: billingAddress,
@@ -147,27 +180,29 @@ export default function CheckoutPage() {
       updated_at: new Date().toISOString(),
       order_items: orderItems,
       customers: {
-        id: customerId || 'temp-customer',
-        first_name: values.name.split(' ')[0] || values.name,
+        id: customerId || "temp-customer",
+        first_name: values.name.split(" ")[0] || values.name,
         email: values.email,
         phone: values.phone,
       },
-      stores: invoiceStoreData ? {
-        id: invoiceStoreData.id,
-        store_name: invoiceStoreData.store_name,
-        store_slug: invoiceStoreData.store_slug,
-        business_address: invoiceStoreData.business_address,
-        contact_phone: invoiceStoreData.contact_phone,
-        contact_email: invoiceStoreData.contact_email
-      } : {
-        id: 'temp-store',
-        store_name: store_slug,
-        store_slug: store_slug,
-        business_address: 'Business address not available',
-        contact_phone: 'Phone not available',
-        contact_email: 'Email not available'
-      },
-      delivery_option: selectedShipping as any
+      stores: invoiceStoreData
+        ? {
+            id: invoiceStoreData.id,
+            store_name: invoiceStoreData.store_name,
+            store_slug: invoiceStoreData.store_slug,
+            business_address: invoiceStoreData.business_address,
+            contact_phone: invoiceStoreData.contact_phone,
+            contact_email: invoiceStoreData.contact_email,
+          }
+        : {
+            id: "temp-store",
+            store_name: store_slug,
+            store_slug: store_slug,
+            business_address: "Business address not available",
+            contact_phone: "Phone not available",
+            contact_email: "Email not available",
+          },
+      delivery_option: selectedShipping as any,
     };
   };
 
@@ -179,7 +214,7 @@ export default function CheckoutPage() {
       isUserLoggedIn,
       cartItemsCount: cartItems.length,
       selectedShipping,
-      shippingFee
+      shippingFee,
     });
 
     // ✅ Early validation
@@ -209,7 +244,7 @@ export default function CheckoutPage() {
       // ✅ Scenario 1 - User is already logged in
       if (isUserLoggedIn && currentUser) {
         console.log("✅ User is logged in, processing order directly");
-        
+
         const result = await processOrder(
           formDataWithShipping,
           customerId,
@@ -222,42 +257,51 @@ export default function CheckoutPage() {
 
         if (result.success) {
           console.log("✅ Order processed successfully, showing invoice");
-          
+
           // Create temporary invoice data with the order result
           const tempOrderData = createTempOrderData(values, customerId, result);
           setInvoiceData(tempOrderData);
           setShowInvoice(true);
-          
-          notify.success("Congratulations! Your order has been placed successfully.");
-          
+
+          notify.success(
+            "Congratulations! Your order has been placed successfully."
+          );
+
           // Clear cart and form data after a delay
           setTimeout(() => {
             clearStoreCart(store_slug);
             clearFormData();
           }, 3000);
         } else {
-          notify.error(result.error || "Failed to place order. Please try again.");
+          notify.error(
+            result.error || "Failed to place order. Please try again."
+          );
         }
         return;
       }
 
       // ✅ Scenario 2 - User is NOT logged in
-      console.log("🔄 User is not logged in, attempting account creation and order placement");
+      console.log(
+        "🔄 User is not logged in, attempting account creation and order placement"
+      );
 
       // First, check if user already exists
       const existingCustomer = await getCustomerByEmail(values.email);
-      
+
       if (existingCustomer) {
         console.log("📧 Customer exists, attempting login");
         // Try to login with provided credentials
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: values.email,
-          password: values.password,
-        });
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: values.email,
+            password: values.password,
+          });
 
         if (signInError) {
           console.error("❌ Login failed:", signInError);
-          notify.error("The password you entered is incorrect. Please try again.");
+          notify.error(
+            "The password you entered is incorrect. Please try again."
+          );
           return;
         }
 
@@ -280,16 +324,20 @@ export default function CheckoutPage() {
           const tempOrderData = createTempOrderData(values, customerId, result);
           setInvoiceData(tempOrderData);
           setShowInvoice(true);
-          
-          notify.success("Congratulations! Your order has been placed successfully.");
-          
+
+          notify.success(
+            "Congratulations! Your order has been placed successfully."
+          );
+
           // Clear cart and form data after a delay
           setTimeout(() => {
             clearStoreCart(store_slug);
             clearFormData();
           }, 3000);
         } else {
-          notify.error(result.error || "Failed to place order. Please try again.");
+          notify.error(
+            result.error || "Failed to place order. Please try again."
+          );
         }
         return;
       }
@@ -308,14 +356,17 @@ export default function CheckoutPage() {
         console.log("✅ Customer created successfully");
 
         // Auto-login the new customer
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: values.email,
-          password: values.password,
-        });
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: values.email,
+            password: values.password,
+          });
 
         if (signInError) {
           console.error("❌ Auto-login failed:", signInError);
-          throw new Error(`Account created but login failed: ${signInError.message}`);
+          throw new Error(
+            `Account created but login failed: ${signInError.message}`
+          );
         }
 
         console.log("✅ New customer auto-logged in");
@@ -339,29 +390,39 @@ export default function CheckoutPage() {
         if (orderResult.success) {
           console.log("✅ Order processed successfully, showing invoice");
           // Create temporary invoice data for new customer
-          const tempOrderData = createTempOrderData(values, customerId, orderResult);
+          const tempOrderData = createTempOrderData(
+            values,
+            customerId,
+            orderResult
+          );
           setInvoiceData(tempOrderData);
           setShowInvoice(true);
-          
-          notify.success("Congratulations! Your account has been created and order placed successfully.");
-          
+
+          notify.success(
+            "Congratulations! Your account has been created and order placed successfully."
+          );
+
           // Clear cart and form data after a delay
           setTimeout(() => {
             clearStoreCart(store_slug);
             clearFormData();
           }, 3000);
         } else {
-          notify.error(orderResult.error || "Failed to place order after account creation.");
+          notify.error(
+            orderResult.error || "Failed to place order after account creation."
+          );
         }
-
       } catch (accountError: any) {
         console.error("❌ Account creation error:", accountError);
-        notify.error(accountError.message || "Failed to create account. Please try again.");
+        notify.error(
+          accountError.message || "Failed to create account. Please try again."
+        );
       }
-
     } catch (error: any) {
       console.error("❌ Checkout process error:", error);
-      notify.error(error.message || "An unexpected error occurred. Please try again.");
+      notify.error(
+        error.message || "An unexpected error occurred. Please try again."
+      );
     } finally {
       setIsProcessing(false);
       setIsCreatingAccount(false);
@@ -405,7 +466,7 @@ export default function CheckoutPage() {
         isProcessing={isSubmitting}
         mode="checkout"
       />
-      
+
       <AnimatePresence>
         {showInvoice && invoiceData && (
           <AnimatedInvoice

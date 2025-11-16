@@ -5,7 +5,7 @@ import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
-
+import { useRouter } from "next/navigation";
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -43,7 +43,7 @@ export default function SaveOrderButton({
 }: SaveOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
-
+  const router = useRouter();
   const showConfirm = () => {
     modal.confirm({
       title: "Confirm Order Creation",
@@ -192,7 +192,9 @@ export default function SaveOrderButton({
               <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
             </Space>
           ),
-          onOk: () => window.location.reload(),
+          onOk: () => {
+            router.push("/dashboard/orders");
+          },
         });
       } else {
         console.error("Order creation failed:", result.error);

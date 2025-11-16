@@ -1,6 +1,7 @@
 // lib/hook/useInvoiceData.ts
 import { useState, useEffect } from "react";
 import { getStoreBySlug } from "@/lib/queries/stores/getStoreBySlug";
+import { getStoreById } from "@/lib/queries/stores/getStoreById";
 
 export interface StoreInvoiceData {
   id: string;
@@ -11,7 +12,12 @@ export interface StoreInvoiceData {
   contact_email: string | null;
 }
 
-export function useInvoiceData(storeSlug: string) {
+interface UseInvoiceDataProps {
+  storeSlug?: string;
+  storeId?: string;
+}
+
+export function useInvoiceData({ storeSlug, storeId }: UseInvoiceDataProps) {
   const [storeData, setStoreData] = useState<StoreInvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,13 +28,24 @@ export function useInvoiceData(storeSlug: string) {
         setLoading(true);
         setError(null);
         
-        if (!storeSlug) {
-          setError("Store slug is required");
+        // If neither storeSlug nor storeId is provided
+        if (!storeSlug && !storeId) {
+          setError("Store slug or store ID is required");
           setLoading(false);
           return;
         }
-        
-        const store = await getStoreBySlug(storeSlug);
+
+        let store = null;
+
+        // Priority 1: Try to get store by slug first
+        if (storeSlug) {
+          store = await getStoreBySlug(storeSlug);
+        }
+
+        // Priority 2: If slug method failed or no slug provided, try by ID
+        if (!store && storeId) {
+          store = await getStoreById(storeId);
+        }
         
         if (store) {
           setStoreData({
@@ -51,7 +68,7 @@ export function useInvoiceData(storeSlug: string) {
     };
 
     fetchStoreData();
-  }, [storeSlug]);
+  }, [storeSlug, storeId]);
 
   return {
     storeData,

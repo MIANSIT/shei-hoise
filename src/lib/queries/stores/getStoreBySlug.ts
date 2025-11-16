@@ -17,6 +17,7 @@ export interface StoreData {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  tax_rate?: number | null;
 }
 
 export async function getStoreBySlug(store_slug: string): Promise<StoreData | null> {
