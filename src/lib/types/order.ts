@@ -1,3 +1,4 @@
+// lib/types/order.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // ===== CORE ORDER TYPES =====
@@ -68,7 +69,10 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
-export type DeliveryOption = "pathao" | "courier" | "other";
+
+// FIX: Update DeliveryOption to match your actual data
+export type DeliveryOption = "pathao" | "courier" | "other" | "inside dhaka" | "outside dhaka" | string;
+
 export type PaymentMethod = "cod" | "cash" | "online";
 
 // ===== SUPABASE DATABASE TYPES =====
@@ -89,6 +93,7 @@ export interface StoreOrder {
   shipping_address: {
     customer_name: string;
     phone: string;
+    email?: string;
     address_line_1: string;
     city: string;
     country: string;
@@ -96,6 +101,7 @@ export interface StoreOrder {
   billing_address: {
     customer_name: string;
     phone: string;
+    email?: string;
     address_line_1: string;
     city: string;
     country: string;
@@ -105,13 +111,13 @@ export interface StoreOrder {
   updated_at: string;
   order_items: OrderItem[];
   customers: OrderCustomer | null;
-  delivery_option?: DeliveryOption;
+  delivery_option?: DeliveryOption; // Now accepts any string
   cancel_note?: string;
 }
 
 // ===== FORM DATA TYPES =====
 export interface CustomerInfo {
-  name: string; // Changed from string | null
+  name: string;
   phone: string;
   address: string;
   deliveryMethod: string;
@@ -122,7 +128,7 @@ export interface CustomerInfo {
   customer_id?: string;
   password: string;
   country?: string;
-  postal_code: string; // Changed from string | null
+  postal_code: string;
 }
 
 export interface CreateOrderData {

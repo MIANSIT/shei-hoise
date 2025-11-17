@@ -1,8 +1,8 @@
-// Update your OrdersTable component - Remove the custom selection column
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button } from "antd"; // Removed Checkbox import from here
+import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder, OrderStatus, PaymentStatus } from "@/lib/types/order";
 import StatusTag from "../StatusFilter/StatusTag";
@@ -11,10 +11,11 @@ import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, FileTextOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
+import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 
 interface Props {
   orders: StoreOrder[];
@@ -34,6 +35,8 @@ const OrdersTable: React.FC<Props> = ({
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<StoreOrder | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,6 +67,11 @@ const OrdersTable: React.FC<Props> = ({
     console.log("Delete order", order.id);
   };
 
+  const handleViewInvoice = (order: StoreOrder) => {
+    setSelectedOrderForInvoice(order);
+    setShowInvoice(true);
+  };
+
   // Bulk selection handlers
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
     setSelectedRowKeys(newSelectedRowKeys as string[]);
@@ -78,14 +86,18 @@ const OrdersTable: React.FC<Props> = ({
 
   const renderActionButtons = (order: StoreOrder) => (
     <div className="flex items-center gap-2 justify-center">
-      <EditOutlined
-        className="!text-blue-600 cursor-pointer hover:!text-blue-800"
-        onClick={() => handleEdit(order)}
-      />
-      <DeleteOutlined
-        className="!text-red-600 cursor-pointer hover:!text-red-800"
-        onClick={() => handleDelete(order)}
-      />
+      <Tooltip title="Edit Order">
+        <EditOutlined
+          className="!text-blue-600 cursor-pointer hover:!text-blue-800 text-base"
+          onClick={() => handleEdit(order)}
+        />
+      </Tooltip>
+      <Tooltip title="Delete Order">
+        <DeleteOutlined
+          className="!text-red-600 cursor-pointer hover:!text-red-800 text-base"
+          onClick={() => handleDelete(order)}
+        />
+      </Tooltip>
     </div>
   );
 
@@ -132,7 +144,7 @@ const OrdersTable: React.FC<Props> = ({
     selectedRowKeys.includes(order.id)
   );
 
-  // Updated columns - REMOVED the custom selection column
+  // Updated columns with invoice button
   const columns: ColumnsType<StoreOrder> = [
     {
       title: "Order #",
@@ -260,6 +272,25 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["lg"],
     },
     {
+      title: "Invoice",
+      key: "invoice",
+      render: (_, order: StoreOrder) => (
+        <Tooltip title="View Invoice">
+          <Button
+            type="link"
+            icon={<FileTextOutlined />}
+            onClick={() => handleViewInvoice(order)}
+            className="!text-green-600 !p-1 !h-auto text-xs"
+            size="small"
+          >
+          </Button>
+        </Tooltip>
+      ),
+      width: 80,
+      align: "center" as const,
+      responsive: ["md"],
+    },
+    {
       title: "Actions",
       key: "actions",
       render: (_, order: StoreOrder) => renderActionButtons(order),
@@ -269,7 +300,7 @@ const OrdersTable: React.FC<Props> = ({
     },
   ];
 
-  // Mobile card renderer - Updated to remove checkbox from mobile view
+  // Mobile card renderer - Updated with invoice button
   const renderOrderCard = (order: StoreOrder) => {
     const address = order.shipping_address;
     const fullAddress = `${address.address_line_1}, ${address.city}`;
@@ -301,8 +332,6 @@ const OrdersTable: React.FC<Props> = ({
 
         {/* Header */}
         <div className="flex justify-between items-start mb-3 pr-6">
-          {" "}
-          {/* Added pr-6 for checkbox space */}
           <div className="flex-1 min-w-0">
             <div className="font-bold text-blue-600 text-base sm:text-lg truncate">
               #{order.order_number}
@@ -396,6 +425,17 @@ const OrdersTable: React.FC<Props> = ({
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mb-3">
+          <Tooltip title="View Invoice">
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={() => handleViewInvoice(order)}
+              size="small"
+              className="!bg-green-600 !border-green-600 hover:!bg-green-700"
+            >
+              Invoice
+            </Button>
+          </Tooltip>
           {renderActionButtons(order)}
         </div>
 
@@ -606,6 +646,20 @@ const OrdersTable: React.FC<Props> = ({
         responsive={true}
         renderCard={renderOrderCard}
       />
+
+      {/* Invoice Modal */}
+      {showInvoice && selectedOrderForInvoice && (
+        <AnimatedInvoice
+          isOpen={showInvoice}
+          onClose={() => {
+            setShowInvoice(false);
+            setSelectedOrderForInvoice(null);
+          }}
+          orderData={selectedOrderForInvoice}
+          showCloseButton={true}
+          autoShow={true}
+        />
+      )}
     </div>
   );
 };
