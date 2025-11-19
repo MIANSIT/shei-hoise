@@ -1,23 +1,48 @@
 // lib/queries/customers/getCustomerByEmail.ts
 import { supabaseAdmin } from "@/lib/supabase";
 
-export async function getCustomerByEmail(email: string) {
+export async function getCustomerByEmail(email: string, store_slug?: string) {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('user_type', 'customer')
-      .single();
+    let query = supabaseAdmin
+      .from("store_customers")
+      .select(`
+        *,
+        user_profiles (*),
+        store_customer_links (
+          store_id,
+          stores!store_customer_links_store_id_fkey (
+            id,
+            store_slug,
+            store_name
+          )
+        )
+      `)
+      .eq("email", email.toLowerCase());
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error checking customer:', error);
-      throw error;
+    // If store_slug is provided, filter by store
+    if (store_slug) {
+      query = query.eq("store_customer_links.stores.store_slug", store_slug);
     }
 
-    return data; // returns null if no customer found
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      console.error("Error fetching customer by email:", error);
+      return null;
+    }
+
+    console.log("📧 Customer found:", {
+      id: data?.id,
+      email: data?.email,
+      auth_user_id: data?.auth_user_id,
+      profile_id: data?.profile_id,
+      hasProfile: !!data?.user_profiles,
+      storeLinks: data?.store_customer_links?.length || 0
+    });
+
+    return data;
   } catch (error) {
-    console.error('Error in getCustomerByEmail:', error);
-    throw error;
+    console.error("Error in getCustomerByEmail:", error);
+    return null;
   }
 }

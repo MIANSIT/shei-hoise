@@ -11,10 +11,10 @@ export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { clearStoreCart } = useCartStore(); // Get cart clearing function
-  
+
   const processOrder = async (
-    formData: CustomerCheckoutFormValues, 
-    customerId?: string,
+    formData: CustomerCheckoutFormValues,
+    storeCustomerId?: string, // ✅ Now store_customers.id instead of users.id
     paymentMethod: string = 'cod',
     deliveryOption: string = 'standard',
     shippingFee: number = 0,
@@ -27,7 +27,8 @@ export function useOrderProcess(store_slug: string) {
     try {
       console.log("🚀 Processing order with data:", {
         store_slug,
-        customerId,
+        storeCustomerId,
+        storeCustomerIdType: storeCustomerId ? 'store_customer_id' : 'guest',
         paymentMethod,
         deliveryOption,
         shippingFee,
@@ -49,7 +50,7 @@ export function useOrderProcess(store_slug: string) {
         throw new Error(`Some items are out of stock: ${itemNames}. Please update your cart.`);
       }
 
-      // Prepare order data using fresh product data from useCartItems
+      // Prepare order data
       const orderData = {
         storeId: storeId,
         orderNumber: generateCustomerOrderNumber(store_slug),
@@ -60,15 +61,15 @@ export function useOrderProcess(store_slug: string) {
           address: formData.shippingAddress,
           city: formData.city,
           country: formData.country,
-          customer_id: customerId,
+          customer_id: storeCustomerId, // ✅ Now store_customers.id
         },
         orderProducts: cartItems.map(item => {
           return {
-            product_id: item.productId, // Main product ID
-            variant_id: item.variantId || null, // Variant ID if exists
+            product_id: item.productId,
+            variant_id: item.variantId || null,
             product_name: item.productName,
             quantity: item.quantity,
-            unit_price: item.displayPrice, // Use the calculated display price
+            unit_price: item.displayPrice,
             total_price: item.displayPrice * item.quantity,
             variant_details: item.variant ? {
               variant_name: item.variant.variant_name,
@@ -79,9 +80,9 @@ export function useOrderProcess(store_slug: string) {
           };
         }),
         subtotal: calculations?.subtotal || 0,
-        taxAmount: 0, // You can calculate this based on your business logic
+        taxAmount: 0,
         discount: calculations?.totalDiscount || 0,
-        deliveryCost: shippingFee, // You can calculate this based on delivery option
+        deliveryCost: shippingFee,
         totalAmount: (calculations?.totalPrice || 0) + shippingFee,
         status: 'pending' as const,
         paymentStatus: 'pending' as const,
@@ -90,7 +91,13 @@ export function useOrderProcess(store_slug: string) {
         deliveryOption,
       };
 
-      console.log("📦 Creating order with data:", orderData);
+      console.log("📦 Creating order with data:", {
+        ...orderData,
+        customerInfo: {
+          ...orderData.customerInfo,
+          customer_id: storeCustomerId
+        }
+      });
 
       // Create the order
       const result = await createCustomerOrder(orderData);
@@ -102,11 +109,11 @@ export function useOrderProcess(store_slug: string) {
           console.log("🧹 Clearing cart for store:", store_slug);
           clearStoreCart(store_slug);
         }
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           orderId: result.orderId,
-          message: 'Order placed successfully! Your cart has been cleared.' 
+          message: 'Order placed successfully! Your cart has been cleared.'
         };
       } else {
         throw new Error(result.error || 'Failed to create order');
@@ -114,9 +121,9 @@ export function useOrderProcess(store_slug: string) {
     } catch (err: any) {
       console.error('❌ Order process error:', err);
       setError(err.message || 'Failed to process order');
-      return { 
-        success: false, 
-        error: err.message 
+      return {
+        success: false,
+        error: err.message
       };
     } finally {
       setLoading(false);

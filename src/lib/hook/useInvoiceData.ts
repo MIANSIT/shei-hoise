@@ -10,6 +10,7 @@ export interface StoreInvoiceData {
   business_address: string | null;
   contact_phone: string | null;
   contact_email: string | null;
+  tax_rate: number; 
 }
 
 interface UseInvoiceDataProps {
@@ -55,6 +56,7 @@ export function useInvoiceData({ storeSlug, storeId }: UseInvoiceDataProps) {
             business_address: store.business_address,
             contact_phone: store.contact_phone,
             contact_email: store.contact_email,
+            tax_rate: store.tax_rate || 0,
           });
         } else {
           setError("Store not found");

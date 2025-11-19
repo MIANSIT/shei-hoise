@@ -14,6 +14,7 @@ interface CountrySelectProps {
   value: string;
   onValueChange: (value: string) => void;
   disabled?: boolean;
+  defaultCountry?: string;
 }
 
 const countries = [
@@ -34,15 +35,20 @@ export function CountryFlag({
   value,
   onValueChange,
   disabled = false,
+  defaultCountry = "Bangladesh",
 }: CountrySelectProps) {
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+    <Select 
+      value={value || defaultCountry} 
+      onValueChange={onValueChange} 
+      disabled={disabled}
+    >
       <SelectTrigger size="lg">
         <SelectValue placeholder="Select country" />
       </SelectTrigger>
       <SelectContent>
         {countries.map((country) => (
-          <SelectItem key={country.code} value={country.code}>
+          <SelectItem key={country.code} value={country.name}> {/* ✅ Use country.name as value */}
             <div className="flex items-center gap-2">
               <ReactCountryFlag
                 countryCode={country.code}
