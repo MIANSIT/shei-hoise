@@ -401,7 +401,7 @@ export default function CheckoutPage() {
 
         setTimeout(() => {
           clearStoreCart(store_slug);
-          clearFormData();
+          // clearFormData();
         }, 3000);
       } else {
         notify.error(

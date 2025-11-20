@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/components/products/checkout/UserCheckoutForm.tsx
 "use client";
 
@@ -21,6 +20,7 @@ import { Eye, EyeOff, ArrowRight, UserPlus, ShoppingBag, Plus } from "lucide-rea
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
+import { useParams } from "next/navigation";
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -39,7 +39,15 @@ const CheckoutForm = ({
   totalAmount = 0,
   mode = "checkout",
 }: CheckoutFormProps) => {
-  const { formData, setFormData } = useCheckoutStore();
+  const { 
+    formData, 
+    setFormData, 
+    setStoreSlug 
+  } = useCheckoutStore();
+  
+  const params = useParams();
+  const storeSlug = params.store_slug as string;
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,12 +93,12 @@ const CheckoutForm = ({
     }
   }, [userError]);
 
-  // ✅ Default values with Bangladesh as default country
+  // ✅ Default values from formData - use ALL saved data
   const defaultValues: CustomerCheckoutFormValues = {
     name: formData.name || "",
     email: formData.email || "",
     phone: formData.phone || "",
-    password: formData.password || "",
+    password: "", // Always start with empty password for security
     country: formData.country || "Bangladesh",
     city: formData.city || "Dhaka",
     postCode: formData.postCode || "",
@@ -113,13 +121,27 @@ const CheckoutForm = ({
       isUserLoggedIn,
     });
     
+    // ✅ Save ALL checkout data to store
+    setFormData({
+      name: values.name,
+      email: values.email,
+      phone: values.phone,
+      country: values.country,
+      city: values.city,
+      shippingAddress: values.shippingAddress,
+      postCode: values.postCode,
+    });
+    
+    // ✅ Save store slug for redirection
+    setStoreSlug(storeSlug);
+    
     // ✅ For logged-in users, set a dummy password that passes validation
     if (isUserLoggedIn) {
       values.password = "logged-in-user-password";
     }
     
     onSubmit(values);
-  }, [onSubmit, isUserLoggedIn]);
+  }, [onSubmit, isUserLoggedIn, setFormData, setStoreSlug, storeSlug]);
 
   // ✅ Handle Create Password button click
   const handleCreatePasswordClick = () => {
@@ -156,82 +178,42 @@ const CheckoutForm = ({
     form.setValue('phone', formattedValue, { shouldValidate: true });
   };
 
-  // ✅ Auto-population logic
+  // ✅ Auto-population logic - Save form data as user types
   useEffect(() => {
-    if (isLoadingAuth) return;
-
-    // Scenario 1: User is logged in
-    if (isUserLoggedIn && currentUser) {
-      const userFormData: CustomerCheckoutFormValues = {
-        name: `${currentUser.first_name} ${currentUser.last_name || ""}`.trim(),
-        email: currentUser.email || "",
-        phone: currentUser.phone ? formatPhoneNumber(currentUser.phone) : "",
-        password: "logged-in-user-password",
-        country: profile?.country || "Bangladesh",
-        city: profile?.city || "Dhaka",
-        postCode: profile?.postal_code || "",
-        shippingAddress: profile?.address_line_1 || "",
-      };
-
-      const currentFormValues = form.getValues();
-      const hasChanges =
-        JSON.stringify(userFormData) !==
-        JSON.stringify({
-          ...currentFormValues,
-          password: "logged-in-user-password",
-        });
-
-      if (hasChanges) {
-        form.reset(userFormData);
-        setFormData(userFormData);
-      }
-    }
-    // Scenario 2: Guest user
-    else if (!isUserLoggedIn && !isLoadingAuth) {
-      const currentFormValues = form.getValues();
-      const hasStoredData = Object.keys(formData).length > 0;
-
-      if (
-        hasStoredData &&
-        JSON.stringify(currentFormValues) !== JSON.stringify(formData)
-      ) {
-        // Format phone number if it exists in stored data
-        const formattedFormData = {
-          ...formData,
-          phone: formData.phone ? formatPhoneNumber(formData.phone) : "",
-          country: formData.country || "Bangladesh",
-        };
-        
-        form.reset(formattedFormData);
-        
-        // Show password field if password exists in stored data
-        if (formData.password) {
-          setShowPasswordField(true);
+    const subscription = form.watch((value) => {
+      // Save ALL form data to store as user types (debounced)
+      const debounceTimer = setTimeout(() => {
+        if (value.name || value.email || value.phone || value.country || value.city || value.shippingAddress || value.postCode) {
+          setFormData({
+            name: value.name || '',
+            email: value.email || '',
+            phone: value.phone || '',
+            country: value.country || 'Bangladesh',
+            city: value.city || 'Dhaka',
+            shippingAddress: value.shippingAddress || '',
+            postCode: value.postCode || '',
+          });
         }
-      } else if (!hasStoredData) {
-        const defaultFormData: CustomerCheckoutFormValues = {
-          name: "",
-          email: "",
-          phone: "",
-          password: "",
-          country: "Bangladesh",
-          city: "Dhaka",
-          postCode: "",
-          shippingAddress: "",
-        };
-        form.reset(defaultFormData);
-        setFormData(defaultFormData);
+      }, 500);
+
+      return () => clearTimeout(debounceTimer);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, setFormData]);
+
+  // ✅ Initialize form with saved data when component mounts
+  useEffect(() => {
+    if (!isLoadingAuth && !isUserLoggedIn) {
+      // Only reset if we have saved data and form is empty
+      const currentValues = form.getValues();
+      const hasEmptyForm = !currentValues.name && !currentValues.email && !currentValues.phone;
+      
+      if (hasEmptyForm && (formData.name || formData.email || formData.phone)) {
+        form.reset(defaultValues);
       }
     }
-  }, [
-    currentUser,
-    profile,
-    isUserLoggedIn,
-    isLoadingAuth,
-    setFormData,
-    formData,
-    form,
-  ]);
+  }, [isLoadingAuth, isUserLoggedIn, formData, form, defaultValues]);
 
   // ✅ Get watched password value with proper type handling
   const watchedPassword = form.watch("password");
@@ -338,7 +320,7 @@ const CheckoutForm = ({
                   className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
                   onClick={() => {
                     const currentPath = window.location.pathname;
-                    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}&email=${encodeURIComponent(form.getValues().email)}`;
                   }}
                 >
                   Already have an account? Login
