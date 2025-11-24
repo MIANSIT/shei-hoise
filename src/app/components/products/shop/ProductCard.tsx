@@ -24,7 +24,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
+
   const { cart } = useCartStore();
 
   const variant = product.variants?.[0];
@@ -51,7 +51,7 @@ export default function ProductCard({
   // Check if product is in stock - FIXED: Check all variants
   const isInStock = (): boolean => {
     if (product.variants && product.variants.length > 0) {
-      return product.variants.some(variant => {
+      return product.variants.some((variant) => {
         const productInventory = variant.product_inventory?.[0];
         if (productInventory && productInventory.quantity_available > 0) {
           return true;
@@ -63,7 +63,7 @@ export default function ProductCard({
         return false;
       });
     }
-    
+
     const mainProductInventory = product.product_inventory?.[0];
     if (mainProductInventory && mainProductInventory.quantity_available > 0) {
       return true;
@@ -72,7 +72,7 @@ export default function ProductCard({
     if (mainStock && mainStock.quantity_available > 0) {
       return true;
     }
-    
+
     return false;
   };
 
@@ -91,7 +91,7 @@ export default function ProductCard({
         return total;
       }, 0);
     }
-    
+
     const mainProductInventory = product.product_inventory?.[0];
     if (mainProductInventory) {
       return mainProductInventory.quantity_available;
@@ -100,7 +100,7 @@ export default function ProductCard({
     if (mainStock) {
       return mainStock.quantity_available;
     }
-    
+
     return 0;
   };
 
@@ -109,27 +109,28 @@ export default function ProductCard({
     if (hasVariants) {
       // For products with variants, sum quantities of all variants in cart
       return cart
-        .filter(item => item.productId === product.id && item.storeSlug === store_slug)
+        .filter(
+          (item) =>
+            item.productId === product.id && item.storeSlug === store_slug
+        )
         .reduce((total, item) => total + item.quantity, 0);
     } else {
       // For products without variants, use the original logic
-      const cartItem = cart.find(
-        (item) => {
-          const productMatch = item.productId === product.id;
-          const storeMatch = item.storeSlug === store_slug;
-          
-          // Handle variant matching: both null/undefined or same ID
-          let variantMatch = false;
-          if (item.variantId === null && !variant?.id) {
-            variantMatch = true; // Both are null/undefined
-          } else if (item.variantId === variant?.id) {
-            variantMatch = true; // Both have same ID
-          }
-          
-          return productMatch && storeMatch && variantMatch;
+      const cartItem = cart.find((item) => {
+        const productMatch = item.productId === product.id;
+        const storeMatch = item.storeSlug === store_slug;
+
+        // Handle variant matching: both null/undefined or same ID
+        let variantMatch = false;
+        if (item.variantId === null && !variant?.id) {
+          variantMatch = true; // Both are null/undefined
+        } else if (item.variantId === variant?.id) {
+          variantMatch = true; // Both have same ID
         }
-      );
-      
+
+        return productMatch && storeMatch && variantMatch;
+      });
+
       return cartItem?.quantity || 0;
     }
   };
@@ -138,7 +139,7 @@ export default function ProductCard({
   const totalCartQuantity = getTotalCartQuantity();
   const remainingStock = totalAvailableStock - totalCartQuantity;
   const isOutOfStock = remainingStock <= 0;
-  
+
   // Only show "Max in Cart" for products WITHOUT variants
   // For products WITH variants, we can't determine max per variant from the card view
   const isMaxInCart = !hasVariants && totalCartQuantity >= totalAvailableStock;
@@ -153,7 +154,7 @@ export default function ProductCard({
     remainingStock,
     isOutOfStock,
     isMaxInCart,
-    variantCount: product.variants?.length || 0
+    variantCount: product.variants?.length || 0,
   });
 
   const handleAddToCart = async () => {
@@ -171,11 +172,18 @@ export default function ProductCard({
   };
 
   const productInStock = isInStock();
+  const formatName = (name: string) => {
+    if (!name) return "";
+    const words = name.split(" ");
+    words[0] =
+      words[0].charAt(0).toUpperCase() + words[0].slice(1).toLowerCase();
+    return words.join(" ");
+  };
 
   return (
-    <Card className={`flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border ${
-      !productInStock ? "opacity-70" : ""
-    }`}>
+    <Card
+      className={`flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border `}
+    >
       <Link
         href={`${store_slug}/product/${product.slug}`}
         className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
@@ -185,58 +193,72 @@ export default function ProductCard({
             src={displayImage}
             alt={product.name}
             fill
-            className={`object-cover transition-transform duration-500 ease-in-out ${
-              productInStock ? "group-hover:scale-110" : "grayscale"
-            }`}
+            className={`object-cover transition-transform duration-500 ease-in-out `}
           />
           <div className="absolute inset-0 flex justify-between items-start p-4">
-            <span className="text-card-foreground text-xs uppercase tracking-wider bg-background/80 px-2 py-1 rounded-lg">
+            {/* Category Badge */}
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-[var(--badge)] px-2 py-1 rounded-lg">
               {product.category?.name || "Uncategorized"}
             </span>
-            
-            {calculatedDiscount > 0 && productInStock && (
-              <span className="text-card-foreground text-xs font-medium bg-destructive px-2 py-1 rounded-lg">
-                -{calculatedDiscount}%
-              </span>
-            )}
-            
-            {!productInStock && (
-              <span className="text-card-foreground text-xs font-medium bg-gray-500 px-2 py-1 rounded-lg">
-                Stockout
-              </span>
-            )}
-            
-            {/* Only show "Max in Cart" for products WITHOUT variants */}
-            {!hasVariants && productInStock && isMaxInCart && (
-              <span className="text-card-foreground text-xs font-medium bg-blue-500 px-2 py-1 rounded-lg">
-                Max in Cart
-              </span>
-            )}
+
+            <div className="flex flex-col items-end gap-1">
+              {/* Out of Stock */}
+              {!productInStock && (
+                <span className="text-chart-5 text-xs font-bold bg-card-foreground px-2 py-1 rounded-lg">
+                  Stock Out
+                </span>
+              )}
+
+              {/* Discount - only show if in stock */}
+              {productInStock && calculatedDiscount > 0 && (
+                <span className="text-card-foreground text-xs font-medium bg-destructive px-2 py-1 rounded-lg">
+                  -{calculatedDiscount}%
+                </span>
+              )}
+
+              {/* Max in Cart - only for products without variants */}
+              {productInStock && !hasVariants && isMaxInCart && (
+                <span className="text-card-foreground text-xs font-medium bg-blue-500 px-2 py-1 rounded-lg">
+                  Max in Cart
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex flex-col p-4 gap-3">
-          <h3 className="font-semibold text-lg line-clamp-1 text-foreground">
-            {product.name}
-          </h3>
+          <span
+            className={`font-semibold text-lg line-clamp-1 text-foreground ${
+              productInStock ? "text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            {formatName(product.name)}
+          </span>
 
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`text-xl font-semibold ${
-                  productInStock ? "text-foreground" : "text-muted-foreground"
-                }`}>
-                  {product.variants?.length
-                    ? `Starts from ৳ ${displayPrice.toFixed(2)}`
-                    : `৳ ${displayPrice.toFixed(2)}`}
-                </span>
-                {calculatedDiscount > 0 && productInStock && (
-                  <span className="text-sm text-muted-foreground line-through">
-                    ৳ {product.base_price.toFixed(2)}
-                  </span>
-                )}
-              </div>
-            </div>
+          {/* Price Box */}
+          <div className="flex felx-wrap items-center gap-3">
+            <span
+              className={`text-xl sm:text-2xl font-bold ${
+                productInStock ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              ৳{displayPrice.toFixed(2)}
+            </span>
+
+            {calculatedDiscount > 0 && productInStock && (
+              <span className="text-sm sm:text-base text-chart-5 line-through relative">
+                ৳ {product.base_price.toFixed(2)}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 h-[10px]">
+            {hasVariants ? (
+              <span className="text-xs font-medium text-popover bg-card-foreground px-1 rounded">
+                Price varies by variant
+              </span>
+            ) : (
+              <span className="text-xs text-transparent">Placeholder</span>
+            )}
           </div>
         </div>
       </Link>
@@ -317,7 +339,11 @@ export default function ProductCard({
               </div>
             )}
 
-            <div className={`${productInStock && !isMaxInCart ? 'flex-1 min-w-0' : 'w-full'}`}>
+            <div
+              className={`${
+                productInStock && !isMaxInCart ? "flex-1 min-w-0" : "w-full"
+              }`}
+            >
               <Link
                 href={`${store_slug}/product/${product.slug}`}
                 className="w-full"
