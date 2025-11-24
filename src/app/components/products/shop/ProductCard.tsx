@@ -211,8 +211,8 @@ export default function ProductCard({
 
               {/* Discount - only show if in stock */}
               {productInStock && calculatedDiscount > 0 && (
-                <span className="text-card-foreground text-xs font-medium bg-destructive px-2 py-1 rounded-lg">
-                  -{calculatedDiscount}%
+                <span className="text-card-foreground text-xs font-medium bg-chart-2 px-2 py-1 rounded-lg">
+                  Save {calculatedDiscount}%
                 </span>
               )}
 
