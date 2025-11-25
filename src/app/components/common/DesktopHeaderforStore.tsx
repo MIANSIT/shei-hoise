@@ -156,7 +156,7 @@ export default function DesktopHeader({
       </header>
 
       {/* Spacer to prevent content being hidden behind fixed header */}
-      <div className="h-[64px] hidden md:block" />
+      <div className="h-[64px] hidden lg:block" />
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
