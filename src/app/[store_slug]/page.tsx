@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -25,7 +24,6 @@ export default function StorePage({ params }: StorePageProps) {
   const { store_slug } = React.use(params);
 
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
-  const [storeId, setStoreId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,7 +41,6 @@ export default function StorePage({ params }: StorePageProps) {
         }
 
         setStoreExists(true);
-        setStoreId(storeId);
 
         // Fetch products and categories in parallel
         const [productsData, categoriesData] = await Promise.all([

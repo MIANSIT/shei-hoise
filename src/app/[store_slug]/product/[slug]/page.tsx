@@ -309,9 +309,9 @@ export default function ProductPage() {
       );
 
   // Check if variant is available (for variant buttons)
-  const isVariantAvailable = (variant: any) => {
-    return variant.product_inventory?.[0]?.quantity_available > 0;
-  };
+  // const isVariantAvailable = (variant: any) => {
+  //   return variant.product_inventory?.[0]?.quantity_available > 0;
+  // };
 
   // Updated stock badge function - No numbers shown
   const getStockBadge = () => {
