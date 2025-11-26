@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Grid3X3, List } from "lucide-react";
+import { ChevronDown, Grid3X3, List, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -30,6 +30,8 @@ interface ProductFilterSectionProps {
   onSortChange?: (sort: string) => void;
   viewMode?: "grid" | "list";
   onViewModeChange?: (mode: "grid" | "list") => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export default function ProductFilterSection({
@@ -41,6 +43,8 @@ export default function ProductFilterSection({
   onSortChange,
   viewMode = "grid",
   onViewModeChange,
+  searchQuery = "",
+  onSearchChange,
 }: ProductFilterSectionProps) {
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -60,19 +64,43 @@ export default function ProductFilterSection({
     { value: "popular", label: "Most Popular" },
   ];
 
+  const handleClearSearch = () => {
+    onSearchChange?.("");
+  };
+
   return (
     <section className="w-full">
       {/* Header Section */}
       <div className="px-6 py-4 border-b">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           {/* Left Side - Title and Controls */}
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-foreground">Products</h1>
-            {totalProducts > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+            {/* Search Box - Desktop & Tablet (hidden on mobile) */}
+            <div className="hidden md:block relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search Products"
+                value={searchQuery}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Product Count - Desktop & Tablet - Always show */}
+            <div className="hidden md:block space-y-1">
               <p className="text-sm text-muted-foreground">
                 {totalProducts} {totalProducts === 1 ? "item" : "items"}
               </p>
-            )}
+            </div>
           </div>
 
           {/* Right Side - Desktop & Tablet Controls (768px and above) */}
@@ -174,9 +202,32 @@ export default function ProductFilterSection({
 
         {/* Mobile Layout - Only shows on screens below 768px */}
         <div className="md:hidden flex flex-col gap-4 mt-4">
+          {/* Search Box - Mobile Only */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder=""
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
           {/* Mobile Controls Row */}
-          <div className="flex items-center justify-end w-full">
-            {/* Left Side - Title */}
+          <div className="flex items-center justify-between w-full">
+            {/* Product Count - Mobile Only - Always show */}
+            <p className="text-sm text-muted-foreground">
+              {totalProducts} {totalProducts === 1 ? "item" : "items"}
+            </p>
 
             {/* Right Side - Mobile Controls */}
             <div className="flex items-center gap-3">
@@ -243,7 +294,7 @@ export default function ProductFilterSection({
                 </DropdownMenu>
               )}
 
-              {/* Category Dropdown - Mobile Only */}
+              {/* Category Dropdown - Mobile Only - Keep original design */}
               <DropdownMenu onOpenChange={setIsCategoryOpen}>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2">

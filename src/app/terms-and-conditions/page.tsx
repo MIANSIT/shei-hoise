@@ -138,7 +138,7 @@ export default function TermsAndConditions() {
         <CTASection
           title="Ready to Get Started?"
           description="Join thousands of successful entrepreneurs and begin your Shei Hoise journey with our 1-month free trial"
-          buttonText="Start Free Trial"
+          buttonText="Schedule Free Trial"
           buttonHref="/signup"
           variant="secondary"
         />

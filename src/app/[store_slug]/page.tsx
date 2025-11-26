@@ -4,13 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
-import ProductFilterSection from "@/app/components/products/ProductFilterSection"; // Import the filter component
+import ProductFilterSection from "@/app/components/products/ProductFilterSection";
 import { StorePageSkeleton } from "../components/skeletons/StorePageSkeleton";
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
-import { getCategoriesQuery } from "@/lib/queries/categories/getCategories"; // Import your categories query
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { Product } from "@/lib/types/product";
-import { Category } from "@/lib/types/category"; // Assuming you have a Category type
+import { Category } from "@/lib/types/category";
 import NotFoundPage from "../not-found";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 
@@ -28,6 +28,7 @@ export default function StorePage({ params }: StorePageProps) {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("All Products");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -76,17 +77,30 @@ export default function StorePage({ params }: StorePageProps) {
     fetchData();
   }, [store_slug, error]);
 
-  // Filter products when category changes
+  // Filter products when category or search query changes
   useEffect(() => {
-    if (activeCategory === "All Products") {
-      setFilteredProducts(products);
-    } else {
-      const filtered = products.filter(
+    let filtered = products;
+
+    // Apply category filter
+    if (activeCategory !== "All Products") {
+      filtered = filtered.filter(
         (product) => product.category?.name === activeCategory
       );
-      setFilteredProducts(filtered);
     }
-  }, [activeCategory, products]);
+
+    // Apply search filter
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.description?.toLowerCase().includes(query) ||
+          product.category?.name.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredProducts(filtered);
+  }, [activeCategory, searchQuery, products]);
 
   // Helper function to check if product is in stock
   const isProductInStock = (product: Product): boolean => {
@@ -146,6 +160,10 @@ export default function StorePage({ params }: StorePageProps) {
     setActiveCategory(category);
   };
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
   if (loading) {
     return <StorePageSkeleton />;
   }
@@ -162,11 +180,16 @@ export default function StorePage({ params }: StorePageProps) {
           activeCategory={activeCategory}
           onCategoryChange={handleCategoryChange}
           categories={categories}
+          totalProducts={filteredProducts.length}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
         />
 
         {filteredProducts.length === 0 ? (
           <div className="text-center py-20 text-lg font-medium">
-            {activeCategory === "All Products"
+            {searchQuery.trim() !== ""
+              ? `No products found matching "${searchQuery}".`
+              : activeCategory === "All Products"
               ? "No products available in this store."
               : `No products found in ${activeCategory} category.`}
           </div>
