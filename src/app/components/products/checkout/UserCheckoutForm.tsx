@@ -16,7 +16,14 @@ import { CountryFlag } from "../../common/CountryFlag";
 import { PasswordStrength } from "../../common/PasswordStrength";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Eye, EyeOff, ArrowRight, UserPlus, ShoppingBag, Plus } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowRight,
+  UserPlus,
+  ShoppingBag,
+  Plus,
+} from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
@@ -39,15 +46,11 @@ const CheckoutForm = ({
   totalAmount = 0,
   mode = "checkout",
 }: CheckoutFormProps) => {
-  const { 
-    formData, 
-    setFormData, 
-    setStoreSlug 
-  } = useCheckoutStore();
-  
+  const { formData, setFormData, setStoreSlug } = useCheckoutStore();
+
   const params = useParams();
   const storeSlug = params.store_slug as string;
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +89,9 @@ const CheckoutForm = ({
         userError.name === "AuthSessionMissingError";
 
       if (isMissingSessionError) {
-        console.log("🔐 No auth session - user is not logged in (this is normal)");
+        console.log(
+          "🔐 No auth session - user is not logged in (this is normal)"
+        );
         return;
       }
       console.error("User hook error:", userError);
@@ -106,49 +111,62 @@ const CheckoutForm = ({
   };
 
   // ✅ Use different schema based on login status
-  const formSchema = isUserLoggedIn ? customerCheckoutSchemaForLoggedIn : customerCheckoutSchema;
+  const formSchema = isUserLoggedIn
+    ? customerCheckoutSchemaForLoggedIn
+    : customerCheckoutSchema;
 
   const form = useForm<CustomerCheckoutFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
 
-  // ✅ Handle form submission
-  const handleSubmit = useCallback((values: CustomerCheckoutFormValues) => {
-    console.log("Form submitted with values:", {
-      ...values,
-      password: values.password ? "***" : "not-provided",
-      isUserLoggedIn,
-    });
-    
-    // ✅ Save ALL checkout data to store
-    setFormData({
-      name: values.name,
-      email: values.email,
-      phone: values.phone,
-      country: values.country,
-      city: values.city,
-      shippingAddress: values.shippingAddress,
-      postCode: values.postCode,
-    });
-    
-    // ✅ Save store slug for redirection
-    setStoreSlug(storeSlug);
-    
-    // ✅ For logged-in users, set a dummy password that passes validation
-    if (isUserLoggedIn) {
-      values.password = "logged-in-user-password";
-    }
-    
-    onSubmit(values);
-  }, [onSubmit, isUserLoggedIn, setFormData, setStoreSlug, storeSlug]);
+  // ✅ Handle form submission - FIXED: Properly handle optional password
+  const handleSubmit = useCallback(
+    (values: CustomerCheckoutFormValues) => {
+      console.log("Form submitted with values:", {
+        ...values,
+        password: values.password ? "***" : "not-provided",
+        isUserLoggedIn,
+      });
+
+      // ✅ Save ALL checkout data to store
+      setFormData({
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        country: values.country,
+        city: values.city,
+        shippingAddress: values.shippingAddress,
+        postCode: values.postCode,
+      });
+
+      // ✅ Save store slug for redirection
+      setStoreSlug(storeSlug);
+
+      // ✅ For logged-in users, set a dummy password that passes validation
+      if (isUserLoggedIn) {
+        values.password = "logged-in-user-password";
+      }
+
+      // ✅ Ensure password is always a string (not undefined)
+      const submitValues: CustomerCheckoutFormValues = {
+        ...values,
+        password: values.password || "", // Convert undefined to empty string
+      };
+
+      onSubmit(submitValues);
+    },
+    [onSubmit, isUserLoggedIn, setFormData, setStoreSlug, storeSlug]
+  );
 
   // ✅ Handle Create Password button click
   const handleCreatePasswordClick = () => {
     setShowPasswordField(true);
     // Focus on password field when shown
     setTimeout(() => {
-      const passwordInput = document.querySelector('input[name="password"]') as HTMLInputElement;
+      const passwordInput = document.querySelector(
+        'input[name="password"]'
+      ) as HTMLInputElement;
       if (passwordInput) {
         passwordInput.focus();
       }
@@ -158,16 +176,16 @@ const CheckoutForm = ({
   // ✅ Phone number formatting function
   const formatPhoneNumber = (value: string) => {
     // Remove any non-digit characters
-    const digitsOnly = value.replace(/\D/g, '');
-    
+    const digitsOnly = value.replace(/\D/g, "");
+
     // If it starts with +88 or 88, remove it
     let cleaned = digitsOnly;
-    if (digitsOnly.startsWith('88')) {
+    if (digitsOnly.startsWith("88")) {
       cleaned = digitsOnly.substring(2);
-    } else if (digitsOnly.startsWith('+88')) {
+    } else if (digitsOnly.startsWith("+88")) {
       cleaned = digitsOnly.substring(3);
     }
-    
+
     // Limit to 11 digits maximum
     return cleaned.slice(0, 11);
   };
@@ -175,7 +193,7 @@ const CheckoutForm = ({
   // ✅ Handle phone number input change
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formattedValue = formatPhoneNumber(e.target.value);
-    form.setValue('phone', formattedValue, { shouldValidate: true });
+    form.setValue("phone", formattedValue, { shouldValidate: true });
   };
 
   // ✅ Auto-population logic - Save form data as user types
@@ -183,15 +201,23 @@ const CheckoutForm = ({
     const subscription = form.watch((value) => {
       // Save ALL form data to store as user types (debounced)
       const debounceTimer = setTimeout(() => {
-        if (value.name || value.email || value.phone || value.country || value.city || value.shippingAddress || value.postCode) {
+        if (
+          value.name ||
+          value.email ||
+          value.phone ||
+          value.country ||
+          value.city ||
+          value.shippingAddress ||
+          value.postCode
+        ) {
           setFormData({
-            name: value.name || '',
-            email: value.email || '',
-            phone: value.phone || '',
-            country: value.country || 'Bangladesh',
-            city: value.city || 'Dhaka',
-            shippingAddress: value.shippingAddress || '',
-            postCode: value.postCode || '',
+            name: value.name || "",
+            email: value.email || "",
+            phone: value.phone || "",
+            country: value.country || "Bangladesh",
+            city: value.city || "Dhaka",
+            shippingAddress: value.shippingAddress || "",
+            postCode: value.postCode || "",
           });
         }
       }, 500);
@@ -207,8 +233,9 @@ const CheckoutForm = ({
     if (!isLoadingAuth && !isUserLoggedIn) {
       // Only reset if we have saved data and form is empty
       const currentValues = form.getValues();
-      const hasEmptyForm = !currentValues.name && !currentValues.email && !currentValues.phone;
-      
+      const hasEmptyForm =
+        !currentValues.name && !currentValues.email && !currentValues.phone;
+
       if (hasEmptyForm && (formData.name || formData.email || formData.phone)) {
         form.reset(defaultValues);
       }
@@ -216,7 +243,7 @@ const CheckoutForm = ({
   }, [isLoadingAuth, isUserLoggedIn, formData, form, defaultValues]);
 
   // ✅ Get watched password value with proper type handling
-  const watchedPassword = form.watch("password");
+  const watchedPassword = form.watch("password") || "";
 
   // ✅ Determine button text based on user status and password
   const getButtonText = () => {
@@ -320,7 +347,9 @@ const CheckoutForm = ({
                   className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
                   onClick={() => {
                     const currentPath = window.location.pathname;
-                    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}&email=${encodeURIComponent(form.getValues().email)}`;
+                    window.location.href = `/login?redirect=${encodeURIComponent(
+                      currentPath
+                    )}&email=${encodeURIComponent(form.getValues().email)}`;
                   }}
                 >
                   Already have an account? Login
@@ -355,8 +384,9 @@ const CheckoutForm = ({
               {/* ✅ Use the reusable PasswordStrength component */}
               <PasswordStrength password={watchedPassword} />
               <p className="text-xs text-muted-foreground">
-                Creating a password will save your information for faster checkout next time.
-                You can skip this if you prefer not to create an account.
+                Creating a password will save your information for faster
+                checkout next time. You can skip this if you prefer not to
+                create an account.
               </p>
             </div>
           )}
@@ -460,9 +490,9 @@ const CheckoutForm = ({
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
-            {!isUserLoggedIn && watchedPassword && watchedPassword.length > 0 && (
-              <UserPlus className="h-4 w-4" />
-            )}
+            {!isUserLoggedIn &&
+              watchedPassword &&
+              watchedPassword.length > 0 && <UserPlus className="h-4 w-4" />}
             <ShoppingBag className="h-4 w-4" />
             {getButtonText()}
             <ArrowRight className="h-4 w-4" />

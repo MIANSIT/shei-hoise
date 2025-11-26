@@ -36,9 +36,16 @@ export function useOrderProcess(store_slug: string) {
         calculations: calculations?.totalPrice
       });
 
+      // Validate store slug first
+      if (!store_slug || store_slug === "undefined") {
+        throw new Error('Store slug is invalid or undefined');
+      }
+
       // Get store ID first
       const storeId = await getStoreIdBySlug(store_slug);
-      if (!storeId) throw new Error('Store not found');
+      if (!storeId) {
+        throw new Error(`Store not found for slug: ${store_slug}`);
+      }
 
       // Check if cart has items
       if (!cartItems || cartItems.length === 0) throw new Error('Cart is empty');
@@ -58,7 +65,7 @@ export function useOrderProcess(store_slug: string) {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
-          address: formData.shippingAddress, // ✅ CHANGED: address_line_1 → address
+          address: formData.shippingAddress,
           city: formData.city,
           country: formData.country,
           customer_id: storeCustomerId,
