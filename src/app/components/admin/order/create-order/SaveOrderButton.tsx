@@ -44,6 +44,7 @@ export default function SaveOrderButton({
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  
   const showConfirm = () => {
     modal.confirm({
       title: "Confirm Order Creation",
@@ -56,7 +57,7 @@ export default function SaveOrderButton({
           <Text type="secondary">Total Amount: ৳{totalAmount.toFixed(2)}</Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
-              A new customer account will be created automatically.
+              A new customer record will be created in the system.
             </Text>
           )}
         </Space>
@@ -80,12 +81,10 @@ export default function SaveOrderButton({
           if (
             !customerInfo.name ||
             !customerInfo.phone ||
-            !customerInfo.email ||
-            !customerInfo.password ||
-            !customerInfo.postal_code // Add this line
+            !customerInfo.email
           ) {
             throw new Error(
-              "Customer name, phone, email, and password are required to create a customer account"
+              "Customer name, phone, and email are required to create a customer record"
             );
           }
 
@@ -94,11 +93,10 @@ export default function SaveOrderButton({
             email: customerInfo.email,
             first_name: customerInfo.name,
             phone: customerInfo.phone,
-            password: customerInfo.password,
             address_line_1: customerInfo.address,
             city: customerInfo.city,
             country: "Bangladesh",
-            postal_code: customerInfo.postal_code, // Add this line
+            postal_code: customerInfo.postal_code,
           });
 
           if (!newCustomer || !newCustomer.id) {
@@ -116,7 +114,7 @@ export default function SaveOrderButton({
 
           notification.success({
             message: "Customer Created",
-            description: "New customer account created successfully.",
+            description: "New customer record created successfully in store_customers.",
           });
         } catch (customerError: any) {
           console.error("Error creating customer:", customerError);
@@ -128,15 +126,13 @@ export default function SaveOrderButton({
               content: (
                 <Space direction="vertical">
                   <Text>
-                    Failed to create customer account: {customerError.message}
+                    Failed to create customer record: {customerError.message}
                   </Text>
                   <Text type="warning">
-                    Do you want to create the order without linking it to a
-                    customer account?
+                    Do you want to create the order without linking it to a customer record?
                   </Text>
                   <Text type="secondary">
-                    The order will be created but no customer account will be
-                    created.
+                    The order will be created but no customer record will be created.
                   </Text>
                 </Space>
               ),
@@ -170,7 +166,7 @@ export default function SaveOrderButton({
         paymentStatus,
         paymentMethod,
         currency: "BDT" as const,
-        deliveryOption: finalCustomerInfo.deliveryMethod, // ✅ add this
+        deliveryOption: finalCustomerInfo.deliveryMethod,
       };
 
       const result = await dataService.createOrder(orderData);
@@ -178,9 +174,9 @@ export default function SaveOrderButton({
       if (result.success) {
         let successMessage = `Order ${orderId} has been created successfully.`;
         if (customerCreated) {
-          successMessage += " A new customer account was also created.";
+          successMessage += " A new customer record was also created in store_customers.";
         } else if (!customerInfo.customer_id) {
-          successMessage += " Note: No customer account was created.";
+          successMessage += " Note: No customer record was created.";
         }
 
         modal.success({

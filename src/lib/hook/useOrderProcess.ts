@@ -4,17 +4,17 @@ import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
-import useCartStore from '../store/cartStore'; // Import cart store
+import useCartStore from '../store/cartStore';
 import { CartProductWithDetails, CartCalculations } from '../types/cart';
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { clearStoreCart } = useCartStore(); // Get cart clearing function
+  const { clearStoreCart } = useCartStore();
 
   const processOrder = async (
     formData: CustomerCheckoutFormValues,
-    storeCustomerId?: string, // ✅ Now store_customers.id instead of users.id
+    storeCustomerId?: string,
     paymentMethod: string = 'cod',
     deliveryOption: string = 'standard',
     shippingFee: number = 0,
@@ -58,10 +58,10 @@ export function useOrderProcess(store_slug: string) {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
-          address: formData.shippingAddress,
+          address: formData.shippingAddress, // ✅ CHANGED: address_line_1 → address
           city: formData.city,
           country: formData.country,
-          customer_id: storeCustomerId, // ✅ Now store_customers.id
+          customer_id: storeCustomerId,
         },
         orderProducts: cartItems.map(item => {
           return {

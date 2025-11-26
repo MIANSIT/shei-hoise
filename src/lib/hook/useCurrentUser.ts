@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { CurrentUser, userSchema } from "../types/users";
 import { CustomerProfile } from "../types/customer";
-import { getCustomerProfile } from "../queries/customers/getCustomerProfile";
 import { useCheckoutStore } from "../store/userInformationStore";
 import { User } from "@supabase/supabase-js";
 
@@ -86,18 +85,12 @@ export function useCurrentUser() {
           userStoreSlug = storeData?.store_slug || null;
         }
 
-        // Fetch profile using cached version
-        let userProfile: CustomerProfile | null = null;
-        try {
-          userProfile = await getCustomerProfile(authUser.id);
-        } catch (profileError) {
-          console.warn('Failed to fetch user profile:', profileError);
-          // Don't throw, just continue without profile
-        }
+        // REMOVED: Profile fetching - it was using wrong ID and causing errors
+        // Store owners don't have customer profiles anyway
 
         const userWithProfile: CurrentUserWithProfile = { 
           ...parsedUser, 
-          profile: userProfile 
+          profile: null // Always set to null since store owners don't have customer profiles
         };
 
         if (mounted) {
