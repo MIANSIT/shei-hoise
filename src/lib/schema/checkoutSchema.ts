@@ -15,7 +15,7 @@ const passwordValidation = z
   .optional()
   .or(z.literal(''));
 
-// Simple password validation for logged-in users
+// Simple password validation for logged-in users (required but with dummy value)
 const simplePasswordValidation = z.string().min(1, "Password is required");
 
 // ✅ UPDATED: Bangladesh phone number validation without +88
@@ -37,7 +37,7 @@ const emailValidation = z
 export const customerCheckoutSchema = z.object({
   name: z.string().min(1, "Full name is required"),
   email: emailValidation,
-  phone: bangladeshPhoneValidation, // ✅ Updated validation
+  phone: bangladeshPhoneValidation,
   password: passwordValidation,
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
@@ -45,11 +45,11 @@ export const customerCheckoutSchema = z.object({
   shippingAddress: z.string().min(1, "Shipping address is required"),
 });
 
-// Schema for logged-in users
+// Schema for logged-in users (password required but will be dummy)
 export const customerCheckoutSchemaForLoggedIn = z.object({
   name: z.string().min(1, "Full name is required"),
   email: emailValidation,
-  phone: bangladeshPhoneValidation, // ✅ Updated validation
+  phone: bangladeshPhoneValidation,
   password: simplePasswordValidation,
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
@@ -64,5 +64,16 @@ export const addToCartSchema = z.object({
   storeSlug: z.string().min(1, "Store slug is required"),
 });
 
-export type CustomerCheckoutFormValues = z.infer<typeof customerCheckoutSchema>;
+// ✅ FIXED: Make password optional in the type
+export type CustomerCheckoutFormValues = {
+  name: string;
+  email: string;
+  phone: string;
+  password?: string; // ✅ Make password optional
+  country: string;
+  city: string;
+  postCode: string;
+  shippingAddress: string;
+};
+
 export type AddToCartType = z.infer<typeof addToCartSchema>;

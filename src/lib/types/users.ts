@@ -1,6 +1,5 @@
 // lib/types/users.ts
 import { z } from "zod";
-// import { CustomerProfile } from "./customer";
 
 export enum USERTYPE {
   STORE_OWNER = "store_owner",
@@ -43,8 +42,8 @@ export interface TableCustomer {
 }
 
 export interface DetailedCustomer extends TableCustomer {
-  first_name?: string | null; // Change to allow null
-  last_name?: string | null; // Change to allow null
+  first_name?: string | null;
+  last_name?: string | null;
   user_type?: USERTYPE | string;
   email_verified?: boolean;
   avatar_url?: string;
@@ -52,10 +51,12 @@ export interface DetailedCustomer extends TableCustomer {
   updated_at?: string;
   store_slug?: string;
   store_name?: string;
+  profile_id?: string | null; // ✅ ADDED PROFILE_ID
   profile_details?: {
     date_of_birth?: string | null;
     gender?: string | null;
     address_line_1?: string | null;
+    address?: string | null;
     address_line_2?: string | null;
     city?: string | null;
     state?: string | null;

@@ -138,7 +138,8 @@ export default function CheckoutPage() {
     const shippingAddress = {
       customer_name: values.name,
       phone: values.phone,
-      address_line_1: values.shippingAddress,
+      address: values.shippingAddress, // ✅ NEW address field
+      address_line_1: values.shippingAddress, // ✅ KEEP for backward compatibility
       city: values.city,
       country: values.country,
     };
@@ -146,7 +147,8 @@ export default function CheckoutPage() {
     const billingAddress = {
       customer_name: values.name,
       phone: values.phone,
-      address_line_1: values.shippingAddress,
+      address: values.shippingAddress, // ✅ NEW address field
+      address_line_1: values.shippingAddress, // ✅ KEEP for backward compatibility
       city: values.city,
       country: values.country,
     };
@@ -197,8 +199,6 @@ export default function CheckoutPage() {
     };
   };
 
-  // ✅ UPDATED: Simplified checkout flow for guest users
-  // In your checkout page - Update the handleCheckoutSubmit function
   const handleCheckoutSubmit = async (values: any) => {
     console.log("🔄 Checkout form submitted with values:", {
       ...values,
@@ -230,7 +230,7 @@ export default function CheckoutPage() {
         shippingFee: shippingFee,
       };
 
-      let storeCustomerId: string | undefined; // ✅ Now store customer ID, not auth user ID
+      let storeCustomerId: string | undefined;
 
       // ✅ Scenario 1 - User is already logged in
       if (isUserLoggedIn && currentUser) {
@@ -242,7 +242,7 @@ export default function CheckoutPage() {
         const { data: storeCustomer, error: storeCustomerError } =
           await supabase
             .from("store_customers")
-            .select("id")
+            .select("id, profile_id")
             .eq("auth_user_id", currentUser.id)
             .maybeSingle();
 
@@ -251,6 +251,27 @@ export default function CheckoutPage() {
         } else if (storeCustomer) {
           storeCustomerId = storeCustomer.id;
           console.log("✅ Found store customer record:", storeCustomerId);
+
+          // Update customer profile if exists
+          if (storeCustomer.profile_id) {
+            console.log("📝 Updating customer profile for logged-in user");
+            const { error: profileUpdateError } = await supabase
+              .from("customer_profiles")
+              .update({
+                address: values.shippingAddress,
+                city: values.city,
+                postal_code: values.postCode,
+                country: values.country,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", storeCustomer.profile_id);
+
+            if (profileUpdateError) {
+              console.error("❌ Profile update failed:", profileUpdateError);
+            } else {
+              console.log("✅ Customer profile updated for logged-in user");
+            }
+          }
         } else {
           console.log("⚠️ No store customer record found for auth user");
         }
@@ -263,7 +284,10 @@ export default function CheckoutPage() {
         );
 
         // First, check if customer already exists in store_customers
-        const existingCustomer = await getCustomerByEmail(values.email);
+        const existingCustomer = await getCustomerByEmail(
+          values.email,
+          store_slug
+        );
 
         if (existingCustomer) {
           console.log("📧 Existing customer found:", {
@@ -272,15 +296,20 @@ export default function CheckoutPage() {
             profile_id: existingCustomer.profile_id,
           });
 
-          storeCustomerId = existingCustomer.id; // ✅ Use store_customer.id directly
+          storeCustomerId = existingCustomer.id;
 
-          // ✅ Update the existing user profile with new address information
-          if (existingCustomer.profile_id) {
-            console.log("📝 Updating existing user profile with new address");
+          // ✅ Update the existing customer profile with new address information
+          if (
+            existingCustomer.profile_id &&
+            existingCustomer.customer_profiles
+          ) {
+            console.log(
+              "📝 Updating existing customer profile with new address"
+            );
             const { error: profileUpdateError } = await supabase
-              .from("user_profiles")
+              .from("customer_profiles")
               .update({
-                address_line_1: values.shippingAddress,
+                address: values.shippingAddress,
                 city: values.city,
                 postal_code: values.postCode,
                 country: values.country,
@@ -291,7 +320,61 @@ export default function CheckoutPage() {
             if (profileUpdateError) {
               console.error("❌ Profile update failed:", profileUpdateError);
             } else {
-              console.log("✅ User profile updated with new address");
+              console.log("✅ Customer profile updated with new address");
+            }
+          } else if (existingCustomer.profile_id) {
+            // Profile exists but we don't have the data, still try to update
+            console.log("📝 Updating customer profile (ID only)");
+            const { error: profileUpdateError } = await supabase
+              .from("customer_profiles")
+              .update({
+                address: values.shippingAddress,
+                city: values.city,
+                postal_code: values.postCode,
+                country: values.country,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existingCustomer.profile_id);
+
+            if (profileUpdateError) {
+              console.error("❌ Profile update failed:", profileUpdateError);
+            } else {
+              console.log("✅ Customer profile updated successfully");
+            }
+          } else {
+            console.log("📭 No profile found for existing customer");
+            // Create a profile for the existing customer
+            console.log("📝 Creating new profile for existing customer");
+            const profileData = {
+              store_customer_id: existingCustomer.id,
+              address: values.shippingAddress,
+              city: values.city,
+              postal_code: values.postCode,
+              country: values.country,
+            };
+
+            const { data: newProfile, error: profileCreateError } =
+              await supabase
+                .from("customer_profiles")
+                .insert([profileData])
+                .select("id")
+                .single();
+
+            if (profileCreateError) {
+              console.error("❌ Profile creation failed:", profileCreateError);
+            } else if (newProfile) {
+              console.log(
+                "✅ New profile created for existing customer:",
+                newProfile.id
+              );
+
+              // Update store_customer with profile_id
+              await supabase
+                .from("store_customers")
+                .update({ profile_id: newProfile.id })
+                .eq("id", existingCustomer.id);
+
+              console.log("✅ Store customer updated with profile_id");
             }
           }
 
@@ -338,7 +421,7 @@ export default function CheckoutPage() {
           }
         } else {
           // ✅ Scenario 3 - Create NEW customer (guest or with password)
-          console.log("👤 Creating new customer");
+          console.log("👤 Creating new customer - no existing customer found");
           const customerResult = await createCheckoutCustomer({
             ...values,
             store_slug,
@@ -346,12 +429,12 @@ export default function CheckoutPage() {
 
           if (customerResult.success) {
             console.log("✅ Customer created successfully:", {
-              customerId: customerResult.customerId, // This is store_customer.id
+              customerId: customerResult.customerId,
               authUserId: customerResult.authUserId,
               profileId: customerResult.profileId,
             });
 
-            storeCustomerId = customerResult.customerId; // ✅ Use store_customer.id
+            storeCustomerId = customerResult.customerId;
           } else {
             console.error("❌ Customer creation failed:", customerResult.error);
             notify.error(
@@ -371,7 +454,7 @@ export default function CheckoutPage() {
 
       const result = await processOrder(
         formDataWithShipping,
-        storeCustomerId, // ✅ This will be store_customers.id or undefined for pure guests
+        storeCustomerId,
         "cod",
         selectedShipping,
         shippingFee,

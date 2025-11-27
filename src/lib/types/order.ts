@@ -17,7 +17,8 @@ export interface AddressJSON {
   customer_name: string;
   phone: string;
   email?: string;
-  address_line_1: string;
+  address_line_1?: string; // ✅ MADE OPTIONAL
+  address?: string; // ✅ ADDED NEW ADDRESS FIELD
   city: string;
   postal_code?: string;
   country?: string;
@@ -26,6 +27,7 @@ export interface AddressJSON {
 export interface OrderCustomer {
   id: string;
   first_name: string;
+  last_name?: string;
   email: string;
   phone: string | null;
 }
@@ -94,7 +96,8 @@ export interface StoreOrder {
     customer_name: string;
     phone: string;
     email?: string;
-    address_line_1: string;
+    address_line_1?: string; // ✅ MADE OPTIONAL
+    address?: string; // ✅ ADDED NEW ADDRESS FIELD
     city: string;
     country: string;
   };
@@ -102,7 +105,8 @@ export interface StoreOrder {
     customer_name: string;
     phone: string;
     email?: string;
-    address_line_1: string;
+    address_line_1?: string; // ✅ MADE OPTIONAL
+    address?: string; // ✅ ADDED NEW ADDRESS FIELD
     city: string;
     country: string;
   } | null;
@@ -111,7 +115,7 @@ export interface StoreOrder {
   updated_at: string;
   order_items: OrderItem[];
   customers: OrderCustomer | null;
-  delivery_option?: DeliveryOption; // Now accepts any string
+  delivery_option?: DeliveryOption;
   cancel_note?: string;
 }
 
@@ -126,7 +130,6 @@ export interface CustomerInfo {
   email: string;
   notes?: string;
   customer_id?: string;
-  password: string;
   country?: string;
   postal_code: string;
 }

@@ -50,13 +50,6 @@ export default function CustomerInfo({
     setCustomerInfo((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Set default password to "123456" when component mounts for new customers
-  React.useEffect(() => {
-    if (!isExistingCustomer && !customerInfo.password) {
-      setCustomerInfo((prev) => ({ ...prev, password: "AdminCustomer1232*" }));
-    }
-  }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
-
   // Filter valid shipping fees with proper locations
   const validShippingFees = React.useMemo(() => {
     if (!Array.isArray(shippingFees)) return [];
@@ -170,17 +163,7 @@ export default function CustomerInfo({
                   />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
-                {!isExistingCustomer && (
-                  <Form.Item label="Customer Password" required>
-                    <Input.Password
-                      value="AdminCustomer1232*"
-                      disabled
-                      size="large"
-                    />
-                  </Form.Item>
-                )}
-              </Col>
+              {/* REMOVED: Password field column */}
             </Row>
 
             <Form.Item
@@ -309,8 +292,6 @@ export default function CustomerInfo({
               </Col>
             </Row>
 
-            {/* Show selected shipping fee details */}
-
             <Form.Item label="Order Notes">
               <TextArea
                 placeholder="Any special instructions or notes..."
@@ -323,16 +304,14 @@ export default function CustomerInfo({
 
           {!isExistingCustomer && (
             <Alert
-              message="Customer Account Creation"
+              message="Customer Record Creation"
               description={
                 <Space direction="vertical" size={0}>
                   <Text>
-                    A customer account will be created with the provided
-                    information.
+                    A customer record will be created in the system with the provided information.
                   </Text>
-                  <Text>
-                    Default password is set to:{" "}
-                    <Text strong>AdminCustomer1232*</Text>
+                  <Text type="secondary">
+                    No password required - customer will be created in store_customers table.
                   </Text>
                 </Space>
               }
