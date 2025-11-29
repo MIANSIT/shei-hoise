@@ -4,17 +4,17 @@ import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
-import useCartStore from '../store/cartStore'; // Import cart store
+import useCartStore from '../store/cartStore';
 import { CartProductWithDetails, CartCalculations } from '../types/cart';
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { clearStoreCart } = useCartStore(); // Get cart clearing function
+  const { clearStoreCart } = useCartStore();
 
   const processOrder = async (
     formData: CustomerCheckoutFormValues,
-    storeCustomerId?: string, // ✅ Now store_customers.id instead of users.id
+    storeCustomerId?: string,
     paymentMethod: string = 'cod',
     deliveryOption: string = 'standard',
     shippingFee: number = 0,
@@ -36,9 +36,16 @@ export function useOrderProcess(store_slug: string) {
         calculations: calculations?.totalPrice
       });
 
+      // Validate store slug first
+      if (!store_slug || store_slug === "undefined") {
+        throw new Error('Store slug is invalid or undefined');
+      }
+
       // Get store ID first
       const storeId = await getStoreIdBySlug(store_slug);
-      if (!storeId) throw new Error('Store not found');
+      if (!storeId) {
+        throw new Error(`Store not found for slug: ${store_slug}`);
+      }
 
       // Check if cart has items
       if (!cartItems || cartItems.length === 0) throw new Error('Cart is empty');
@@ -61,7 +68,7 @@ export function useOrderProcess(store_slug: string) {
           address: formData.shippingAddress,
           city: formData.city,
           country: formData.country,
-          customer_id: storeCustomerId, // ✅ Now store_customers.id
+          customer_id: storeCustomerId,
         },
         orderProducts: cartItems.map(item => {
           return {

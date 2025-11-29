@@ -4,11 +4,7 @@ import {
   ProductWithVariants,
 } from "./products/getProductsWithVariants";
 import {
-  getStoreCustomersSimple,
-  StoreCustomer,
-} from "./customers/getStoreCustomersSimple";
-import {
-  getCustomerProfile,
+  getCustomerProfileByStoreCustomerId,
 } from "./customers/getCustomerProfile";
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import {
@@ -50,7 +46,7 @@ import {
   BulkUpdateResult,
 } from "./orders/bulkUpdateOrders";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
-import { TableCustomer } from "@/lib/types/users";
+import { DetailedCustomer } from "@/lib/types/users";
 
 // Import CustomerProfile from the shared types file
 import { CustomerProfile } from "@/lib/types/customer";
@@ -61,9 +57,9 @@ export interface DataService {
   getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
 
   // Customer methods
-  getStoreCustomersSimple: (storeId: string) => Promise<StoreCustomer[]>;
-  getCustomerProfile: (customerId: string) => Promise<CustomerProfile | null>;
+  // REMOVED: getCustomerProfile - it was broken
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
+  getCustomerProfileByStoreCustomerId: (storeCustomerId: string) => Promise<CustomerProfile | null>;
 
   // Store methods
   getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
@@ -76,7 +72,7 @@ export interface DataService {
     orderNumber: string
   ) => Promise<OrderWithItems | null>;
 
-  getAllStoreCustomers: (storeId: string) => Promise<TableCustomer[]>;
+  getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>;
 
   updateOrderByNumber: (
     updateData: UpdateOrderByNumberData
@@ -163,12 +159,13 @@ const updateOrderByNumberImpl = async (
   }
 };
 
+// REMOVED: getCustomerProfile implementation - it was broken
+
 export const dataService: DataService = {
   getProductsWithVariants,
-  getStoreCustomersSimple,
-  getCustomerProfile,
+  // REMOVED: getCustomerProfile - it was broken
   createCustomer,
-  getStoreById: getStoreByIdImpl, // Add this line
+  getStoreById: getStoreByIdImpl,
   createOrder,
   getStoreOrders,
   getOrderByNumber: getOrderByNumberImpl,
@@ -181,6 +178,7 @@ export const dataService: DataService = {
   updateOrderNotes,
   bulkUpdateOrders,
   getAllStoreCustomers,
+  getCustomerProfileByStoreCustomerId,
 };
 
 export default dataService;

@@ -34,7 +34,7 @@ import {
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import type { CustomerProfile } from "@/lib/types/customer"; // FIXED IMPORT
+import type { CustomerProfile } from "@/lib/types/customer";
 import {
   getStoreSettings,
   type ShippingFee,
@@ -112,7 +112,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     city: "",
     email: "",
     notes: "",
-    password: "AdminCustomer1232*",
     postal_code: "",
     customer_id: "",
   });
@@ -135,7 +134,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [originalOrder, setOriginalOrder] = useState<OrderData | null>(null);
-  const [hasFetchedData, setHasFetchedData] = useState(false); // ADDED: Prevent multiple fetches
+  const [hasFetchedData, setHasFetchedData] = useState(false);
 
   // Store settings states
   const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
@@ -165,16 +164,17 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     }
   }, [user?.store_id, notification]);
 
-  // Fetch customer profile data
+  // FIXED: Use getCustomerProfileByStoreCustomerId instead of getCustomerProfile
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
     setProfileLoading(true);
     try {
-      const profile = await dataService.getCustomerProfile(customerId);
+      // Use the correct function that works with store_customer_id
+      const profile = await dataService.getCustomerProfileByStoreCustomerId(customerId);
       setCustomerProfile(profile);
       if (profile) {
         setCustomerInfo((prev) => ({
           ...prev,
-          address: profile.address_line_1 || prev.address,
+          address: profile.address || profile.address_line_1 || prev.address,
           city: profile.city || prev.city,
           postal_code: profile.postal_code || prev.postal_code,
         }));
@@ -223,12 +223,12 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         // Set order status and payment info
         setStatus(order.status);
         setPaymentStatus(order.payment_status);
-        setPaymentMethod(order.payment_method);
+        setPaymentMethod(order.payment_method || "cash");
 
         // Set financial data - ALWAYS set delivery cost from API response
         setSubtotal(Number(order.subtotal));
         setTaxAmount(Number(order.tax_amount));
-        setDeliveryCost(Number(order.shipping_fee)); // This is crucial
+        setDeliveryCost(Number(order.shipping_fee));
         setTotalAmount(Number(order.total_amount));
 
         // Set customer info from order
@@ -256,16 +256,17 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
           if (order.shipping_address) {
             setCustomerInfo((prev) => ({
               ...prev,
-              address: order.shipping_address.address_line_1 || prev.address,
+              address: order.shipping_address.address_line_1 || order.shipping_address.address || prev.address,
               city: order.shipping_address.city || prev.city,
               postal_code:
                 order.shipping_address.postal_code || prev.postal_code,
-              deliveryMethod: order.delivery_option || "",
-              deliveryOption: order.shipping_address.deliveryOption || "",
-              notes: order.notes || "",
+              deliveryMethod: order.delivery_option || prev.deliveryMethod,
+              deliveryOption: order.shipping_address.deliveryOption || prev.deliveryOption,
+              notes: order.notes || prev.notes,
             }));
           }
 
+          // Fetch customer profile using the correct function
           await fetchCustomerProfile(order.customer_id);
         }
 
@@ -393,7 +394,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     }
   }, [customerInfo.deliveryOption, shippingFees]);
 
-  // Initialize data - FIXED: Only fetch once
+  // Initialize data
   useEffect(() => {
     if (user?.store_id && !userLoading && !hasFetchedData) {
       console.log('🔄 Initializing EditOrder data');
