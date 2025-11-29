@@ -38,6 +38,7 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  description?: string;
   id: string;
   name: string;
   slug: string;

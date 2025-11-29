@@ -1,14 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
+import ProductFilterSection from "@/app/components/products/ProductFilterSection";
 import { StorePageSkeleton } from "../components/skeletons/StorePageSkeleton";
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { Product } from "@/lib/types/product";
+import { Category } from "@/lib/types/category";
 import NotFoundPage from "../not-found";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 
@@ -23,6 +25,10 @@ export default function StorePage({ params }: StorePageProps) {
 
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>("All Products");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,19 +43,29 @@ export default function StorePage({ params }: StorePageProps) {
 
         setStoreExists(true);
 
-        const data = await clientGetProducts(store_slug);
+        // Fetch products and categories in parallel
+        const [productsData, categoriesData] = await Promise.all([
+          clientGetProducts(store_slug),
+          getCategoriesQuery(storeId),
+        ]);
+
+        // Set categories
+        if (categoriesData.data) {
+          setCategories(categoriesData.data);
+        }
 
         // Sort products: in-stock first, out-of-stock last
-        const sortedProducts = data.sort((a, b) => {
+        const sortedProducts = productsData.sort((a, b) => {
           const aInStock = isProductInStock(a);
           const bInStock = isProductInStock(b);
 
-          if (aInStock && !bInStock) return -1; // a comes first
-          if (!aInStock && bInStock) return 1; // b comes first
-          return 0; // keep original order
+          if (aInStock && !bInStock) return -1;
+          if (!aInStock && bInStock) return 1;
+          return 0;
         });
 
         setProducts(sortedProducts);
+        setFilteredProducts(sortedProducts); // Initially show all products
       } catch (err) {
         console.error(err);
         error("Failed to load store or products");
@@ -61,17 +77,39 @@ export default function StorePage({ params }: StorePageProps) {
     fetchData();
   }, [store_slug, error]);
 
-  // Helper function to check if product is in stock - FIXED with proper null checks
+  // Filter products when category or search query changes
+  useEffect(() => {
+    let filtered = products;
+
+    // Apply category filter
+    if (activeCategory !== "All Products") {
+      filtered = filtered.filter(
+        (product) => product.category?.name === activeCategory
+      );
+    }
+
+    // Apply search filter
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.description?.toLowerCase().includes(query) ||
+          product.category?.name.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredProducts(filtered);
+  }, [activeCategory, searchQuery, products]);
+
+  // Helper function to check if product is in stock
   const isProductInStock = (product: Product): boolean => {
     if (product.variants && product.variants.length > 0) {
-      // Check if any variant has stock (check both stock and product_inventory)
       return product.variants.some((variant) => {
-        // First check product_inventory (API response)
         const productInventory = variant.product_inventory?.[0];
         if (productInventory && productInventory.quantity_available > 0) {
           return true;
         }
-        // Fallback to stock (TypeScript interface)
         const stock = variant.stock;
         if (stock && stock.quantity_available > 0) {
           return true;
@@ -80,13 +118,10 @@ export default function StorePage({ params }: StorePageProps) {
       });
     }
 
-    // For products without variants, check main product stock (both fields)
-    // First check product_inventory (API response)
     const mainProductInventory = product.product_inventory?.[0];
     if (mainProductInventory && mainProductInventory.quantity_available > 0) {
       return true;
     }
-    // Fallback to stock (TypeScript interface)
     const mainStock = product.stock;
     if (mainStock && mainStock.quantity_available > 0) {
       return true;
@@ -111,7 +146,7 @@ export default function StorePage({ params }: StorePageProps) {
         variantId: variant?.id || null,
       };
 
-      addToCart(cartProduct); // ✅ Remove await
+      addToCart(cartProduct);
       success(`${product.name} added to cart`);
     } catch (err) {
       console.error(err);
@@ -119,6 +154,14 @@ export default function StorePage({ params }: StorePageProps) {
     } finally {
       setLoadingProductId(null);
     }
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
   };
 
   if (loading) {
@@ -132,14 +175,28 @@ export default function StorePage({ params }: StorePageProps) {
   return (
     <>
       <div className="px-8 py-4">
-        {products.length === 0 ? (
+        {/* Add the filter section */}
+        <ProductFilterSection
+          activeCategory={activeCategory}
+          onCategoryChange={handleCategoryChange}
+          categories={categories}
+          totalProducts={filteredProducts.length}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+        />
+
+        {filteredProducts.length === 0 ? (
           <div className="text-center py-20 text-lg font-medium">
-            No products available in this store.
+            {searchQuery.trim() !== ""
+              ? `No products found matching "${searchQuery}".`
+              : activeCategory === "All Products"
+              ? "No products available in this store."
+              : `No products found in ${activeCategory} category.`}
           </div>
         ) : (
           <ProductGrid
             store_slug={store_slug}
-            products={products}
+            products={filteredProducts}
             onAddToCart={handleAddToCart}
             loadingProductId={loadingProductId}
           />

@@ -83,7 +83,7 @@ async function validateStockAvailability(
         // If it's a "Cardinality violation" error (multiple rows), we need to handle it
         if (error.code === 'PGRST116' && !item.variant_id) {
           console.log(`⚠️ Multiple inventory records found for base product "${item.product_name}". Checking all records...`);
-          
+
           // Query for ALL inventory records for this base product
           const { data: allInventory, error: multiError } = await supabaseAdmin
             .from("product_inventory")
@@ -124,7 +124,7 @@ async function validateStockAvailability(
           // Continue to next item
           continue;
         }
-        
+
         // Handle other errors
         const inventoryType = item.variant_id ? 'variant' : 'product';
         return {
@@ -271,7 +271,7 @@ async function updateInventoryForOrder(
       } else {
         // ✅ BASE PRODUCT (no variants): Handle multiple inventory records
         console.log(`📦 This is a BASE product. Checking for inventory records for product_id: ${item.product_id}`);
-        
+
         // First, get ALL inventory records for this base product
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
@@ -605,11 +605,15 @@ export async function createCustomerOrder(
 
     console.log("🔄 Creating customer order in database...");
 
+    // ✅ FIX: Use store_customer_id instead of auth user ID
+    // Now customer_id will reference store_customers.id
+    const storeCustomerId = customerInfo.customer_id || null;
+
     // Create order
     const orderInsertData = {
       order_number: orderNumber,
       store_id: storeId,
-      customer_id: customerInfo.customer_id || null,
+      customer_id: storeCustomerId, // ✅ Now links to store_customers.id
       status: status,
       subtotal: subtotal,
       tax_amount: taxAmount,
@@ -623,10 +627,16 @@ export async function createCustomerOrder(
       delivery_option: deliveryOption,
     };
 
+    console.log("📦 Order insert data:", {
+      ...orderInsertData,
+      customer_id: storeCustomerId,
+      has_customer: !!storeCustomerId
+    });
+
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert([orderInsertData])
-      .select("id, order_number")
+      .select("id, order_number, customer_id")
       .single();
 
     if (orderError) {

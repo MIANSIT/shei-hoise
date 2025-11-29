@@ -1,3 +1,4 @@
+// lib/utils/formSchema.ts
 import { z } from "zod";
 
 // Common validators
@@ -12,9 +13,6 @@ export const validators = {
       "Invalid email format"
     ),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z
-    .string()
-    .min(8, "Confirm password must be at least 8 characters"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   country: z.string().min(1, "Please select a country"),
   city: z.string().min(2, "City must be at least 2 characters"),
@@ -24,18 +22,18 @@ export const validators = {
   postCode: z.string().min(3, "Post code must be at least 3 characters"),
 };
 
-// Signup schema
+// ✅ UPDATED: Signup schema WITHOUT name field
 export const signUpSchema = z.object({
-  name: validators.name,
   email: validators.email,
   password: validators.password,
 });
 
 // Login schema
-export const loginSchema = z.object({
-  name: z.string().optional(),
-  email: validators.email,
-  password: validators.password,
+export const LoginFormSchema = z.object({
+  username: z.string().email({ message: "Must be a valid email address" }),
+  password: z
+    .string()
+    .regex(/.*[A-Z].*/, { message: "One uppercase character required" }),
 });
 
 // Checkout schema
@@ -54,6 +52,7 @@ export const profileSchema = z.object({
   name: validators.name,
   email: validators.email,
 });
+
 // Admin product schema
 export const adminProductSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -70,6 +69,7 @@ export const adminProductSchema = z.object({
   ),
   images: z.array(z.any()).min(1, "At least one image is required"),
 });
+
 export const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   slug: z
@@ -78,9 +78,10 @@ export const categorySchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format"),
   description: z.string().optional(),
 });
+
 // Infer TypeScript types from schemas
-export type SignUpFormValues = z.infer<typeof signUpSchema>;
-export type LoginFormValues = z.infer<typeof loginSchema>;
+export type SignUpFormValues = z.infer<typeof signUpSchema>; // ✅ Now only email and password
+export type LoginFormType = z.infer<typeof LoginFormSchema>;
 export type CheckoutFormValues = z.infer<typeof userCheckoutSchema>;
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 export type ProductFormValues = z.infer<typeof adminProductSchema>;

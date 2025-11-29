@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { CheckCircle2, AlertTriangle, XCircle, X } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, X, Info } from "lucide-react";
 import { ReactNode, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -20,58 +20,84 @@ export function useSheiNotification() {
       options?: SheiNotificationOptions
     ) => {
       const bgColors: Record<ToastType, string> = {
-        success: "#22c55e",
-        warning: "#facc15",
-        error: "#dc2626",
-        info: "#2563eb",
+        success: "#dcfce7", // bg-green-100 equivalent
+        warning: "#fef9c3", // bg-yellow-100 equivalent
+        error: "#fee2e2",   // bg-red-100 equivalent
+        info: "#dbeafe",    // bg-blue-100 equivalent
       };
+      
       const textColors: Record<ToastType, string> = {
-        success: "#f9fafb",
-        warning: "#1f2937",
-        error: "#fef2f2",
-        info: "#f9fafb",
+        success: "#166534", // text-green-800 equivalent
+        warning: "#854d0e", // text-yellow-800 equivalent
+        error: "#991b1b",   // text-red-800 equivalent
+        info: "#1e40af",    // text-blue-800 equivalent
       };
+      
+      const iconColors: Record<ToastType, string> = {
+        success: "#16a34a", // text-green-600 equivalent
+        warning: "#ca8a04", // text-yellow-600 equivalent
+        error: "#dc2626",   // text-red-600 equivalent
+        info: "#2563eb",    // text-blue-600 equivalent
+      };
+      
       const closeBgColors: Record<ToastType, string> = {
-        success: "#16a34a",
-        warning: "#eab308",
-        error: "#b91c1c",
-        info: "#1d4ed8",
-      };
-      const icons: Record<ToastType, ReactNode> = {
-        success: <CheckCircle2 className="h-5 w-5 text-emerald-100" />,
-        warning: <AlertTriangle className="h-5 w-5 text-yellow-700" />,
-        error: <XCircle className="h-5 w-5 text-white" />,
-        info: <CheckCircle2 className="h-5 w-5 text-blue-200" />,
+        success: "#bbf7d0", // hover:bg-green-200 equivalent
+        warning: "#fef08a", // hover:bg-yellow-200 equivalent
+        error: "#fecaca",   // hover:bg-red-200 equivalent
+        info: "#bfdbfe",    // hover:bg-blue-200 equivalent
       };
 
+      const icons: Record<ToastType, ReactNode> = {
+        success: <CheckCircle2 className="h-5 w-5" style={{ color: iconColors[type] }} />,
+        warning: <AlertTriangle className="h-5 w-5" style={{ color: iconColors[type] }} />,
+        error: <XCircle className="h-5 w-5" style={{ color: iconColors[type] }} />,
+        info: <Info className="h-5 w-5" style={{ color: iconColors[type] }} />,
+      };
+
+      // ✅ Force mobile positioning with custom styles
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      
       toast(
-        <div className="relative flex items-start gap-3 w-fit max-w-[90vw]">
-          <div className="flex-shrink-0">{icons[type]}</div>
-          <div className="flex-1 min-w-0 break-words text-base">{content}</div>
+        <div className="relative flex items-start gap-3 w-full max-w-[90vw]">
+          <div className="flex-shrink-0 mt-0.5">{icons[type]}</div>
+          <div className="flex-1 min-w-0 break-words text-sm font-medium" style={{ color: textColors[type] }}>
+            {content}
+          </div>
           <Button
             size="sm"
-            variant="default"
-            className="h-7 w-7 p-0 rounded-full flex items-center justify-center hover:brightness-110 transition"
-            style={{ backgroundColor: closeBgColors[type] }}
+            variant="ghost"
+            className="h-6 w-6 p-0 rounded-full flex items-center justify-center hover:scale-105 transition-all"
+            style={{ 
+              backgroundColor: 'transparent',
+              color: textColors[type]
+            }}
             onClick={() => toast.dismiss()}
           >
-            <X className="h-4 w-4 text-white" />
+            <X className="h-3 w-3" />
           </Button>
         </div>,
         {
           style: {
             backgroundColor: bgColors[type],
-            color: textColors[type],
-            padding: "0.6rem 0.85rem",
-            borderRadius: "0.75rem",
+            padding: "0.75rem 1rem",
+            borderRadius: "0.5rem",
             width: "fit-content",
-            minWidth: "140px",
-            maxWidth: "90vw",
+            minWidth: "200px",
+            maxWidth: isMobile ? "calc(100vw - 2rem)" : "90vw", // ✅ Better mobile width
             wordBreak: "break-word",
-            fontWeight: 500,
-            fontSize: "1rem",
+            border: `1px solid ${iconColors[type]}20`,
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+            // ✅ Force right positioning for mobile
+            ...(isMobile && {
+              right: "1rem",
+              left: "auto",
+              transform: "none",
+            })
           },
           duration: options?.duration ?? 4000,
+          position: "top-right",
+          // ✅ Additional mobile positioning
+          className: isMobile ? "!right-12 !left-auto !transform-none" : "",
         }
       );
     },
