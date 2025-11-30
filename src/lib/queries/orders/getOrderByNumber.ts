@@ -6,9 +6,10 @@ export interface OrderWithItems {
   order_number: string;
   customer_id: string;
   store_id: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped";
+  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
   subtotal: number;
   tax_amount: number;
+  discount_amount?: number; // ✅ ADDED discount_amount field
   shipping_fee: number;
   total_amount: number;
   currency: string;
@@ -58,7 +59,7 @@ export async function getOrderByNumber(
   try {
     console.log("Fetching order:", { storeId, orderNumber });
 
-    // Get the main order data
+    // Get the main order data - INCLUDING discount_amount
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select("*")
@@ -80,6 +81,16 @@ export async function getOrderByNumber(
         error: "Order not found",
       };
     }
+
+    console.log("📊 Raw order data from database:", {
+      id: order.id,
+      order_number: order.order_number,
+      subtotal: order.subtotal,
+      discount_amount: order.discount_amount, // ✅ Now includes discount_amount
+      shipping_fee: order.shipping_fee,
+      tax_amount: order.tax_amount,
+      total_amount: order.total_amount
+    });
 
     // Get customer data from store_customers table (NOT users table)
     let customer = null;
@@ -165,11 +176,18 @@ export async function getOrderByNumber(
       order_items: orderItems || [],
     };
 
-    console.log("Order fetched successfully:", {
+    console.log("✅ Order fetched successfully with discount_amount:", {
       orderNumber: orderWithItems.order_number,
       customer: orderWithItems.customer ? `${orderWithItems.customer.name} (${orderWithItems.customer.email})` : 'No customer',
       hasProfile: !!orderWithItems.customer_profile,
-      itemsCount: orderWithItems.order_items.length
+      itemsCount: orderWithItems.order_items.length,
+      financials: {
+        subtotal: orderWithItems.subtotal,
+        discount_amount: orderWithItems.discount_amount,
+        shipping_fee: orderWithItems.shipping_fee,
+        tax_amount: orderWithItems.tax_amount,
+        total_amount: orderWithItems.total_amount
+      }
     });
 
     return {

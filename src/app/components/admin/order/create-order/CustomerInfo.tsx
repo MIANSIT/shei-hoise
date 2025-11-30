@@ -1,3 +1,4 @@
+// app/components/admin/order/create-order/CustomerInfo.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React from "react";
@@ -23,6 +24,8 @@ const { Title, Text } = Typography;
 interface CustomerInfoProps {
   customerInfo: CustomerInfoType;
   setCustomerInfo: React.Dispatch<React.SetStateAction<CustomerInfoType>>;
+  onEmailChange: (email: string) => void;
+  emailError?: string;
   orderId: string;
   isExistingCustomer?: boolean;
   shippingFees?: ShippingFee[];
@@ -32,6 +35,8 @@ interface CustomerInfoProps {
 export default function CustomerInfo({
   customerInfo,
   setCustomerInfo,
+  onEmailChange,
+  emailError,
   orderId,
   isExistingCustomer = false,
   shippingFees = [],
@@ -48,6 +53,11 @@ export default function CustomerInfo({
 
   const handleFieldChange = (field: keyof CustomerInfoType, value: any) => {
     setCustomerInfo((prev) => ({ ...prev, [field]: value }));
+    
+    // Special handling for email to trigger validation
+    if (field === "email") {
+      onEmailChange(value);
+    }
   };
 
   // Filter valid shipping fees with proper locations
@@ -76,11 +86,6 @@ export default function CustomerInfo({
         customerInfo.deliveryOption
     );
   }, [customerInfo.deliveryOption, validShippingFees]);
-
-  console.log("Shipping Fees:", shippingFees); // Debug log
-  console.log("Valid Shipping Fees:", validShippingFees); // Debug log
-  console.log("Selected Delivery Option:", customerInfo.deliveryOption); // Debug log
-  console.log("Selected Shipping Fee:", selectedShippingFee); // Debug log
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -123,8 +128,16 @@ export default function CustomerInfo({
                 <Form.Item
                   label="Customer Email"
                   required
-                  validateStatus={!customerInfo.email ? "error" : ""}
-                  help={!customerInfo.email ? "Email is required" : ""}
+                  validateStatus={
+                    !customerInfo.email ? "error" : emailError ? "error" : ""
+                  }
+                  help={
+                    emailError 
+                      ? emailError 
+                      : !customerInfo.email 
+                      ? "Email is required" 
+                      : ""
+                  }
                 >
                   <Input
                     type="email"
@@ -163,7 +176,6 @@ export default function CustomerInfo({
                   />
                 </Form.Item>
               </Col>
-              {/* REMOVED: Password field column */}
             </Row>
 
             <Form.Item
@@ -302,7 +314,23 @@ export default function CustomerInfo({
             </Form.Item>
           </Form>
 
-          {!isExistingCustomer && (
+          {!isExistingCustomer && emailError && (
+            <Alert
+              message="Duplicate Email Detected"
+              description={
+                <Space direction="vertical" size={0}>
+                  <Text>{emailError}</Text>
+                  <Text type="secondary">
+                    Please use the existing customer option or use a different email address.
+                  </Text>
+                </Space>
+              }
+              type="error"
+              showIcon
+            />
+          )}
+
+          {!isExistingCustomer && !emailError && (
             <Alert
               message="Customer Record Creation"
               description={

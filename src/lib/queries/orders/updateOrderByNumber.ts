@@ -22,7 +22,7 @@ export interface UpdateOrderByNumberData {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped";
+  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   deliveryOption: string;
@@ -87,11 +87,12 @@ export async function updateOrderByNumber(
       };
     }
 
-    // Update the order
+    // Update the order - INCLUDING discount_amount
     const updateOrderData = {
       status,
       subtotal,
       tax_amount: taxAmount,
+      discount_amount: discount, // ✅ ADDED discount_amount field
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       payment_status: paymentStatus,
@@ -110,7 +111,7 @@ export async function updateOrderByNumber(
       updated_at: new Date().toISOString(),
     };
 
-    console.log("Updating order with:", updateOrderData);
+    console.log("Updating order with discount_amount:", updateOrderData);
 
     // FIXED: Use correct customer query for store_customers (name instead of first_name)
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
@@ -150,7 +151,7 @@ export async function updateOrderByNumber(
       orderProducts
     );
 
-    console.log("Order updated successfully");
+    console.log("Order updated successfully with discount_amount:", discount);
 
     // Fetch updated order with items
     const { data: finalOrder } = await supabaseAdmin
@@ -348,7 +349,7 @@ async function handleInventoryUpdates(
       );
     }
 
-    console.log("✅ Inventory updates completed");
+    console.log("✅ Inventory updates delivered");
   } catch (error) {
     console.error("❌ Error in handleInventoryUpdates:", error);
     // Don't throw error here as order update was successful
@@ -459,23 +460,23 @@ async function handleStatusChangeInventory(
       await reserveStock(orderItems);
     }
 
-    // From any status to completed - deduct reserved stock (finalize)
-    if (newStatus === "completed") {
-      console.log("🔄 Deducting reserved stock (order completed)");
+    // From any status to delivered - deduct reserved stock (finalize)
+    if (newStatus === "delivered") {
+      console.log("🔄 Deducting reserved stock (order delivered)");
       await deductReservedStock(orderItems);
     }
 
-    // From completed back to confirmed/pending - reverse the deduction
+    // From delivered back to confirmed/pending - reverse the deduction
     if (
-      oldStatus === "completed" &&
+      oldStatus === "delivered" &&
       (newStatus === "pending" || newStatus === "confirmed")
     ) {
-      console.log("🔄 Reversing completed order - reserving stock again");
+      console.log("🔄 Reversing delivered order - reserving stock again");
       await reserveStock(orderItems);
     }
 
     console.log(
-      `✅ Status change processing completed: ${oldStatus} -> ${newStatus}`
+      `✅ Status change processing delivered: ${oldStatus} -> ${newStatus}`
     );
   } catch (error) {
     console.error("❌ Error in handleStatusChangeInventory:", error);

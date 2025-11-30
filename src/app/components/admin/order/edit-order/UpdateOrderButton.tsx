@@ -1,3 +1,4 @@
+// app/components/admin/order/edit-order/UpdateOrderButton.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useState } from "react";
@@ -19,11 +20,12 @@ interface UpdateOrderButtonProps {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped";
+  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"; // ✅ FIXED: "delivered" not "delivered"
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   disabled?: boolean;
   onOrderUpdated?: () => void;
+  emailError?: string;
 }
 
 export default function UpdateOrderButton({
@@ -42,11 +44,21 @@ export default function UpdateOrderButton({
   paymentMethod,
   disabled = false,
   onOrderUpdated,
+  emailError,
 }: UpdateOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
 
   const showConfirm = () => {
+    // Prevent submission if there's an email error
+    if (emailError) {
+      notification.error({
+        message: "Cannot Update Order",
+        description: emailError,
+      });
+      return;
+    }
+
     modal.confirm({
       title: "Confirm Order Update",
       icon: <ExclamationCircleOutlined />,
@@ -55,7 +67,12 @@ export default function UpdateOrderButton({
           <Text>Are you sure you want to update this order?</Text>
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
-          <Text type="secondary">Total Amount: ৳{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">Email: {customerInfo.email}</Text>
+          <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
+          <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
+          <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
+          <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
+          <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
           <Text type="warning">
             This will update all order details including products, pricing, and
             customer information.
@@ -69,7 +86,7 @@ export default function UpdateOrderButton({
   };
 
   const handleUpdate = async () => {
-    if (disabled) return;
+    if (disabled || emailError) return;
 
     setIsLoading(true);
     try {
@@ -113,7 +130,7 @@ export default function UpdateOrderButton({
         })),
         subtotal: Number(subtotal),
         taxAmount: Number(taxAmount),
-        discount: Number(discount),
+        discount: Number(discount), // ✅ INCLUDING discount amount
         deliveryCost: Number(deliveryCost),
         totalAmount: Number(totalAmount),
         status: status,
@@ -123,7 +140,7 @@ export default function UpdateOrderButton({
         deliveryOption: customerInfo.deliveryMethod || "",
       };
 
-      console.log("📦 Sending update data:", updateData);
+      console.log("📦 Sending update data with discount:", updateData);
 
       const result = await dataService.updateOrderByNumber(updateData);
 
@@ -132,7 +149,7 @@ export default function UpdateOrderButton({
       if (result.success) {
         notification.success({
           message: "Order Updated Successfully",
-          description: `Order ${orderId} has been updated successfully.`,
+          description: `Order ${orderId} has been updated successfully with discount: ৳${discount.toFixed(2)}.`,
           duration: 4,
         });
 
@@ -175,7 +192,7 @@ export default function UpdateOrderButton({
       type="primary"
       size="large"
       loading={isLoading}
-      disabled={disabled || isLoading}
+      disabled={disabled || isLoading || !!emailError}
       onClick={showConfirm}
       style={{ 
         minWidth: "140px",
