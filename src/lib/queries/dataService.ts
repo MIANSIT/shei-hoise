@@ -71,6 +71,7 @@ export interface DataService {
     storeId: string,
     orderNumber: string
   ) => Promise<OrderWithItems | null>;
+  deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
 
   getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>;
 
@@ -159,6 +160,55 @@ const updateOrderByNumberImpl = async (
   }
 };
 
+// Implementation for deleteOrder
+const deleteOrderImpl = async (orderId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // First, check if the order exists
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, order_number')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching order:', fetchError);
+      return { success: false, error: 'Order not found' };
+    }
+
+    if (!order) {
+      return { success: false, error: 'Order not found' };
+    }
+
+    // Delete order items first (due to foreign key constraints)
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      console.error('Error deleting order items:', itemsError);
+      return { success: false, error: 'Failed to delete order items' };
+    }
+
+    // Delete the order
+    const { error: deleteError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (deleteError) {
+      console.error('Error deleting order:', deleteError);
+      return { success: false, error: 'Failed to delete order' };
+    }
+
+    console.log(`Order #${order.order_number} (ID: ${orderId}) deleted successfully`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in dataService.deleteOrder:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred' };
+  }
+};
+
 // REMOVED: getCustomerProfile implementation - it was broken
 
 export const dataService: DataService = {
@@ -170,6 +220,7 @@ export const dataService: DataService = {
   getStoreOrders,
   getOrderByNumber: getOrderByNumberImpl,
   updateOrderByNumber: updateOrderByNumberImpl,
+  deleteOrder: deleteOrderImpl,
   updateOrder,
   updateOrderStatus,
   updatePaymentStatus,
