@@ -112,6 +112,7 @@ export async function updateOrderByNumber(
 
     console.log("Updating order with:", updateOrderData);
 
+    // FIXED: Use correct customer query for store_customers (name instead of first_name)
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from("orders")
       .update(updateOrderData)
@@ -120,9 +121,9 @@ export async function updateOrderByNumber(
       .select(
         `
         *,
-        customers:customer_id (
+        store_customers:customer_id (
           id,
-          first_name,
+          name,
           email,
           phone
         )
@@ -158,9 +159,9 @@ export async function updateOrderByNumber(
         `
         *,
         order_items (*),
-        customers:customer_id (
+        store_customers:customer_id (
           id,
-          first_name,
+          name,
           email,
           phone
         )

@@ -73,10 +73,23 @@ export default function UpdateOrderButton({
 
     setIsLoading(true);
     try {
-      const updateData = {
+      console.log("🔄 Starting order update process...", {
         storeId,
         orderId: originalOrder.id,
         orderNumber: orderId,
+        customerInfo,
+        orderProductsCount: orderProducts.length,
+        financials: { subtotal, taxAmount, discount, deliveryCost, totalAmount },
+        status,
+        paymentStatus,
+        paymentMethod
+      });
+
+      // Prepare the update data with CORRECT structure matching UpdateOrderByNumberData
+      const updateData = {
+        storeId,
+        orderId: originalOrder.id, // Use the database order ID
+        orderNumber: orderId, // Use the order number for reference
         customerInfo: {
           name: customerInfo.name || "",
           phone: customerInfo.phone || "",
@@ -89,41 +102,68 @@ export default function UpdateOrderButton({
           postal_code: customerInfo.postal_code || "",
           customer_id: customerInfo.customer_id,
         },
-        orderProducts,
-        subtotal,
-        taxAmount,
-        discount,
-        deliveryCost,
-        totalAmount,
-        status,
-        paymentStatus,
-        paymentMethod,
-        currency: "BDT" as const,
+        orderProducts: orderProducts.map(product => ({
+          product_id: product.product_id,
+          variant_id: product.variant_id || null,
+          product_name: product.product_name,
+          variant_details: product.variant_details || {},
+          quantity: product.quantity,
+          unit_price: product.unit_price,
+          total_price: product.total_price,
+        })),
+        subtotal: Number(subtotal),
+        taxAmount: Number(taxAmount),
+        discount: Number(discount),
+        deliveryCost: Number(deliveryCost),
+        totalAmount: Number(totalAmount),
+        status: status,
+        paymentStatus: paymentStatus,
+        paymentMethod: paymentMethod,
+        currency: "BDT",
         deliveryOption: customerInfo.deliveryMethod || "",
       };
 
+      console.log("📦 Sending update data:", updateData);
+
       const result = await dataService.updateOrderByNumber(updateData);
+
+      console.log("✅ Update response:", result);
 
       if (result.success) {
         notification.success({
           message: "Order Updated Successfully",
           description: `Order ${orderId} has been updated successfully.`,
+          duration: 4,
         });
 
+        // Call the callback if provided
         if (onOrderUpdated) {
+          console.log("🔄 Calling onOrderUpdated callback");
           onOrderUpdated();
         }
       } else {
-        console.error("Order update failed:", result.error);
+        console.error("❌ Order update failed:", result.error);
         throw new Error(result.error || "Failed to update order");
       }
     } catch (error: any) {
-      console.error("Error updating order:", error);
+      console.error("💥 Error updating order:", error);
+      
+      // Show more detailed error message
+      let errorMessage = error.message || "Unknown error occurred. Please check the console for details.";
+      
+      // Handle specific error cases
+      if (error.message?.includes("order not found")) {
+        errorMessage = "Order not found. It may have been deleted.";
+      } else if (error.message?.includes("permission denied")) {
+        errorMessage = "You don't have permission to update this order.";
+      } else if (error.message?.includes("network")) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      }
+
       modal.error({
         title: "Order Update Failed",
-        content:
-          error.message ||
-          "Unknown error occurred. Please check the console for details.",
+        content: errorMessage,
+        width: 400,
       });
     } finally {
       setIsLoading(false);
@@ -135,9 +175,14 @@ export default function UpdateOrderButton({
       type="primary"
       size="large"
       loading={isLoading}
-      disabled={disabled}
+      disabled={disabled || isLoading}
       onClick={showConfirm}
-      style={{ minWidth: "120px" }}
+      style={{ 
+        minWidth: "140px",
+        height: "40px",
+        fontSize: "16px",
+        fontWeight: "600"
+      }}
     >
       {isLoading ? "Updating..." : "Update Order"}
     </Button>

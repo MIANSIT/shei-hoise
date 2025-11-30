@@ -22,14 +22,13 @@ export interface OrderWithItems {
   updated_at: string;
   customer?: {
     id: string;
-    first_name: string;
-    last_name: string;
+    name: string;
     email: string;
     phone: string;
-    user_type: string;
-    is_active: boolean;
+    profile_id?: string;
   };
   customer_profile?: {
+    address: string;
     address_line_1: string;
     address_line_2: string;
     city: string;
@@ -82,31 +81,64 @@ export async function getOrderByNumber(
       };
     }
 
-    // Get customer data from users table
+    // Get customer data from store_customers table (NOT users table)
     let customer = null;
     if (order.customer_id) {
-      const { data: userData, error: userError } = await supabaseAdmin
-        .from("users")
-        .select("*")
+      const { data: storeCustomer, error: customerError } = await supabaseAdmin
+        .from("store_customers")
+        .select("id, name, email, phone, profile_id")
         .eq("id", order.customer_id)
         .single();
 
-      if (!userError && userData) {
-        customer = userData;
+      if (!customerError && storeCustomer) {
+        customer = {
+          id: storeCustomer.id,
+          name: storeCustomer.name,
+          email: storeCustomer.email,
+          phone: storeCustomer.phone,
+          profile_id: storeCustomer.profile_id
+        };
+      } else {
+        console.log("No customer found in store_customers for ID:", order.customer_id);
       }
     }
 
-    // Get customer profile from user_profiles table
+    // Get customer profile from customer_profiles table (NOT user_profiles)
     let customerProfile = null;
-    if (order.customer_id) {
+    if (customer?.profile_id) {
       const { data: profile, error: profileError } = await supabaseAdmin
-        .from("user_profiles")
+        .from("customer_profiles")
         .select("*")
-        .eq("user_id", order.customer_id)
+        .eq("id", customer.profile_id)
         .single();
 
       if (!profileError && profile) {
-        customerProfile = profile;
+        customerProfile = {
+          address: profile.address,
+          address_line_1: profile.address_line_1,
+          address_line_2: profile.address_line_2,
+          city: profile.city,
+          postal_code: profile.postal_code,
+          country: profile.country,
+        };
+      }
+    } else if (order.customer_id) {
+      // Try to get profile by store_customer_id as fallback
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("customer_profiles")
+        .select("*")
+        .eq("store_customer_id", order.customer_id)
+        .single();
+
+      if (!profileError && profile) {
+        customerProfile = {
+          address: profile.address,
+          address_line_1: profile.address_line_1,
+          address_line_2: profile.address_line_2,
+          city: profile.city,
+          postal_code: profile.postal_code,
+          country: profile.country,
+        };
       }
     }
 
@@ -133,7 +165,12 @@ export async function getOrderByNumber(
       order_items: orderItems || [],
     };
 
-    console.log("Order fetched successfully:", orderWithItems);
+    console.log("Order fetched successfully:", {
+      orderNumber: orderWithItems.order_number,
+      customer: orderWithItems.customer ? `${orderWithItems.customer.name} (${orderWithItems.customer.email})` : 'No customer',
+      hasProfile: !!orderWithItems.customer_profile,
+      itemsCount: orderWithItems.order_items.length
+    });
 
     return {
       data: orderWithItems,
