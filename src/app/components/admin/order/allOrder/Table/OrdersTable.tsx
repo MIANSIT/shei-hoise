@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
+import { Avatar, Space, Tooltip, App, Card, Button, Modal } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder, OrderStatus, PaymentStatus } from "@/lib/types/order";
 import StatusTag from "../StatusFilter/StatusTag";
@@ -11,11 +11,12 @@ import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
-import { EditOutlined, DeleteOutlined, FileTextOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, FileTextOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
 import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
+import dataService from "@/lib/queries/dataService";
 
 interface Props {
   orders: StoreOrder[];
@@ -30,13 +31,14 @@ const OrdersTable: React.FC<Props> = ({
   onRefresh,
   loading = false,
 }) => {
-  const { notification } = App.useApp();
+  const { notification, modal } = App.useApp();
   const [searchOrderId, setSearchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<StoreOrder | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -59,12 +61,45 @@ const OrdersTable: React.FC<Props> = ({
     router.push(`/dashboard/orders/edit-order/${order.order_number}`);
   };
 
-  const handleDelete = (order: StoreOrder) => {
-    notification.warning({
-      message: "Delete",
-      description: `Are you sure you want to delete order #${order.id}?`,
+  const handleDelete = async (order: StoreOrder) => {
+    modal.confirm({
+      title: 'Confirm Delete',
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete order #${order.order_number}? This action cannot be undone.`,
+      okText: 'Yes, Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await performDelete(order.id);
+      },
     });
-    console.log("Delete order", order.id);
+  };
+
+  const performDelete = async (orderId: string) => {
+    try {
+      setDeleteLoading(orderId);
+      
+      // Call your API to delete the order
+      await dataService.deleteOrder(orderId);
+      
+      notification.success({
+        message: 'Order Deleted',
+        description: 'Order has been deleted successfully.',
+      });
+
+      // Refresh the orders list
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error: any) {
+      console.error('Error deleting order:', error);
+      notification.error({
+        message: 'Delete Failed',
+        description: error.message || 'Failed to delete order. Please try again.',
+      });
+    } finally {
+      setDeleteLoading(null);
+    }
   };
 
   const handleViewInvoice = (order: StoreOrder) => {
@@ -94,8 +129,11 @@ const OrdersTable: React.FC<Props> = ({
       </Tooltip>
       <Tooltip title="Delete Order">
         <DeleteOutlined
-          className="!text-red-600 cursor-pointer hover:!text-red-800 text-base"
-          onClick={() => handleDelete(order)}
+          className={`!text-red-600 cursor-pointer hover:!text-red-800 text-base ${
+            deleteLoading === order.id ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          onClick={() => deleteLoading !== order.id && handleDelete(order)}
+          spin={deleteLoading === order.id}
         />
       </Tooltip>
     </div>

@@ -65,7 +65,7 @@ const OrderControls: React.FC<Props> = ({
   }, [note, onSelectCancelNote]);
 
   const isCancelled = selectedStatus === "cancelled";
-  const isDelivered = selectedStatus === "delivered";
+  const isDelivered = selectedStatus === "delivered"; // ✅ FIXED: "delivered" not "delevered"
 
   const hasChanges =
     selectedStatus !== status ||

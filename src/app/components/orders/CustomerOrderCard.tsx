@@ -40,7 +40,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
 
     if (type === "order") {
       switch (s) {
-        case "completed":
+        case "delivered":
         case "delivered":
           return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
         case "pending":

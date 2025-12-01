@@ -18,11 +18,12 @@ interface SaveOrderButtonProps {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
+  status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
+  emailError?: string;
 }
 
 export default function SaveOrderButton({
@@ -40,12 +41,22 @@ export default function SaveOrderButton({
   paymentMethod,
   disabled = false,
   onCustomerCreated,
+  emailError,
 }: SaveOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   
   const showConfirm = () => {
+    // Prevent submission if there's an email error
+    if (emailError) {
+      notification.error({
+        message: "Cannot Create Order",
+        description: emailError,
+      });
+      return;
+    }
+
     modal.confirm({
       title: "Confirm Order Creation",
       icon: <ExclamationCircleOutlined />,
@@ -54,7 +65,12 @@ export default function SaveOrderButton({
           <Text>Are you sure you want to create this order?</Text>
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
-          <Text type="secondary">Total Amount: ৳{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">Email: {customerInfo.email}</Text>
+          <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
+          <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
+          <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
+          <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
+          <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
               A new customer record will be created in the system.
@@ -69,14 +85,15 @@ export default function SaveOrderButton({
   };
 
   const handleSave = async () => {
-    if (disabled) return;
+    if (disabled || emailError) return;
 
     setIsLoading(true);
     try {
       const finalCustomerInfo = { ...customerInfo };
       let customerCreated = false;
 
-      if (!customerInfo.customer_id) {
+      // Only create new customer if no customer_id exists AND no email error
+      if (!customerInfo.customer_id && !emailError) {
         try {
           if (
             !customerInfo.name ||
@@ -169,6 +186,14 @@ export default function SaveOrderButton({
         deliveryOption: finalCustomerInfo.deliveryMethod,
       };
 
+      console.log("📦 Sending order data with discount:", {
+        discount,
+        subtotal,
+        deliveryCost,
+        taxAmount,
+        totalAmount
+      });
+
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
@@ -185,6 +210,8 @@ export default function SaveOrderButton({
             <Space direction="vertical">
               <Text>{successMessage}</Text>
               <Text type="secondary">Order ID: {result.orderId}</Text>
+              <Text type="secondary">Customer Email: {customerInfo.email}</Text>
+              <Text type="secondary">Discount Applied: ৳{discount.toFixed(2)}</Text>
               <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
             </Space>
           ),
@@ -214,7 +241,7 @@ export default function SaveOrderButton({
       type="primary"
       size="large"
       loading={isLoading}
-      disabled={disabled}
+      disabled={disabled || !!emailError}
       onClick={showConfirm}
       style={{ minWidth: "120px" }}
     >

@@ -83,7 +83,7 @@ export default function CreateOrder() {
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [status, setStatus] = useState<
-    "pending" | "confirmed" | "completed" | "cancelled" | "shipped"
+    "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"
   >("pending");
   const [paymentStatus, setPaymentStatus] = useState<
     "pending" | "paid" | "failed" | "refunded"
@@ -100,8 +100,35 @@ export default function CreateOrder() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [hasFetchedData, setHasFetchedData] = useState(false);
 
+  // Email validation state
+  const [emailError, setEmailError] = useState<string>("");
+
   // Fetch store name for order ID prefix
   const [storeName, setStoreName] = useState<string>("SHEI");
+
+  // Validate email uniqueness
+  const validateEmailUniqueness = useCallback((email: string): boolean => {
+    if (!email) return true;
+    
+    const normalizedEmail = email.toLowerCase().trim();
+    const existingCustomer = customers.find(
+      customer => customer.email.toLowerCase().trim() === normalizedEmail
+    );
+    
+    if (existingCustomer && customerType === "new") {
+      setEmailError(`Email already exists for customer: ${existingCustomer.name || 'Unnamed Customer'}`);
+      return false;
+    }
+    
+    setEmailError("");
+    return true;
+  }, [customers, customerType]);
+
+  // Handle email changes with validation
+  const handleEmailChange = useCallback((email: string) => {
+    setCustomerInfo(prev => ({ ...prev, email }));
+    validateEmailUniqueness(email);
+  }, [validateEmailUniqueness]);
 
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
@@ -184,6 +211,11 @@ export default function CreateOrder() {
       setCustomers(res);
       setFilteredCustomers(res);
       console.log(`✅ Loaded ${res.length} customers from orders`);
+      
+      // Re-validate email after fetching customers
+      if (customerInfo.email) {
+        validateEmailUniqueness(customerInfo.email);
+      }
     } catch (err: any) {
       console.error("Error fetching customers:", err);
       notification.error({
@@ -197,7 +229,7 @@ export default function CreateOrder() {
     } finally {
       setCustomerLoading(false);
     }
-  }, [user?.store_id, notification]);
+  }, [user?.store_id, notification, customerInfo.email, validateEmailUniqueness]);
 
   // Main data fetching effect
   useEffect(() => {
@@ -277,54 +309,59 @@ export default function CreateOrder() {
     setTotalAmount(newSubtotal - discount + deliveryCost + taxAmount);
   }, [orderProducts, discount, deliveryCost, taxAmount]);
 
-// In your CreateOrder component - update handleCustomerSelect
-const handleCustomerSelect = async (customerId: string) => {
-  console.log("🎯 Customer selected:", customerId);
-  const customer = customers.find((c) => c.id === customerId);
-  
-  if (customer) {
-    setSelectedCustomer(customer);
-    setProfileLoading(true);
+  // Handle customer selection
+  const handleCustomerSelect = async (customerId: string) => {
+    console.log("🎯 Customer selected:", customerId);
+    const customer = customers.find((c) => c.id === customerId);
+    
+    if (customer) {
+      setSelectedCustomer(customer);
+      setProfileLoading(true);
 
-    // Set basic customer info
-    setCustomerInfo((prev) => ({
-      ...prev,
-      name: customer.name || "",
-      phone: customer.phone || "",
-      email: customer.email,
-      customer_id: customer.id, // This is store_customers.id
-    }));
-
-    // Use profile details if available (they're already loaded)
-    if (customer.profile_details) {
-      console.log("✅ Using pre-loaded profile_details for address");
+      // Set basic customer info
       setCustomerInfo((prev) => ({
         ...prev,
-        address: customer.profile_details?.address || customer.profile_details?.address_line_1 || "",
-        city: customer.profile_details?.city || "",
-        postal_code: customer.profile_details?.postal_code || "",
+        name: customer.name || "",
+        phone: customer.phone || "",
+        email: customer.email,
+        customer_id: customer.id, // This is store_customers.id
       }));
-      setCustomerProfile({
-        id: customer.id,
-        address: customer.profile_details.address || customer.profile_details.address_line_1 || "",
-        city: customer.profile_details.city || "",
-        postal_code: customer.profile_details.postal_code || "",
-        country: customer.profile_details.country || "",
-      });
-    } else {
-      console.log("❌ No profile details available for customer");
-      setCustomerProfile(null);
-    }
 
-    setProfileLoading(false);
-    console.log("🎉 Customer selection completed");
-  }
-};
+      // Clear email error when selecting existing customer
+      setEmailError("");
+
+      // Use profile details if available (they're already loaded)
+      if (customer.profile_details) {
+        console.log("✅ Using pre-loaded profile_details for address");
+        setCustomerInfo((prev) => ({
+          ...prev,
+          address: customer.profile_details?.address || customer.profile_details?.address_line_1 || "",
+          city: customer.profile_details?.city || "",
+          postal_code: customer.profile_details?.postal_code || "",
+        }));
+        setCustomerProfile({
+          id: customer.id,
+          address: customer.profile_details.address || customer.profile_details.address_line_1 || "",
+          city: customer.profile_details.city || "",
+          postal_code: customer.profile_details.postal_code || "",
+          country: customer.profile_details.country || "",
+        });
+      } else {
+        console.log("❌ No profile details available for customer");
+        setCustomerProfile(null);
+      }
+
+      setProfileLoading(false);
+      console.log("🎉 Customer selection delivered");
+    }
+  };
+
   // Reset to new customer
   const handleNewCustomer = () => {
     setSelectedCustomer(null);
     setCustomerProfile(null);
     setSearchTerm("");
+    setEmailError(""); // Clear email error
     setCustomerInfo({
       name: "",
       phone: "",
@@ -345,6 +382,7 @@ const handleCustomerSelect = async (customerId: string) => {
       handleNewCustomer();
     } else {
       setCustomerType("existing");
+      setEmailError(""); // Clear email error when switching to existing customer
     }
   };
 
@@ -378,7 +416,8 @@ const handleCustomerSelect = async (customerId: string) => {
     customerInfo.city &&
     customerInfo.deliveryMethod &&
     customerInfo.deliveryOption &&
-    orderProducts.length > 0;
+    orderProducts.length > 0 &&
+    !emailError; // Add email error check
 
   // Render customer content based on type
   const renderCustomerContent = () => {
@@ -387,6 +426,8 @@ const handleCustomerSelect = async (customerId: string) => {
         <CustomerInfo
           customerInfo={customerInfo}
           setCustomerInfo={setCustomerInfo}
+          onEmailChange={handleEmailChange}
+          emailError={emailError}
           orderId={orderId}
           shippingFees={shippingFees}
           settingsLoading={settingsLoading}
@@ -453,7 +494,6 @@ const handleCustomerSelect = async (customerId: string) => {
                       {customer.name || "Unnamed Customer"}
                       {customer.email && ` - ${customer.email}`}
                       {customer.phone && ` - ${customer.phone}`}
-                      {/* {customer.order_count > 0 && ` (${customer.order_count} orders)`} */}
                     </span>
                   </Space>
                 </Option>
@@ -527,6 +567,8 @@ const handleCustomerSelect = async (customerId: string) => {
                 <CustomerInfo
                   customerInfo={customerInfo}
                   setCustomerInfo={setCustomerInfo}
+                  onEmailChange={handleEmailChange}
+                  emailError={emailError}
                   orderId={orderId}
                   isExistingCustomer={true}
                   shippingFees={shippingFees}
@@ -730,8 +772,9 @@ const handleCustomerSelect = async (customerId: string) => {
                   status={status}
                   paymentStatus={paymentStatus}
                   paymentMethod={paymentMethod}
-                  disabled={!isFormValid || !user?.store_id}
+                  disabled={!isFormValid || !user?.store_id || !!emailError}
                   onCustomerCreated={fetchCustomers}
+                  emailError={emailError}
                 />
               </Col>
             </Row>
