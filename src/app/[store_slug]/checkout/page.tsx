@@ -200,8 +200,57 @@ export default function CheckoutPage() {
     };
   };
 
+  const updateCustomerProfile = async (
+    profileId: string,
+    values: CustomerCheckoutFormValues
+  ) => {
+    return supabase
+      .from("customer_profiles")
+      .update({
+        address: values.shippingAddress,
+        city: values.city,
+        postal_code: values.postCode,
+        country: values.country,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profileId);
+  };
+
+  const createCustomerProfile = async (
+    storeCustomerId: string,
+    values: CustomerCheckoutFormValues
+  ) => {
+    const profileData = {
+      store_customer_id: storeCustomerId,
+      address: values.shippingAddress,
+      city: values.city,
+      postal_code: values.postCode,
+      country: values.country,
+    };
+
+    return supabase
+      .from("customer_profiles")
+      .insert([profileData])
+      .select("id")
+      .single();
+  };
+
+  const upgradeGuestToAuth = async (values: CustomerCheckoutFormValues) => {
+    return supabase.auth.signUp({
+      email: values.email.toLowerCase(),
+      password: values.password!,
+      options: {
+        data: {
+          first_name: values.name.split(" ")[0] || values.name,
+          last_name: values.name.split(" ").slice(1).join(" ") || "",
+          phone: values.phone,
+        },
+      },
+    });
+  };
+
   const handleCheckoutSubmit = async (values: CustomerCheckoutFormValues) => {
-    console.log("🔄 Checkout form submitted with values:", {
+    console.log("🔄 Checkout submit:", {
       ...values,
       password: values.password ? "***" : "not-provided",
       isUserLoggedIn,
@@ -210,249 +259,103 @@ export default function CheckoutPage() {
       shippingFee,
     });
 
-    // ✅ Early validation
-    if (cartItems.length === 0) {
-      notify.error("Your cart is empty");
-      return;
-    }
-
-    if (!selectedShipping) {
-      notify.error("Please select a shipping method");
-      return;
-    }
+    if (cartItems.length === 0) return notify.error("Your cart is empty");
+    if (!selectedShipping)
+      return notify.error("Please select a shipping method");
 
     setIsProcessing(true);
 
     try {
-      // Add shipping information to form data
       const formDataWithShipping = {
         ...values,
         shippingMethod: selectedShipping,
-        shippingFee: shippingFee,
+        shippingFee,
       };
 
       let storeCustomerId: string | undefined;
 
-      // ✅ Scenario 1 - User is already logged in
+      // ------------------------
+      //  🔐 LOGGED IN USERFLOW
+      // ------------------------
       if (isUserLoggedIn && currentUser) {
-        console.log(
-          "✅ User is logged in, finding their store customer record"
-        );
+        const { data: storeCustomer, error } = await supabase
+          .from("store_customers")
+          .select("id, profile_id")
+          .eq("auth_user_id", currentUser.id)
+          .maybeSingle();
 
-        // Find the store_customer record for this auth user
-        const { data: storeCustomer, error: storeCustomerError } =
-          await supabase
-            .from("store_customers")
-            .select("id, profile_id")
-            .eq("auth_user_id", currentUser.id)
-            .maybeSingle();
+        if (error) console.error("❌ store_customer lookup failed", error);
 
-        if (storeCustomerError) {
-          console.error("❌ Error finding store customer:", storeCustomerError);
-        } else if (storeCustomer) {
+        if (storeCustomer) {
           storeCustomerId = storeCustomer.id;
-          console.log("✅ Found store customer record:", storeCustomerId);
 
-          // Update customer profile if exists
           if (storeCustomer.profile_id) {
-            console.log("📝 Updating customer profile for logged-in user");
-            const { error: profileUpdateError } = await supabase
-              .from("customer_profiles")
-              .update({
-                address: values.shippingAddress,
-                city: values.city,
-                postal_code: values.postCode,
-                country: values.country,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", storeCustomer.profile_id);
-
-            if (profileUpdateError) {
-              console.error("❌ Profile update failed:", profileUpdateError);
-            } else {
-              console.log("✅ Customer profile updated for logged-in user");
-            }
+            await updateCustomerProfile(storeCustomer.profile_id, values);
+            console.log("📝 Updated profile for logged-in user");
           }
-        } else {
-          console.log("⚠️ No store customer record found for auth user");
         }
       }
 
-      // ✅ Scenario 2 - User is NOT logged in (GUEST or EXISTING CUSTOMER)
+      // ------------------------
+      // 🧑‍🧾 GUEST / NON-LOGGED USER
+      // ------------------------
       if (!isUserLoggedIn) {
-        console.log(
-          "🔄 User is not logged in, handling guest/existing customer order"
-        );
+        const existing = await getCustomerByEmail(values.email, store_slug);
 
-        // First, check if customer already exists in store_customers
-        const existingCustomer = await getCustomerByEmail(
-          values.email,
-          store_slug
-        );
+        if (existing) {
+          storeCustomerId = existing.id;
 
-        if (existingCustomer) {
-          console.log("📧 Existing customer found:", {
-            id: existingCustomer.id,
-            auth_user_id: existingCustomer.auth_user_id,
-            profile_id: existingCustomer.profile_id,
-          });
-
-          storeCustomerId = existingCustomer.id;
-
-          // ✅ Update the existing customer profile with new address information
-          if (
-            existingCustomer.profile_id &&
-            existingCustomer.customer_profiles
-          ) {
-            console.log(
-              "📝 Updating existing customer profile with new address"
-            );
-            const { error: profileUpdateError } = await supabase
-              .from("customer_profiles")
-              .update({
-                address: values.shippingAddress,
-                city: values.city,
-                postal_code: values.postCode,
-                country: values.country,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", existingCustomer.profile_id);
-
-            if (profileUpdateError) {
-              console.error("❌ Profile update failed:", profileUpdateError);
-            } else {
-              console.log("✅ Customer profile updated with new address");
-            }
-          } else if (existingCustomer.profile_id) {
-            // Profile exists but we don't have the data, still try to update
-            console.log("📝 Updating customer profile (ID only)");
-            const { error: profileUpdateError } = await supabase
-              .from("customer_profiles")
-              .update({
-                address: values.shippingAddress,
-                city: values.city,
-                postal_code: values.postCode,
-                country: values.country,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", existingCustomer.profile_id);
-
-            if (profileUpdateError) {
-              console.error("❌ Profile update failed:", profileUpdateError);
-            } else {
-              console.log("✅ Customer profile updated successfully");
-            }
+          // 🔄 Update or create profile
+          if (existing.profile_id) {
+            await updateCustomerProfile(existing.profile_id, values);
           } else {
-            console.log("📭 No profile found for existing customer");
-            // Create a profile for the existing customer
-            console.log("📝 Creating new profile for existing customer");
-            const profileData = {
-              store_customer_id: existingCustomer.id,
-              address: values.shippingAddress,
-              city: values.city,
-              postal_code: values.postCode,
-              country: values.country,
-            };
-
-            const { data: newProfile, error: profileCreateError } =
-              await supabase
-                .from("customer_profiles")
-                .insert([profileData])
-                .select("id")
-                .single();
-
-            if (profileCreateError) {
-              console.error("❌ Profile creation failed:", profileCreateError);
-            } else if (newProfile) {
-              console.log(
-                "✅ New profile created for existing customer:",
-                newProfile.id
-              );
-
-              // Update store_customer with profile_id
+            const { data: newProfile } = await createCustomerProfile(
+              existing.id,
+              values
+            );
+            if (newProfile?.id) {
               await supabase
                 .from("store_customers")
                 .update({ profile_id: newProfile.id })
-                .eq("id", existingCustomer.id);
-
-              console.log("✅ Store customer updated with profile_id");
+                .eq("id", existing.id);
             }
           }
 
-          // ✅ If customer exists but no auth account AND password is provided, upgrade to auth account
-          if (
-            !existingCustomer.auth_user_id &&
-            values.password &&
-            values.password.length > 0
-          ) {
-            console.log("🔐 Creating auth account for existing customer");
+          // 🔐 Upgrade guest → auth
+          if (!existing.auth_user_id && values.password) {
             const { data: authData, error: authError } =
-              await supabase.auth.signUp({
-                email: values.email.toLowerCase(),
-                password: values.password,
-                options: {
-                  data: {
-                    first_name: values.name.split(" ")[0] || values.name,
-                    last_name: values.name.split(" ").slice(1).join(" ") || "",
-                    phone: values.phone,
-                  },
-                },
-              });
+              await upgradeGuestToAuth(values);
 
-            if (authError) {
-              console.error("❌ Auth account creation failed:", authError);
-              // Continue as guest - don't fail the order
-            } else if (authData.user) {
-              console.log(
-                "✅ Auth account created for existing customer:",
-                authData.user.id
-              );
-
-              // ✅ Update store_customer with auth_user_id
+            if (!authError && authData.user) {
               await supabase
                 .from("store_customers")
                 .update({
                   auth_user_id: authData.user.id,
                   updated_at: new Date().toISOString(),
                 })
-                .eq("id", existingCustomer.id);
-
-              console.log("✅ Store customer updated with auth_user_id");
+                .eq("id", existing.id);
             }
           }
         } else {
-          // ✅ Scenario 3 - Create NEW customer (guest or with password)
-          console.log("👤 Creating new customer - no existing customer found");
+          // 🆕 Create brand new customer
           const customerResult = await createCheckoutCustomer({
             ...values,
             store_slug,
           });
 
-          if (customerResult.success) {
-            console.log("✅ Customer created successfully:", {
-              customerId: customerResult.customerId,
-              authUserId: customerResult.authUserId,
-              profileId: customerResult.profileId,
-            });
-
-            storeCustomerId = customerResult.customerId;
-          } else {
-            console.error("❌ Customer creation failed:", customerResult.error);
-            notify.error(
-              customerResult.error ||
-                "Failed to create customer. Please try again."
+          if (!customerResult.success) {
+            return notify.error(
+              customerResult.error || "Failed to create customer"
             );
-            return;
           }
+
+          storeCustomerId = customerResult.customerId;
         }
       }
 
-      // ✅ Process the order (storeCustomerId is from store_customers table)
-      console.log("📦 Processing order with store customer ID:", {
-        storeCustomerId,
-        type: storeCustomerId ? "has_customer" : "guest",
-      });
-
+      // ------------------------
+      // 📦 PROCESS ORDER
+      // ------------------------
       const result = await processOrder(
         formDataWithShipping,
         storeCustomerId,
@@ -463,40 +366,24 @@ export default function CheckoutPage() {
         calculations
       );
 
-      if (result.success) {
-        console.log("✅ Order processed successfully, showing invoice");
-        const tempOrderData = createTempOrderData(
-          values,
-          storeCustomerId,
-          result
-        );
-        setInvoiceData(tempOrderData);
-        setShowInvoice(true);
-
-        if (values.password && values.password.length > 0) {
-          notify.success(
-            "Congratulations! Your account has been created and order placed successfully."
-          );
-        } else {
-          notify.success(
-            "Congratulations! Your order has been placed successfully."
-          );
-        }
-
-        setTimeout(() => {
-          clearStoreCart(store_slug);
-          // clearFormData();
-        }, 3000);
-      } else {
-        notify.error(
-          result.error || "Failed to place order. Please try again."
-        );
+      if (!result.success) {
+        return notify.error(result.error || "Failed to place order");
       }
-    } catch (error: any) {
-      console.error("❌ Checkout process error:", error);
-      notify.error(
-        error.message || "An unexpected error occurred. Please try again."
+
+      // Show invoice
+      setInvoiceData(createTempOrderData(values, storeCustomerId, result));
+      setShowInvoice(true);
+
+      notify.success(
+        values.password
+          ? "Congratulations! Your account has been created and your order placed."
+          : "Order placed successfully!"
       );
+
+      setTimeout(() => clearStoreCart(store_slug), 3000);
+    } catch (error: any) {
+      console.error("❌ Checkout error:", error);
+      notify.error(error.message || "Unexpected error. Please try again.");
     } finally {
       setIsProcessing(false);
     }
