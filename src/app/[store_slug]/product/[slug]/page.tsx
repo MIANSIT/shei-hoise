@@ -235,29 +235,29 @@ export default function ProductPage() {
 
   if (!product) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <BackButton href={`/${store_slug}`} label="Back to Products" />
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-24 h-24 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+      <div className='container mx-auto px-4 py-6'>
+        <BackButton href={`/${store_slug}`} label='Back to Products' />
+        <div className='flex flex-col items-center justify-center min-h-[50vh] text-center'>
+          <div className='max-w-md mx-auto'>
+            <div className='w-24 h-24 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center'>
               <svg
-                className="w-12 h-12 text-muted-foreground"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                className='w-12 h-12 text-muted-foreground'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
               >
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   strokeWidth={2}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  d='M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
+            <h2 className='text-2xl font-bold text-foreground mb-2'>
               Product Not Found
             </h2>
-            <p className="text-muted-foreground mb-6">
+            <p className='text-muted-foreground mb-6'>
               Sorry, we couldn&apos;t find the product you&apos;re looking for.
             </p>
           </div>
@@ -318,25 +318,25 @@ export default function ProductPage() {
     switch (stockStatus) {
       case "out-of-stock":
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+          <span className='inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200'>
             Out of Stock
           </span>
         );
       case "max-in-cart":
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+          <span className='inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200'>
             Max quantity is already in your cart
           </span>
         );
       case "limited":
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+          <span className='inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200'>
             Limited Stock
           </span>
         );
       case "available":
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+          <span className='inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200'>
             In Stock
           </span>
         );
@@ -473,11 +473,11 @@ export default function ProductPage() {
     product.product_variants && product.product_variants.length > 0;
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
-      <BackButton href={`/${store_slug}`} label="Back to Products" />
+    <div className='container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10'>
+      <BackButton href={`/${store_slug}`} label='Back to Products' />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start mt-6">
-        <div className="w-full">
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start mt-6'>
+        <div className='w-full'>
           <ProductImage
             images={images}
             alt={product.name}
@@ -485,7 +485,7 @@ export default function ProductPage() {
           />
         </div>
 
-        <div className="flex flex-col justify-start w-full">
+        <div className='flex flex-col justify-start w-full'>
           <ProductTitle
             name={product.name}
             category={product.categories?.name || "Uncategorized"}
@@ -498,16 +498,16 @@ export default function ProductPage() {
             discount={discount}
           />
 
-          <p className="text-muted-foreground mt-4 text-sm sm:text-base md:text-lg">
+          <p className='text-muted-foreground mt-4 text-sm sm:text-base md:text-lg'>
             {product.description || "No description available."}
           </p>
 
           {hasVariants && (
-            <div className="mt-6">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
+            <div className='mt-6'>
+              <h4 className='text-sm font-medium text-muted-foreground mb-3'>
                 Select Variant:
               </h4>
-              <div className="flex flex-wrap gap-2">
+              <div className='flex flex-wrap gap-2'>
                 {product.product_variants.map((variant) => {
                   const variantStock =
                     variant.product_inventory?.[0]?.quantity_available || 0;
@@ -538,16 +538,16 @@ export default function ProductPage() {
                           : "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
                       } ${!isAvailable ? "opacity-50" : ""}`}
                     >
-                      <div className="flex items-center gap-1">
+                      <div className='flex items-center gap-1'>
                         <span>{variant.variant_name}</span>
                         {variant.color && <span>- {variant.color}</span>}
                         {variantDiscount > 0 && (
-                          <span className="ml-1 text-xs text-green-600">
+                          <span className='ml-1 text-xs text-green-600'>
                             (-{variantDiscount}%)
                           </span>
                         )}
                         {!isAvailable && (
-                          <span className="ml-1 text-xs text-red-600">
+                          <span className='ml-1 text-xs text-red-600'>
                             (Out of Stock)
                           </span>
                         )}
@@ -559,65 +559,65 @@ export default function ProductPage() {
             </div>
           )}
 
-          <div className="mt-4">{getStockBadge()}</div>
+          <div className='mt-4'>{getStockBadge()}</div>
 
           {/* Updated Quantity and Cart Management Section */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-6">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-sm font-medium text-muted-foreground">
+          <div className='flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-6'>
+            <div className='flex flex-col gap-2'>
+              <div className='flex items-center gap-4 flex-wrap'>
+                <span className='text-sm font-medium text-muted-foreground'>
                   Quantity:
                 </span>
 
                 {/* Quantity Selector */}
-                <div className="flex items-center gap-2">
+                <div className='flex items-center gap-2'>
                   <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
+                    variant='outline'
+                    size='icon'
+                    className='h-7 w-7 rounded-md cursor-pointer hover:bg-accent'
                     onClick={handleDecrement}
                     disabled={quantity <= 1 || isOutOfStock}
                   >
-                    <Minus className="h-3 w-3" />
+                    <Minus className='h-3 w-3' />
                   </Button>
 
                   <div
-                    className="relative w-12 h-7 flex items-center justify-center cursor-pointer"
+                    className='relative w-12 h-7 flex items-center justify-center cursor-pointer'
                     onClick={handleInputClick}
                   >
                     {isEditing ? (
                       <input
-                        type="text"
+                        type='text'
                         value={inputValue}
                         onChange={(e) => handleInputChange(e.target.value)}
                         onBlur={handleInputBlur}
                         onKeyPress={handleInputKeyPress}
-                        className="w-full h-full text-center border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        className='w-full h-full text-center border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent'
                         autoFocus
                       />
                     ) : (
-                      <span className="text-sm font-medium">{quantity}</span>
+                      <span className='text-sm font-medium'>{quantity}</span>
                     )}
                   </div>
 
                   <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
+                    variant='outline'
+                    size='icon'
+                    className='h-7 w-7 rounded-md cursor-pointer hover:bg-accent'
                     onClick={handleIncrement}
                     disabled={isOutOfStock || quantity >= remainingStock}
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className='h-3 w-3' />
                   </Button>
                 </div>
 
-                <div className="ml-2">
+                <div className='ml-2'>
                   <motion.span
                     key={totalPrice}
                     initial={{ scale: 1.1 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2 }}
-                    className="text-lg font-semibold text-foreground"
+                    className='text-lg font-semibold text-foreground'
                   >
                     ৳{totalPrice.toFixed(2)}
                   </motion.span>
@@ -630,7 +630,7 @@ export default function ProductPage() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="text-xs text-destructive mt-1"
+                  className='text-xs text-destructive mt-1'
                 >
                   Maximum quantity reached
                 </motion.p>
@@ -649,18 +649,18 @@ export default function ProductPage() {
                 (isQuantityExceeded || remainingStock === 0) && !isOutOfStock
               }
               currentCartQuantity={cartQuantity}
-              className=""
+              className=''
             />
           </div>
         </div>
       </div>
 
-      <div className="mt-12">
-        <h3 className="text-2xl font-semibold mb-4">Product Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className='mt-12'>
+        <h3 className='text-2xl font-semibold mb-4'>Product Information</h3>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           <div>
-            <h5 className="font-medium mb-2">Product Details</h5>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h5 className='font-medium mb-2'>Product Details</h5>
+            <ul className='space-y-2 text-sm text-muted-foreground'>
               <li>
                 <strong>Category:</strong>{" "}
                 {product.categories?.name || "Uncategorized"}
@@ -684,8 +684,8 @@ export default function ProductPage() {
           </div>
 
           <div>
-            <h5 className="font-medium mb-2">Product Pricing</h5>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h5 className='font-medium mb-2'>Product Pricing</h5>
+            <ul className='space-y-2 text-sm text-muted-foreground'>
               <li>
                 <strong>Base Price:</strong> ৳{originalPrice.toFixed(2)}
               </li>

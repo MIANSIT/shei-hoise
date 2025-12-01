@@ -21,6 +21,7 @@ import { AnimatePresence } from "framer-motion";
 import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
+import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -199,7 +200,7 @@ export default function CheckoutPage() {
     };
   };
 
-  const handleCheckoutSubmit = async (values: any) => {
+  const handleCheckoutSubmit = async (values: CustomerCheckoutFormValues) => {
     console.log("🔄 Checkout form submitted with values:", {
       ...values,
       password: values.password ? "***" : "not-provided",
@@ -509,9 +510,9 @@ export default function CheckoutPage() {
   // Store not found
   if (storeError || !invoiceStoreData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold mb-4'>Store Not Found</h1>
           <p>The store you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
@@ -536,7 +537,7 @@ export default function CheckoutPage() {
         selectedShipping={selectedShipping}
         shippingFee={shippingFee}
         isProcessing={isSubmitting}
-        mode="checkout"
+        mode='checkout'
       />
 
       <AnimatePresence>
