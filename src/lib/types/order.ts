@@ -87,6 +87,7 @@ export interface StoreOrder {
   status: OrderStatus;
   subtotal: number;
   tax_amount: number;
+  discount_amount?: number; // ✅ ADDED discount_amount field
   shipping_fee: number;
   total_amount: number;
   currency: string;
@@ -141,7 +142,7 @@ export interface CreateOrderData {
   orderProducts: OrderProduct[];
   subtotal: number;
   taxAmount: number;
-  discount: number;
+  discount: number; // This will be stored as discount_amount in database
   deliveryCost: number;
   totalAmount: number;
   status: OrderStatus;
@@ -167,7 +168,7 @@ export interface CustomerOrderData {
   orderProducts: OrderProduct[];
   subtotal: number;
   taxAmount: number;
-  discount: number;
+  discount: number; // This will be stored as discount_amount in database
   deliveryCost: number;
   totalAmount: number;
   status: OrderStatus;

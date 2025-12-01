@@ -29,6 +29,7 @@ interface UserFormProps {
   defaultValues?: any;
   onSubmit?: (values: any) => void;
   mode?: "login" | "signup";
+  isAdmin?: boolean; // Add this prop
 }
 
 export function UserForm({
@@ -36,12 +37,16 @@ export function UserForm({
   theme = "light",
   defaultValues,
   onSubmit,
-  mode = "login"
+  mode = "login",
+  isAdmin = false // Default to false
 }: UserFormProps) {
   const { success, error } = useSheiNotification();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
+  
+  // ✅ Fix: Redirect to dashboard for admin login, otherwise use redirect param or root
+  const redirectTo = searchParams.get("redirect") || (isAdmin ? "/dashboard" : "/");
+  
   const emailFromParams = searchParams.get("email");
 
   const schema = mode === "signup" ? signUpSchema : LoginFormSchema;
