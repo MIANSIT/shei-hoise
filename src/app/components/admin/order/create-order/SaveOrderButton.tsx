@@ -16,6 +16,7 @@ interface SaveOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  additionalCharges: number; // ✅ ADDED: New prop
   deliveryCost: number;
   totalAmount: number;
   status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
@@ -34,6 +35,7 @@ export default function SaveOrderButton({
   subtotal,
   taxAmount,
   discount,
+  additionalCharges, // ✅ ADDED
   deliveryCost,
   totalAmount,
   status,
@@ -48,7 +50,6 @@ export default function SaveOrderButton({
   const router = useRouter();
   
   const showConfirm = () => {
-    // Prevent submission if there's an email error
     if (emailError) {
       notification.error({
         message: "Cannot Create Order",
@@ -68,6 +69,7 @@ export default function SaveOrderButton({
           <Text type="secondary">Email: {customerInfo.email}</Text>
           <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
           <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
+          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text> {/* ✅ ADDED */}
           <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
           <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
           <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
@@ -92,7 +94,6 @@ export default function SaveOrderButton({
       const finalCustomerInfo = { ...customerInfo };
       let customerCreated = false;
 
-      // Only create new customer if no customer_id exists AND no email error
       if (!customerInfo.customer_id && !emailError) {
         try {
           if (
@@ -136,7 +137,6 @@ export default function SaveOrderButton({
         } catch (customerError: any) {
           console.error("Error creating customer:", customerError);
 
-          // Show detailed error and ask if they want to continue
           const shouldContinue = await new Promise((resolve) => {
             modal.confirm({
               title: "Customer Creation Failed",
@@ -162,10 +162,8 @@ export default function SaveOrderButton({
 
           if (!shouldContinue) {
             setIsLoading(false);
-            return; // Stop the process if user cancels
+            return;
           }
-
-          // Continue without customer_id
         }
       }
 
@@ -177,6 +175,7 @@ export default function SaveOrderButton({
         subtotal,
         taxAmount,
         discount,
+        additionalCharges, // ✅ ADDED: Include additional charges
         deliveryCost,
         totalAmount,
         status,
@@ -186,8 +185,9 @@ export default function SaveOrderButton({
         deliveryOption: finalCustomerInfo.deliveryMethod,
       };
 
-      console.log("📦 Sending order data with discount:", {
+      console.log("📦 Sending order data with additional charges:", {
         discount,
+        additionalCharges, // ✅ ADDED
         subtotal,
         deliveryCost,
         taxAmount,
@@ -212,6 +212,7 @@ export default function SaveOrderButton({
               <Text type="secondary">Order ID: {result.orderId}</Text>
               <Text type="secondary">Customer Email: {customerInfo.email}</Text>
               <Text type="secondary">Discount Applied: ৳{discount.toFixed(2)}</Text>
+              <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text> {/* ✅ ADDED */}
               <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
             </Space>
           ),

@@ -10,6 +10,7 @@ export interface CreateOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  additionalCharges: number; // ✅ ADDED: New field
   deliveryCost: number;
   totalAmount: number;
   status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
@@ -50,22 +51,20 @@ async function validateStockAvailability(
       let inventoryQuery;
 
       if (item.variant_id) {
-        // ✅ Check VARIANT inventory - should be unique per variant
         console.log(`🔍 Checking VARIANT inventory for variant ${item.variant_id}`);
         inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("quantity_available, quantity_reserved")
           .eq("variant_id", item.variant_id)
-          .single(); // Variants should have unique inventory records
+          .single();
       } else {
-        // ✅ Check BASE PRODUCT inventory - FIXED: Use .maybeSingle() and handle duplicates
         console.log(`🔍 Checking BASE PRODUCT inventory for product ${item.product_id}`);
         inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("quantity_available, quantity_reserved")
           .eq("product_id", item.product_id)
           .is("variant_id", null)
-          .maybeSingle(); // Use maybeSingle to handle no records or multiple records
+          .maybeSingle();
       }
 
       const { data: inventory, error } = await inventoryQuery;
@@ -78,13 +77,10 @@ async function validateStockAvailability(
         is_variant: !!item.variant_id,
       });
 
-      // ✅ FIXED: Handle the case where there are multiple inventory records for base products
       if (error) {
-        // If it's a "Cardinality violation" error (multiple rows), we need to handle it
         if (error.code === 'PGRST116' && !item.variant_id) {
           console.log(`⚠️ Multiple inventory records found for base product "${item.product_name}". Checking all records...`);
 
-          // Query for ALL inventory records for this base product
           const { data: allInventory, error: multiError } = await supabaseAdmin
             .from("product_inventory")
             .select("quantity_available, quantity_reserved")
@@ -108,7 +104,6 @@ async function validateStockAvailability(
             };
           }
 
-          // ✅ Use the FIRST inventory record (you might want to sum them instead)
           const firstInventory = allInventory[0];
           console.log(`✅ Using first inventory record for "${item.product_name}":`, firstInventory);
 
@@ -121,11 +116,9 @@ async function validateStockAvailability(
             };
           }
 
-          // Continue to next item
           continue;
         }
 
-        // Handle other errors
         const inventoryType = item.variant_id ? 'variant' : 'product';
         return {
           success: false,
@@ -133,7 +126,6 @@ async function validateStockAvailability(
         };
       }
 
-      // ✅ Handle case where no inventory record is found
       if (!inventory) {
         return {
           success: false,
@@ -187,7 +179,6 @@ async function updateInventoryForOrder(
       );
 
       if (item.variant_id) {
-        // ✅ VARIANT PRODUCT: Only update variant inventory
         console.log(
           `📦 This is a VARIANT product. Only updating variant inventory for variant_id: ${item.variant_id}`
         );
@@ -216,7 +207,6 @@ async function updateInventoryForOrder(
           continue;
         }
 
-        // Calculate new quantities for VARIANT
         const updateData: any = {};
         const currentAvailable = inventoryData.quantity_available || 0;
         const currentReserved = inventoryData.quantity_reserved || 0;
@@ -241,7 +231,6 @@ async function updateInventoryForOrder(
 
         updateData.updated_at = new Date().toISOString();
 
-        // Update ONLY the variant inventory
         const { error: updateError } = await supabaseAdmin
           .from("product_inventory")
           .update(updateData)
@@ -269,10 +258,8 @@ async function updateInventoryForOrder(
           });
         }
       } else {
-        // ✅ BASE PRODUCT (no variants): Handle multiple inventory records
         console.log(`📦 This is a BASE product. Checking for inventory records for product_id: ${item.product_id}`);
 
-        // First, get ALL inventory records for this base product
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("id, quantity_available, quantity_reserved")
@@ -305,11 +292,9 @@ async function updateInventoryForOrder(
           continue;
         }
 
-        // ✅ Use the FIRST inventory record (you might want to choose a different strategy)
         const inventoryData = inventoryRecords[0];
         console.log(`✅ Using first inventory record for base product update:`, inventoryData);
 
-        // Calculate new quantities for BASE PRODUCT
         const updateData: any = {};
         const currentAvailable = inventoryData.quantity_available || 0;
         const currentReserved = inventoryData.quantity_reserved || 0;
@@ -334,11 +319,10 @@ async function updateInventoryForOrder(
 
         updateData.updated_at = new Date().toISOString();
 
-        // Update the specific inventory record
         const { error: updateError } = await supabaseAdmin
           .from("product_inventory")
           .update(updateData)
-          .eq("id", inventoryData.id); // ✅ Use the specific inventory record ID
+          .eq("id", inventoryData.id);
 
         if (updateError) {
           console.error(`❌ Error updating BASE PRODUCT inventory for record ${inventoryData.id}:`, updateError);
@@ -372,7 +356,6 @@ async function updateInventoryForOrder(
     }
   }
 
-  // Check results
   const successfulUpdates = inventoryUpdateResults.filter(
     (result) => result.success
   );
@@ -405,6 +388,7 @@ export async function createOrder(
       subtotal,
       taxAmount,
       discount,
+      additionalCharges, // ✅ ADDED: Extract additional charges
       deliveryCost,
       totalAmount,
       status,
@@ -455,11 +439,12 @@ export async function createOrder(
       orderProductsCount: orderProducts.length,
       subtotal,
       discount,
+      additionalCharges, // ✅ ADDED
       deliveryCost,
       totalAmount,
     });
 
-    // Step 1: Create the order - INCLUDING discount_amount
+    // Step 1: Create the order - INCLUDING additional_charges
     const orderInsertData = {
       order_number: orderNumber,
       store_id: storeId,
@@ -467,7 +452,8 @@ export async function createOrder(
       status: status,
       subtotal: subtotal,
       tax_amount: taxAmount,
-      discount_amount: discount, // ✅ ADDED discount_amount field
+      discount_amount: discount,
+      additional_charges: additionalCharges, // ✅ ADDED: New field
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       currency: currency,
@@ -479,7 +465,7 @@ export async function createOrder(
       delivery_option: orderData.deliveryOption,
     };
 
-    console.log("📦 Order insert data with discount_amount:", orderInsertData);
+    console.log("📦 Order insert data with additional_charges:", orderInsertData);
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
@@ -569,6 +555,7 @@ export async function createCustomerOrder(
       subtotal,
       taxAmount,
       discount,
+      additionalCharges, // ✅ ADDED
       deliveryCost,
       totalAmount,
       status = "pending",
@@ -609,18 +596,18 @@ export async function createCustomerOrder(
     console.log("🔄 Creating customer order in database...");
 
     // ✅ FIX: Use store_customer_id instead of auth user ID
-    // Now customer_id will reference store_customers.id
     const storeCustomerId = customerInfo.customer_id || null;
 
-    // Create order - INCLUDING discount_amount
+    // Create order - INCLUDING additional_charges
     const orderInsertData = {
       order_number: orderNumber,
       store_id: storeId,
-      customer_id: storeCustomerId, // ✅ Now links to store_customers.id
+      customer_id: storeCustomerId,
       status: status,
       subtotal: subtotal,
       tax_amount: taxAmount,
-      discount_amount: discount, // ✅ ADDED discount_amount field
+      discount_amount: discount,
+      additional_charges: additionalCharges, // ✅ ADDED: New field
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       currency: currency,
@@ -631,7 +618,7 @@ export async function createCustomerOrder(
       delivery_option: deliveryOption,
     };
 
-    console.log("📦 Customer order insert data with discount_amount:", {
+    console.log("📦 Customer order insert data with additional_charges:", {
       ...orderInsertData,
       customer_id: storeCustomerId,
       has_customer: !!storeCustomerId

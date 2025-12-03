@@ -17,8 +17,8 @@ export interface AddressJSON {
   customer_name: string;
   phone: string;
   email?: string;
-  address_line_1?: string; // ✅ MADE OPTIONAL
-  address?: string; // ✅ ADDED NEW ADDRESS FIELD
+  address_line_1?: string;
+  address?: string;
   city: string;
   postal_code?: string;
   country?: string;
@@ -71,10 +71,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
-
-// FIX: Update DeliveryOption to match your actual data
 export type DeliveryOption = "pathao" | "courier" | "other" | "inside dhaka" | "outside dhaka" | string;
-
 export type PaymentMethod = "cod" | "cash" | "online";
 
 // ===== SUPABASE DATABASE TYPES =====
@@ -87,7 +84,8 @@ export interface StoreOrder {
   status: OrderStatus;
   subtotal: number;
   tax_amount: number;
-  discount_amount?: number; // ✅ ADDED discount_amount field
+  discount_amount?: number;
+  additional_charges?: number; // ✅ ADDED: New field
   shipping_fee: number;
   total_amount: number;
   currency: string;
@@ -97,8 +95,8 @@ export interface StoreOrder {
     customer_name: string;
     phone: string;
     email?: string;
-    address_line_1?: string; // ✅ MADE OPTIONAL
-    address?: string; // ✅ ADDED NEW ADDRESS FIELD
+    address_line_1?: string;
+    address?: string;
     city: string;
     country: string;
   };
@@ -106,8 +104,8 @@ export interface StoreOrder {
     customer_name: string;
     phone: string;
     email?: string;
-    address_line_1?: string; // ✅ MADE OPTIONAL
-    address?: string; // ✅ ADDED NEW ADDRESS FIELD
+    address_line_1?: string;
+    address?: string;
     city: string;
     country: string;
   } | null;
@@ -142,7 +140,8 @@ export interface CreateOrderData {
   orderProducts: OrderProduct[];
   subtotal: number;
   taxAmount: number;
-  discount: number; // This will be stored as discount_amount in database
+  discount: number;
+  additionalCharges: number; // ✅ ADDED: New field
   deliveryCost: number;
   totalAmount: number;
   status: OrderStatus;
@@ -168,7 +167,8 @@ export interface CustomerOrderData {
   orderProducts: OrderProduct[];
   subtotal: number;
   taxAmount: number;
-  discount: number; // This will be stored as discount_amount in database
+  discount: number;
+  additionalCharges: number; // ✅ ADDED: New field
   deliveryCost: number;
   totalAmount: number;
   status: OrderStatus;

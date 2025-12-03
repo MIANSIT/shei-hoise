@@ -10,6 +10,7 @@ export interface OrderWithItems {
   subtotal: number;
   tax_amount: number;
   discount_amount?: number; // ✅ ADDED discount_amount field
+  additional_charges?: number; 
   shipping_fee: number;
   total_amount: number;
   currency: string;
@@ -86,7 +87,8 @@ export async function getOrderByNumber(
       id: order.id,
       order_number: order.order_number,
       subtotal: order.subtotal,
-      discount_amount: order.discount_amount, // ✅ Now includes discount_amount
+      discount_amount: order.discount_amount, 
+      additional_charges: order.additional_charges, 
       shipping_fee: order.shipping_fee,
       tax_amount: order.tax_amount,
       total_amount: order.total_amount
@@ -184,6 +186,7 @@ export async function getOrderByNumber(
       financials: {
         subtotal: orderWithItems.subtotal,
         discount_amount: orderWithItems.discount_amount,
+        additional_charges: orderWithItems.additional_charges,
         shipping_fee: orderWithItems.shipping_fee,
         tax_amount: orderWithItems.tax_amount,
         total_amount: orderWithItems.total_amount

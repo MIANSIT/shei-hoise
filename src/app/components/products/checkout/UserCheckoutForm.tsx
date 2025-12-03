@@ -35,6 +35,7 @@ interface CheckoutFormProps {
   shippingMethod?: string;
   shippingFee?: number;
   totalAmount?: number;
+  taxAmount?: number;
   mode?: "checkout" | "confirm";
 }
 
@@ -44,6 +45,7 @@ const CheckoutForm = ({
   shippingMethod = "",
   shippingFee = 0,
   totalAmount = 0,
+  taxAmount = 0,
   mode = "checkout",
 }: CheckoutFormProps) => {
   const { formData, setFormData, setStoreSlug } = useCheckoutStore();

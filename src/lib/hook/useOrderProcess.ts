@@ -1,5 +1,5 @@
-// lib/hook/useOrderProcess.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// lib/hook/useOrderProcess.ts
 import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
@@ -19,7 +19,8 @@ export function useOrderProcess(store_slug: string) {
     deliveryOption: string = 'standard',
     shippingFee: number = 0,
     cartItems?: CartProductWithDetails[],
-    calculations?: CartCalculations
+    calculations?: CartCalculations,
+    taxAmount: number = 0 // ✅ ADD THIS: Accept tax amount parameter
   ) => {
     setLoading(true);
     setError(null);
@@ -32,6 +33,7 @@ export function useOrderProcess(store_slug: string) {
         paymentMethod,
         deliveryOption,
         shippingFee,
+        taxAmount, // ✅ Include tax amount in logs
         cartItems: cartItems?.length,
         calculations: calculations?.totalPrice
       });
@@ -56,6 +58,10 @@ export function useOrderProcess(store_slug: string) {
         const itemNames = outOfStockItems.map(item => item.productName).join(', ');
         throw new Error(`Some items are out of stock: ${itemNames}. Please update your cart.`);
       }
+
+      // ✅ Calculate total with tax
+      const subtotal = calculations?.subtotal || 0;
+      const totalWithTax = subtotal + shippingFee + taxAmount;
 
       // Prepare order data
       const orderData = {
@@ -86,11 +92,11 @@ export function useOrderProcess(store_slug: string) {
             } : null,
           };
         }),
-        subtotal: calculations?.subtotal || 0,
-        taxAmount: 0,
+        subtotal: subtotal,
+        taxAmount: taxAmount, // ✅ Include tax amount
         discount: calculations?.totalDiscount || 0,
         deliveryCost: shippingFee,
-        totalAmount: (calculations?.totalPrice || 0) + shippingFee,
+        totalAmount: totalWithTax, // ✅ Use total with tax
         status: 'pending' as const,
         paymentStatus: 'pending' as const,
         paymentMethod,
@@ -103,7 +109,9 @@ export function useOrderProcess(store_slug: string) {
         customerInfo: {
           ...orderData.customerInfo,
           customer_id: storeCustomerId
-        }
+        },
+        taxAmount,
+        totalAmount: totalWithTax
       });
 
       // Create the order

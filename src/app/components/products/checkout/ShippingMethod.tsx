@@ -1,11 +1,10 @@
-// components/products/checkout/ShippingMethod.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Truck } from "lucide-react";
+import { Truck, Receipt } from "lucide-react";
 import {
   getStoreSettings,
   ShippingFee,
@@ -16,7 +15,8 @@ interface ShippingMethodProps {
   storeSlug: string;
   subtotal: number;
   selectedShipping: string;
-  onShippingChange: (shippingMethod: string, shippingFee: number) => void;
+  onShippingChange: (shippingMethod: string, shippingFee: number, tax?: number) => void; // ✅ Updated
+  onTaxChange?: (taxAmount: number) => void;
 }
 
 export default function ShippingMethod({
@@ -24,20 +24,18 @@ export default function ShippingMethod({
   subtotal,
   selectedShipping,
   onShippingChange,
+  onTaxChange,
 }: ShippingMethodProps) {
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<
-    number | null
-  >(null);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
+  const [taxAmount, setTaxAmount] = useState<number>(0);
 
-  // Filter out "custom" shipping options
   const filteredShippingOptions = useMemo(() => {
     return shippingOptions.filter(option => 
       option.name.toLowerCase() !== "custom"
     );
   }, [shippingOptions]);
 
-  // Fetch shipping options only once when component mounts
   useEffect(() => {
     const fetchShippingOptions = async () => {
       try {
@@ -49,16 +47,25 @@ export default function ShippingMethod({
           if (storeSettings) {
             setShippingOptions(storeSettings.shipping_fees || []);
             setFreeShippingThreshold(storeSettings.free_shipping_threshold);
+            
+            // ✅ SET TAX AMOUNT (not tax rate)
+            const storeTaxAmount = storeSettings.tax_rate || 0;
+            setTaxAmount(storeTaxAmount);
+            
+            // Notify parent about tax amount
+            if (onTaxChange) {
+              onTaxChange(storeTaxAmount);
+            }
 
-            // Set default shipping method only if nothing is selected
-            // Use filtered options for default selection
+            // Set default shipping method with tax
             const filteredOptions = storeSettings.shipping_fees?.filter(option => 
               option.name.toLowerCase() !== "custom"
             ) || [];
             
             if (filteredOptions.length > 0 && !selectedShipping) {
               const defaultShipping = filteredOptions[0];
-              onShippingChange(defaultShipping.name, defaultShipping.price);
+              // ✅ Pass tax amount as third parameter
+              onShippingChange(defaultShipping.name, defaultShipping.price, storeTaxAmount);
             }
           }
         }
@@ -68,7 +75,7 @@ export default function ShippingMethod({
     };
 
     fetchShippingOptions();
-  }, [onShippingChange, selectedShipping, storeSlug]); // Only depend on storeSlug
+  }, [onShippingChange, onTaxChange, selectedShipping, storeSlug]);
 
   const handleShippingChange = useCallback((value: string) => {
     const selectedOption = filteredShippingOptions.find(
@@ -79,14 +86,14 @@ export default function ShippingMethod({
         freeShippingThreshold && subtotal >= freeShippingThreshold
           ? 0
           : selectedOption.price;
-      onShippingChange(value, shippingFee);
+      // ✅ Pass tax amount as third parameter
+      onShippingChange(value, shippingFee, taxAmount);
     }
-  }, [filteredShippingOptions, freeShippingThreshold, subtotal, onShippingChange]);
+  }, [filteredShippingOptions, freeShippingThreshold, subtotal, onShippingChange, taxAmount]);
 
   const isFreeShipping =
     freeShippingThreshold && subtotal >= freeShippingThreshold;
 
-  // If no shipping options available, don't show anything
   if (filteredShippingOptions.length === 0) {
     return null;
   }
@@ -96,10 +103,10 @@ export default function ShippingMethod({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Truck className="h-5 w-5 text-blue-500" />
-          Shipping Method
+          Shipping & Tax
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <RadioGroup
           value={selectedShipping}
           onValueChange={handleShippingChange}
@@ -143,7 +150,27 @@ export default function ShippingMethod({
           ))}
         </RadioGroup>
 
-        {/* Free Shipping Progress - Only show if free_shipping_threshold exists */}
+        {/* Tax Display - Only show if tax amount > 0 */}
+        {taxAmount > 0 && (
+          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Receipt className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800">
+                Tax Amount
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-purple-700">
+                Additional tax fee
+              </span>
+              <span className="font-semibold text-purple-800">
+                ৳{taxAmount.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Free Shipping Progress */}
         {freeShippingThreshold && (
           <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex justify-between text-sm mb-1">

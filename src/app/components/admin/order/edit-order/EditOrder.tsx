@@ -1,4 +1,3 @@
-// app/components/admin/order/edit-order/EditOrder.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
@@ -85,11 +84,12 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [additionalCharges, setAdditionalCharges] = useState(0); // ✅ ADDED: New state
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [status, setStatus] = useState<
-    "pending" | "confirmed" | "delivered" | "cancelled" | "shipped" // ✅ FIXED: "delivered" not "delivered"
+    "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"
   >("pending");
   const [paymentStatus, setPaymentStatus] = useState<
     "pending" | "paid" | "failed" | "refunded"
@@ -231,16 +231,18 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         setPaymentStatus(order.payment_status);
         setPaymentMethod(order.payment_method || "cash");
 
-        // Set financial data - INCLUDING discount_amount
+        // Set financial data - INCLUDING discount_amount AND additional_charges
         setSubtotal(Number(order.subtotal));
         setTaxAmount(Number(order.tax_amount));
-        setDiscount(Number(order.discount_amount || 0)); // ✅ FETCH discount_amount
+        setDiscount(Number(order.discount_amount || 0));
+        setAdditionalCharges(Number(order.additional_charges || 0)); // ✅ ADDED: Fetch additional_charges
         setDeliveryCost(Number(order.shipping_fee));
         setTotalAmount(Number(order.total_amount));
 
         console.log("📊 Fetched order financial data:", {
           subtotal: order.subtotal,
           discount_amount: order.discount_amount,
+          additional_charges: order.additional_charges, // ✅ ADDED
           shipping_fee: order.shipping_fee,
           tax_amount: order.tax_amount,
           total_amount: order.total_amount
@@ -250,7 +252,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         if (order.customer) {
           setCustomerInfo((prev) => ({
             ...prev,
-            name: order.customer?.name || "", // Use 'name' from store_customers
+            name: order.customer?.name || "",
             phone: order.customer?.phone || "",
             email: order.customer?.email || "",
             customer_id: order.customer_id,
@@ -408,15 +410,27 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     }
   }, [user?.store_id, userLoading, hasFetchedData, fetchProducts, fetchStoreSettings, fetchOrderData]);
 
-  // Calculate totals
+  // Calculate totals INCLUDING additional charges
   useEffect(() => {
     const newSubtotal = orderProducts.reduce(
       (sum, item) => sum + item.total_price,
       0
     );
     setSubtotal(newSubtotal);
-    setTotalAmount(newSubtotal - discount + deliveryCost + taxAmount);
-  }, [orderProducts, discount, deliveryCost, taxAmount]);
+    
+    // Calculate total amount with all components including additional charges
+    const calculatedTotal = newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
+    setTotalAmount(calculatedTotal);
+    
+    console.log("📊 Total calculation in EditOrder:", {
+      subtotal: newSubtotal,
+      discount,
+      additionalCharges,
+      deliveryCost,
+      taxAmount,
+      total: calculatedTotal
+    });
+  }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
 
   const isFormValid =
     customerInfo.name &&
@@ -427,7 +441,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     customerInfo.deliveryMethod &&
     customerInfo.deliveryOption &&
     orderProducts.length > 0 &&
-    !emailError; // Add email error check
+    !emailError;
 
   // Render customer information
   const renderCustomerInfo = () => {
@@ -542,6 +556,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   setTaxAmount={setTaxAmount}
                   discount={discount}
                   setDiscount={setDiscount}
+                  additionalCharges={additionalCharges} // ✅ ADDED: New prop
+                  setAdditionalCharges={setAdditionalCharges} // ✅ ADDED: New prop
                   deliveryCost={deliveryCost}
                   setDeliveryCost={setDeliveryCost}
                   totalAmount={totalAmount}
@@ -570,6 +586,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   subtotal={subtotal}
                   taxAmount={taxAmount}
                   discount={discount}
+                  additionalCharges={additionalCharges} // ✅ ADDED: New prop
                   deliveryCost={deliveryCost}
                   totalAmount={totalAmount}
                   status={status}

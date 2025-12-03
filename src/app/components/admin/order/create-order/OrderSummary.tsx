@@ -28,12 +28,14 @@ interface OrderSummaryProps {
   setTaxAmount: (amount: number) => void;
   discount: number;
   setDiscount: (discount: number) => void;
+  additionalCharges: number; // ✅ ADDED: New prop
+  setAdditionalCharges: (charges: number) => void; // ✅ ADDED: New prop
   deliveryCost: number;
   setDeliveryCost: (cost: number) => void;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"; // ✅ FIXED: "delivered" not "delivered"
+  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
   setStatus: (
-    status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped" // ✅ FIXED: "delivered" not "delivered"
+    status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"
   ) => void;
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   setPaymentStatus: (
@@ -52,6 +54,8 @@ export default function OrderSummary({
   setTaxAmount,
   discount,
   setDiscount,
+  additionalCharges, // ✅ ADDED
+  setAdditionalCharges, // ✅ ADDED
   deliveryCost,
   setDeliveryCost,
   totalAmount,
@@ -98,12 +102,11 @@ export default function OrderSummary({
 
   // Handle manual delivery cost changes - only for custom delivery
   const handleDeliveryCostChange = (value: number | null) => {
-    if (!isCustomDelivery) return; // Only allow changes for custom delivery
+    if (!isCustomDelivery) return;
 
     const newCost = value || 0;
     setDeliveryCost(newCost);
 
-    // Check if this is a manual change (different from the auto-calculated fee)
     if (selectedShippingFee && newCost !== selectedShippingFee.price) {
       setIsManualDeliveryCost(true);
     } else {
@@ -229,6 +232,24 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
+                <Form.Item label="Additional Charges (BDT)">
+                  <InputNumber
+                    min={0}
+                    value={additionalCharges}
+                    onChange={(value) => setAdditionalCharges(value || 0)}
+                    style={{ width: "100%" }}
+                    addonAfter="৳"
+                    placeholder="Enter any additional charges"
+                  />
+                </Form.Item>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  Additional fees like packaging, handling, or special services
+                </Text>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
                 <Form.Item label="Delivery Cost (BDT)">
                   <InputNumber
                     min={0}
@@ -289,7 +310,7 @@ export default function OrderSummary({
                 >
                   <Option value="pending">Pending</Option>
                   <Option value="confirmed">Confirmed</Option>
-                  <Option value="delivered">Delivered</Option> {/* ✅ FIXED: "delivered" not "delivered" */}
+                  <Option value="delivered">Delivered</Option>
                   <Option value="shipped">Shipped</Option>
                   <Option value="cancelled">Cancelled</Option>
                 </Select>
