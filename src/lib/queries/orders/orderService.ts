@@ -12,7 +12,7 @@ export interface CreateOrderData {
   discount: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
+  status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentMethod: string;
   currency?: string;
@@ -454,10 +454,12 @@ export async function createOrder(
       customerId: customerInfo.customer_id,
       orderProductsCount: orderProducts.length,
       subtotal,
+      discount,
+      deliveryCost,
       totalAmount,
     });
 
-    // Step 1: Create the order
+    // Step 1: Create the order - INCLUDING discount_amount
     const orderInsertData = {
       order_number: orderNumber,
       store_id: storeId,
@@ -465,6 +467,7 @@ export async function createOrder(
       status: status,
       subtotal: subtotal,
       tax_amount: taxAmount,
+      discount_amount: discount, // ✅ ADDED discount_amount field
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       currency: currency,
@@ -476,7 +479,7 @@ export async function createOrder(
       delivery_option: orderData.deliveryOption,
     };
 
-    console.log("📦 Order insert data:", orderInsertData);
+    console.log("📦 Order insert data with discount_amount:", orderInsertData);
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
@@ -539,7 +542,7 @@ export async function createOrder(
       console.log("✅ Inventory successfully reserved for order");
     }
 
-    console.log("🎉 Order process completed successfully");
+    console.log("🎉 Order process delivered successfully");
 
     return {
       success: true,
@@ -609,7 +612,7 @@ export async function createCustomerOrder(
     // Now customer_id will reference store_customers.id
     const storeCustomerId = customerInfo.customer_id || null;
 
-    // Create order
+    // Create order - INCLUDING discount_amount
     const orderInsertData = {
       order_number: orderNumber,
       store_id: storeId,
@@ -617,6 +620,7 @@ export async function createCustomerOrder(
       status: status,
       subtotal: subtotal,
       tax_amount: taxAmount,
+      discount_amount: discount, // ✅ ADDED discount_amount field
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       currency: currency,
@@ -627,7 +631,7 @@ export async function createCustomerOrder(
       delivery_option: deliveryOption,
     };
 
-    console.log("📦 Order insert data:", {
+    console.log("📦 Customer order insert data with discount_amount:", {
       ...orderInsertData,
       customer_id: storeCustomerId,
       has_customer: !!storeCustomerId

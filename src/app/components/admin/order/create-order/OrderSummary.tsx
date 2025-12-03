@@ -31,9 +31,9 @@ interface OrderSummaryProps {
   deliveryCost: number;
   setDeliveryCost: (cost: number) => void;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped";
+  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"; // ✅ FIXED: "delivered" not "delivered"
   setStatus: (
-    status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped"
+    status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped" // ✅ FIXED: "delivered" not "delivered"
   ) => void;
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   setPaymentStatus: (
@@ -289,7 +289,7 @@ export default function OrderSummary({
                 >
                   <Option value="pending">Pending</Option>
                   <Option value="confirmed">Confirmed</Option>
-                  <Option value="completed">Delivered</Option>
+                  <Option value="delivered">Delivered</Option> {/* ✅ FIXED: "delivered" not "delivered" */}
                   <Option value="shipped">Shipped</Option>
                   <Option value="cancelled">Cancelled</Option>
                 </Select>

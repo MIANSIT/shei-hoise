@@ -31,7 +31,7 @@ export interface Order {
   order_number: string;
   customer_id: string;       // UUID from users table
   store_id: string;          // UUID of store creating the order
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "delivered" | "cancelled";
   subtotal: number;
   tax_amount?: number;
   shipping_fee: number;
