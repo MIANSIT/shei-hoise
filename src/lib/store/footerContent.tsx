@@ -23,8 +23,8 @@ export const footerContent = {
       { label: "Help Center", href: "#" },
       // { label: "Shipping & Returns", href: "#" },
       // { label: "Warranty", href: "#" },
-      { label: "Privacy Policy", href: "#" },
-      { label: "Terms of Service", href: "#" },
+      // { label: "Privacy Policy", href: "#" },
+      // { label: "Terms of Service", href: "#" },
     ],
   },
   bottomLinks: [

@@ -2,16 +2,23 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button, Modal } from "antd";
+import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder, OrderStatus, PaymentStatus } from "@/lib/types/order";
 import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
-import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
+import OrdersFilterTabs, {
+  highlightText,
+} from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
-import { EditOutlined, DeleteOutlined, FileTextOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  FileTextOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
@@ -37,23 +44,44 @@ const OrdersTable: React.FC<Props> = ({
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [showInvoice, setShowInvoice] = useState(false);
-  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<StoreOrder | null>(null);
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
+    useState<StoreOrder | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const filtered = orders.filter((o) =>
-      o.order_number.toLowerCase().includes(searchOrderId.toLowerCase())
-    );
+    const filtered = orders.filter((o) => {
+      const search = searchOrderId.toLowerCase();
+      const customerEmail = getCustomerEmail(o).toLowerCase();
+      const customerPhone = getCustomerPhone(o).toLowerCase();
+      const customerName = getCustomerName(o).toLowerCase();
+
+      return (
+        o.order_number.toLowerCase().includes(search) ||
+        customerEmail.includes(search) ||
+        customerPhone.includes(search) ||
+        customerName.includes(search)
+      );
+    });
     setFilteredOrders(filtered);
   }, [orders, searchOrderId]);
 
   const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleTabFilter = (filtered: StoreOrder[]) => {
-    const finalFiltered = filtered.filter((o) =>
-      o.order_number.toLowerCase().includes(searchOrderId.toLowerCase())
-    );
+    const finalFiltered = filtered.filter((o) => {
+      const search = searchOrderId.toLowerCase();
+      const customerEmail = getCustomerEmail(o).toLowerCase();
+      const customerPhone = getCustomerPhone(o).toLowerCase();
+      const customerName = getCustomerName(o).toLowerCase();
+
+      return (
+        o.order_number.toLowerCase().includes(search) ||
+        customerEmail.includes(search) ||
+        customerPhone.includes(search) ||
+        customerName.includes(search)
+      );
+    });
     setFilteredOrders(finalFiltered);
   };
 
@@ -63,12 +91,12 @@ const OrdersTable: React.FC<Props> = ({
 
   const handleDelete = async (order: StoreOrder) => {
     modal.confirm({
-      title: 'Confirm Delete',
+      title: "Confirm Delete",
       icon: <ExclamationCircleOutlined />,
       content: `Are you sure you want to delete order #${order.order_number}? This action cannot be undone.`,
-      okText: 'Yes, Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
+      okText: "Yes, Delete",
+      okType: "danger",
+      cancelText: "Cancel",
       onOk: async () => {
         await performDelete(order.id);
       },
@@ -78,13 +106,13 @@ const OrdersTable: React.FC<Props> = ({
   const performDelete = async (orderId: string) => {
     try {
       setDeleteLoading(orderId);
-      
+
       // Call your API to delete the order
       await dataService.deleteOrder(orderId);
-      
+
       notification.success({
-        message: 'Order Deleted',
-        description: 'Order has been deleted successfully.',
+        message: "Order Deleted",
+        description: "Order has been deleted successfully.",
       });
 
       // Refresh the orders list
@@ -92,10 +120,11 @@ const OrdersTable: React.FC<Props> = ({
         onRefresh();
       }
     } catch (error: any) {
-      console.error('Error deleting order:', error);
+      console.error("Error deleting order:", error);
       notification.error({
-        message: 'Delete Failed',
-        description: error.message || 'Failed to delete order. Please try again.',
+        message: "Delete Failed",
+        description:
+          error.message || "Failed to delete order. Please try again.",
       });
     } finally {
       setDeleteLoading(null);
@@ -130,7 +159,7 @@ const OrdersTable: React.FC<Props> = ({
       <Tooltip title="Delete Order">
         <DeleteOutlined
           className={`!text-red-600 cursor-pointer hover:!text-red-800 text-base ${
-            deleteLoading === order.id ? 'opacity-50 cursor-not-allowed' : ''
+            deleteLoading === order.id ? "opacity-50 cursor-not-allowed" : ""
           }`}
           onClick={() => deleteLoading !== order.id && handleDelete(order)}
           spin={deleteLoading === order.id}
@@ -190,7 +219,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "order_number",
       render: (orderNumber: string) => (
         <span className="font-medium text-blue-600 text-sm">
-          #{orderNumber}
+          {highlightText(`#${orderNumber}`, searchOrderId)}
         </span>
       ),
       width: 100,
@@ -215,16 +244,27 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="min-w-0">
             <div className="font-medium text-sm truncate max-w-[100px] lg:max-w-[120px]">
-              {getCustomerName(order)}
+              {highlightText(getCustomerName(order), searchOrderId)}
             </div>
             <div className="text-xs text-gray-500 truncate max-w-[100px] lg:max-w-[120px]">
-              {getCustomerEmail(order)}
+              {highlightText(getCustomerEmail(order), searchOrderId)}
             </div>
           </div>
         </Space>
       ),
       width: 150,
       responsive: ["md"],
+    },
+    {
+      title: "Phone",
+      key: "phone",
+      render: (_, order: StoreOrder) => (
+        <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
+          {highlightText(getCustomerPhone(order), searchOrderId)}
+        </div>
+      ),
+      width: 120,
+      responsive: ["lg"],
     },
     {
       title: "Address",
@@ -320,8 +360,7 @@ const OrdersTable: React.FC<Props> = ({
             onClick={() => handleViewInvoice(order)}
             className="!text-green-600 !p-1 !h-auto text-xs"
             size="small"
-          >
-          </Button>
+          ></Button>
         </Tooltip>
       ),
       width: 80,
@@ -413,13 +452,13 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">
-              {getCustomerName(order)}
+              {highlightText(getCustomerName(order), searchOrderId)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {getCustomerEmail(order)}
+              {highlightText(getCustomerEmail(order), searchOrderId)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {getCustomerPhone(order)}
+              {highlightText(getCustomerPhone(order), searchOrderId)}
             </div>
           </div>
         </div>

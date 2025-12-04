@@ -49,6 +49,7 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [searchText, setSearchText] = useState("");
 
   const notify = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
@@ -170,6 +171,15 @@ export default function CategoryPage() {
     }
   };
 
+  // Filter categories based on name or description
+  const filteredCategories = categories.filter((category) => {
+    const text = searchText.toLowerCase();
+    return (
+      category.name.toLowerCase().includes(text) ||
+      (category.description?.toLowerCase().includes(text) ?? false)
+    );
+  });
+
   return (
     <div className="p-6 space-y-4">
       {/* Top Bar */}
@@ -180,13 +190,15 @@ export default function CategoryPage() {
           setShowForm((prev) => !prev);
         }}
         isLgUp={isLgUp}
+        searchText={searchText}
+        setSearchText={setSearchText}
       />
 
       {/* Table for desktop / Cards for mobile */}
       <div className={`flex gap-6 ${isLgUp ? "flex-row" : "flex-col"}`}>
         {isLgUp ? (
           <CategoryTablePanel
-            categories={categories}
+            categories={filteredCategories}
             loading={loading}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -194,7 +206,7 @@ export default function CategoryPage() {
           />
         ) : (
           <CategoryCardList
-            categories={categories}
+            categories={filteredCategories}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
