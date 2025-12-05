@@ -45,8 +45,7 @@ import {
 } from "@/lib/queries/stores/getStoreSettings";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
-
+import { OrderStatus, PaymentStatus, PaymentMethod } from "@/lib/types/enums";
 const { Title, Text } = Typography;
 const { Option } = Select;
 

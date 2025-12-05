@@ -6,6 +6,7 @@ import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { useRouter } from "next/navigation";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -16,11 +17,11 @@ interface SaveOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
-  additionalCharges: number; // ✅ ADDED: New prop
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ CHANGED: Use enum
+  paymentStatus: PaymentStatus; // ✅ CHANGED: Use enum
   paymentMethod: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
@@ -35,7 +36,7 @@ export default function SaveOrderButton({
   subtotal,
   taxAmount,
   discount,
-  additionalCharges, // ✅ ADDED
+  additionalCharges,
   deliveryCost,
   totalAmount,
   status,
@@ -69,7 +70,7 @@ export default function SaveOrderButton({
           <Text type="secondary">Email: {customerInfo.email}</Text>
           <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
           <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
-          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text> {/* ✅ ADDED */}
+          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
           <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
           <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
           <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
@@ -175,7 +176,7 @@ export default function SaveOrderButton({
         subtotal,
         taxAmount,
         discount,
-        additionalCharges, // ✅ ADDED: Include additional charges
+        additionalCharges,
         deliveryCost,
         totalAmount,
         status,
@@ -187,7 +188,7 @@ export default function SaveOrderButton({
 
       console.log("📦 Sending order data with additional charges:", {
         discount,
-        additionalCharges, // ✅ ADDED
+        additionalCharges,
         subtotal,
         deliveryCost,
         taxAmount,
@@ -212,7 +213,7 @@ export default function SaveOrderButton({
               <Text type="secondary">Order ID: {result.orderId}</Text>
               <Text type="secondary">Customer Email: {customerInfo.email}</Text>
               <Text type="secondary">Discount Applied: ৳{discount.toFixed(2)}</Text>
-              <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text> {/* ✅ ADDED */}
+              <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
               <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
             </Space>
           ),

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase";
 import { OrderProduct, CustomerInfo } from "../../types/order";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 
 export interface CreateOrderData {
   storeId: string;
@@ -10,11 +11,11 @@ export interface CreateOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
-  additionalCharges: number; // ✅ ADDED: New field
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   paymentMethod: string;
   currency?: string;
   deliveryOption: string;
@@ -388,7 +389,7 @@ export async function createOrder(
       subtotal,
       taxAmount,
       discount,
-      additionalCharges, // ✅ ADDED: Extract additional charges
+      additionalCharges,
       deliveryCost,
       totalAmount,
       status,
@@ -439,7 +440,7 @@ export async function createOrder(
       orderProductsCount: orderProducts.length,
       subtotal,
       discount,
-      additionalCharges, // ✅ ADDED
+      additionalCharges,
       deliveryCost,
       totalAmount,
     });
@@ -453,7 +454,7 @@ export async function createOrder(
       subtotal: subtotal,
       tax_amount: taxAmount,
       discount_amount: discount,
-      additional_charges: additionalCharges, // ✅ ADDED: New field
+      additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       currency: currency,
@@ -555,7 +556,7 @@ export async function createCustomerOrder(
       subtotal,
       taxAmount,
       discount,
-      additionalCharges, // ✅ ADDED
+      additionalCharges,
       deliveryCost,
       totalAmount,
       status = "pending",
@@ -607,7 +608,7 @@ export async function createCustomerOrder(
       subtotal: subtotal,
       tax_amount: taxAmount,
       discount_amount: discount,
-      additional_charges: additionalCharges, // ✅ ADDED: New field
+      additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       currency: currency,
@@ -691,6 +692,13 @@ export async function createCustomerOrder(
   }
 }
 
+// Customer order number generator
+export function generateCustomerOrderNumber(storeSlug: string): string {
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `${storeSlug.toUpperCase()}-${timestamp}${random}`;
+}
+
 // Other functions remain the same...
 export async function getOrderById(orderId: string) {
   try {
@@ -748,10 +756,3 @@ export async function getOrdersByStore(storeId: string, limit = 50) {
 
 // Export the inventory update function for use in order updates
 export { updateInventoryForOrder };
-
-// Customer order functions
-export function generateCustomerOrderNumber(storeSlug: string): string {
-  const timestamp = Date.now().toString().slice(-6);
-  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-  return `${storeSlug.toUpperCase()}-${timestamp}${random}`;
-}

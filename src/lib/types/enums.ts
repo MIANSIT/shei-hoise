@@ -17,7 +17,10 @@ export enum PaymentStatus {
 export enum PaymentMethod {
   COD = "cod",
   CASH = "cash",
-  ONLINE = "online"
+  ONLINE = "online",
+  CARD = "card",
+  BANK_TRANSFER = "bank_transfer",
+  MOBILE_BANKING = "mobile_banking"
 }
 
 export type DeliveryOption = "pathao" | "courier" | "other" | "inside dhaka" | "outside dhaka" | string;

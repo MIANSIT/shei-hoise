@@ -6,6 +6,7 @@ import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
 import useCartStore from '../store/cartStore';
 import { CartProductWithDetails, CartCalculations } from '../types/cart';
+import { OrderStatus, PaymentStatus } from '../types/enums'; // ✅ ADD THIS IMPORT
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export function useOrderProcess(store_slug: string) {
     shippingFee: number = 0,
     cartItems?: CartProductWithDetails[],
     calculations?: CartCalculations,
-    taxAmount: number = 0 // ✅ ADD THIS: Accept tax amount parameter
+    taxAmount: number = 0
   ) => {
     setLoading(true);
     setError(null);
@@ -33,7 +34,7 @@ export function useOrderProcess(store_slug: string) {
         paymentMethod,
         deliveryOption,
         shippingFee,
-        taxAmount, // ✅ Include tax amount in logs
+        taxAmount,
         cartItems: cartItems?.length,
         calculations: calculations?.totalPrice
       });
@@ -63,7 +64,7 @@ export function useOrderProcess(store_slug: string) {
       const subtotal = calculations?.subtotal || 0;
       const totalWithTax = subtotal + shippingFee + taxAmount;
 
-      // Prepare order data
+      // Prepare order data with enum values
       const orderData = {
         storeId: storeId,
         orderNumber: generateCustomerOrderNumber(store_slug),
@@ -93,12 +94,13 @@ export function useOrderProcess(store_slug: string) {
           };
         }),
         subtotal: subtotal,
-        taxAmount: taxAmount, // ✅ Include tax amount
+        taxAmount: taxAmount,
         discount: calculations?.totalDiscount || 0,
+        additionalCharges: 0, // Default to 0 for customer orders
         deliveryCost: shippingFee,
-        totalAmount: totalWithTax, // ✅ Use total with tax
-        status: 'pending' as const,
-        paymentStatus: 'pending' as const,
+        totalAmount: totalWithTax,
+        status: OrderStatus.PENDING, // ✅ Use enum
+        paymentStatus: PaymentStatus.PENDING, // ✅ Use enum
         paymentMethod,
         currency: 'BDT',
         deliveryOption,
