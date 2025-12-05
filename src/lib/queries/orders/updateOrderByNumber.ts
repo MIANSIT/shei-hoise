@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 export interface UpdateOrderByNumberData {
   orderId: string;
@@ -25,8 +26,8 @@ export interface UpdateOrderByNumberData {
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   deliveryOption: string;
   currency?: string;
@@ -468,7 +469,7 @@ async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
 // Handle inventory updates based on status changes
 async function handleStatusChangeInventory(
   oldStatus: string,
-  newStatus: string,
+  newStatus: OrderStatus, // ✅ Using enum
   orderItems: any[]
 ): Promise<void> {
   try {
@@ -476,8 +477,8 @@ async function handleStatusChangeInventory(
 
     // From pending/confirmed to cancelled - return stock
     if (
-      (oldStatus === "pending" || oldStatus === "confirmed") &&
-      newStatus === "cancelled"
+      (oldStatus === OrderStatus.PENDING || oldStatus === OrderStatus.CONFIRMED) &&
+      newStatus === OrderStatus.CANCELLED
     ) {
       console.log("🔄 Returning reserved stock to available");
       await returnReservedStockToAvailable(orderItems);
@@ -485,23 +486,23 @@ async function handleStatusChangeInventory(
 
     // From cancelled to pending/confirmed - reserve stock again
     if (
-      oldStatus === "cancelled" &&
-      (newStatus === "pending" || newStatus === "confirmed")
+      oldStatus === OrderStatus.CANCELLED &&
+      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
       console.log("🔄 Reserving stock again");
       await reserveStock(orderItems);
     }
 
     // From any status to delivered - deduct reserved stock (finalize)
-    if (newStatus === "delivered") {
+    if (newStatus === OrderStatus.DELIVERED) {
       console.log("🔄 Deducting reserved stock (order delivered)");
       await deductReservedStock(orderItems);
     }
 
     // From delivered back to confirmed/pending - reverse the deduction
     if (
-      oldStatus === "delivered" &&
-      (newStatus === "pending" || newStatus === "confirmed")
+      oldStatus === OrderStatus.DELIVERED &&
+      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
       console.log("🔄 Reversing delivered order - reserving stock again");
       await reserveStock(orderItems);

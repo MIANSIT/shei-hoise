@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase";
-import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
 
 export interface UpdateOrderData {
   status?: OrderStatus;

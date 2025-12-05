@@ -5,6 +5,7 @@ import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 const { Text } = Typography;
 
@@ -20,8 +21,8 @@ interface UpdateOrderButtonProps {
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   disabled?: boolean;
   onOrderUpdated?: () => void;
@@ -128,7 +129,7 @@ export default function UpdateOrderButton({
           notes: customerInfo.notes || "",
           postal_code: customerInfo.postal_code || "",
           customer_id: customerInfo.customer_id,
-          country: customerInfo.country || "Bangladesh", // ✅ ADDED country
+          country: customerInfo.country || "Bangladesh",
         },
         orderProducts: orderProducts.map(product => ({
           product_id: product.product_id,
@@ -145,8 +146,8 @@ export default function UpdateOrderButton({
         additionalCharges: Number(additionalCharges),
         deliveryCost: Number(deliveryCost),
         totalAmount: Number(totalAmount),
-        status: status,
-        paymentStatus: paymentStatus,
+        status: status, // ✅ Already using enum
+        paymentStatus: paymentStatus, // ✅ Already using enum
         paymentMethod: paymentMethod,
         currency: "BDT",
         deliveryOption: customerInfo.deliveryMethod || "",

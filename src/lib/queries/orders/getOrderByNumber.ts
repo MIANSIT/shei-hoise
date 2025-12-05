@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 export interface OrderWithItems {
   id: string;
   order_number: string;
   customer_id: string;
   store_id: string;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
+  status: OrderStatus; // ✅ Using enum
   subtotal: number;
   tax_amount: number;
-  discount_amount?: number; // ✅ ADDED discount_amount field
+  discount_amount?: number;
   additional_charges?: number; 
   shipping_fee: number;
   total_amount: number;
   currency: string;
-  payment_status: "pending" | "paid" | "failed" | "refunded";
+  payment_status: PaymentStatus; // ✅ Using enum
   payment_method: string;
   shipping_address: any;
   billing_address: any;
@@ -173,6 +174,8 @@ export async function getOrderByNumber(
     // Combine order, customer data, customer profile, and items
     const orderWithItems: OrderWithItems = {
       ...order,
+      status: order.status as OrderStatus, // ✅ Type casting to enum
+      payment_status: order.payment_status as PaymentStatus, // ✅ Type casting to enum
       customer: customer,
       customer_profile: customerProfile,
       order_items: orderItems || [],
@@ -180,6 +183,8 @@ export async function getOrderByNumber(
 
     console.log("✅ Order fetched successfully with discount_amount:", {
       orderNumber: orderWithItems.order_number,
+      status: orderWithItems.status,
+      payment_status: orderWithItems.payment_status,
       customer: orderWithItems.customer ? `${orderWithItems.customer.name} (${orderWithItems.customer.email})` : 'No customer',
       hasProfile: !!orderWithItems.customer_profile,
       itemsCount: orderWithItems.order_items.length,

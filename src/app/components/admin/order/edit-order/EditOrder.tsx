@@ -40,6 +40,7 @@ import {
   type ShippingFee,
 } from "@/lib/queries/stores/getStoreSettings";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 const { Title, Text } = Typography;
 
@@ -84,16 +85,12 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
-  const [additionalCharges, setAdditionalCharges] = useState(0); // ✅ ADDED: New state
+  const [additionalCharges, setAdditionalCharges] = useState(0);
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const [status, setStatus] = useState<
-    "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"
-  >("pending");
-  const [paymentStatus, setPaymentStatus] = useState<
-    "pending" | "paid" | "failed" | "refunded"
-  >("pending");
+  const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.PENDING); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
@@ -226,23 +223,23 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         setOriginalOrder(order);
         setOrderId(order.order_number);
 
-        // Set order status and payment info
-        setStatus(order.status);
-        setPaymentStatus(order.payment_status);
+        // Set order status and payment info - using type casting
+        setStatus(order.status as OrderStatus); // ✅ Type casting
+        setPaymentStatus(order.payment_status as PaymentStatus); // ✅ Type casting
         setPaymentMethod(order.payment_method || "cash");
 
         // Set financial data - INCLUDING discount_amount AND additional_charges
         setSubtotal(Number(order.subtotal));
         setTaxAmount(Number(order.tax_amount));
         setDiscount(Number(order.discount_amount || 0));
-        setAdditionalCharges(Number(order.additional_charges || 0)); // ✅ ADDED: Fetch additional_charges
+        setAdditionalCharges(Number(order.additional_charges || 0));
         setDeliveryCost(Number(order.shipping_fee));
         setTotalAmount(Number(order.total_amount));
 
         console.log("📊 Fetched order financial data:", {
           subtotal: order.subtotal,
           discount_amount: order.discount_amount,
-          additional_charges: order.additional_charges, // ✅ ADDED
+          additional_charges: order.additional_charges,
           shipping_fee: order.shipping_fee,
           tax_amount: order.tax_amount,
           total_amount: order.total_amount
@@ -556,8 +553,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   setTaxAmount={setTaxAmount}
                   discount={discount}
                   setDiscount={setDiscount}
-                  additionalCharges={additionalCharges} // ✅ ADDED: New prop
-                  setAdditionalCharges={setAdditionalCharges} // ✅ ADDED: New prop
+                  additionalCharges={additionalCharges}
+                  setAdditionalCharges={setAdditionalCharges}
                   deliveryCost={deliveryCost}
                   setDeliveryCost={setDeliveryCost}
                   totalAmount={totalAmount}
@@ -586,7 +583,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   subtotal={subtotal}
                   taxAmount={taxAmount}
                   discount={discount}
-                  additionalCharges={additionalCharges} // ✅ ADDED: New prop
+                  additionalCharges={additionalCharges}
                   deliveryCost={deliveryCost}
                   totalAmount={totalAmount}
                   status={status}

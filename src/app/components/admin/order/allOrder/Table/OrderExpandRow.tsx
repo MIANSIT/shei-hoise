@@ -1,5 +1,6 @@
 import React from "react";
-import { StoreOrder, OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "../../../../../../lib/types/order";
+import { StoreOrder } from "../../../../../../lib/types/order";
+import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "../../../../../../lib/types/enums";
 import OrderProductTable from "./OrderProductTable";
 
 interface Props {

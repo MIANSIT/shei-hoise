@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
-import { PaymentMethod } from "../../../../../../lib/types/order";
+import { PaymentMethod } from "../../../../../../lib/types/enums";
 
 interface Props {
   method: PaymentMethod;

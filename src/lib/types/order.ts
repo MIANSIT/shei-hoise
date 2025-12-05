@@ -1,6 +1,8 @@
 // lib/types/order.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { OrderStatus, PaymentStatus, PaymentMethod, DeliveryOption } from "./enums";
+
 // ===== CORE ORDER TYPES =====
 export interface OrderProduct {
   product_id: string;
@@ -63,17 +65,6 @@ export interface OrderItem {
   discounted_price?: number;
 }
 
-// ===== STATUS TYPES =====
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
-export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
-export type DeliveryOption = "pathao" | "courier" | "other" | "inside dhaka" | "outside dhaka" | string;
-export type PaymentMethod = "cod" | "cash" | "online";
-
 // ===== SUPABASE DATABASE TYPES =====
 export interface StoreOrder {
   stores: any;
@@ -81,15 +72,15 @@ export interface StoreOrder {
   order_number: string;
   customer_id: string | null;
   store_id: string;
-  status: OrderStatus;
+  status: OrderStatus; // ✅ Using enum
   subtotal: number;
   tax_amount: number;
   discount_amount?: number;
-  additional_charges?: number; // ✅ ADDED: New field
+  additional_charges?: number;
   shipping_fee: number;
   total_amount: number;
   currency: string;
-  payment_status: PaymentStatus;
+  payment_status: PaymentStatus; // ✅ Using enum
   payment_method: string | null;
   shipping_address: {
     customer_name: string;
@@ -141,11 +132,11 @@ export interface CreateOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
-  additionalCharges: number; // ✅ ADDED: New field
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
+  status: OrderStatus; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   currency?: string;
   deliveryOption: string;
@@ -168,11 +159,11 @@ export interface CustomerOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
-  additionalCharges: number; // ✅ ADDED: New field
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
+  status: OrderStatus; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   currency?: string;
   deliveryOption: string;

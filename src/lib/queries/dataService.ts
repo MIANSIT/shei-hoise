@@ -33,12 +33,14 @@ import {
   type UpdateOrderByNumberData,
 } from "./orders/updateOrderByNumber";
 import {
-  StoreOrder,
+  StoreOrder
+} from "@/lib/types/order";
+import {
   OrderStatus,
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
 
 import {
   bulkUpdateOrders,

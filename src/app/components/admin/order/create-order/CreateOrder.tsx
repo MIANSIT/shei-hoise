@@ -45,6 +45,7 @@ import {
 } from "@/lib/queries/stores/getStoreSettings";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -81,16 +82,12 @@ export default function CreateOrder() {
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
-  const [additionalCharges, setAdditionalCharges] = useState(0); // ✅ ADDED: New state
+  const [additionalCharges, setAdditionalCharges] = useState(0);
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const [status, setStatus] = useState<
-    "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"
-  >("pending");
-  const [paymentStatus, setPaymentStatus] = useState<
-    "pending" | "paid" | "failed" | "refunded"
-  >("pending");
+  const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.PENDING); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
@@ -798,8 +795,8 @@ export default function CreateOrder() {
                   setTaxAmount={setTaxAmount}
                   discount={discount}
                   setDiscount={setDiscount}
-                  additionalCharges={additionalCharges} // ✅ ADDED: New prop
-                  setAdditionalCharges={setAdditionalCharges} // ✅ ADDED: New prop
+                  additionalCharges={additionalCharges}
+                  setAdditionalCharges={setAdditionalCharges}
                   deliveryCost={deliveryCost}
                   setDeliveryCost={setDeliveryCost}
                   totalAmount={totalAmount}
@@ -827,7 +824,7 @@ export default function CreateOrder() {
                   subtotal={subtotal}
                   taxAmount={taxAmount}
                   discount={discount}
-                  additionalCharges={additionalCharges} // ✅ ADDED: New prop
+                  additionalCharges={additionalCharges}
                   deliveryCost={deliveryCost}
                   totalAmount={totalAmount}
                   status={status}

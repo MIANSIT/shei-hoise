@@ -24,6 +24,7 @@ import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -188,13 +189,13 @@ export default function CheckoutPage() {
       order_number: orderNumber,
       customer_id: customerId || "temp-customer",
       store_id: invoiceStoreData?.id || "temp-store-id",
-      status: "pending",
+      status: OrderStatus.PENDING, // ✅ Using enum
       subtotal: calculations.subtotal,
       tax_amount: taxAmount, // ✅ Fixed tax amount
       shipping_fee: shippingFee,
       total_amount: totalWithTax, // ✅ Use total with tax
       currency: "BDT",
-      payment_status: "pending",
+      payment_status: PaymentStatus.PENDING, // ✅ Using enum
       payment_method: "cod",
       shipping_address: shippingAddress,
       billing_address: billingAddress,

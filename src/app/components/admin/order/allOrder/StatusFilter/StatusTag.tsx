@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Tag } from "antd";
-import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/enums";
 
 export type StatusType = OrderStatus | PaymentStatus | DeliveryOption | PaymentMethod;
 

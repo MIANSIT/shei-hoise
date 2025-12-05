@@ -399,8 +399,8 @@ export default function AnimatedInvoice({
                   <div>Thank you for shopping with us!</div>
                   <div>${
                     enhancedOrderData.stores?.store_slug
-                      ? `www.shei-hoise.vercel.app/${enhancedOrderData.stores.store_slug}`
-                      : "www.shei-hoise.vercel.app"
+                      ? `www.www.sheihoise.com/${enhancedOrderData.stores.store_slug}`
+                      : "www.www.sheihoise.com"
                   }</div>
                 </div>
               </div>
@@ -671,8 +671,8 @@ export default function AnimatedInvoice({
                   <div>Thank you for shopping with us!</div>
                   <div>
                     {enhancedOrderData.stores?.store_slug
-                      ? `www.shei-hoise.vercel.app/${enhancedOrderData.stores.store_slug}`
-                      : "www.shei-hoise.vercel.app"}
+                      ? `www.www.sheihoise.com/${enhancedOrderData.stores.store_slug}`
+                      : "www.www.sheihoise.com"}
                   </div>
                 </div>
 

@@ -4,8 +4,7 @@ import {
   OrderStatus,
   PaymentStatus,
   DeliveryOption,
-  PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
 
 export interface BulkUpdateData {
   orderIds: string[];
