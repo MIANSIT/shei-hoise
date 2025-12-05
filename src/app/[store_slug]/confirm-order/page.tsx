@@ -15,6 +15,8 @@ import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
 import { createCheckoutCustomer } from "@/lib/queries/customers/createCheckoutCustomer";
 import { supabase } from "@/lib/supabase";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 
 export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
@@ -27,7 +29,7 @@ export default function ConfirmOrderPage() {
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
-  const [taxAmount, setTaxAmount] = useState<number>(0); // ✅ ADDED: Tax amount state
+  const [taxAmount, setTaxAmount] = useState<number>(0); // ✅ Fixed tax amount from store
   
   const notify = useSheiNotification();
   const { clearFormData } = useCheckoutStore();
@@ -56,6 +58,28 @@ export default function ConfirmOrderPage() {
   const isLoadingAuth = authLoading || userLoading;
   const isSubmitting = isProcessing || isCreatingAccount || orderLoading;
 
+  // ✅ Fetch tax amount from store settings (fixed amount)
+  useEffect(() => {
+    const fetchTaxAmount = async () => {
+      try {
+        const storeId = await getStoreIdBySlug(validatedStoreSlug);
+        if (storeId) {
+          const storeSettings = await getStoreSettings(storeId);
+          if (storeSettings && storeSettings.tax_rate) {
+            setTaxAmount(storeSettings.tax_rate); // Set fixed tax amount
+            console.log("✅ Tax amount fetched from store:", storeSettings.tax_rate);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error fetching tax amount:", error);
+      }
+    };
+
+    if (validatedStoreSlug) {
+      fetchTaxAmount();
+    }
+  }, [validatedStoreSlug]);
+
   // Add validation effect
   useEffect(() => {
     if (!validatedStoreSlug) {
@@ -65,13 +89,10 @@ export default function ConfirmOrderPage() {
     }
   }, [validatedStoreSlug, store_slug, notify, router]);
 
-  // ✅ UPDATED: Handle shipping change with tax
-  const handleShippingChange = (shippingMethod: string, fee: number, tax?: number) => {
+  // ✅ Simplified: Only handle shipping change, tax is fixed
+  const handleShippingChange = (shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
     setShippingFee(fee);
-    if (tax !== undefined) {
-      setTaxAmount(tax); // ✅ Update tax amount when shipping changes
-    }
   };
 
   const handleCheckoutSubmit = async (values: CustomerCheckoutFormValues) => {
@@ -100,104 +121,49 @@ export default function ConfirmOrderPage() {
         ...values,
         shippingMethod: selectedShipping,
         shippingFee: shippingFee,
-        taxAmount: taxAmount, // ✅ Include tax amount
+        taxAmount: taxAmount, // ✅ Include fixed tax amount
       };
 
       let storeCustomerId: string | undefined;
 
-      // ✅ FIXED: Scenario 1 - User is already logged in
+      // ✅ User is already logged in
       if (isUserLoggedIn && currentUser) {
         console.log("✅ User is logged in, finding store customer record");
         
-        // Find the store_customer record for this auth user
         const { data: storeCustomer, error: storeCustomerError } = await supabase
           .from("store_customers")
           .select("id, profile_id")
           .eq("auth_user_id", currentUser.id)
           .maybeSingle();
 
-        if (storeCustomerError) {
-          console.error("❌ Error finding store customer:", storeCustomerError);
-        } else if (storeCustomer) {
+        if (storeCustomer) {
           storeCustomerId = storeCustomer.id;
-          console.log("✅ Found store customer record:", storeCustomerId);
 
-          // Update customer profile if exists
           if (storeCustomer.profile_id) {
-            console.log("📝 Updating customer profile for logged-in user");
-            await supabase
-              .from("customer_profiles")
-              .update({
-                address: values.shippingAddress,
-                city: values.city,
-                postal_code: values.postCode,
-                country: values.country,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", storeCustomer.profile_id);
+            await updateCustomerProfile(storeCustomer.profile_id, values);
           }
         }
       }
 
-      // ✅ FIXED: Scenario 2 - User is NOT logged in (GUEST or EXISTING CUSTOMER)
+      // ✅ User is NOT logged in
       if (!isUserLoggedIn) {
-        console.log("🔄 User is not logged in, handling guest/existing customer order");
-
-        // Check if customer exists in store_customers for this store
         const existingCustomer = await getCustomerByEmail(values.email, validatedStoreSlug);
         
         if (existingCustomer) {
-          console.log("📧 Existing customer found:", existingCustomer.id);
           storeCustomerId = existingCustomer.id;
 
-          // ✅ Update customer profile
           if (existingCustomer.profile_id) {
-            console.log("📝 Updating customer profile");
-            await supabase
-              .from("customer_profiles")
-              .update({
-                address: values.shippingAddress,
-                city: values.city,
-                postal_code: values.postCode,
-                country: values.country,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", existingCustomer.profile_id);
+            await updateCustomerProfile(existingCustomer.profile_id, values);
           } else {
-            // Create profile if doesn't exist
-            console.log("📝 Creating new profile for existing customer");
-            const profileData = {
-              store_customer_id: existingCustomer.id,
-              address: values.shippingAddress,
-              city: values.city,
-              postal_code: values.postCode,
-              country: values.country,
-            };
-
-            const { data: newProfile } = await supabase
-              .from("customer_profiles")
-              .insert([profileData])
-              .select("id")
-              .single();
-
-            if (newProfile) {
-              // Update store_customer with profile_id
-              await supabase
-                .from("store_customers")
-                .update({ profile_id: newProfile.id })
-                .eq("id", existingCustomer.id);
-            }
+            await createCustomerProfile(existingCustomer.id, values);
           }
 
-          // ✅ If customer exists but no auth account AND password is provided
-          if (!existingCustomer.auth_user_id && values.password && values.password.length > 0) {
-            console.log("🔐 Creating auth account for existing customer");
+          if (!existingCustomer.auth_user_id && values.password) {
             setIsCreatingAccount(true);
-            
             try {
-              const { data: authData, error: authError } = await supabase.auth.signUp({
+              const { data: authData } = await supabase.auth.signUp({
                 email: values.email.toLowerCase(),
-                password: values.password,
+                password: values.password!,
                 options: {
                   data: {
                     first_name: values.name.split(" ")[0] || values.name,
@@ -207,13 +173,7 @@ export default function ConfirmOrderPage() {
                 },
               });
 
-              if (authError) {
-                console.error("❌ Auth account creation failed:", authError);
-                // Continue as guest - don't fail the order
-              } else if (authData.user) {
-                console.log("✅ Auth account created for existing customer:", authData.user.id);
-                
-                // Update store_customer with auth_user_id
+              if (authData?.user) {
                 await supabase
                   .from("store_customers")
                   .update({
@@ -224,16 +184,12 @@ export default function ConfirmOrderPage() {
               }
             } catch (authError: any) {
               console.error("❌ Auth setup error:", authError);
-              // Continue with order as guest
             } finally {
               setIsCreatingAccount(false);
             }
           }
         } else {
-          // ✅ Scenario 3 - Create NEW customer (guest or with password)
-          console.log("👤 Creating new customer - no existing customer found");
           setIsCreatingAccount(true);
-
           try {
             const customerData = {
               ...values,
@@ -243,7 +199,6 @@ export default function ConfirmOrderPage() {
             const customerResult = await createCheckoutCustomer(customerData);
             
             if (customerResult.success) {
-              console.log("✅ Customer created successfully:", customerResult.customerId);
               storeCustomerId = customerResult.customerId;
             } else {
               throw new Error(customerResult.error || "Failed to create customer");
@@ -260,11 +215,8 @@ export default function ConfirmOrderPage() {
         }
       }
 
-      // ✅ Process the order with tax amount
-      console.log("📦 Processing order with store customer ID and tax:", {
-        storeCustomerId,
-        taxAmount,
-      });
+      // ✅ Process the order with fixed tax amount
+      console.log("📦 Processing order with fixed tax:", taxAmount);
 
       const result = await processOrder(
         formDataWithShipping,
@@ -274,7 +226,7 @@ export default function ConfirmOrderPage() {
         shippingFee,
         cartItems,
         calculations,
-        taxAmount // ✅ PASS tax amount to processOrder
+        taxAmount // ✅ Pass fixed tax amount
       );
 
       if (result.success) {
@@ -343,10 +295,10 @@ export default function ConfirmOrderPage() {
       loading={loading}
       error={cartError}
       onCheckout={handleCheckoutSubmit}
-      onShippingChange={handleShippingChange} // ✅ Updated to handle tax
+      onShippingChange={handleShippingChange} // ✅ Simplified, no tax parameter
       selectedShipping={selectedShipping}
       shippingFee={shippingFee}
-      taxAmount={taxAmount} // ✅ Pass tax amount to layout
+      taxAmount={taxAmount} // ✅ Pass fixed tax amount
       isProcessing={isSubmitting}
       mode="confirm"
     />

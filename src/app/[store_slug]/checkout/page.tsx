@@ -22,13 +22,15 @@ import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
-  const [taxAmount, setTaxAmount] = useState<number>(0); // ✅ ADDED: Tax amount state
+  const [taxAmount, setTaxAmount] = useState<number>(0); // Fixed tax amount from store
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
 
@@ -72,6 +74,28 @@ export default function CheckoutPage() {
   const isLoadingOverall =
     cartLoading || authLoading || userLoading || storeLoading;
 
+  // ✅ Fetch tax amount from store settings
+  useEffect(() => {
+    const fetchTaxAmount = async () => {
+      try {
+        const storeId = await getStoreIdBySlug(store_slug);
+        if (storeId) {
+          const storeSettings = await getStoreSettings(storeId);
+          if (storeSettings && storeSettings.tax_rate) {
+            setTaxAmount(storeSettings.tax_rate); // Set fixed tax amount
+            console.log("✅ Tax amount fetched from store:", storeSettings.tax_rate);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error fetching tax amount:", error);
+      }
+    };
+
+    if (store_slug) {
+      fetchTaxAmount();
+    }
+  }, [store_slug]);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -98,12 +122,10 @@ export default function CheckoutPage() {
     showInvoice,
   ]);
 
-  const handleShippingChange = (shippingMethod: string, fee: number, tax?: number) => {
+  // ✅ Simplified: Only handle shipping change, tax is fixed
+  const handleShippingChange = (shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
     setShippingFee(fee);
-    if (tax !== undefined) {
-      setTaxAmount(tax); // ✅ Update tax amount when shipping changes
-    }
   };
 
   // Create temporary order data for invoice
@@ -158,7 +180,7 @@ export default function CheckoutPage() {
       country: values.country,
     };
 
-    // ✅ Calculate total with tax
+    // ✅ Calculate total with tax (fixed amount)
     const totalWithTax = calculations.totalPrice + shippingFee + taxAmount;
 
     return {
@@ -168,7 +190,7 @@ export default function CheckoutPage() {
       store_id: invoiceStoreData?.id || "temp-store-id",
       status: "pending",
       subtotal: calculations.subtotal,
-      tax_amount: taxAmount, // ✅ Include tax amount
+      tax_amount: taxAmount, // ✅ Fixed tax amount
       shipping_fee: shippingFee,
       total_amount: totalWithTax, // ✅ Use total with tax
       currency: "BDT",
@@ -207,457 +229,412 @@ export default function CheckoutPage() {
     };
   };
 
-const handleCheckoutSubmit = async (values: CustomerCheckoutFormValues) => {
-  console.log("🔄 Checkout submit:", {
-    ...values,
-    password: values.password ? "***" : "not-provided",
-    isUserLoggedIn,
-    cartItemsCount: cartItems.length,
-    selectedShipping,
-    shippingFee,
-    taxAmount, // ✅ Include tax amount in logs
-  });
-
-  if (cartItems.length === 0) return notify.error("Your cart is empty");
-  if (!selectedShipping)
-    return notify.error("Please select a shipping method");
-
-  setIsProcessing(true);
-
-  try {
-    const formDataWithShipping = {
+  const handleCheckoutSubmit = async (values: CustomerCheckoutFormValues) => {
+    console.log("🔄 Checkout submit:", {
       ...values,
-      shippingMethod: selectedShipping,
-      shippingFee,
-      taxAmount, // ✅ Include tax amount in form data
-    };
-
-    let storeCustomerId: string = "";
-    let authUserId: string | null = null;
-
-    // ------------------------
-    //  🔐 LOGGED IN USERFLOW
-    // ------------------------
-    if (isUserLoggedIn && currentUser) {
-      authUserId = currentUser.id;
-      const { data: storeCustomer, error } = await supabase
-        .from("store_customers")
-        .select("id, profile_id")
-        .eq("auth_user_id", currentUser.id)
-        .maybeSingle();
-
-      if (error) console.error("❌ store_customer lookup failed", error);
-
-      if (storeCustomer) {
-        storeCustomerId = storeCustomer.id;
-
-        if (storeCustomer.profile_id) {
-          await updateCustomerProfile(storeCustomer.profile_id, values);
-          console.log("📝 Updated profile for logged-in user");
-        }
-      } else {
-        // Logged in user doesn't have a store customer record
-        console.log("👤 Creating store customer for logged-in user...");
-        storeCustomerId = await createCustomerWithRetry(values, store_slug, authUserId);
-      }
-    }
-
-    // ------------------------
-    // 🧑‍🧾 GUEST / NON-LOGGED USER
-    // ------------------------
-    if (!isUserLoggedIn) {
-      const existing = await getCustomerByEmail(values.email, store_slug);
-
-      if (existing) {
-        storeCustomerId = existing.id;
-
-        // 🔄 Update or create profile
-        if (existing.profile_id) {
-          await updateCustomerProfile(existing.profile_id, values);
-        } else {
-          await createCustomerProfile(existing.id, values);
-          console.log("✅ Created profile for existing customer");
-        }
-
-        // 🔐 UPGRADE GUEST → AUTH
-        if (!existing.auth_user_id && values.password) {
-          try {
-            console.log("🔐 Creating/linking auth account...");
-            const authResult = await handleAuthForExistingCustomer(values, existing.id);
-            authUserId = authResult.authUserId;
-            
-            if (authResult.success) {
-              console.log("✅ Auth setup completed");
-            } else {
-              notify.warning("Order placed! Account setup will complete shortly.");
-            }
-          } catch (authError: any) {
-            console.error("Auth error:", authError);
-            notify.warning("Account setup had issues. You can log in later.");
-          }
-        }
-      } else {
-        // 🆕 Create brand new customer
-        console.log("👤 Creating new customer...");
-        
-        if (values.password) {
-          // Create auth account first, then customer
-          const authResult = await createAuthAndCustomer(values, store_slug);
-          storeCustomerId = authResult.customerId;
-          authUserId = authResult.authUserId;
-          
-          if (authResult.success) {
-            console.log("✅ New customer with auth account created");
-          } else {
-            notify.warning("Order placed! Account setup will complete shortly.");
-          }
-        } else {
-          // Create guest customer (no password)
-          storeCustomerId = await createGuestCustomer(values, store_slug);
-        }
-      }
-    }
-
-    // ------------------------
-    // 📦 PROCESS ORDER (MUST SUCCEED)
-    // ------------------------
-    if (!storeCustomerId) {
-      console.error("❌ CRITICAL: No customer ID");
-      return notify.error("Failed to create customer record. Please try again.");
-    }
-
-    // ✅ Pass taxAmount to processOrder
-    const result = await processOrder(
-      formDataWithShipping,
-      storeCustomerId,
-      "cod",
+      password: values.password ? "***" : "not-provided",
+      isUserLoggedIn,
+      cartItemsCount: cartItems.length,
       selectedShipping,
       shippingFee,
-      cartItems,
-      calculations,
-      taxAmount // ✅ ADD THIS: Pass tax amount to order process
-    );
+      taxAmount, // ✅ Fixed tax amount
+    });
 
-    if (!result.success) {
-      return notify.error(result.error || "Failed to place order");
-    }
+    if (cartItems.length === 0) return notify.error("Your cart is empty");
+    if (!selectedShipping)
+      return notify.error("Please select a shipping method");
 
-    // Show invoice
-    setInvoiceData(createTempOrderData(values, storeCustomerId, result));
-    setShowInvoice(true);
+    setIsProcessing(true);
 
-    // Show success message
-    if (isUserLoggedIn) {
-      notify.success("Order placed successfully!");
-    } else if (values.password) {
-      if (authUserId) {
-        notify.success("Order placed successfully! Account created. Check your email.");
-      } else {
-        notify.success("Order placed successfully! Account setup in progress.");
-      }
-    } else {
-      notify.success("Order placed successfully!");
-    }
-
-    // Clear cart after delay
-    setTimeout(() => clearStoreCart(store_slug), 3000);
-  } catch (error: any) {
-    console.error("❌ Checkout error:", error);
-    notify.error(error.message || "Unexpected error. Please try again.");
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
-// ============ HELPER FUNCTIONS ============
-
-async function createCustomerWithRetry(
-  values: CustomerCheckoutFormValues,
-  storeSlug: string,
-  authUserId: string | null
-): Promise<string> {
-  const storeId = await getStoreId(storeSlug);
-  if (!storeId) throw new Error("Store not found");
-
-  let retries = 3;
-  
-  while (retries > 0) {
     try {
-      // Try with auth_user_id first
-      const { data: customer, error } = await supabase
-        .from("store_customers")
-        .insert({
-          name: values.name,
-          email: values.email.toLowerCase(),
-          phone: values.phone,
-          auth_user_id: authUserId,
-        })
-        .select("id")
-        .single();
+      const formDataWithShipping = {
+        ...values,
+        shippingMethod: selectedShipping,
+        shippingFee,
+        taxAmount, // ✅ Include fixed tax amount
+      };
 
-      if (!error) return customer.id;
-      
-      // If foreign key error, wait and retry without auth_user_id
-      if (error.code === "23503") {
-        console.log(`⚠️ Foreign key error, retrying (${retries} left)...`);
-        retries--;
-        
-        if (retries === 0) {
-          // Last attempt: create without auth_user_id
-          const { data: guestCustomer } = await supabase
-            .from("store_customers")
-            .insert({
-              name: values.name,
-              email: values.email.toLowerCase(),
-              phone: values.phone,
-              auth_user_id: null,
-            })
-            .select("id")
-            .single();
-          
-          if (guestCustomer) {
-            // Schedule linking for later
-            if (authUserId) {
-              setTimeout(() => linkAuthToCustomer(guestCustomer.id, authUserId), 5000);
-            }
-            return guestCustomer.id;
+      let storeCustomerId: string = "";
+      let authUserId: string | null = null;
+
+      // 🔐 LOGGED IN USER FLOW
+      if (isUserLoggedIn && currentUser) {
+        authUserId = currentUser.id;
+        const { data: storeCustomer, error } = await supabase
+          .from("store_customers")
+          .select("id, profile_id")
+          .eq("auth_user_id", currentUser.id)
+          .maybeSingle();
+
+        if (error) console.error("❌ store_customer lookup failed", error);
+
+        if (storeCustomer) {
+          storeCustomerId = storeCustomer.id;
+
+          if (storeCustomer.profile_id) {
+            await updateCustomerProfile(storeCustomer.profile_id, values);
           }
         } else {
-          // Wait and retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          storeCustomerId = await createCustomerWithRetry(values, store_slug, authUserId);
+        }
+      }
+
+      // 🧑‍🧾 GUEST / NON-LOGGED USER
+      if (!isUserLoggedIn) {
+        const existing = await getCustomerByEmail(values.email, store_slug);
+
+        if (existing) {
+          storeCustomerId = existing.id;
+
+          if (existing.profile_id) {
+            await updateCustomerProfile(existing.profile_id, values);
+          } else {
+            await createCustomerProfile(existing.id, values);
+          }
+
+          if (!existing.auth_user_id && values.password) {
+            try {
+              const authResult = await handleAuthForExistingCustomer(values, existing.id);
+              authUserId = authResult.authUserId;
+              
+              if (!authResult.success) {
+                notify.warning("Order placed! Account setup will complete shortly.");
+              }
+            } catch (authError: any) {
+              console.error("Auth error:", authError);
+              notify.warning("Account setup had issues. You can log in later.");
+            }
+          }
+        } else {
+          if (values.password) {
+            const authResult = await createAuthAndCustomer(values, store_slug);
+            storeCustomerId = authResult.customerId;
+            authUserId = authResult.authUserId;
+            
+            if (!authResult.success) {
+              notify.warning("Order placed! Account setup will complete shortly.");
+            }
+          } else {
+            storeCustomerId = await createGuestCustomer(values, store_slug);
+          }
+        }
+      }
+
+      // 📦 PROCESS ORDER
+      if (!storeCustomerId) {
+        console.error("❌ CRITICAL: No customer ID");
+        return notify.error("Failed to create customer record. Please try again.");
+      }
+
+      const result = await processOrder(
+        formDataWithShipping,
+        storeCustomerId,
+        "cod",
+        selectedShipping,
+        shippingFee,
+        cartItems,
+        calculations,
+        taxAmount // ✅ Pass fixed tax amount
+      );
+
+      if (!result.success) {
+        return notify.error(result.error || "Failed to place order");
+      }
+
+      // Show invoice
+      setInvoiceData(createTempOrderData(values, storeCustomerId, result));
+      setShowInvoice(true);
+
+      // Success messages
+      if (isUserLoggedIn) {
+        notify.success("Order placed successfully!");
+      } else if (values.password) {
+        if (authUserId) {
+          notify.success("Order placed successfully! Account created. Check your email.");
+        } else {
+          notify.success("Order placed successfully! Account setup in progress.");
         }
       } else {
-        throw new Error(error.message);
+        notify.success("Order placed successfully!");
       }
+
+      // Clear cart
+      setTimeout(() => clearStoreCart(store_slug), 3000);
     } catch (error: any) {
-      if (retries === 0) throw error;
-      retries--;
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.error("❌ Checkout error:", error);
+      notify.error(error.message || "Unexpected error. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
-  }
-  
-  throw new Error("Failed to create customer after retries");
-}
-
-async function createAuthAndCustomer(
-  values: CustomerCheckoutFormValues,
-  storeSlug: string
-): Promise<{ customerId: string; authUserId: string | null; success: boolean }> {
-  const storeId = await getStoreId(storeSlug);
-  if (!storeId) throw new Error("Store not found");
-
-  let authUserId: string | null = null;
-  
-  // Step 1: Create auth account
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: values.email.toLowerCase(),
-      password: values.password!,
-      options: {
-        data: {
-          first_name: values.name.split(" ")[0] || values.name,
-          last_name: values.name.split(" ").slice(1).join(" ") || "",
-          phone: values.phone,
-        },
-      },
-    });
-
-    if (authError) {
-      console.warn("⚠️ Auth creation failed:", authError.message);
-      // Create customer without auth
-      const customerId = await createGuestCustomer(values, storeSlug);
-      return { customerId, authUserId: null, success: false };
-    }
-
-    if (authData.user) {
-      authUserId = authData.user.id;
-      console.log("✅ Auth user created:", authUserId);
-    }
-  } catch (authError) {
-    console.error("❌ Auth creation error:", authError);
-  }
-
-  // Step 2: Create customer with retry mechanism
-  const customerId = await createCustomerWithRetry(values, storeSlug, authUserId);
-  
-  // Step 3: Create profile and link
-  await createProfileAndLinks(customerId, storeId, values);
-  
-  return { customerId, authUserId, success: !!authUserId };
-}
-
-async function createGuestCustomer(
-  values: CustomerCheckoutFormValues,
-  storeSlug: string
-): Promise<string> {
-  const storeId = await getStoreId(storeSlug);
-  if (!storeId) throw new Error("Store not found");
-
-  const { data: customer, error } = await supabase
-    .from("store_customers")
-    .insert({
-      name: values.name,
-      email: values.email.toLowerCase(),
-      phone: values.phone,
-      auth_user_id: null,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(`Failed to create guest customer: ${error.message}`);
-
-  await createProfileAndLinks(customer.id, storeId, values);
-  return customer.id;
-}
-
-async function handleAuthForExistingCustomer(
-  values: CustomerCheckoutFormValues,
-  customerId: string
-): Promise<{ authUserId: string | null; success: boolean }> {
-  let authUserId: string | null = null;
-  
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: values.email.toLowerCase(),
-      password: values.password!,
-      options: {
-        data: {
-          first_name: values.name.split(" ")[0] || values.name,
-          last_name: values.name.split(" ").slice(1).join(" ") || "",
-          phone: values.phone,
-        },
-      },
-    });
-
-    if (authError) {
-      console.warn("⚠️ Auth creation failed:", authError.message);
-      return { authUserId: null, success: false };
-    }
-
-    if (authData.user) {
-      authUserId = authData.user.id;
-      
-      // Try to link immediately with retry
-      await linkAuthToCustomer(customerId, authUserId);
-      return { authUserId, success: true };
-    }
-  } catch (error) {
-    console.error("❌ Auth setup error:", error);
-  }
-  
-  return { authUserId: null, success: false };
-}
-
-async function linkAuthToCustomer(customerId: string, authUserId: string) {
-  let retries = 5;
-  
-  while (retries > 0) {
-    try {
-      const { error } = await supabase
-        .from("store_customers")
-        .update({
-          auth_user_id: authUserId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customerId);
-
-      if (!error) {
-        console.log("✅ Auth linked successfully");
-        return true;
-      }
-      
-      console.log(`⚠️ Linking failed (${retries} left):`, error.message);
-      retries--;
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
-      console.error("❌ Linking error:", error);
-      retries--;
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  }
-  
-  console.log("❌ Failed to link auth after all retries");
-  return false;
-}
-
-async function createProfileAndLinks(
-  customerId: string,
-  storeId: string,
-  values: CustomerCheckoutFormValues
-) {
-  // Create profile
-  const { data: profile } = await supabase
-    .from("customer_profiles")
-    .insert({
-      store_customer_id: customerId,
-      address: values.shippingAddress,
-      city: values.city,
-      postal_code: values.postCode,
-      country: values.country,
-    })
-    .select("id")
-    .single();
-
-  if (profile) {
-    // Update customer with profile_id
-    await supabase
-      .from("store_customers")
-      .update({ profile_id: profile.id })
-      .eq("id", customerId);
-  }
-
-  // Create store link
-  await supabase
-    .from("store_customer_links")
-    .insert({
-      customer_id: customerId,
-      store_id: storeId,
-    });
-}
-
-// Helper functions
-async function updateCustomerProfile(profileId: string, values: CustomerCheckoutFormValues) {
-  return supabase
-    .from("customer_profiles")
-    .update({
-      address: values.shippingAddress,
-      city: values.city,
-      postal_code: values.postCode,
-      country: values.country,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", profileId);
-}
-
-async function createCustomerProfile(storeCustomerId: string, values: CustomerCheckoutFormValues) {
-  const profileData = {
-    store_customer_id: storeCustomerId,
-    address: values.shippingAddress,
-    city: values.city,
-    postal_code: values.postCode,
-    country: values.country,
   };
 
-  return supabase
-    .from("customer_profiles")
-    .insert([profileData])
-    .select("id")
-    .single();
-}
-
-async function getStoreId(storeSlug: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("stores")
-    .select("id")
-    .eq("store_slug", storeSlug)
-    .single();
-
-  if (error) {
-    console.error("Error getting store ID:", error);
-    return null;
+  // ============ HELPER FUNCTIONS ============
+  async function updateCustomerProfile(profileId: string, values: CustomerCheckoutFormValues) {
+    return supabase
+      .from("customer_profiles")
+      .update({
+        address: values.shippingAddress,
+        city: values.city,
+        postal_code: values.postCode,
+        country: values.country,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profileId);
   }
-  return data.id;
-}
+
+  async function createCustomerProfile(storeCustomerId: string, values: CustomerCheckoutFormValues) {
+    const profileData = {
+      store_customer_id: storeCustomerId,
+      address: values.shippingAddress,
+      city: values.city,
+      postal_code: values.postCode,
+      country: values.country,
+    };
+
+    return supabase
+      .from("customer_profiles")
+      .insert([profileData])
+      .select("id")
+      .single();
+  }
+
+  async function getStoreId(storeSlug: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from("stores")
+      .select("id")
+      .eq("store_slug", storeSlug)
+      .single();
+
+    if (error) {
+      console.error("Error getting store ID:", error);
+      return null;
+    }
+    return data.id;
+  }
+
+  async function createCustomerWithRetry(
+    values: CustomerCheckoutFormValues,
+    storeSlug: string,
+    authUserId: string | null
+  ): Promise<string> {
+    const storeId = await getStoreId(storeSlug);
+    if (!storeId) throw new Error("Store not found");
+
+    let retries = 3;
+    
+    while (retries > 0) {
+      try {
+        const { data: customer, error } = await supabase
+          .from("store_customers")
+          .insert({
+            name: values.name,
+            email: values.email.toLowerCase(),
+            phone: values.phone,
+            auth_user_id: authUserId,
+          })
+          .select("id")
+          .single();
+
+        if (!error) return customer.id;
+        
+        if (error.code === "23503") {
+          console.log(`⚠️ Foreign key error, retrying (${retries} left)...`);
+          retries--;
+          
+          if (retries === 0) {
+            const { data: guestCustomer } = await supabase
+              .from("store_customers")
+              .insert({
+                name: values.name,
+                email: values.email.toLowerCase(),
+                phone: values.phone,
+                auth_user_id: null,
+              })
+              .select("id")
+              .single();
+            
+            if (guestCustomer) {
+              if (authUserId) {
+                setTimeout(() => linkAuthToCustomer(guestCustomer.id, authUserId), 5000);
+              }
+              return guestCustomer.id;
+            }
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } else {
+          throw new Error(error.message);
+        }
+      } catch (error: any) {
+        if (retries === 0) throw error;
+        retries--;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    throw new Error("Failed to create customer after retries");
+  }
+
+  async function createAuthAndCustomer(
+    values: CustomerCheckoutFormValues,
+    storeSlug: string
+  ): Promise<{ customerId: string; authUserId: string | null; success: boolean }> {
+    const storeId = await getStoreId(storeSlug);
+    if (!storeId) throw new Error("Store not found");
+
+    let authUserId: string | null = null;
+    
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.email.toLowerCase(),
+        password: values.password!,
+        options: {
+          data: {
+            first_name: values.name.split(" ")[0] || values.name,
+            last_name: values.name.split(" ").slice(1).join(" ") || "",
+            phone: values.phone,
+          },
+        },
+      });
+
+      if (authError) {
+        console.warn("⚠️ Auth creation failed:", authError.message);
+        const customerId = await createGuestCustomer(values, storeSlug);
+        return { customerId, authUserId: null, success: false };
+      }
+
+      if (authData.user) {
+        authUserId = authData.user.id;
+      }
+    } catch (authError) {
+      console.error("❌ Auth creation error:", authError);
+    }
+
+    const customerId = await createCustomerWithRetry(values, storeSlug, authUserId);
+    await createProfileAndLinks(customerId, storeId, values);
+    
+    return { customerId, authUserId, success: !!authUserId };
+  }
+
+  async function createGuestCustomer(
+    values: CustomerCheckoutFormValues,
+    storeSlug: string
+  ): Promise<string> {
+    const storeId = await getStoreId(storeSlug);
+    if (!storeId) throw new Error("Store not found");
+
+    const { data: customer, error } = await supabase
+      .from("store_customers")
+      .insert({
+        name: values.name,
+        email: values.email.toLowerCase(),
+        phone: values.phone,
+        auth_user_id: null,
+      })
+      .select("id")
+      .single();
+
+    if (error) throw new Error(`Failed to create guest customer: ${error.message}`);
+
+    await createProfileAndLinks(customer.id, storeId, values);
+    return customer.id;
+  }
+
+  async function handleAuthForExistingCustomer(
+    values: CustomerCheckoutFormValues,
+    customerId: string
+  ): Promise<{ authUserId: string | null; success: boolean }> {
+    let authUserId: string | null = null;
+    
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.email.toLowerCase(),
+        password: values.password!,
+        options: {
+          data: {
+            first_name: values.name.split(" ")[0] || values.name,
+            last_name: values.name.split(" ").slice(1).join(" ") || "",
+            phone: values.phone,
+          },
+        },
+      });
+
+      if (authError) {
+        console.warn("⚠️ Auth creation failed:", authError.message);
+        return { authUserId: null, success: false };
+      }
+
+      if (authData.user) {
+        authUserId = authData.user.id;
+        await linkAuthToCustomer(customerId, authUserId);
+        return { authUserId, success: true };
+      }
+    } catch (error) {
+      console.error("❌ Auth setup error:", error);
+    }
+    
+    return { authUserId: null, success: false };
+  }
+
+  async function linkAuthToCustomer(customerId: string, authUserId: string) {
+    let retries = 5;
+    
+    while (retries > 0) {
+      try {
+        const { error } = await supabase
+          .from("store_customers")
+          .update({
+            auth_user_id: authUserId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", customerId);
+
+        if (!error) {
+          return true;
+        }
+        
+        retries--;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        retries--;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    return false;
+  }
+
+  async function createProfileAndLinks(
+    customerId: string,
+    storeId: string,
+    values: CustomerCheckoutFormValues
+  ) {
+    const { data: profile } = await supabase
+      .from("customer_profiles")
+      .insert({
+        store_customer_id: customerId,
+        address: values.shippingAddress,
+        city: values.city,
+        postal_code: values.postCode,
+        country: values.country,
+      })
+      .select("id")
+      .single();
+
+    if (profile) {
+      await supabase
+        .from("store_customers")
+        .update({ profile_id: profile.id })
+        .eq("id", customerId);
+    }
+
+    await supabase
+      .from("store_customer_links")
+      .insert({
+        customer_id: customerId,
+        store_id: storeId,
+      });
+  }
 
   // Store loading check
   if (isLoadingOverall) {
@@ -690,10 +667,10 @@ async function getStoreId(storeSlug: string): Promise<string | null> {
         loading={isLoadingOverall}
         error={cartError}
         onCheckout={handleCheckoutSubmit}
-        onShippingChange={handleShippingChange} // ✅ This now accepts tax as third parameter
+        onShippingChange={handleShippingChange} // ✅ Simplified, no tax parameter
         selectedShipping={selectedShipping}
         shippingFee={shippingFee}
-        taxAmount={taxAmount} // ✅ Pass tax amount to layout
+        taxAmount={taxAmount} // ✅ Pass fixed tax amount
         isProcessing={isSubmitting}
         mode="checkout"
       />

@@ -20,10 +20,10 @@ interface UnifiedCheckoutLayoutProps {
   loading: boolean;
   error: string | null;
   onCheckout: (values: any) => void;
-  onShippingChange: (method: string, fee: number, tax?: number) => void; // ✅ Updated to accept tax
+  onShippingChange: (method: string, fee: number) => void; // ✅ Simplified, no tax parameter
   selectedShipping: string;
   shippingFee: number;
-  taxAmount: number; // ✅ ADD THIS: Tax amount prop
+  taxAmount: number; // ✅ Fixed tax amount
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
 }
@@ -38,58 +38,38 @@ export default function UnifiedCheckoutLayout({
   onShippingChange,
   selectedShipping,
   shippingFee,
-  taxAmount, // ✅ ADD THIS: Receive tax amount
+  taxAmount, // ✅ Fixed tax amount
   isProcessing,
   mode = "checkout",
 }: UnifiedCheckoutLayoutProps) {
-  const [activeSection, setActiveSection] = useState<"cart" | "customer">(
-    "cart"
-  );
+  const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
   const [isClearing, setIsClearing] = useState(false);
-  const [localTaxAmount, setLocalTaxAmount] = useState<number>(taxAmount); // ✅ Local tax state
 
   // Get cart store functions for checkout mode
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
-
+  
   // ✅ Calculate total with shipping AND tax
-  const totalWithShippingAndTax =
-    calculations.totalPrice + shippingFee + localTaxAmount;
+  const totalWithShippingAndTax = calculations.totalPrice + shippingFee + taxAmount;
 
   // Handle quantity changes
-  const handleQuantityChange = (
-    productId: string,
-    variantId: string | null,
-    newQuantity: number
-  ) => {
+  const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Handle item removal
   const handleRemoveItem = (productId: string, variantId: string | null) => {
     if (mode === "checkout") {
       removeItem(productId, variantId);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Handle cart clearing
   const handleClearCart = () => {
     if (mode === "checkout") {
       setIsClearing(true);
       clearStoreCart(storeSlug);
       setTimeout(() => setIsClearing(false), 300);
     }
-    // In confirm mode, we don't update the cart as it's from URL
-  };
-
-  // ✅ Handle tax amount change
-  const handleTaxChange = (tax: number) => {
-    setLocalTaxAmount(tax);
-    // Also update parent if needed
-    onShippingChange(selectedShipping, shippingFee, tax);
   };
 
   // Show error state
@@ -99,9 +79,7 @@ export default function UnifiedCheckoutLayout({
         <div className="text-center py-12">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-red-800 mb-2">
-              Invalid Order Data
-            </h2>
+            <h2 className="text-xl font-bold text-red-800 mb-2">Invalid Order Data</h2>
             <p className="text-red-600 mb-4">{error}</p>
             <p className="text-sm text-muted-foreground">
               Please check your order link or try again.
@@ -138,8 +116,8 @@ export default function UnifiedCheckoutLayout({
           {mode === "confirm" ? "Confirm Your Order" : "Checkout"}
         </h1>
         <p className="text-sm lg:text-base text-muted-foreground mt-2">
-          {mode === "confirm"
-            ? "Review your items and enter your details"
+          {mode === "confirm" 
+            ? "Review your items and enter your details" 
             : "Complete your purchase"}
         </p>
       </div>
@@ -155,9 +133,7 @@ export default function UnifiedCheckoutLayout({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {activeSection === "customer" && (
-              <ChevronLeft className="h-4 w-4" />
-            )}
+            {activeSection === "customer" && <ChevronLeft className="h-4 w-4" />}
             Cart
           </button>
           <button
@@ -215,17 +191,11 @@ export default function UnifiedCheckoutLayout({
                 </div>
               ) : (
                 <div className="max-h-[400px] lg:max-h-[500px] overflow-y-auto">
-                  <CartItemsList
+                  <CartItemsList 
                     items={cartItems}
-                    onQuantityChange={
-                      mode === "checkout" ? handleQuantityChange : undefined
-                    }
-                    onRemoveItem={
-                      mode === "checkout" ? handleRemoveItem : undefined
-                    }
-                    onClearCart={
-                      mode === "checkout" ? handleClearCart : undefined
-                    }
+                    onQuantityChange={mode === "checkout" ? handleQuantityChange : undefined}
+                    onRemoveItem={mode === "checkout" ? handleRemoveItem : undefined}
+                    onClearCart={mode === "checkout" ? handleClearCart : undefined}
                     isClearing={isClearing}
                     showStoreInfo={mode === "checkout"}
                     storeSlug={storeSlug}
@@ -239,28 +209,30 @@ export default function UnifiedCheckoutLayout({
                     <span>Subtotal:</span>
                     <span>৳{calculations.subtotal.toFixed(2)}</span>
                   </div>
-                  {/* Shipping Method */}
+
+                  {/* Tax Display - Only show if tax amount > 0 */}
+                  {/* {taxAmount > 0 && (
+                    <div className="flex justify-between text-foreground">
+                      <span>Tax:</span>
+                      <span>৳{taxAmount.toFixed(2)}</span>
+                    </div>
+                  )} */}
+
+                  {/* Shipping Method - No tax handling needed */}
                   <div className="border-t border-border pt-3">
                     <ShippingMethod
                       storeSlug={storeSlug}
                       subtotal={calculations.subtotal}
                       selectedShipping={selectedShipping}
-                      onShippingChange={onShippingChange}
-                      onTaxChange={handleTaxChange} // ✅ PASS tax change handler
+                      onShippingChange={onShippingChange} // ✅ No tax parameter
                     />
                   </div>
 
-                  <div className="flex justify-between text-foreground">
+                  {/* <div className="flex justify-between text-foreground">
                     <span>Shipping:</span>
                     <span>৳{shippingFee.toFixed(2)}</span>
-                  </div>
-                  {/* Tax Display - Only show if tax amount > 0 */}
-                  {localTaxAmount > 0 && (
-                    <div className="flex justify-between text-foreground">
-                      <span>Tax:</span>
-                      <span>৳{localTaxAmount.toFixed(2)}</span>
-                    </div>
-                  )}
+                  </div> */}
+
                   <div className="flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border">
                     <span>Total:</span>
                     <motion.span
@@ -317,8 +289,8 @@ export default function UnifiedCheckoutLayout({
                   isLoading={isProcessing}
                   shippingMethod={selectedShipping}
                   shippingFee={shippingFee}
-                  taxAmount={localTaxAmount} // ✅ PASS tax amount
-                  totalAmount={totalWithShippingAndTax} // ✅ PASS total with tax
+                  taxAmount={taxAmount} // ✅ Pass tax amount
+                  totalAmount={totalWithShippingAndTax} // ✅ Pass total with tax
                   mode={mode}
                 />
 
