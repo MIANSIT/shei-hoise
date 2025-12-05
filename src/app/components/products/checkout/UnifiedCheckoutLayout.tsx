@@ -20,9 +20,10 @@ interface UnifiedCheckoutLayoutProps {
   loading: boolean;
   error: string | null;
   onCheckout: (values: any) => void;
-  onShippingChange: (method: string, fee: number) => void;
+  onShippingChange: (method: string, fee: number) => void; // ✅ Simplified, no tax parameter
   selectedShipping: string;
   shippingFee: number;
+  taxAmount: number; // ✅ Fixed tax amount
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
 }
@@ -37,42 +38,38 @@ export default function UnifiedCheckoutLayout({
   onShippingChange,
   selectedShipping,
   shippingFee,
+  taxAmount, // ✅ Fixed tax amount
   isProcessing,
   mode = "checkout",
 }: UnifiedCheckoutLayoutProps) {
   const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
   const [isClearing, setIsClearing] = useState(false);
-  
+
   // Get cart store functions for checkout mode
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
   
-  // Calculate total with shipping
-  const totalWithShipping = calculations.totalPrice + shippingFee;
+  // ✅ Calculate total with shipping AND tax
+  const totalWithShippingAndTax = calculations.totalPrice + shippingFee + taxAmount;
 
   // Handle quantity changes
   const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Handle item removal
   const handleRemoveItem = (productId: string, variantId: string | null) => {
     if (mode === "checkout") {
       removeItem(productId, variantId);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Handle cart clearing
   const handleClearCart = () => {
     if (mode === "checkout") {
       setIsClearing(true);
       clearStoreCart(storeSlug);
       setTimeout(() => setIsClearing(false), 300);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
   // Show error state
@@ -213,25 +210,38 @@ export default function UnifiedCheckoutLayout({
                     <span>৳{calculations.subtotal.toFixed(2)}</span>
                   </div>
 
-                  {/* Shipping Method */}
+                  {/* Tax Display - Only show if tax amount > 0 */}
+                  {/* {taxAmount > 0 && (
+                    <div className="flex justify-between text-foreground">
+                      <span>Tax:</span>
+                      <span>৳{taxAmount.toFixed(2)}</span>
+                    </div>
+                  )} */}
+
+                  {/* Shipping Method - No tax handling needed */}
                   <div className="border-t border-border pt-3">
                     <ShippingMethod
                       storeSlug={storeSlug}
                       subtotal={calculations.subtotal}
                       selectedShipping={selectedShipping}
-                      onShippingChange={onShippingChange}
+                      onShippingChange={onShippingChange} // ✅ No tax parameter
                     />
                   </div>
+
+                  {/* <div className="flex justify-between text-foreground">
+                    <span>Shipping:</span>
+                    <span>৳{shippingFee.toFixed(2)}</span>
+                  </div> */}
 
                   <div className="flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border">
                     <span>Total:</span>
                     <motion.span
-                      key={`total-${totalWithShipping}`}
+                      key={`total-${totalWithShippingAndTax}`}
                       initial={{ scale: 1.1 }}
                       animate={{ scale: 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      ৳{totalWithShipping.toFixed(2)}
+                      ৳{totalWithShippingAndTax.toFixed(2)}
                     </motion.span>
                   </div>
 
@@ -279,7 +289,8 @@ export default function UnifiedCheckoutLayout({
                   isLoading={isProcessing}
                   shippingMethod={selectedShipping}
                   shippingFee={shippingFee}
-                  totalAmount={totalWithShipping}
+                  taxAmount={taxAmount} // ✅ Pass tax amount
+                  totalAmount={totalWithShippingAndTax} // ✅ Pass total with tax
                   mode={mode}
                 />
 

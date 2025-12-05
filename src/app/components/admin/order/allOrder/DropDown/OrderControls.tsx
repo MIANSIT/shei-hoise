@@ -12,7 +12,7 @@ import {
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
 
 interface Props {
   status: OrderStatus;

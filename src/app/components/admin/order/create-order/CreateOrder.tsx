@@ -1,4 +1,3 @@
-// app/components/admin/order/create-order/CreateOrder.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
@@ -46,7 +45,7 @@ import {
 } from "@/lib/queries/stores/getStoreSettings";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
-
+import { OrderStatus, PaymentStatus, PaymentMethod } from "@/lib/types/enums";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -56,13 +55,16 @@ export default function CreateOrder() {
   const { notification } = App.useApp();
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<DetailedCustomer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<
+    DetailedCustomer[]
+  >([]);
 
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { user, loading: userLoading, storeSlug } = useCurrentUser();
+  const [storeName, setStoreName] = useState<string>("SHEI");
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfoType>({
     name: "",
@@ -79,21 +81,20 @@ export default function CreateOrder() {
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [additionalCharges, setAdditionalCharges] = useState(0);
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const [status, setStatus] = useState<
-    "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"
-  >("pending");
-  const [paymentStatus, setPaymentStatus] = useState<
-    "pending" | "paid" | "failed" | "refunded"
-  >("pending");
+  const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.PENDING); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
-  const [selectedCustomer, setSelectedCustomer] = useState<DetailedCustomer | null>(null);
-  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<DetailedCustomer | null>(null);
+  const [customerProfile, setCustomerProfile] =
+    useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
   const [shippingFees, setShippingFees] = useState<ShippingFee[]>([]);
@@ -103,32 +104,39 @@ export default function CreateOrder() {
   // Email validation state
   const [emailError, setEmailError] = useState<string>("");
 
-  // Fetch store name for order ID prefix
-  const [storeName, setStoreName] = useState<string>("SHEI");
-
   // Validate email uniqueness
-  const validateEmailUniqueness = useCallback((email: string): boolean => {
-    if (!email) return true;
-    
-    const normalizedEmail = email.toLowerCase().trim();
-    const existingCustomer = customers.find(
-      customer => customer.email.toLowerCase().trim() === normalizedEmail
-    );
-    
-    if (existingCustomer && customerType === "new") {
-      setEmailError(`Email already exists for customer: ${existingCustomer.name || 'Unnamed Customer'}`);
-      return false;
-    }
-    
-    setEmailError("");
-    return true;
-  }, [customers, customerType]);
+  const validateEmailUniqueness = useCallback(
+    (email: string): boolean => {
+      if (!email) return true;
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const existingCustomer = customers.find(
+        (customer) => customer.email.toLowerCase().trim() === normalizedEmail
+      );
+
+      if (existingCustomer && customerType === "new") {
+        setEmailError(
+          `Email already exists for customer: ${
+            existingCustomer.name || "Unnamed Customer"
+          }`
+        );
+        return false;
+      }
+
+      setEmailError("");
+      return true;
+    },
+    [customers, customerType]
+  );
 
   // Handle email changes with validation
-  const handleEmailChange = useCallback((email: string) => {
-    setCustomerInfo(prev => ({ ...prev, email }));
-    validateEmailUniqueness(email);
-  }, [validateEmailUniqueness]);
+  const handleEmailChange = useCallback(
+    (email: string) => {
+      setCustomerInfo((prev) => ({ ...prev, email }));
+      validateEmailUniqueness(email);
+    },
+    [validateEmailUniqueness]
+  );
 
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
@@ -160,7 +168,9 @@ export default function CreateOrder() {
     if (!user?.store_id) return;
 
     try {
-      const { data: storeData, error } = await dataService.getStoreById(user.store_id);
+      const { data: storeData, error } = await dataService.getStoreById(
+        user.store_id
+      );
       if (error) {
         console.error("Error fetching store:", error);
         setStoreName("SHEI");
@@ -211,7 +221,7 @@ export default function CreateOrder() {
       setCustomers(res);
       setFilteredCustomers(res);
       console.log(`✅ Loaded ${res.length} customers from orders`);
-      
+
       // Re-validate email after fetching customers
       if (customerInfo.email) {
         validateEmailUniqueness(customerInfo.email);
@@ -223,13 +233,17 @@ export default function CreateOrder() {
         description: "Failed to load customer list from orders.",
         duration: 4,
       });
-      // Set empty arrays to avoid crashes
       setCustomers([]);
       setFilteredCustomers([]);
     } finally {
       setCustomerLoading(false);
     }
-  }, [user?.store_id, notification, customerInfo.email, validateEmailUniqueness]);
+  }, [
+    user?.store_id,
+    notification,
+    customerInfo.email,
+    validateEmailUniqueness,
+  ]);
 
   // Main data fetching effect
   useEffect(() => {
@@ -268,7 +282,7 @@ export default function CreateOrder() {
     const newOrderId = `${storeName}${year}${month}${day}${sessionCounter
       .toString()
       .padStart(3, "0")}`;
-    
+
     setOrderId(newOrderId);
   }, [storeName]);
 
@@ -279,9 +293,13 @@ export default function CreateOrder() {
     } else {
       const filtered = customers.filter(
         (customer) =>
-          (customer.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+          (customer.name?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase()
+          ) ||
           customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (customer.phone?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+          (customer.phone?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase()
+          )
       );
       setFilteredCustomers(filtered);
     }
@@ -289,12 +307,20 @@ export default function CreateOrder() {
 
   // Update delivery cost based on delivery option
   useEffect(() => {
-    if (customerInfo.deliveryOption && Array.isArray(shippingFees) && shippingFees.length > 0) {
+    if (
+      customerInfo.deliveryOption &&
+      Array.isArray(shippingFees) &&
+      shippingFees.length > 0
+    ) {
       const shippingFee = shippingFees.find((fee) => {
         if (!fee || typeof fee !== "object" || !fee.name) return false;
         const feeName = String(fee.name).toLowerCase().replace(/\s+/g, "-");
-        const deliveryOption = String(customerInfo.deliveryOption).toLowerCase();
-        return feeName.includes(deliveryOption) || deliveryOption.includes(feeName);
+        const deliveryOption = String(
+          customerInfo.deliveryOption
+        ).toLowerCase();
+        return (
+          feeName.includes(deliveryOption) || deliveryOption.includes(feeName)
+        );
       });
       setDeliveryCost(shippingFee?.price || 0);
     } else {
@@ -302,46 +328,65 @@ export default function CreateOrder() {
     }
   }, [customerInfo.deliveryOption, shippingFees]);
 
-  // Calculate totals
+  // Calculate totals including additional charges
   useEffect(() => {
-    const newSubtotal = orderProducts.reduce((sum, item) => sum + item.total_price, 0);
+    const newSubtotal = orderProducts.reduce(
+      (sum, item) => sum + item.total_price,
+      0
+    );
     setSubtotal(newSubtotal);
-    setTotalAmount(newSubtotal - discount + deliveryCost + taxAmount);
-  }, [orderProducts, discount, deliveryCost, taxAmount]);
+
+    // Calculate total amount with all components
+    const calculatedTotal =
+      newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
+    setTotalAmount(calculatedTotal);
+
+    console.log("📊 Total calculation:", {
+      subtotal: newSubtotal,
+      discount,
+      additionalCharges,
+      deliveryCost,
+      taxAmount,
+      total: calculatedTotal,
+    });
+  }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
 
   // Handle customer selection
   const handleCustomerSelect = async (customerId: string) => {
     console.log("🎯 Customer selected:", customerId);
     const customer = customers.find((c) => c.id === customerId);
-    
+
     if (customer) {
       setSelectedCustomer(customer);
       setProfileLoading(true);
 
-      // Set basic customer info
       setCustomerInfo((prev) => ({
         ...prev,
         name: customer.name || "",
         phone: customer.phone || "",
         email: customer.email,
-        customer_id: customer.id, // This is store_customers.id
+        customer_id: customer.id,
       }));
 
-      // Clear email error when selecting existing customer
       setEmailError("");
 
-      // Use profile details if available (they're already loaded)
       if (customer.profile_details) {
         console.log("✅ Using pre-loaded profile_details for address");
         setCustomerInfo((prev) => ({
           ...prev,
-          address: customer.profile_details?.address || customer.profile_details?.address_line_1 || "",
+          address:
+            customer.profile_details?.address ||
+            customer.profile_details?.address_line_1 ||
+            "",
           city: customer.profile_details?.city || "",
           postal_code: customer.profile_details?.postal_code || "",
         }));
         setCustomerProfile({
           id: customer.id,
-          address: customer.profile_details.address || customer.profile_details.address_line_1 || "",
+          address:
+            customer.profile_details.address ||
+            customer.profile_details.address_line_1 ||
+            "",
           city: customer.profile_details.city || "",
           postal_code: customer.profile_details.postal_code || "",
           country: customer.profile_details.country || "",
@@ -361,7 +406,7 @@ export default function CreateOrder() {
     setSelectedCustomer(null);
     setCustomerProfile(null);
     setSearchTerm("");
-    setEmailError(""); // Clear email error
+    setEmailError("");
     setCustomerInfo({
       name: "",
       phone: "",
@@ -382,7 +427,7 @@ export default function CreateOrder() {
       handleNewCustomer();
     } else {
       setCustomerType("existing");
-      setEmailError(""); // Clear email error when switching to existing customer
+      setEmailError("");
     }
   };
 
@@ -417,7 +462,7 @@ export default function CreateOrder() {
     customerInfo.deliveryMethod &&
     customerInfo.deliveryOption &&
     orderProducts.length > 0 &&
-    !emailError; // Add email error check
+    !emailError;
 
   // Render customer content based on type
   const renderCustomerContent = () => {
@@ -518,7 +563,9 @@ export default function CreateOrder() {
                 >
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label="Name">
-                      <Text strong>{selectedCustomer.name || "Unnamed Customer"}</Text>
+                      <Text strong>
+                        {selectedCustomer.name || "Unnamed Customer"}
+                      </Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="Email">
                       <Space>
@@ -648,7 +695,8 @@ export default function CreateOrder() {
                   <Dropdown
                     menu={{
                       items: customerTypeItems,
-                      onClick: (e) => handleCustomerTypeChange(e.key as CustomerType),
+                      onClick: (e) =>
+                        handleCustomerTypeChange(e.key as CustomerType),
                       selectedKeys: [customerType],
                     }}
                     trigger={["click"]}
@@ -663,9 +711,15 @@ export default function CreateOrder() {
                       }}
                     >
                       <Space>
-                        {customerType === "new" ? <UserAddOutlined /> : <UserOutlined />}
+                        {customerType === "new" ? (
+                          <UserAddOutlined />
+                        ) : (
+                          <UserOutlined />
+                        )}
                         <Text strong>
-                          {customerType === "new" ? "New Customer" : "Existing Customer"}
+                          {customerType === "new"
+                            ? "New Customer"
+                            : "Existing Customer"}
                         </Text>
                       </Space>
                       <DownOutlined className="text-xs" />
@@ -740,6 +794,8 @@ export default function CreateOrder() {
                   setTaxAmount={setTaxAmount}
                   discount={discount}
                   setDiscount={setDiscount}
+                  additionalCharges={additionalCharges}
+                  setAdditionalCharges={setAdditionalCharges}
                   deliveryCost={deliveryCost}
                   setDeliveryCost={setDeliveryCost}
                   totalAmount={totalAmount}
@@ -767,6 +823,7 @@ export default function CreateOrder() {
                   subtotal={subtotal}
                   taxAmount={taxAmount}
                   discount={discount}
+                  additionalCharges={additionalCharges}
                   deliveryCost={deliveryCost}
                   totalAmount={totalAmount}
                   status={status}

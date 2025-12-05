@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 export interface UpdateOrderByNumberData {
   orderId: string;
   storeId: string;
+  orderNumber?: string;
   customerInfo: {
     name: string;
     phone: string;
@@ -15,17 +17,32 @@ export interface UpdateOrderByNumberData {
     notes: string;
     postal_code: string;
     customer_id?: string;
+    country?: string;
   };
   orderProducts: any[];
   subtotal: number;
   taxAmount: number;
   discount: number;
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   deliveryOption: string;
+  currency?: string;
+  shippingAddress?: {
+    customer_name: string;
+    phone: string;
+    email?: string;
+    address_line_1: string;
+    address?: string;
+    city: string;
+    postal_code?: string;
+    country: string;
+    deliveryOption?: string;
+    deliveryMethod?: string;
+  };
 }
 
 export interface UpdateOrderByNumberResult {
@@ -48,12 +65,15 @@ export async function updateOrderByNumber(
       subtotal,
       taxAmount,
       discount,
+      additionalCharges,
       deliveryCost,
       totalAmount,
       status,
       paymentStatus,
       paymentMethod,
       deliveryOption,
+      currency = "BDT",
+      shippingAddress,
     } = updateData;
 
     // Validate order exists and belongs to store
@@ -87,33 +107,46 @@ export async function updateOrderByNumber(
       };
     }
 
-    // Update the order - INCLUDING discount_amount
+    // ✅ FIXED: Create complete shipping address object
+    const shippingAddressUpdate = shippingAddress || {
+      customer_name: customerInfo.name || "",
+      phone: customerInfo.phone || "",
+      email: customerInfo.email || "",
+      address_line_1: customerInfo.address || "",
+      address: customerInfo.address || "", // For backward compatibility
+      city: customerInfo.city || "",
+      postal_code: customerInfo.postal_code || "",
+      country: customerInfo.country || "Bangladesh",
+      deliveryOption: customerInfo.deliveryOption || "",
+      deliveryMethod: customerInfo.deliveryMethod || "",
+    };
+
+    console.log("📦 Shipping address to update:", shippingAddressUpdate);
+
+    // Update the order with COMPLETE shipping address
     const updateOrderData = {
       status,
       subtotal,
       tax_amount: taxAmount,
-      discount_amount: discount, // ✅ ADDED discount_amount field
+      discount_amount: discount,
+      additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
       payment_status: paymentStatus,
       payment_method: paymentMethod,
       delivery_option: deliveryOption,
-      shipping_address: {
-        name: customerInfo.name,
-        phone: customerInfo.phone,
-        address: customerInfo.address,
-        city: customerInfo.city,
-        postal_code: customerInfo.postal_code,
-        deliveryOption: customerInfo.deliveryOption,
-        deliveryMethod: customerInfo.deliveryMethod,
-      },
+      shipping_address: shippingAddressUpdate,
+      billing_address: shippingAddressUpdate,
       notes: customerInfo.notes,
       updated_at: new Date().toISOString(),
     };
 
-    console.log("Updating order with discount_amount:", updateOrderData);
+    console.log("Updating order with complete address:", {
+      ...updateOrderData,
+      shipping_address: shippingAddressUpdate
+    });
 
-    // FIXED: Use correct customer query for store_customers (name instead of first_name)
+    // Update order with customer link
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from("orders")
       .update(updateOrderData)
@@ -151,7 +184,7 @@ export async function updateOrderByNumber(
       orderProducts
     );
 
-    console.log("Order updated successfully with discount_amount:", discount);
+    console.log("Order updated successfully with complete address");
 
     // Fetch updated order with items
     const { data: finalOrder } = await supabaseAdmin
@@ -436,7 +469,7 @@ async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
 // Handle inventory updates based on status changes
 async function handleStatusChangeInventory(
   oldStatus: string,
-  newStatus: string,
+  newStatus: OrderStatus, // ✅ Using enum
   orderItems: any[]
 ): Promise<void> {
   try {
@@ -444,8 +477,8 @@ async function handleStatusChangeInventory(
 
     // From pending/confirmed to cancelled - return stock
     if (
-      (oldStatus === "pending" || oldStatus === "confirmed") &&
-      newStatus === "cancelled"
+      (oldStatus === OrderStatus.PENDING || oldStatus === OrderStatus.CONFIRMED) &&
+      newStatus === OrderStatus.CANCELLED
     ) {
       console.log("🔄 Returning reserved stock to available");
       await returnReservedStockToAvailable(orderItems);
@@ -453,23 +486,23 @@ async function handleStatusChangeInventory(
 
     // From cancelled to pending/confirmed - reserve stock again
     if (
-      oldStatus === "cancelled" &&
-      (newStatus === "pending" || newStatus === "confirmed")
+      oldStatus === OrderStatus.CANCELLED &&
+      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
       console.log("🔄 Reserving stock again");
       await reserveStock(orderItems);
     }
 
     // From any status to delivered - deduct reserved stock (finalize)
-    if (newStatus === "delivered") {
+    if (newStatus === OrderStatus.DELIVERED) {
       console.log("🔄 Deducting reserved stock (order delivered)");
       await deductReservedStock(orderItems);
     }
 
     // From delivered back to confirmed/pending - reverse the deduction
     if (
-      oldStatus === "delivered" &&
-      (newStatus === "pending" || newStatus === "confirmed")
+      oldStatus === OrderStatus.DELIVERED &&
+      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
       console.log("🔄 Reversing delivered order - reserving stock again");
       await reserveStock(orderItems);

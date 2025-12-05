@@ -1,11 +1,10 @@
-// components/products/checkout/ShippingMethod.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Truck } from "lucide-react";
+import { Truck, Receipt } from "lucide-react";
 import {
   getStoreSettings,
   ShippingFee,
@@ -16,7 +15,7 @@ interface ShippingMethodProps {
   storeSlug: string;
   subtotal: number;
   selectedShipping: string;
-  onShippingChange: (shippingMethod: string, shippingFee: number) => void;
+  onShippingChange: (shippingMethod: string, shippingFee: number) => void; // ✅ Simplified, no tax parameter
 }
 
 export default function ShippingMethod({
@@ -26,9 +25,8 @@ export default function ShippingMethod({
   onShippingChange,
 }: ShippingMethodProps) {
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<
-    number | null
-  >(null);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
+  const [taxAmount, setTaxAmount] = useState<number>(0); // Fixed tax amount for display only
 
   // Filter out "custom" shipping options
   const filteredShippingOptions = useMemo(() => {
@@ -37,7 +35,7 @@ export default function ShippingMethod({
     );
   }, [shippingOptions]);
 
-  // Fetch shipping options only once when component mounts
+  // Fetch shipping options and tax amount (for display only)
   useEffect(() => {
     const fetchShippingOptions = async () => {
       try {
@@ -49,9 +47,12 @@ export default function ShippingMethod({
           if (storeSettings) {
             setShippingOptions(storeSettings.shipping_fees || []);
             setFreeShippingThreshold(storeSettings.free_shipping_threshold);
+            
+            // ✅ SET TAX AMOUNT (fixed amount from store_settings)
+            const storeTaxAmount = storeSettings.tax_rate || 0;
+            setTaxAmount(storeTaxAmount);
 
             // Set default shipping method only if nothing is selected
-            // Use filtered options for default selection
             const filteredOptions = storeSettings.shipping_fees?.filter(option => 
               option.name.toLowerCase() !== "custom"
             ) || [];
@@ -68,7 +69,7 @@ export default function ShippingMethod({
     };
 
     fetchShippingOptions();
-  }, [onShippingChange, selectedShipping, storeSlug]); // Only depend on storeSlug
+  }, [onShippingChange, selectedShipping, storeSlug]);
 
   const handleShippingChange = useCallback((value: string) => {
     const selectedOption = filteredShippingOptions.find(
@@ -96,10 +97,11 @@ export default function ShippingMethod({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Truck className="h-5 w-5 text-blue-500" />
-          Shipping Method
+          Shipping & Tax
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Shipping Options */}
         <RadioGroup
           value={selectedShipping}
           onValueChange={handleShippingChange}
@@ -142,6 +144,29 @@ export default function ShippingMethod({
             </div>
           ))}
         </RadioGroup>
+
+        {/* Tax Display - Only show if tax amount > 0 (Fixed amount from store) */}
+        {taxAmount > 0 && (
+          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Receipt className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800">
+                Tax Amount
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-purple-700">
+                Additional tax fee
+              </span>
+              <span className="font-semibold text-purple-800">
+                ৳{taxAmount.toFixed(2)}
+              </span>
+            </div>
+            <p className="text-xs text-purple-600 mt-1">
+              * Fixed tax amount applied to all orders
+            </p>
+          </div>
+        )}
 
         {/* Free Shipping Progress - Only show if free_shipping_threshold exists */}
         {freeShippingThreshold && (

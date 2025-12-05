@@ -3,7 +3,8 @@
 
 import React, { useState } from "react";
 import { Button, Select, Modal, App, Space, Tag, Alert } from "antd";
-import { OrderStatus, PaymentStatus, StoreOrder } from "@/lib/types/order"; // Import StoreOrder
+import { StoreOrder } from "@/lib/types/order"; // Import StoreOrder
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // Import StoreOrder
 import dataService from "@/lib/queries/dataService";
 
 interface Props {
