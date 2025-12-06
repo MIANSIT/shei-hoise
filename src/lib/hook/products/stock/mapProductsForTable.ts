@@ -5,6 +5,7 @@ export interface VariantRow {
   productId: string;
   title: string;
   currentPrice: number;
+  sku: string | null;
   stock: number;
   imageUrl: string | null;
   isLowStock: boolean;
@@ -15,12 +16,13 @@ export interface ProductRow {
   id: string;
   title: string;
   currentPrice: number | null;
+  sku: string | null;
   stock: number;
   imageUrl: string | null;
   variants?: VariantRow[];
   isLowStock: boolean;
   lowStockThreshold: number;
-  hasLowStockVariant: boolean; // New field to track if any variant is low stock
+  hasLowStockVariant: boolean;
 }
 
 export function mapProductsForModernTable(
@@ -29,23 +31,24 @@ export function mapProductsForModernTable(
   return products.map((p) => {
     const hasVariants = p.variants && p.variants.length > 0;
 
-    // Get low stock threshold from product inventory
     const productLowStockThreshold = p.stock?.low_stock_threshold || 10;
     const productStock = p.stock?.quantity_available ?? 0;
+
     const isProductLowStock =
       !hasVariants && productStock <= productLowStockThreshold;
 
-    // Process variants and check if any are low stock
     const processedVariants = hasVariants
       ? p.variants.map((v) => {
           const variantStock = v.stock?.quantity_available ?? 0;
           const variantLowStockThreshold =
             v.stock?.low_stock_threshold || productLowStockThreshold;
+
           const isVariantLowStock = variantStock <= variantLowStockThreshold;
 
           return {
             id: v.id,
             productId: v.product_id,
+            sku: v.sku ?? null,
             title: v.variant_name,
             currentPrice:
               v.discounted_price && v.discounted_price > 0
@@ -60,7 +63,6 @@ export function mapProductsForModernTable(
         })
       : undefined;
 
-    // Check if any variant is low stock
     const hasLowStockVariant = processedVariants
       ? processedVariants.some((variant) => variant.isLowStock)
       : false;
@@ -68,12 +70,13 @@ export function mapProductsForModernTable(
     return {
       id: p.id,
       title: p.name,
+      sku: p.sku ?? null,
       currentPrice: hasVariants ? null : p.base_price,
       stock: productStock,
       imageUrl: p.primary_image?.image_url ?? null,
       isLowStock: isProductLowStock,
       lowStockThreshold: productLowStockThreshold,
-      hasLowStockVariant: hasLowStockVariant, // Track if any variant is low stock
+      hasLowStockVariant,
       variants: processedVariants,
     };
   });
