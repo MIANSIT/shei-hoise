@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
-import { OrderStatus } from "../../../../../../lib/types/order";
+import { OrderStatus } from "../../../../../../lib/types/enums";
 
 interface Props {
   status: OrderStatus;

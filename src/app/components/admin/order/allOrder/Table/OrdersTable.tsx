@@ -4,7 +4,8 @@
 import React, { useState, useEffect } from "react";
 import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { StoreOrder, OrderStatus, PaymentStatus } from "@/lib/types/order";
+import { StoreOrder } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
@@ -115,7 +116,6 @@ const OrdersTable: React.FC<Props> = ({
         description: "Order has been deleted successfully.",
       });
 
-      // Refresh the orders list
       if (onRefresh) {
         onRefresh();
       }
@@ -186,10 +186,11 @@ const OrdersTable: React.FC<Props> = ({
     });
   };
 
+  // ✅ FIXED: Get customer name from shipping_address
   const getCustomerName = (order: StoreOrder) => {
     return (
+      order.shipping_address?.customer_name ||
       order.customers?.first_name ||
-      order.shipping_address.customer_name ||
       "Unknown Customer"
     );
   };
@@ -199,7 +200,9 @@ const OrdersTable: React.FC<Props> = ({
   };
 
   const getCustomerPhone = (order: StoreOrder) => {
-    return order.customers?.phone || order.shipping_address.phone || "No phone";
+    return (
+      order.shipping_address?.phone || order.customers?.phone || "No phone"
+    );
   };
 
   const getCustomerInitial = (order: StoreOrder) => {
@@ -207,11 +210,48 @@ const OrdersTable: React.FC<Props> = ({
     return name.charAt(0).toUpperCase();
   };
 
+  // ✅ FIXED: Get full address with proper fallbacks
+  const getFullAddress = (order: StoreOrder) => {
+    const address = order.shipping_address;
+    if (!address) return "No address";
+
+    // Check for both address_line_1 and address fields
+    const addressLine = address.address_line_1 || address.address || "";
+    const city = address.city || "";
+    const country = address.country || "";
+
+    let fullAddress = "";
+    if (addressLine) fullAddress += addressLine;
+    if (city) fullAddress += (fullAddress ? ", " : "") + city;
+    if (country) fullAddress += (fullAddress ? ", " : "") + country;
+
+    return fullAddress || "Address not provided";
+  };
+
+  // ✅ FIXED: Get address for display in table (shorter version)
+  const getDisplayAddress = (order: StoreOrder) => {
+    const address = order.shipping_address;
+    if (!address) return "No address";
+
+    const addressLine = address.address_line_1 || address.address || "";
+    const city = address.city || "";
+
+    if (addressLine && city) {
+      return `${addressLine}, ${city}`;
+    } else if (addressLine) {
+      return addressLine;
+    } else if (city) {
+      return city;
+    }
+
+    return "Address not provided";
+  };
+
   const selectedOrderObjects = filteredOrders.filter((order) =>
     selectedRowKeys.includes(order.id)
   );
 
-  // Updated columns with invoice button
+  // ✅ FIXED: Updated columns with proper address display
   const columns: ColumnsType<StoreOrder> = [
     {
       title: "Order #",
@@ -270,12 +310,13 @@ const OrdersTable: React.FC<Props> = ({
       title: "Address",
       key: "address",
       render: (_, order: StoreOrder) => {
-        const address = order.shipping_address;
-        const fullAddress = `${address.address_line_1}, ${address.city}`;
+        const displayAddress = getDisplayAddress(order);
+        const fullAddress = getFullAddress(order);
+
         return (
           <Tooltip title={fullAddress}>
             <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
-              {address.address_line_1}, {address.city}
+              {displayAddress}
             </div>
           </Tooltip>
         );
@@ -377,10 +418,10 @@ const OrdersTable: React.FC<Props> = ({
     },
   ];
 
-  // Mobile card renderer - Updated with invoice button
+  // ✅ FIXED: Mobile card renderer with proper address display
   const renderOrderCard = (order: StoreOrder) => {
-    const address = order.shipping_address;
-    const fullAddress = `${address.address_line_1}, ${address.city}`;
+    const displayAddress = getDisplayAddress(order);
+    const fullAddress = getFullAddress(order);
 
     return (
       <Card
@@ -467,7 +508,9 @@ const OrdersTable: React.FC<Props> = ({
         <div className="mb-3">
           <div className="text-xs sm:text-sm text-gray-600">
             <span className="font-medium">Address: </span>
-            <span className="line-clamp-2">{fullAddress}</span>
+            <Tooltip title={fullAddress}>
+              <span className="line-clamp-2">{displayAddress}</span>
+            </Tooltip>
           </div>
         </div>
 

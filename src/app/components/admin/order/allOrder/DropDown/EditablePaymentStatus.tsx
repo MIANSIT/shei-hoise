@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
-import { PaymentStatus } from "../../../../../../lib/types/order";
+import { PaymentStatus } from "../../../../../../lib/types/enums";
 
 interface Props {
   status: PaymentStatus;

@@ -13,6 +13,10 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
 import { createCheckoutCustomer } from "@/lib/queries/customers/createCheckoutCustomer";
+import { supabase } from "@/lib/supabase";
+import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 
 export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
@@ -25,6 +29,7 @@ export default function ConfirmOrderPage() {
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
+  const [taxAmount, setTaxAmount] = useState<number>(0); // ✅ Fixed tax amount from store
   
   const notify = useSheiNotification();
   const { clearFormData } = useCheckoutStore();
@@ -53,6 +58,28 @@ export default function ConfirmOrderPage() {
   const isLoadingAuth = authLoading || userLoading;
   const isSubmitting = isProcessing || isCreatingAccount || orderLoading;
 
+  // ✅ Fetch tax amount from store settings (fixed amount)
+  useEffect(() => {
+    const fetchTaxAmount = async () => {
+      try {
+        const storeId = await getStoreIdBySlug(validatedStoreSlug);
+        if (storeId) {
+          const storeSettings = await getStoreSettings(storeId);
+          if (storeSettings && storeSettings.tax_rate) {
+            setTaxAmount(storeSettings.tax_rate); // Set fixed tax amount
+            console.log("✅ Tax amount fetched from store:", storeSettings.tax_rate);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error fetching tax amount:", error);
+      }
+    };
+
+    if (validatedStoreSlug) {
+      fetchTaxAmount();
+    }
+  }, [validatedStoreSlug]);
+
   // Add validation effect
   useEffect(() => {
     if (!validatedStoreSlug) {
@@ -62,13 +89,14 @@ export default function ConfirmOrderPage() {
     }
   }, [validatedStoreSlug, store_slug, notify, router]);
 
+  // ✅ Simplified: Only handle shipping change, tax is fixed
   const handleShippingChange = (shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
     setShippingFee(fee);
   };
 
-  const handleCheckoutSubmit = async (values: any) => {
-    console.log("🔄 Confirm order form submitted");
+  const handleCheckoutSubmit = async (values: CustomerCheckoutFormValues) => {
+    console.log("🔄 Confirm order form submitted with tax:", taxAmount);
 
     // Validate store slug again
     if (!validatedStoreSlug) {
@@ -93,99 +121,120 @@ export default function ConfirmOrderPage() {
         ...values,
         shippingMethod: selectedShipping,
         shippingFee: shippingFee,
+        taxAmount: taxAmount, // ✅ Include fixed tax amount
       };
 
-      let customerId: string | undefined = currentUser?.id;
+      let storeCustomerId: string | undefined;
 
-      // ✅ FIX: Scenario 1 - User is already logged in
+      // ✅ User is already logged in
       if (isUserLoggedIn && currentUser) {
-        console.log("✅ User is logged in, processing order directly");
+        console.log("✅ User is logged in, finding store customer record");
         
-        const result = await processOrder(
-          formDataWithShipping,
-          customerId,
-          "cod",
-          selectedShipping,
-          shippingFee,
-          cartItems,
-          calculations
-        );
+        const { data: storeCustomer, error: storeCustomerError } = await supabase
+          .from("store_customers")
+          .select("id, profile_id")
+          .eq("auth_user_id", currentUser.id)
+          .maybeSingle();
 
-        if (result.success) {
-          notify.success("Order placed successfully!");
-          clearFormData();
-          setTimeout(() => router.push(`/${validatedStoreSlug}/order-status`), 2000);
-        } else {
-          notify.error(result.error || "Failed to place order");
+        if (storeCustomer) {
+          storeCustomerId = storeCustomer.id;
+
+          if (storeCustomer.profile_id) {
+            await updateCustomerProfile(storeCustomer.profile_id, values);
+          }
         }
-        return;
       }
 
-      // ✅ FIX: Scenario 2 - User is NOT logged in
-      console.log("🔄 User is not logged in, handling account and order");
+      // ✅ User is NOT logged in
+      if (!isUserLoggedIn) {
+        const existingCustomer = await getCustomerByEmail(values.email, validatedStoreSlug);
+        
+        if (existingCustomer) {
+          storeCustomerId = existingCustomer.id;
 
-      // Check if customer exists in store_customers
-      const existingCustomer = await getCustomerByEmail(values.email);
-      
-      if (existingCustomer) {
-        console.log("📧 Customer exists in store_customers:", existingCustomer.id);
-        customerId = existingCustomer.id;
+          if (existingCustomer.profile_id) {
+            await updateCustomerProfile(existingCustomer.profile_id, values);
+          } else {
+            await createCustomerProfile(existingCustomer.id, values);
+          }
 
-        const result = await processOrder(
-          formDataWithShipping,
-          customerId,
-          "cod",
-          selectedShipping,
-          shippingFee,
-          cartItems,
-          calculations
-        );
+          if (!existingCustomer.auth_user_id && values.password) {
+            setIsCreatingAccount(true);
+            try {
+              const { data: authData } = await supabase.auth.signUp({
+                email: values.email.toLowerCase(),
+                password: values.password!,
+                options: {
+                  data: {
+                    first_name: values.name.split(" ")[0] || values.name,
+                    last_name: values.name.split(" ").slice(1).join(" ") || "",
+                    phone: values.phone,
+                  },
+                },
+              });
 
-        if (result.success) {
-          notify.success("Order placed successfully!");
-          clearFormData();
-          setTimeout(() => router.push(`/${validatedStoreSlug}/order-status`), 2000);
+              if (authData?.user) {
+                await supabase
+                  .from("store_customers")
+                  .update({
+                    auth_user_id: authData.user.id,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", existingCustomer.id);
+              }
+            } catch (authError: any) {
+              console.error("❌ Auth setup error:", authError);
+            } finally {
+              setIsCreatingAccount(false);
+            }
+          }
         } else {
-          notify.error(result.error || "Failed to place order");
+          setIsCreatingAccount(true);
+          try {
+            const customerData = {
+              ...values,
+              store_slug: validatedStoreSlug,
+            };
+
+            const customerResult = await createCheckoutCustomer(customerData);
+            
+            if (customerResult.success) {
+              storeCustomerId = customerResult.customerId;
+            } else {
+              throw new Error(customerResult.error || "Failed to create customer");
+            }
+          } catch (error: any) {
+            console.error("❌ Customer creation failed:", error);
+            notify.error(error.message || "Failed to create customer account");
+            setIsProcessing(false);
+            setIsCreatingAccount(false);
+            return;
+          } finally {
+            setIsCreatingAccount(false);
+          }
         }
-        return;
       }
 
-      // ✅ FIX: Scenario 3 - Create new customer WITHOUT auto-login
-      console.log("👤 Creating new customer account without auto-login");
-      setIsCreatingAccount(true);
+      // ✅ Process the order with fixed tax amount
+      console.log("📦 Processing order with fixed tax:", taxAmount);
 
-      const customerData = {
-        ...values,
-        store_slug: validatedStoreSlug,
-      };
+      const result = await processOrder(
+        formDataWithShipping,
+        storeCustomerId,
+        "cod",
+        selectedShipping,
+        shippingFee,
+        cartItems,
+        calculations,
+        taxAmount // ✅ Pass fixed tax amount
+      );
 
-      const customerResult = await createCheckoutCustomer(customerData);
-      
-      if (customerResult.success) {
-        console.log("✅ Customer created successfully:", customerResult.customerId);
-        customerId = customerResult.customerId;
-
-        // Process order with the new customer ID
-        const orderResult = await processOrder(
-          formDataWithShipping,
-          customerId,
-          "cod",
-          selectedShipping,
-          shippingFee,
-          cartItems,
-          calculations
-        );
-
-        if (orderResult.success) {
-          notify.success("Account created and order placed successfully!");
-          clearFormData();
-          setTimeout(() => router.push(`/${validatedStoreSlug}/order-status`), 2000);
-        } else {
-          notify.error(orderResult.error || "Failed to place order");
-        }
+      if (result.success) {
+        notify.success("Order placed successfully!");
+        clearFormData();
+        setTimeout(() => router.push(`/${validatedStoreSlug}/order-status`), 2000);
       } else {
-        throw new Error(customerResult.error || "Failed to create customer account");
+        notify.error(result.error || "Failed to place order");
       }
 
     } catch (error: any) {
@@ -193,8 +242,37 @@ export default function ConfirmOrderPage() {
       notify.error(error.message || "Failed to process order. Please try again.");
     } finally {
       setIsProcessing(false);
-      setIsCreatingAccount(false);
     }
+  };
+
+  // Helper functions
+  const updateCustomerProfile = async (profileId: string, values: CustomerCheckoutFormValues) => {
+    return supabase
+      .from("customer_profiles")
+      .update({
+        address: values.shippingAddress,
+        city: values.city,
+        postal_code: values.postCode,
+        country: values.country,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profileId);
+  };
+
+  const createCustomerProfile = async (storeCustomerId: string, values: CustomerCheckoutFormValues) => {
+    const profileData = {
+      store_customer_id: storeCustomerId,
+      address: values.shippingAddress,
+      city: values.city,
+      postal_code: values.postCode,
+      country: values.country,
+    };
+
+    return supabase
+      .from("customer_profiles")
+      .insert([profileData])
+      .select("id")
+      .single();
   };
 
   // Don't render if store slug is invalid
@@ -217,9 +295,10 @@ export default function ConfirmOrderPage() {
       loading={loading}
       error={cartError}
       onCheckout={handleCheckoutSubmit}
-      onShippingChange={handleShippingChange}
+      onShippingChange={handleShippingChange} // ✅ Simplified, no tax parameter
       selectedShipping={selectedShipping}
       shippingFee={shippingFee}
+      taxAmount={taxAmount} // ✅ Pass fixed tax amount
       isProcessing={isSubmitting}
       mode="confirm"
     />

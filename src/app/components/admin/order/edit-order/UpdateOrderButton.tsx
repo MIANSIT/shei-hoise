@@ -1,4 +1,3 @@
-// app/components/admin/order/edit-order/UpdateOrderButton.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useState } from "react";
@@ -6,6 +5,7 @@ import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 
 const { Text } = Typography;
 
@@ -18,10 +18,11 @@ interface UpdateOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"; // ✅ FIXED: "delivered" not "delivered"
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   disabled?: boolean;
   onOrderUpdated?: () => void;
@@ -37,6 +38,7 @@ export default function UpdateOrderButton({
   subtotal,
   taxAmount,
   discount,
+  additionalCharges,
   deliveryCost,
   totalAmount,
   status,
@@ -50,7 +52,6 @@ export default function UpdateOrderButton({
   const [isLoading, setIsLoading] = useState(false);
 
   const showConfirm = () => {
-    // Prevent submission if there's an email error
     if (emailError) {
       notification.error({
         message: "Cannot Update Order",
@@ -68,8 +69,11 @@ export default function UpdateOrderButton({
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
           <Text type="secondary">Email: {customerInfo.email}</Text>
+          <Text type="secondary">Address: {customerInfo.address}, {customerInfo.city}</Text>
+          <Text type="secondary">Phone: {customerInfo.phone}</Text>
           <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
           <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
+          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
           <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
           <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
           <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
@@ -96,17 +100,24 @@ export default function UpdateOrderButton({
         orderNumber: orderId,
         customerInfo,
         orderProductsCount: orderProducts.length,
-        financials: { subtotal, taxAmount, discount, deliveryCost, totalAmount },
+        financials: { 
+          subtotal, 
+          taxAmount, 
+          discount, 
+          additionalCharges,
+          deliveryCost, 
+          totalAmount 
+        },
         status,
         paymentStatus,
         paymentMethod
       });
 
-      // Prepare the update data with CORRECT structure matching UpdateOrderByNumberData
+      // Prepare the update data with COMPLETE shipping address
       const updateData = {
         storeId,
-        orderId: originalOrder.id, // Use the database order ID
-        orderNumber: orderId, // Use the order number for reference
+        orderId: originalOrder.id,
+        orderNumber: orderId,
         customerInfo: {
           name: customerInfo.name || "",
           phone: customerInfo.phone || "",
@@ -118,6 +129,7 @@ export default function UpdateOrderButton({
           notes: customerInfo.notes || "",
           postal_code: customerInfo.postal_code || "",
           customer_id: customerInfo.customer_id,
+          country: customerInfo.country || "Bangladesh",
         },
         orderProducts: orderProducts.map(product => ({
           product_id: product.product_id,
@@ -130,17 +142,41 @@ export default function UpdateOrderButton({
         })),
         subtotal: Number(subtotal),
         taxAmount: Number(taxAmount),
-        discount: Number(discount), // ✅ INCLUDING discount amount
+        discount: Number(discount),
+        additionalCharges: Number(additionalCharges),
         deliveryCost: Number(deliveryCost),
         totalAmount: Number(totalAmount),
-        status: status,
-        paymentStatus: paymentStatus,
+        status: status, // ✅ Already using enum
+        paymentStatus: paymentStatus, // ✅ Already using enum
         paymentMethod: paymentMethod,
         currency: "BDT",
         deliveryOption: customerInfo.deliveryMethod || "",
+        // ✅ ADDED: Shipping address object for the backend
+        shippingAddress: {
+          customer_name: customerInfo.name || "",
+          phone: customerInfo.phone || "",
+          email: customerInfo.email || "",
+          address_line_1: customerInfo.address || "",
+          address: customerInfo.address || "", // For backward compatibility
+          city: customerInfo.city || "",
+          postal_code: customerInfo.postal_code || "",
+          country: customerInfo.country || "Bangladesh",
+          deliveryOption: customerInfo.deliveryOption || "",
+          deliveryMethod: customerInfo.deliveryMethod || "",
+        }
       };
 
-      console.log("📦 Sending update data with discount:", updateData);
+      console.log("📦 Sending update data with complete address:", {
+        ...updateData,
+        customerInfo: {
+          ...updateData.customerInfo,
+          address: customerInfo.address,
+          city: customerInfo.city,
+          postal_code: customerInfo.postal_code,
+          country: customerInfo.country
+        },
+        shippingAddress: updateData.shippingAddress
+      });
 
       const result = await dataService.updateOrderByNumber(updateData);
 
@@ -149,11 +185,10 @@ export default function UpdateOrderButton({
       if (result.success) {
         notification.success({
           message: "Order Updated Successfully",
-          description: `Order ${orderId} has been updated successfully with discount: ৳${discount.toFixed(2)}.`,
+          description: `Order ${orderId} has been updated with all customer details.`,
           duration: 4,
         });
 
-        // Call the callback if provided
         if (onOrderUpdated) {
           console.log("🔄 Calling onOrderUpdated callback");
           onOrderUpdated();
@@ -165,10 +200,8 @@ export default function UpdateOrderButton({
     } catch (error: any) {
       console.error("💥 Error updating order:", error);
       
-      // Show more detailed error message
       let errorMessage = error.message || "Unknown error occurred. Please check the console for details.";
       
-      // Handle specific error cases
       if (error.message?.includes("order not found")) {
         errorMessage = "Order not found. It may have been deleted.";
       } else if (error.message?.includes("permission denied")) {
