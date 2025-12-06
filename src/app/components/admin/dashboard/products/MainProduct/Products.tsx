@@ -7,10 +7,10 @@ import {
   ProductWithVariants,
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import { Input } from "antd"; // ⬅️ ADD
+import { Input } from "antd";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { Plus } from "lucide-react";
-import router from "next/router";
+import { useRouter } from "next/navigation"; // ✅ change here
 const { Search } = Input;
 
 const Products: React.FC = () => {
@@ -21,6 +21,7 @@ const Products: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const { user } = useCurrentUser();
+  const router = useRouter(); // ✅ use the hook
 
   const fetchProducts = useCallback(async () => {
     if (!user?.store_id) return;
@@ -40,7 +41,6 @@ const Products: React.FC = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // 🔍 Search filter
   useEffect(() => {
     if (!searchTerm) {
       setFilteredProducts(products);
@@ -56,15 +56,14 @@ const Products: React.FC = () => {
       )
     );
   }, [searchTerm, products]);
+
   const handleAddProduct = () => {
-    router.push("/dashboard/products/add-product");
+    router.push("/dashboard/products/add-product"); // ✅ works now
   };
 
   return (
     <div className="space-y-4">
-      {/* 🔎 AntD Search Input */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Search Input */}
         <div className="w-full md:w-1/3">
           <Search
             placeholder="Search products .... "
@@ -75,7 +74,6 @@ const Products: React.FC = () => {
           />
         </div>
 
-        {/* Add Product Button */}
         <SheiButton
           onClick={handleAddProduct}
           title="Add Product"
@@ -86,7 +84,6 @@ const Products: React.FC = () => {
         </SheiButton>
       </div>
 
-      {/* Product Table */}
       <ProductTable
         products={filteredProducts}
         loading={loading}

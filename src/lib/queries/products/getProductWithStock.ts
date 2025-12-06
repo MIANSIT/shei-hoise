@@ -23,12 +23,14 @@ export interface ProductVariant {
   base_price: number;
   discounted_price?: number | null;
   tp_price?: number | null;
+  sku: string | null;
   color?: string | null;
   stock: ProductStock;
   primary_image: ProductImage | null;
 }
 
 export interface ProductWithStock {
+  sku: string | null;
   id: string;
   name: string;
   base_price: number;
@@ -63,12 +65,14 @@ interface DatabaseProductVariant {
   color: string | null;
   product_inventory: DatabaseProductStock[];
   product_images: DatabaseProductImage[];
+  sku: string | null;
 }
 
 interface DatabaseProduct {
   id: string;
   name: string;
   base_price: number;
+  sku: string | null; // <── ADD THIS
   product_images: DatabaseProductImage[];
   product_inventory: DatabaseProductStock[];
   product_variants: DatabaseProductVariant[];
@@ -88,6 +92,7 @@ export async function getProductWithStock(
       id,
       name,
       base_price,
+       sku,
       product_images(id, product_id, variant_id, image_url, alt_text, is_primary),
       product_inventory(
         quantity_available, 
@@ -99,6 +104,7 @@ export async function getProductWithStock(
         id,
         variant_name,
         base_price,
+         sku,
         discounted_price,
         tp_price,
         color,
@@ -139,6 +145,7 @@ export async function getProductWithStock(
       id: p.id,
       name: p.name,
       base_price: Number(p.base_price),
+      sku: p.sku ?? null,
       primary_image: primaryProductImage,
       stock: productInventory || null,
       variants: p.product_variants.map((v) => {
@@ -151,6 +158,7 @@ export async function getProductWithStock(
           discounted_price: v.discounted_price,
           tp_price: v.tp_price,
           color: v.color || null,
+          sku: v.sku ?? null,
           stock: variantInventory || {
             quantity_available: 0,
             quantity_reserved: 0,

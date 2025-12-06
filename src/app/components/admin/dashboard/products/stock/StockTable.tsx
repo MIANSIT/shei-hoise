@@ -11,6 +11,7 @@ import {
   ProductRow,
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
+import { ProductRowWithMatch } from "./StockChangeTable";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -103,19 +104,47 @@ const StockTable: React.FC<StockTableProps> = ({
             : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
 
         return (
-          <div className="flex items-center gap-2">
-            <span>{title}</span>
-            {shouldHighlight && (
-              <Tooltip title={tooltipTitle}>
-                <Tag color="red" className="text-xs">
-                  {isProductRow && (record as ProductRow).hasLowStockVariant
-                    ? "Has Low Stock"
-                    : "Low Stock"}
-                </Tag>
-              </Tooltip>
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span>{title}</span>
+              {shouldHighlight && (
+                <Tooltip title={tooltipTitle}>
+                  <Tag color="red" className="text-xs">
+                    {isProductRow && (record as ProductRow).hasLowStockVariant
+                      ? "Has Low Stock"
+                      : "Low Stock"}
+                  </Tag>
+                </Tooltip>
+              )}
+            </div>
+
+            {/* --- Show message if variants matched search --- */}
+            {"variants" in record &&
+              (record as ProductRowWithMatch).hasMatchingVariants && (
+                <div className="text-sm text-blue-600 italic">
+                  Some variants match your search. Expand to view.
+                </div>
+              )}
           </div>
         );
+      },
+    },
+    {
+      title: "SKU",
+      dataIndex: "sku",
+      key: "sku",
+      render: (_sku, record: ProductRow | VariantRow) => {
+        // If product row has variants, show "SKU depends on variants"
+        if ("variants" in record && record.variants?.length) {
+          return (
+            <span className="italic text-gray-400">
+              SKU depends on variants
+            </span>
+          );
+        }
+
+        // Otherwise show SKU or fallback
+        return <span className="text-gray-600">{record.sku ?? "—"}</span>;
       },
     },
     {
@@ -233,7 +262,21 @@ const StockTable: React.FC<StockTableProps> = ({
         expandedRowRender: (record) =>
           "variants" in record && record.variants?.length ? (
             <DataTable
-              columns={columns}
+              columns={columns.map((col) => ({
+                ...col,
+                width:
+                  col.key === "image"
+                    ? 50
+                    : col.key === "title"
+                    ? 150
+                    : col.key === "sku"
+                    ? 100
+                    : col.key === "currentPrice"
+                    ? 80
+                    : col.key === "stock"
+                    ? 80
+                    : col.width,
+              }))}
               data={record.variants.map((v) => ({
                 ...v,
                 productId: record.id,
@@ -247,6 +290,7 @@ const StockTable: React.FC<StockTableProps> = ({
               }
             />
           ) : null,
+
         rowExpandable: (record) =>
           "variants" in record && !!record.variants?.length,
       }}
