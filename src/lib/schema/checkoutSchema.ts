@@ -1,7 +1,7 @@
 // lib/schema/checkoutSchema.ts
 import { z } from "zod";
 
-// Strong password validation
+// Strong password validation (optional)
 const passwordValidation = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -11,16 +11,19 @@ const passwordValidation = z
   .regex(
     /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/,
     "Password must contain at least one special character"
-  );
+  )
+  .optional()
+  .or(z.literal(''));
 
-// Simple password validation for logged-in users (dummy validation)
+// Simple password validation for logged-in users (required but with dummy value)
 const simplePasswordValidation = z.string().min(1, "Password is required");
 
-// Bangladesh phone number validation
+// ✅ UPDATED: Bangladesh phone number validation without +88
 const bangladeshPhoneValidation = z
   .string()
-  .regex(/^\+8801[3-9]\d{8}$/, "Phone number must be in format: +8801XXXXXXXXX")
-  .min(11, "Phone number must be at least 11 characters");
+  .regex(/^01[3-9]\d{8}$/, "Phone number must be in format: 01XXXXXXXXX")
+  .min(11, "Phone number must be 11 digits")
+  .max(11, "Phone number must be 11 digits");
 
 // Email validation
 const emailValidation = z
@@ -30,7 +33,7 @@ const emailValidation = z
     message: "Email must contain @ and .com domain",
   });
 
-// Schema for non-logged-in users (full validation)
+// Schema for non-logged-in users (password optional)
 export const customerCheckoutSchema = z.object({
   name: z.string().min(1, "Full name is required"),
   email: emailValidation,
@@ -42,12 +45,12 @@ export const customerCheckoutSchema = z.object({
   shippingAddress: z.string().min(1, "Shipping address is required"),
 });
 
-// Schema for logged-in users (password validation relaxed)
+// Schema for logged-in users (password required but will be dummy)
 export const customerCheckoutSchemaForLoggedIn = z.object({
   name: z.string().min(1, "Full name is required"),
   email: emailValidation,
   phone: bangladeshPhoneValidation,
-  password: simplePasswordValidation, // ✅ FIX: Simple validation for logged-in users
+  password: simplePasswordValidation,
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   postCode: z.string().min(1, "Postal code is required"),
@@ -61,5 +64,16 @@ export const addToCartSchema = z.object({
   storeSlug: z.string().min(1, "Store slug is required"),
 });
 
-export type CustomerCheckoutFormValues = z.infer<typeof customerCheckoutSchema>;
+// ✅ FIXED: Make password optional in the type
+export type CustomerCheckoutFormValues = {
+  name: string;
+  email: string;
+  phone: string;
+  password?: string; // ✅ Make password optional
+  country: string;
+  city: string;
+  postCode: string;
+  shippingAddress: string;
+};
+
 export type AddToCartType = z.infer<typeof addToCartSchema>;

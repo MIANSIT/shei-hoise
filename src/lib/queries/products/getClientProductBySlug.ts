@@ -7,6 +7,7 @@ export async function getClientProductBySlug(product_slug: string) {
     .select(
       `
       id,
+      sku,
       name,
       slug,
       description,
@@ -18,6 +19,7 @@ export async function getClientProductBySlug(product_slug: string) {
       product_inventory(quantity_available, quantity_reserved),
       product_variants(
         id,
+        sku,
         variant_name,
         base_price,
         discounted_price,
@@ -32,7 +34,6 @@ export async function getClientProductBySlug(product_slug: string) {
     .single();
 
   if (error) {
-    // Handle "not found" case gracefully
     if (error.code === "PGRST116") {
       console.log("Product not found for slug:", product_slug);
       return null;

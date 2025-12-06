@@ -16,10 +16,40 @@ import {
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
+
+// Helper functions for dropdown options
+const getOrderStatusOptions = () => {
+  return [
+    { value: OrderStatus.PENDING, label: "Pending" },
+    { value: OrderStatus.CONFIRMED, label: "Confirmed" },
+    { value: OrderStatus.SHIPPED, label: "Shipped" },
+    { value: OrderStatus.DELIVERED, label: "Delivered" },
+    { value: OrderStatus.CANCELLED, label: "Cancelled" },
+  ];
+};
+
+const getPaymentStatusOptions = () => {
+  return [
+    { value: PaymentStatus.PENDING, label: "Pending" },
+    { value: PaymentStatus.PAID, label: "Paid" },
+    { value: PaymentStatus.FAILED, label: "Failed" },
+    { value: PaymentStatus.REFUNDED, label: "Refunded" },
+  ];
+};
+
+const getPaymentMethodOptions = () => {
+  return [
+    { value: "cod", label: "Cash on Delivery" },
+    { value: "card", label: "Credit/Debit Card" },
+    { value: "bkash", label: "bKash" },
+    { value: "nagad", label: "Nagad" },
+  ];
+};
 
 interface OrderSummaryProps {
   orderProducts: OrderProduct[];
@@ -28,17 +58,15 @@ interface OrderSummaryProps {
   setTaxAmount: (amount: number) => void;
   discount: number;
   setDiscount: (discount: number) => void;
+  additionalCharges: number;
+  setAdditionalCharges: (charges: number) => void;
   deliveryCost: number;
   setDeliveryCost: (cost: number) => void;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped";
-  setStatus: (
-    status: "pending" | "confirmed" | "completed" | "cancelled" | "shipped"
-  ) => void;
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
-  setPaymentStatus: (
-    status: "pending" | "paid" | "failed" | "refunded"
-  ) => void;
+  status: OrderStatus; // ✅ Using enum
+  setStatus: (status: OrderStatus) => void; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
+  setPaymentStatus: (status: PaymentStatus) => void; // ✅ Using enum
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   shippingFees?: ShippingFee[];
@@ -52,6 +80,8 @@ export default function OrderSummary({
   setTaxAmount,
   discount,
   setDiscount,
+  additionalCharges,
+  setAdditionalCharges,
   deliveryCost,
   setDeliveryCost,
   totalAmount,
@@ -98,12 +128,11 @@ export default function OrderSummary({
 
   // Handle manual delivery cost changes - only for custom delivery
   const handleDeliveryCostChange = (value: number | null) => {
-    if (!isCustomDelivery) return; // Only allow changes for custom delivery
+    if (!isCustomDelivery) return;
 
     const newCost = value || 0;
     setDeliveryCost(newCost);
 
-    // Check if this is a manual change (different from the auto-calculated fee)
     if (selectedShippingFee && newCost !== selectedShippingFee.price) {
       setIsManualDeliveryCost(true);
     } else {
@@ -177,7 +206,6 @@ export default function OrderSummary({
                 </Text>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
                   You can manually adjust the delivery cost for custom delivery
-                  Price
                 </Text>
               </Space>
             }
@@ -224,6 +252,24 @@ export default function OrderSummary({
                     addonAfter="৳"
                   />
                 </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item label="Additional Charges (BDT)">
+                  <InputNumber
+                    min={0}
+                    value={additionalCharges}
+                    onChange={(value) => setAdditionalCharges(value || 0)}
+                    style={{ width: "100%" }}
+                    addonAfter="৳"
+                    placeholder="Enter any additional charges"
+                  />
+                </Form.Item>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  Additional fees like packaging, handling, or special services
+                </Text>
               </Col>
             </Row>
 
@@ -283,15 +329,15 @@ export default function OrderSummary({
               <Form.Item label="Order Status">
                 <Select
                   value={status}
-                  onChange={(value: any) => setStatus(value)}
+                  onChange={(value: OrderStatus) => setStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
                 >
-                  <Option value="pending">Pending</Option>
-                  <Option value="confirmed">Confirmed</Option>
-                  <Option value="completed">Delivered</Option>
-                  <Option value="shipped">Shipped</Option>
-                  <Option value="cancelled">Cancelled</Option>
+                  {getOrderStatusOptions().map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -300,14 +346,15 @@ export default function OrderSummary({
               <Form.Item label="Payment Status">
                 <Select
                   value={paymentStatus}
-                  onChange={(value: any) => setPaymentStatus(value)}
+                  onChange={(value: PaymentStatus) => setPaymentStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
                 >
-                  <Option value="pending">Pending</Option>
-                  <Option value="paid">Paid</Option>
-                  <Option value="failed">Failed</Option>
-                  <Option value="refunded">Refunded</Option>
+                  {getPaymentStatusOptions().map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -321,7 +368,11 @@ export default function OrderSummary({
               size="large"
               placeholder="Select payment method"
             >
-              <Option value="cod">Cash on Delivery</Option>
+              {getPaymentMethodOptions().map((option) => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
         </Space>

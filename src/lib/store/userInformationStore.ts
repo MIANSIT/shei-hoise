@@ -1,34 +1,51 @@
-// lib/store/checkoutStore.ts
+// lib/store/userInformationStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CustomerCheckoutFormValues } from '@/lib/schema/checkoutSchema'; // Import from your schema
 
-interface CheckoutStore {
-  formData: Partial<CustomerCheckoutFormValues>; // Use Partial since password might not be stored
-  setFormData: (data: Partial<CustomerCheckoutFormValues>) => void;
-  clearFormData: () => void;
+export interface UserInformation {
+  email: string;
+  phone: string;
+  name: string;
+  country: string;
+  city: string;
+  shippingAddress: string;
+  postCode: string;
 }
 
-const defaultFormData: Partial<CustomerCheckoutFormValues> = {
+interface CheckoutStore {
+  formData: Partial<UserInformation>;
+  setFormData: (data: Partial<UserInformation>) => void;
+  clearFormData: () => void;
+  storeSlug: string | null;
+  setStoreSlug: (slug: string) => void;
+}
+
+const defaultFormData: Partial<UserInformation> = {
   email: '',
   phone: '',
   name: '',
-  country: '',
-  city: '',
+  country: 'Bangladesh',
+  city: 'Dhaka',
   shippingAddress: '',
   postCode: '',
-  // Don't include password in default for security reasons
 };
 
 export const useCheckoutStore = create<CheckoutStore>()(
   persist(
     (set) => ({
       formData: defaultFormData,
-      setFormData: (data) => set({ formData: data }),
-      clearFormData: () => set({ formData: defaultFormData }),
+      storeSlug: null,
+      
+      setFormData: (data) => set((state) => ({ 
+        formData: { ...state.formData, ...data } 
+      })),
+      
+      clearFormData: () => set({ formData: defaultFormData, storeSlug: null }),
+      
+      setStoreSlug: (slug) => set({ storeSlug: slug }),
     }),
     {
-      name: 'userInformation-storage',
+      name: 'user-information-storage', 
     }
   )
 );

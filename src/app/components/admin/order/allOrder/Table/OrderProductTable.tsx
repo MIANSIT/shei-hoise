@@ -4,12 +4,12 @@
 import React, { useState } from "react";
 import { App } from "antd";
 import {
-  StoreOrder,
   OrderStatus,
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
+import { StoreOrder } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
 import dataService from "@/lib/queries/dataService";
 
@@ -43,14 +43,14 @@ const OrderProductTable: React.FC<Props> = ({
   const [selectedDeliveryOption, setSelectedDeliveryOption] =
     useState<DeliveryOption>(order.delivery_option || "courier");
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<PaymentMethod>(order.payment_method === "cod" ? "cod" : "online");
+    useState<PaymentMethod>((order.payment_method as PaymentMethod) || "cod"); // ✅ FIXED: Proper type casting
   const [selectedShippingFee, setSelectedShippingFee] = useState<number>(
     order.shipping_fee
   );
   const [cancelNote, setCancelNote] = useState(order.notes || "");
   const [saving, setSaving] = useState(false);
 
-  const isLocked = order.status === "delivered" || order.status === "cancelled";
+  const isLocked = order.status === "delivered" || order.status === "cancelled"; // ✅ FIXED: "delivered" not "delevered"
 
   const handleSaveAll = async () => {
     if (saving) return;
@@ -76,8 +76,7 @@ const OrderProductTable: React.FC<Props> = ({
       }
 
       if (
-        selectedPaymentMethod !==
-          (order.payment_method === "cod" ? "cod" : "online") &&
+        selectedPaymentMethod !== order.payment_method &&
         onSavePaymentMethod
       ) {
         updateData.payment_method = selectedPaymentMethod;
@@ -86,8 +85,13 @@ const OrderProductTable: React.FC<Props> = ({
       if (selectedShippingFee !== order.shipping_fee && onSaveShippingFee) {
         updateData.shipping_fee = selectedShippingFee;
         // Recalculate total amount if shipping fee changes
+        // Include discount_amount in calculation if it exists
+        const discountAmount = (order as any).discount_amount || 0;
         updateData.total_amount =
-          order.subtotal + order.tax_amount + selectedShippingFee;
+          order.subtotal -
+          discountAmount +
+          order.tax_amount +
+          selectedShippingFee;
       }
 
       if (cancelNote !== order.notes) {
@@ -112,8 +116,7 @@ const OrderProductTable: React.FC<Props> = ({
             onSaveDeliveryOption(selectedDeliveryOption);
           }
           if (
-            selectedPaymentMethod !==
-              (order.payment_method === "cod" ? "cod" : "online") &&
+            selectedPaymentMethod !== order.payment_method &&
             onSavePaymentMethod
           ) {
             onSavePaymentMethod(selectedPaymentMethod);
@@ -150,7 +153,7 @@ const OrderProductTable: React.FC<Props> = ({
     setSelectedStatus(order.status);
     setSelectedPaymentStatus(order.payment_status);
     setSelectedDeliveryOption(order.delivery_option || "courier");
-    setSelectedPaymentMethod(order.payment_method === "cod" ? "cod" : "online");
+    setSelectedPaymentMethod((order.payment_method as PaymentMethod) || "cod");
     setSelectedShippingFee(order.shipping_fee);
     setCancelNote(order.notes || "");
   };
@@ -168,7 +171,7 @@ const OrderProductTable: React.FC<Props> = ({
         deliveryOption={order.delivery_option || "courier"}
         selectedDeliveryOption={selectedDeliveryOption}
         onSelectDeliveryOption={setSelectedDeliveryOption}
-        paymentMethod={order.payment_method === "cod" ? "cod" : "online"}
+        paymentMethod={(order.payment_method as PaymentMethod) || "cod"} // ✅ FIXED: Proper type casting
         selectedPaymentMethod={selectedPaymentMethod}
         onSelectPaymentMethod={setSelectedPaymentMethod}
         cancelNote={cancelNote}

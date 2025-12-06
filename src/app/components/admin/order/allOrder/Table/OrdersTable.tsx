@@ -1,20 +1,30 @@
-// Update your OrdersTable component - Remove the custom selection column
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button } from "antd"; // Removed Checkbox import from here
+import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { StoreOrder, OrderStatus, PaymentStatus } from "@/lib/types/order";
+import { StoreOrder } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
-import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
+import OrdersFilterTabs, {
+  highlightText,
+} from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  FileTextOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
+import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
+import dataService from "@/lib/queries/dataService";
 
 interface Props {
   orders: StoreOrder[];
@@ -29,26 +39,50 @@ const OrdersTable: React.FC<Props> = ({
   onRefresh,
   loading = false,
 }) => {
-  const { notification } = App.useApp();
+  const { notification, modal } = App.useApp();
   const [searchOrderId, setSearchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
+    useState<StoreOrder | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const filtered = orders.filter((o) =>
-      o.order_number.toLowerCase().includes(searchOrderId.toLowerCase())
-    );
+    const filtered = orders.filter((o) => {
+      const search = searchOrderId.toLowerCase();
+      const customerEmail = getCustomerEmail(o).toLowerCase();
+      const customerPhone = getCustomerPhone(o).toLowerCase();
+      const customerName = getCustomerName(o).toLowerCase();
+
+      return (
+        o.order_number.toLowerCase().includes(search) ||
+        customerEmail.includes(search) ||
+        customerPhone.includes(search) ||
+        customerName.includes(search)
+      );
+    });
     setFilteredOrders(filtered);
   }, [orders, searchOrderId]);
 
   const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleTabFilter = (filtered: StoreOrder[]) => {
-    const finalFiltered = filtered.filter((o) =>
-      o.order_number.toLowerCase().includes(searchOrderId.toLowerCase())
-    );
+    const finalFiltered = filtered.filter((o) => {
+      const search = searchOrderId.toLowerCase();
+      const customerEmail = getCustomerEmail(o).toLowerCase();
+      const customerPhone = getCustomerPhone(o).toLowerCase();
+      const customerName = getCustomerName(o).toLowerCase();
+
+      return (
+        o.order_number.toLowerCase().includes(search) ||
+        customerEmail.includes(search) ||
+        customerPhone.includes(search) ||
+        customerName.includes(search)
+      );
+    });
     setFilteredOrders(finalFiltered);
   };
 
@@ -56,12 +90,50 @@ const OrdersTable: React.FC<Props> = ({
     router.push(`/dashboard/orders/edit-order/${order.order_number}`);
   };
 
-  const handleDelete = (order: StoreOrder) => {
-    notification.warning({
-      message: "Delete",
-      description: `Are you sure you want to delete order #${order.id}?`,
+  const handleDelete = async (order: StoreOrder) => {
+    modal.confirm({
+      title: "Confirm Delete",
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete order #${order.order_number}? This action cannot be undone.`,
+      okText: "Yes, Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        await performDelete(order.id);
+      },
     });
-    console.log("Delete order", order.id);
+  };
+
+  const performDelete = async (orderId: string) => {
+    try {
+      setDeleteLoading(orderId);
+
+      // Call your API to delete the order
+      await dataService.deleteOrder(orderId);
+
+      notification.success({
+        message: "Order Deleted",
+        description: "Order has been deleted successfully.",
+      });
+
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error: any) {
+      console.error("Error deleting order:", error);
+      notification.error({
+        message: "Delete Failed",
+        description:
+          error.message || "Failed to delete order. Please try again.",
+      });
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleViewInvoice = (order: StoreOrder) => {
+    setSelectedOrderForInvoice(order);
+    setShowInvoice(true);
   };
 
   // Bulk selection handlers
@@ -78,14 +150,21 @@ const OrdersTable: React.FC<Props> = ({
 
   const renderActionButtons = (order: StoreOrder) => (
     <div className="flex items-center gap-2 justify-center">
-      <EditOutlined
-        className="!text-blue-600 cursor-pointer hover:!text-blue-800"
-        onClick={() => handleEdit(order)}
-      />
-      <DeleteOutlined
-        className="!text-red-600 cursor-pointer hover:!text-red-800"
-        onClick={() => handleDelete(order)}
-      />
+      <Tooltip title="Edit Order">
+        <EditOutlined
+          className="!text-blue-600 cursor-pointer hover:!text-blue-800 text-base"
+          onClick={() => handleEdit(order)}
+        />
+      </Tooltip>
+      <Tooltip title="Delete Order">
+        <DeleteOutlined
+          className={`!text-red-600 cursor-pointer hover:!text-red-800 text-base ${
+            deleteLoading === order.id ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          onClick={() => deleteLoading !== order.id && handleDelete(order)}
+          spin={deleteLoading === order.id}
+        />
+      </Tooltip>
     </div>
   );
 
@@ -107,10 +186,11 @@ const OrdersTable: React.FC<Props> = ({
     });
   };
 
+  // ✅ FIXED: Get customer name from shipping_address
   const getCustomerName = (order: StoreOrder) => {
     return (
+      order.shipping_address?.customer_name ||
       order.customers?.first_name ||
-      order.shipping_address.customer_name ||
       "Unknown Customer"
     );
   };
@@ -120,7 +200,9 @@ const OrdersTable: React.FC<Props> = ({
   };
 
   const getCustomerPhone = (order: StoreOrder) => {
-    return order.customers?.phone || order.shipping_address.phone || "No phone";
+    return (
+      order.shipping_address?.phone || order.customers?.phone || "No phone"
+    );
   };
 
   const getCustomerInitial = (order: StoreOrder) => {
@@ -128,11 +210,48 @@ const OrdersTable: React.FC<Props> = ({
     return name.charAt(0).toUpperCase();
   };
 
+  // ✅ FIXED: Get full address with proper fallbacks
+  const getFullAddress = (order: StoreOrder) => {
+    const address = order.shipping_address;
+    if (!address) return "No address";
+
+    // Check for both address_line_1 and address fields
+    const addressLine = address.address_line_1 || address.address || "";
+    const city = address.city || "";
+    const country = address.country || "";
+
+    let fullAddress = "";
+    if (addressLine) fullAddress += addressLine;
+    if (city) fullAddress += (fullAddress ? ", " : "") + city;
+    if (country) fullAddress += (fullAddress ? ", " : "") + country;
+
+    return fullAddress || "Address not provided";
+  };
+
+  // ✅ FIXED: Get address for display in table (shorter version)
+  const getDisplayAddress = (order: StoreOrder) => {
+    const address = order.shipping_address;
+    if (!address) return "No address";
+
+    const addressLine = address.address_line_1 || address.address || "";
+    const city = address.city || "";
+
+    if (addressLine && city) {
+      return `${addressLine}, ${city}`;
+    } else if (addressLine) {
+      return addressLine;
+    } else if (city) {
+      return city;
+    }
+
+    return "Address not provided";
+  };
+
   const selectedOrderObjects = filteredOrders.filter((order) =>
     selectedRowKeys.includes(order.id)
   );
 
-  // Updated columns - REMOVED the custom selection column
+  // ✅ FIXED: Updated columns with proper address display
   const columns: ColumnsType<StoreOrder> = [
     {
       title: "Order #",
@@ -140,7 +259,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "order_number",
       render: (orderNumber: string) => (
         <span className="font-medium text-blue-600 text-sm">
-          #{orderNumber}
+          {highlightText(`#${orderNumber}`, searchOrderId)}
         </span>
       ),
       width: 100,
@@ -165,10 +284,10 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="min-w-0">
             <div className="font-medium text-sm truncate max-w-[100px] lg:max-w-[120px]">
-              {getCustomerName(order)}
+              {highlightText(getCustomerName(order), searchOrderId)}
             </div>
             <div className="text-xs text-gray-500 truncate max-w-[100px] lg:max-w-[120px]">
-              {getCustomerEmail(order)}
+              {highlightText(getCustomerEmail(order), searchOrderId)}
             </div>
           </div>
         </Space>
@@ -177,15 +296,27 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
+      title: "Phone",
+      key: "phone",
+      render: (_, order: StoreOrder) => (
+        <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
+          {highlightText(getCustomerPhone(order), searchOrderId)}
+        </div>
+      ),
+      width: 120,
+      responsive: ["lg"],
+    },
+    {
       title: "Address",
       key: "address",
       render: (_, order: StoreOrder) => {
-        const address = order.shipping_address;
-        const fullAddress = `${address.address_line_1}, ${address.city}`;
+        const displayAddress = getDisplayAddress(order);
+        const fullAddress = getFullAddress(order);
+
         return (
           <Tooltip title={fullAddress}>
             <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
-              {address.address_line_1}, {address.city}
+              {displayAddress}
             </div>
           </Tooltip>
         );
@@ -260,6 +391,24 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["lg"],
     },
     {
+      title: "Invoice",
+      key: "invoice",
+      render: (_, order: StoreOrder) => (
+        <Tooltip title="View Invoice">
+          <Button
+            type="link"
+            icon={<FileTextOutlined />}
+            onClick={() => handleViewInvoice(order)}
+            className="!text-green-600 !p-1 !h-auto text-xs"
+            size="small"
+          ></Button>
+        </Tooltip>
+      ),
+      width: 80,
+      align: "center" as const,
+      responsive: ["md"],
+    },
+    {
       title: "Actions",
       key: "actions",
       render: (_, order: StoreOrder) => renderActionButtons(order),
@@ -269,10 +418,10 @@ const OrdersTable: React.FC<Props> = ({
     },
   ];
 
-  // Mobile card renderer - Updated to remove checkbox from mobile view
+  // ✅ FIXED: Mobile card renderer with proper address display
   const renderOrderCard = (order: StoreOrder) => {
-    const address = order.shipping_address;
-    const fullAddress = `${address.address_line_1}, ${address.city}`;
+    const displayAddress = getDisplayAddress(order);
+    const fullAddress = getFullAddress(order);
 
     return (
       <Card
@@ -301,8 +450,6 @@ const OrdersTable: React.FC<Props> = ({
 
         {/* Header */}
         <div className="flex justify-between items-start mb-3 pr-6">
-          {" "}
-          {/* Added pr-6 for checkbox space */}
           <div className="flex-1 min-w-0">
             <div className="font-bold text-blue-600 text-base sm:text-lg truncate">
               #{order.order_number}
@@ -346,13 +493,13 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">
-              {getCustomerName(order)}
+              {highlightText(getCustomerName(order), searchOrderId)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {getCustomerEmail(order)}
+              {highlightText(getCustomerEmail(order), searchOrderId)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {getCustomerPhone(order)}
+              {highlightText(getCustomerPhone(order), searchOrderId)}
             </div>
           </div>
         </div>
@@ -361,7 +508,9 @@ const OrdersTable: React.FC<Props> = ({
         <div className="mb-3">
           <div className="text-xs sm:text-sm text-gray-600">
             <span className="font-medium">Address: </span>
-            <span className="line-clamp-2">{fullAddress}</span>
+            <Tooltip title={fullAddress}>
+              <span className="line-clamp-2">{displayAddress}</span>
+            </Tooltip>
           </div>
         </div>
 
@@ -396,6 +545,17 @@ const OrdersTable: React.FC<Props> = ({
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mb-3">
+          <Tooltip title="View Invoice">
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={() => handleViewInvoice(order)}
+              size="small"
+              className="!bg-green-600 !border-green-600 hover:!bg-green-700"
+            >
+              Invoice
+            </Button>
+          </Tooltip>
           {renderActionButtons(order)}
         </div>
 
@@ -606,6 +766,20 @@ const OrdersTable: React.FC<Props> = ({
         responsive={true}
         renderCard={renderOrderCard}
       />
+
+      {/* Invoice Modal */}
+      {showInvoice && selectedOrderForInvoice && (
+        <AnimatedInvoice
+          isOpen={showInvoice}
+          onClose={() => {
+            setShowInvoice(false);
+            setSelectedOrderForInvoice(null);
+          }}
+          orderData={selectedOrderForInvoice}
+          showCloseButton={true}
+          autoShow={true}
+        />
+      )}
     </div>
   );
 };

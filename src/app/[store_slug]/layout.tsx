@@ -1,6 +1,8 @@
 import React from "react";
 import StoreHeader from "@/app/components/common/StoreHeader";
-import Footer from "@/app/components/common/Footer";
+import { footerContent } from "@/lib/store/footerContent";
+import { getStoreBySlugWithLogo } from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import FooterBottom from "@/app/components/common/FooterBottom";
 
 interface StoreLayoutProps {
   children: React.ReactNode;
@@ -13,22 +15,32 @@ export default async function StoreLayout({
   children,
   params,
 }: StoreLayoutProps) {
-  // Await the params
   const { store_slug } = await params;
 
-  // Safety check
   if (!store_slug) return null;
 
+  // Fetch store data including logo
+  const storeData = await getStoreBySlugWithLogo(store_slug);
+
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       {/* Pass storeSlug to header */}
       <StoreHeader storeSlug={store_slug} />
 
-      {/* Main content */}
-      <main>{children}</main>
+      {/* Main content - this will grow to push footer to bottom */}
+      <main className="flex-grow">{children}</main>
 
-      {/* Footer */}
-      {/* <Footer /> */}
-    </>
+      {/* Footer section at bottom */}
+      <div className="mt-auto">
+        <FooterBottom
+          links={footerContent.bottomLinksStore}
+          brandName={footerContent.brand.name} // Main owner name
+          storeLogo={storeData?.logo_url} // Store logo
+          storeName={storeData?.store_name} // Store name (optional)
+          storeSlug={store_slug} // Pass storeSlug for the link
+          isStore={true}
+        />
+      </div>
+    </div>
   );
 }

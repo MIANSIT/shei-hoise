@@ -17,6 +17,7 @@ import { Minus, Plus } from "lucide-react";
 
 interface ApiProduct {
   id: string;
+  sku: string;
   name: string;
   slug: string;
   description?: string;
@@ -39,6 +40,7 @@ interface ApiProduct {
   product_variants: Array<{
     primary_image: any;
     id: string;
+    sku: string;
     variant_name: string;
     base_price: number;
     discounted_price: number | null;
@@ -307,9 +309,9 @@ export default function ProductPage() {
       );
 
   // Check if variant is available (for variant buttons)
-  const isVariantAvailable = (variant: any) => {
-    return variant.product_inventory?.[0]?.quantity_available > 0;
-  };
+  // const isVariantAvailable = (variant: any) => {
+  //   return variant.product_inventory?.[0]?.quantity_available > 0;
+  // };
 
   // Updated stock badge function - No numbers shown
   const getStockBadge = () => {
@@ -654,17 +656,17 @@ export default function ProductPage() {
       </div>
 
       <div className="mt-12">
-        <h3 className="text-xl font-semibold mb-4">Product Details</h3>
+        <h3 className="text-2xl font-semibold mb-4">Product Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-medium mb-2">Product Information</h4>
+            <h5 className="font-medium mb-2">Product Details</h5>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <strong>Category:</strong>{" "}
                 {product.categories?.name || "Uncategorized"}
               </li>
               <li>
-                <strong>SKU:</strong> {product.id}
+                <strong>SKU:</strong> {selectedVariantData?.sku || product.sku}
               </li>
               {hasVariants && selectedVariantData && (
                 <>
@@ -682,7 +684,7 @@ export default function ProductPage() {
           </div>
 
           <div>
-            <h4 className="font-medium mb-2">Pricing</h4>
+            <h5 className="font-medium mb-2">Product Pricing</h5>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <strong>Base Price:</strong> ৳{originalPrice.toFixed(2)}
@@ -693,10 +695,10 @@ export default function ProductPage() {
                     <strong>Discounted Price:</strong> ৳
                     {displayPrice.toFixed(2)}
                   </li>
-                  <li>
+                  {/* <li>
                     <strong>You Save:</strong> ৳
                     {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
-                  </li>
+                  </li> */}
                 </>
               )}
             </ul>

@@ -1,25 +1,27 @@
-// lib/hook/useOrderProcess.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// lib/hook/useOrderProcess.ts
 import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
-import useCartStore from '../store/cartStore'; // Import cart store
+import useCartStore from '../store/cartStore';
 import { CartProductWithDetails, CartCalculations } from '../types/cart';
+import { OrderStatus, PaymentStatus } from '../types/enums'; // ✅ ADD THIS IMPORT
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { clearStoreCart } = useCartStore(); // Get cart clearing function
-  
+  const { clearStoreCart } = useCartStore();
+
   const processOrder = async (
-    formData: CustomerCheckoutFormValues, 
-    customerId?: string,
+    formData: CustomerCheckoutFormValues,
+    storeCustomerId?: string,
     paymentMethod: string = 'cod',
     deliveryOption: string = 'standard',
     shippingFee: number = 0,
     cartItems?: CartProductWithDetails[],
-    calculations?: CartCalculations
+    calculations?: CartCalculations,
+    taxAmount: number = 0
   ) => {
     setLoading(true);
     setError(null);
@@ -27,17 +29,26 @@ export function useOrderProcess(store_slug: string) {
     try {
       console.log("🚀 Processing order with data:", {
         store_slug,
-        customerId,
+        storeCustomerId,
+        storeCustomerIdType: storeCustomerId ? 'store_customer_id' : 'guest',
         paymentMethod,
         deliveryOption,
         shippingFee,
+        taxAmount,
         cartItems: cartItems?.length,
         calculations: calculations?.totalPrice
       });
 
+      // Validate store slug first
+      if (!store_slug || store_slug === "undefined") {
+        throw new Error('Store slug is invalid or undefined');
+      }
+
       // Get store ID first
       const storeId = await getStoreIdBySlug(store_slug);
-      if (!storeId) throw new Error('Store not found');
+      if (!storeId) {
+        throw new Error(`Store not found for slug: ${store_slug}`);
+      }
 
       // Check if cart has items
       if (!cartItems || cartItems.length === 0) throw new Error('Cart is empty');
@@ -49,7 +60,11 @@ export function useOrderProcess(store_slug: string) {
         throw new Error(`Some items are out of stock: ${itemNames}. Please update your cart.`);
       }
 
-      // Prepare order data using fresh product data from useCartItems
+      // ✅ Calculate total with tax
+      const subtotal = calculations?.subtotal || 0;
+      const totalWithTax = subtotal + shippingFee + taxAmount;
+
+      // Prepare order data with enum values
       const orderData = {
         storeId: storeId,
         orderNumber: generateCustomerOrderNumber(store_slug),
@@ -60,15 +75,15 @@ export function useOrderProcess(store_slug: string) {
           address: formData.shippingAddress,
           city: formData.city,
           country: formData.country,
-          customer_id: customerId,
+          customer_id: storeCustomerId,
         },
         orderProducts: cartItems.map(item => {
           return {
-            product_id: item.productId, // Main product ID
-            variant_id: item.variantId || null, // Variant ID if exists
+            product_id: item.productId,
+            variant_id: item.variantId || null,
             product_name: item.productName,
             quantity: item.quantity,
-            unit_price: item.displayPrice, // Use the calculated display price
+            unit_price: item.displayPrice,
             total_price: item.displayPrice * item.quantity,
             variant_details: item.variant ? {
               variant_name: item.variant.variant_name,
@@ -78,19 +93,28 @@ export function useOrderProcess(store_slug: string) {
             } : null,
           };
         }),
-        subtotal: calculations?.subtotal || 0,
-        taxAmount: 0, // You can calculate this based on your business logic
+        subtotal: subtotal,
+        taxAmount: taxAmount,
         discount: calculations?.totalDiscount || 0,
-        deliveryCost: shippingFee, // You can calculate this based on delivery option
-        totalAmount: (calculations?.totalPrice || 0) + shippingFee,
-        status: 'pending' as const,
-        paymentStatus: 'pending' as const,
+        additionalCharges: 0, // Default to 0 for customer orders
+        deliveryCost: shippingFee,
+        totalAmount: totalWithTax,
+        status: OrderStatus.PENDING, // ✅ Use enum
+        paymentStatus: PaymentStatus.PENDING, // ✅ Use enum
         paymentMethod,
         currency: 'BDT',
         deliveryOption,
       };
 
-      console.log("📦 Creating order with data:", orderData);
+      console.log("📦 Creating order with data:", {
+        ...orderData,
+        customerInfo: {
+          ...orderData.customerInfo,
+          customer_id: storeCustomerId
+        },
+        taxAmount,
+        totalAmount: totalWithTax
+      });
 
       // Create the order
       const result = await createCustomerOrder(orderData);
@@ -102,11 +126,11 @@ export function useOrderProcess(store_slug: string) {
           console.log("🧹 Clearing cart for store:", store_slug);
           clearStoreCart(store_slug);
         }
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           orderId: result.orderId,
-          message: 'Order placed successfully! Your cart has been cleared.' 
+          message: 'Order placed successfully! Your cart has been cleared.'
         };
       } else {
         throw new Error(result.error || 'Failed to create order');
@@ -114,9 +138,9 @@ export function useOrderProcess(store_slug: string) {
     } catch (err: any) {
       console.error('❌ Order process error:', err);
       setError(err.message || 'Failed to process order');
-      return { 
-        success: false, 
-        error: err.message 
+      return {
+        success: false,
+        error: err.message
       };
     } finally {
       setLoading(false);

@@ -1,6 +1,6 @@
 "use client";
-import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Input } from "../../../../../components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../../../../components/ui/select";
 import { Trash2 } from "lucide-react";
 import Image from "next/image";
 

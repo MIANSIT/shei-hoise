@@ -3,133 +3,335 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 
-export interface CreateCheckoutCustomerData extends CustomerCheckoutFormValues {
+interface CreateCustomerData {
+  name: string;
+  email: string;
+  phone: string;
+  password?: string;
+  country: string;
+  city: string;
+  postCode: string;
+  shippingAddress: string;
   store_slug: string;
 }
 
-export async function createCheckoutCustomer(customerData: CreateCheckoutCustomerData) {
+export async function createCheckoutCustomer(customerData: CreateCustomerData) {
   try {
-    console.log('🔄 Creating checkout customer with data:', {
-      email: customerData.email,
-      name: customerData.name,
-      phone: customerData.phone,
-      store_slug: customerData.store_slug
+    const {
+      name,
+      email,
+      phone,
+      password,
+      country,
+      city,
+      postCode,
+      shippingAddress,
+      store_slug,
+    } = customerData;
+
+    console.log("🔄 Creating checkout customer:", {
+      email,
+      hasPassword: !!password,
+      store_slug,
     });
 
-    // Split full name into first and last name
-    const nameParts = customerData.name.trim().split(' ');
-    const first_name = nameParts[0] || customerData.name;
-    const last_name = nameParts.slice(1).join(' ') || '';
+    let authUserId: string | null = null;
 
-    // ✅ FIX: Create auth user first
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: customerData.email,
-      password: customerData.password,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        first_name: first_name,
-        last_name: last_name,
-        user_type: 'customer',
-        store_slug: customerData.store_slug
-      }
-    });
+    // ✅ STEP 1: Create auth user if password provided
+    if (password && password.length > 0) {
+      console.log("🔐 Creating auth user account");
+      const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+        email: email.toLowerCase(),
+        password: password,
+        options: {
+          data: {
+            first_name: name.split(" ")[0] || name,
+            last_name: name.split(" ").slice(1).join(" ") || "",
+            phone: phone,
+          },
+        },
+      });
 
-    if (authError) {
-      console.error('❌ Auth creation error:', authError);
-      
-      // ✅ FIX: Handle specific error cases
-      if (authError.message.includes('already registered')) {
-        throw new Error('An account with this email already exists. Please login instead.');
+      if (authError) {
+        console.error("❌ Auth user creation failed:", authError);
+        throw new Error(`Failed to create user account: ${authError.message}`);
       }
-      
-      throw new Error(`Failed to create customer account: ${authError.message}`);
+
+      if (authData.user) {
+        authUserId = authData.user.id;
+        console.log("✅ Auth user created:", authUserId);
+      }
     }
 
-    console.log('✅ Auth user created:', authData.user.id);
-
-    // ✅ FIX: Create user record in users table
-    const userInsertData = {
-      id: authData.user.id,
-      email: customerData.email,
-      first_name: first_name,
-      last_name: last_name,
-      password_hash: 'auth_user_password_set', // Placeholder as auth is handled by Supabase Auth
-      user_type: 'customer',
-      phone: customerData.phone,
-      email_verified: true,
-      is_active: true
-      // store_id is omitted for customers
-    };
-
-    console.log('📝 Inserting user with data:', userInsertData);
-
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .insert([userInsertData])
-      .select()
+    // ✅ STEP 2: Get store ID
+    console.log("🏪 Getting store ID for:", store_slug);
+    const { data: store, error: storeError } = await supabaseAdmin
+      .from("stores")
+      .select("id")
+      .eq("store_slug", store_slug)
       .single();
 
-    if (userError) {
-      console.error('❌ User creation error:', userError);
-      
-      // ✅ FIX: If user creation fails, delete the auth user to maintain consistency
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      } catch (deleteError) {
-        console.error('❌ Failed to cleanup auth user:', deleteError);
-      }
-      
-      throw new Error(`Failed to create customer record: ${userError.message}`);
+    if (storeError) {
+      console.error("❌ Store not found:", storeError);
+      throw new Error(`Store not found: ${storeError.message}`);
     }
 
-    console.log('✅ User record created:', userData);
+    const storeId = store.id;
+    console.log("✅ Store found:", storeId);
 
-    // ✅ FIX: Create profile in user_profiles table (optional but recommended)
-    try {
-      console.log('🏠 Creating user profile...');
+    // ✅ STEP 3: Check if customer already exists (by email) - FIXED: Include profile_id
+    console.log("🔍 Checking if customer already exists...");
+    const { data: existingCustomer, error: existingCustomerError } = await supabaseAdmin
+      .from("store_customers")
+      .select("id, auth_user_id, email, profile_id")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
 
-      const { data: profileData, error: profileError } = await supabaseAdmin
-        .from('user_profiles')
-        .insert({
-          user_id: authData.user.id,
-          address_line_1: customerData.shippingAddress,
-          city: customerData.city,
-          postal_code: customerData.postCode,
-          country: customerData.country
-        })
-        .select()
-        .single();
+    let customerId: string;
+    let existingProfileId: string | null = null;
 
-      if (profileError) {
-        console.warn('⚠️ Profile creation warning (non-critical):', profileError);
-        // Don't throw here - profile is optional
+    if (existingCustomer) {
+      console.log("📧 Customer already exists:", {
+        id: existingCustomer.id,
+        auth_user_id: existingCustomer.auth_user_id,
+        profile_id: existingCustomer.profile_id
+      });
+      customerId = existingCustomer.id;
+      existingProfileId = existingCustomer.profile_id;
+
+      // ✅ If customer exists but no auth account AND password is provided, upgrade to auth account
+      if (!existingCustomer.auth_user_id && password && password.length > 0) {
+        console.log("🔐 Upgrading existing customer to authenticated account");
+        const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+          email: email.toLowerCase(),
+          password: password,
+          options: {
+            data: {
+              first_name: name.split(" ")[0] || name,
+              last_name: name.split(" ").slice(1).join(" ") || "",
+              phone: phone,
+            },
+          },
+        });
+
+        if (authError) {
+          console.error("❌ Auth account creation failed:", authError);
+          // Continue without auth upgrade
+        } else if (authData.user) {
+          authUserId = authData.user.id;
+          console.log("✅ Auth account created for existing customer:", authUserId);
+
+          // Update store_customer with auth_user_id
+          await supabaseAdmin
+            .from("store_customers")
+            .update({ 
+              auth_user_id: authUserId,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", customerId);
+          
+          console.log("✅ Store customer updated with auth_user_id");
+        }
+      }
+    } else {
+      // For auth users, create profile first, then customer
+      if (authUserId) {
+        console.log("📝 Creating customer profile for authenticated customer");
+        const profileData = {
+          address: shippingAddress, // ✅ CHANGED: address_line_1 → address
+          city: city,
+          postal_code: postCode,
+          country: country,
+        };
+
+        const { data: profile, error: profileError } = await supabaseAdmin
+          .from("customer_profiles") // ✅ CHANGED: user_profiles → customer_profiles
+          .insert([profileData])
+          .select("id")
+          .single();
+
+        if (profileError) {
+          console.error("❌ Customer profile creation failed:", profileError);
+          // Clean up auth user if created
+          if (authUserId) {
+            await supabaseAdmin.auth.admin.deleteUser(authUserId);
+          }
+          throw new Error(`Failed to create customer profile: ${profileError.message}`);
+        }
+
+        console.log("✅ Customer profile created:", profile.id);
+        existingProfileId = profile.id;
+
+        // ✅ STEP 5: Create store customer with profile_id linked
+        console.log("👤 Creating store customer with profile link");
+        const customerDataToInsert = {
+          name: name,
+          email: email.toLowerCase(),
+          phone: phone,
+          auth_user_id: authUserId,
+          profile_id: profile.id, // ✅ LINKED to customer_profiles
+        };
+
+        const { data: customer, error: customerError } = await supabaseAdmin
+          .from("store_customers")
+          .insert([customerDataToInsert])
+          .select("id, auth_user_id, profile_id, name, email")
+          .single();
+
+        if (customerError) {
+          console.error("❌ Store customer creation failed:", customerError);
+          // Clean up: Delete the profile we created
+          await supabaseAdmin.from("customer_profiles").delete().eq("id", profile.id);
+          // Also delete auth user if created
+          if (authUserId) {
+            await supabaseAdmin.auth.admin.deleteUser(authUserId);
+          }
+          throw new Error(`Failed to create customer record: ${customerError.message}`);
+        }
+
+        customerId = customer.id;
+        console.log("✅ Store customer created successfully:", {
+          customerId: customer.id,
+          authUserId: customer.auth_user_id,
+          profileId: customer.profile_id,
+          email: customer.email
+        });
       } else {
-        console.log('✅ Profile created successfully:', profileData);
+        // For guest customers, create customer first, then profile
+        console.log("👤 Creating store customer for guest");
+        const customerDataToInsert = {
+          name: name,
+          email: email.toLowerCase(),
+          phone: phone,
+          auth_user_id: null, // Guest customer
+        };
+
+        const { data: customer, error: customerError } = await supabaseAdmin
+          .from("store_customers")
+          .insert([customerDataToInsert])
+          .select("id, auth_user_id, name, email")
+          .single();
+
+        if (customerError) {
+          console.error("❌ Store customer creation failed:", customerError);
+          throw new Error(`Failed to create customer record: ${customerError.message}`);
+        }
+
+        customerId = customer.id;
+        console.log("✅ Store customer created for guest:", customerId);
+
+        // ✅ Now create customer profile with store_customer_id
+        console.log("📝 Creating customer profile for guest customer");
+        const profileData = {
+          store_customer_id: customerId,
+          address: shippingAddress, // ✅ CHANGED: address_line_1 → address
+          city: city,
+          postal_code: postCode,
+          country: country,
+        };
+
+        const { data: profile, error: profileError } = await supabaseAdmin
+          .from("customer_profiles") // ✅ CHANGED: user_profiles → customer_profiles
+          .insert([profileData])
+          .select("id")
+          .single();
+
+        if (profileError) {
+          console.error("❌ Customer profile creation failed:", profileError);
+          // Clean up store customer
+          await supabaseAdmin.from("store_customers").delete().eq("id", customerId);
+          throw new Error(`Failed to create customer profile: ${profileError.message}`);
+        }
+
+        console.log("✅ Customer profile created:", profile.id);
+        existingProfileId = profile.id;
+
+        // ✅ Update store customer with profile_id
+        await supabaseAdmin
+          .from("store_customers")
+          .update({ profile_id: profile.id })
+          .eq("id", customerId);
+
+        console.log("✅ Store customer updated with profile_id");
       }
-    } catch (profileError: any) {
-      console.warn('⚠️ Unexpected error during profile creation (non-critical):', profileError);
-      // Continue without profile - this is not critical
     }
 
-    console.log('🎉 Customer creation completed successfully');
+    // ✅ STEP 6: Create store_customer_links entry
+    console.log("🔗 Creating store customer link");
+    const { data: existingLink, error: checkLinkError } = await supabaseAdmin
+      .from("store_customer_links")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("store_id", storeId)
+      .maybeSingle();
+
+    if (checkLinkError) {
+      console.error("❌ Error checking store customer link:", checkLinkError);
+    }
+
+    if (existingLink) {
+      console.log("✅ Store customer link already exists");
+    } else {
+      // Create the link only if it doesn't exist
+      console.log("🔗 Creating new store customer link");
+      const { error: linkError } = await supabaseAdmin
+        .from("store_customer_links")
+        .insert([
+          {
+            customer_id: customerId,
+            store_id: storeId,
+          },
+        ]);
+
+      if (linkError) {
+        console.error("❌ Store customer link creation failed:", linkError);
+        // Don't throw error for duplicate links, just log it
+        if (linkError.code !== '23505') {
+          throw new Error(`Failed to create store customer link: ${linkError.message}`);
+        } else {
+          console.log("✅ Store customer link already exists (handled)");
+        }
+      } else {
+        console.log("✅ Store customer link created successfully");
+      }
+    }
+
+    // ✅ STEP 7: Update customer profile with address for existing customers
+    if (existingCustomer && existingProfileId) {
+      console.log("📝 Updating customer profile for existing customer");
+      const { error: profileUpdateError } = await supabaseAdmin
+        .from("customer_profiles") // ✅ CHANGED: user_profiles → customer_profiles
+        .update({
+          address: shippingAddress, // ✅ CHANGED: address_line_1 → address
+          city: city,
+          postal_code: postCode,
+          country: country,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingProfileId);
+
+      if (profileUpdateError) {
+        console.error("❌ Profile update failed:", profileUpdateError);
+      } else {
+        console.log("✅ Customer profile updated with new address");
+      }
+    }
 
     return {
-      user: userData,
-      authUser: authData.user,
-      success: true
+      success: true,
+      customerId: customerId,
+      authUserId: authUserId,
+      storeId: storeId,
+      profileId: existingProfileId,
+      message: password 
+        ? "Customer account created successfully with auth, profile, and store link" 
+        : "Guest customer created successfully with profile and store link",
     };
   } catch (error: any) {
-    console.error('❌ Complete checkout customer creation error:', error);
-    
-    // ✅ FIX: Provide more user-friendly error messages
-    if (error.message.includes('already exists')) {
-      throw new Error('An account with this email already exists. Please login instead.');
-    }
-    
-    if (error.message.includes('password')) {
-      throw new Error('Password requirements not met. Please use a stronger password.');
-    }
-    
-    throw new Error(error.message || 'Failed to create account. Please try again.');
+    console.error("❌ Error in createCheckoutCustomer:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }

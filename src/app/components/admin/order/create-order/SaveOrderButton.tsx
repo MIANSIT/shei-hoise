@@ -5,7 +5,8 @@ import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
-
+import { useRouter } from "next/navigation";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -16,13 +17,15 @@ interface SaveOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "completed" | "shipped" | "cancelled";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ CHANGED: Use enum
+  paymentStatus: PaymentStatus; // ✅ CHANGED: Use enum
   paymentMethod: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
+  emailError?: string;
 }
 
 export default function SaveOrderButton({
@@ -33,6 +36,7 @@ export default function SaveOrderButton({
   subtotal,
   taxAmount,
   discount,
+  additionalCharges,
   deliveryCost,
   totalAmount,
   status,
@@ -40,11 +44,21 @@ export default function SaveOrderButton({
   paymentMethod,
   disabled = false,
   onCustomerCreated,
+  emailError,
 }: SaveOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
-
+  const router = useRouter();
+  
   const showConfirm = () => {
+    if (emailError) {
+      notification.error({
+        message: "Cannot Create Order",
+        description: emailError,
+      });
+      return;
+    }
+
     modal.confirm({
       title: "Confirm Order Creation",
       icon: <ExclamationCircleOutlined />,
@@ -53,10 +67,16 @@ export default function SaveOrderButton({
           <Text>Are you sure you want to create this order?</Text>
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
-          <Text type="secondary">Total Amount: ৳{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">Email: {customerInfo.email}</Text>
+          <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
+          <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
+          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
+          <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
+          <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
+          <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
-              A new customer account will be created automatically.
+              A new customer record will be created in the system.
             </Text>
           )}
         </Space>
@@ -68,24 +88,22 @@ export default function SaveOrderButton({
   };
 
   const handleSave = async () => {
-    if (disabled) return;
+    if (disabled || emailError) return;
 
     setIsLoading(true);
     try {
       const finalCustomerInfo = { ...customerInfo };
       let customerCreated = false;
 
-      if (!customerInfo.customer_id) {
+      if (!customerInfo.customer_id && !emailError) {
         try {
           if (
             !customerInfo.name ||
             !customerInfo.phone ||
-            !customerInfo.email ||
-            !customerInfo.password ||
-            !customerInfo.postal_code // Add this line
+            !customerInfo.email
           ) {
             throw new Error(
-              "Customer name, phone, email, and password are required to create a customer account"
+              "Customer name, phone, and email are required to create a customer record"
             );
           }
 
@@ -94,11 +112,10 @@ export default function SaveOrderButton({
             email: customerInfo.email,
             first_name: customerInfo.name,
             phone: customerInfo.phone,
-            password: customerInfo.password,
             address_line_1: customerInfo.address,
             city: customerInfo.city,
             country: "Bangladesh",
-            postal_code: customerInfo.postal_code, // Add this line
+            postal_code: customerInfo.postal_code,
           });
 
           if (!newCustomer || !newCustomer.id) {
@@ -116,27 +133,24 @@ export default function SaveOrderButton({
 
           notification.success({
             message: "Customer Created",
-            description: "New customer account created successfully.",
+            description: "New customer record created successfully in store_customers.",
           });
         } catch (customerError: any) {
           console.error("Error creating customer:", customerError);
 
-          // Show detailed error and ask if they want to continue
           const shouldContinue = await new Promise((resolve) => {
             modal.confirm({
               title: "Customer Creation Failed",
               content: (
                 <Space direction="vertical">
                   <Text>
-                    Failed to create customer account: {customerError.message}
+                    Failed to create customer record: {customerError.message}
                   </Text>
                   <Text type="warning">
-                    Do you want to create the order without linking it to a
-                    customer account?
+                    Do you want to create the order without linking it to a customer record?
                   </Text>
                   <Text type="secondary">
-                    The order will be created but no customer account will be
-                    created.
+                    The order will be created but no customer record will be created.
                   </Text>
                 </Space>
               ),
@@ -149,10 +163,8 @@ export default function SaveOrderButton({
 
           if (!shouldContinue) {
             setIsLoading(false);
-            return; // Stop the process if user cancels
+            return;
           }
-
-          // Continue without customer_id
         }
       }
 
@@ -164,23 +176,33 @@ export default function SaveOrderButton({
         subtotal,
         taxAmount,
         discount,
+        additionalCharges,
         deliveryCost,
         totalAmount,
         status,
         paymentStatus,
         paymentMethod,
         currency: "BDT" as const,
-        deliveryOption: finalCustomerInfo.deliveryMethod, // ✅ add this
+        deliveryOption: finalCustomerInfo.deliveryMethod,
       };
+
+      console.log("📦 Sending order data with additional charges:", {
+        discount,
+        additionalCharges,
+        subtotal,
+        deliveryCost,
+        taxAmount,
+        totalAmount
+      });
 
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
         let successMessage = `Order ${orderId} has been created successfully.`;
         if (customerCreated) {
-          successMessage += " A new customer account was also created.";
+          successMessage += " A new customer record was also created in store_customers.";
         } else if (!customerInfo.customer_id) {
-          successMessage += " Note: No customer account was created.";
+          successMessage += " Note: No customer record was created.";
         }
 
         modal.success({
@@ -189,10 +211,15 @@ export default function SaveOrderButton({
             <Space direction="vertical">
               <Text>{successMessage}</Text>
               <Text type="secondary">Order ID: {result.orderId}</Text>
+              <Text type="secondary">Customer Email: {customerInfo.email}</Text>
+              <Text type="secondary">Discount Applied: ৳{discount.toFixed(2)}</Text>
+              <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
               <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
             </Space>
           ),
-          onOk: () => window.location.reload(),
+          onOk: () => {
+            router.push("/dashboard/orders");
+          },
         });
       } else {
         console.error("Order creation failed:", result.error);
@@ -216,7 +243,7 @@ export default function SaveOrderButton({
       type="primary"
       size="large"
       loading={isLoading}
-      disabled={disabled}
+      disabled={disabled || !!emailError}
       onClick={showConfirm}
       style={{ minWidth: "120px" }}
     >

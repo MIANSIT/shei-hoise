@@ -1,36 +1,50 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Input, Button } from "antd";
 import React from "react";
+
+const { Search } = Input;
 
 interface Props {
   showForm: boolean;
   toggleForm: () => void;
-  isLgUp: boolean; // pass from page
+  isLgUp: boolean;
+  searchText: string;
+  setSearchText: (text: string) => void;
 }
 
 export default function CategoryTopBar({
   showForm,
   toggleForm,
   isLgUp,
+  searchText,
+  setSearchText,
 }: Props) {
   return (
-    <div className="flex justify-between items-center">
-      <h2 className="text-xl font-semibold">Categories</h2>
+    <div
+      className={`flex ${
+        isLgUp ? "flex-row items-center justify-between" : "flex-col gap-2"
+      }`}
+    >
+      {/* Search Box replaces the title */}
+      <Search
+        placeholder="Search by name or description"
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        allowClear
+        enterButton
+        style={{ width: isLgUp ? 250 : "100%" }}
+      />
 
-      {/* Show button only on large screens or when form is not a modal */}
-      {(isLgUp || !showForm) && (
-        <Button
-          variant="secondary"
-          style={{
-            backgroundColor: showForm ? "#dc2626" : "#16a34a", // red = close, green = create
-            color: "white",
-          }}
-          onClick={toggleForm}
-        >
-          {showForm ? "Close Form" : "Create Category"}
-        </Button>
-      )}
+      {/* Button */}
+      <Button
+        type="primary"
+        danger={showForm} // red = close, green = create
+        onClick={toggleForm}
+        className={isLgUp ? "" : "w-full"} // full width on mobile
+      >
+        {showForm ? "Close Form" : "Create Category"}
+      </Button>
     </div>
   );
 }

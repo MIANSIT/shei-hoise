@@ -1,8 +1,7 @@
 import { ColumnsType } from "antd/es/table";
 import { Avatar, Space, Tooltip } from "antd";
-import { Order, Product } from "@/lib/types/types";
-import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
-
+import { Order, Product } from "../../../../../../lib/types/types";
+import StatusTag from "../../../../../components/admin/order/allOrder/StatusFilter/StatusTag";
 export const getOrderColumns = (): ColumnsType<Order> => [
   {
     title: "User Info",

@@ -4,11 +4,7 @@ import {
   ProductWithVariants,
 } from "./products/getProductsWithVariants";
 import {
-  getStoreCustomersSimple,
-  StoreCustomer,
-} from "./customers/getStoreCustomersSimple";
-import {
-  getCustomerProfile,
+  getCustomerProfileByStoreCustomerId,
 } from "./customers/getCustomerProfile";
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import {
@@ -37,12 +33,14 @@ import {
   type UpdateOrderByNumberData,
 } from "./orders/updateOrderByNumber";
 import {
-  StoreOrder,
+  StoreOrder
+} from "@/lib/types/order";
+import {
   OrderStatus,
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
 
 import {
   bulkUpdateOrders,
@@ -50,7 +48,7 @@ import {
   BulkUpdateResult,
 } from "./orders/bulkUpdateOrders";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
-import { TableCustomer } from "@/lib/types/users";
+import { DetailedCustomer } from "@/lib/types/users";
 
 // Import CustomerProfile from the shared types file
 import { CustomerProfile } from "@/lib/types/customer";
@@ -61,9 +59,9 @@ export interface DataService {
   getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
 
   // Customer methods
-  getStoreCustomersSimple: (storeId: string) => Promise<StoreCustomer[]>;
-  getCustomerProfile: (customerId: string) => Promise<CustomerProfile | null>;
+  // REMOVED: getCustomerProfile - it was broken
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
+  getCustomerProfileByStoreCustomerId: (storeCustomerId: string) => Promise<CustomerProfile | null>;
 
   // Store methods
   getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
@@ -75,8 +73,9 @@ export interface DataService {
     storeId: string,
     orderNumber: string
   ) => Promise<OrderWithItems | null>;
+  deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
 
-  getAllStoreCustomers: (storeId: string) => Promise<TableCustomer[]>;
+  getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>;
 
   updateOrderByNumber: (
     updateData: UpdateOrderByNumberData
@@ -163,16 +162,67 @@ const updateOrderByNumberImpl = async (
   }
 };
 
+// Implementation for deleteOrder
+const deleteOrderImpl = async (orderId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // First, check if the order exists
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, order_number')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching order:', fetchError);
+      return { success: false, error: 'Order not found' };
+    }
+
+    if (!order) {
+      return { success: false, error: 'Order not found' };
+    }
+
+    // Delete order items first (due to foreign key constraints)
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      console.error('Error deleting order items:', itemsError);
+      return { success: false, error: 'Failed to delete order items' };
+    }
+
+    // Delete the order
+    const { error: deleteError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (deleteError) {
+      console.error('Error deleting order:', deleteError);
+      return { success: false, error: 'Failed to delete order' };
+    }
+
+    console.log(`Order #${order.order_number} (ID: ${orderId}) deleted successfully`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in dataService.deleteOrder:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred' };
+  }
+};
+
+// REMOVED: getCustomerProfile implementation - it was broken
+
 export const dataService: DataService = {
   getProductsWithVariants,
-  getStoreCustomersSimple,
-  getCustomerProfile,
+  // REMOVED: getCustomerProfile - it was broken
   createCustomer,
-  getStoreById: getStoreByIdImpl, // Add this line
+  getStoreById: getStoreByIdImpl,
   createOrder,
   getStoreOrders,
   getOrderByNumber: getOrderByNumberImpl,
   updateOrderByNumber: updateOrderByNumberImpl,
+  deleteOrder: deleteOrderImpl,
   updateOrder,
   updateOrderStatus,
   updatePaymentStatus,
@@ -181,6 +231,7 @@ export const dataService: DataService = {
   updateOrderNotes,
   bulkUpdateOrders,
   getAllStoreCustomers,
+  getCustomerProfileByStoreCustomerId,
 };
 
 export default dataService;

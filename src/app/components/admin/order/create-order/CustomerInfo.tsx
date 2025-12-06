@@ -1,3 +1,4 @@
+// app/components/admin/order/create-order/CustomerInfo.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React from "react";
@@ -23,6 +24,8 @@ const { Title, Text } = Typography;
 interface CustomerInfoProps {
   customerInfo: CustomerInfoType;
   setCustomerInfo: React.Dispatch<React.SetStateAction<CustomerInfoType>>;
+  onEmailChange: (email: string) => void;
+  emailError?: string;
   orderId: string;
   isExistingCustomer?: boolean;
   shippingFees?: ShippingFee[];
@@ -32,6 +35,8 @@ interface CustomerInfoProps {
 export default function CustomerInfo({
   customerInfo,
   setCustomerInfo,
+  onEmailChange,
+  emailError,
   orderId,
   isExistingCustomer = false,
   shippingFees = [],
@@ -48,14 +53,12 @@ export default function CustomerInfo({
 
   const handleFieldChange = (field: keyof CustomerInfoType, value: any) => {
     setCustomerInfo((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // Set default password to "123456" when component mounts for new customers
-  React.useEffect(() => {
-    if (!isExistingCustomer && !customerInfo.password) {
-      setCustomerInfo((prev) => ({ ...prev, password: "AdminCustomer1232*" }));
+    
+    // Special handling for email to trigger validation
+    if (field === "email") {
+      onEmailChange(value);
     }
-  }, [isExistingCustomer, customerInfo.password, setCustomerInfo]);
+  };
 
   // Filter valid shipping fees with proper locations
   const validShippingFees = React.useMemo(() => {
@@ -83,11 +86,6 @@ export default function CustomerInfo({
         customerInfo.deliveryOption
     );
   }, [customerInfo.deliveryOption, validShippingFees]);
-
-  console.log("Shipping Fees:", shippingFees); // Debug log
-  console.log("Valid Shipping Fees:", validShippingFees); // Debug log
-  console.log("Selected Delivery Option:", customerInfo.deliveryOption); // Debug log
-  console.log("Selected Shipping Fee:", selectedShippingFee); // Debug log
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -130,8 +128,16 @@ export default function CustomerInfo({
                 <Form.Item
                   label="Customer Email"
                   required
-                  validateStatus={!customerInfo.email ? "error" : ""}
-                  help={!customerInfo.email ? "Email is required" : ""}
+                  validateStatus={
+                    !customerInfo.email ? "error" : emailError ? "error" : ""
+                  }
+                  help={
+                    emailError 
+                      ? emailError 
+                      : !customerInfo.email 
+                      ? "Email is required" 
+                      : ""
+                  }
                 >
                   <Input
                     type="email"
@@ -169,17 +175,6 @@ export default function CustomerInfo({
                     disabled={isExistingCustomer}
                   />
                 </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                {!isExistingCustomer && (
-                  <Form.Item label="Customer Password" required>
-                    <Input.Password
-                      value="AdminCustomer1232*"
-                      disabled
-                      size="large"
-                    />
-                  </Form.Item>
-                )}
               </Col>
             </Row>
 
@@ -309,8 +304,6 @@ export default function CustomerInfo({
               </Col>
             </Row>
 
-            {/* Show selected shipping fee details */}
-
             <Form.Item label="Order Notes">
               <TextArea
                 placeholder="Any special instructions or notes..."
@@ -321,18 +314,32 @@ export default function CustomerInfo({
             </Form.Item>
           </Form>
 
-          {!isExistingCustomer && (
+          {!isExistingCustomer && emailError && (
             <Alert
-              message="Customer Account Creation"
+              message="Duplicate Email Detected"
+              description={
+                <Space direction="vertical" size={0}>
+                  <Text>{emailError}</Text>
+                  <Text type="secondary">
+                    Please use the existing customer option or use a different email address.
+                  </Text>
+                </Space>
+              }
+              type="error"
+              showIcon
+            />
+          )}
+
+          {!isExistingCustomer && !emailError && (
+            <Alert
+              message="Customer Record Creation"
               description={
                 <Space direction="vertical" size={0}>
                   <Text>
-                    A customer account will be created with the provided
-                    information.
+                    A customer record will be created in the system with the provided information.
                   </Text>
-                  <Text>
-                    Default password is set to:{" "}
-                    <Text strong>AdminCustomer1232*</Text>
+                  <Text type="secondary">
+                    No password required - customer will be created in store_customers table.
                   </Text>
                 </Space>
               }

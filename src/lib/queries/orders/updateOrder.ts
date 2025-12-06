@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase";
-import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
 
 export interface UpdateOrderData {
   status?: OrderStatus;
@@ -11,6 +11,7 @@ export interface UpdateOrderData {
   shipping_fee?: number;
   tax_amount?: number;
   total_amount?: number;
+  discount_amount?: number;
 }
 
 export interface UpdateOrderResult {
@@ -49,7 +50,7 @@ export async function updateOrder(
 
     console.log('Update data:', updateData);
 
-    // Update the order
+    // ✅ FIXED: Remove comments from the query string
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('orders')
       .update(updateData)
@@ -57,9 +58,9 @@ export async function updateOrder(
       .select(`
         *,
         order_items (*),
-        customers:customer_id (
+        store_customers:customer_id (
           id,
-          first_name,
+          name,
           email,
           phone
         )
@@ -284,4 +285,12 @@ export async function updateOrderNotes(
   notes: string
 ): Promise<UpdateOrderResult> {
   return updateOrder(orderId, { notes });
+}
+
+// Function for updating discount amount
+export async function updateDiscountAmount(
+  orderId: string, 
+  discountAmount: number
+): Promise<UpdateOrderResult> {
+  return updateOrder(orderId, { discount_amount: discountAmount });
 }

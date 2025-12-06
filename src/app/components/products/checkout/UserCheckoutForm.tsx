@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/components/products/checkout/UserCheckoutForm.tsx
 "use client";
 
@@ -14,12 +13,21 @@ import {
   CustomerCheckoutFormValues,
 } from "@/lib/schema/checkoutSchema";
 import { CountryFlag } from "../../common/CountryFlag";
+import { PasswordStrength } from "../../common/PasswordStrength";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Eye, EyeOff, CheckCircle, ArrowRight, UserPlus, ShoppingBag } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowRight,
+  UserPlus,
+  ShoppingBag,
+  Plus,
+} from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
+import { useParams } from "next/navigation";
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -27,6 +35,7 @@ interface CheckoutFormProps {
   shippingMethod?: string;
   shippingFee?: number;
   totalAmount?: number;
+  taxAmount?: number;
   mode?: "checkout" | "confirm";
 }
 
@@ -36,10 +45,16 @@ const CheckoutForm = ({
   shippingMethod = "",
   shippingFee = 0,
   totalAmount = 0,
+  taxAmount = 0,
   mode = "checkout",
 }: CheckoutFormProps) => {
-  const { formData, setFormData } = useCheckoutStore();
+  const { formData, setFormData, setStoreSlug } = useCheckoutStore();
+
+  const params = useParams();
+  const storeSlug = params.store_slug as string;
+
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordField, setShowPasswordField] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -62,7 +77,7 @@ const CheckoutForm = ({
       name: Boolean(isSubmitting || isUserLoggedIn),
       email: Boolean(isSubmitting || isUserLoggedIn),
       phone: Boolean(isSubmitting || (isUserLoggedIn && currentUser?.phone)),
-      password: Boolean(isSubmitting || isUserLoggedIn), // ✅ FIX: Disable password for logged-in users
+      password: Boolean(isSubmitting || isUserLoggedIn),
       addressFields: Boolean(isSubmitting),
     }),
     [isSubmitting, isUserLoggedIn, currentUser?.phone]
@@ -76,199 +91,171 @@ const CheckoutForm = ({
         userError.name === "AuthSessionMissingError";
 
       if (isMissingSessionError) {
-        console.log("🔐 No auth session - user is not logged in (this is normal)");
+        console.log(
+          "🔐 No auth session - user is not logged in (this is normal)"
+        );
         return;
       }
       console.error("User hook error:", userError);
     }
   }, [userError]);
 
-  // ✅ FIXED: Create form with proper schema based on login status
+  // ✅ Default values from formData - use ALL saved data
   const defaultValues: CustomerCheckoutFormValues = {
     name: formData.name || "",
     email: formData.email || "",
     phone: formData.phone || "",
-    password: formData.password || "",
+    password: "", // Always start with empty password for security
     country: formData.country || "Bangladesh",
     city: formData.city || "Dhaka",
     postCode: formData.postCode || "",
     shippingAddress: formData.shippingAddress || "",
   };
 
-  // ✅ FIXED: Use different schema based on login status
-  const formSchema = isUserLoggedIn ? customerCheckoutSchemaForLoggedIn : customerCheckoutSchema;
+  // ✅ Use different schema based on login status
+  const formSchema = isUserLoggedIn
+    ? customerCheckoutSchemaForLoggedIn
+    : customerCheckoutSchema;
 
   const form = useForm<CustomerCheckoutFormValues>({
-    resolver: zodResolver(formSchema), // ✅ FIX: Use conditional schema
+    resolver: zodResolver(formSchema),
     defaultValues,
   });
 
-  // ✅ FIXED: Use useCallback for form submission
-  const handleSubmit = useCallback((values: CustomerCheckoutFormValues) => {
-    console.log("Form submitted with values:", values);
-    
-    // ✅ FIX: For logged-in users, set a dummy password that passes validation
-    if (isUserLoggedIn) {
-      values.password = "logged-in-user-password";
-    }
-    
-    onSubmit(values);
-  }, [onSubmit, isUserLoggedIn]);
-
-  // ✅ FIXED: Optimized auto-population
-  useEffect(() => {
-    if (isLoadingAuth) return;
-
-    // Scenario 1: User is logged in - populate with their data AND profile data
-    if (isUserLoggedIn && currentUser) {
-      console.log("Auto-populating form with user data and profile:", {
-        user: currentUser,
-        profile,
+  // ✅ Handle form submission - FIXED: Properly handle optional password
+  const handleSubmit = useCallback(
+    (values: CustomerCheckoutFormValues) => {
+      console.log("Form submitted with values:", {
+        ...values,
+        password: values.password ? "***" : "not-provided",
+        isUserLoggedIn,
       });
 
-      // Combine user data with profile data for address fields
-      const userFormData: CustomerCheckoutFormValues = {
-        name: `${currentUser.first_name} ${currentUser.last_name || ""}`.trim(),
-        email: currentUser.email || "",
-        phone: currentUser.phone || "",
-        password: "logged-in-user-password", // ✅ FIX: Use valid password for validation
-        country: profile?.country || "Bangladesh",
-        city: profile?.city || "Dhaka",
-        postCode: profile?.postal_code || "",
-        shippingAddress: profile?.address_line_1 || "",
+      // ✅ Save ALL checkout data to store
+      setFormData({
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        country: values.country,
+        city: values.city,
+        shippingAddress: values.shippingAddress,
+        postCode: values.postCode,
+      });
+
+      // ✅ Save store slug for redirection
+      setStoreSlug(storeSlug);
+
+      // ✅ For logged-in users, set a dummy password that passes validation
+      if (isUserLoggedIn) {
+        values.password = "logged-in-user-password";
+      }
+
+      // ✅ Ensure password is always a string (not undefined)
+      const submitValues: CustomerCheckoutFormValues = {
+        ...values,
+        password: values.password || "", // Convert undefined to empty string
       };
 
-      // Only reset if there are actual changes
-      const currentFormValues = form.getValues();
-      const hasChanges =
-        JSON.stringify(userFormData) !==
-        JSON.stringify({
-          ...currentFormValues,
-          password: "logged-in-user-password",
-        });
+      onSubmit(submitValues);
+    },
+    [onSubmit, isUserLoggedIn, setFormData, setStoreSlug, storeSlug]
+  );
 
-      if (hasChanges) {
-        console.log("Resetting form with user and profile data");
-        form.reset(userFormData);
-        setFormData(userFormData);
+  // ✅ Handle Create Password button click
+  const handleCreatePasswordClick = () => {
+    setShowPasswordField(true);
+    // Focus on password field when shown
+    setTimeout(() => {
+      const passwordInput = document.querySelector(
+        'input[name="password"]'
+      ) as HTMLInputElement;
+      if (passwordInput) {
+        passwordInput.focus();
+      }
+    }, 100);
+  };
+
+  // ✅ Phone number formatting function
+  const formatPhoneNumber = (value: string) => {
+    // Remove any non-digit characters
+    const digitsOnly = value.replace(/\D/g, "");
+
+    // If it starts with +88 or 88, remove it
+    let cleaned = digitsOnly;
+    if (digitsOnly.startsWith("88")) {
+      cleaned = digitsOnly.substring(2);
+    } else if (digitsOnly.startsWith("+88")) {
+      cleaned = digitsOnly.substring(3);
+    }
+
+    // Limit to 11 digits maximum
+    return cleaned.slice(0, 11);
+  };
+
+  // ✅ Handle phone number input change
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatPhoneNumber(e.target.value);
+    form.setValue("phone", formattedValue, { shouldValidate: true });
+  };
+
+  // ✅ Auto-population logic - Save form data as user types
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      // Save ALL form data to store as user types (debounced)
+      const debounceTimer = setTimeout(() => {
+        if (
+          value.name ||
+          value.email ||
+          value.phone ||
+          value.country ||
+          value.city ||
+          value.shippingAddress ||
+          value.postCode
+        ) {
+          setFormData({
+            name: value.name || "",
+            email: value.email || "",
+            phone: value.phone || "",
+            country: value.country || "Bangladesh",
+            city: value.city || "Dhaka",
+            shippingAddress: value.shippingAddress || "",
+            postCode: value.postCode || "",
+          });
+        }
+      }, 500);
+
+      return () => clearTimeout(debounceTimer);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, setFormData]);
+
+  // ✅ Initialize form with saved data when component mounts
+  useEffect(() => {
+    if (!isLoadingAuth && !isUserLoggedIn) {
+      // Only reset if we have saved data and form is empty
+      const currentValues = form.getValues();
+      const hasEmptyForm =
+        !currentValues.name && !currentValues.email && !currentValues.phone;
+
+      if (hasEmptyForm && (formData.name || formData.email || formData.phone)) {
+        form.reset(defaultValues);
       }
     }
-    // Scenario 2: Guest user - ensure form has stored data with defaults
-    else if (!isUserLoggedIn && !isLoadingAuth) {
-      const currentFormValues = form.getValues();
-      const hasStoredData = Object.keys(formData).length > 0;
+  }, [isLoadingAuth, isUserLoggedIn, formData, form, defaultValues]);
 
-      if (
-        hasStoredData &&
-        JSON.stringify(currentFormValues) !== JSON.stringify(formData)
-      ) {
-        console.log("Resetting form with stored guest data");
-        form.reset(formData);
-      } else if (!hasStoredData) {
-        // Set default values for new users
-        const defaultFormData: CustomerCheckoutFormValues = {
-          name: "",
-          email: "",
-          phone: "",
-          password: "",
-          country: "Bangladesh",
-          city: "Dhaka",
-          postCode: "",
-          shippingAddress: "",
-        };
-        form.reset(defaultFormData);
-        setFormData(defaultFormData);
-      }
+  // ✅ Get watched password value with proper type handling
+  const watchedPassword = form.watch("password") || "";
+
+  // ✅ Determine button text based on user status and password
+  const getButtonText = () => {
+    if (isUserLoggedIn) {
+      return "Place Order";
+    } else {
+      // For guest users, check if they're creating an account with password
+      const hasPassword = watchedPassword && watchedPassword.length > 0;
+      return hasPassword ? "Create Account & Place Order" : "Place Order";
     }
-  }, [
-    currentUser,
-    profile,
-    isUserLoggedIn,
-    isLoadingAuth,
-    setFormData,
-    formData,
-    form,
-  ]);
-
-  // ✅ Password strength indicator (only for non-logged-in users)
-  const PasswordStrengthIndicator = ({ password }: { password: string }) => {
-    if (isUserLoggedIn) return null; // ✅ FIX: Don't show for logged-in users
-
-    const checks = {
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /[0-9]/.test(password),
-      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
-    };
-
-    const strength = Object.values(checks).filter(Boolean).length;
-    const strengthText = ["Very Weak", "Weak", "Fair", "Good", "Strong"][
-      strength - 1
-    ] || "Very Weak";
-
-    return (
-      <div className="mt-2 space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span>Password strength: {strengthText}</span>
-          <span>{strength}/5</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className={`h-2 rounded-full transition-all duration-300 ${
-              strength <= 2
-                ? "bg-red-500"
-                : strength <= 3
-                ? "bg-yellow-500"
-                : "bg-green-500"
-            }`}
-            style={{ width: `${(strength / 5) * 100}%` }}
-          ></div>
-        </div>
-        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <CheckCircle
-              className={`h-3 w-3 ${
-                checks.length ? "text-green-500" : "text-gray-300"
-              }`}
-            />
-            <span>8+ characters</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle
-              className={`h-3 w-3 ${
-                checks.uppercase ? "text-green-500" : "text-gray-300"
-              }`}
-            />
-            <span>Uppercase letter</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle
-              className={`h-3 w-3 ${
-                checks.lowercase ? "text-green-500" : "text-gray-300"
-              }`}
-            />
-            <span>Lowercase letter</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle
-              className={`h-3 w-3 ${
-                checks.number ? "text-green-500" : "text-gray-300"
-              }`}
-            />
-            <span>Number</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle
-              className={`h-3 w-3 ${
-                checks.special ? "text-green-500" : "text-gray-300"
-              }`}
-            />
-            <span>Special character</span>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   // ✅ Show loading state
@@ -294,7 +281,7 @@ const CheckoutForm = ({
         )}
       </div>
 
-      {/* Email + Phone (Side by Side on Larger Screens) */}
+      {/* Email + Phone */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
@@ -316,9 +303,10 @@ const CheckoutForm = ({
           <Label htmlFor="phone">Phone Number</Label>
           <Input
             {...form.register("phone")}
-            placeholder="+8801XXXXXXXXX"
+            placeholder="01XXXXXXXXX"
             type="tel"
             disabled={disabledStates.phone}
+            onChange={handlePhoneChange}
             className={
               isUserLoggedIn && currentUser?.phone
                 ? "bg-muted cursor-not-allowed"
@@ -333,63 +321,81 @@ const CheckoutForm = ({
         </div>
       </div>
 
-      {/* ✅ FIXED: Only show password field for non-logged-in users */}
+      {/* ✅ Password section - Only for non-logged-in users */}
       {!isUserLoggedIn && (
         <div className="space-y-3">
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Account Password</Label>
+          {!showPasswordField ? (
+            // Create Password Button (when password field is hidden)
+            <div className="flex justify-start">
               <Button
                 type="button"
-                variant="link"
-                className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
-                onClick={() => {
-                  const currentPath = window.location.pathname;
-                  window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-                }}
+                variant="outline"
+                onClick={handleCreatePasswordClick}
+                disabled={disabledStates.password}
+                className="flex items-center gap-2"
               >
-                Already have an account? Login
+                <Plus className="h-4 w-4" />
+                Create Password (Optional)
               </Button>
             </div>
-            <div className="relative">
-              <Input
-                {...form.register("password")}
-                placeholder="Enter your password"
-                type={showPassword ? "text" : "password"}
-                disabled={disabledStates.password}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={disabledStates.password}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            {form.formState.errors.password && (
-              <p className="text-sm text-red-500 mt-1">
-                {form.formState.errors.password.message}
+          ) : (
+            // Password Field (when shown)
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Account Password (Optional)</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
+                  onClick={() => {
+                    const currentPath = window.location.pathname;
+                    window.location.href = `/login?redirect=${encodeURIComponent(
+                      currentPath
+                    )}&email=${encodeURIComponent(form.getValues().email)}`;
+                  }}
+                >
+                  Already have an account? Login
+                </Button>
+              </div>
+              <div className="relative">
+                <Input
+                  {...form.register("password")}
+                  placeholder="Enter your password (optional)"
+                  type={showPassword ? "text" : "password"}
+                  disabled={disabledStates.password}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={disabledStates.password}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {form.formState.errors.password && (
+                <p className="text-sm text-red-500 mt-1">
+                  {form.formState.errors.password.message}
+                </p>
+              )}
+              {/* ✅ Use the reusable PasswordStrength component */}
+              <PasswordStrength password={watchedPassword} />
+              <p className="text-xs text-muted-foreground">
+                Creating a password will save your information for faster
+                checkout next time. You can skip this if you prefer not to
+                create an account.
               </p>
-            )}
-            {/* Password Strength Indicator */}
-            {form.watch("password") && (
-              <PasswordStrengthIndicator password={form.watch("password")} />
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            We&apos;ll automatically create your account or log you in if you
-            already have one.
-          </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Address Fields - Always editable for shipping preferences */}
+      {/* Address Fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="country">Country</Label>
@@ -397,6 +403,7 @@ const CheckoutForm = ({
             value={form.watch("country")}
             onValueChange={(value) => form.setValue("country", value)}
             disabled={disabledStates.addressFields}
+            defaultCountry="Bangladesh"
           />
           {form.formState.errors.country && (
             <p className="text-sm text-red-500 mt-1">
@@ -434,7 +441,7 @@ const CheckoutForm = ({
         </div>
       </div>
 
-      {/* Shipping Address (Full Width) */}
+      {/* Shipping Address */}
       <div className="grid gap-2">
         <Label htmlFor="shippingAddress">Shipping Address</Label>
         <Input
@@ -463,11 +470,11 @@ const CheckoutForm = ({
         </div>
       )}
 
-      {/* Submit Button */}
+      {/* ✅ Submit Button - Always enabled and with dynamic text */}
       <Button
         type="submit"
         className="w-full mt-6 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
-        disabled={isSubmitting || !form.formState.isValid} // ✅ FIX: Disable if form is invalid
+        disabled={isSubmitting} // ✅ Only disable when submitting, not based on form validity
       >
         {isSubmitting ? (
           <div className="flex items-center justify-center gap-2">
@@ -476,24 +483,20 @@ const CheckoutForm = ({
               loaderColor="white"
               loadingText={
                 isUserLoggedIn
-                  ? "Completing Order..."
-                  : "Creating Account & Placing Order..."
+                  ? "Placing Order..."
+                  : watchedPassword && watchedPassword.length > 0
+                  ? "Creating Account & Placing Order..."
+                  : "Placing Order..."
               }
             />
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
-            {isUserLoggedIn ? (
-              <>
-                <ShoppingBag className="h-4 w-4" />
-                Place Order
-              </>
-            ) : (
-              <>
-                <UserPlus className="h-4 w-4" />
-                Create Account & Place Order
-              </>
-            )}
+            {!isUserLoggedIn &&
+              watchedPassword &&
+              watchedPassword.length > 0 && <UserPlus className="h-4 w-4" />}
+            <ShoppingBag className="h-4 w-4" />
+            {getButtonText()}
             <ArrowRight className="h-4 w-4" />
           </div>
         )}

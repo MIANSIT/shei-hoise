@@ -1,9 +1,10 @@
 export interface Category {
   id: string;
   name: string;
-  description?: string;
-  createdAt: string;
   slug: string;
-  parent_id?: string | null;
+  description?: string;
+  parent_id?: string;
   is_active: boolean;
+  createdAt?: string;
+  store_id?: string;
 }
