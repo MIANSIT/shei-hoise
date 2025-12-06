@@ -11,7 +11,6 @@ interface Props {
   onSearchChange: (value: string) => void;
 }
 
-// ✅ Color mapping for statuses
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   confirmed: "bg-blue-100 text-blue-800 border-blue-200",
@@ -25,6 +24,48 @@ const statusColors: Record<string, string> = {
 };
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// Highlight matching search text
+export const highlightText = (text: string, search: string) => {
+  if (!search) return text;
+
+  const regex = new RegExp(`(${search})`, "gi");
+  const parts = text.split(regex);
+
+  return parts.map((part, i) =>
+    regex.test(part) ? (
+      <span key={i} className="bg-yellow-200 rounded px-1">
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  );
+};
+
+// Get full customer name
+export const getCustomerName = (order: StoreOrder) => {
+  if (order.customers) {
+    const first = order.customers.first_name || "";
+    const last = order.customers.last_name || "";
+    const fullName = `${first} ${last}`.trim();
+    if (fullName) return fullName;
+  }
+  if (order.shipping_address?.customer_name) {
+    return order.shipping_address.customer_name;
+  }
+  return "Unknown Customer";
+};
+
+// Get customer email
+export const getCustomerEmail = (order: StoreOrder) => {
+  return order.customers?.email || "No email";
+};
+
+// Get customer phone
+export const getCustomerPhone = (order: StoreOrder) => {
+  return order.customers?.phone || order.shipping_address.phone || "No phone";
+};
 
 const OrdersFilterTabs: React.FC<Props> = ({
   orders,
@@ -44,10 +85,12 @@ const OrdersFilterTabs: React.FC<Props> = ({
     "cancelled",
   ];
   const paymentStatuses = ["all", "paid", "pending", "failed", "refunded"];
+  const statuses = category === "order" ? orderStatuses : paymentStatuses;
 
   useEffect(() => {
     handleStatusChange(activeStatus);
-  }, [category, orders]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, orders, searchValue]);
 
   const handleCategoryChange = (key: string) => {
     setCategory(key as "order" | "payment");
@@ -66,14 +109,22 @@ const OrdersFilterTabs: React.FC<Props> = ({
           : orders.filter((o) => o.payment_status === status);
     }
 
-    const finalFiltered = filtered.filter((o) =>
-      o.order_number.toLowerCase().includes(searchValue.toLowerCase())
-    );
+    const finalFiltered = filtered.filter((o) => {
+      const search = searchValue.toLowerCase();
+      const customerEmail = getCustomerEmail(o).toLowerCase();
+      const customerPhone = getCustomerPhone(o).toLowerCase();
+      const customerName = getCustomerName(o).toLowerCase();
+
+      return (
+        o.order_number.toLowerCase().includes(search) ||
+        customerEmail.includes(search) ||
+        customerPhone.includes(search) ||
+        customerName.includes(search)
+      );
+    });
 
     onFilter(finalFiltered);
   };
-
-  const statuses = category === "order" ? orderStatuses : paymentStatuses;
 
   const getStatusCount = (status: string) => {
     if (status === "all") return orders.length;
@@ -85,7 +136,6 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
   return (
     <div className="mb-4 w-full">
-      {/* Category Tabs */}
       <Tabs
         activeKey={category}
         onChange={handleCategoryChange}
@@ -96,17 +146,10 @@ const OrdersFilterTabs: React.FC<Props> = ({
         type="card"
       />
 
-      {/* Search + Status Buttons */}
-      <div
-        className="
-          flex flex-col sm:flex-row justify-between items-start sm:items-center 
-          gap-4 mt-4 flex-wrap
-        "
-      >
-        {/* Search Input */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 flex-wrap">
         <div className="w-full sm:w-auto flex-1">
           <Input.Search
-            placeholder="Search by Order Number"
+            placeholder="Search by Order #, Email, Phone, or Name"
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             allowClear
@@ -115,13 +158,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
           />
         </div>
 
-        {/* Status Buttons */}
-        <div
-          className="
-            flex flex-wrap justify-start sm:justify-end gap-2 
-            w-full sm:w-auto
-          "
-        >
+        <div className="flex flex-wrap justify-start sm:justify-end gap-2 w-full sm:w-auto">
           {statuses.map((status) => {
             const isActive = activeStatus === status;
             const count = getStatusCount(status);

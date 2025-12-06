@@ -33,7 +33,11 @@ export const sideMenu: MenuItem[] = [
     icon: User,
     children: [
       { title: "All Users", href: "/dashboard/customers", icon: User },
-      { title: "Create Users", href: "/dashboard/customers/create-customer", icon: UserPlus },
+      {
+        title: "Create Users",
+        href: "/dashboard/customers/create-customer",
+        icon: UserPlus,
+      },
     ],
   },
   {
@@ -53,7 +57,7 @@ export const sideMenu: MenuItem[] = [
       { title: "All Products", href: "/dashboard/products", icon: List },
       {
         title: "All Categories",
-        href: "/dashboard/products/view-category",
+        href: "/dashboard/products/category",
         icon: FolderPlus,
       },
     ],
@@ -83,8 +87,16 @@ export const sideMenu: MenuItem[] = [
     title: "Setting",
     icon: Settings,
     children: [
-      { title: "Profile", href: "/dashboard/profile-Setting", icon: UserCircle },
-      { title: "Shipping", href: "/dashboard/shipping-Management", icon: Truck },
+      {
+        title: "Profile",
+        href: "/dashboard/profile-Setting",
+        icon: UserCircle,
+      },
+      {
+        title: "Shipping",
+        href: "/dashboard/shipping-Management",
+        icon: Truck,
+      },
     ],
   },
   {
