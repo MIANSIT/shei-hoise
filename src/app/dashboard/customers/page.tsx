@@ -29,6 +29,10 @@ export default function CustomerPage() {
     useState<DetailedCustomer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+  const [filteredCustomers, setFilteredCustomers] = useState<
+    DetailedCustomer[]
+  >([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Use the custom hook
   const userFormData = useCustomerFormData(selectedCustomer);
@@ -192,6 +196,24 @@ export default function CustomerPage() {
     router.push("/dashboard/customers/create-customer");
   };
 
+  useEffect(() => {
+    const term = searchTerm.toLowerCase();
+
+    const results = customers.filter((c) => {
+      const name = c.name?.toLowerCase() || "";
+      const email = c.email?.toLowerCase() || "";
+      const phone = c.phone?.toLowerCase() || "";
+      return (
+        name.includes(term) || email.includes(term) || phone.includes(term)
+      );
+    });
+
+    setFilteredCustomers(results);
+  }, [searchTerm, customers]);
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
   const activeCustomers = customers.length;
   const customersFromOrders = customers.filter(
     (c) => c.source === "orders"
@@ -280,8 +302,11 @@ export default function CustomerPage() {
 
   // Render list view
   return (
-    <div style={{ padding: "24px" }}>
-      <PageHeader onAddCustomer={handleAddCustomer} />
+    <div>
+      <PageHeader
+        onAddCustomer={handleAddCustomer}
+        onSearchChange={handleSearchChange}
+      />
 
       <CustomerStats
         totalCustomers={customers.length}
@@ -311,7 +336,7 @@ export default function CustomerPage() {
         }
       >
         <CustomerTable
-          customers={customers}
+          customers={filteredCustomers}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onViewDetails={handleViewDetails}
