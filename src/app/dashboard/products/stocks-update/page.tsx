@@ -27,7 +27,6 @@ const StockPage = () => {
             size="large" // ✅ makes input taller
             onSearch={handleSearch}
             onChange={(e) => handleSearch(e.target.value)}
-            className="!h-12" // optional: force height
           />
         </div>
       </div>
