@@ -14,21 +14,25 @@ const StockPage = () => {
   };
 
   return (
-    <div className="">
-      <h1 className="text-2xl font-bold mb-4">Manage Product Stock</h1>
+    <div className="px-4 md:px-8 py-4 space-y-4">
+      {/* Title + Search */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <h1 className="text-2xl font-bold">Manage Product Stock</h1>
 
-      {/* Search Input */}
-      <div className="mb-4 max-w-md">
-        <Search
-          placeholder="Search by product name or SKU"
-          enterButton
-          allowClear
-          onSearch={handleSearch}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
+        <div className="w-full md:w-1/3">
+          <Search
+            placeholder="Search by product name or SKU"
+            enterButton
+            allowClear
+            size="large" // ✅ makes input taller
+            onSearch={handleSearch}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="!h-12" // optional: force height
+          />
+        </div>
       </div>
 
-      {/* Pass searchText as prop */}
+      {/* Stock table */}
       <StockChangeTable searchText={searchText} />
     </div>
   );
