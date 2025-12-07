@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "./components/ui/sheiSonner/sonner"; // Import your custom Toaster
 import { CartProvider } from "@/lib/context/CartContext";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,10 +31,12 @@ export default function RootLayout({
         suppressHydrationWarning
         // className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <CartProvider>
-          {children}
-          <Toaster position='top-right' />
-        </CartProvider>
+        <AntdRegistry>
+          <CartProvider>
+            {children}
+            <Toaster position='top-right' />
+          </CartProvider>
+        </AntdRegistry>
       </body>
     </html>
   );
