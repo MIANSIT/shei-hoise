@@ -13,7 +13,7 @@ interface DataTableProps<T> {
   data: T[];
   loading?: boolean;
   rowKey?: keyof T | ((record: T) => string);
-  pagination?: TableProps<T>["pagination"];
+  // pagination?: TableProps<T>["pagination"];
   bordered?: boolean;
   rowSelection?: TableProps<T>["rowSelection"];
   size?: "small" | "middle" | "large";
@@ -29,7 +29,7 @@ function DataTable<T extends object>({
   data,
   loading = false,
   rowKey = "id" as keyof T,
-  pagination = { pageSize: 10 },
+  // pagination = { pageSize: 10 },
   bordered = true,
   rowSelection,
   size = "middle",
@@ -48,8 +48,11 @@ function DataTable<T extends object>({
   if (isMobile && renderCard) {
     return (
       <div className="w-full space-y-4">
-        {data.map((record, index) => (
-          <div key={getRowKey(record)} className="bg-white rounded-lg border shadow-sm">
+        {data.map((record) => (
+          <div
+            key={getRowKey(record)}
+            className="bg-white rounded-lg border shadow-sm"
+          >
             {renderCard(record)}
           </div>
         ))}
@@ -70,7 +73,7 @@ function DataTable<T extends object>({
         dataSource={data}
         rowKey={getRowKey}
         loading={loading}
-        pagination={pagination}
+        pagination={false}
         bordered={bordered}
         rowSelection={rowSelection}
         size={size}

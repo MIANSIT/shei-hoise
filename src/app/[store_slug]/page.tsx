@@ -46,7 +46,7 @@ export default function StorePage({ params }: StorePageProps) {
         // Fetch products and categories in parallel
         const [productsData, categoriesData] = await Promise.all([
           clientGetProducts(store_slug),
-          getCategoriesQuery(storeId),
+          getCategoriesQuery({ storeId }),
         ]);
 
         // Set categories
@@ -55,7 +55,7 @@ export default function StorePage({ params }: StorePageProps) {
         }
 
         // Sort products: in-stock first, out-of-stock last
-        const sortedProducts = productsData.sort((a, b) => {
+        const sortedProducts = productsData.sort((a: Product, b: Product) => {
           const aInStock = isProductInStock(a);
           const bInStock = isProductInStock(b);
 

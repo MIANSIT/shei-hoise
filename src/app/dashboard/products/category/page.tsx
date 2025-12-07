@@ -13,12 +13,13 @@ import CategoryTablePanel from "@/app/components/admin/dashboard/products/Produc
 import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
 import CategoryCardList from "@/app/components/admin/dashboard/products/ProductCategory/CategoryCardList";
 
+import { useQueryPagination } from "@/lib/hook/pagination/useQueryPagination";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-
+import { Pagination } from "antd";
+import { useCallback } from "react";
 import type { Category } from "@/lib/types/category";
 import type { CreateCategoryType } from "@/lib/schema/category.schema";
 
-// Type for raw API response
 type RawCategory = {
   id: string;
   name: string;
@@ -49,21 +50,32 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [searchText, setSearchText] = useState("");
+  const [total, setTotal] = useState(0);
+
+  // 🔥 Forced limit = 2 for testing pagination
+  const { search, page, limit, setSearch, setPage } = useQueryPagination(5);
 
   const notify = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
 
   const width = useWindowWidth();
-  const isLgUp = width >= 1024; // Tailwind lg breakpoint
+  const isLgUp = width >= 1024;
 
-  // Fetch categories
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     if (!user?.store_id) return;
+
     setLoading(true);
     try {
-      const { data, error } = await getCategoriesQuery(user.store_id);
+      const { data, error, count } = await getCategoriesQuery({
+        storeId: user.store_id,
+        search,
+        page,
+        limit,
+      });
+
       if (error) throw error;
+
+      setTotal(count ?? 0);
 
       setCategories(
         (data?.map((c: RawCategory) => ({
@@ -78,47 +90,35 @@ export default function CategoryPage() {
             : "",
         })) ?? []) as Category[]
       );
-    } catch (err: unknown) {
-      console.error("Error fetching categories:", err);
-      if (err instanceof Error) {
-        notify.error(err.message);
-      } else {
-        notify.error("Failed to load categories");
-      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.store_id, search, page, limit]);
 
   useEffect(() => {
     if (!userLoading) fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, userLoading]);
+  }, [userLoading, fetchCategories]);
 
-  // Edit category
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
     setShowForm(true);
   };
 
-  // Delete category
   const handleDelete = async (category: Category) => {
     if (!user?.store_id) return;
     try {
       await deleteCategoryQuery(category.id, user.store_id);
-      setCategories((prev) => prev.filter((c) => c.id !== category.id));
       notify.info(`Deleted category "${category.name}"`);
-    } catch (err: unknown) {
-      console.error("Delete error:", err);
+      fetchCategories();
+    } catch (err) {
       if (err instanceof Error) {
         notify.error(err.message);
       } else {
-        notify.error(`Failed to delete "${category.name}"`);
+        notify.error("Failed to delete category");
       }
     }
   };
 
-  // Form submit
   const handleFormSubmit = async (data: CreateCategoryType) => {
     if (!user?.store_id) {
       notify.error("Missing store info");
@@ -145,7 +145,7 @@ export default function CategoryPage() {
           },
           user.store_id
         );
-        notify.info(`Category "${data.name}" updated successfully!`);
+        notify.info(`Category updated!`);
       } else {
         await createCategory(
           {
@@ -155,30 +155,16 @@ export default function CategoryPage() {
           },
           user.store_id
         );
-        notify.success(`Category "${data.name}" created successfully!`);
+        notify.success(`Category created!`);
       }
 
       setShowForm(false);
       setEditingCategory(null);
       fetchCategories();
-    } catch (err: unknown) {
-      console.error(err);
-      if (err instanceof Error) {
-        notify.error(err.message);
-      } else {
-        notify.error("Failed to save category");
-      }
+    } catch {
+      notify.error("Failed to save category");
     }
   };
-
-  // Filter categories based on name or description
-  const filteredCategories = categories.filter((category) => {
-    const text = searchText.toLowerCase();
-    return (
-      category.name.toLowerCase().includes(text) ||
-      (category.description?.toLowerCase().includes(text) ?? false)
-    );
-  });
 
   return (
     <div className="p-6 space-y-4">
@@ -190,15 +176,15 @@ export default function CategoryPage() {
           setShowForm((prev) => !prev);
         }}
         isLgUp={isLgUp}
-        searchText={searchText}
-        setSearchText={setSearchText}
+        searchText={search}
+        setSearchText={setSearch}
       />
 
-      {/* Table for desktop / Cards for mobile */}
+      {/* List */}
       <div className={`flex gap-6 ${isLgUp ? "flex-row" : "flex-col"}`}>
         {isLgUp ? (
           <CategoryTablePanel
-            categories={filteredCategories}
+            categories={categories}
             loading={loading}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -206,17 +192,17 @@ export default function CategoryPage() {
           />
         ) : (
           <CategoryCardList
-            categories={filteredCategories}
+            categories={categories}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
         )}
 
-        {/* Inline Form for lg */}
+        {/* Inline Form */}
         {isLgUp && showForm && (
           <div className="w-1/3">
             <CategoryFormPanel
-              showForm={true}
+              showForm
               editingCategory={editingCategory}
               onSubmit={handleFormSubmit}
               allCategories={categories}
@@ -224,6 +210,16 @@ export default function CategoryPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        current={page}
+        total={total}
+        pageSize={limit}
+        onChange={(p) => setPage(p)}
+        showSizeChanger={false}
+        className="mt-4 flex justify-end"
+      />
 
       {/* Modal for mobile */}
       {!isLgUp && showForm && (
@@ -233,7 +229,7 @@ export default function CategoryPage() {
               {editingCategory ? "Edit Category" : "Create Category"}
             </DialogTitle>
             <CategoryFormPanel
-              showForm={true}
+              showForm
               editingCategory={editingCategory}
               onSubmit={handleFormSubmit}
               allCategories={categories}

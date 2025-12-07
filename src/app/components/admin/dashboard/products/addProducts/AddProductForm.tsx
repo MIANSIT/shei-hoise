@@ -76,7 +76,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     }, [form, initialValues]);
 
     useEffect(() => {
-      getCategoriesQuery(storeId).then(({ data }) => {
+      getCategoriesQuery({ storeId }).then(({ data }) => {
         if (data) setCategories(data);
       });
     }, [storeId]);

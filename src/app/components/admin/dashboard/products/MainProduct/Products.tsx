@@ -7,11 +7,11 @@ import {
   ProductWithVariants,
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import { Input } from "antd";
+import { Input, Space } from "antd";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation"; // ✅ change here
-const { Search } = Input;
+import { SearchOutlined } from "@ant-design/icons";
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
@@ -65,13 +65,24 @@ const Products: React.FC = () => {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="w-full md:w-1/3">
-          <Search
-            placeholder="Search products .... "
-            allowClear
-            enterButton
-            onChange={(e) => setSearchTerm(e.target.value)}
-            size="large"
-          />
+          <Space.Compact style={{ width: "100%" }}>
+            <Input
+              placeholder="Search products .... "
+              allowClear
+              size="large"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <SheiButton
+              onClick={() => {}}
+              title="Search"
+              type="primary"
+              className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white shadow-lg transition-transform transform hover:scale-105"
+              style={{ height: 40 }} // match input height (AntD large ≈ 40px)
+            >
+              <SearchOutlined />
+            </SheiButton>
+          </Space.Compact>
         </div>
 
         <SheiButton

@@ -1,9 +1,8 @@
 "use client";
 
-import { Input, Button } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
+import { Input, Button, Space } from "antd";
 import React from "react";
-
-const { Search } = Input;
 
 interface Props {
   showForm: boolean;
@@ -26,22 +25,23 @@ export default function CategoryTopBar({
         isLgUp ? "flex-row items-center justify-between" : "flex-col gap-2"
       }`}
     >
-      {/* Search Box replaces the title */}
-      <Search
-        placeholder="Search by name or description"
-        value={searchText}
-        onChange={(e) => setSearchText(e.target.value)}
-        allowClear
-        enterButton
-        style={{ width: isLgUp ? 250 : "100%" }}
-      />
+      {/* Search with Space.Compact instead of deprecated addonAfter */}
+      <Space.Compact style={{ width: isLgUp ? 250 : "100%" }}>
+        <Input
+          placeholder="Search by name or description"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          allowClear
+        />
+        <Button onClick={() => {}}><SearchOutlined /></Button>
+      </Space.Compact>
 
       {/* Button */}
       <Button
         type="primary"
-        danger={showForm} // red = close, green = create
+        danger={showForm}
         onClick={toggleForm}
-        className={isLgUp ? "" : "w-full"} // full width on mobile
+        className={isLgUp ? "" : "w-full"}
       >
         {showForm ? "Close Form" : "Create Category"}
       </Button>

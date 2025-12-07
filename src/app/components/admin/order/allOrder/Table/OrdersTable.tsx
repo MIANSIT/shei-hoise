@@ -682,14 +682,14 @@ const OrdersTable: React.FC<Props> = ({
             },
           ],
         }}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} orders`,
-          responsive: true,
-        }}
+        // pagination={{
+        //   pageSize: 10,
+        //   showSizeChanger: true,
+        //   showQuickJumper: true,
+        //   // showTotal: (total, range) =>
+        //   //   `${range[0]}-${range[1]} of ${total} orders`,
+        //   responsive: true,
+        // }}
         size="middle"
         expandable={{
           expandedRowKeys: expandedRowKey ? [expandedRowKey] : [],

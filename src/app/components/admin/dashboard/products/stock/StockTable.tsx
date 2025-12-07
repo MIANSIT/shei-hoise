@@ -247,7 +247,7 @@ const StockTable: React.FC<StockTableProps> = ({
       data={products}
       rowKey="id"
       rowSelection={rowSelection}
-      pagination={false}
+      // pagination={false}
       loading={loading}
       // Add row className for low stock highlighting - highlight products with low stock variants
       rowClassName={(record) => {
@@ -282,7 +282,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 productId: record.id,
               }))}
               rowKey="id"
-              pagination={false}
+              // pagination={false}
               rowClassName={(variantRecord) =>
                 (variantRecord as VariantRow).isLowStock
                   ? "bg-red-50 hover:bg-red-100"
