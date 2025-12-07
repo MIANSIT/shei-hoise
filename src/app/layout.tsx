@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang='en' suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        // className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AntdRegistry>
           <CartProvider>
