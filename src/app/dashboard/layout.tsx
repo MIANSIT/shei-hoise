@@ -9,7 +9,7 @@ import { PanelLeft } from "lucide-react";
 // import { Sun, Moon } from "lucide-react";
 import { ConfigProvider, theme as antdTheme, App as AntdApp, Spin } from "antd";
 import "@ant-design/v5-patch-for-react-19";
-import "antd/dist/reset.css";
+// import "antd/dist/reset.css";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Sidebar responsiveness - only run on client
   useEffect(() => {
     if (!mounted) return;
-    
+
     const handleResize = () => setIsSidebarOpen(window.innerWidth >= 768);
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Load saved theme - only run on client
   useEffect(() => {
     if (!mounted) return;
-    
+
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
     if (savedTheme) {
       setTheme(savedTheme);
@@ -74,9 +74,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Show loading state
   if (loading || (!loading && !session) || !mounted) {
     return (
-      <div className="flex items-center justify-center min-h-screen flex-col gap-4">
-        <Spin size="large" />
-        <div className="text-gray-500">Loading...</div>
+      <div className='flex items-center justify-center min-h-screen flex-col gap-4'>
+        <Spin size='large' />
+        <div className='text-gray-500'>Loading...</div>
       </div>
     );
   }
@@ -105,11 +105,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col">
+        <div className='min-h-screen flex flex-col'>
           {/* Header */}
           <header
-            className='flex items-center justify-between p-4 shadow-md flex-shrink-0'
-            style={{ background: "var(--card)", color: "var(--card-foreground)" }}
+            className='flex items-center justify-between p-4 shadow-md shrink-0'
+            style={{
+              background: "var(--card)",
+              color: "var(--card-foreground)",
+            }}
           >
             <div className='flex items-center gap-2'>
               <Image src='/logo.png' alt='Logo' width={40} height={40} />
@@ -155,12 +158,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               }}
             >
               <Toaster position='top-right' />
-              <div className="flex-shrink-0">
+              <div className='shrink-0'>
                 <Breadcrumb />
               </div>
-              <div className='flex-1 overflow-auto p-4'>
-                {children}
-              </div>
+              <div className='flex-1 overflow-auto p-4'>{children}</div>
             </main>
           </div>
         </div>

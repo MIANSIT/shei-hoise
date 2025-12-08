@@ -21,7 +21,7 @@ interface CustomerDetailsViewProps {
   onEdit: (customer: DetailedCustomer) => void;
   onUpdateCustomer: (
     customerId: string,
-    data: ProfileFormData
+    data: ProfileFormData // Use ProfileFormData
   ) => Promise<DetailedCustomer>;
 }
 

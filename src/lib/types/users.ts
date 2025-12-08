@@ -53,6 +53,8 @@ export interface DetailedCustomer extends TableCustomer {
   store_name?: string;
   profile_id?: string | null; // ✅ ADDED PROFILE_ID
   profile_details?: {
+    id?: string; // optional now
+    avatar_url?: string | null;
     date_of_birth?: string | null;
     gender?: string | null;
     address_line_1?: string | null;
