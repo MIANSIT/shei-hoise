@@ -82,14 +82,23 @@ export default function UserProfilePage() {
   }
 
   if (!isAuthenticated || error) {
+    // Determine the message
+    let title = "Access Denied";
+    let message = "Please log in to access this page.";
+
+    if (isAuthenticated && user?.user_type !== "customer") {
+      // User is logged in but not a customer
+      message = "You cannot access this page. You are not a customer.";
+    } else if (error) {
+      // There was an error loading profile
+      title = "Error Loading Profile";
+      message = "Failed to load user profile. Please try again.";
+    }
+
     return (
       <AccessDenied
-        title={error ? "Error Loading Profile" : "Access Denied"}
-        message={
-          error
-            ? "Failed to load user profile. Please try again."
-            : "Please log in to access this page."
-        }
+        title={title}
+        message={message}
         showHomeButton={true}
         showLoginButton={!error}
       />
