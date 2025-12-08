@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Card, Typography, App, Tag } from "antd";
-import { TeamOutlined, ShoppingOutlined } from "@ant-design/icons";
+import { useState, useEffect } from "react";
+import { Card, App } from "antd";
+import { TeamOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { DetailedCustomer } from "@/lib/types/users";
 import { PageHeader } from "@/app/components/admin/storeCustomers/view/PageHeader";
@@ -10,15 +10,11 @@ import { CustomerStats } from "@/app/components/admin/storeCustomers/view/Custom
 import { CustomerTable } from "@/app/components/admin/storeCustomers/view/CustomerTable";
 import { CustomerDetailsView } from "@/app/components/admin/storeCustomers/view/CustomerDetailsView";
 import { EditProfileForm } from "@/app/components/user-profile/EditProfileForm";
-import { ProfileFormData } from "@/lib/types/profile";
+import { ProfileFormData } from "@/lib/types/profile"; // Use ProfileFormData
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useCustomerFormData } from "@/lib/hook/profile-user/useCustomerFormData";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { updateCustomerProfileAsAdmin } from "@/lib/queries/user/admin-customers";
-
-const { Text } = Typography;
 
 export default function CustomerPage() {
   const { notification } = App.useApp();
@@ -27,30 +23,25 @@ export default function CustomerPage() {
   const [viewMode, setViewMode] = useState<"list" | "details" | "edit">("list");
   const [selectedCustomer, setSelectedCustomer] =
     useState<DetailedCustomer | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const [filteredCustomers, setFilteredCustomers] = useState<
     DetailedCustomer[]
   >([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Use the custom hook
+  const { storeId, loading: userLoading } = useCurrentUser();
   const userFormData = useCustomerFormData(selectedCustomer);
 
-  // Use the hook to get store ID
-  const { storeId, loading: userLoading } = useCurrentUser();
-
+  // Fetch customers
   useEffect(() => {
-    const fetchCustomers = async () => {
-      if (!storeId || userLoading) return;
+    if (!storeId || userLoading) return;
 
+    const fetchCustomers = async () => {
       try {
         setLoading(true);
-        console.log("Fetching customers for store:", storeId);
         const allCustomers = await getAllStoreCustomers(storeId);
         setCustomers(allCustomers);
-      } catch (error) {
-        console.error("Error fetching customers:", error);
+      } catch {
         notification.error({
           message: "Error",
           description: "Failed to load customers. Please try again.",
@@ -63,90 +54,78 @@ export default function CustomerPage() {
     fetchCustomers();
   }, [storeId, userLoading, notification]);
 
-  // Handle customer update - single function used by both edit views
+  // Update customer - Use ProfileFormData type
   const handleUpdateCustomer = async (
     customerId: string,
-    data: ProfileFormData
+    data: ProfileFormData // Use ProfileFormData type
   ) => {
-    setIsSaving(true);
     try {
-      // Use the admin function to update in database
-      await updateCustomerProfileAsAdmin(
+      const updated = await updateCustomerProfileAsAdmin(
         customerId,
         {
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone || "",
+          name: data.name,
+          phone: data.phone,
         },
         {
-          date_of_birth: data.date_of_birth || "",
-          gender: data.gender || "",
-          address_line_1: data.address_line_1 || "",
-          address_line_2: data.address_line_2 || "",
-          city: data.city || "",
-          state: data.state || "",
-          postal_code: data.postal_code || "",
-          country: data.country || "",
+          date_of_birth: data.date_of_birth,
+          gender: data.gender,
+          address: data.address, // Field name is 'address'
+          city: data.city,
+          state: data.state,
+          postal_code: data.postal_code,
+          country: data.country,
         }
       );
 
-      // Transform the form data back to DetailedCustomer format
+      // Extract first and last names for UI compatibility
+      const nameParts = updated.customer.name.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       const updatedCustomer: DetailedCustomer = {
-        id: customerId,
-        name: `${data.first_name} ${data.last_name}`.trim(),
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        phone: data.phone || undefined,
+        id: updated.customer.id,
+        name: updated.customer.name,
+        first_name: firstName, // For UI compatibility
+        last_name: lastName, // For UI compatibility
+        email: updated.customer.email,
+        phone: updated.customer.phone || "",
+        status: "active",
+        order_count: 0,
+        source: "direct",
+        user_type: "customer",
+        created_at: updated.customer.created_at,
+        updated_at: updated.customer.updated_at,
+        profile_id: updated.customer.profile_id,
         profile_details: {
-          date_of_birth: data.date_of_birth || null,
-          gender: data.gender || null,
-          address_line_1: data.address_line_1 || null,
-          address_line_2: data.address_line_2 || null,
-          city: data.city || null,
-          state: data.state || null,
-          postal_code: data.postal_code || null,
-          country: data.country || null,
+          date_of_birth: updated.profile.date_of_birth,
+          gender: updated.profile.gender,
+          address_line_1: updated.profile.address, // Map 'address' to 'address_line_1' for UI
+          address_line_2: null, // Not in your schema
+          city: updated.profile.city,
+          state: updated.profile.state,
+          postal_code: updated.profile.postal_code,
+          country: updated.profile.country,
         },
-        updated_at: new Date().toISOString(),
-        // Preserve other existing properties
-        created_at: selectedCustomer?.created_at || new Date().toISOString(),
-        user_type: selectedCustomer?.user_type || "customer",
-        status: selectedCustomer?.status || "active",
-        source: selectedCustomer?.source || "direct",
-        order_count: selectedCustomer?.order_count || 0,
-        last_order_date: selectedCustomer?.last_order_date,
-        avatar_url: selectedCustomer?.avatar_url,
       };
 
-      // Update the customer in the local state
-      setCustomers((prevCustomers) =>
-        prevCustomers.map((c) =>
-          c.id === customerId ? { ...c, ...updatedCustomer } : c
-        )
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === customerId ? updatedCustomer : c))
       );
-
-      // Also update the selected customer if it's the same one
-      if (selectedCustomer && selectedCustomer.id === customerId) {
+      if (selectedCustomer?.id === customerId)
         setSelectedCustomer(updatedCustomer);
-      }
 
-      // Show success notification
       notification.success({
         message: "Customer Updated",
-        description: `${updatedCustomer.name} has been updated successfully.`,
+        description: `${updatedCustomer.name} updated successfully.`,
       });
 
       return updatedCustomer;
     } catch (error) {
-      console.error("Error saving customer:", error);
       notification.error({
         message: "Error",
-        description: "Failed to update customer. Please try again.",
+        description: "Failed to update customer.",
       });
       throw error;
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -157,16 +136,9 @@ export default function CustomerPage() {
 
   const handleSaveEdit = async (data: ProfileFormData) => {
     if (!selectedCustomer) return;
-
-    try {
-      await handleUpdateCustomer(selectedCustomer.id, data);
-      // Return to list view
-      setViewMode("list");
-      setSelectedCustomer(null);
-    } catch (error) {
-      // Error is already handled in handleUpdateCustomer
-      throw error;
-    }
+    await handleUpdateCustomer(selectedCustomer.id, data);
+    setViewMode("list");
+    setSelectedCustomer(null);
   };
 
   const handleCancelEdit = () => {
@@ -175,10 +147,10 @@ export default function CustomerPage() {
   };
 
   const handleDelete = (customer: DetailedCustomer) => {
-    setCustomers(customers.filter((c) => c.id !== customer.id));
+    setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
     notification.success({
       message: "Customer Deleted",
-      description: `${customer.name} has been deleted successfully.`,
+      description: `${customer.name} deleted successfully.`,
     });
   };
 
@@ -196,88 +168,28 @@ export default function CustomerPage() {
     router.push("/dashboard/customers/create-customer");
   };
 
+  // Search filter
   useEffect(() => {
     const term = searchTerm.toLowerCase();
-
-    const results = customers.filter((c) => {
-      const name = c.name?.toLowerCase() || "";
-      const email = c.email?.toLowerCase() || "";
-      const phone = c.phone?.toLowerCase() || "";
-      return (
-        name.includes(term) || email.includes(term) || phone.includes(term)
-      );
-    });
-
-    setFilteredCustomers(results);
+    setFilteredCustomers(
+      customers.filter(
+        (c) =>
+          (c.name?.toLowerCase() || "").includes(term) ||
+          (c.email?.toLowerCase() || "").includes(term) ||
+          (c.phone?.toLowerCase() || "").includes(term)
+      )
+    );
   }, [searchTerm, customers]);
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-  };
+
+  const handleSearchChange = (value: string) => setSearchTerm(value);
 
   const activeCustomers = customers.length;
-  const customersFromOrders = customers.filter(
-    (c) => c.source === "orders"
-  ).length;
 
-  // Render edit view directly
+  // Views
   if (viewMode === "edit" && userFormData) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {/* Mobile Layout - Back button top right, title below */}
-            <div className="block sm:hidden">
-              <div className="flex justify-end mb-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-2"
-                  disabled={isSaving}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Cancel
-                </Button>
-              </div>
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Edit Customer
-                </h1>
-                <p className="text-gray-600 mt-2">
-                  Update customer information
-                </p>
-              </div>
-            </div>
-
-            {/* Desktop Layout - Back button left, title center */}
-            <div className="hidden sm:flex relative items-center justify-center">
-              <div className="absolute left-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-2"
-                  disabled={isSaving}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Customers
-                </Button>
-              </div>
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Edit Customer
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Update customer information
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Edit Form */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8">
           <EditProfileForm
             user={userFormData}
             onCancel={handleCancelEdit}
@@ -288,50 +200,32 @@ export default function CustomerPage() {
     );
   }
 
-  // Render details view
   if (viewMode === "details" && selectedCustomer) {
     return (
       <CustomerDetailsView
         customer={selectedCustomer}
         onBack={handleBackToList}
         onEdit={handleEdit}
-        onUpdateCustomer={handleUpdateCustomer} // Pass the update function
+        onUpdateCustomer={handleUpdateCustomer}
       />
     );
   }
 
-  // Render list view
   return (
     <div>
       <PageHeader
         onAddCustomer={handleAddCustomer}
         onSearchChange={handleSearchChange}
       />
-
       <CustomerStats
         totalCustomers={customers.length}
         activeCustomers={activeCustomers}
       />
-
       <Card
         title={
-          <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-            <div className="flex items-center gap-2 mb-1 md:mb-0">
-              <TeamOutlined />
-              <span>Customer List</span>
-            </div>
-            <Tag
-              icon={<ShoppingOutlined />}
-              color="blue"
-              className="w-fit text-center"
-            >
-              {customersFromOrders} from orders
-            </Tag>
-          </div>
-        }
-        extra={
-          <div className="hidden md:block">
-            <Text type="secondary">{customers.length} customers found</Text>
+          <div className="flex items-center gap-2">
+            <TeamOutlined />
+            Customer List
           </div>
         }
       >

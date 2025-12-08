@@ -45,7 +45,7 @@ export function ProfileCard({
       <div className="flex flex-col items-center text-center space-y-4">
         <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
           <AvatarImage src={avatarUrl || undefined} alt={getAltText()} />
-          <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+          <AvatarFallback className="text-lg bg-linear-to-br from-blue-500 to-purple-600 text-white">
             {getInitials()}
           </AvatarFallback>
         </Avatar>

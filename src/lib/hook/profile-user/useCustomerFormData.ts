@@ -1,22 +1,28 @@
 // lib/hook/profile-user/useCustomerFormData.ts
 import { DetailedCustomer } from "@/lib/types/users";
 
+// Define the profile type
+interface CustomerProfile {
+  id: string;
+  store_customer_id: string;
+  avatar_url: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  address: string | null; // Make sure this is 'address' not 'address_line_1'
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface FormUserData {
   id: string;
   email: string;
-  first_name: string | null;
-  last_name: string | null;
+  name: string | null;
   phone: string | null;
-  profile: {
-    date_of_birth: string | null;
-    gender: string | null;
-    address_line_1: string | null;
-    address_line_2: string | null;
-    city: string | null;
-    state: string | null;
-    postal_code: string | null;
-    country: string | null;
-  } | null;
+  profile: CustomerProfile | null;
 }
 
 export function useCustomerFormData(
@@ -24,31 +30,47 @@ export function useCustomerFormData(
 ): FormUserData | null {
   if (!customer) return null;
 
-  // Use first_name/last_name from DetailedCustomer if available, otherwise extract from name
-  const firstName = customer.first_name || customer.name?.split(" ")[0] || "";
-  const lastName =
-    customer.last_name || customer.name?.split(" ").slice(1).join(" ") || "";
+  console.log("🔍 useCustomerFormData - Original customer data:", customer);
+  console.log(
+    "🔍 useCustomerFormData - profile_details:",
+    customer.profile_details
+  );
 
-  // Convert undefined to null for EditProfileForm compatibility
-  const phoneValue = customer.phone !== undefined ? customer.phone : null;
+  // Create profile object - handle both address_line_1 and address
+  let profile: CustomerProfile | null = null;
+
+  if (customer.profile_details) {
+    // Try to get address from both possible field names
+    const address =
+      customer.profile_details.address || // Direct address field
+      customer.profile_details.address_line_1 || // Mapped address field
+      null;
+
+    console.log("🔍 useCustomerFormData - Extracted address:", address);
+
+    profile = {
+      id: customer.profile_id || "",
+      store_customer_id: customer.id,
+      avatar_url: null,
+      date_of_birth: customer.profile_details.date_of_birth || null,
+      gender: customer.profile_details.gender || null,
+      address: address, // Use the extracted address
+      city: customer.profile_details.city || null,
+      state: customer.profile_details.state || null,
+      postal_code: customer.profile_details.postal_code || null,
+      country: customer.profile_details.country || null,
+      created_at: customer.created_at || "",
+      updated_at: customer.updated_at || "",
+    };
+  }
+
+  console.log("🔍 useCustomerFormData - Final profile object:", profile);
 
   return {
     id: customer.id,
     email: customer.email,
-    first_name: firstName || null,
-    last_name: lastName || null,
-    phone: phoneValue,
-    profile: customer.profile_details
-      ? {
-          date_of_birth: customer.profile_details.date_of_birth || null,
-          gender: customer.profile_details.gender || null,
-          address_line_1: customer.profile_details.address_line_1 || null,
-          address_line_2: customer.profile_details.address_line_2 || null,
-          city: customer.profile_details.city || null,
-          state: customer.profile_details.state || null,
-          postal_code: customer.profile_details.postal_code || null,
-          country: customer.profile_details.country || null,
-        }
-      : null,
+    name: customer.name || null,
+    phone: customer.phone || null,
+    profile: profile,
   };
 }

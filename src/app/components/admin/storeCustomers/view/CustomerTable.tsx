@@ -250,7 +250,7 @@ export function CustomerTable({
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
+                  <div className="shrink-0 w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -286,7 +286,7 @@ export function CustomerTable({
 
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <MailOutlined className="text-blue-500 text-sm flex-shrink-0" />
+                  <MailOutlined className="text-blue-500 text-sm shrink-0" />
                   <Text className="text-sm text-gray-700 truncate">
                     {customer.email}
                   </Text>
@@ -294,7 +294,7 @@ export function CustomerTable({
 
                 {customer.phone && (
                   <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                    <PhoneOutlined className="text-green-500 text-sm flex-shrink-0" />
+                    <PhoneOutlined className="text-green-500 text-sm shrink-0" />
                     <Text className="text-sm text-gray-700 truncate">
                       {customer.phone}
                     </Text>

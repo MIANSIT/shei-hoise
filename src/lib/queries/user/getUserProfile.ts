@@ -1,15 +1,16 @@
+// lib/queries/user/getUserProfile.ts
 import { supabase } from "@/lib/supabase";
 
-export type UserRole = "admin" | "store_owner" | "customer";
-
-export interface UserProfile {
+// Make sure avatar_url and other optional fields are string | null
+export interface CustomerProfile {
   id: string;
-  user_id: string;
-  avatar_url: string | null;
+  store_customer_id: string;
+  avatar_url: string | null; // no undefined
   date_of_birth: string | null;
-  gender: string | null;
-  address_line_1: string | null;
-  address_line_2: string | null;
+  gender: "male" | "female" | "other" | null;
+  address: string | null;
+  address_line_1?: string | null; // optional for backward compatibility
+  address_line_2?: string | null;
   city: string | null;
   state: string | null;
   postal_code: string | null;
@@ -20,46 +21,46 @@ export interface UserProfile {
 
 export interface UserWithProfile {
   id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
+  name: string;
   phone: string | null;
-  user_type: UserRole | null;
-  email_verified: boolean;
-  is_active: boolean;
+  email: string;
+  auth_user_id: string | null;
+  profile_id: string | null;
   created_at: string;
   updated_at: string;
-  store_id: string | null;
-  store_slug: string | null; // Add store_slug to the interface
-  store_name: string | null; // Add this
-  profile: UserProfile | null;
+  profile: CustomerProfile | null;
+  store_slug: string | null;
+  store_name: string | null;
 }
 
-export async function getUserProfile(userId: string): Promise<UserWithProfile> {
-  // Fetch user data with profile
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select(
-      `
-      *,
-      user_profiles (*)
-    `
-    )
-    .eq("id", userId)
+export async function getUserProfile(
+  customerId: string
+): Promise<UserWithProfile> {
+  const { data: customerData, error: customerError } = await supabase
+    .from("store_customers")
+    .select(`*, customer_profiles (*)`)
+    .eq("id", customerId)
     .single();
 
-  if (userError) {
-    throw new Error(`Failed to fetch user profile: ${userError.message}`);
-  }
+  if (customerError)
+    throw new Error(
+      `Failed to fetch customer profile: ${customerError.message}`
+    );
 
-  // Fetch store data if store_id exists
-  let storeSlug = null;
-  let storeName = null;
-  if (userData.store_id) {
+  const { data: linkData } = await supabase
+    .from("store_customer_links")
+    .select("store_id")
+    .eq("customer_id", customerId)
+    .single();
+
+  let storeSlug: string | null = null;
+  let storeName: string | null = null;
+
+  if (linkData?.store_id) {
     const { data: storeData, error: storeError } = await supabase
       .from("stores")
       .select("store_slug, store_name")
-      .eq("id", userData.store_id)
+      .eq("id", linkData.store_id)
       .single();
 
     if (!storeError && storeData) {
@@ -68,10 +69,23 @@ export async function getUserProfile(userId: string): Promise<UserWithProfile> {
     }
   }
 
+  // Ensure all fields are non-undefined
+  const profile = customerData.customer_profiles?.[0] || null;
+  if (profile) {
+    profile.avatar_url = profile.avatar_url ?? null;
+    profile.date_of_birth = profile.date_of_birth ?? null;
+    profile.gender = profile.gender ?? null;
+    profile.address = profile.address ?? null;
+    profile.city = profile.city ?? null;
+    profile.state = profile.state ?? null;
+    profile.postal_code = profile.postal_code ?? null;
+    profile.country = profile.country ?? null;
+  }
+
   return {
-    ...userData,
+    ...customerData,
+    profile,
     store_slug: storeSlug,
-    store_name: storeName, // Add store name
-    profile: userData.user_profiles?.[0] || null,
+    store_name: storeName,
   };
 }

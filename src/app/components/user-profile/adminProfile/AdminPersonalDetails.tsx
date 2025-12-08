@@ -7,12 +7,11 @@ import {
 } from "@/components/ui/card";
 import { MapPin, Calendar, UserX } from "lucide-react";
 
-// Update the interface to match your data structure
 interface ProfileDetails {
   date_of_birth?: string | null;
   gender?: string | null;
-  address?: string | null; // Make address optional to match your data
-
+  address_line_1?: string | null;
+  address_line_2?: string | null;
   city?: string | null;
   state?: string | null;
   postal_code?: string | null;
@@ -50,9 +49,7 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
     );
   }
 
-  // Get address from either address or address_line_1 field
-  const address = profile.address || profile.address;
-  const hasAddress = address || profile.city || profile.country;
+  const hasAddress = profile.address_line_1 || profile.city || profile.country;
   const hasProfileInfo = profile.date_of_birth || profile.gender || hasAddress;
 
   if (!hasProfileInfo) {
@@ -109,7 +106,8 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 Address
               </div>
               <div className="mt-1 text-gray-900 space-y-1">
-                {address && <div>{address}</div>}
+                {profile.address_line_1 && <div>{profile.address_line_1}</div>}
+                {profile.address_line_2 && <div>{profile.address_line_2}</div>}
                 <div className="flex flex-wrap gap-2">
                   {profile.city && <span>{profile.city}</span>}
                   {profile.state && <span>, {profile.state}</span>}

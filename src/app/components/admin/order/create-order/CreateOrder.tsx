@@ -45,7 +45,7 @@ import {
 } from "@/lib/queries/stores/getStoreSettings";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
-import { OrderStatus, PaymentStatus, PaymentMethod } from "@/lib/types/enums";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -63,7 +63,8 @@ export default function CreateOrder() {
   const [loading, setLoading] = useState(false);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { user, loading: userLoading, storeSlug } = useCurrentUser();
+  // const { user, loading: userLoading, storeSlug } = useCurrentUser();
+  const { user, loading: userLoading } = useCurrentUser();
   const [storeName, setStoreName] = useState<string>("SHEI");
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfoType>({
@@ -86,7 +87,9 @@ export default function CreateOrder() {
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.PENDING); // ✅ Using enum
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
+    PaymentStatus.PENDING
+  ); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
@@ -161,7 +164,7 @@ export default function CreateOrder() {
     } finally {
       setSettingsLoading(false);
     }
-  }, [user?.store_id, notification]);
+  }, [user?.store_id, settingsLoading, notification]);
 
   // Fetch store name for order ID
   const fetchStoreName = useCallback(async () => {
@@ -208,7 +211,7 @@ export default function CreateOrder() {
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id, notification]);
+  }, [user?.store_id, loading, notification]);
 
   // Fetch customers from orders
   const fetchCustomers = useCallback(async () => {
@@ -240,9 +243,10 @@ export default function CreateOrder() {
     }
   }, [
     user?.store_id,
-    notification,
+    customerLoading,
     customerInfo.email,
     validateEmailUniqueness,
+    notification,
   ]);
 
   // Main data fetching effect
@@ -382,6 +386,7 @@ export default function CreateOrder() {
           postal_code: customer.profile_details?.postal_code || "",
         }));
         setCustomerProfile({
+          store_customer_id: customer.id, // or customer.profile_details.store_customer_id if it exists
           id: customer.id,
           address:
             customer.profile_details.address ||
