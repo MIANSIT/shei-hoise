@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUserProfile } from "@/lib/hook/profile-user/useUserProfile";
+import { useUserProfile } from "@/lib/hook/profile-user/useAdminProfile";
 import { updateUserProfile } from "@/lib/queries/user/updateUserProfile";
 import Footer from "../../components/common/Footer";
 import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton";
@@ -11,10 +11,10 @@ import { ProfileCard } from "../../components/user-profile/ProfileCard";
 import { StoreInfoCard } from "../../components/user-profile/StoreInfoCard";
 import { AccountInfoCard } from "../../components/user-profile/AccountInfoCard";
 import { PersonalInfoCard } from "../../components/user-profile/PersonalInfoCard";
-import { ProfileDetailsCard } from "../../components/user-profile/ProfileDetailsCard";
-import { EditProfileForm } from "../../components/user-profile/EditProfileForm";
-import { UserWithProfile } from "@/lib/queries/user/getUserProfile";
-import { ProfileFormData } from "@/lib/types/profile";
+import { ProfileDetailsCard } from "../../components/user-profile/adminProfile/AdminPersonalDetails";
+import { EditProfileForm } from "../../components/user-profile/adminProfile/EditAdminProfile";
+import { UserWithProfile } from "@/lib/queries/user/getAdminUser";
+import { ProfileFormData } from "@/lib/types/adminProfile";
 
 export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();

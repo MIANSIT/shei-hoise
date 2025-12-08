@@ -53,7 +53,7 @@ export default function CustomerInfo({
 
   const handleFieldChange = (field: keyof CustomerInfoType, value: any) => {
     setCustomerInfo((prev) => ({ ...prev, [field]: value }));
-    
+
     // Special handling for email to trigger validation
     if (field === "email") {
       onEmailChange(value);
@@ -132,10 +132,10 @@ export default function CustomerInfo({
                     !customerInfo.email ? "error" : emailError ? "error" : ""
                   }
                   help={
-                    emailError 
-                      ? emailError 
-                      : !customerInfo.email 
-                      ? "Email is required" 
+                    emailError
+                      ? emailError
+                      : !customerInfo.email
+                      ? "Email is required"
                       : ""
                   }
                 >
@@ -321,7 +321,8 @@ export default function CustomerInfo({
                 <Space direction="vertical" size={0}>
                   <Text>{emailError}</Text>
                   <Text type="secondary">
-                    Please use the existing customer option or use a different email address.
+                    Please use the existing customer option or use a different
+                    email address.
                   </Text>
                 </Space>
               }
@@ -336,10 +337,12 @@ export default function CustomerInfo({
               description={
                 <Space direction="vertical" size={0}>
                   <Text>
-                    A customer record will be created in the system with the provided information.
+                    A customer record will be created in the system with the
+                    provided information.
                   </Text>
                   <Text type="secondary">
-                    No password required - customer will be created in store_customers table.
+                    No password is required at this stage — the customer will
+                    create their own password later.
                   </Text>
                 </Space>
               }

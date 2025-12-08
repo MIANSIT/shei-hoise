@@ -15,7 +15,7 @@ export default function CreateCustomerPage() {
   const handleCustomerCreated = (customer: CreateCustomerResponse) => {
     notification.success({
       message: "Customer Created Successfully",
-      description: `${customer.first_name} has been added to your store.`,
+      description: `${customer.name} has been added to your store.`,
     });
 
     // Redirect to customers list page

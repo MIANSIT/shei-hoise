@@ -86,7 +86,9 @@ export default function CreateOrder() {
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.PENDING); // ✅ Using enum
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
+    PaymentStatus.PENDING
+  ); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
@@ -240,7 +242,7 @@ export default function CreateOrder() {
     }
   }, [
     user?.store_id,
-    notification,
+    customerLoading,
     customerInfo.email,
     validateEmailUniqueness,
   ]);
@@ -382,6 +384,7 @@ export default function CreateOrder() {
           postal_code: customer.profile_details?.postal_code || "",
         }));
         setCustomerProfile({
+          store_customer_id: customer.id, // or customer.profile_details.store_customer_id if it exists
           id: customer.id,
           address:
             customer.profile_details.address ||

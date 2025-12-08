@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className='min-h-screen flex flex-col'>
           {/* Header */}
           <header
-            className='flex items-center justify-between p-4 shadow-md flex-shrink-0'
+            className='flex items-center justify-between p-4 shadow-md shrink-0'
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
@@ -158,7 +158,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               }}
             >
               <Toaster position='top-right' />
-              <div className='flex-shrink-0'>
+              <div className='shrink-0'>
                 <Breadcrumb />
               </div>
               <div className='flex-1 overflow-auto p-4'>{children}</div>

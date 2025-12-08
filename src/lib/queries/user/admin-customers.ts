@@ -1,89 +1,68 @@
 import { supabase } from "@/lib/supabase";
 
-interface UpdateUserData {
-  first_name: string;
-  last_name: string;
+// Interface matching your database
+interface UpdateCustomerData {
+  name: string;
   phone: string;
 }
 
 interface UpdateProfileData {
   date_of_birth: string;
   gender: string;
-  address_line_1: string;
-  address_line_2: string;
+  address: string; // Field name is 'address' in customer_profiles
   city: string;
   state: string;
   postal_code: string;
   country: string;
 }
 
-// Helper function to convert empty strings to null
-function emptyToNull(value: string): string | null {
-  if (!value || value.trim() === "") return null;
-  return value;
-}
-
-// Helper function specifically for date fields with validation
-function processDateField(value: string): string | null {
-  if (!value || value.trim() === "") return null;
-
-  const date = new Date(value);
-  if (isNaN(date.getTime())) {
-    console.warn(`Invalid date format: ${value}`);
-    return null;
-  }
-
-  return value;
-}
-
 export async function updateCustomerProfileAsAdmin(
   customerId: string,
-  userData: UpdateUserData,
+  customerData: UpdateCustomerData,
   profileData: UpdateProfileData
 ) {
   try {
-    // Process user data
-    const processedUserData = {
-      first_name: userData.first_name.trim(),
-      last_name: userData.last_name.trim(),
-      phone: emptyToNull(userData.phone),
+    // Process customer data for store_customers table
+    const processedCustomerData = {
+      name: customerData.name.trim(),
+      phone: customerData.phone.trim() || null,
       updated_at: new Date().toISOString(),
     };
 
-    // Validate required fields
-    if (!processedUserData.first_name || !processedUserData.last_name) {
-      throw new Error("First name and last name are required");
+    // Validate required field
+    if (!processedCustomerData.name) {
+      throw new Error("Customer name is required");
     }
 
-    const { data: userUpdate, error: userError } = await supabase
-      .from("users")
-      .update(processedUserData)
+    // Update store_customers table
+    const { data: customerUpdate, error: customerError } = await supabase
+      .from("store_customers")
+      .update(processedCustomerData)
       .eq("id", customerId)
       .select()
       .single();
 
-    if (userError) {
-      throw new Error(`Failed to update user: ${userError.message}`);
+    if (customerError) {
+      throw new Error(`Failed to update customer: ${customerError.message}`);
     }
 
-    // Process profile data
+    // Process profile data for customer_profiles table
     const processedProfileData = {
-      date_of_birth: processDateField(profileData.date_of_birth),
-      gender: emptyToNull(profileData.gender),
-      address_line_1: emptyToNull(profileData.address_line_1),
-      address_line_2: emptyToNull(profileData.address_line_2),
-      city: emptyToNull(profileData.city),
-      state: emptyToNull(profileData.state),
-      postal_code: emptyToNull(profileData.postal_code),
-      country: emptyToNull(profileData.country),
+      date_of_birth: profileData.date_of_birth || null,
+      gender: profileData.gender || null,
+      address: profileData.address || null,
+      city: profileData.city || null,
+      state: profileData.state || null,
+      postal_code: profileData.postal_code || null,
+      country: profileData.country || null,
       updated_at: new Date().toISOString(),
     };
 
-    // Check if profile exists - for store_owner, we can create if it doesn't exist
+    // Check if profile exists
     const { data: existingProfile } = await supabase
-      .from("user_profiles")
+      .from("customer_profiles")
       .select("id")
-      .eq("user_id", customerId)
+      .eq("store_customer_id", customerId)
       .maybeSingle();
 
     let profileUpdate = null;
@@ -91,9 +70,9 @@ export async function updateCustomerProfileAsAdmin(
     if (existingProfile) {
       // Update existing profile
       const { data, error } = await supabase
-        .from("user_profiles")
+        .from("customer_profiles")
         .update(processedProfileData)
-        .eq("user_id", customerId)
+        .eq("store_customer_id", customerId)
         .select()
         .single();
 
@@ -102,11 +81,11 @@ export async function updateCustomerProfileAsAdmin(
       }
       profileUpdate = data;
     } else {
-      // For store_owner: create profile if it doesn't exist
+      // Create profile if it doesn't exist
       const { data, error } = await supabase
-        .from("user_profiles")
+        .from("customer_profiles")
         .insert({
-          user_id: customerId,
+          store_customer_id: customerId,
           ...processedProfileData,
         })
         .select()
@@ -119,7 +98,7 @@ export async function updateCustomerProfileAsAdmin(
     }
 
     return {
-      user: userUpdate,
+      customer: customerUpdate,
       profile: profileUpdate,
     };
   } catch (error) {
