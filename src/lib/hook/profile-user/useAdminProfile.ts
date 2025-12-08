@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useCurrentUser } from "../useCurrentUser";
 import {
-  getUserProfile,
-  UserWithProfile,
+  getAdminProfile,
+  AdminUserWithProfile,
 } from "@/lib/queries/user/getAdminUser";
 
 export function useUserProfile() {
   const { user: currentUser, loading: authLoading } = useCurrentUser();
-  const [userProfile, setUserProfile] = useState<UserWithProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<AdminUserWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -21,7 +21,7 @@ export function useUserProfile() {
       try {
         setLoading(true);
         setError(null);
-        const profile = await getUserProfile(currentUser.id);
+        const profile = await getAdminProfile(currentUser.id);
         setUserProfile(profile);
       } catch (err) {
         console.error("Error fetching user profile:", err);
