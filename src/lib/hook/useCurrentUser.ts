@@ -37,7 +37,7 @@ export function useCurrentUser() {
 
     const fetchUser = async (authUser: User | null) => {
       if (!mounted) return;
-      
+
       currentAuthUser = authUser;
 
       try {
@@ -51,8 +51,11 @@ export function useCurrentUser() {
         }
 
         // Check global cache first - works across all files using useCurrentUser
-        if (globalUserCache && Date.now() - globalUserCache.timestamp < CACHE_DURATION) {
-          console.log('📦 Using global cached user data for:', authUser.id);
+        if (
+          globalUserCache &&
+          Date.now() - globalUserCache.timestamp < CACHE_DURATION
+        ) {
+          console.log("📦 Using global cached user data for:", authUser.id);
           setUser(globalUserCache.user);
           setStoreSlug(globalUserCache.storeSlug);
           setStoreId(globalUserCache.storeId);
@@ -66,7 +69,9 @@ export function useCurrentUser() {
         // Fetch user from DB
         const { data: userData, error: dbErr } = await supabase
           .from("users")
-          .select("id, email, first_name, last_name, phone, store_id, user_type")
+          .select(
+            "id, email, first_name, last_name, phone, store_id, user_type"
+          )
           .eq("id", authUser.id)
           .single();
 
@@ -88,9 +93,9 @@ export function useCurrentUser() {
         // REMOVED: Profile fetching - it was using wrong ID and causing errors
         // Store owners don't have customer profiles anyway
 
-        const userWithProfile: CurrentUserWithProfile = { 
-          ...parsedUser, 
-          profile: null // Always set to null since store owners don't have customer profiles
+        const userWithProfile: CurrentUserWithProfile = {
+          ...parsedUser,
+          profile: null, // Always set to null since store owners don't have customer profiles
         };
 
         if (mounted) {
@@ -99,9 +104,9 @@ export function useCurrentUser() {
             user: userWithProfile,
             storeSlug: userStoreSlug,
             storeId: parsedUser.store_id || null,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           };
-          
+
           setUser(userWithProfile);
           setStoreSlug(userStoreSlug);
           setStoreId(parsedUser.store_id || null);
@@ -109,7 +114,7 @@ export function useCurrentUser() {
         }
       } catch (err) {
         if (mounted) {
-          console.error('Error in useCurrentUser:', err);
+          console.error("Error in useCurrentUser:", err);
           setError(err as Error);
           setUser(null);
           setStoreSlug(null);
@@ -128,7 +133,7 @@ export function useCurrentUser() {
           fetchUser(authUser);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         if (mounted) {
           setError(err);
           setLoading(false);

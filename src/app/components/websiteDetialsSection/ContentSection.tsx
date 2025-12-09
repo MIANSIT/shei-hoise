@@ -17,7 +17,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
     <section className="mb-10 scroll-mt-20" id={section.id}>
       <div className="flex items-start mb-6">
         {showNumber && (
-          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-4 mt-1">
+          <div className="shrink-0 w-10 h-10 bg-linear-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-4 mt-1">
             <span className=" font-semibold text-sm">{index + 1}</span>
           </div>
         )}
@@ -31,7 +31,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
           <ul className="space-y-3 mt-5">
             {section.items.map((item, itemIndex) => (
               <li key={itemIndex} className="flex items-start group">
-                <div className="flex-shrink-0 w-6 h-6  rounded-full flex items-center justify-center mt-0.5 mr-4  transition-colors duration-200">
+                <div className="shrink-0 w-6 h-6  rounded-full flex items-center justify-center mt-0.5 mr-4  transition-colors duration-200">
                   <svg
                     className="w-3 h-3 "
                     fill="currentColor"

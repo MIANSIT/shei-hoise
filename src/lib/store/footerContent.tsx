@@ -33,9 +33,9 @@ export const footerContent = {
     // { label: "Cookies", href: "#" },
     // { label: "Sitemap", href: "#" },
   ],
-  bottomLinksStore: [
-    { label: "Privacy & Policy", href: "#" },
-    { label: "Terms & Condition", href: "#" },
+  bottomLinksStore: (store_slug: string) => [
+    { label: "Privacy & Policy", href: `/${store_slug}/privacy-policy` },
+    { label: "Terms & Condition", href: `/${store_slug}/terms-and-conditions` },
     // { label: "Cookies", href: "#" },
     // { label: "Sitemap", href: "#" },
   ],
