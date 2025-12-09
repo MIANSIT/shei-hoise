@@ -168,7 +168,7 @@ export default function AboutPage() {
           title="Start Your Shei Hoise Journey Today"
           description="Join thousands of successful entrepreneurs and transform your Facebook business with our 1-month free trial"
           buttonText="Schedule Free Trial"
-          buttonHref="/signup"
+          buttonHref="/demo-request"
           variant="primary"
         />
       </main>
