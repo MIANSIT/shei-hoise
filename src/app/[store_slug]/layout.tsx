@@ -28,12 +28,12 @@ export default async function StoreLayout({
       <StoreHeader storeSlug={store_slug} />
 
       {/* Main content - this will grow to push footer to bottom */}
-      <main className="flex-grow">{children}</main>
+      <main className="grow">{children}</main>
 
       {/* Footer section at bottom */}
       <div className="mt-auto">
         <FooterBottom
-          links={footerContent.bottomLinksStore}
+          links={footerContent.bottomLinksStore(store_slug)}
           brandName={footerContent.brand.name} // Main owner name
           storeLogo={storeData?.logo_url} // Store logo
           storeName={storeData?.store_name} // Store name (optional)
