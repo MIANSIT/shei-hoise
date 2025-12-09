@@ -31,6 +31,7 @@ export interface UserWithProfile {
   profile: CustomerProfile | null;
   store_slug: string | null;
   store_name: string | null;
+  user_type: "customer"
 }
 
 export async function getUserProfile(

@@ -31,6 +31,7 @@ interface CustomerTableProps {
   onDelete: (customer: DetailedCustomer) => void; // Update parameter type
   onViewDetails: (customer: DetailedCustomer) => void; // Update parameter type
   isLoading?: boolean;
+  storeId: string | null; // ✅ ADD THIS
 }
 
 export function CustomerTable({
@@ -39,6 +40,7 @@ export function CustomerTable({
   onDelete,
   onViewDetails,
   isLoading = false,
+  storeId,
 }: CustomerTableProps) {
   const { notification, modal } = App.useApp();
 
@@ -51,7 +53,15 @@ export function CustomerTable({
       okType: "danger",
       cancelText: "Cancel",
       async onOk() {
-        const result = await deleteUserWithCheck(customer.id);
+        if (!storeId) {
+          notification.error({
+            message: "Delete Failed",
+            description: "Store ID is missing.",
+          });
+          return;
+        }
+
+        const result = await deleteUserWithCheck(customer.id, storeId);
 
         if (!result.success) {
           notification.error({
@@ -101,15 +111,6 @@ export function CustomerTable({
           <div>
             <div style={{ fontWeight: 500 }}>{name}</div>
             <Space size={4} wrap>
-              {record.source === "orders" && (
-                <Tag
-                  icon={<ShoppingOutlined />}
-                  color="blue"
-                  className="text-xs"
-                >
-                  From Orders
-                </Tag>
-              )}
               {typeof record.order_count === "number" &&
                 record.order_count > 0 && (
                   <Tag color="green" className="text-xs">

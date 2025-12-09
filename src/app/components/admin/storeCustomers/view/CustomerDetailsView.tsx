@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { DetailedCustomer } from "@/lib/types/users";
 import { EditProfileForm } from "@/app/components/user-profile/EditProfileForm";
@@ -277,24 +276,6 @@ export function CustomerDetailsView({
                       </div>
                     </div>
                   )}
-                  <div className="md:col-span-2">
-                    <div className="text-sm font-medium text-gray-700">
-                      Customer Source
-                    </div>
-                    <div className="mt-1">
-                      <Badge
-                        variant={
-                          currentCustomer.source === "orders"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {currentCustomer.source === "orders"
-                          ? "From Orders"
-                          : "Direct Customer"}
-                      </Badge>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>

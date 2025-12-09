@@ -81,7 +81,7 @@ export default function CustomerCreateForm({
         address_line_1: values.address,
         city: values.city,
         postal_code: values.postal_code,
-        country: values.country || "Bangladesh", // default country
+        country: values.country || "Bangladesh",
       };
 
       const newCustomer = await dataService.createCustomer(customerData);
@@ -107,7 +107,9 @@ export default function CustomerCreateForm({
 
       notification.error({
         message: "Failed to Create Customer",
-        description: errorMessage,
+        description: errorMessage.includes("already exists")
+          ? "A customer with this email already exists. Please use a different email."
+          : errorMessage,
       });
     } finally {
       setLoading(false);
@@ -136,7 +138,7 @@ export default function CustomerCreateForm({
           layout="vertical"
           onFinish={onFinish}
           disabled={loading}
-          initialValues={{ country: "Bangladesh" }} // default country
+          initialValues={{ country: "Bangladesh" }}
         >
           <Row gutter={16}>
             <Col xs={24} md={compact ? 24 : 12}>

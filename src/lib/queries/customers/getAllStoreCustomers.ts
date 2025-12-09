@@ -2,40 +2,6 @@ import { DetailedCustomer } from "@/lib/types/users";
 import { supabase } from "@/lib/supabase";
 
 // Define proper response types
-interface SupabaseResponse<T> {
-  data: T | null;
-  error: Error | null;
-}
-
-interface StoreCustomerLinkResponse {
-  customer_id: string;
-}
-
-interface CustomerProfileResponse {
-  id: string;
-  store_customer_id: string;
-  avatar_url: string | null;
-  date_of_birth: string | null;
-  gender: string | null;
-  address: string | null; // This is the field name in your database
-  city: string | null;
-  state: string | null;
-  postal_code: string | null;
-  country: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface StoreCustomerResponse {
-  id: string;
-  name?: string;
-  email: string;
-  phone?: string | null;
-  profile_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  customer_profiles: CustomerProfileResponse[];
-}
 
 export async function getAllStoreCustomers(
   storeId: string
@@ -44,73 +10,77 @@ export async function getAllStoreCustomers(
 
   try {
     // Step 1: Get linked customer IDs
-    const { data: links, error: linkError } = (await supabase
+    const { data: links, error: linkError } = await supabase
       .from("store_customer_links")
       .select("customer_id")
-      .eq("store_id", storeId)) as SupabaseResponse<
-      StoreCustomerLinkResponse[]
-    >;
+      .eq("store_id", storeId);
 
     if (linkError) throw linkError;
     if (!links || links.length === 0) return [];
 
-    const customerIds = links.map(
-      (link: StoreCustomerLinkResponse) => link.customer_id
-    );
+    const customerIds = links.map((link) => link.customer_id);
 
     // Step 2: Fetch customers with profile
-    const { data: customers, error: customerError } = (await supabase
+    const { data: customers, error: customerError } = await supabase
       .from("store_customers")
       .select(
         `id, name, email, phone, profile_id, created_at, updated_at,
          customer_profiles!customer_profiles_store_customer_id_fkey(*)`
       )
       .in("id", customerIds)
-      .order("created_at", { ascending: true })) as SupabaseResponse<
-      StoreCustomerResponse[]
-    >;
+      .order("created_at", { ascending: true });
 
     if (customerError) throw customerError;
     if (!customers) return [];
 
-    // Step 3: Transform to DetailedCustomer
-    const detailedCustomers: DetailedCustomer[] = customers.map(
-      (c: StoreCustomerResponse) => {
-        const profiles = c.customer_profiles || [];
-        const profile = profiles[0] || null;
+    // Step 3: Fetch orders for all customers in this store
+    const { data: orders, error: ordersError } = await supabase
+      .from("orders")
+      .select("id, customer_id, created_at")
+      .in("customer_id", customerIds)
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false });
 
-        console.log("📊 Customer profile data:", profile); // Debug log
+    if (ordersError) throw ordersError;
 
-        return {
-          id: c.id,
-          name: c.name || "Unknown Customer",
-          email: c.email,
-          phone: c.phone || undefined,
-          status: "active",
-          order_count: 0,
-          source: "direct",
-          user_type: "customer",
-          created_at: c.created_at,
-          updated_at: c.updated_at,
-          profile_id: c.profile_id || null,
-          profile_details: profile
-            ? {
-                date_of_birth: profile.date_of_birth || null,
-                gender: profile.gender || null,
-                address_line_1: profile.address || null,
-                address_line_2: null,
-                city: profile.city || null,
-                state: profile.state || null,
-                postal_code: profile.postal_code || null,
-                country: profile.country || null,
-                address: profile.address || null,
-              }
-            : null,
-        };
-      }
-    );
+    // Step 4: Transform to DetailedCustomer
+    const detailedCustomers: DetailedCustomer[] = customers.map((c) => {
+      const profiles = c.customer_profiles || [];
+      const profile = profiles[0] || null;
 
-    console.log("✅ getAllStoreCustomers result:", detailedCustomers); // Debug log
+      // Filter orders for this customer
+      const customerOrders =
+        orders?.filter((o) => o.customer_id === c.id) || [];
+
+      return {
+        id: c.id,
+        name: c.name || "Unknown Customer",
+        email: c.email,
+        phone: c.phone || undefined,
+        status: "active",
+        order_count: customerOrders.length,
+        last_order_date: customerOrders[0]?.created_at || null, // most recent
+        source: "direct",
+        user_type: "customer",
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        profile_id: c.profile_id || null,
+        profile_details: profile
+          ? {
+              date_of_birth: profile.date_of_birth || null,
+              gender: profile.gender || null,
+              address_line_1: profile.address || null,
+              address_line_2: null,
+              city: profile.city || null,
+              state: profile.state || null,
+              postal_code: profile.postal_code || null,
+              country: profile.country || null,
+              address: profile.address || null,
+            }
+          : null,
+      };
+    });
+
     return detailedCustomers;
   } catch (error) {
     console.error("Error fetching store customers:", error);

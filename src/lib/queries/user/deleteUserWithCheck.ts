@@ -5,101 +5,85 @@ interface DeleteResult {
   message: string;
 }
 
-// interface SupabaseSession {
-//   user: { id: string };
-// }
-
-interface UserRecord {
-  id: string;
-  user_type?: string;
-}
-
-interface OrderRecord {
-  id: string;
-}
-
-/**
- * Deletes a user and their profile only if they have no existing orders.
- * Blocks deletion if the user has placed any orders.
- */
 export async function deleteUserWithCheck(
-  userId: string
+  customerId: string,
+  storeId: string
 ): Promise<DeleteResult> {
   try {
+    // 1. Must be logged in
     const {
       data: { session },
       error: sessionError,
     } = await supabase.auth.getSession();
-
     if (sessionError) return { success: false, message: sessionError.message };
-    if (!session)
-      return {
-        success: false,
-        message: "You must be logged in to delete a user.",
-      };
+    if (!session) return { success: false, message: "You must be logged in." };
 
-    const { data: currentUser, error: userTypeError } = await supabase
-      .from("users")
-      .select("user_type")
-      .eq("id", session.user.id)
-      .single<UserRecord>();
-
-    if (userTypeError)
-      return { success: false, message: userTypeError.message };
-
-    // Allow both admin and store_owner
-    if (
-      currentUser?.user_type !== "admin" &&
-      currentUser?.user_type !== "store_owner"
-    ) {
-      return {
-        success: false,
-        message: "You don’t have permission to delete users.",
-      };
-    }
-
-    const { data: targetUser, error: userFetchError } = await supabase
-      .from("users")
+    // 2. Check if customer exists
+    const { data: customer, error: customerError } = await supabase
+      .from("store_customers")
       .select("id")
-      .eq("id", userId)
-      .single<UserRecord>();
+      .eq("id", customerId)
+      .single();
 
-    if (userFetchError || !targetUser) {
-      return {
-        success: false,
-        message: "The user you are trying to delete does not exist.",
-      };
+    if (customerError || !customer) {
+      return { success: false, message: "Customer not found." };
     }
 
-    const { data: existingOrders, error: orderError } = await supabase
-      .from("orders")
+    // 3. Must be linked to this store
+    const { data: link, error: linkError } = await supabase
+      .from("store_customer_links")
       .select("id")
-      .eq("customer_id", userId)
-      .limit(1)
-      .returns<OrderRecord[]>();
+      .eq("customer_id", customerId)
+      .eq("store_id", storeId)
+      .single();
 
-    if (orderError) {
-      return {
-        success: false,
-        message: "Failed to check user orders. Please try again.",
-      };
-    }
-
-    if (existingOrders && existingOrders.length > 0) {
+    if (linkError || !link) {
       return {
         success: false,
         message:
-          "This user cannot be deleted because they have existing orders.",
+          "You cannot delete this customer because they are not linked to your store.",
       };
     }
 
-    await supabase.from("user_profiles").delete().eq("user_id", userId);
-    await supabase.from("users").delete().eq("id", userId);
+    // 4. Check if customer has existing orders
+    const { data: orders, error: orderError } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("store_id", storeId)
+      .limit(1);
 
-    return { success: true, message: "User deleted successfully." };
+    if (orderError) {
+      return { success: false, message: "Failed to check orders." };
+    }
+
+    if (orders && orders.length > 0) {
+      return {
+        success: false,
+        message:
+          "You cannot delete this customer because they have existing orders.",
+      };
+    }
+
+    // 5. Delete profile
+    await supabase
+      .from("customer_profiles")
+      .delete()
+      .eq("store_customer_id", customerId);
+
+    // 6. Delete customer-store link
+    await supabase
+      .from("store_customer_links")
+      .delete()
+      .eq("customer_id", customerId)
+      .eq("store_id", storeId);
+
+    // 7. Delete customer
+    await supabase.from("store_customers").delete().eq("id", customerId);
+
+    return { success: true, message: "Customer deleted successfully." };
   } catch (error) {
-    const err =
-      error instanceof Error ? error.message : "Unknown error occurred";
+    const err = error instanceof Error ? error.message : "Unknown error";
     return { success: false, message: err };
   }
 }

@@ -13,13 +13,13 @@ import { AccountInfoCard } from "../../components/user-profile/AccountInfoCard";
 import { PersonalInfoCard } from "../../components/user-profile/PersonalInfoCard";
 import { ProfileDetailsCard } from "../../components/user-profile/adminProfile/AdminPersonalDetails";
 import { EditProfileForm } from "../../components/user-profile/adminProfile/EditAdminProfile";
-import { UserWithProfile } from "@/lib/queries/user/getAdminUser";
+import { AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
 import { ProfileFormData } from "@/lib/types/adminProfile";
 
 export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserWithProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<AdminUserWithProfile | null>(null);
 
   useEffect(() => {
     if (user) {
