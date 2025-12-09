@@ -84,7 +84,10 @@ export default function CheckoutPage() {
           const storeSettings = await getStoreSettings(storeId);
           if (storeSettings && storeSettings.tax_rate) {
             setTaxAmount(storeSettings.tax_rate); // Set fixed tax amount
-            console.log("✅ Tax amount fetched from store:", storeSettings.tax_rate);
+            console.log(
+              "✅ Tax amount fetched from store:",
+              storeSettings.tax_rate
+            );
           }
         }
       } catch (error) {
@@ -276,7 +279,11 @@ export default function CheckoutPage() {
             await updateCustomerProfile(storeCustomer.profile_id, values);
           }
         } else {
-          storeCustomerId = await createCustomerWithRetry(values, store_slug, authUserId);
+          storeCustomerId = await createCustomerWithRetry(
+            values,
+            store_slug,
+            authUserId
+          );
         }
       }
 
@@ -295,11 +302,16 @@ export default function CheckoutPage() {
 
           if (!existing.auth_user_id && values.password) {
             try {
-              const authResult = await handleAuthForExistingCustomer(values, existing.id);
+              const authResult = await handleAuthForExistingCustomer(
+                values,
+                existing.id
+              );
               authUserId = authResult.authUserId;
-              
+
               if (!authResult.success) {
-                notify.warning("Order placed! Account setup will complete shortly.");
+                notify.warning(
+                  "Order placed! Account setup will complete shortly."
+                );
               }
             } catch (authError: any) {
               console.error("Auth error:", authError);
@@ -311,9 +323,11 @@ export default function CheckoutPage() {
             const authResult = await createAuthAndCustomer(values, store_slug);
             storeCustomerId = authResult.customerId;
             authUserId = authResult.authUserId;
-            
+
             if (!authResult.success) {
-              notify.warning("Order placed! Account setup will complete shortly.");
+              notify.warning(
+                "Order placed! Account setup will complete shortly."
+              );
             }
           } else {
             storeCustomerId = await createGuestCustomer(values, store_slug);
@@ -324,7 +338,9 @@ export default function CheckoutPage() {
       // 📦 PROCESS ORDER
       if (!storeCustomerId) {
         console.error("❌ CRITICAL: No customer ID");
-        return notify.error("Failed to create customer record. Please try again.");
+        return notify.error(
+          "Failed to create customer record. Please try again."
+        );
       }
 
       const result = await processOrder(
@@ -351,9 +367,13 @@ export default function CheckoutPage() {
         notify.success("Order placed successfully!");
       } else if (values.password) {
         if (authUserId) {
-          notify.success("Order placed successfully! Account created. Check your email.");
+          notify.success(
+            "Order placed successfully! Account created. Check your email."
+          );
         } else {
-          notify.success("Order placed successfully! Account setup in progress.");
+          notify.success(
+            "Order placed successfully! Account setup in progress."
+          );
         }
       } else {
         notify.success("Order placed successfully!");
@@ -370,7 +390,10 @@ export default function CheckoutPage() {
   };
 
   // ============ HELPER FUNCTIONS ============
-  async function updateCustomerProfile(profileId: string, values: CustomerCheckoutFormValues) {
+  async function updateCustomerProfile(
+    profileId: string,
+    values: CustomerCheckoutFormValues
+  ) {
     return supabase
       .from("customer_profiles")
       .update({
@@ -383,7 +406,10 @@ export default function CheckoutPage() {
       .eq("id", profileId);
   }
 
-  async function createCustomerProfile(storeCustomerId: string, values: CustomerCheckoutFormValues) {
+  async function createCustomerProfile(
+    storeCustomerId: string,
+    values: CustomerCheckoutFormValues
+  ) {
     const profileData = {
       store_customer_id: storeCustomerId,
       address: values.shippingAddress,
@@ -422,7 +448,7 @@ export default function CheckoutPage() {
     if (!storeId) throw new Error("Store not found");
 
     let retries = 3;
-    
+
     while (retries > 0) {
       try {
         const { data: customer, error } = await supabase
@@ -437,11 +463,11 @@ export default function CheckoutPage() {
           .single();
 
         if (!error) return customer.id;
-        
+
         if (error.code === "23503") {
           console.log(`⚠️ Foreign key error, retrying (${retries} left)...`);
           retries--;
-          
+
           if (retries === 0) {
             const { data: guestCustomer } = await supabase
               .from("store_customers")
@@ -453,15 +479,18 @@ export default function CheckoutPage() {
               })
               .select("id")
               .single();
-            
+
             if (guestCustomer) {
               if (authUserId) {
-                setTimeout(() => linkAuthToCustomer(guestCustomer.id, authUserId), 5000);
+                setTimeout(
+                  () => linkAuthToCustomer(guestCustomer.id, authUserId),
+                  5000
+                );
               }
               return guestCustomer.id;
             }
           } else {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         } else {
           throw new Error(error.message);
@@ -469,22 +498,26 @@ export default function CheckoutPage() {
       } catch (error: any) {
         if (retries === 0) throw error;
         retries--;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-    
+
     throw new Error("Failed to create customer after retries");
   }
 
   async function createAuthAndCustomer(
     values: CustomerCheckoutFormValues,
     storeSlug: string
-  ): Promise<{ customerId: string; authUserId: string | null; success: boolean }> {
+  ): Promise<{
+    customerId: string;
+    authUserId: string | null;
+    success: boolean;
+  }> {
     const storeId = await getStoreId(storeSlug);
     if (!storeId) throw new Error("Store not found");
 
     let authUserId: string | null = null;
-    
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email.toLowerCase(),
@@ -494,6 +527,7 @@ export default function CheckoutPage() {
             first_name: values.name.split(" ")[0] || values.name,
             last_name: values.name.split(" ").slice(1).join(" ") || "",
             phone: values.phone,
+            role: "customer",
           },
         },
       });
@@ -511,9 +545,13 @@ export default function CheckoutPage() {
       console.error("❌ Auth creation error:", authError);
     }
 
-    const customerId = await createCustomerWithRetry(values, storeSlug, authUserId);
+    const customerId = await createCustomerWithRetry(
+      values,
+      storeSlug,
+      authUserId
+    );
     await createProfileAndLinks(customerId, storeId, values);
-    
+
     return { customerId, authUserId, success: !!authUserId };
   }
 
@@ -535,7 +573,8 @@ export default function CheckoutPage() {
       .select("id")
       .single();
 
-    if (error) throw new Error(`Failed to create guest customer: ${error.message}`);
+    if (error)
+      throw new Error(`Failed to create guest customer: ${error.message}`);
 
     await createProfileAndLinks(customer.id, storeId, values);
     return customer.id;
@@ -546,7 +585,7 @@ export default function CheckoutPage() {
     customerId: string
   ): Promise<{ authUserId: string | null; success: boolean }> {
     let authUserId: string | null = null;
-    
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email.toLowerCase(),
@@ -573,13 +612,13 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error("❌ Auth setup error:", error);
     }
-    
+
     return { authUserId: null, success: false };
   }
 
   async function linkAuthToCustomer(customerId: string, authUserId: string) {
     let retries = 5;
-    
+
     while (retries > 0) {
       try {
         const { error } = await supabase
@@ -593,15 +632,15 @@ export default function CheckoutPage() {
         if (!error) {
           return true;
         }
-        
+
         retries--;
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (error) {
         retries--;
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
-    
+
     return false;
   }
 
@@ -631,10 +670,10 @@ export default function CheckoutPage() {
 
     await supabase
       .from("store_customer_links")
-      .insert({
-        customer_id: customerId,
-        store_id: storeId,
-      });
+      .upsert(
+        { customer_id: customerId, store_id: storeId },
+        { onConflict: "customer_id,store_id" }
+      );
   }
 
   // Store loading check
@@ -645,9 +684,9 @@ export default function CheckoutPage() {
   // Store not found
   if (storeError || !invoiceStoreData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold mb-4'>Store Not Found</h1>
           <p>The store you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
@@ -673,7 +712,7 @@ export default function CheckoutPage() {
         shippingFee={shippingFee}
         taxAmount={taxAmount} // ✅ Pass fixed tax amount
         isProcessing={isSubmitting}
-        mode="checkout"
+        mode='checkout'
       />
 
       <AnimatePresence>
