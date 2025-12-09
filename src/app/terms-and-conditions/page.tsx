@@ -139,7 +139,7 @@ export default function TermsAndConditions() {
           title="Ready to Get Started?"
           description="Join thousands of successful entrepreneurs and begin your Shei Hoise journey with our 1-month free trial"
           buttonText="Schedule Free Trial"
-          buttonHref="/signup"
+          buttonHref="/demo-request"
           variant="secondary"
         />
       </main>

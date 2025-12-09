@@ -235,6 +235,7 @@ export default function CustomerPage() {
           onDelete={handleDelete}
           onViewDetails={handleViewDetails}
           isLoading={loading}
+          storeId={storeId} // ✅ ADD THIS
         />
       </Card>
     </div>

@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 export type UserRole = "admin" | "store_owner" | "customer";
 
-export interface UserProfile {
+export interface AdminUserProfile {
   id: string;
   user_id: string;
   avatar_url: string | null;
@@ -18,7 +18,7 @@ export interface UserProfile {
   updated_at: string;
 }
 
-export interface UserWithProfile {
+export interface AdminUserWithProfile {
   id: string;
   email: string;
   first_name: string | null;
@@ -32,10 +32,10 @@ export interface UserWithProfile {
   store_id: string | null;
   store_slug: string | null; // Add store_slug to the interface
   store_name: string | null; // Add this
-  profile: UserProfile | null;
+  profile: AdminUserProfile | null;
 }
 
-export async function getUserProfile(userId: string): Promise<UserWithProfile> {
+export async function getAdminProfile(userId: string): Promise<AdminUserWithProfile> {
   // Fetch user data with profile
   const { data: userData, error: userError } = await supabase
     .from("users")
