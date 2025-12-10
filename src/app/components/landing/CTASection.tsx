@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import DemoRequestForm from "@/app/components/contactUs/DemoRequestForm";
+import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
 import Modal from "@/app/components//common/Modal"; // Import the modal component
 
 export default function CTASection() {
@@ -52,7 +52,12 @@ export default function CTASection() {
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={closeModal}>
-        <DemoRequestForm />
+        <ContactUSForm
+          source="demo_request"
+          title="Schedule Your Free Demo"
+          subtitle="Fill out the form and one of our specialists will reach out to you shortly."
+          buttonText="Schedule Demo"
+        />
       </Modal>
     </section>
   );

@@ -5,7 +5,7 @@ import React from "react";
 import { CTASectionProps } from "@/lib/types/content.types";
 import { useState } from "react";
 import Modal from "@/app/components/common/Modal";
-import DemoRequestForm from "@/app/components/contactUs/DemoRequestForm";
+import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
 
 const CTASection: React.FC<CTASectionProps> = ({
   title,
@@ -66,7 +66,12 @@ const CTASection: React.FC<CTASectionProps> = ({
 
       {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <DemoRequestForm />
+        <ContactUSForm
+          source="demo_request"
+          title="Schedule Your Free Demo"
+          subtitle="Fill out the form and one of our specialists will reach out to you shortly."
+          buttonText="Schedule Demo"
+        />
       </Modal>
     </>
   );
