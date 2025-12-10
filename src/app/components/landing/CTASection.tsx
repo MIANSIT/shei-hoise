@@ -1,10 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
+import Modal from "@/app/components//common/Modal"; // Import the modal component
 
 export default function CTASection() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
   return (
     <section className="py-16 md:py-20 px-6 bg-muted/50 border border-chart-2/20">
       <div className="container mx-auto text-center">
@@ -29,12 +36,12 @@ export default function CTASection() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
-            asChild
+            onClick={openModal}
             variant="outline"
             size="lg"
             className="border-chart-2 text-chart-2 hover:bg-chart-2/10 px-6 md:px-8 py-3 text-base md:text-lg"
           >
-            <Link href="/demo-request">Schedule Demo</Link>
+            Schedule Demo
           </Button>
         </div>
 
@@ -42,6 +49,16 @@ export default function CTASection() {
           No credit card required • 14-day free trial • Setup in minutes
         </p>
       </div>
+
+      {/* Modal */}
+      <Modal isOpen={isModalOpen} onClose={closeModal}>
+        <ContactUSForm
+          source="demo_request"
+          title="Schedule Your Free Demo"
+          subtitle="Fill out the form and one of our specialists will reach out to you shortly."
+          buttonText="Schedule Demo"
+        />
+      </Modal>
     </section>
   );
 }

@@ -20,7 +20,7 @@ export const footerContent = {
       { label: "Contact", href: "#" },
     ],
     support: [
-      { label: "Help Center", href: "#" },
+      { label: "Help Center", href: "/help-center" },
       // { label: "Shipping & Returns", href: "#" },
       // { label: "Warranty", href: "#" },
       // { label: "Privacy Policy", href: "#" },

@@ -1,16 +1,17 @@
-// lib/queries/demoRequests.ts
+// lib/queries/ContactUS.ts
 import { supabase } from "@/lib/supabase";
 
-export interface DemoRequestPayload {
+export interface ContactUSPayload {
   full_name: string;
   email: string;
   company_name: string;
   message: string;
+  source: string;
 }
 
-export async function createDemoRequest(payload: DemoRequestPayload) {
+export async function createContactUS(payload: ContactUSPayload) {
   const { data, error } = await supabase
-    .from("demo_requests")
+    .from("contact_us")
     .insert([payload])
     .select(); // optional: return inserted row
 
