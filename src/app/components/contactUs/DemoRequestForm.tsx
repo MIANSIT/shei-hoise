@@ -43,8 +43,8 @@ export default function DemoRequestForm() {
   };
 
   return (
-    <div className="w-full flex justify-center px-4 sm:px-6 md:px-0 mt-6 sm:mt-10">
-      <div className=" shadow-lg rounded-xl p-6 sm:p-8 w-full max-w-lg sm:max-w-xl border">
+    <div className="w-full flex justify-center   ">
+      <div className="  w-full max-w-lg sm:max-w-xl ">
         <h2 className="text-xl sm:text-2xl font-semibold text-center mb-5 sm:mb-6">
           Request a Demo
         </h2>
@@ -99,6 +99,7 @@ export default function DemoRequestForm() {
             type="submit"
             disabled={loading}
             className="w-full h-11 text-base"
+            variant="greenish"
           >
             {loading ? "Submitting..." : "Request Demo"}
           </Button>
