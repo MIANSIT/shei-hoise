@@ -17,7 +17,7 @@ export const footerContent = {
       // { label: "Careers", href: "#" },
       // { label: "Blog", href: "#" },
       // { label: "Press", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Contact", href: "/contact-us" },
     ],
     support: [
       { label: "Help Center", href: "/help-center" },
