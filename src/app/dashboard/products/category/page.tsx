@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { createCategory } from "@/lib/queries/categories/createCategory";
@@ -17,8 +17,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 import type { Category } from "@/lib/types/category";
 import type { CreateCategoryType } from "@/lib/schema/category.schema";
+import { Pagination } from "antd";
 
-// Type for raw API response
 type RawCategory = {
   id: string;
   name: string;
@@ -49,20 +49,30 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  // Backend search & pagination
   const [searchText, setSearchText] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   const notify = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
 
   const width = useWindowWidth();
-  const isLgUp = width >= 1024; // Tailwind lg breakpoint
+  const isLgUp = width >= 1024;
 
-  // Fetch categories
-  const fetchCategories = async () => {
+  // Fetch categories from backend
+  const fetchCategories = useCallback(async () => {
     if (!user?.store_id) return;
     setLoading(true);
+
     try {
-      const { data, error } = await getCategoriesQuery(user.store_id);
+      const { data, count, error } = await getCategoriesQuery(user.store_id, {
+        search: searchText,
+        page,
+        pageSize,
+      });
       if (error) throw error;
 
       setCategories(
@@ -78,22 +88,25 @@ export default function CategoryPage() {
             : "",
         })) ?? []) as Category[]
       );
+
+      setTotal(count || 0);
     } catch (err: unknown) {
-      console.error("Error fetching categories:", err);
-      if (err instanceof Error) {
-        notify.error(err.message);
-      } else {
-        notify.error("Failed to load categories");
-      }
+      console.error(err);
+      notify.error(
+        err instanceof Error ? err.message : "Failed to load categories"
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.store_id, searchText, page, pageSize, notify]);
 
+  // refetch when user, search, page, pageSize changes
   useEffect(() => {
-    if (!userLoading) fetchCategories();
+    if (!userLoading) {
+      fetchCategories();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, userLoading]);
+  }, [userLoading, searchText, page, pageSize, user?.store_id]);
 
   // Edit category
   const handleEdit = (category: Category) => {
@@ -106,80 +119,17 @@ export default function CategoryPage() {
     if (!user?.store_id) return;
     try {
       await deleteCategoryQuery(category.id, user.store_id);
-      setCategories((prev) => prev.filter((c) => c.id !== category.id));
+      fetchCategories(); // refetch after delete
       notify.info(`Deleted category "${category.name}"`);
     } catch (err: unknown) {
-      console.error("Delete error:", err);
-      if (err instanceof Error) {
-        notify.error(err.message);
-      } else {
-        notify.error(`Failed to delete "${category.name}"`);
-      }
-    }
-  };
-
-  // Form submit
-  const handleFormSubmit = async (data: CreateCategoryType) => {
-    if (!user?.store_id) {
-      notify.error("Missing store info");
-      return;
-    }
-
-    const parent_id =
-      data.parent_id === "" ||
-      data.parent_id === null ||
-      data.parent_id === undefined
-        ? null
-        : data.parent_id;
-
-    try {
-      if (editingCategory) {
-        await updateCategory(
-          {
-            id: editingCategory.id,
-            name: data.name,
-            slug: data.slug,
-            description: data.description ?? null,
-            parent_id,
-            is_active: data.is_active ?? true,
-          },
-          user.store_id
-        );
-        notify.info(`Category "${data.name}" updated successfully!`);
-      } else {
-        await createCategory(
-          {
-            ...data,
-            parent_id,
-            is_active: data.is_active ?? true,
-          },
-          user.store_id
-        );
-        notify.success(`Category "${data.name}" created successfully!`);
-      }
-
-      setShowForm(false);
-      setEditingCategory(null);
-      fetchCategories();
-    } catch (err: unknown) {
       console.error(err);
-      if (err instanceof Error) {
-        notify.error(err.message);
-      } else {
-        notify.error("Failed to save category");
-      }
+      notify.error(
+        err instanceof Error ? err.message : "Failed to delete category"
+      );
     }
   };
 
-  // Filter categories based on name or description
-  const filteredCategories = categories.filter((category) => {
-    const text = searchText.toLowerCase();
-    return (
-      category.name.toLowerCase().includes(text) ||
-      (category.description?.toLowerCase().includes(text) ?? false)
-    );
-  });
-
+  // Toggle active status
   const handleToggleActive = async (category: Category, isActive: boolean) => {
     if (!user?.store_id) return;
 
@@ -195,20 +145,69 @@ export default function CategoryPage() {
         },
         user.store_id
       );
-
-      // Update state locally
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === category.id ? { ...c, is_active: isActive } : c
-        )
-      );
-
+      fetchCategories(); // refetch to update status
       notify.success(
         `Category "${category.name}" is now ${isActive ? "active" : "inactive"}`
       );
     } catch (err: unknown) {
       console.error(err);
       notify.error("Failed to update category status");
+    }
+  };
+
+  // Form submit
+  const handleFormSubmit = async (data: CreateCategoryType) => {
+    if (!user?.store_id) return;
+
+    const parent_id =
+      data.parent_id === "" || data.parent_id === null ? null : data.parent_id;
+
+    // 🔍 Normalize slug from form
+    const slugToCheck = data.slug.toLowerCase().trim();
+
+    // 🔥 Check if slug exists already in this store (exclude editing category)
+    const exists = categories.some(
+      (c) =>
+        c.slug.toLowerCase() === slugToCheck && c.id !== editingCategory?.id
+    );
+
+    if (exists) {
+      notify.error(`Category with slug "${data.slug}" already exists.`);
+      return;
+    }
+
+    try {
+      if (editingCategory) {
+        // Update
+        await updateCategory(
+          {
+            id: editingCategory.id,
+            name: data.name,
+            slug: data.slug,
+            description: data.description ?? null,
+            parent_id,
+            is_active: data.is_active ?? true,
+          },
+          user.store_id
+        );
+        notify.info(`Category "${data.name}" updated successfully!`);
+      } else {
+        // Create
+        await createCategory(
+          { ...data, parent_id, is_active: data.is_active ?? true },
+          user.store_id
+        );
+        notify.success(`Category "${data.name}" created successfully!`);
+      }
+
+      setShowForm(false);
+      setEditingCategory(null);
+      fetchCategories();
+    } catch (err: unknown) {
+      console.error(err);
+      notify.error(
+        err instanceof Error ? err.message : "Failed to save category"
+      );
     }
   };
 
@@ -223,26 +222,29 @@ export default function CategoryPage() {
         }}
         isLgUp={isLgUp}
         searchText={searchText}
-        setSearchText={setSearchText}
+        setSearchText={(text) => {
+          setSearchText(text);
+          setPage(1); // reset page when searching
+        }}
       />
 
-      {/* Table for desktop / Cards for mobile */}
       <div className={`flex gap-6 ${isLgUp ? "flex-row" : "flex-col"}`}>
+        {/* Desktop Table */}
         {isLgUp ? (
           <CategoryTablePanel
-            categories={filteredCategories}
+            categories={categories}
             loading={loading}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onToggleActive={handleToggleActive} // <-- new prop
+            onToggleActive={handleToggleActive}
             showForm={showForm}
           />
         ) : (
           <CategoryCardList
-            categories={filteredCategories}
+            categories={categories}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onToggleActive={handleToggleActive} // <-- new prop
+            onToggleActive={handleToggleActive}
           />
         )}
 
@@ -257,6 +259,21 @@ export default function CategoryPage() {
             />
           </div>
         )}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-end">
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total} // total items from backend
+          showSizeChanger
+          pageSizeOptions={["5", "10", "20", "50", "100"]}
+          onChange={(p, size) => {
+            setPage(p);
+            setPageSize(size);
+          }}
+        />
       </div>
 
       {/* Modal for mobile */}

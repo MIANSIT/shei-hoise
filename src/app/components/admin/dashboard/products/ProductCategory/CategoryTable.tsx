@@ -89,6 +89,11 @@ export default function CategoryTable({
   ];
 
   return (
-    <DataTable<Category> columns={columns} data={data} loading={loading} />
+    <DataTable<Category>
+      columns={columns}
+      data={data}
+      loading={loading}
+      pagination={false}
+    />
   );
 }
