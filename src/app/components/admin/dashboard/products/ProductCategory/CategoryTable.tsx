@@ -1,8 +1,7 @@
-// components/admin/products/CategoryTable.tsx
 "use client";
 
 import React from "react";
-import { Button, Popconfirm, Tooltip } from "antd";
+import { Button, Popconfirm, Switch, Tooltip } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
@@ -13,6 +12,7 @@ interface CategoryTableProps {
   loading?: boolean;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  onToggleActive: (category: Category, isActive: boolean) => void; // ✅ add this
 }
 
 export default function CategoryTable({
@@ -20,6 +20,7 @@ export default function CategoryTable({
   loading = false,
   onEdit,
   onDelete,
+  onToggleActive, // ✅ destructure the new prop
 }: CategoryTableProps) {
   const columns: ColumnsType<Category> = [
     {
@@ -36,6 +37,22 @@ export default function CategoryTable({
       title: "Created At",
       dataIndex: "createdAt",
       key: "createdAt",
+    },
+    {
+      title: "Active",
+      dataIndex: "is_active",
+      key: "is_active",
+      render: (_, record) => (
+        <Switch
+          checked={record.is_active}
+          onChange={(checked) => onToggleActive(record, checked)}
+          checkedChildren="Active"
+          unCheckedChildren="Inactive"
+          style={{
+            backgroundColor: record.is_active ? "#22c55e" : "#ef4444", // Tailwind green-500 / red-500
+          }}
+        />
+      ),
     },
     {
       title: "Actions",

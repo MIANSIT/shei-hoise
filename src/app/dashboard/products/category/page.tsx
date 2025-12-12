@@ -180,6 +180,38 @@ export default function CategoryPage() {
     );
   });
 
+  const handleToggleActive = async (category: Category, isActive: boolean) => {
+    if (!user?.store_id) return;
+
+    try {
+      await updateCategory(
+        {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          description: category.description ?? null,
+          parent_id: category.parent_id ?? null,
+          is_active: isActive,
+        },
+        user.store_id
+      );
+
+      // Update state locally
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === category.id ? { ...c, is_active: isActive } : c
+        )
+      );
+
+      notify.success(
+        `Category "${category.name}" is now ${isActive ? "active" : "inactive"}`
+      );
+    } catch (err: unknown) {
+      console.error(err);
+      notify.error("Failed to update category status");
+    }
+  };
+
   return (
     <div className="p-6 space-y-4">
       {/* Top Bar */}
@@ -202,6 +234,7 @@ export default function CategoryPage() {
             loading={loading}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onToggleActive={handleToggleActive} // <-- new prop
             showForm={showForm}
           />
         ) : (
@@ -209,6 +242,7 @@ export default function CategoryPage() {
             categories={filteredCategories}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onToggleActive={handleToggleActive} // <-- new prop
           />
         )}
 
