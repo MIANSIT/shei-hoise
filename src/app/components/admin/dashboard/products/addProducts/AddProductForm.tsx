@@ -66,7 +66,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     });
 
     const [categories, setCategories] = useState<
-      { id: string; name: string }[]
+      { id: string; name: string; is_active: boolean }[]
     >([]);
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
@@ -156,10 +156,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 name="category_id"
                 as="select"
                 placeholder="Select a category"
-                options={categories.map((c) => ({
-                  value: c.id,
-                  label: c.name,
-                }))}
+                options={categories
+                  .filter((c) => c.is_active)
+                  .map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  }))}
                 control={control}
                 required
               />
@@ -280,7 +282,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-6 py-3 font-semibold shadow-md transition"
+              className="bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-6 py-3 font-semibold shadow-md transition"
             >
               {product ? "Update Product" : "Save Product"}
             </Button>
