@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, Button } from "antd";
+import { Card } from "antd";
 import {
   CheckCircleOutlined,
   ExclamationOutlined,
@@ -13,7 +13,7 @@ interface InventoryAlertCardProps {
   value: string;
   icon?: React.ReactNode;
   color: string;
-  actionText: string;
+  // actionText: string;
   onAction?: () => void;
 }
 
@@ -22,10 +22,10 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
   value,
   icon,
   color,
-  actionText,
-  onAction,
+  // actionText,
+  // onAction,
 }) => {
-  const isCritical = title === "Low Stock" || title === "Out of Stock";
+  // const isCritical = title === "Low Stock" || title === "Out of Stock";
 
   const defaultIcon =
     title === "In Stock" ? (
@@ -46,7 +46,7 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
             <div className="text-sm text-gray-600 truncate">{title}</div>
           </div>
         </div>
-        <Button
+        {/* <Button
           type={isCritical ? "primary" : "default"}
           size="small"
           danger={isCritical && title === "Out of Stock"}
@@ -54,7 +54,7 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
           onClick={onAction}
         >
           {actionText}
-        </Button>
+        </Button> */}
       </div>
     </Card>
   );

@@ -19,6 +19,7 @@ import {
 
 import type { Product } from "@/lib/queries/products/getProducts";
 import type { StoreOrder } from "@/lib/types/order";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -30,7 +31,7 @@ export default function DashboardPage() {
     loading: ordersLoading,
     error: ordersError,
   } = useStoreOrders(storeId || "");
-
+  const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
   // State for time period selection
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("daily");
   const [products, setProducts] = useState<Product[]>([]);
@@ -85,6 +86,19 @@ export default function DashboardPage() {
   const refundedAmount = orders
     .filter((o) => o.status.toLowerCase() === "refunded")
     .reduce((sum, o) => sum + o.total_amount, 0);
+
+  const renderCurrency = (amount: number) => {
+    if (!currency) return amount.toFixed(2);
+    if (typeof CurrencyIcon === "string")
+      return `${CurrencyIcon} ${amount.toFixed(2)}`;
+    if (CurrencyIcon)
+      return (
+        <>
+          <CurrencyIcon /> {amount.toFixed(2)}
+        </>
+      );
+    return amount.toFixed(2);
+  };
 
   // Filter orders based on selected time period
   const filterOrdersByPeriod = (
@@ -438,7 +452,7 @@ export default function DashboardPage() {
       title: `${
         timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)
       } Revenue`,
-      value: `BDT ${revenue.toFixed(2)}`,
+      value: renderCurrency(revenue),
       icon: <DollarOutlined className="text-green-500" />,
       change: `${formatPercentage(
         changePercentage.revenue
@@ -458,7 +472,7 @@ export default function DashboardPage() {
     },
     {
       title: "Avg Order Value",
-      value: `BDT ${averageOrderValue.toFixed(2)}`,
+      value: renderCurrency(averageOrderValue),
       icon: <LineChartOutlined className="text-purple-500" />,
       change: `${formatPercentage(changePercentage.aov)} from ${getPeriodText(
         timePeriod
@@ -467,7 +481,7 @@ export default function DashboardPage() {
     },
     {
       title: "Gross Profit",
-      value: `BDT ${(revenue * 0.6).toFixed(2)}`,
+      value: renderCurrency(revenue * 0.6),
       icon: <DollarOutlined className="text-amber-500" />,
       change: `${formatPercentage(
         changePercentage.profit
@@ -554,9 +568,7 @@ export default function DashboardPage() {
     {
       title: "Top Customer",
       value: customerSnapshot.topCustomer.name,
-      subValue: `BDT ${customerSnapshot.topCustomer.totalSpent.toFixed(
-        2
-      )} spent`,
+      subValue: renderCurrency(customerSnapshot.topCustomer.totalSpent),
       icon: <StarOutlined className="text-purple-500" />,
     },
   ];

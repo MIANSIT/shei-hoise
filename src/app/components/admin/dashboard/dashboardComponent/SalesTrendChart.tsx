@@ -1,8 +1,17 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Chart from "react-apexcharts";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { Card, Button } from "antd";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface SalesTrendChartProps {
   data: { date: string; sales: number }[];
@@ -11,70 +20,42 @@ interface SalesTrendChartProps {
 const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
   const [selectedDays, setSelectedDays] = useState(7);
 
-  // Filter chart data based on selected days
-  const filteredData = useMemo(() => {
-    return data.slice(-selectedDays);
-  }, [data, selectedDays]);
+  // Get currency and icon
+  const {
+    currency,
+    icon,
+    loading: currencyLoading,
+    error: currencyError,
+  } = useUserCurrencyIcon();
 
-  // Auto comparison to previous period
+  const filteredData = useMemo(
+    () => data.slice(-selectedDays),
+    [data, selectedDays]
+  );
+
   const previousPeriodData = useMemo(() => {
     const prevData = data.slice(-(selectedDays * 2), -selectedDays);
-    return prevData.length === selectedDays ? prevData.map((d) => d.sales) : [];
+    return prevData.length === selectedDays
+      ? prevData.map((d) => ({ date: d.date, sales: d.sales }))
+      : [];
   }, [data, selectedDays]);
 
-  const chartSeries = [
-    {
-      name: "Sales",
-      data: filteredData.map((d) => d.sales),
-    },
-    previousPeriodData.length
-      ? {
-          name: "Previous Period",
-          data: previousPeriodData,
-        }
-      : undefined,
-  ].filter(Boolean) as { name: string; data: number[] }[];
+  // Combine current and previous period for Recharts
+  const chartData = filteredData.map((d, i) => ({
+    date: d.date,
+    Sales: d.sales,
+    "Previous Period": previousPeriodData[i]?.sales ?? null,
+  }));
 
-  const chartOptions: ApexCharts.ApexOptions = {
-    chart: { type: "area", toolbar: { show: false }, zoom: { enabled: false } },
-    dataLabels: { enabled: false },
-    stroke: { curve: "smooth", width: 3 },
-    xaxis: {
-      categories: filteredData.map((d) => d.date),
-      labels: {
-        rotate: -45,
-        hideOverlappingLabels: true,
-        showDuplicates: false,
-        style: { fontSize: "11px" },
-      },
-    },
-    tooltip: { y: { formatter: (val: number) => `BDT ${val.toFixed(2)}` } },
-    grid: { borderColor: "#f0f0f0" },
-    colors: ["#4f46e5", "#a3bffa"],
-    fill: { type: "gradient", gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
-    responsive: [
-      {
-        breakpoint: 600,
-        options: {
-          chart: {
-            height: 260,
-          },
-          xaxis: {
-            labels: {
-              rotate: -45,
-              show: true,
-              style: { fontSize: "10px" },
-            },
-          },
-          yaxis: {
-            labels: {
-              style: { fontSize: "10px" },
-            },
-          },
-        },
-      },
-    ],
+  const formatTooltip = (value: number | null) => {
+    if (value === null) return "";
+    if (!currency) return value.toFixed(2);
+    if (typeof icon === "string") return `${icon} ${value.toFixed(2)}`;
+    return `${currency} ${value.toFixed(2)}`;
   };
+
+  if (currencyLoading) return <div>Loading chart...</div>;
+  if (currencyError) return <div>Error loading currency</div>;
 
   return (
     <Card className="shadow-sm">
@@ -90,13 +71,42 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
           </Button>
         ))}
       </div>
+
       <div className="w-full h-[260px] sm:h-[300px] md:h-[350px]">
-        <Chart
-          options={chartOptions}
-          series={chartSeries}
-          type="area"
-          height="100%"
-        />
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chartData}
+            margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
+          >
+            <CartesianGrid stroke="#f0f0f0" strokeDasharray="3 3" />
+            <XAxis
+              dataKey="date"
+              angle={-45}
+              textAnchor="end"
+              interval={0}
+              tick={{ fontSize: 11 }}
+            />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip
+              formatter={(value) => formatTooltip(value as number)}
+              contentStyle={{ fontSize: "12px" }}
+            />
+            <Line
+              type="monotone"
+              dataKey="Sales"
+              stroke="#4f46e5"
+              strokeWidth={3}
+            />
+            {previousPeriodData.length > 0 && (
+              <Line
+                type="monotone"
+                dataKey="Previous Period"
+                stroke="#a3bffa"
+                strokeWidth={3}
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </Card>
   );

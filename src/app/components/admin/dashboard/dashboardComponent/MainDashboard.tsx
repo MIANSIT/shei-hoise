@@ -20,7 +20,7 @@ type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
 interface MainDashboardProps {
   stats: {
     title: string;
-    value: string;
+    value: React.ReactNode;
     icon: React.ReactNode;
     change: string;
     changeType: "positive" | "negative" | "neutral";
@@ -51,7 +51,7 @@ interface MainDashboardProps {
     title: string;
     value: string;
     icon: React.ReactNode;
-    subValue?: string;
+    subValue?: string | React.ReactNode;
   }[];
   alerts: {
     type: "stock" | "order" | "payment";
@@ -147,7 +147,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             </div>
             <Row gutter={[16, 16]}>
               {orderStatusCards.map((card, idx) => (
-                <Col key={idx} xs={12} sm={6}>
+                <Col key={idx} xs={24} sm={12} lg={12}>
                   <OrderStatusCard {...card} />
                 </Col>
               ))}
@@ -164,7 +164,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             </div>
             <Row gutter={[16, 16]}>
               {orderAmounts.map((card, idx) => (
-                <Col key={idx} xs={12} sm={12}>
+                <Col key={idx} xs={24} sm={12} lg={12}>
                   <OrderAmountCard
                     title={card.title}
                     amount={card.amount}
