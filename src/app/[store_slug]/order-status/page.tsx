@@ -1,7 +1,7 @@
-// app/[store_slug]/order-status/page.tsx - FIXED
+// app/[store_slug]/order-status/page.tsx - OPTIMIZED VERSION
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
@@ -39,29 +39,19 @@ export default function StoreOrdersPage() {
   const { justCreatedAccount, createdAccountEmail, clearAccountCreationFlags } = useCheckoutStore();
   const isFetchingOrdersRef = useRef(false);
   const mountedRef = useRef(true);
-  const isNewlyCreatedAccount = Boolean(
-    justCreatedAccount && 
-    createdAccountEmail && 
-    createdAccountEmail === customer?.email
+  
+  // ✅ Memoized values to prevent unnecessary recalculations
+  const isNewlyCreatedAccount = useMemo(() => 
+    Boolean(justCreatedAccount && createdAccountEmail && createdAccountEmail === customer?.email),
+    [justCreatedAccount, createdAccountEmail, customer?.email]
   );
 
-  // ✅ SPECIAL CASE: If user just created account during checkout, force show orders
-  const shouldForceShowOrders = isNewlyCreatedAccount && customer?.auth_user_id;
-  
-  // DEBUG LOGS
-  console.log('🎯 ORDER STATUS DECISION:', {
-    hasCustomer: !!customer,
-    customerEmail: customer?.email,
-    customerHasAuthId: hasAuthUserId,
-    isLoggedIn,
-    authEmail,
-    shouldShowOrders: isLoggedIn && hasAuthUserId,
-    shouldShowSignIn: !isLoggedIn && hasAuthUserId,
-    shouldShowCompleteAccount: !isLoggedIn && !hasAuthUserId && !!customer,
-    shouldShowNewAccount: !customer,
-  });
+  const shouldForceShowOrders = useMemo(() => 
+    isNewlyCreatedAccount && customer?.auth_user_id,
+    [isNewlyCreatedAccount, customer?.auth_user_id]
+  );
 
-  // ✅ FIXED: Memoized fetch orders function - MOVED BEFORE ANY CONDITIONAL RETURNS
+  // ✅ Memoized fetch orders function
   const fetchOrders = useCallback(async () => {
     if (!customer?.id || isFetchingOrdersRef.current || !mountedRef.current) {
       return;
@@ -70,8 +60,7 @@ export default function StoreOrdersPage() {
     // Allow fetching orders if:
     // 1. User is logged in AND has auth_user_id, OR
     // 2. User just created account during checkout (even if not fully logged in yet)
-    const shouldFetchOrders = 
-      (isLoggedIn && hasAuthUserId) || shouldForceShowOrders;
+    const shouldFetchOrders = (isLoggedIn && hasAuthUserId) || shouldForceShowOrders;
     
     console.log('🔄 Should fetch orders?', {
       shouldFetchOrders,
@@ -119,28 +108,34 @@ export default function StoreOrdersPage() {
     }
   }, [customer?.id, isLoggedIn, hasAuthUserId, shouldForceShowOrders, clearAccountCreationFlags]);
 
-  // Main effect to fetch orders
+  // ✅ Optimized effect for fetching orders
   useEffect(() => {
     mountedRef.current = true;
     
-    if (!customerLoading && customer) {
+    // Only fetch if customer is loaded and not already fetching
+    if (!customerLoading && customer && !isFetchingOrdersRef.current) {
       fetchOrders();
     } else if (!customerLoading && !customer) {
       setOrders([]);
       setLoadingOrders(false);
     }
 
-    // Cleanup
     return () => {
       mountedRef.current = false;
       isFetchingOrdersRef.current = false;
     };
   }, [customer, customerLoading, fetchOrders]);
 
-  const handleViewInvoice = (order: StoreOrder) => {
+  const handleViewInvoice = useCallback((order: StoreOrder) => {
     setSelectedOrder(order);
     setShowInvoice(true);
-  };
+  }, []);
+
+  // ✅ Memoized decision logic
+  const isEmailMismatch = useMemo(() => 
+    isLoggedIn && authEmail && customer?.email && authEmail !== customer.email,
+    [isLoggedIn, authEmail, customer?.email]
+  );
 
   // Show loading while checking customer
   if (customerLoading) {
@@ -170,13 +165,10 @@ export default function StoreOrdersPage() {
     );
   }
 
-  // Check if user is logged in with different email than order email
-  const isEmailMismatch = isLoggedIn && authEmail && customer?.email && authEmail !== customer.email;
-
   // DECISION TREE (in order of priority):
   
   // 1. Email mismatch - logged in with different email
-  if (isLoggedIn && authEmail && customer?.email && authEmail !== customer.email) {
+  if (isEmailMismatch) {
     console.log('📢 Showing email mismatch prompt');
     return (
       <OrderAuthPrompt 
@@ -208,7 +200,7 @@ export default function StoreOrdersPage() {
   }
   
   // 3. Guest checkout - no auth_user_id
-   if (!isLoggedIn && !hasAuthUserId && customer) {
+  if (!isLoggedIn && !hasAuthUserId && customer) {
     console.log('📢 Showing complete account prompt (guest checkout)');
     return (
       <OrderAuthPrompt 
