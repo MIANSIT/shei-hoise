@@ -280,7 +280,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-6 py-3 font-semibold shadow-md transition"
+              className="bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-6 py-3 font-semibold shadow-md transition"
             >
               {product ? "Update Product" : "Save Product"}
             </Button>
