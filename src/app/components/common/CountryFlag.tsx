@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ReactCountryFlag from "react-country-flag";
+import { memo } from "react";
 
 interface CountrySelectProps {
   value: string;
@@ -17,7 +18,7 @@ interface CountrySelectProps {
   defaultCountry?: string;
 }
 
-const countries = [
+const COUNTRIES = [
   { code: "AU", name: "Australia" },
   { code: "BD", name: "Bangladesh" },
   { code: "BR", name: "Brazil" },
@@ -31,7 +32,7 @@ const countries = [
   { code: "US", name: "United States" },
 ];
 
-export function CountryFlag({
+function CountryFlagComponent({
   value,
   onValueChange,
   disabled = false,
@@ -47,8 +48,8 @@ export function CountryFlag({
         <SelectValue placeholder="Select country" />
       </SelectTrigger>
       <SelectContent>
-        {countries.map((country) => (
-          <SelectItem key={country.code} value={country.name}> {/* ✅ Use country.name as value */}
+        {COUNTRIES.map((country) => (
+          <SelectItem key={country.code} value={country.name}>
             <div className="flex items-center gap-2">
               <ReactCountryFlag
                 countryCode={country.code}
@@ -66,3 +67,5 @@ export function CountryFlag({
     </Select>
   );
 }
+
+export const CountryFlag = memo(CountryFlagComponent);

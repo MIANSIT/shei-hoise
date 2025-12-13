@@ -1,9 +1,9 @@
-// lib/hook/useCurrentUser.ts
+// lib/hook/useCurrentUser.ts - Fixed version
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { CurrentUser, userSchema } from "../types/users";
+import { CurrentUser, userSchema, USERTYPE } from "../types/users"; // Import USERTYPE
 import { CustomerProfile } from "../types/customer";
 import { useCheckoutStore } from "../store/userInformationStore";
 import { User } from "@supabase/supabase-js";
@@ -12,7 +12,6 @@ export interface CurrentUserWithProfile extends CurrentUser {
   profile?: CustomerProfile | null;
 }
 
-// Global cache to prevent multiple API calls across the entire app
 let globalUserCache: {
   user: CurrentUserWithProfile | null;
   storeSlug: string | null;
@@ -20,7 +19,7 @@ let globalUserCache: {
   timestamp: number;
 } | null = null;
 
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const CACHE_DURATION = 2 * 60 * 1000;
 
 export function useCurrentUser() {
   const [user, setUser] = useState<CurrentUserWithProfile | null>(null);
@@ -50,7 +49,7 @@ export function useCurrentUser() {
           return;
         }
 
-        // Check global cache first - works across all files using useCurrentUser
+        // Check cache first
         if (
           globalUserCache &&
           Date.now() - globalUserCache.timestamp < CACHE_DURATION
@@ -66,20 +65,49 @@ export function useCurrentUser() {
         setLoading(true);
         setError(null);
 
-        // Fetch user from DB
+        // Fetch user from DB - use maybeSingle() instead of single()
         const { data: userData, error: dbErr } = await supabase
           .from("users")
-          .select(
-            "id, email, first_name, last_name, phone, store_id, user_type"
-          )
+          .select("id, email, first_name, last_name, phone, store_id, user_type")
           .eq("id", authUser.id)
-          .single();
+          .maybeSingle();
 
-        if (dbErr) throw dbErr;
+        // If user doesn't exist in users table, it's okay - they might be a customer
+        if (dbErr || !userData) {
+          console.log("⚠️ User not found in users table - likely a customer:", authUser.id);
+          
+          // Create a minimal user object from auth data
+          const fallbackUser: CurrentUserWithProfile = {
+            id: authUser.id,
+            email: authUser.email || "",
+            first_name: authUser.user_metadata?.first_name || "",
+            last_name: authUser.user_metadata?.last_name || "",
+            phone: authUser.user_metadata?.phone || null,
+            store_id: null,
+            user_type: USERTYPE.CUSTOMER, // Use enum value instead of string
+            profile: null,
+          };
 
+          if (mounted) {
+            globalUserCache = {
+              user: fallbackUser,
+              storeSlug: null,
+              storeId: null,
+              timestamp: Date.now(),
+            };
+
+            setUser(fallbackUser);
+            setStoreSlug(null);
+            setStoreId(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Parse the user data
         const parsedUser = userSchema.parse(userData);
 
-        // Fetch store slug
+        // Fetch store slug if user has store_id
         let userStoreSlug: string | null = null;
         if (parsedUser.store_id) {
           const { data: storeData } = await supabase
@@ -90,16 +118,12 @@ export function useCurrentUser() {
           userStoreSlug = storeData?.store_slug || null;
         }
 
-        // REMOVED: Profile fetching - it was using wrong ID and causing errors
-        // Store owners don't have customer profiles anyway
-
         const userWithProfile: CurrentUserWithProfile = {
           ...parsedUser,
-          profile: null, // Always set to null since store owners don't have customer profiles
+          profile: null,
         };
 
         if (mounted) {
-          // Update global cache - this will be shared across all components
           globalUserCache = {
             user: userWithProfile,
             storeSlug: userStoreSlug,
@@ -125,7 +149,7 @@ export function useCurrentUser() {
       }
     };
 
-    // Initial load - only run once
+    // Initial load
     supabase.auth
       .getUser()
       .then(({ data: { user: authUser } }) => {
@@ -145,7 +169,6 @@ export function useCurrentUser() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
-        // Clear cache if user changes
         if (currentAuthUser && session?.user?.id !== currentAuthUser.id) {
           globalUserCache = null;
         }
@@ -153,7 +176,6 @@ export function useCurrentUser() {
       }
     });
 
-    // Cleanup
     return () => {
       mounted = false;
       subscription.unsubscribe();
@@ -166,12 +188,11 @@ export function useCurrentUser() {
     storeId,
     loading,
     error,
-    role: user?.user_type,
+    role: user?.user_type as string,
     profile: user?.profile,
   };
 }
 
-// Export function to clear user cache if needed
 export function clearUserCache() {
   globalUserCache = null;
 }

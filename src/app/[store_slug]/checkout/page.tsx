@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/[store_slug]/checkout/page.tsx
+// app/[store_slug]/checkout/page.tsx - FIXED VERSION
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,8 +15,6 @@ import { useOrderProcess } from "@/lib/hook/useOrderProcess";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
 import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
-import { createCheckoutCustomer } from "@/lib/queries/customers/createCheckoutCustomer";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { AnimatePresence } from "framer-motion";
 import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
@@ -24,14 +22,16 @@ import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { AuthResponse, User } from "@supabase/supabase-js";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
-  const [taxAmount, setTaxAmount] = useState<number>(0); // Fixed tax amount from store
+  const [taxAmount, setTaxAmount] = useState<number>(0);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
 
@@ -40,7 +40,12 @@ export default function CheckoutPage() {
   const store_slug = params.store_slug as string;
 
   const notify = useSheiNotification();
-  const { clearFormData } = useCheckoutStore();
+  const {
+    clearFormData,
+    setJustCreatedAccount,
+    setCreatedAccountEmail,
+    clearAccountCreationFlags,
+  } = useCheckoutStore();
   const { clearStoreCart } = useCartStore();
 
   const {
@@ -68,12 +73,18 @@ export default function CheckoutPage() {
   } = useOrderProcess(store_slug);
 
   const { session, loading: authLoading } = useSupabaseAuth();
-  const { user: currentUser, loading: userLoading } = useCurrentUser();
+  const {
+    customer: currentCustomer,
+    loading: customerLoading,
+    isLoggedIn,
+    authEmail,
+    authUserId,
+  } = useCurrentCustomer(store_slug);
 
-  const isUserLoggedIn = Boolean(session && currentUser);
+  const isUserLoggedIn = Boolean(session && currentCustomer?.auth_user_id);
   const isSubmitting = isProcessing || orderLoading;
   const isLoadingOverall =
-    cartLoading || authLoading || userLoading || storeLoading;
+    cartLoading || authLoading || customerLoading || storeLoading;
 
   // ✅ Fetch tax amount from store settings
   useEffect(() => {
@@ -83,7 +94,7 @@ export default function CheckoutPage() {
         if (storeId) {
           const storeSettings = await getStoreSettings(storeId);
           if (storeSettings && storeSettings.tax_rate) {
-            setTaxAmount(storeSettings.tax_rate); // Set fixed tax amount
+            setTaxAmount(storeSettings.tax_rate);
             console.log(
               "✅ Tax amount fetched from store:",
               storeSettings.tax_rate
@@ -192,13 +203,13 @@ export default function CheckoutPage() {
       order_number: orderNumber,
       customer_id: customerId || "temp-customer",
       store_id: invoiceStoreData?.id || "temp-store-id",
-      status: OrderStatus.PENDING, // ✅ Using enum
+      status: OrderStatus.PENDING,
       subtotal: calculations.subtotal,
-      tax_amount: taxAmount, // ✅ Fixed tax amount
+      tax_amount: taxAmount,
       shipping_fee: shippingFee,
-      total_amount: totalWithTax, // ✅ Use total with tax
+      total_amount: totalWithTax,
       currency: "BDT",
-      payment_status: PaymentStatus.PENDING, // ✅ Using enum
+      payment_status: PaymentStatus.PENDING,
       payment_method: "cod",
       shipping_address: shippingAddress,
       billing_address: billingAddress,
@@ -241,7 +252,8 @@ export default function CheckoutPage() {
       cartItemsCount: cartItems.length,
       selectedShipping,
       shippingFee,
-      taxAmount, // ✅ Fixed tax amount
+      taxAmount,
+      currentCustomerId: currentCustomer?.id,
     });
 
     if (cartItems.length === 0) return notify.error("Your cart is empty");
@@ -250,48 +262,48 @@ export default function CheckoutPage() {
 
     setIsProcessing(true);
 
+    // Clear any previous account creation flags
+    clearAccountCreationFlags();
+
     try {
       const formDataWithShipping = {
         ...values,
         shippingMethod: selectedShipping,
         shippingFee,
-        taxAmount, // ✅ Include fixed tax amount
+        taxAmount,
       };
 
       let storeCustomerId: string = "";
       let authUserId: string | null = null;
+      let accountCreatedDuringCheckout = false;
+      let loginSuccess = false;
 
-      // 🔐 LOGGED IN USER FLOW
-      if (isUserLoggedIn && currentUser) {
-        authUserId = currentUser.id;
-        const { data: storeCustomer, error } = await supabase
-          .from("store_customers")
-          .select("id, profile_id")
-          .eq("auth_user_id", currentUser.id)
-          .maybeSingle();
+      // 🔐 LOGGED IN USER FLOW (using currentCustomer from useCurrentCustomer)
+      if (isUserLoggedIn && currentCustomer) {
+        console.log(
+          "✅ User is logged in, using existing customer:",
+          currentCustomer.id
+        );
+        authUserId = currentCustomer.auth_user_id || null;
+        storeCustomerId = currentCustomer.id;
 
-        if (error) console.error("❌ store_customer lookup failed", error);
-
-        if (storeCustomer) {
-          storeCustomerId = storeCustomer.id;
-
-          if (storeCustomer.profile_id) {
-            await updateCustomerProfile(storeCustomer.profile_id, values);
-          }
+        // Update customer profile if needed
+        if (currentCustomer.profile?.id) {
+          await updateCustomerProfile(currentCustomer.profile.id, values);
         } else {
-          storeCustomerId = await createCustomerWithRetry(
-            values,
-            store_slug,
-            authUserId
-          );
+          await createCustomerProfile(storeCustomerId, values);
         }
       }
 
       // 🧑‍🧾 GUEST / NON-LOGGED USER
       if (!isUserLoggedIn) {
+        console.log(
+          "🔄 User is not logged in, checking for existing customer..."
+        );
         const existing = await getCustomerByEmail(values.email, store_slug);
 
         if (existing) {
+          console.log("✅ Found existing customer:", existing.id);
           storeCustomerId = existing.id;
 
           if (existing.profile_id) {
@@ -300,13 +312,24 @@ export default function CheckoutPage() {
             await createCustomerProfile(existing.id, values);
           }
 
+          // If customer exists but has no auth_user_id AND user provided password
           if (!existing.auth_user_id && values.password) {
+            console.log("🔄 Creating auth account for existing customer...");
             try {
               const authResult = await handleAuthForExistingCustomer(
                 values,
                 existing.id
               );
               authUserId = authResult.authUserId;
+              loginSuccess = authResult.loginSuccess;
+              accountCreatedDuringCheckout = true;
+
+              // ✅ Set Zustand flags for immediate order access
+              if (authUserId) {
+                setJustCreatedAccount(true);
+                setCreatedAccountEmail(values.email);
+                console.log("✅ Account linked to existing customer");
+              }
 
               if (!authResult.success) {
                 notify.warning(
@@ -319,10 +342,23 @@ export default function CheckoutPage() {
             }
           }
         } else {
+          // No existing customer found
+          console.log("📝 No existing customer found, creating new...");
           if (values.password) {
+            // Create new account with password
+            console.log("🔐 Creating new account with password...");
             const authResult = await createAuthAndCustomer(values, store_slug);
             storeCustomerId = authResult.customerId;
             authUserId = authResult.authUserId;
+            loginSuccess = authResult.loginSuccess;
+            accountCreatedDuringCheckout = true;
+
+            // ✅ Set Zustand flags for immediate order access
+            if (authUserId) {
+              setJustCreatedAccount(true);
+              setCreatedAccountEmail(values.email);
+              console.log("✅ New account created");
+            }
 
             if (!authResult.success) {
               notify.warning(
@@ -330,6 +366,8 @@ export default function CheckoutPage() {
               );
             }
           } else {
+            // Guest checkout without password
+            console.log("👤 Creating guest customer...");
             storeCustomerId = await createGuestCustomer(values, store_slug);
           }
         }
@@ -343,6 +381,7 @@ export default function CheckoutPage() {
         );
       }
 
+      console.log("🚀 Processing order with customer ID:", storeCustomerId);
       const result = await processOrder(
         formDataWithShipping,
         storeCustomerId,
@@ -351,7 +390,7 @@ export default function CheckoutPage() {
         shippingFee,
         cartItems,
         calculations,
-        taxAmount // ✅ Pass fixed tax amount
+        taxAmount
       );
 
       if (!result.success) {
@@ -366,9 +405,13 @@ export default function CheckoutPage() {
       if (isUserLoggedIn) {
         notify.success("Order placed successfully!");
       } else if (values.password) {
-        if (authUserId) {
+        if (authUserId && loginSuccess) {
           notify.success(
-            "Order placed successfully! Account created. Check your email."
+            "Order placed successfully! Account created and logged in."
+          );
+        } else if (authUserId && !loginSuccess) {
+          notify.success(
+            "Order placed successfully! Account created. Please check your email to verify."
           );
         } else {
           notify.success(
@@ -505,20 +548,41 @@ export default function CheckoutPage() {
     throw new Error("Failed to create customer after retries");
   }
 
+  async function handleLogin(
+    email: string,
+    password: string
+  ): Promise<User | null> {
+    const { data, error }: AuthResponse =
+      await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+    if (error) {
+      console.error("Login failed:", error.message);
+      return null;
+    }
+    console.log("Login successful! Session data:", data);
+    return data.user;
+  }
+
   async function createAuthAndCustomer(
     values: CustomerCheckoutFormValues,
     storeSlug: string
   ): Promise<{
     customerId: string;
     authUserId: string | null;
+    loginSuccess: boolean;
     success: boolean;
   }> {
     const storeId = await getStoreId(storeSlug);
     if (!storeId) throw new Error("Store not found");
 
     let authUserId: string | null = null;
+    let loginSuccess = false;
 
     try {
+      // First try to sign up
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email.toLowerCase(),
         password: values.password!,
@@ -533,18 +597,58 @@ export default function CheckoutPage() {
       });
 
       if (authError) {
-        console.warn("⚠️ Auth creation failed:", authError.message);
-        const customerId = await createGuestCustomer(values, storeSlug);
-        return { customerId, authUserId: null, success: false };
-      }
+        console.warn("⚠️ Auth sign-up failed:", authError.message);
 
-      if (authData.user) {
+        // If user already exists, try signing in
+        if (authError.message.includes("already registered")) {
+          console.log("🔄 User exists, attempting sign-in...");
+          const { data: signInData, error: signInError } =
+            await supabase.auth.signInWithPassword({
+              email: values.email.toLowerCase(),
+              password: values.password!,
+            });
+
+          if (signInError) {
+            console.warn("⚠️ Sign-in also failed:", signInError.message);
+            // Create guest customer instead
+            const customerId = await createGuestCustomer(values, storeSlug);
+            return {
+              customerId,
+              authUserId: null,
+              loginSuccess: false,
+              success: false,
+            };
+          }
+
+          if (signInData.user) {
+            authUserId = signInData.user.id;
+            loginSuccess = true;
+            console.log("✅ Auto-login successful for existing user");
+          }
+        } else {
+          // Other error, create guest customer
+          const customerId = await createGuestCustomer(values, storeSlug);
+          return {
+            customerId,
+            authUserId: null,
+            loginSuccess: false,
+            success: false,
+          };
+        }
+      } else if (authData?.user) {
         authUserId = authData.user.id;
+        // Try to auto-login after sign-up
+        const user = await handleLogin(
+          values.email.toLowerCase(),
+          values.password!
+        );
+        loginSuccess = !!user;
       }
     } catch (authError) {
       console.error("❌ Auth creation error:", authError);
     }
 
+    // Create customer with auth_user_id
     const customerId = await createCustomerWithRetry(
       values,
       storeSlug,
@@ -552,7 +656,12 @@ export default function CheckoutPage() {
     );
     await createProfileAndLinks(customerId, storeId, values);
 
-    return { customerId, authUserId, success: !!authUserId };
+    return {
+      customerId,
+      authUserId,
+      loginSuccess,
+      success: !!authUserId,
+    };
   }
 
   async function createGuestCustomer(
@@ -583,10 +692,16 @@ export default function CheckoutPage() {
   async function handleAuthForExistingCustomer(
     values: CustomerCheckoutFormValues,
     customerId: string
-  ): Promise<{ authUserId: string | null; success: boolean }> {
+  ): Promise<{
+    authUserId: string | null;
+    loginSuccess: boolean;
+    success: boolean;
+  }> {
     let authUserId: string | null = null;
+    let loginSuccess = false;
 
     try {
+      // First try to sign up
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email.toLowerCase(),
         password: values.password!,
@@ -600,20 +715,67 @@ export default function CheckoutPage() {
       });
 
       if (authError) {
-        console.warn("⚠️ Auth creation failed:", authError.message);
-        return { authUserId: null, success: false };
+        // If user already exists, try signing in
+        if (authError.message.includes("already registered")) {
+          console.log("🔄 Existing user, attempting sign-in...");
+          const { data: signInData, error: signInError } =
+            await supabase.auth.signInWithPassword({
+              email: values.email.toLowerCase(),
+              password: values.password!,
+            });
+
+          if (signInError) {
+            console.warn("⚠️ Sign-in failed:", signInError.message);
+            return { authUserId: null, loginSuccess: false, success: false };
+          }
+
+          if (signInData.user) {
+            authUserId = signInData.user.id;
+            loginSuccess = true;
+            console.log("✅ Auto-login successful for existing user");
+          }
+        } else {
+          console.warn("⚠️ Auth creation failed:", authError.message);
+          return { authUserId: null, loginSuccess: false, success: false };
+        }
+      } else if (authData?.user) {
+        authUserId = authData.user.id;
+
+        // Try to auto-login after sign-up
+        try {
+          const { error: signInError } = await supabase.auth.signInWithPassword(
+            {
+              email: values.email.toLowerCase(),
+              password: values.password!,
+            }
+          );
+
+          if (signInError) {
+            console.warn(
+              "⚠️ Auto-login after sign-up failed:",
+              signInError.message
+            );
+            loginSuccess = false;
+          } else {
+            loginSuccess = true;
+            console.log("✅ Auto-login after sign-up successful");
+          }
+        } catch (loginError) {
+          console.error("❌ Auto-login error:", loginError);
+          loginSuccess = false;
+        }
       }
 
-      if (authData.user) {
-        authUserId = authData.user.id;
+      // Link auth to customer if we have authUserId
+      if (authUserId) {
         await linkAuthToCustomer(customerId, authUserId);
-        return { authUserId, success: true };
+        return { authUserId, loginSuccess, success: true };
       }
     } catch (error) {
       console.error("❌ Auth setup error:", error);
     }
 
-    return { authUserId: null, success: false };
+    return { authUserId: null, loginSuccess: false, success: false };
   }
 
   async function linkAuthToCustomer(customerId: string, authUserId: string) {
@@ -684,9 +846,9 @@ export default function CheckoutPage() {
   // Store not found
   if (storeError || !invoiceStoreData) {
     return (
-      <div className='min-h-screen flex items-center justify-center'>
-        <div className='text-center'>
-          <h1 className='text-2xl font-bold mb-4'>Store Not Found</h1>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
           <p>The store you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
@@ -707,12 +869,12 @@ export default function CheckoutPage() {
         loading={isLoadingOverall}
         error={cartError}
         onCheckout={handleCheckoutSubmit}
-        onShippingChange={handleShippingChange} // ✅ Simplified, no tax parameter
+        onShippingChange={handleShippingChange}
         selectedShipping={selectedShipping}
         shippingFee={shippingFee}
-        taxAmount={taxAmount} // ✅ Pass fixed tax amount
+        taxAmount={taxAmount}
         isProcessing={isSubmitting}
-        mode='checkout'
+        mode="checkout"
       />
 
       <AnimatePresence>
@@ -721,6 +883,10 @@ export default function CheckoutPage() {
             isOpen={showInvoice}
             onClose={() => {
               setShowInvoice(false);
+              // Clear account creation flags when leaving invoice
+              setTimeout(() => {
+                clearAccountCreationFlags();
+              }, 1000);
               router.push(`/${store_slug}/order-status`);
             }}
             orderData={invoiceData}
