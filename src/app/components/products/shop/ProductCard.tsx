@@ -20,7 +20,7 @@ export default function ProductCard({
   store_slug,
   product,
   onAddToCart,
-  isLoading = false,
+  // isLoading = false,
 }: ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -197,7 +197,7 @@ export default function ProductCard({
           />
           <div className="absolute inset-0 flex justify-between items-start p-4">
             {/* Category Badge */}
-            <span className="text-card-foreground text-xs uppercase tracking-wider bg-[var(--badge)] px-2 py-1 rounded-lg">
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
               {product.category?.name || "Uncategorized"}
             </span>
 
@@ -251,7 +251,7 @@ export default function ProductCard({
               </span>
             )}
           </div>
-          <div className="mt-1 h-[10px]">
+          <div className="mt-1 h-2.5">
             {hasVariants ? (
               <span className="text-xs font-medium text-popover bg-card-foreground px-1 rounded">
                 Price varies by variant
@@ -293,7 +293,7 @@ export default function ProductCard({
                   size="sm"
                   className={`w-full gap-2 overflow-hidden cursor-pointer ${
                     showSuccess
-                      ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
+                      ? "bg-linear-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
                       : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
                   }`}
                 >

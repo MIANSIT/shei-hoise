@@ -43,7 +43,7 @@ export default function HeroSection() {
         {/* Example feature box on right */}
         <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8 }} className="relative">
           <div className="relative bg-card rounded-2xl p-6 md:p-8 shadow-2xl border">
-            <div className="absolute -inset-1 bg-gradient-to-r from-chart-2 to-chart-3 rounded-2xl blur opacity-20 dark:opacity-30"></div>
+            <div className="absolute -inset-1 bg-linear-to-r from-chart-2 to-chart-3 rounded-2xl blur opacity-20 dark:opacity-30"></div>
             <div className="relative bg-card rounded-xl p-4 md:p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-2">
