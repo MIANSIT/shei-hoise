@@ -52,6 +52,7 @@ export interface OrderItemVariant {
 }
 
 export interface OrderItem {
+  discounted_amount?: number;
   id: string;
   product_id: string;
   variant_id: string | null;

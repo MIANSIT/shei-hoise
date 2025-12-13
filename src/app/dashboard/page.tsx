@@ -1,10 +1,11 @@
+// app/components/admin/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import MainDashboard from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStoreOrders } from "@/lib/hook/useStoreOrders";
-import { getProducts } from "@/lib/queries/products/getProducts";
+import { getProducts, Product } from "@/lib/queries/products/getProducts";
 import {
   DollarOutlined,
   ShoppingCartOutlined,
@@ -17,88 +18,49 @@ import {
   StarOutlined,
 } from "@ant-design/icons";
 
-import type { Product } from "@/lib/queries/products/getProducts";
-import type { StoreOrder } from "@/lib/types/order";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import {
+  useDashboardMetrics,
+  TimePeriod,
+} from "@/lib/hook/useDashboardMetrics";
 
-type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
-type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
-type PaymentStatus = "paid" | "pending" | "refunded";
-type AlertType = "stock" | "order" | "payment";
+// Define types that match the useDashboardMetrics hook
+interface ProductVariant {
+  id: string;
+  variant_name: string;
+  base_price: number;
+  sale_price?: number;
+  cost_price?: number;
+  profit_margin?: number;
+  stock: {
+    quantity_available: number;
+    low_stock_threshold?: number;
+    is_low_stock: boolean;
+  };
+  is_low_stock: boolean;
+}
+
+// Use intersection type to preserve the original Product type
+type DashboardProduct = Product & {
+  variants: ProductVariant[];
+};
 
 export default function DashboardPage() {
+  // 1. Fetch user and store data
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
   const {
     orders,
     loading: ordersLoading,
     error: ordersError,
   } = useStoreOrders(storeId || "");
-  const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
 
+  // 2. State for products and time period
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("daily");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [revenue, setRevenue] = useState(0);
-  const [orderCount, setOrderCount] = useState(0);
-  const [averageOrderValue, setAverageOrderValue] = useState(0);
-  const [orderStatusCounts, setOrderStatusCounts] = useState<
-    Record<OrderStatus, number>
-  >({
-    pending: 0,
-    confirmed: 0,
-    shipped: 0,
-    delivered: 0,
-    cancelled: 0,
-  });
-  const [salesTrend, setSalesTrend] = useState<
-    { date: string; sales: number }[]
-  >([]);
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [outOfStockCount, setOutOfStockCount] = useState(0);
-  const [customerSnapshot, setCustomerSnapshot] = useState<{
-    newCustomers: number;
-    returningRate: number;
-    topCustomer: { name: string; totalSpent: number };
-  }>({
-    newCustomers: 0,
-    returningRate: 0,
-    topCustomer: { name: "", totalSpent: 0 },
-  });
-  const [topProducts, setTopProducts] = useState<
-    { name: string; revenue: number; quantity: number }[]
-  >([]);
-  const [alerts, setAlerts] = useState<
-    { type: AlertType; message: string; count: number }[]
-  >([]);
+  const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
-  const [changePercentage, setChangePercentage] = useState({
-    revenue: 0,
-    orders: 0,
-    aov: 0,
-    profit: 0,
-  });
 
-  // Helper function to check if an order is paid
-  const isOrderPaid = (order: StoreOrder): boolean => {
-    return order.payment_status?.toLowerCase() === "paid";
-  };
-
-  // ================== Payment Amounts by payment_status ==================
-  const paymentAmounts: Record<PaymentStatus, number> = {
-    paid: 0,
-    pending: 0,
-    refunded: 0,
-  };
-  orders.forEach((order) => {
-    const amount = Number(order.total_amount) || 0;
-    const key = (order.payment_status?.toLowerCase() ||
-      "pending") as PaymentStatus;
-    if (key in paymentAmounts) paymentAmounts[key] += amount;
-  });
+  // 3. Currency formatting
+  const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
 
   const renderCurrency = (amount: number) => {
     if (!currency) return amount.toFixed(2);
@@ -113,341 +75,94 @@ export default function DashboardPage() {
     return amount.toFixed(2);
   };
 
-  // ================== Filter orders by period ==================
-  const filterOrdersByPeriod = (
-    ordersList: StoreOrder[],
-    period: TimePeriod
-  ) => {
-    const now = new Date();
-    const startDate = new Date();
-    switch (period) {
-      case "daily":
-        startDate.setDate(now.getDate() - 1);
-        break;
-      case "weekly":
-        startDate.setDate(now.getDate() - 7);
-        break;
-      case "monthly":
-        startDate.setMonth(now.getMonth() - 1);
-        break;
-      case "yearly":
-        startDate.setFullYear(now.getFullYear() - 1);
-        break;
-    }
-    return ordersList.filter((order) => {
-      const orderDate = new Date(order.created_at);
-      return orderDate >= startDate && orderDate <= now;
-    });
-  };
+  // 4. Fetch products
 
-  // ================== Calculate metrics per period ==================
-  const calculatePeriodMetrics = useCallback(
-    (period: TimePeriod) => {
-      // All orders for the period (for order count and AOV)
-      const filteredOrders = filterOrdersByPeriod(orders, period);
-
-      // Paid orders only (for revenue and profit)
-      const paidOrders = filteredOrders.filter(isOrderPaid);
-
-      // Calculate metrics
-      const currentRevenue = paidOrders.reduce(
-        (sum, o) => sum + o.subtotal,
-        0
-      );
-      const currentOrderCount = filteredOrders.length;
-      const currentAOV =
-        currentOrderCount > 0 ? currentRevenue / currentOrderCount : 0;
-      const currentProfit = currentRevenue * 0.6; // Assuming 60% profit margin
-
-      setRevenue(currentRevenue);
-      setOrderCount(currentOrderCount);
-      setAverageOrderValue(currentAOV);
-
-      // Previous period calculations
-      const now = new Date();
-      const prevStart = new Date();
-      const prevEnd = new Date();
-      switch (period) {
-        case "daily":
-          prevStart.setDate(now.getDate() - 2);
-          prevEnd.setDate(now.getDate() - 1);
-          break;
-        case "weekly":
-          prevStart.setDate(now.getDate() - 14);
-          prevEnd.setDate(now.getDate() - 7);
-          break;
-        case "monthly":
-          prevStart.setMonth(now.getMonth() - 2);
-          prevEnd.setMonth(now.getMonth() - 1);
-          break;
-        case "yearly":
-          prevStart.setFullYear(now.getFullYear() - 2);
-          prevEnd.setFullYear(now.getFullYear() - 1);
-          break;
-      }
-
-      // Previous period - all orders
-      const prevPeriodOrders = orders.filter((order) => {
-        const orderDate = new Date(order.created_at);
-        return orderDate >= prevStart && orderDate <= prevEnd;
-      });
-
-      // Previous period - paid orders only
-      const prevPeriodPaidOrders = prevPeriodOrders.filter(isOrderPaid);
-
-      const prevRevenue = prevPeriodPaidOrders.reduce(
-        (sum, o) => sum + o.subtotal,
-        0
-      );
-      const prevOrderCount = prevPeriodOrders.length;
-      const prevAOV = prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0;
-      const prevProfit = prevRevenue * 0.6;
-
-      const calculateChange = (current: number, previous: number) =>
-        previous === 0
-          ? current > 0
-            ? 100
-            : 0
-          : ((current - previous) / previous) * 100;
-
-      setChangePercentage({
-        revenue: calculateChange(currentRevenue, prevRevenue),
-        orders: calculateChange(currentOrderCount, prevOrderCount),
-        aov: calculateChange(currentAOV, prevAOV),
-        profit: calculateChange(currentProfit, prevProfit),
-      });
-    },
-    [orders]
-  );
-
+  // 5. Fetch products when storeId is available
   useEffect(() => {
-    if (orders.length > 0 && storeId) calculatePeriodMetrics(timePeriod);
-  }, [timePeriod, storeId, orders.length, calculatePeriodMetrics]);
+    if (storeId) {
+      const fetchProducts = async () => {
+        if (!storeId) return;
 
-  // ================== Order Status Counts ==================
-  useEffect(() => {
-    if (!storeId || orders.length === 0) return;
-    const calculateOrderStatus = () => {
-      const statusCounts: Record<OrderStatus, number> = {
-        pending: 0,
-        confirmed: 0,
-        shipped: 0,
-        delivered: 0,
-        cancelled: 0,
-      };
-      orders.forEach((o) => {
-        const key = (o.status?.toLowerCase() || "pending") as OrderStatus;
-        if (key in statusCounts) statusCounts[key]++;
-      });
-      setOrderStatusCounts(statusCounts);
-    };
-
-    calculateOrderStatus();
-
-    // ================== Sales Trend - Only paid orders ==================
-    const days = 30;
-    const today = new Date();
-    const trendDates: string[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(today.getDate() - i);
-      trendDates.push(d.toISOString().split("T")[0]);
-    }
-
-    const trendData = trendDates.map((dateStr) => {
-      const daySales = orders
-        .filter((o) => o.created_at.split("T")[0] === dateStr && isOrderPaid(o))
-        .reduce((sum, o) => sum + o.subtotal, 0);
-      return {
-        date: new Date(dateStr).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        sales: daySales,
-      };
-    });
-    setSalesTrend(trendData);
-
-    // ================== Customers - Only paid orders ==================
-    const customerMap = new Map<
-      string,
-      { name: string; total: number; orders: number }
-    >();
-    orders.forEach((o) => {
-      if (!o.customers?.id || !isOrderPaid(o)) return;
-      const current = customerMap.get(o.customers.id) || {
-        name: o.customers.first_name || "Unknown",
-        total: 0,
-        orders: 0,
-      };
-      customerMap.set(o.customers.id, {
-        name: current.name,
-        total: current.total + o.subtotal,
-        orders: current.orders + 1,
-      });
-    });
-
-    let topCustomer = { name: "No customers", totalSpent: 0 };
-    customerMap.forEach((c) => {
-      if (c.total > topCustomer.totalSpent)
-        topCustomer = { name: c.name, totalSpent: c.total };
-    });
-
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    const newCustomers = Array.from(customerMap.keys()).filter((id) => {
-      const customerOrders = orders.filter(
-        (o) => o.customers?.id === id && isOrderPaid(o)
-      );
-      return (
-        customerOrders.length > 0 &&
-        new Date(customerOrders[0]?.created_at) > lastWeek
-      );
-    }).length;
-
-    const totalCustomers = customerMap.size;
-    const returningCustomers = Array.from(customerMap.values()).filter(
-      (c) => c.orders > 1
-    ).length;
-    const returningRate =
-      totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
-
-    setCustomerSnapshot({
-      newCustomers,
-      returningRate: parseFloat(returningRate.toFixed(1)),
-      topCustomer,
-    });
-
-    // ================== Top Products - Only paid orders ==================
-    const productMap = new Map<string, { revenue: number; quantity: number }>();
-    orders.forEach((order) => {
-      if (!isOrderPaid(order)) return;
-      order.order_items.forEach((item) => {
-        const current = productMap.get(item.product_name) || {
-          revenue: 0,
-          quantity: 0,
-        };
-        productMap.set(item.product_name, {
-          revenue: current.revenue + item.unit_price * item.quantity,
-          quantity: current.quantity + item.quantity,
-        });
-      });
-    });
-
-    const topProductsArray = Array.from(productMap.entries())
-      .sort((a, b) => b[1].revenue - a[1].revenue)
-      .slice(0, 3)
-      .map(([name, data]) => ({
-        name,
-        revenue: data.revenue,
-        quantity: data.quantity,
-      }));
-
-    setTopProducts(topProductsArray);
-  }, [storeId, orders]);
-
-  // ================== Inventory & Alerts ==================
-  useEffect(() => {
-    if (!storeId) return;
-
-    const fetchInventory = async () => {
-      try {
-        setLoadingProducts(true);
-        const productsFetched = await getProducts(storeId);
-        setProducts(productsFetched);
-
-        let lowStock = 0,
-          outOfStock = 0;
-        productsFetched.forEach((product) => {
-          if (product.stock) {
-            if ((product.stock.quantity_available ?? 0) === 0) outOfStock++;
-            else if (product.is_low_stock) lowStock++;
-          }
-          product.variants.forEach((variant) => {
-            if ((variant.stock.quantity_available ?? 0) === 0) outOfStock++;
-            else if (variant.is_low_stock) lowStock++;
-          });
-        });
-
-        setLowStockCount(lowStock);
-        setOutOfStockCount(outOfStock);
-
-        // ================== Alerts ==================
-        const alertList: { type: AlertType; message: string; count: number }[] =
-          [];
-        if (lowStock > 0)
-          alertList.push({
-            type: "stock",
-            message: "Low stock items",
-            count: lowStock,
-          });
-        if (outOfStock > 0)
-          alertList.push({
-            type: "stock",
-            message: "Out of stock items",
-            count: outOfStock,
-          });
-
-        const pendingOrders = orders.filter(
-          (o) => o.status.toLowerCase() === "pending"
-        );
-        const oldPendingOrders = pendingOrders.filter(
-          (o) =>
-            (new Date().getTime() - new Date(o.created_at).getTime()) /
-              (1000 * 60 * 60) >
-            24
-        );
-        if (oldPendingOrders.length > 0)
-          alertList.push({
-            type: "order",
-            message: "Delayed pending orders",
-            count: oldPendingOrders.length,
-          });
-
-        // Add unpaid orders alert if needed
-        const unpaidOrders = orders.filter((o) => !isOrderPaid(o)).length;
-        if (unpaidOrders > 0) {
-          alertList.push({
-            type: "payment",
-            message: "Unpaid orders",
-            count: unpaidOrders,
-          });
+        try {
+          setLoadingProducts(true);
+          const productsFetched = await getProducts(storeId);
+          // Cast to DashboardProduct - this should now work since we're using intersection type
+          setProducts(productsFetched as DashboardProduct[]);
+        } catch (err) {
+          console.error("Error fetching products:", err);
+        } finally {
+          setLoadingProducts(false);
         }
+      };
+      fetchProducts();
+    }
+  }, [storeId]);
 
-        setAlerts(alertList);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
+  // 6. Calculate all metrics using custom hook
+  const metrics = useDashboardMetrics(storeId, orders, products, timePeriod);
 
-    fetchInventory();
-  }, [storeId, orders]);
-
-  if (userLoading || ordersLoading || loadingProducts)
+  // 7. Loading and error states
+  if (userLoading || ordersLoading || loadingProducts) {
     return (
-      <div className="text-center mt-20 text-lg">Loading dashboard...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
     );
-  if (userError) return <div>Error fetching user: {userError.message}</div>;
-  if (ordersError) return <div>Error fetching orders: {ordersError}</div>;
+  }
 
-  // ================== KPI Stats ==================
+  if (userError) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+        <h2 className="text-red-800 font-semibold">Error fetching user data</h2>
+        <p className="text-red-600 mt-2">{userError.message}</p>
+      </div>
+    );
+  }
+
+  if (ordersError) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+        <h2 className="text-red-800 font-semibold">Error fetching orders</h2>
+        <p className="text-red-600 mt-2">{ordersError}</p>
+      </div>
+    );
+  }
+
+  // 8. Helper functions for UI
   const getChangeType = (
     percentage: number
   ): "positive" | "negative" | "neutral" =>
     percentage > 0 ? "positive" : percentage < 0 ? "negative" : "neutral";
 
-  const getPeriodText = (period: TimePeriod): string => {
+  // IMPORTANT: Update period labels based on financial reporting logic
+  const getPeriodLabel = (period: TimePeriod): string => {
     switch (period) {
       case "daily":
-        return "Day-over-day";
+        return "Yesterday's"; // Changed from "Today's"
       case "weekly":
-        return "Week-over-week";
+        return "Last Week's"; // Changed from "This Week's"
       case "monthly":
-        return "Month-over-month";
+        return "Last Month's"; // Changed from "This Month's"
       case "yearly":
-        return "Year-over-year";
+        return "Last Year's"; // Changed from "This Year's"
+      default:
+        return "";
+    }
+  };
+
+  const getComparisonText = (period: TimePeriod): string => {
+    switch (period) {
+      case "daily":
+        return "vs Day Before Yesterday";
+      case "weekly":
+        return "vs Week Before Last";
+      case "monthly":
+        return "vs Month Before Last";
+      case "yearly":
+        return "vs Year Before Last";
       default:
         return "";
     }
@@ -455,161 +170,183 @@ export default function DashboardPage() {
 
   const formatChangeText = (percentage: number, period: TimePeriod) => {
     const sign = percentage > 0 ? "+" : "";
-    return `${sign}${percentage.toFixed(1)}% ${getPeriodText(period)}`;
+    return `${sign}${percentage.toFixed(1)}% ${getComparisonText(period)}`;
   };
 
+  // 9. Stats for KPI cards
   const stats = [
     {
-      title: `${
-        timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)
-      } Revenue (Paid)`,
-      value: renderCurrency(revenue),
+      title: `${getPeriodLabel(timePeriod)} Revenue (Paid)`,
+      value: renderCurrency(metrics.revenue),
       icon: <DollarOutlined className="text-green-500" />,
-      change: formatChangeText(changePercentage.revenue, timePeriod),
-      changeType: getChangeType(changePercentage.revenue),
-      description: "From paid orders only",
+      change: formatChangeText(metrics.changePercentage.revenue, timePeriod),
+      changeType: getChangeType(metrics.changePercentage.revenue),
+      description: `From ${metrics.paidOrders.length} paid orders`,
     },
     {
-      title: `${
-        timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)
-      } Orders`,
-      value: orderCount.toString(),
+      title: `${getPeriodLabel(timePeriod)} Orders`,
+      value: metrics.orderCount.toString(),
       icon: <ShoppingCartOutlined className="text-blue-500" />,
-      change: formatChangeText(changePercentage.orders, timePeriod),
-      changeType: getChangeType(changePercentage.orders),
-      description: "All orders (including unpaid)",
+      change: formatChangeText(metrics.changePercentage.orders, timePeriod),
+      changeType: getChangeType(metrics.changePercentage.orders),
+      description: `Total orders (${metrics.paidOrders.length} paid)`,
     },
     {
-      title: `${
-        timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)
-      } Avg Order Value`,
-      value: renderCurrency(averageOrderValue),
+      title: `${getPeriodLabel(timePeriod)} Avg Order Value`,
+      value: renderCurrency(metrics.averageOrderValue),
       icon: <LineChartOutlined className="text-purple-500" />,
-      change: formatChangeText(changePercentage.aov, timePeriod),
-      changeType: getChangeType(changePercentage.aov),
-      description: "Based on paid revenue ÷ total orders",
+      change: formatChangeText(metrics.changePercentage.aov, timePeriod),
+      changeType: getChangeType(metrics.changePercentage.aov),
+      description: "Revenue ÷ total orders",
     },
     {
-      title: `${
-        timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)
-      } Gross Profit (Paid)`,
-      value: renderCurrency(revenue * 0.6),
+      title: `${getPeriodLabel(timePeriod)} Gross Profit (Paid)`,
+      value: renderCurrency(metrics.grossProfit),
       icon: <DollarOutlined className="text-amber-500" />,
-      change: formatChangeText(changePercentage.profit, timePeriod),
-      changeType: getChangeType(changePercentage.profit),
-      description: "From paid orders only (60% margin)",
+      change: formatChangeText(metrics.changePercentage.profit, timePeriod),
+      changeType: getChangeType(metrics.changePercentage.profit),
+      description: "Based on actual product costs & margins",
     },
   ];
 
-  // ... rest of the component remains the same ...
+  // 10. Order status cards (all orders)
   const orderStatusCards = [
     {
       title: "Pending",
-      value: orderStatusCounts.pending.toString(),
+      value: metrics.orderStatusCounts.pending.toString(),
       icon: <ExclamationOutlined className="text-amber-500" />,
       color: "bg-amber-50",
       textColor: "text-amber-700",
     },
     {
       title: "Confirmed",
-      value: orderStatusCounts.confirmed.toString(),
+      value: metrics.orderStatusCounts.confirmed.toString(),
       icon: <SyncOutlined className="text-blue-500" />,
       color: "bg-blue-50",
       textColor: "text-blue-700",
     },
     {
       title: "Shipped",
-      value: orderStatusCounts.shipped.toString(),
+      value: metrics.orderStatusCounts.shipped.toString(),
       icon: <ShoppingCartOutlined className="text-purple-500" />,
       color: "bg-purple-50",
       textColor: "text-purple-700",
     },
     {
       title: "Delivered",
-      value: orderStatusCounts.delivered.toString(),
+      value: metrics.orderStatusCounts.delivered.toString(),
       icon: <CheckCircleOutlined className="text-green-500" />,
       color: "bg-green-50",
       textColor: "text-green-700",
     },
     {
       title: "Cancelled",
-      value: orderStatusCounts.cancelled.toString(),
+      value: metrics.orderStatusCounts.cancelled.toString(),
       icon: <CloseCircleOutlined className="text-red-500" />,
       color: "bg-red-50",
       textColor: "text-red-700",
     },
   ];
 
-  const inStockCount = products.filter(
-    (p) => (p.stock?.quantity_available ?? 0) > 0
-  ).length;
+  // 11. Inventory alerts
   const inventoryAlerts = [
     {
       title: "In Stock",
-      value: inStockCount.toString(),
-      icon: <CheckCircleOutlined />,
+      value: metrics.inStockCount.toString(),
+      icon: <CheckCircleOutlined className="text-green-600" />,
       color: "bg-green-100",
       actionText: "View Items",
     },
     {
       title: "Low Stock",
-      value: lowStockCount.toString(),
-      icon: <ExclamationOutlined />,
+      value: metrics.lowStockCount.toString(),
+      icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
-      actionText: "View Items",
+      actionText: "Review",
     },
     {
       title: "Out of Stock",
-      value: outOfStockCount.toString(),
-      icon: <CloseCircleOutlined />,
+      value: metrics.outOfStockCount.toString(),
+      icon: <CloseCircleOutlined className="text-red-600" />,
       color: "bg-red-100",
       actionText: "Restock Now",
     },
   ];
 
+  // 12. Customer stats
   const customerStats = [
     {
       title: "New Customers (7d)",
-      value: customerSnapshot.newCustomers.toString(),
+      value: metrics.customerSnapshot.newCustomers.toString(),
       icon: <UserOutlined className="text-blue-500" />,
     },
     {
       title: "Returning Rate",
-      value: `${customerSnapshot.returningRate}%`,
+      value: `${metrics.customerSnapshot.returningRate}%`,
       icon: <UserOutlined className="text-green-500" />,
     },
     {
       title: "Top Customer",
-      value: customerSnapshot.topCustomer.name,
-      subValue: renderCurrency(customerSnapshot.topCustomer.totalSpent),
+      value: metrics.customerSnapshot.topCustomer.name,
+      subValue: renderCurrency(metrics.customerSnapshot.topCustomer.totalSpent),
       icon: <StarOutlined className="text-purple-500" />,
     },
   ];
 
+  // 13. Order amounts by payment status
+  const orderAmounts = [
+    {
+      title: "Pending Amount",
+      amount: metrics.paymentAmounts.pending,
+      status: "pending" as const,
+    },
+    {
+      title: "Paid Amount",
+      amount: metrics.paymentAmounts.paid,
+      status: "paid" as const,
+    },
+    {
+      title: "Refunded Amount",
+      amount: metrics.paymentAmounts.refunded,
+      status: "refunded" as const,
+    },
+  ];
+
+  // 14. Top products
+  const topProductsDisplay = metrics.topProducts.map((product) => ({
+    name: product.name,
+    revenue: product.revenue,
+    quantity: product.quantity,
+  }));
+
+  // 15. Sales trend data
+  const enhancedSalesTrend = metrics.salesTrend.map((day) => ({
+    date: day.date,
+    sales: day.sales,
+  }));
+
+  // 16. Alerts
+  const enhancedAlerts = metrics.alerts.map((alert) => ({
+    type: alert.type,
+    message: alert.message,
+    count: alert.count,
+  }));
+
+  // 17. Render the main dashboard
   return (
-    <MainDashboard
-      stats={stats}
-      orderStatusCards={orderStatusCards}
-      orderAmounts={[
-        {
-          title: "Pending Amount",
-          amount: paymentAmounts.pending,
-          status: "pending",
-        },
-        { title: "Paid Amount", amount: paymentAmounts.paid, status: "paid" },
-        {
-          title: "Refunded Amount",
-          amount: paymentAmounts.refunded,
-          status: "refunded",
-        },
-      ]}
-      inventoryAlerts={inventoryAlerts}
-      salesTrend={salesTrend}
-      topProducts={topProducts}
-      customerStats={customerStats}
-      alerts={alerts}
-      timePeriod={timePeriod}
-      onTimePeriodChange={setTimePeriod}
-    />
+    <div className="dashboard-container">
+      <MainDashboard
+        stats={stats}
+        orderStatusCards={orderStatusCards}
+        orderAmounts={orderAmounts}
+        inventoryAlerts={inventoryAlerts}
+        salesTrend={enhancedSalesTrend}
+        topProducts={topProductsDisplay}
+        customerStats={customerStats}
+        alerts={enhancedAlerts}
+        timePeriod={timePeriod}
+        onTimePeriodChange={setTimePeriod}
+      />
+    </div>
   );
 }
