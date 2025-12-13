@@ -119,12 +119,12 @@ const StockTable: React.FC<StockTableProps> = ({
             </div>
 
             {/* --- Show message if variants matched search --- */}
-            {"variants" in record &&
+            {/* {"variants" in record &&
               (record as ProductRowWithMatch).hasMatchingVariants && (
                 <div className="text-sm text-blue-600 italic">
                   Some variants match your search. Expand to view.
                 </div>
-              )}
+              )} */}
           </div>
         );
       },
