@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/hook/useOrderProcess.ts
+// lib/hook/useOrderProcess.ts - FIXED VERSION
 import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
 import useCartStore from '../store/cartStore';
 import { CartProductWithDetails, CartCalculations } from '../types/cart';
-import { OrderStatus, PaymentStatus } from '../types/enums'; // ✅ ADD THIS IMPORT
+import { OrderStatus, PaymentStatus } from '../types/enums';
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ export function useOrderProcess(store_slug: string) {
           address: formData.shippingAddress,
           city: formData.city,
           country: formData.country,
-          customer_id: storeCustomerId,
+          customer_id: storeCustomerId, // This should come from the checkout page
         },
         orderProducts: cartItems.map(item => {
           return {
@@ -99,8 +99,8 @@ export function useOrderProcess(store_slug: string) {
         additionalCharges: 0, // Default to 0 for customer orders
         deliveryCost: shippingFee,
         totalAmount: totalWithTax,
-        status: OrderStatus.PENDING, // ✅ Use enum
-        paymentStatus: PaymentStatus.PENDING, // ✅ Use enum
+        status: OrderStatus.PENDING,
+        paymentStatus: PaymentStatus.PENDING,
         paymentMethod,
         currency: 'BDT',
         deliveryOption,
@@ -130,6 +130,7 @@ export function useOrderProcess(store_slug: string) {
         return {
           success: true,
           orderId: result.orderId,
+          orderNumber: orderData.orderNumber,
           message: 'Order placed successfully! Your cart has been cleared.'
         };
       } else {

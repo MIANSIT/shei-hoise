@@ -1,8 +1,8 @@
-// app/[store_slug]/order-status/page.tsx
+// app/[store_slug]/order-status/page.tsx - FIXED
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
 import Footer from "../../components/common/Footer";
@@ -16,109 +16,270 @@ import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { useParams } from "next/navigation";
 import { OrderAuthPrompt } from "../../components/auth/OrderAuthPrompt";
 import { Button } from "@/components/ui/button";
-import { useCheckoutStore } from "@/lib/store/userInformationStore"; // ✅ ADD THIS IMPORT
+import { useCheckoutStore } from "@/lib/store/userInformationStore";
 
 export default function StoreOrdersPage() {
-  const { user, loading: userLoading } = useCurrentUser();
   const params = useParams();
   const storeSlug = params.store_slug as string;
   
-  // ✅ ADD THIS: Initialize the store to ensure data is loaded
-  const { setStoreSlug } = useCheckoutStore();
+  const { 
+    customer, 
+    loading: customerLoading, 
+    error: customerError,
+    hasAuthUserId,
+    isLoggedIn,
+    authEmail,
+  } = useCurrentCustomer(storeSlug);
   
   const [orders, setOrders] = useState<StoreOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
+  const { justCreatedAccount, createdAccountEmail, clearAccountCreationFlags } = useCheckoutStore();
+  const isFetchingOrdersRef = useRef(false);
+  const mountedRef = useRef(true);
+  const isNewlyCreatedAccount = Boolean(
+    justCreatedAccount && 
+    createdAccountEmail && 
+    createdAccountEmail === customer?.email
+  );
+
+  // ✅ SPECIAL CASE: If user just created account during checkout, force show orders
+  const shouldForceShowOrders = isNewlyCreatedAccount && customer?.auth_user_id;
   
-  // Use useMemo to get a stable user ID reference
-  const userId = useMemo(() => user?.id, [user?.id]);
-  const hasFetchedRef = useRef(false);
+  // DEBUG LOGS
+  console.log('🎯 ORDER STATUS DECISION:', {
+    hasCustomer: !!customer,
+    customerEmail: customer?.email,
+    customerHasAuthId: hasAuthUserId,
+    isLoggedIn,
+    authEmail,
+    shouldShowOrders: isLoggedIn && hasAuthUserId,
+    shouldShowSignIn: !isLoggedIn && hasAuthUserId,
+    shouldShowCompleteAccount: !isLoggedIn && !hasAuthUserId && !!customer,
+    shouldShowNewAccount: !customer,
+  });
 
-  // ✅ Store the current store slug when page loads
-  useEffect(() => {
-    if (storeSlug) {
-      setStoreSlug(storeSlug);
+  // ✅ FIXED: Memoized fetch orders function - MOVED BEFORE ANY CONDITIONAL RETURNS
+  const fetchOrders = useCallback(async () => {
+    if (!customer?.id || isFetchingOrdersRef.current || !mountedRef.current) {
+      return;
     }
-  }, [storeSlug, setStoreSlug]);
 
-  // ✅ Fetch orders only if user is logged in
-  useEffect(() => {
-    if (!userId || userLoading) return;
+    // Allow fetching orders if:
+    // 1. User is logged in AND has auth_user_id, OR
+    // 2. User just created account during checkout (even if not fully logged in yet)
+    const shouldFetchOrders = 
+      (isLoggedIn && hasAuthUserId) || shouldForceShowOrders;
+    
+    console.log('🔄 Should fetch orders?', {
+      shouldFetchOrders,
+      isLoggedIn,
+      hasAuthUserId,
+      shouldForceShowOrders,
+      customerId: customer?.id,
+    });
 
-    if (!hasFetchedRef.current) {
-      const fetchOrders = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const customerOrders = await getCustomerOrders(userId);
-          setOrders(customerOrders);
-          hasFetchedRef.current = true;
-        } catch (err) {
-          console.error('Error fetching orders:', err);
-          setError('Failed to load orders. Please try again.');
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchOrders();
-    }
-  }, [userId, userLoading]);
-
-  // Reset when user changes (logs out)
-  useEffect(() => {
-    if (!userId) {
-      hasFetchedRef.current = false;
+    if (!shouldFetchOrders) {
       setOrders([]);
-      setLoading(true);
+      setLoadingOrders(false);
+      return;
     }
-  }, [userId]);
+
+    try {
+      isFetchingOrdersRef.current = true;
+      setLoadingOrders(true);
+      setError(null);
+      console.log('🔄 Fetching orders for customer:', customer.id);
+      
+      const customerOrders = await getCustomerOrders(customer.id);
+      
+      if (mountedRef.current) {
+        setOrders(customerOrders);
+        
+        // If this was a newly created account, clear the flags after fetching orders
+        if (shouldForceShowOrders) {
+          console.log('🧹 Clearing account creation flags after fetching orders');
+          setTimeout(() => {
+            clearAccountCreationFlags();
+          }, 1000);
+        }
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        console.error('Error fetching orders:', err);
+        setError('Failed to load orders. Please try again.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoadingOrders(false);
+        isFetchingOrdersRef.current = false;
+      }
+    }
+  }, [customer?.id, isLoggedIn, hasAuthUserId, shouldForceShowOrders, clearAccountCreationFlags]);
+
+  // Main effect to fetch orders
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    if (!customerLoading && customer) {
+      fetchOrders();
+    } else if (!customerLoading && !customer) {
+      setOrders([]);
+      setLoadingOrders(false);
+    }
+
+    // Cleanup
+    return () => {
+      mountedRef.current = false;
+      isFetchingOrdersRef.current = false;
+    };
+  }, [customer, customerLoading, fetchOrders]);
 
   const handleViewInvoice = (order: StoreOrder) => {
     setSelectedOrder(order);
     setShowInvoice(true);
   };
 
-  // Show loading while checking auth
-  if (userLoading) {
+  // Show loading while checking customer
+  if (customerLoading) {
     return <UserLoadingSkeleton />;
   }
 
-  // ✅ If user is NOT logged in, show the authentication prompt
-  if (!user) {
+  // Show error if customer fetch failed
+  if (customerError) {
     return (
-      <OrderAuthPrompt 
-        storeSlug={storeSlug}
-        title="Access Your Orders"
-        description="Sign in to view your order history, track shipments, and manage your purchases"
-      />
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-destructive mb-4">
+            <svg className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Unable to Load Customer Data</h3>
+          <p className="text-muted-foreground mb-4">Please try again or contact support.</p>
+          <Button 
+            variant="outline" 
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
     );
   }
 
-  // ✅ User IS logged in - show their orders
+  // Check if user is logged in with different email than order email
+  const isEmailMismatch = isLoggedIn && authEmail && customer?.email && authEmail !== customer.email;
+
+  // DECISION TREE (in order of priority):
+  
+  // 1. Email mismatch - logged in with different email
+  if (isLoggedIn && authEmail && customer?.email && authEmail !== customer.email) {
+    console.log('📢 Showing email mismatch prompt');
+    return (
+      <OrderAuthPrompt 
+        storeSlug={storeSlug}
+        customerEmail={customer?.email}
+        hasAuthUserId={hasAuthUserId}
+        isLoggedIn={isLoggedIn}
+        authEmail={authEmail}
+        title="Account Mismatch"
+        description={`You're logged in as ${authEmail} but your orders are under ${customer?.email}`}
+      />
+    );
+  }
+  
+  // 2. Has account but not logged in
+  if (!isLoggedIn && hasAuthUserId && customer && !shouldForceShowOrders) {
+    console.log('📢 Showing sign in prompt (has account but not logged in)');
+    return (
+      <OrderAuthPrompt 
+        storeSlug={storeSlug}
+        customerEmail={customer.email}
+        hasAuthUserId={hasAuthUserId}
+        isLoggedIn={isLoggedIn}
+        authEmail={authEmail}
+        title="Sign In Required"
+        description={`You have an account with ${customer.email}. Please sign in to view your orders.`}
+      />
+    );
+  }
+  
+  // 3. Guest checkout - no auth_user_id
+   if (!isLoggedIn && !hasAuthUserId && customer) {
+    console.log('📢 Showing complete account prompt (guest checkout)');
+    return (
+      <OrderAuthPrompt 
+        storeSlug={storeSlug}
+        customerEmail={customer.email}
+        hasAuthUserId={hasAuthUserId}
+        isLoggedIn={isLoggedIn}
+        authEmail={authEmail}
+        title="Complete Your Account"
+        description={`You ordered as ${customer.email}. Create a password to complete your account and view orders.`}
+      />
+    );
+  }
+  
+  // 4. No customer found at all
+  if (!customer) {
+    console.log('📢 Showing new account prompt (no customer found)');
+    return (
+      <OrderAuthPrompt 
+        storeSlug={storeSlug}
+        customerEmail={undefined}
+        hasAuthUserId={false}
+        isLoggedIn={isLoggedIn}
+        authEmail={authEmail}
+        title="Access Your Orders"
+        description="Sign in or create an account to view your order history"
+      />
+    );
+  }
+  
+  // 5. Logged in with matching email and has auth_user_id - SHOW ORDERS
+  console.log('📢 Showing orders (logged in with matching email)');
+
   return (
     <>
-      <div className="min-h-screen bg-background py-8">
+      <div className="min-h-screen bg-background text-foreground py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8">
+            {isLoggedIn && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-blue-700 text-sm">
+                      Signed in as <strong>{authEmail}</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">My Orders</h1>
+                <h1 className="text-3xl font-bold">My Orders</h1>
                 <p className="text-muted-foreground mt-2">
                   View your order history and track current orders
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Store</p>
-                <p className="text-sm font-medium text-foreground">{storeSlug}</p>
+                <p className="text-sm font-medium">{storeSlug}</p>
               </div>
             </div>
           </div>
 
-          {loading ? (
+          {loadingOrders ? (
             <OrdersPageSkeleton />
           ) : error ? (
             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
@@ -145,7 +306,7 @@ export default function StoreOrdersPage() {
               <div className="mb-6 p-4 bg-muted rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-foreground">
+                    <h3 className="font-semibold">
                       Order Summary
                     </h3>
                     <p className="text-sm text-muted-foreground">
@@ -153,9 +314,9 @@ export default function StoreOrdersPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Last order</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {orders.length > 0 ? new Date(orders[0].created_at).toLocaleDateString() : 'N/A'}
+                    <p className="text-sm text-muted-foreground">Customer</p>
+                    <p className="text-sm font-medium">
+                      {customer?.email}
                     </p>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react"; // Added useRef
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
@@ -10,7 +10,7 @@ import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartBottomBar from "../cart/CartBottomBar";
 import StoreLogoTitle from "../header/StoreLogoTitle";
 import UserDropdownMobile from "./UserDropdownMobile";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer"; // UPDATED
 import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
@@ -25,18 +25,22 @@ interface MobileHeaderProps {
 
 export default function MobileHeader({
   storeSlug,
-}: // isAdmin = false,
-MobileHeaderProps) {
+  isAdmin = false,
+}: MobileHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [isStoreLoading, setIsStoreLoading] = useState(true);
 
-  const { user, loading: userLoading } = useCurrentUser();
-  const pathname = usePathname();
+  // UPDATED: Use useCurrentCustomer
+  const {
+    customer,
+    loading: customerLoading,
+    isLoggedIn,
+  } = useCurrentCustomer(storeSlug);
 
-  // Ref for the mobile menu
+  const pathname = usePathname();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,6 +91,19 @@ MobileHeaderProps) {
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
 
+  // AuthLinks for mobile menu (when not logged in)
+  const authLinks: NavLink[] =
+    !isAdmin && !isLoggedIn
+      ? [
+          { name: "Log in", path: `/login?redirect=/${storeSlug}` },
+          {
+            name: "Sign up",
+            path: `/sign-up?redirect=/${storeSlug}`,
+            isHighlighted: true,
+          },
+        ]
+      : [];
+
   // Skeleton for store logo/title
   const StoreLogoSkeleton = () => (
     <div className="flex items-center gap-3">
@@ -133,7 +150,7 @@ MobileHeaderProps) {
   return (
     <>
       <header
-        ref={menuRef} // Added ref here
+        ref={menuRef}
         className="bg-background px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50"
       >
         <div className="flex items-center justify-between">
@@ -149,8 +166,8 @@ MobileHeaderProps) {
             />
           )}
 
-          {/* Header Icons - Show skeleton while user data is loading */}
-          {userLoading ? (
+          {/* Header Icons - Show skeleton while customer data is loading */}
+          {customerLoading ? (
             <HeaderIconsSkeleton />
           ) : (
             <div className="flex items-center gap-2">
@@ -201,10 +218,27 @@ MobileHeaderProps) {
                   );
                 })}
 
-                {/* User Section - Show skeleton while user data is loading */}
-                {userLoading ? (
+                {/* Add My Orders link for logged-in customers */}
+                {isLoggedIn && (
+                  <li>
+                    <Link
+                      href={`/${storeSlug}/order-status`}
+                      className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
+                        pathname === `/${storeSlug}/order-status`
+                          ? "bg-accent text-accent-foreground"
+                          : "text-foreground hover:bg-accent"
+                      }`}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      My Orders
+                    </Link>
+                  </li>
+                )}
+
+                {/* User Section - Show skeleton while customer data is loading */}
+                {customerLoading ? (
                   <UserSectionSkeleton />
-                ) : user ? (
+                ) : isLoggedIn ? (
                   <>
                     <li>
                       <div className="border-t border-border my-2" />
@@ -220,14 +254,7 @@ MobileHeaderProps) {
                     </li>
                     <li>
                       <AuthButtons
-                        links={[
-                          { name: "Log in", path: "/login" },
-                          {
-                            name: "Sign up",
-                            path: "/sign-up",
-                            isHighlighted: true,
-                          },
-                        ]}
+                        links={authLinks}
                         isVertical={true}
                         isAdminPanel={false}
                       />

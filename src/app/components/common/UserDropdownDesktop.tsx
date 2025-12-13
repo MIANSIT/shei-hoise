@@ -3,31 +3,37 @@
 import { Dropdown, MenuProps } from "antd";
 import Link from "next/link";
 import AuthButtons from "../header/AuthButtons";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer"; // UPDATED
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/store/authStore";
 import { LogoutOutlined } from "@ant-design/icons";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
-import { useParams } from "next/navigation"; // Add this import
+import { useParams } from "next/navigation";
+import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer"; // ADD THIS
 
 interface UserDropdownProps {
   className?: string;
+  customerName: string; // ADD THESE PROPS
+  customerEmail: string;
+  storeSlug: string;
 }
 
 export default function UserDropdownDesktop({
   className = "",
+  customerName,
+  customerEmail,
+  storeSlug,
 }: UserDropdownProps) {
-  const { user, loading } = useCurrentUser();
+  const { loading } = useCurrentCustomer(storeSlug); // UPDATED
   const { logout } = useAuthStore();
   const { success, error } = useSheiNotification();
-  const params = useParams(); // Get route params
-  const store_slug = params.store_slug as string; // Get store_slug from URL
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
       logout();
+      clearCustomerCache(); // Clear customer cache
       success("Logged out successfully ✅");
     } catch (err) {
       console.error("Logout error:", err);
@@ -40,24 +46,21 @@ export default function UserDropdownDesktop({
     return (
       <div
         className={`cursor-pointer ${className} flex items-center gap-2`}
-        style={{ minWidth: 100 }} // adjust to match AuthButtons width
+        style={{ minWidth: 100 }}
       >
         <SheiSkeleton className="h-10 w-24 rounded-md" />
       </div>
     );
   }
 
-  // ✅ Show nothing if no user
-  if (!user) return null;
-
   const items: MenuProps["items"] = [
     {
       key: "profile",
-      label: <Link href={`/${store_slug}/my-profile`}>Profile</Link>, // Updated
+      label: <Link href={`/${storeSlug}/my-profile`}>Profile</Link>,
     },
     {
       key: "orders",
-      label: <Link href={`/${store_slug}/order-status`}>Order Status</Link>, // Updated
+      label: <Link href={`/${storeSlug}/order-status`}>Order Status</Link>,
     },
     {
       type: "divider",
@@ -86,7 +89,7 @@ export default function UserDropdownDesktop({
         <AuthButtons
           links={[
             {
-              name: user.first_name || "Profile",
+              name: customerName || "Profile",
               path: "#",
               isHighlighted: true,
             },

@@ -2,26 +2,36 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer"; // UPDATED
 import { useAuthStore } from "@/lib/store/authStore";
 import { supabase } from "@/lib/supabase";
 import { LogoutOutlined } from "@ant-design/icons";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { ButtonSkeleton } from "@/app/components/skeletons/ButtonSkeleton";
 import { useParams } from "next/navigation";
+import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer"; // ADD THIS
 
 export default function UserDropdownMobile() {
-  const { user, loading } = useCurrentUser(); // ✅ use 'loading' from your hook
+  const params = useParams();
+  const storeSlug = params.store_slug as string;
+  
+  // UPDATED: Use useCurrentCustomer instead of useCurrentUser
+  const { 
+    customer, 
+    loading, 
+    isLoggedIn,
+    authEmail 
+  } = useCurrentCustomer(storeSlug);
+  
   const { logout } = useAuthStore();
   const [open, setOpen] = useState(false);
   const { success, error } = useSheiNotification();
-  const params = useParams();
-  const storeSlug = params.store_slug as string;
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
       logout();
+      clearCustomerCache(); // Clear customer cache
       setOpen(false);
       success("Logged out successfully ✅");
     } catch (err) {
@@ -35,14 +45,20 @@ export default function UserDropdownMobile() {
     return <ButtonSkeleton fullWidth />;
   }
 
-  if (user) {
+  // Get customer display name
+  const customerDisplayName = customer?.name || 
+                             customer?.email?.split('@')[0] || 
+                             authEmail?.split('@')[0] || 
+                             "Customer";
+
+  if (isLoggedIn && customer) {
     return (
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
           className="w-full flex justify-between items-center px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium"
         >
-          {user.first_name || "Profile"}
+          {customerDisplayName}
           <span className="ml-2 transform transition-transform duration-200">
             {open ? "▲" : "▼"}
           </span>
@@ -74,9 +90,10 @@ export default function UserDropdownMobile() {
     );
   }
 
+  // Not logged in - show sign in link
   return (
     <Link
-      href="/login"
+      href={`/login?redirect=/${storeSlug}`}
       className="w-full block text-center px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium"
     >
       Sign In

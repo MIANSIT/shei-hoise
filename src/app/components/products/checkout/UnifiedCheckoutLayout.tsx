@@ -20,12 +20,15 @@ interface UnifiedCheckoutLayoutProps {
   loading: boolean;
   error: string | null;
   onCheckout: (values: any) => void;
-  onShippingChange: (method: string, fee: number) => void; // ✅ Simplified, no tax parameter
+  onShippingChange: (method: string, fee: number) => void;
   selectedShipping: string;
   shippingFee: number;
-  taxAmount: number; // ✅ Fixed tax amount
+  taxAmount: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
+  // Removed unused props:
+  // currentCustomer?: any;
+  // isUserLoggedIn?: boolean;
 }
 
 export default function UnifiedCheckoutLayout({
@@ -38,20 +41,17 @@ export default function UnifiedCheckoutLayout({
   onShippingChange,
   selectedShipping,
   shippingFee,
-  taxAmount, // ✅ Fixed tax amount
+  taxAmount,
   isProcessing,
   mode = "checkout",
 }: UnifiedCheckoutLayoutProps) {
   const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
   const [isClearing, setIsClearing] = useState(false);
 
-  // Get cart store functions for checkout mode
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
   
-  // ✅ Calculate total with shipping AND tax
   const totalWithShippingAndTax = calculations.totalPrice + shippingFee + taxAmount;
 
-  // Handle quantity changes
   const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
@@ -72,7 +72,6 @@ export default function UnifiedCheckoutLayout({
     }
   };
 
-  // Show error state
   if (error) {
     return (
       <div className="container mx-auto p-4 lg:p-8">
@@ -90,7 +89,6 @@ export default function UnifiedCheckoutLayout({
     );
   }
 
-  // Show loading state
   if (loading && cartItems.length === 0) {
     return (
       <div className="container mx-auto p-4 lg:p-8">
@@ -110,7 +108,6 @@ export default function UnifiedCheckoutLayout({
 
   return (
     <div className="container mx-auto p-4 lg:p-8 pb-20 lg:pb-8">
-      {/* Header */}
       <div className="text-center lg:text-left mb-6 lg:mb-8">
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
           {mode === "confirm" ? "Confirm Your Order" : "Checkout"}
@@ -122,7 +119,6 @@ export default function UnifiedCheckoutLayout({
         </p>
       </div>
 
-      {/* Progress Indicator - Mobile Only */}
       <div className="lg:hidden mb-6">
         <div className="flex items-center justify-between text-sm mb-2">
           <button
@@ -157,12 +153,7 @@ export default function UnifiedCheckoutLayout({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-        {/* Cart Items Card */}
-        <div
-          className={`${
-            activeSection === "customer" ? "hidden lg:block" : "block"
-          }`}
-        >
+        <div className={`${activeSection === "customer" ? "hidden lg:block" : "block"}`}>
           <Card className="bg-card lg:sticky lg:top-8">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
@@ -210,28 +201,14 @@ export default function UnifiedCheckoutLayout({
                     <span>৳{calculations.subtotal.toFixed(2)}</span>
                   </div>
 
-                  {/* Tax Display - Only show if tax amount > 0 */}
-                  {/* {taxAmount > 0 && (
-                    <div className="flex justify-between text-foreground">
-                      <span>Tax:</span>
-                      <span>৳{taxAmount.toFixed(2)}</span>
-                    </div>
-                  )} */}
-
-                  {/* Shipping Method - No tax handling needed */}
                   <div className="border-t border-border pt-3">
                     <ShippingMethod
                       storeSlug={storeSlug}
                       subtotal={calculations.subtotal}
                       selectedShipping={selectedShipping}
-                      onShippingChange={onShippingChange} // ✅ No tax parameter
+                      onShippingChange={onShippingChange}
                     />
                   </div>
-
-                  {/* <div className="flex justify-between text-foreground">
-                    <span>Shipping:</span>
-                    <span>৳{shippingFee.toFixed(2)}</span>
-                  </div> */}
 
                   <div className="flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border">
                     <span>Total:</span>
@@ -245,7 +222,6 @@ export default function UnifiedCheckoutLayout({
                     </motion.span>
                   </div>
 
-                  {/* Continue to Details Button - Mobile Only */}
                   <Button
                     className="w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4"
                     onClick={() => setActiveSection("customer")}
@@ -259,12 +235,7 @@ export default function UnifiedCheckoutLayout({
           </Card>
         </div>
 
-        {/* Customer Information Card */}
-        <div
-          className={`${
-            activeSection === "cart" ? "hidden lg:block" : "block"
-          }`}
-        >
+        <div className={`${activeSection === "cart" ? "hidden lg:block" : "block"}`}>
           <div className="space-y-6">
             <Card className="bg-card">
               <CardHeader className="pb-4">
@@ -289,12 +260,11 @@ export default function UnifiedCheckoutLayout({
                   isLoading={isProcessing}
                   shippingMethod={selectedShipping}
                   shippingFee={shippingFee}
-                  taxAmount={taxAmount} // ✅ Pass tax amount
-                  totalAmount={totalWithShippingAndTax} // ✅ Pass total with tax
+                  taxAmount={taxAmount}
+                  totalAmount={totalWithShippingAndTax}
                   mode={mode}
                 />
 
-                {/* Back Button - Mobile Only */}
                 <Button
                   variant="outline"
                   className="w-full lg:hidden mt-4"

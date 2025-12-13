@@ -86,7 +86,7 @@ export function ProfileCard({
         ) : showEditButton ? (
           <Button
             onClick={onEdit}
-            variant="outline"
+            variant="greenish"
             className="w-full flex items-center gap-2"
           >
             <Edit className="w-4 h-4" />
