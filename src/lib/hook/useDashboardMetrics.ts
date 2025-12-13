@@ -4,106 +4,46 @@ import { StoreOrder } from "@/lib/types/order";
 import { Product } from "@/lib/queries/products/getProducts";
 
 export type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 export type PaymentStatus = "paid" | "pending" | "refunded";
 export type AlertType = "stock" | "order" | "payment";
 
-// Define proper types for order items - UPDATED FOR YOUR SCHEMA
 interface OrderItem {
   id: string;
   product_name: string;
   product_id: string;
   variant_id?: string;
-  unit_price: number; // This is tp_price or base price
-  discounted_amount?: number; // If discount exists
+  unit_price: number;
+  discounted_amount?: number;
   quantity: number;
-  // Your schema doesn't have cost_price or profit_margin
-  products?: {
-    name: string;
-    base_price: number;
-    sale_price?: number;
-    // Your schema doesn't have cost_price or profit_margin
-  };
-  product_variants?: {
-    variant_name: string;
-    base_price: number;
-    sale_price?: number;
-    // Your schema doesn't have cost_price or profit_margin
-  };
 }
 
-// Define proper types that match your actual Product structure
 interface ProductVariant {
   id: string;
   variant_name: string;
   base_price: number;
   sale_price?: number;
-  stock: {
-    quantity_available: number;
-    low_stock_threshold?: number;
-    is_low_stock: boolean;
-  };
+  stock: { quantity_available: number; low_stock_threshold?: number; is_low_stock: boolean };
   is_low_stock: boolean;
 }
 
-// Use intersection type instead of Omit to preserve the original Product type
-type DashboardProduct = Product & {
-  variants: ProductVariant[];
-};
+type DashboardProduct = Product & { variants: ProductVariant[] };
 
 interface DashboardMetrics {
-  // Core metrics
   revenue: number;
   orderCount: number;
   averageOrderValue: number;
   grossProfit: number;
-  changePercentage: {
-    revenue: number;
-    orders: number;
-    aov: number;
-    profit: number;
-  };
-
-  // Order status
+  changePercentage: { revenue: number; orders: number; aov: number; profit: number };
   orderStatusCounts: Record<OrderStatus, number>;
-
-  // Sales trend
   salesTrend: { date: string; sales: number }[];
-
-  // Customer analytics
-  customerSnapshot: {
-    newCustomers: number;
-    returningRate: number;
-    topCustomer: { name: string; totalSpent: number };
-  };
-
-  // Top products
-  topProducts: {
-    name: string;
-    revenue: number;
-    quantity: number;
-    profit: number;
-    cost: number;
-    profitMargin: number;
-  }[];
-
-  // Inventory
+  customerSnapshot: { newCustomers: number; returningRate: number; topCustomer: { name: string; totalSpent: number } };
+  topProducts: { name: string; revenue: number; quantity: number; cost: number; profit: number; profitMargin: number }[];
   lowStockCount: number;
   outOfStockCount: number;
   inStockCount: number;
-
-  // Payment amounts
   paymentAmounts: Record<PaymentStatus, number>;
-
-  // Alerts
   alerts: { type: AlertType; message: string; count: number }[];
-
-  // Time period data
   filteredOrders: StoreOrder[];
   paidOrders: StoreOrder[];
 }
@@ -120,19 +60,9 @@ export const useDashboardMetrics = (
     averageOrderValue: 0,
     grossProfit: 0,
     changePercentage: { revenue: 0, orders: 0, aov: 0, profit: 0 },
-    orderStatusCounts: {
-      pending: 0,
-      confirmed: 0,
-      shipped: 0,
-      delivered: 0,
-      cancelled: 0,
-    },
+    orderStatusCounts: { pending: 0, confirmed: 0, shipped: 0, delivered: 0, cancelled: 0 },
     salesTrend: [],
-    customerSnapshot: {
-      newCustomers: 0,
-      returningRate: 0,
-      topCustomer: { name: "", totalSpent: 0 },
-    },
+    customerSnapshot: { newCustomers: 0, returningRate: 0, topCustomer: { name: "", totalSpent: 0 } },
     topProducts: [],
     lowStockCount: 0,
     outOfStockCount: 0,
@@ -143,401 +73,135 @@ export const useDashboardMetrics = (
     paidOrders: [],
   });
 
-  // Helper: Check if order is paid
-  const isOrderPaid = useCallback((order: StoreOrder): boolean => {
-    return order.payment_status?.toLowerCase() === "paid";
+  const isOrderPaid = useCallback((order: StoreOrder) => order.payment_status?.toLowerCase() === "paid", []);
+
+  const getItemSellingPrice = useCallback((item: OrderItem) => item.discounted_amount || item.unit_price, []);
+  const ESTIMATED_COST_PERCENTAGE = 0.6;
+  const getItemEstimatedCost = useCallback((item: OrderItem) => getItemSellingPrice(item) * ESTIMATED_COST_PERCENTAGE, [getItemSellingPrice]);
+  const calculateItemProfit = useCallback((item: OrderItem) => getItemSellingPrice(item) - getItemEstimatedCost(item), [getItemSellingPrice, getItemEstimatedCost]);
+
+  const getCurrentPeriodDates = useCallback((period: TimePeriod) => {
+    const now = new Date();
+    const startDate = new Date();
+    const endDate = new Date();
+    switch (period) {
+      case "daily":
+        startDate.setHours(0, 0, 0, 0); endDate.setHours(23, 59, 59, 999); break;
+      case "weekly":
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        startDate.setDate(diff); startDate.setHours(0, 0, 0, 0);
+        endDate.setDate(diff + 6); endDate.setHours(23, 59, 59, 999);
+        break;
+      case "monthly":
+        startDate.setDate(1); startDate.setHours(0, 0, 0, 0);
+        endDate.setMonth(endDate.getMonth() + 1, 0); endDate.setHours(23, 59, 59, 999);
+        break;
+      case "yearly":
+        startDate.setMonth(0, 1); startDate.setHours(0, 0, 0, 0);
+        endDate.setMonth(11, 31); endDate.setHours(23, 59, 59, 999);
+        break;
+    }
+    return { start: startDate, end: endDate };
   }, []);
 
-  // Helper: Get the selling price for an item (your actual schema)
-  const getItemSellingPrice = useCallback((item: OrderItem): number => {
-    // If discounted_amount exists, use it
-    // Otherwise use unit_price (which is tp_price or base price)
-    return item.discounted_amount || item.unit_price;
-  }, []);
+  const getPreviousPeriodDates = useCallback((period: TimePeriod) => {
+    const current = getCurrentPeriodDates(period);
+    const prevStart = new Date(current.start); const prevEnd = new Date(current.end);
+    switch (period) {
+      case "daily": prevStart.setDate(prevStart.getDate() - 1); prevEnd.setDate(prevEnd.getDate() - 1); break;
+      case "weekly": prevStart.setDate(prevStart.getDate() - 7); prevEnd.setDate(prevEnd.getDate() - 7); break;
+      case "monthly": prevStart.setMonth(prevStart.getMonth() - 1); prevEnd.setMonth(prevEnd.getMonth() - 1, 0); break;
+      case "yearly": prevStart.setFullYear(prevStart.getFullYear() - 1); prevEnd.setFullYear(prevEnd.getFullYear() - 1); break;
+    }
+    return { start: prevStart, end: prevEnd };
+  }, [getCurrentPeriodDates]);
 
-  // Helper: Estimate cost price since you don't have cost data
-  // You'll need to decide on a default profit margin
-  const ESTIMATED_COST_PERCENTAGE = 0.6; // Assumes 40% profit margin (60% cost)
-
-  // Helper: Get estimated cost price for an item
-  const getItemEstimatedCost = useCallback(
-    (item: OrderItem): number => {
-      const sellingPrice = getItemSellingPrice(item);
-
-      // Since you don't have cost data, we estimate it
-      // This is just an example - you should adjust based on your actual business
-      return sellingPrice * ESTIMATED_COST_PERCENTAGE;
-    },
-    [getItemSellingPrice]
-  );
-
-  // Helper: Calculate estimated profit for an order item
-  const calculateItemProfit = useCallback(
-    (item: OrderItem): number => {
-      const sellingPrice = getItemSellingPrice(item);
-      const estimatedCost = getItemEstimatedCost(item);
-
-      return sellingPrice - estimatedCost;
-    },
-    [getItemSellingPrice, getItemEstimatedCost]
-  );
-
-  // ================== UPDATED TIME PERIOD LOGIC ==================
-  // OPTION 2: For dashboard (comparing current vs previous)
-  // Daily = Today vs Yesterday
-  // Weekly = This Week vs Last Week
-  // Monthly = This Month vs Last Month
-  // Yearly = This Year vs Last Year
-
-  // Helper: Get current period dates
-  const getCurrentPeriodDates = useCallback(
-    (period: TimePeriod): { start: Date; end: Date } => {
-      const now = new Date();
-      const startDate = new Date();
-      const endDate = new Date();
-
-      switch (period) {
-        case "daily":
-          // TODAY
-          startDate.setHours(0, 0, 0, 0);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case "weekly":
-          // THIS WEEK (Monday to Sunday)
-          const day = now.getDay();
-          const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday of this week
-          startDate.setDate(diff);
-          startDate.setHours(0, 0, 0, 0);
-          endDate.setDate(diff + 6);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case "monthly":
-          // THIS MONTH
-          startDate.setDate(1);
-          startDate.setHours(0, 0, 0, 0);
-          endDate.setMonth(endDate.getMonth() + 1, 0); // Last day of current month
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case "yearly":
-          // THIS YEAR
-          startDate.setMonth(0, 1); // January 1st
-          startDate.setHours(0, 0, 0, 0);
-          endDate.setMonth(11, 31); // December 31st
-          endDate.setHours(23, 59, 59, 999);
-          break;
-      }
-
-      return { start: startDate, end: endDate };
-    },
-    []
-  );
-
-  // Helper: Get previous period dates for comparison
-  const getPreviousPeriodDates = useCallback(
-    (period: TimePeriod): { start: Date; end: Date } => {
-      const currentPeriod = getCurrentPeriodDates(period);
-      const prevStart = new Date(currentPeriod.start);
-      const prevEnd = new Date(currentPeriod.end);
-
-      switch (period) {
-        case "daily":
-          // YESTERDAY (same duration as today)
-          prevStart.setDate(prevStart.getDate() - 1);
-          prevEnd.setDate(prevEnd.getDate() - 1);
-          break;
-        case "weekly":
-          // LAST WEEK (same duration as this week)
-          prevStart.setDate(prevStart.getDate() - 7);
-          prevEnd.setDate(prevEnd.getDate() - 7);
-          break;
-        case "monthly":
-          // LAST MONTH
-          prevStart.setMonth(prevStart.getMonth() - 1);
-          prevEnd.setMonth(prevEnd.getMonth() - 1, 0); // Last day of last month
-          break;
-        case "yearly":
-          // LAST YEAR
-          prevStart.setFullYear(prevStart.getFullYear() - 1);
-          prevEnd.setFullYear(prevEnd.getFullYear() - 1);
-          break;
-      }
-
-      return { start: prevStart, end: prevEnd };
-    },
-    [getCurrentPeriodDates]
-  );
-
-  // Helper: Filter orders by time period
-  const filterOrdersByPeriod = useCallback(
-    (ordersList: StoreOrder[], period: TimePeriod): StoreOrder[] => {
-      const { start, end } = getCurrentPeriodDates(period);
-
-      return ordersList.filter((order) => {
-        const orderDate = new Date(order.created_at);
-        return orderDate >= start && orderDate <= end;
-      });
-    },
-    [getCurrentPeriodDates]
-  );
-
-  // Helper: Get available quantity for a product
-  const getProductAvailableQuantity = useCallback(
-    (product: DashboardProduct): number => {
-      return product.stock?.quantity_available ?? 0;
-    },
-    []
-  );
-
-  // Helper: Get available quantity for a variant
-  const getVariantAvailableQuantity = useCallback(
-    (variant: ProductVariant): number => {
-      return variant.stock.quantity_available ?? 0;
-    },
-    []
-  );
-
-  // Helper: Check if variant is low stock
-  const isVariantLowStock = useCallback((variant: ProductVariant): boolean => {
-    return variant.is_low_stock || false;
-  }, []);
-
-  // Helper: Check if product is low stock
-  const isProductLowStock = useCallback(
-    (product: DashboardProduct): boolean => {
-      return product.is_low_stock || false;
-    },
-    []
-  );
-
-  // Helper: Calculate order subtotal (sum of item prices without tax/shipping)
-  const calculateOrderSubtotal = useCallback((order: StoreOrder): number => {
-    return Number(order.subtotal) || 0;
-  }, []);
-
-  // Helper: Calculate order total (including tax, shipping, etc.)
-  const calculateOrderTotal = useCallback((order: StoreOrder): number => {
-    return Number(order.total_amount) || 0;
-  }, []);
-
-  // Helper: Get item revenue (selling price × quantity)
-  const getItemRevenue = useCallback(
-    (item: OrderItem): number => {
-      const sellingPrice = getItemSellingPrice(item);
-      const quantity = item.quantity || 1;
-      return sellingPrice * quantity;
-    },
-    [getItemSellingPrice]
-  );
-
-  // Helper: Get item estimated cost (estimated cost × quantity)
-  const getItemEstimatedCostTotal = useCallback(
-    (item: OrderItem): number => {
-      const estimatedCost = getItemEstimatedCost(item);
-      const quantity = item.quantity || 1;
-      return estimatedCost * quantity;
-    },
-    [getItemEstimatedCost]
-  );
-
-  // Main calculation function
   const calculateAllMetrics = useCallback(() => {
     if (!storeId || orders.length === 0) return;
 
-    // 1. Filter orders for CURRENT period
-    const currentOrders = filterOrdersByPeriod(orders, timePeriod);
-    const currentPaidOrders = currentOrders.filter(isOrderPaid);
-
-    // 2. Calculate revenue from SUBTOTAL for current period (paid orders only)
-    const currentRevenue = currentPaidOrders.reduce(
-      (sum, order) => sum + calculateOrderSubtotal(order),
-      0
-    );
-
-    // 3. Calculate estimated profit for current period (paid orders only)
-    const currentProfit = currentPaidOrders.reduce((sum, order) => {
-      const orderProfit = (order.order_items as unknown as OrderItem[]).reduce(
-        (itemSum, item) => {
-          const quantity = item.quantity || 1;
-          return itemSum + calculateItemProfit(item) * quantity;
-        },
-        0
-      );
-      return sum + orderProfit;
-    }, 0);
-
-    // 4. Calculate Average Order Value using SUBTOTAL for current period
-    const currentOrderCount = currentOrders.length;
-    const currentRevenueAllOrders = currentOrders.reduce(
-      (sum, order) => sum + calculateOrderSubtotal(order),
-      0
-    );
-    const currentAOV =
-      currentOrderCount > 0 ? currentRevenueAllOrders / currentOrderCount : 0;
-
-    // 5. Calculate previous period metrics for comparison
+    const currentPeriod = getCurrentPeriodDates(timePeriod);
     const prevPeriod = getPreviousPeriodDates(timePeriod);
-    const prevPeriodOrders = orders.filter((order) => {
-      const orderDate = new Date(order.created_at);
-      return orderDate >= prevPeriod.start && orderDate <= prevPeriod.end;
-    });
-    const prevPeriodPaidOrders = prevPeriodOrders.filter(isOrderPaid);
 
-    // Using subtotal for previous period revenue as well
-    const prevRevenue = prevPeriodPaidOrders.reduce(
-      (sum, order) => sum + calculateOrderSubtotal(order),
-      0
-    );
-    const prevOrderCount = prevPeriodOrders.length;
+    const salesTrendMap = new Map<string, number>();
+    const topProductsMap = new Map<string, { revenue: number; quantity: number; cost: number; profit: number }>();
+    const customerMap = new Map<string, { name: string; totalSpent: number; orders: number; firstOrderDate: Date }>();
+    const paidCustomerMap = new Map<string, { name: string; totalSpent: number }>();
 
-    // Calculate previous period AOV using subtotal
-    const prevRevenueAllOrders = prevPeriodOrders.reduce(
-      (sum, order) => sum + calculateOrderSubtotal(order),
-      0
-    );
-    const prevAOV =
-      prevOrderCount > 0 ? prevRevenueAllOrders / prevOrderCount : 0;
+    let revenue = 0, grossProfit = 0, orderCount = 0;
+    let prevRevenue = 0, prevOrderCount = 0, prevProfit = 0;
+    const orderStatusCounts: Record<OrderStatus, number> = { pending: 0, confirmed: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    const paymentAmounts: Record<PaymentStatus, number> = { paid: 0, pending: 0, refunded: 0 };
 
-    const prevProfit = prevPeriodPaidOrders.reduce((sum, order) => {
-      const orderProfit = (order.order_items as unknown as OrderItem[]).reduce(
-        (itemSum, item) => {
-          const quantity = item.quantity || 1;
-          return itemSum + calculateItemProfit(item) * quantity;
-        },
-        0
-      );
-      return sum + orderProfit;
-    }, 0);
-
-    // 6. Calculate percentage changes
-    const calculateChange = (current: number, previous: number): number => {
-      if (previous === 0) return current > 0 ? 100 : 0;
-      return ((current - previous) / previous) * 100;
-    };
-
-    // 7. Order status counts (for ALL orders)
-    const orderStatusCounts: Record<OrderStatus, number> = {
-      pending: 0,
-      confirmed: 0,
-      shipped: 0,
-      delivered: 0,
-      cancelled: 0,
-    };
-
-    orders.forEach((order) => {
-      const key = (order.status?.toLowerCase() || "pending") as OrderStatus;
-      if (key in orderStatusCounts) orderStatusCounts[key]++;
-    });
-
-    // 8. Sales trend (Last 30 days, paid orders only)
-    const days = 30;
     const today = new Date();
-    const salesTrend = [];
-
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(today.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(d);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const daySales = orders
-        .filter((order) => {
-          const orderDate = new Date(order.created_at);
-          return orderDate >= d && orderDate <= endOfDay && isOrderPaid(order);
-        })
-        .reduce((sum, order) => sum + calculateOrderSubtotal(order), 0);
-
-      salesTrend.push({
-        date: d.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        sales: daySales,
-      });
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(); d.setDate(today.getDate() - i); d.setHours(0, 0, 0, 0);
+      salesTrendMap.set(d.toDateString(), 0);
     }
 
-    // 9. Customer analytics
-    const customerMap = new Map<
-      string,
-      { name: string; totalSpent: number; orders: number; firstOrderDate: Date }
-    >();
+    const filteredOrders: StoreOrder[] = [];
+    const paidOrders: StoreOrder[] = [];
 
     orders.forEach((order) => {
-      if (!order.customers?.id) return;
-
-      const customerId = order.customers.id;
       const orderDate = new Date(order.created_at);
-      const current = customerMap.get(customerId);
+      const subtotal = Number(order.subtotal) || 0;
+      const total = Number(order.total_amount) || 0;
+      const isPaid = isOrderPaid(order);
 
-      if (!current) {
-        customerMap.set(customerId, {
-          name: order.customers.first_name || "Unknown",
-          totalSpent: calculateOrderSubtotal(order),
-          orders: 1,
-          firstOrderDate: orderDate,
-        });
-      } else {
-        customerMap.set(customerId, {
-          name: current.name,
-          totalSpent: current.totalSpent + calculateOrderSubtotal(order),
-          orders: current.orders + 1,
-          firstOrderDate:
-            current.firstOrderDate < orderDate
-              ? current.firstOrderDate
-              : orderDate,
-        });
+      // Filter current period orders
+      if (orderDate >= currentPeriod.start && orderDate <= currentPeriod.end) {
+        filteredOrders.push(order);
+        orderCount++;
+        if (isPaid) { revenue += subtotal; paidOrders.push(order); }
       }
-    });
 
-    // Find top customer (overall)
-    let topCustomer = { name: "No customers", totalSpent: 0 };
-    customerMap.forEach((customer) => {
-      if (customer.totalSpent > topCustomer.totalSpent) {
-        topCustomer = { name: customer.name, totalSpent: customer.totalSpent };
+      // Previous period metrics
+      if (orderDate >= prevPeriod.start && orderDate <= prevPeriod.end && isPaid) {
+        prevRevenue += subtotal;
+        prevProfit += (order.order_items as unknown as OrderItem[]).reduce(
+          (sum, item) => sum + calculateItemProfit(item) * (item.quantity || 1), 0
+        );
+        prevOrderCount++;
       }
-    });
 
-    // Calculate new customers (first order in CURRENT period)
-    const currentPeriod = getCurrentPeriodDates(timePeriod);
-    const newCustomers = Array.from(customerMap.values()).filter(
-      (customer) =>
-        customer.firstOrderDate >= currentPeriod.start &&
-        customer.firstOrderDate <= currentPeriod.end
-    ).length;
+      // Order status
+      const statusKey = (order.status?.toLowerCase() || "pending") as OrderStatus;
+      if (statusKey in orderStatusCounts) orderStatusCounts[statusKey]++;
 
-    const totalCustomers = customerMap.size;
-    const returningCustomers = Array.from(customerMap.values()).filter(
-      (customer) => customer.orders > 1
-    ).length;
-    const returningRate =
-      totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
+      // Payment amounts
+      const paymentKey = (order.payment_status?.toLowerCase() || "pending") as PaymentStatus;
+      if (paymentKey in paymentAmounts) paymentAmounts[paymentKey] += total;
 
-    // 10. Top products in CURRENT period (ALL orders, not just paid)
-    const productMap = new Map<
-      string,
-      {
-        revenue: number;
-        quantity: number;
-        cost: number;
-        profit: number;
+      // Sales trend
+      if (isPaid) {
+        const dayKey = new Date(order.created_at).toDateString();
+        if (salesTrendMap.has(dayKey)) salesTrendMap.set(dayKey, (salesTrendMap.get(dayKey) || 0) + subtotal);
       }
-    >();
 
-    // Changed from currentPaidOrders to currentOrders to include all orders
-    currentOrders.forEach((order) => {
+      // Customer analytics
+      if (!order.customers?.id) return;
+      const customerId = order.customers.id;
+      const firstName = order.customers.first_name || "Unknown";
+
+      // All orders for new/returning
+      const currentCustomer = customerMap.get(customerId);
+      if (!currentCustomer) customerMap.set(customerId, { name: firstName, totalSpent: subtotal, orders: 1, firstOrderDate: orderDate });
+      else customerMap.set(customerId, { name: currentCustomer.name, totalSpent: currentCustomer.totalSpent + subtotal, orders: currentCustomer.orders + 1, firstOrderDate: currentCustomer.firstOrderDate < orderDate ? currentCustomer.firstOrderDate : orderDate });
+
+      // Paid orders for top customer
+      if (isPaid) {
+        const paidCustomer = paidCustomerMap.get(customerId);
+        if (!paidCustomer) paidCustomerMap.set(customerId, { name: firstName, totalSpent: subtotal });
+        else paidCustomerMap.set(customerId, { name: paidCustomer.name, totalSpent: paidCustomer.totalSpent + subtotal });
+      }
+
+      // Top products
       (order.order_items as unknown as OrderItem[]).forEach((item) => {
-        const current = productMap.get(item.product_name) || {
-          revenue: 0,
-          quantity: 0,
-          cost: 0,
-          profit: 0,
-        };
-
-        const itemRevenue = getItemRevenue(item);
-        const itemCost = getItemEstimatedCostTotal(item);
+        const current = topProductsMap.get(item.product_name) || { revenue: 0, quantity: 0, cost: 0, profit: 0 };
+        const itemRevenue = getItemSellingPrice(item) * (item.quantity || 1);
+        const itemCost = getItemEstimatedCost(item) * (item.quantity || 1);
         const itemProfit = itemRevenue - itemCost;
-
-        productMap.set(item.product_name, {
+        topProductsMap.set(item.product_name, {
           revenue: current.revenue + itemRevenue,
           quantity: current.quantity + (item.quantity || 1),
           cost: current.cost + itemCost,
@@ -546,164 +210,72 @@ export const useDashboardMetrics = (
       });
     });
 
-    const topProducts = Array.from(productMap.entries())
-      .sort((a, b) => b[1].quantity - a[1].quantity) // Sort by quantity sold
-      .slice(0, 3)
-      .map(([name, data]) => ({
-        name,
-        revenue: data.revenue,
-        quantity: data.quantity,
-        cost: data.cost,
-        profit: data.profit,
-        profitMargin: data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0,
-      }));
+    // Gross profit for current period
+    grossProfit = filteredOrders.reduce((sum, order) => {
+      if (!isOrderPaid(order)) return sum;
+      return sum + (order.order_items as unknown as OrderItem[]).reduce((s, item) => s + calculateItemProfit(item) * (item.quantity || 1), 0);
+    }, 0);
 
-    // 11. Payment amounts (for ALL orders) - Use total_amount here since it represents actual payment amounts
-    const paymentAmounts: Record<PaymentStatus, number> = {
-      paid: 0,
-      pending: 0,
-      refunded: 0,
-    };
+    // Top customer
+    let topCustomer = { name: "No customers", totalSpent: 0 };
+    paidCustomerMap.forEach((c) => { if (c.totalSpent > topCustomer.totalSpent) topCustomer = { ...c }; });
 
-    orders.forEach((order) => {
-      const amount = calculateOrderTotal(order);
-      const key = (order.payment_status?.toLowerCase() ||
-        "pending") as PaymentStatus;
-      if (key in paymentAmounts) paymentAmounts[key] += amount;
+    // New & Returning customers
+    const newCustomers = Array.from(customerMap.values()).filter(c => c.firstOrderDate >= currentPeriod.start && c.firstOrderDate <= currentPeriod.end).length;
+    const totalCustomers = customerMap.size;
+    const returningCustomers = Array.from(customerMap.values()).filter(c => c.orders > 1).length;
+    const returningRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
+
+    // Top products
+    const topProducts = Array.from(topProductsMap.entries()).sort((a, b) => b[1].quantity - a[1].quantity).slice(0, 3)
+      .map(([name, data]) => ({ name, ...data, profitMargin: data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0 }));
+
+    // Sales trend array
+    const salesTrend = Array.from(salesTrendMap.entries()).map(([date, sales]) => ({ date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }), sales }));
+
+    // Inventory counts
+    let lowStockCount = 0, outOfStockCount = 0, inStockCount = 0;
+    products.forEach((product) => {
+      const productQty = product.stock?.quantity_available ?? 0;
+      if (productQty === 0) {
+        const hasVariantStock = product.variants.some(v => v.stock.quantity_available > 0);
+        if (hasVariantStock) inStockCount++; else outOfStockCount++;
+      } else { inStockCount++; if (product.is_low_stock) lowStockCount++; }
+      product.variants.forEach(v => { if ((v.stock.quantity_available ?? 0) === 0) outOfStockCount++; else if (v.is_low_stock) lowStockCount++; });
     });
 
-    // 12. Inventory counts
-    let lowStockCount = 0;
-    let outOfStockCount = 0;
-    let inStockCount = 0;
-
-    products.forEach((product: DashboardProduct) => {
-      const productQuantity = getProductAvailableQuantity(product);
-
-      if (productQuantity === 0) {
-        const hasVariantStock = product.variants.some(
-          (variant: ProductVariant) => getVariantAvailableQuantity(variant) > 0
-        );
-
-        if (hasVariantStock) {
-          inStockCount++;
-        } else {
-          outOfStockCount++;
-        }
-      } else {
-        inStockCount++;
-        if (isProductLowStock(product)) lowStockCount++;
-      }
-
-      product.variants.forEach((variant: ProductVariant) => {
-        const variantQuantity = getVariantAvailableQuantity(variant);
-        if (variantQuantity === 0) {
-          outOfStockCount++;
-        } else if (isVariantLowStock(variant)) {
-          lowStockCount++;
-        }
-      });
-    });
-
-    // 13. Alerts
+    // Alerts
     const alerts: { type: AlertType; message: string; count: number }[] = [];
+    if (lowStockCount) alerts.push({ type: "stock", message: "Low stock items", count: lowStockCount });
+    if (outOfStockCount) alerts.push({ type: "stock", message: "Out of stock items", count: outOfStockCount });
+    const oldPendingOrders = orders.filter(o => o.status.toLowerCase() === "pending" && (new Date().getTime() - new Date(o.created_at).getTime()) / (1000*60*60) > 24);
+    if (oldPendingOrders.length) alerts.push({ type: "order", message: "Delayed pending orders", count: oldPendingOrders.length });
+    const unpaidOrders = orders.filter(o => !isOrderPaid(o)).length;
+    if (unpaidOrders) alerts.push({ type: "payment", message: "Unpaid orders", count: unpaidOrders });
 
-    if (lowStockCount > 0) {
-      alerts.push({
-        type: "stock",
-        message: "Low stock items",
-        count: lowStockCount,
-      });
-    }
+    const calculateChange = (current: number, previous: number) => previous === 0 ? (current > 0 ? 100 : 0) : ((current - previous) / previous) * 100;
 
-    if (outOfStockCount > 0) {
-      alerts.push({
-        type: "stock",
-        message: "Out of stock items",
-        count: outOfStockCount,
-      });
-    }
-
-    const pendingOrders = orders.filter(
-      (order) => order.status.toLowerCase() === "pending"
-    );
-
-    const oldPendingOrders = pendingOrders.filter((order) => {
-      const orderAgeHours =
-        (new Date().getTime() - new Date(order.created_at).getTime()) /
-        (1000 * 60 * 60);
-      return orderAgeHours > 24;
-    });
-
-    if (oldPendingOrders.length > 0) {
-      alerts.push({
-        type: "order",
-        message: "Delayed pending orders",
-        count: oldPendingOrders.length,
-      });
-    }
-
-    const unpaidOrders = orders.filter((order) => !isOrderPaid(order)).length;
-    if (unpaidOrders > 0) {
-      alerts.push({
-        type: "payment",
-        message: "Unpaid orders",
-        count: unpaidOrders,
-      });
-    }
-
-    // Update all metrics
     setMetrics({
-      revenue: currentRevenue,
-      orderCount: currentOrderCount,
-      averageOrderValue: currentAOV,
-      grossProfit: currentProfit,
-      changePercentage: {
-        revenue: calculateChange(currentRevenue, prevRevenue),
-        orders: calculateChange(currentOrderCount, prevOrderCount),
-        aov: calculateChange(currentAOV, prevAOV),
-        profit: calculateChange(currentProfit, prevProfit),
-      },
+      revenue,
+      orderCount,
+      averageOrderValue: orderCount > 0 ? revenue / orderCount : 0,
+      grossProfit,
+      changePercentage: { revenue: calculateChange(revenue, prevRevenue), orders: calculateChange(orderCount, prevOrderCount), aov: calculateChange(orderCount > 0 ? revenue / orderCount : 0, prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0), profit: calculateChange(grossProfit, prevProfit) },
       orderStatusCounts,
       salesTrend,
-      customerSnapshot: {
-        newCustomers,
-        returningRate: parseFloat(returningRate.toFixed(1)),
-        topCustomer,
-      },
+      customerSnapshot: { newCustomers, returningRate: parseFloat(returningRate.toFixed(1)), topCustomer },
       topProducts,
       lowStockCount,
       outOfStockCount,
       inStockCount,
       paymentAmounts,
       alerts,
-      filteredOrders: currentOrders,
-      paidOrders: currentPaidOrders,
+      filteredOrders,
+      paidOrders
     });
-  }, [
-    storeId,
-    orders,
-    products,
-    timePeriod,
-    filterOrdersByPeriod,
-    getCurrentPeriodDates,
-    getPreviousPeriodDates,
-    isOrderPaid,
-    calculateItemProfit,
-    getItemRevenue,
-    getItemEstimatedCostTotal,
-    calculateOrderSubtotal,
-    calculateOrderTotal,
-    getProductAvailableQuantity,
-    getVariantAvailableQuantity,
-    isVariantLowStock,
-    isProductLowStock,
-  ]);
+  }, [storeId, orders, products, timePeriod, getCurrentPeriodDates, getPreviousPeriodDates, isOrderPaid, calculateItemProfit, getItemSellingPrice, getItemEstimatedCost]);
 
-  // Recalculate when dependencies change
-  useEffect(() => {
-    calculateAllMetrics();
-  }, [calculateAllMetrics]);
+  useEffect(() => { calculateAllMetrics(); }, [calculateAllMetrics]);
 
   return metrics;
 };
