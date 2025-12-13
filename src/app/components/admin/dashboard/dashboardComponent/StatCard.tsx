@@ -38,7 +38,7 @@ const StatCard: React.FC<StatCardProps> = ({
           <div
             className={`text-xs px-2 py-1 rounded-full inline-block mt-2 ${getChangeColor()}`}
           >
-            {change} from yesterday
+            {change} 
           </div>
         </div>
         <div className="text-3xl text-blue-500">{icon}</div>

@@ -1,7 +1,7 @@
 // lib/types/order.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { OrderStatus, PaymentStatus, PaymentMethod, DeliveryOption } from "./enums";
+import { OrderStatus, PaymentStatus, DeliveryOption } from "./enums";
 
 // ===== CORE ORDER TYPES =====
 export interface OrderProduct {
