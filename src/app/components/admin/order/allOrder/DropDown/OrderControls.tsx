@@ -48,7 +48,7 @@ const OrderControls: React.FC<Props> = ({
   onSelectPaymentStatus,
   deliveryOption,
   selectedDeliveryOption,
-  onSelectDeliveryOption,
+  // onSelectDeliveryOption,
   paymentMethod,
   selectedPaymentMethod,
   onSelectPaymentMethod,
