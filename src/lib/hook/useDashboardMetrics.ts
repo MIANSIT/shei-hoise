@@ -13,30 +13,27 @@ export type OrderStatus =
 export type PaymentStatus = "paid" | "pending" | "refunded";
 export type AlertType = "stock" | "order" | "payment";
 
-// Define proper types for order items
+// Define proper types for order items - UPDATED FOR YOUR SCHEMA
 interface OrderItem {
   id: string;
   product_name: string;
   product_id: string;
   variant_id?: string;
-  unit_price: number;
-  discounted_amount?: number;
+  unit_price: number; // This is tp_price or base price
+  discounted_amount?: number; // If discount exists
   quantity: number;
-  cost_price?: number;
-  profit_margin?: number;
+  // Your schema doesn't have cost_price or profit_margin
   products?: {
     name: string;
     base_price: number;
     sale_price?: number;
-    cost_price?: number;
-    profit_margin?: number;
+    // Your schema doesn't have cost_price or profit_margin
   };
   product_variants?: {
     variant_name: string;
     base_price: number;
     sale_price?: number;
-    cost_price?: number;
-    profit_margin?: number;
+    // Your schema doesn't have cost_price or profit_margin
   };
 }
 
@@ -46,8 +43,6 @@ interface ProductVariant {
   variant_name: string;
   base_price: number;
   sale_price?: number;
-  cost_price?: number;
-  profit_margin?: number;
   stock: {
     quantity_available: number;
     low_stock_threshold?: number;
@@ -153,84 +148,49 @@ export const useDashboardMetrics = (
     return order.payment_status?.toLowerCase() === "paid";
   }, []);
 
-  // Helper: Get the correct cost price for an item
-  const getItemCostPrice = useCallback((item: OrderItem): number => {
-    // Priority 1: Item-level cost_price (most specific)
-    if (item.cost_price && !isNaN(item.cost_price)) {
-      return item.cost_price;
-    }
-
-    // Priority 2: Variant-level cost_price
-    if (
-      item.variant_id &&
-      item.product_variants?.cost_price &&
-      !isNaN(item.product_variants.cost_price)
-    ) {
-      return item.product_variants.cost_price;
-    }
-
-    // Priority 3: Product-level cost_price
-    if (item.products?.cost_price && !isNaN(item.products.cost_price)) {
-      return item.products.cost_price;
-    }
-
-    // Priority 4: Calculate from profit_margin if available
-    const sellingPrice = item.discounted_amount || item.unit_price;
-
-    // Try item-level profit_margin first
-    if (item.profit_margin && !isNaN(item.profit_margin)) {
-      return sellingPrice * (1 - item.profit_margin / 100);
-    }
-
-    // Try variant-level profit_margin
-    if (
-      item.variant_id &&
-      item.product_variants?.profit_margin &&
-      !isNaN(item.product_variants.profit_margin)
-    ) {
-      return sellingPrice * (1 - item.product_variants.profit_margin / 100);
-    }
-
-    // Try product-level profit_margin
-    if (item.products?.profit_margin && !isNaN(item.products.profit_margin)) {
-      return sellingPrice * (1 - item.products.profit_margin / 100);
-    }
-
-    // If no cost data is available, return 0 to avoid incorrect profit calculations
-    console.warn(`No cost data available for item: ${item.product_name}`);
-    return 0;
+  // Helper: Get the selling price for an item (your actual schema)
+  const getItemSellingPrice = useCallback((item: OrderItem): number => {
+    // If discounted_amount exists, use it
+    // Otherwise use unit_price (which is tp_price or base price)
+    return item.discounted_amount || item.unit_price;
   }, []);
 
-  // Helper: Calculate profit for an order item
-  const calculateItemProfit = useCallback(
+  // Helper: Estimate cost price since you don't have cost data
+  // You'll need to decide on a default profit margin
+  const ESTIMATED_COST_PERCENTAGE = 0.6; // Assumes 40% profit margin (60% cost)
+
+  // Helper: Get estimated cost price for an item
+  const getItemEstimatedCost = useCallback(
     (item: OrderItem): number => {
-      const sellingPrice = item.discounted_amount || item.unit_price;
-      const costPrice = getItemCostPrice(item);
+      const sellingPrice = getItemSellingPrice(item);
 
-      if (costPrice === 0) {
-        // If we have no cost data, we cannot calculate profit accurately
-        // Return 0 profit to avoid showing incorrect data
-        return 0;
-      }
-
-      return sellingPrice - costPrice;
+      // Since you don't have cost data, we estimate it
+      // This is just an example - you should adjust based on your actual business
+      return sellingPrice * ESTIMATED_COST_PERCENTAGE;
     },
-    [getItemCostPrice]
+    [getItemSellingPrice]
   );
 
-  // ================== TIME PERIOD LOGIC ==================
-  // Based on your question about sales/financial reports:
-  // Option 1: Daily = Yesterday, Monthly = Last Month (for financial reports)
-  // Option 2: Daily = Today, Monthly = This Month (for dashboard)
+  // Helper: Calculate estimated profit for an order item
+  const calculateItemProfit = useCallback(
+    (item: OrderItem): number => {
+      const sellingPrice = getItemSellingPrice(item);
+      const estimatedCost = getItemEstimatedCost(item);
 
-  // I'll implement OPTION 1 for financial reporting:
-  // Daily = Yesterday vs Day Before Yesterday
-  // Weekly = Last Week vs Week Before Last
-  // Monthly = Last Month vs Month Before Last
-  // Yearly = Last Year vs Year Before Last
+      return sellingPrice - estimatedCost;
+    },
+    [getItemSellingPrice, getItemEstimatedCost]
+  );
 
-  // Helper: Get period dates for financial reporting (OPTION 1)
-  const getPeriodDates = useCallback(
+  // ================== UPDATED TIME PERIOD LOGIC ==================
+  // OPTION 2: For dashboard (comparing current vs previous)
+  // Daily = Today vs Yesterday
+  // Weekly = This Week vs Last Week
+  // Monthly = This Month vs Last Month
+  // Yearly = This Year vs Last Year
+
+  // Helper: Get current period dates
+  const getCurrentPeriodDates = useCallback(
     (period: TimePeriod): { start: Date; end: Date } => {
       const now = new Date();
       const startDate = new Date();
@@ -238,33 +198,31 @@ export const useDashboardMetrics = (
 
       switch (period) {
         case "daily":
-          // YESTERDAY (for financial reports)
-          startDate.setDate(now.getDate() - 1);
+          // TODAY
           startDate.setHours(0, 0, 0, 0);
-          endDate.setDate(now.getDate() - 1);
           endDate.setHours(23, 59, 59, 999);
           break;
         case "weekly":
-          // LAST WEEK (Monday to Sunday)
+          // THIS WEEK (Monday to Sunday)
           const day = now.getDay();
-          const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7; // Start of last week
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday of this week
           startDate.setDate(diff);
           startDate.setHours(0, 0, 0, 0);
           endDate.setDate(diff + 6);
           endDate.setHours(23, 59, 59, 999);
           break;
         case "monthly":
-          // LAST MONTH
-          startDate.setMonth(now.getMonth() - 1, 1); // 1st of last month
+          // THIS MONTH
+          startDate.setDate(1);
           startDate.setHours(0, 0, 0, 0);
-          endDate.setMonth(now.getMonth(), 0); // Last day of last month
+          endDate.setMonth(endDate.getMonth() + 1, 0); // Last day of current month
           endDate.setHours(23, 59, 59, 999);
           break;
         case "yearly":
-          // LAST YEAR
-          startDate.setFullYear(now.getFullYear() - 1, 0, 1); // Jan 1 of last year
+          // THIS YEAR
+          startDate.setMonth(0, 1); // January 1st
           startDate.setHours(0, 0, 0, 0);
-          endDate.setFullYear(now.getFullYear() - 1, 11, 31); // Dec 31 of last year
+          endDate.setMonth(11, 31); // December 31st
           endDate.setHours(23, 59, 59, 999);
           break;
       }
@@ -277,102 +235,49 @@ export const useDashboardMetrics = (
   // Helper: Get previous period dates for comparison
   const getPreviousPeriodDates = useCallback(
     (period: TimePeriod): { start: Date; end: Date } => {
-      const now = new Date();
-      const prevStart = new Date();
-      const prevEnd = new Date();
+      const currentPeriod = getCurrentPeriodDates(period);
+      const prevStart = new Date(currentPeriod.start);
+      const prevEnd = new Date(currentPeriod.end);
 
       switch (period) {
         case "daily":
-          // DAY BEFORE YESTERDAY
-          prevStart.setDate(now.getDate() - 2);
-          prevStart.setHours(0, 0, 0, 0);
-          prevEnd.setDate(now.getDate() - 2);
-          prevEnd.setHours(23, 59, 59, 999);
+          // YESTERDAY (same duration as today)
+          prevStart.setDate(prevStart.getDate() - 1);
+          prevEnd.setDate(prevEnd.getDate() - 1);
           break;
         case "weekly":
-          // WEEK BEFORE LAST
-          const day = now.getDay();
-          const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 14; // Start of week before last
-          prevStart.setDate(diff);
-          prevStart.setHours(0, 0, 0, 0);
-          prevEnd.setDate(diff + 6);
-          prevEnd.setHours(23, 59, 59, 999);
+          // LAST WEEK (same duration as this week)
+          prevStart.setDate(prevStart.getDate() - 7);
+          prevEnd.setDate(prevEnd.getDate() - 7);
           break;
         case "monthly":
-          // MONTH BEFORE LAST
-          prevStart.setMonth(now.getMonth() - 2, 1);
-          prevStart.setHours(0, 0, 0, 0);
-          prevEnd.setMonth(now.getMonth() - 1, 0);
-          prevEnd.setHours(23, 59, 59, 999);
+          // LAST MONTH
+          prevStart.setMonth(prevStart.getMonth() - 1);
+          prevEnd.setMonth(prevEnd.getMonth() - 1, 0); // Last day of last month
           break;
         case "yearly":
-          // YEAR BEFORE LAST
-          prevStart.setFullYear(now.getFullYear() - 2, 0, 1);
-          prevStart.setHours(0, 0, 0, 0);
-          prevEnd.setFullYear(now.getFullYear() - 2, 11, 31);
-          prevEnd.setHours(23, 59, 59, 999);
+          // LAST YEAR
+          prevStart.setFullYear(prevStart.getFullYear() - 1);
+          prevEnd.setFullYear(prevEnd.getFullYear() - 1);
           break;
       }
 
       return { start: prevStart, end: prevEnd };
     },
-    []
+    [getCurrentPeriodDates]
   );
-
-  // Alternative: For dashboard (OPTION 2) if you want current periods:
-  //   const getCurrentPeriodDates = useCallback(
-  //     (period: TimePeriod): { start: Date; end: Date } => {
-  //       const now = new Date();
-  //       const startDate = new Date();
-  //       const endDate = new Date();
-
-  //       switch (period) {
-  //         case "daily":
-  //           // TODAY
-  //           startDate.setHours(0, 0, 0, 0);
-  //           endDate.setHours(23, 59, 59, 999);
-  //           break;
-  //         case "weekly":
-  //           // THIS WEEK
-  //           const day = now.getDay();
-  //           const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  //           startDate.setDate(diff);
-  //           startDate.setHours(0, 0, 0, 0);
-  //           endDate.setDate(diff + 6);
-  //           endDate.setHours(23, 59, 59, 999);
-  //           break;
-  //         case "monthly":
-  //           // THIS MONTH
-  //           startDate.setDate(1);
-  //           startDate.setHours(0, 0, 0, 0);
-  //           endDate.setMonth(endDate.getMonth() + 1, 0);
-  //           endDate.setHours(23, 59, 59, 999);
-  //           break;
-  //         case "yearly":
-  //           // THIS YEAR
-  //           startDate.setMonth(0, 1);
-  //           startDate.setHours(0, 0, 0, 0);
-  //           endDate.setMonth(11, 31);
-  //           endDate.setHours(23, 59, 59, 999);
-  //           break;
-  //       }
-
-  //       return { start: startDate, end: endDate };
-  //     },
-  //     []
-  //   );
 
   // Helper: Filter orders by time period
   const filterOrdersByPeriod = useCallback(
     (ordersList: StoreOrder[], period: TimePeriod): StoreOrder[] => {
-      const { start, end } = getPeriodDates(period);
+      const { start, end } = getCurrentPeriodDates(period);
 
       return ordersList.filter((order) => {
         const orderDate = new Date(order.created_at);
         return orderDate >= start && orderDate <= end;
       });
     },
-    [getPeriodDates]
+    [getCurrentPeriodDates]
   );
 
   // Helper: Get available quantity for a product
@@ -404,22 +309,52 @@ export const useDashboardMetrics = (
     []
   );
 
+  // Helper: Calculate order subtotal (sum of item prices without tax/shipping)
+  const calculateOrderSubtotal = useCallback((order: StoreOrder): number => {
+    return Number(order.subtotal) || 0;
+  }, []);
+
+  // Helper: Calculate order total (including tax, shipping, etc.)
+  const calculateOrderTotal = useCallback((order: StoreOrder): number => {
+    return Number(order.total_amount) || 0;
+  }, []);
+
+  // Helper: Get item revenue (selling price × quantity)
+  const getItemRevenue = useCallback(
+    (item: OrderItem): number => {
+      const sellingPrice = getItemSellingPrice(item);
+      const quantity = item.quantity || 1;
+      return sellingPrice * quantity;
+    },
+    [getItemSellingPrice]
+  );
+
+  // Helper: Get item estimated cost (estimated cost × quantity)
+  const getItemEstimatedCostTotal = useCallback(
+    (item: OrderItem): number => {
+      const estimatedCost = getItemEstimatedCost(item);
+      const quantity = item.quantity || 1;
+      return estimatedCost * quantity;
+    },
+    [getItemEstimatedCost]
+  );
+
   // Main calculation function
   const calculateAllMetrics = useCallback(() => {
     if (!storeId || orders.length === 0) return;
 
-    // 1. Filter orders for current period
-    const filteredOrders = filterOrdersByPeriod(orders, timePeriod);
-    const paidOrders = filteredOrders.filter(isOrderPaid);
+    // 1. Filter orders for CURRENT period
+    const currentOrders = filterOrdersByPeriod(orders, timePeriod);
+    const currentPaidOrders = currentOrders.filter(isOrderPaid);
 
-    // 2. Calculate revenue from total_amount
-    const currentRevenue = paidOrders.reduce(
-      (sum, order) => sum + (Number(order.total_amount) || 0),
+    // 2. Calculate revenue from SUBTOTAL for current period (paid orders only)
+    const currentRevenue = currentPaidOrders.reduce(
+      (sum, order) => sum + calculateOrderSubtotal(order),
       0
     );
 
-    // 3. Calculate profit using actual item costs
-    const currentProfit = paidOrders.reduce((sum, order) => {
+    // 3. Calculate estimated profit for current period (paid orders only)
+    const currentProfit = currentPaidOrders.reduce((sum, order) => {
       const orderProfit = (order.order_items as unknown as OrderItem[]).reduce(
         (itemSum, item) => {
           const quantity = item.quantity || 1;
@@ -430,18 +365,16 @@ export const useDashboardMetrics = (
       return sum + orderProfit;
     }, 0);
 
-    // const paidOrderCount = paidOrders.length;
-
-    // const paidAOV = paidOrderCount > 0 ? currentRevenue / paidOrderCount : 0;
-
-    const currentOrderCount = filteredOrders.length;
-    const allOrdersRevenue = filteredOrders.reduce(
-      (sum, order) => sum + (Number(order.subtotal) || 0),
+    // 4. Calculate Average Order Value using SUBTOTAL for current period
+    const currentOrderCount = currentOrders.length;
+    const currentRevenueAllOrders = currentOrders.reduce(
+      (sum, order) => sum + calculateOrderSubtotal(order),
       0
     );
     const currentAOV =
-      filteredOrders.length > 0 ? allOrdersRevenue / filteredOrders.length : 0;
-    // 4. Calculate previous period metrics for comparison
+      currentOrderCount > 0 ? currentRevenueAllOrders / currentOrderCount : 0;
+
+    // 5. Calculate previous period metrics for comparison
     const prevPeriod = getPreviousPeriodDates(timePeriod);
     const prevPeriodOrders = orders.filter((order) => {
       const orderDate = new Date(order.created_at);
@@ -449,12 +382,21 @@ export const useDashboardMetrics = (
     });
     const prevPeriodPaidOrders = prevPeriodOrders.filter(isOrderPaid);
 
+    // Using subtotal for previous period revenue as well
     const prevRevenue = prevPeriodPaidOrders.reduce(
-      (sum, order) => sum + (Number(order.total_amount) || 0),
+      (sum, order) => sum + calculateOrderSubtotal(order),
       0
     );
     const prevOrderCount = prevPeriodOrders.length;
-    const prevAOV = prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0;
+
+    // Calculate previous period AOV using subtotal
+    const prevRevenueAllOrders = prevPeriodOrders.reduce(
+      (sum, order) => sum + calculateOrderSubtotal(order),
+      0
+    );
+    const prevAOV =
+      prevOrderCount > 0 ? prevRevenueAllOrders / prevOrderCount : 0;
+
     const prevProfit = prevPeriodPaidOrders.reduce((sum, order) => {
       const orderProfit = (order.order_items as unknown as OrderItem[]).reduce(
         (itemSum, item) => {
@@ -466,13 +408,13 @@ export const useDashboardMetrics = (
       return sum + orderProfit;
     }, 0);
 
-    // 5. Calculate percentage changes
+    // 6. Calculate percentage changes
     const calculateChange = (current: number, previous: number): number => {
       if (previous === 0) return current > 0 ? 100 : 0;
       return ((current - previous) / previous) * 100;
     };
 
-    // 6. Order status counts (for ALL orders)
+    // 7. Order status counts (for ALL orders)
     const orderStatusCounts: Record<OrderStatus, number> = {
       pending: 0,
       confirmed: 0,
@@ -486,7 +428,7 @@ export const useDashboardMetrics = (
       if (key in orderStatusCounts) orderStatusCounts[key]++;
     });
 
-    // 7. Sales trend (Last 30 days, paid orders only)
+    // 8. Sales trend (Last 30 days, paid orders only)
     const days = 30;
     const today = new Date();
     const salesTrend = [];
@@ -503,7 +445,7 @@ export const useDashboardMetrics = (
           const orderDate = new Date(order.created_at);
           return orderDate >= d && orderDate <= endOfDay && isOrderPaid(order);
         })
-        .reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0);
+        .reduce((sum, order) => sum + calculateOrderSubtotal(order), 0);
 
       salesTrend.push({
         date: d.toLocaleDateString("en-US", {
@@ -514,7 +456,7 @@ export const useDashboardMetrics = (
       });
     }
 
-    // 8. Customer analytics
+    // 9. Customer analytics
     const customerMap = new Map<
       string,
       { name: string; totalSpent: number; orders: number; firstOrderDate: Date }
@@ -530,14 +472,14 @@ export const useDashboardMetrics = (
       if (!current) {
         customerMap.set(customerId, {
           name: order.customers.first_name || "Unknown",
-          totalSpent: Number(order.total_amount) || 0,
+          totalSpent: calculateOrderSubtotal(order),
           orders: 1,
           firstOrderDate: orderDate,
         });
       } else {
         customerMap.set(customerId, {
           name: current.name,
-          totalSpent: current.totalSpent + (Number(order.total_amount) || 0),
+          totalSpent: current.totalSpent + calculateOrderSubtotal(order),
           orders: current.orders + 1,
           firstOrderDate:
             current.firstOrderDate < orderDate
@@ -547,7 +489,7 @@ export const useDashboardMetrics = (
       }
     });
 
-    // Find top customer
+    // Find top customer (overall)
     let topCustomer = { name: "No customers", totalSpent: 0 };
     customerMap.forEach((customer) => {
       if (customer.totalSpent > topCustomer.totalSpent) {
@@ -555,13 +497,12 @@ export const useDashboardMetrics = (
       }
     });
 
-    // Calculate new customers (first order in last 7 days)
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    lastWeek.setHours(0, 0, 0, 0);
-
+    // Calculate new customers (first order in CURRENT period)
+    const currentPeriod = getCurrentPeriodDates(timePeriod);
     const newCustomers = Array.from(customerMap.values()).filter(
-      (customer) => customer.firstOrderDate > lastWeek
+      (customer) =>
+        customer.firstOrderDate >= currentPeriod.start &&
+        customer.firstOrderDate <= currentPeriod.end
     ).length;
 
     const totalCustomers = customerMap.size;
@@ -571,7 +512,7 @@ export const useDashboardMetrics = (
     const returningRate =
       totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
 
-    // 9. Top products
+    // 10. Top products in CURRENT period (ALL orders, not just paid)
     const productMap = new Map<
       string,
       {
@@ -582,7 +523,8 @@ export const useDashboardMetrics = (
       }
     >();
 
-    paidOrders.forEach((order) => {
+    // Changed from currentPaidOrders to currentOrders to include all orders
+    currentOrders.forEach((order) => {
       (order.order_items as unknown as OrderItem[]).forEach((item) => {
         const current = productMap.get(item.product_name) || {
           revenue: 0,
@@ -591,15 +533,13 @@ export const useDashboardMetrics = (
           profit: 0,
         };
 
-        const itemQuantity = item.quantity || 1;
-        const itemRevenue =
-          (item.discounted_amount || item.unit_price) * itemQuantity;
-        const itemCost = getItemCostPrice(item) * itemQuantity;
-        const itemProfit = calculateItemProfit(item) * itemQuantity;
+        const itemRevenue = getItemRevenue(item);
+        const itemCost = getItemEstimatedCostTotal(item);
+        const itemProfit = itemRevenue - itemCost;
 
         productMap.set(item.product_name, {
           revenue: current.revenue + itemRevenue,
-          quantity: current.quantity + itemQuantity,
+          quantity: current.quantity + (item.quantity || 1),
           cost: current.cost + itemCost,
           profit: current.profit + itemProfit,
         });
@@ -607,7 +547,7 @@ export const useDashboardMetrics = (
     });
 
     const topProducts = Array.from(productMap.entries())
-      .sort((a, b) => b[1].quantity - a[1].quantity)
+      .sort((a, b) => b[1].quantity - a[1].quantity) // Sort by quantity sold
       .slice(0, 3)
       .map(([name, data]) => ({
         name,
@@ -618,7 +558,7 @@ export const useDashboardMetrics = (
         profitMargin: data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0,
       }));
 
-    // 10. Payment amounts
+    // 11. Payment amounts (for ALL orders) - Use total_amount here since it represents actual payment amounts
     const paymentAmounts: Record<PaymentStatus, number> = {
       paid: 0,
       pending: 0,
@@ -626,13 +566,13 @@ export const useDashboardMetrics = (
     };
 
     orders.forEach((order) => {
-      const amount = Number(order.total_amount) || 0;
+      const amount = calculateOrderTotal(order);
       const key = (order.payment_status?.toLowerCase() ||
         "pending") as PaymentStatus;
       if (key in paymentAmounts) paymentAmounts[key] += amount;
     });
 
-    // 11. Inventory counts
+    // 12. Inventory counts
     let lowStockCount = 0;
     let outOfStockCount = 0;
     let inStockCount = 0;
@@ -665,7 +605,7 @@ export const useDashboardMetrics = (
       });
     });
 
-    // 12. Alerts
+    // 13. Alerts
     const alerts: { type: AlertType; message: string; count: number }[] = [];
 
     if (lowStockCount > 0) {
@@ -712,28 +652,6 @@ export const useDashboardMetrics = (
       });
     }
 
-    // 13. Cost data availability check
-    const ordersWithCostData = paidOrders.filter((order) =>
-      (order.order_items as unknown as OrderItem[]).some(
-        (item) => getItemCostPrice(item) > 0
-      )
-    );
-
-    const costDataAvailability =
-      paidOrders.length > 0
-        ? (ordersWithCostData.length / paidOrders.length) * 100
-        : 0;
-
-    if (costDataAvailability < 100 && paidOrders.length > 0) {
-      alerts.push({
-        type: "payment",
-        message: `Incomplete cost data (${Math.round(
-          100 - costDataAvailability
-        )}% of orders)`,
-        count: paidOrders.length - ordersWithCostData.length,
-      });
-    }
-
     // Update all metrics
     setMetrics({
       revenue: currentRevenue,
@@ -759,8 +677,8 @@ export const useDashboardMetrics = (
       inStockCount,
       paymentAmounts,
       alerts,
-      filteredOrders,
-      paidOrders,
+      filteredOrders: currentOrders,
+      paidOrders: currentPaidOrders,
     });
   }, [
     storeId,
@@ -768,10 +686,14 @@ export const useDashboardMetrics = (
     products,
     timePeriod,
     filterOrdersByPeriod,
+    getCurrentPeriodDates,
     getPreviousPeriodDates,
     isOrderPaid,
     calculateItemProfit,
-    getItemCostPrice,
+    getItemRevenue,
+    getItemEstimatedCostTotal,
+    calculateOrderSubtotal,
+    calculateOrderTotal,
     getProductAvailableQuantity,
     getVariantAvailableQuantity,
     isVariantLowStock,

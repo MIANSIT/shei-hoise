@@ -1,16 +1,17 @@
 "use client";
 
 import React from "react";
-import { Row, Col, Typography, Card, Button, Select } from "antd";
 import StatCard from "./StatCard";
 import OrderStatusCard from "./OrderStatusCard";
+import { Row, Col, Typography, Card, Select } from "antd";
+// import { Row, Col, Typography, Card, Button, Select } from "antd";
 import InventoryAlertCard from "./InventoryAlertCard";
 import OrderAmountCard from "./OrderAmountCard";
 import SalesTrendChart from "./SalesTrendChart";
 import TopProducts from "./TopProducts";
 import CustomerSnapshot from "./CustomerSnapshot";
 import AlertsSection from "./AlertsSection";
-import { EyeOutlined } from "@ant-design/icons";
+// import { EyeOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -211,11 +212,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           <Col xs={24} lg={12}>
             <Card
               title="Top Products"
-              extra={
-                <Button type="link" icon={<EyeOutlined />}>
-                  View All
-                </Button>
-              }
+              // extra={
+              //   <Button type="link" icon={<EyeOutlined />}>
+              //     View All
+              //   </Button>
+              // }
               className="h-full"
             >
               <TopProducts products={topProducts} />
@@ -225,11 +226,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           <Col xs={24} lg={12}>
             <Card
               title="Customer Snapshot"
-              extra={
-                <Button type="link" icon={<EyeOutlined />}>
-                  View Details
-                </Button>
-              }
+              // extra={
+              //   <Button type="link" icon={<EyeOutlined />}>
+              //     View Details
+              //   </Button>
+              // }
               className="h-full"
             >
               <CustomerSnapshot stats={customerStats} />

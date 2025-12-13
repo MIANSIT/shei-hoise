@@ -75,9 +75,7 @@ export default function DashboardPage() {
     return amount.toFixed(2);
   };
 
-  // 4. Fetch products
-
-  // 5. Fetch products when storeId is available
+  // 4. Fetch products when storeId is available
   useEffect(() => {
     if (storeId) {
       const fetchProducts = async () => {
@@ -98,10 +96,10 @@ export default function DashboardPage() {
     }
   }, [storeId]);
 
-  // 6. Calculate all metrics using custom hook
+  // 5. Calculate all metrics using custom hook
   const metrics = useDashboardMetrics(storeId, orders, products, timePeriod);
 
-  // 7. Loading and error states
+  // 6. Loading and error states
   if (userLoading || ordersLoading || loadingProducts) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -131,38 +129,39 @@ export default function DashboardPage() {
     );
   }
 
-  // 8. Helper functions for UI
+  // 7. Helper functions for UI
   const getChangeType = (
     percentage: number
   ): "positive" | "negative" | "neutral" =>
     percentage > 0 ? "positive" : percentage < 0 ? "negative" : "neutral";
 
-  // IMPORTANT: Update period labels based on financial reporting logic
+  // UPDATED: Based on OPTION 2 implementation (current vs previous)
   const getPeriodLabel = (period: TimePeriod): string => {
     switch (period) {
       case "daily":
-        return "Yesterday's"; // Changed from "Today's"
+        return "Today's"; // Current: Today (not Yesterday)
       case "weekly":
-        return "Last Week's"; // Changed from "This Week's"
+        return "This Week's"; // Current: This Week (not Last Week)
       case "monthly":
-        return "Last Month's"; // Changed from "This Month's"
+        return "This Month's"; // Current: This Month (not Last Month)
       case "yearly":
-        return "Last Year's"; // Changed from "This Year's"
+        return "This Year's"; // Current: This Year (not Last Year)
       default:
         return "";
     }
   };
 
+  // UPDATED: Comparison text for OPTION 2
   const getComparisonText = (period: TimePeriod): string => {
     switch (period) {
       case "daily":
-        return "vs Day Before Yesterday";
+        return "vs Yesterday"; // Today vs Yesterday (not Day Before Yesterday)
       case "weekly":
-        return "vs Week Before Last";
+        return "vs Last Week"; // This Week vs Last Week (not Week Before Last)
       case "monthly":
-        return "vs Month Before Last";
+        return "vs Last Month"; // This Month vs Last Month (not Month Before Last)
       case "yearly":
-        return "vs Year Before Last";
+        return "vs Last Year"; // This Year vs Last Year (not Year Before Last)
       default:
         return "";
     }
@@ -173,7 +172,7 @@ export default function DashboardPage() {
     return `${sign}${percentage.toFixed(1)}% ${getComparisonText(period)}`;
   };
 
-  // 9. Stats for KPI cards
+  // 8. Stats for KPI cards - Now showing current period data
   const stats = [
     {
       title: `${getPeriodLabel(timePeriod)} Revenue (Paid)`,
@@ -209,7 +208,7 @@ export default function DashboardPage() {
     },
   ];
 
-  // 10. Order status cards (all orders)
+  // 9. Order status cards (all orders)
   const orderStatusCards = [
     {
       title: "Pending",
@@ -248,7 +247,7 @@ export default function DashboardPage() {
     },
   ];
 
-  // 11. Inventory alerts
+  // 10. Inventory alerts
   const inventoryAlerts = [
     {
       title: "In Stock",
@@ -273,10 +272,18 @@ export default function DashboardPage() {
     },
   ];
 
-  // 12. Customer stats
+  // 11. Customer stats - Note: New customers now shows for current period
   const customerStats = [
     {
-      title: "New Customers (7d)",
+      title: `New Customers (${
+        timePeriod === "daily"
+          ? "Today"
+          : timePeriod === "weekly"
+          ? "This Week"
+          : timePeriod === "monthly"
+          ? "This Month"
+          : "This Year"
+      })`,
       value: metrics.customerSnapshot.newCustomers.toString(),
       icon: <UserOutlined className="text-blue-500" />,
     },
@@ -293,7 +300,7 @@ export default function DashboardPage() {
     },
   ];
 
-  // 13. Order amounts by payment status
+  // 12. Order amounts by payment status
   const orderAmounts = [
     {
       title: "Pending Amount",
@@ -312,27 +319,27 @@ export default function DashboardPage() {
     },
   ];
 
-  // 14. Top products
+  // 13. Top products - Now shows top products for current period
   const topProductsDisplay = metrics.topProducts.map((product) => ({
     name: product.name,
     revenue: product.revenue,
     quantity: product.quantity,
   }));
 
-  // 15. Sales trend data
+  // 14. Sales trend data
   const enhancedSalesTrend = metrics.salesTrend.map((day) => ({
     date: day.date,
     sales: day.sales,
   }));
 
-  // 16. Alerts
+  // 15. Alerts
   const enhancedAlerts = metrics.alerts.map((alert) => ({
     type: alert.type,
     message: alert.message,
     count: alert.count,
   }));
 
-  // 17. Render the main dashboard
+  // 16. Render the main dashboard
   return (
     <div className="dashboard-container">
       <MainDashboard
