@@ -191,7 +191,7 @@ export default function DashboardPage() {
       description: `Total orders (${metrics.paidOrders.length} paid)`,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Avg Order Value`,
+      title: `${getPeriodLabel(timePeriod)} Avg Order Value (All Orders)`,
       value: renderCurrency(metrics.averageOrderValue),
       icon: <LineChartOutlined className="text-purple-500" />,
       change: formatChangeText(metrics.changePercentage.aov, timePeriod),
