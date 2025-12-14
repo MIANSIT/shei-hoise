@@ -1,15 +1,15 @@
 // lib/queries/user/getUserProfile.ts
 import { supabase } from "@/lib/supabase";
+import { USERTYPE } from "@/lib/types/users";
 
-// Make sure avatar_url and other optional fields are string | null
 export interface CustomerProfile {
   id: string;
   store_customer_id: string;
-  avatar_url: string | null; // no undefined
+  avatar_url: string | null;
   date_of_birth: string | null;
   gender: "male" | "female" | "other" | null;
   address: string | null;
-  address_line_1?: string | null; // optional for backward compatibility
+  address_line_1?: string | null;
   address_line_2?: string | null;
   city: string | null;
   state: string | null;
@@ -31,62 +31,84 @@ export interface UserWithProfile {
   profile: CustomerProfile | null;
   store_slug: string | null;
   store_name: string | null;
-  user_type: "customer"
+  user_type: USERTYPE;
 }
 
 export async function getUserProfile(
   customerId: string
 ): Promise<UserWithProfile> {
+  // Get customer data
   const { data: customerData, error: customerError } = await supabase
     .from("store_customers")
-    .select(`*, customer_profiles (*)`)
+    .select("*")
     .eq("id", customerId)
     .single();
 
-  if (customerError)
-    throw new Error(
-      `Failed to fetch customer profile: ${customerError.message}`
-    );
+  if (customerError) {
+    console.error("Error fetching customer:", customerError);
+    throw new Error(`Failed to fetch customer profile: ${customerError.message}`);
+  }
 
+  // Get profile data separately
+  let profile: CustomerProfile | null = null;
+  if (customerData.profile_id) {
+    const { data: profileData, error: profileError } = await supabase
+      .from("customer_profiles")
+      .select("*")
+      .eq("id", customerData.profile_id)
+      .single();
+
+    if (!profileError && profileData) {
+      profile = {
+        ...profileData,
+        avatar_url: profileData.avatar_url ?? null,
+        date_of_birth: profileData.date_of_birth ?? null,
+        gender: profileData.gender ?? null,
+        address: profileData.address ?? null,
+        city: profileData.city ?? null,
+        state: profileData.state ?? null,
+        postal_code: profileData.postal_code ?? null,
+        country: profileData.country ?? null,
+      };
+    }
+  }
+
+  // Get store link information
+  let storeSlug: string | null = null;
+  let storeName: string | null = null;
+  
   const { data: linkData } = await supabase
     .from("store_customer_links")
     .select("store_id")
     .eq("customer_id", customerId)
-    .single();
+    .limit(1);
 
-  let storeSlug: string | null = null;
-  let storeName: string | null = null;
-
-  if (linkData?.store_id) {
-    const { data: storeData, error: storeError } = await supabase
+  if (linkData && linkData.length > 0) {
+    const { data: storeData } = await supabase
       .from("stores")
       .select("store_slug, store_name")
-      .eq("id", linkData.store_id)
+      .eq("id", linkData[0].store_id)
       .single();
 
-    if (!storeError && storeData) {
+    if (storeData) {
       storeSlug = storeData.store_slug;
       storeName = storeData.store_name;
     }
   }
 
-  // Ensure all fields are non-undefined
-  const profile = customerData.customer_profiles?.[0] || null;
-  if (profile) {
-    profile.avatar_url = profile.avatar_url ?? null;
-    profile.date_of_birth = profile.date_of_birth ?? null;
-    profile.gender = profile.gender ?? null;
-    profile.address = profile.address ?? null;
-    profile.city = profile.city ?? null;
-    profile.state = profile.state ?? null;
-    profile.postal_code = profile.postal_code ?? null;
-    profile.country = profile.country ?? null;
-  }
-
+  // Ensure all fields are properly typed
   return {
-    ...customerData,
-    profile,
+    id: customerData.id,
+    name: customerData.name || '',
+    phone: customerData.phone || null,
+    email: customerData.email || '',
+    auth_user_id: customerData.auth_user_id || null,
+    profile_id: customerData.profile_id || null,
+    created_at: customerData.created_at || new Date().toISOString(),
+    updated_at: customerData.updated_at || new Date().toISOString(),
+    profile: profile,
     store_slug: storeSlug,
     store_name: storeName,
+    user_type: USERTYPE.CUSTOMER, // Store customers are always customers
   };
 }
