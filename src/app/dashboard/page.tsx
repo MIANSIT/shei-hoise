@@ -271,7 +271,6 @@ export default function DashboardPage() {
       actionText: "Restock Now",
     },
   ];
-
   // 11. Customer stats - Note: New customers now shows for current period
   const customerStats = [
     {
