@@ -211,7 +211,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
             <Card
-              title="Top Products"
+              title="Top Products (Paid)"
               // extra={
               //   <Button type="link" icon={<EyeOutlined />}>
               //     View All

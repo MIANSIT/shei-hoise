@@ -254,29 +254,29 @@ export const useDashboardMetrics = (
       salesTrendMap.set(d.toDateString(), 0);
     }
 
+    // Process orders - ALL metrics from PAID orders only
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
       const subtotal = Number(order.subtotal) || 0;
       const total = Number(order.total_amount) || 0;
       const isPaid = isOrderPaid(order);
 
+      // Filter orders for current period (all orders)
       if (orderDate >= currentPeriod.start && orderDate <= currentPeriod.end) {
         filteredOrders.push(order);
         orderCount++;
-        totalOrderValue += subtotal; // 👈 all orders
-
-        if (isPaid) {
-          revenue += subtotal;
-          paidOrders.push(order);
-          paidOrderCount++;
-        }
+        totalOrderValue += subtotal; // 👈 all orders for AOV calculation
       }
 
-      if (
-        orderDate >= prevPeriod.start &&
-        orderDate <= prevPeriod.end &&
-        isPaid
-      ) {
+      // Calculate metrics for CURRENT PERIOD (PAID orders only)
+      if (orderDate >= currentPeriod.start && orderDate <= currentPeriod.end && isPaid) {
+        revenue += subtotal;
+        paidOrders.push(order);
+        paidOrderCount++;
+      }
+
+      // Calculate metrics for PREVIOUS PERIOD (PAID orders only)
+      if (orderDate >= prevPeriod.start && orderDate <= prevPeriod.end && isPaid) {
         prevRevenue += subtotal;
         prevOrderCount++;
         prevProfit += (order.order_items as OrderItem[]).reduce(
@@ -285,14 +285,17 @@ export const useDashboardMetrics = (
         );
       }
 
+      // Count order statuses (all orders)
       const statusKey = (order.status?.toLowerCase() ||
         "pending") as OrderStatus;
       orderStatusCounts[statusKey]++;
 
+      // Count payment amounts (all orders)
       const paymentKey = (order.payment_status?.toLowerCase() ||
         "pending") as PaymentStatus;
       paymentAmounts[paymentKey] += total;
 
+      // Sales trend (PAID orders only)
       if (isPaid) {
         const dayKey = new Date(order.created_at).toDateString();
         if (salesTrendMap.has(dayKey)) {
@@ -303,6 +306,7 @@ export const useDashboardMetrics = (
         }
       }
 
+      // Customer data (all orders for counting, but paid for spending)
       if (!order.customers?.id) return;
       const customerId = order.customers.id;
       const firstName = order.customers.first_name || "Unknown";
@@ -323,6 +327,7 @@ export const useDashboardMetrics = (
         });
       }
 
+      // Top customer (PAID orders only)
       if (isPaid) {
         const paidCustomer = paidCustomerMap.get(customerId);
         if (!paidCustomer)
@@ -337,27 +342,31 @@ export const useDashboardMetrics = (
           });
       }
 
-      (order.order_items as OrderItem[]).forEach((item) => {
-        const current = topProductsMap.get(item.product_name) || {
-          revenue: 0,
-          quantity: 0,
-          cost: 0,
-          profit: 0,
-        };
-        const qty = item.quantity || 1;
-        const itemRevenue = getItemSellingPrice(item) * qty;
-        const itemCost = getItemEstimatedCost(item) * qty;
-        const itemProfit = itemRevenue - itemCost;
+      // Top products (PAID orders only)
+      if (isPaid) {
+        (order.order_items as OrderItem[]).forEach((item) => {
+          const current = topProductsMap.get(item.product_name) || {
+            revenue: 0,
+            quantity: 0,
+            cost: 0,
+            profit: 0,
+          };
+          const qty = item.quantity || 1;
+          const itemRevenue = getItemSellingPrice(item) * qty;
+          const itemCost = getItemEstimatedCost(item) * qty;
+          const itemProfit = itemRevenue - itemCost;
 
-        topProductsMap.set(item.product_name, {
-          revenue: current.revenue + itemRevenue,
-          quantity: current.quantity + qty,
-          cost: current.cost + itemCost,
-          profit: current.profit + itemProfit,
+          topProductsMap.set(item.product_name, {
+            revenue: current.revenue + itemRevenue,
+            quantity: current.quantity + qty,
+            cost: current.cost + itemCost,
+            profit: current.profit + itemProfit,
+          });
         });
-      });
+      }
     });
 
+    // Calculate gross profit (PAID orders only)
     grossProfit = filteredOrders.reduce((sum, order) => {
       if (!isOrderPaid(order)) return sum;
       return (
@@ -369,6 +378,79 @@ export const useDashboardMetrics = (
       );
     }, 0);
 
+    // Calculate inventory counts from products
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    let inStockCount = 0;
+
+    // Process products to get stock information
+    products.forEach((product) => {
+      if (product.variants && product.variants.length > 0) {
+        // For products with variants, check each variant
+        product.variants.forEach((variant) => {
+          if (variant.stock) {
+            const quantity = variant.stock.quantity_available || 0;
+            const lowThreshold = variant.stock.low_stock_threshold || 5;
+            
+            if (quantity <= 0) {
+              outOfStockCount++;
+            } else if (quantity <= lowThreshold) {
+              lowStockCount++;
+            } else {
+              inStockCount++;
+            }
+          } else {
+            // If no stock data, check product-level stock
+            if (product.stock) {
+              const quantity = product.stock.quantity_available || 0;
+              const lowThreshold = product.stock.low_stock_threshold || 5;
+              
+              if (quantity <= 0) {
+                outOfStockCount++;
+              } else if (quantity <= lowThreshold) {
+                lowStockCount++;
+              } else {
+                inStockCount++;
+              }
+            } else {
+              // If no stock data at all, count as in stock
+              inStockCount++;
+            }
+          }
+        });
+      } else {
+        // For products without variants, check product stock directly
+        if (product.stock) {
+          const quantity = product.stock.quantity_available || 0;
+          const lowThreshold = product.stock.low_stock_threshold || 5;
+          
+          if (quantity <= 0) {
+            outOfStockCount++;
+          } else if (quantity <= lowThreshold) {
+            lowStockCount++;
+          } else {
+            inStockCount++;
+          }
+        } else if (product.quantity_available !== undefined) {
+          // If using direct quantity_available property (from Product interface)
+          const quantity = product.quantity_available || 0;
+          const lowThreshold = product.low_stock_threshold || 5;
+          
+          if (quantity <= 0) {
+            outOfStockCount++;
+          } else if (quantity <= lowThreshold) {
+            lowStockCount++;
+          } else {
+            inStockCount++;
+          }
+        } else {
+          // If no stock data, count as in stock
+          inStockCount++;
+        }
+      }
+    });
+
+    // Calculate customer metrics
     let topCustomer = { name: "No customers", totalSpent: 0 };
     paidCustomerMap.forEach((c) => {
       if (c.totalSpent > topCustomer.totalSpent) topCustomer = { ...c };
@@ -387,6 +469,7 @@ export const useDashboardMetrics = (
     const returningRate =
       totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
 
+    // Prepare top products (from PAID orders only)
     const topProducts = Array.from(topProductsMap.entries())
       .sort((a, b) => b[1].quantity - a[1].quantity)
       .slice(0, 3)
@@ -396,16 +479,55 @@ export const useDashboardMetrics = (
         profitMargin: data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0,
       }));
 
-    const salesTrend = Array.from(salesTrendMap.entries()).map(
-      ([date, sales]) => ({
+    // Prepare sales trend data (from PAID orders only)
+    const salesTrend = Array.from(salesTrendMap.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([date, sales]) => ({
         date: new Date(date).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
         sales,
-      })
-    );
+      }));
 
+    // Calculate alerts
+    const alerts: { type: AlertType; message: string; count: number }[] = [];
+
+    if (lowStockCount > 0) {
+      alerts.push({
+        type: "stock",
+        message: `Low stock items need attention`,
+        count: lowStockCount,
+      });
+    }
+
+    if (outOfStockCount > 0) {
+      alerts.push({
+        type: "stock",
+        message: `Out of stock items detected`,
+        count: outOfStockCount,
+      });
+    }
+
+    // Add order alerts if there are pending orders
+    if (orderStatusCounts.pending > 0) {
+      alerts.push({
+        type: "order",
+        message: `Pending orders require action`,
+        count: orderStatusCounts.pending,
+      });
+    }
+
+    // Add payment alerts if there are pending payments
+    if (paymentAmounts.pending > 0) {
+      alerts.push({
+        type: "payment",
+        message: `Pending payments awaiting confirmation`,
+        count: 1, // Count as 1 alert instance, not number of orders
+      });
+    }
+
+    // Calculate change percentages
     const calculateChange = (current: number, previous: number) =>
       previous === 0
         ? current > 0
@@ -413,6 +535,7 @@ export const useDashboardMetrics = (
           : 0
         : ((current - previous) / previous) * 100;
 
+    // Set all metrics
     setMetrics({
       revenue,
       orderCount,
@@ -436,17 +559,18 @@ export const useDashboardMetrics = (
         topCustomer,
       },
       topProducts,
-      lowStockCount: 0,
-      outOfStockCount: 0,
-      inStockCount: 0,
+      lowStockCount,
+      outOfStockCount,
+      inStockCount,
       paymentAmounts,
-      alerts: [],
+      alerts,
       filteredOrders,
       paidOrders,
     });
   }, [
     storeId,
     orders,
+    products,
     timePeriod,
     getCurrentPeriodDates,
     getPreviousPeriodDates,
