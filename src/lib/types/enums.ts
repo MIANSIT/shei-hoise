@@ -24,3 +24,9 @@ export enum PaymentMethod {
 }
 
 export type DeliveryOption = "pathao" | "courier" | "other" | "inside dhaka" | "outside dhaka" | string;
+export enum StockFilter {
+  ALL = "all",
+  LOW = "low",
+  IN = "in",
+  OUT = "out"
+}
