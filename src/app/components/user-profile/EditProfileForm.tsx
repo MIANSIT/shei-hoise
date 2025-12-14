@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Add useEffect
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,21 +24,20 @@ const profileSchema = z.object({
   email: z.string().email("Invalid email address"),
   date_of_birth: z.string(),
   gender: z.string(),
-  address: z.string(), // Field name is 'address' in customer_profiles
+  address: z.string(),
   city: z.string(),
   state: z.string(),
   postal_code: z.string(),
   country: z.string(),
 });
 
-// Define the profile type
-interface CustomerProfile {
+// Define common profile interface that works for both customer and admin profiles
+interface CommonProfileData {
   id: string;
-  store_customer_id: string;
-  avatar_url: string | null;
   date_of_birth: string | null;
   gender: string | null;
-  address: string | null;
+  address?: string | null;
+  address_line_1?: string | null;
   city: string | null;
   state: string | null;
   postal_code: string | null;
@@ -53,7 +52,7 @@ interface EditProfileFormProps {
     email: string;
     name: string | null;
     phone: string | null;
-    profile?: CustomerProfile | null;
+    profile?: CommonProfileData | null;
   };
   onCancel: () => void;
   onSave: (data: ProfileFormData) => Promise<void>;
@@ -65,15 +64,12 @@ export function EditProfileForm({
   onSave,
 }: EditProfileFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  // const [debugInfo, setDebugInfo] = useState("");
-
-  // Debug the incoming data
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset, // Add reset function
+    reset,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
   });
@@ -81,13 +77,16 @@ export function EditProfileForm({
   // Initialize form with data when user changes
   useEffect(() => {
     if (user) {
+      // Extract address from either address or address_line_1
+      const address = user.profile?.address || user.profile?.address_line_1 || "";
+      
       const defaultValues = {
         name: user.name || "",
         phone: user.phone || "",
         email: user.email || "",
         date_of_birth: user.profile?.date_of_birth || "",
         gender: user.profile?.gender || "",
-        address: user.profile?.address || "", // This should show the address
+        address: address,
         city: user.profile?.city || "",
         state: user.profile?.state || "",
         postal_code: user.profile?.postal_code || "",
@@ -95,10 +94,7 @@ export function EditProfileForm({
       };
 
       console.log("🔄 EditProfileForm - Setting form defaults:", defaultValues);
-      console.log(
-        "🔄 EditProfileForm - Address value being set:",
-        defaultValues.address
-      );
+      console.log("🔄 EditProfileForm - Profile data:", user.profile);
 
       reset(defaultValues);
     }
@@ -111,6 +107,7 @@ export function EditProfileForm({
       await onSave(data);
     } catch (error) {
       console.error("Error saving profile:", error);
+      throw error; // Re-throw to handle in parent
     } finally {
       setIsLoading(false);
     }
@@ -120,12 +117,7 @@ export function EditProfileForm({
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle>Edit Profile</CardTitle>
-        <CardDescription>Update customer personal information</CardDescription>
-        {/* Debug info - remove in production */}
-        {/* <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-          <p className="font-semibold">Debug Info:</p>
-          <pre className="whitespace-pre-wrap">{debugInfo}</pre>
-        </div> */}
+        <CardDescription>Update your personal information</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -208,12 +200,11 @@ export function EditProfileForm({
             <h3 className="text-lg font-medium">Address Information</h3>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Address *</Label>
+              <Label htmlFor="address">Address</Label>
               <Input
                 id="address"
                 {...register("address")}
                 placeholder="Street address, P.O. box, company name"
-                className="border-2 border-blue-300" // Highlight to see if it's rendered
               />
               {errors.address && (
                 <div className="text-sm text-red-600">
@@ -262,7 +253,7 @@ export function EditProfileForm({
               type="submit"
               variant="greenish"
               disabled={isLoading}
-              className="flex items-center gap-2 "
+              className="flex items-center gap-2"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

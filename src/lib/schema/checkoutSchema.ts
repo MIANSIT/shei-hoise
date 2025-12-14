@@ -1,7 +1,7 @@
-// lib/schema/checkoutSchema.ts
+// lib/schema/checkoutSchema.ts - FIXED VERSION
 import { z } from "zod";
 
-// Strong password validation (optional)
+// Strong password validation (optional for guest checkout)
 const passwordValidation = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -15,8 +15,8 @@ const passwordValidation = z
   .optional()
   .or(z.literal(''));
 
-// Simple password validation for logged-in users (required but with dummy value)
-const simplePasswordValidation = z.string().min(1, "Password is required");
+// ✅ FIXED: For logged-in users, make password truly optional
+const loggedInPasswordValidation = z.string().optional().or(z.literal(''));
 
 // ✅ UPDATED: Bangladesh phone number validation without +88
 const bangladeshPhoneValidation = z
@@ -45,12 +45,12 @@ export const customerCheckoutSchema = z.object({
   shippingAddress: z.string().min(1, "Shipping address is required"),
 });
 
-// Schema for logged-in users (password required but will be dummy)
+// ✅ FIXED: Schema for logged-in users (password truly optional)
 export const customerCheckoutSchemaForLoggedIn = z.object({
   name: z.string().min(1, "Full name is required"),
   email: emailValidation,
   phone: bangladeshPhoneValidation,
-  password: simplePasswordValidation,
+  password: loggedInPasswordValidation, // ✅ Now truly optional
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   postCode: z.string().min(1, "Postal code is required"),

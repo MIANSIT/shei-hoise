@@ -8,7 +8,7 @@ import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer"; // UPDATED IMPORT
 import UserDropdown from "./UserDropdownDesktop";
 import {
   getStoreBySlugWithLogo,
@@ -30,7 +30,14 @@ export default function DesktopHeader({
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [isStoreLoading, setIsStoreLoading] = useState(true);
 
-  const { user, loading } = useCurrentUser();
+  // UPDATED: Use useCurrentCustomer instead of useCurrentUser
+  const { 
+    customer, 
+    loading: customerLoading, 
+    isLoggedIn, 
+    authEmail 
+  } = useCurrentCustomer(storeSlug);
+  
   const pathname = usePathname();
 
   useEffect(() => {
@@ -57,12 +64,12 @@ export default function DesktopHeader({
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
 
-  // AuthLinks for non-logged-in users
+  // AuthLinks for non-logged-in customers
   const authLinks: NavLink[] =
-    !isAdmin && !user
+    !isAdmin && !isLoggedIn
       ? [
-          { name: "Log in", path: "/login" },
-          { name: "Sign up", path: "/sign-up", isHighlighted: true },
+          { name: "Log in", path: `/login?redirect=/${storeSlug}` },
+          { name: "Sign up", path: `/sign-up?redirect=/${storeSlug}`, isHighlighted: true },
         ]
       : [];
 
@@ -94,6 +101,12 @@ export default function DesktopHeader({
       </div>
     </div>
   );
+
+  // Determine if we should show customer dropdown or auth buttons
+  const showCustomerDropdown = isLoggedIn && customer;
+  
+  // Get customer name for display (fallback to email)
+  const customerDisplayName = customer?.name || customer?.email?.split('@')[0] || "Customer";
 
   return (
     <>
@@ -132,21 +145,39 @@ export default function DesktopHeader({
                   </Link>
                 );
               })}
+              
+              {/* Show My Orders link for logged-in customers */}
+              {isLoggedIn && (
+                <Link
+                  href={`/${storeSlug}/order-status`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    pathname === `/${storeSlug}/order-status`
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground hover:bg-accent"
+                  }`}
+                >
+                  My Orders
+                </Link>
+              )}
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-5">
-          {/* Show skeleton for entire right section while user data is loading */}
-          {loading ? (
+          {/* Show skeleton for entire right section while customer data is loading */}
+          {customerLoading ? (
             <UserAuthSkeleton />
           ) : (
             <>
               <ThemeToggle />
               <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
 
-              {user ? (
-                <UserDropdown />
+              {showCustomerDropdown ? (
+                <UserDropdown 
+                  customerName={customerDisplayName}
+                  customerEmail={customer?.email || authEmail || ""}
+                  storeSlug={storeSlug}
+                />
               ) : (
                 <AuthButtons links={authLinks} isAdminPanel={false} />
               )}
