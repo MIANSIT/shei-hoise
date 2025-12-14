@@ -4,7 +4,7 @@ export function SettingItem({
   value,
 }: {
   label: string;
-  value: string | number;
+  value: string | number | null;
 }) {
   return (
     <div className="border rounded-lg p-4">
