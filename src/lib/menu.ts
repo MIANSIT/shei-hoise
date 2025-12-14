@@ -89,7 +89,7 @@ export const sideMenu: MenuItem[] = [
     children: [
       {
         title: "Profile",
-        href: "/dashboard/profile-Setting",
+        href: "/dashboard/admin-profile",
         icon: UserCircle,
       },
       {
