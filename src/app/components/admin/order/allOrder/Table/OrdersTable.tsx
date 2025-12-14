@@ -152,13 +152,13 @@ const OrdersTable: React.FC<Props> = ({
     <div className="flex items-center gap-2 justify-center">
       <Tooltip title="Edit Order">
         <EditOutlined
-          className="!text-blue-600 cursor-pointer hover:!text-blue-800 text-base"
+          className="text-blue-600! cursor-pointer hover:text-blue-800! text-base"
           onClick={() => handleEdit(order)}
         />
       </Tooltip>
       <Tooltip title="Delete Order">
         <DeleteOutlined
-          className={`!text-red-600 cursor-pointer hover:!text-red-800 text-base ${
+          className={`text-red-600! cursor-pointer hover:text-red-800! text-base ${
             deleteLoading === order.id ? "opacity-50 cursor-not-allowed" : ""
           }`}
           onClick={() => deleteLoading !== order.id && handleDelete(order)}
@@ -399,7 +399,7 @@ const OrdersTable: React.FC<Props> = ({
             type="link"
             icon={<FileTextOutlined />}
             onClick={() => handleViewInvoice(order)}
-            className="!text-green-600 !p-1 !h-auto text-xs"
+            className="text-green-600! p-1! h-auto! text-xs"
             size="small"
           ></Button>
         </Tooltip>
@@ -551,7 +551,7 @@ const OrdersTable: React.FC<Props> = ({
               icon={<FileTextOutlined />}
               onClick={() => handleViewInvoice(order)}
               size="small"
-              className="!bg-green-600 !border-green-600 hover:!bg-green-700"
+              className="bg-green-600! border-green-600! hover:bg-green-700!"
             >
               Invoice
             </Button>

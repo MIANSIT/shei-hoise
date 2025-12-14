@@ -10,6 +10,7 @@ interface CategoryTablePanelProps {
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
   showForm: boolean;
+  onToggleActive: (category: Category, isActive: boolean) => void; // ✅ keep
 }
 
 export default function CategoryTablePanel({
@@ -18,6 +19,7 @@ export default function CategoryTablePanel({
   onEdit,
   onDelete,
   showForm,
+  onToggleActive, // ✅ add this here
 }: CategoryTablePanelProps) {
   return (
     <div className={`${showForm ? "lg:w-2/3 w-full" : "w-full"}`}>
@@ -26,6 +28,7 @@ export default function CategoryTablePanel({
         loading={loading}
         onEdit={onEdit}
         onDelete={onDelete}
+        onToggleActive={onToggleActive} // ✅ now it's defined
       />
     </div>
   );
