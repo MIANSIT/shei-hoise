@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
+import { Avatar, Space, Tooltip, App, Card, Button, Pagination } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
@@ -28,15 +28,25 @@ import dataService from "@/lib/queries/dataService";
 
 interface Props {
   orders: StoreOrder[];
+  total: number;
+  page: number;
+  search: string;
+  pageSize: number;
+  onTableChange: (pagination: { current: number; pageSize: number }) => void;
   onUpdate: (orderId: string, changes: Partial<StoreOrder>) => void;
-  onRefresh?: () => void;
   loading?: boolean;
+  onSearchChange: (value: string) => void; // add this
 }
 
 const OrdersTable: React.FC<Props> = ({
   orders,
   onUpdate,
-  onRefresh,
+  search,
+  onSearchChange,
+  page,
+  total,
+  pageSize,
+  onTableChange,
   loading = false,
 }) => {
   const { notification, modal } = App.useApp();
@@ -67,7 +77,7 @@ const OrdersTable: React.FC<Props> = ({
     setFilteredOrders(filtered);
   }, [orders, searchOrderId]);
 
-  const handleSearchChange = (value: string) => setSearchOrderId(value);
+  // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleTabFilter = (filtered: StoreOrder[]) => {
     const finalFiltered = filtered.filter((o) => {
@@ -115,10 +125,6 @@ const OrdersTable: React.FC<Props> = ({
         message: "Order Deleted",
         description: "Order has been deleted successfully.",
       });
-
-      if (onRefresh) {
-        onRefresh();
-      }
     } catch (error: any) {
       console.error("Error deleting order:", error);
       notification.error({
@@ -143,9 +149,6 @@ const OrdersTable: React.FC<Props> = ({
 
   const handleBulkUpdateSuccess = () => {
     setSelectedRowKeys([]);
-    if (onRefresh) {
-      onRefresh();
-    }
   };
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -599,7 +602,6 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh}
                 />
               </div>
             )}
@@ -652,8 +654,8 @@ const OrdersTable: React.FC<Props> = ({
         <OrdersFilterTabs
           orders={orders}
           onFilter={handleTabFilter}
-          searchValue={searchOrderId}
-          onSearchChange={handleSearchChange}
+          searchValue={search} // <- use parent search state
+          onSearchChange={onSearchChange}
         />
       </div>
 
@@ -682,14 +684,7 @@ const OrdersTable: React.FC<Props> = ({
             },
           ],
         }}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} orders`,
-          responsive: true,
-        }}
+        pagination={false}
         size="middle"
         expandable={{
           expandedRowKeys: expandedRowKey ? [expandedRowKey] : [],
@@ -755,7 +750,6 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh}
                 />
               )}
               <DetailedOrderView order={order} />
@@ -766,6 +760,17 @@ const OrdersTable: React.FC<Props> = ({
         responsive={true}
         renderCard={renderOrderCard}
       />
+      <div className="mt-4 flex justify-end">
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          showQuickJumper
+          onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
+          pageSizeOptions={["5", "10", "20", "50"]}
+        />
+      </div>
 
       {/* Invoice Modal */}
       {showInvoice && selectedOrderForInvoice && (

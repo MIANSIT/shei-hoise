@@ -23,10 +23,18 @@ export enum PaymentMethod {
   MOBILE_BANKING = "mobile_banking"
 }
 
-export type DeliveryOption = "pathao" | "courier" | "other" | "inside dhaka" | "outside dhaka" | string;
+export enum DeliveryOption {
+  PATHAO = "pathao",
+  COURIER = "courier",
+  OTHER = "other",
+  INSIDE_DHAKA = "inside dhaka",
+  OUTSIDE_DHAKA = "outside dhaka"
+}
 export enum StockFilter {
   ALL = "all",
   LOW = "low",
   IN = "in",
   OUT = "out"
 }
+
+

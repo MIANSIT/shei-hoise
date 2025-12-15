@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Tabs, Input } from "antd";
+import { Tabs, Input, Button, Space } from "antd";
 import { StoreOrder } from "@/lib/types/order";
+import { SearchOutlined } from "@ant-design/icons";
 
 interface Props {
   orders: StoreOrder[];
@@ -148,14 +149,16 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 flex-wrap">
         <div className="w-full sm:w-auto flex-1">
-          <Input.Search
-            placeholder="Search by Order #, Email, Phone, or Name"
-            value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            allowClear
-            size="middle"
-            className="w-full sm:w-72"
-          />
+          <Space.Compact >
+            <Input
+              placeholder="Search by Order #"
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              allowClear
+              onPressEnter={(e) => onSearchChange(e.currentTarget.value)}
+            />
+            <Button type="primary" icon={<SearchOutlined />} />
+          </Space.Compact>
         </div>
 
         <div className="flex flex-wrap justify-start sm:justify-end gap-2 w-full sm:w-auto">
