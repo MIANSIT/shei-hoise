@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { getProductWithStock } from "@/lib/queries/products/getProductWithStock";
 import StockTableMobile from "./StockTableMobile";
 import StockTable from "./StockTable"; // desktop table
@@ -49,7 +49,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   const { storeSlug, loading: userLoading } = useCurrentUser();
 
   // Fetch products from Supabase with pagination and filters
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     if (!storeSlug) return;
     setLoading(true);
     try {
@@ -61,29 +61,25 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         pageSize
       );
 
-      // Set products only if data exists
-      if (result.data && result.data.length > 0) {
-        setProducts(mapProductsForModernTable(result.data));
-      } else {
-        setProducts([]);
-      }
-
+      setProducts(
+        result.data?.length ? mapProductsForModernTable(result.data) : []
+      );
       setTotalProducts(result.total ?? 0);
     } catch (err) {
       console.error(err);
       notify.error("Failed to load product stock");
-      setProducts([]); // clear products on error
+      setProducts([]);
       setTotalProducts(0);
     } finally {
       setLoading(false);
     }
-  };
-
+  }, [storeSlug, searchText, stockFilter, currentPage, pageSize, notify]);
   // Refetch when dependencies change
   useEffect(() => {
-    if (!userLoading && storeSlug) fetchProducts();
-  }, [userLoading, storeSlug, searchText, stockFilter, currentPage, pageSize]);
-
+    if (!userLoading && storeSlug) {
+      fetchProducts();
+    }
+  }, [userLoading, storeSlug, fetchProducts]);
   useEffect(() => {
     setFilteredProducts(products as ProductRowWithMatch[]);
   }, [products]);

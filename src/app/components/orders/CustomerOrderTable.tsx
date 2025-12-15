@@ -134,7 +134,7 @@ export default function OrdersTable({ orders, onViewInvoice }: OrdersTableProps)
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => copyOrderId(getDisplayOrderId(order))}
-                        className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer flex-shrink-0"
+                        className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer shrink-0"
                         title="Copy Order ID"
                       >
                         {copiedOrderId === getDisplayOrderId(order) ? (
@@ -237,7 +237,7 @@ export default function OrdersTable({ orders, onViewInvoice }: OrdersTableProps)
                                     );
                                   }
                                 }}
-                                className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer flex-shrink-0"
+                                className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer shrink-0"
                                 title="Copy Store URL"
                               >
                                 {copiedOrderId ===
