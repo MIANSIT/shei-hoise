@@ -16,41 +16,39 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { StockFilter } from "@/lib/types/enums";
-import { Pagination } from "antd";
 
 export interface ProductRowWithMatch extends ProductRow {
   hasMatchingVariants?: boolean;
 }
 
 interface StockChangeTableProps {
-  searchText?: string;
-  stockFilter?: StockFilter;
+  searchText: string;
+  stockFilter: StockFilter;
+  currentPage: number;
+  pageSize: number;
+  onTotalChange?: (total: number) => void; // notify parent about total items
 }
 
 const StockChangeTable: React.FC<StockChangeTableProps> = ({
   searchText,
-  stockFilter = StockFilter.ALL,
+  stockFilter,
+  currentPage,
+  pageSize,
+  onTotalChange,
 }) => {
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<
-    ProductRowWithMatch[]
-  >([]);
   const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [loading, setLoading] = useState(true);
   const [bulkActive, setBulkActive] = useState(false);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [totalProducts, setTotalProducts] = useState(0);
-
-  const notify = useSheiNotification();
   const { storeSlug, loading: userLoading } = useCurrentUser();
+  const notify = useSheiNotification();
 
-  // Fetch products from Supabase with pagination and filters
+  // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!storeSlug) return;
+
     setLoading(true);
     try {
       const result = await getProductWithStock(
@@ -60,29 +58,29 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         currentPage,
         pageSize
       );
+      const mapped = result.data?.length
+        ? mapProductsForModernTable(result.data)
+        : [];
+      setProducts(mapped);
 
-      setProducts(
-        result.data?.length ? mapProductsForModernTable(result.data) : []
-      );
-      setTotalProducts(result.total ?? 0);
+      if (onTotalChange) onTotalChange(result.total ?? 0);
     } catch (err) {
       console.error(err);
-      notify.error("Failed to load product stock");
-      setProducts([]);
-      setTotalProducts(0);
     } finally {
       setLoading(false);
     }
-  }, [storeSlug, searchText, stockFilter, currentPage, pageSize, notify]);
-  // Refetch when dependencies change
+  }, [
+    storeSlug,
+    searchText,
+    stockFilter,
+    currentPage,
+    pageSize,
+    onTotalChange,
+  ]);
+
   useEffect(() => {
-    if (!userLoading && storeSlug) {
-      fetchProducts();
-    }
+    if (!userLoading && storeSlug) fetchProducts();
   }, [userLoading, storeSlug, fetchProducts]);
-  useEffect(() => {
-    setFilteredProducts(products as ProductRowWithMatch[]);
-  }, [products]);
 
   // --- Stock editing ---
   const handleStockChange = (
@@ -108,13 +106,11 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         ...(variantId ? { variant_id: variantId } : {}),
         quantity_available: quantity,
       });
-
       setEditedStocks((prev) => {
         const copy = { ...prev };
         delete copy[variantId ?? productId];
         return copy;
       });
-
       await fetchProducts();
       notify.success("Stock updated successfully");
     } catch (err) {
@@ -159,8 +155,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   // --- Row selection for desktop table ---
   const rowSelection: TableRowSelection<ProductRow | VariantRow> = {
     selectedRowKeys,
-    onChange: (newSelectedRowKeys: React.Key[]) =>
-      setSelectedRowKeys(newSelectedRowKeys),
+    onChange: setSelectedRowKeys,
     getCheckboxProps: (record: ProductRow | VariantRow) => ({
       disabled: !("variants" in record),
     }),
@@ -168,7 +163,6 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
 
   if (userLoading)
     return <p className="text-center text-gray-500">Loading user...</p>;
-
   if (!storeSlug)
     return (
       <p className="text-center text-gray-500">No store found for this user.</p>
@@ -180,18 +174,14 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-gray-500">No products found.</p>
       ) : (
         <>
-          <div>
-            <LowStockSummary products={products} />
-          </div>
+          <LowStockSummary products={products} />
           <BulkStockUpdate
             selectedCount={selectedRowKeys.length}
             onUpdate={handleBulkUpdate}
             loading={bulkActive}
           />
-
-          {/* Mobile Table */}
           <StockTableMobile
-            products={filteredProducts}
+            products={products}
             editedStocks={editedStocks}
             onStockChange={handleStockChange}
             onSingleUpdate={handleSingleUpdate}
@@ -199,35 +189,15 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
             onSelectChange={setSelectedRowKeys}
             bulkActive={bulkActive}
           />
-
-          {/* Desktop Table */}
           <div className="hidden md:block">
             <StockTable
-              products={filteredProducts}
+              products={products}
               editedStocks={editedStocks}
               onStockChange={handleStockChange}
               onSingleUpdate={handleSingleUpdate}
               rowSelection={rowSelection}
               loading={loading}
               bulkActive={bulkActive}
-            />
-          </div>
-
-          {/* Pagination */}
-          <div className="flex justify-end">
-            <Pagination
-              current={currentPage}
-              pageSize={pageSize}
-              total={totalProducts}
-              showSizeChanger
-              pageSizeOptions={["10", "20", "50", "100"]}
-              onChange={(page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              }}
-              showTotal={(total, range) =>
-                `${range[0]}-${range[1]} of ${total} items`
-              }
             />
           </div>
         </>

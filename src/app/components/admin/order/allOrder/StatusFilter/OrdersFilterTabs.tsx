@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Tabs, Input, Button, Space } from "antd";
 import { StoreOrder } from "@/lib/types/order";
 import { SearchOutlined } from "@ant-design/icons";
@@ -29,10 +29,8 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // Highlight matching search text
 export const highlightText = (text: string, search: string) => {
   if (!search) return text;
-
   const regex = new RegExp(`(${search})`, "gi");
   const parts = text.split(regex);
-
   return parts.map((part, i) =>
     regex.test(part) ? (
       <span key={i} className="bg-yellow-200 rounded px-1">
@@ -65,7 +63,7 @@ export const getCustomerEmail = (order: StoreOrder) => {
 
 // Get customer phone
 export const getCustomerPhone = (order: StoreOrder) => {
-  return order.customers?.phone || order.shipping_address.phone || "No phone";
+  return order.customers?.phone || order.shipping_address?.phone || "No phone";
 };
 
 const OrdersFilterTabs: React.FC<Props> = ({
@@ -76,6 +74,8 @@ const OrdersFilterTabs: React.FC<Props> = ({
 }) => {
   const [category, setCategory] = useState<"order" | "payment">("order");
   const [activeStatus, setActiveStatus] = useState<string>("all");
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const orderStatuses = [
     "all",
@@ -93,6 +93,13 @@ const OrdersFilterTabs: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, orders, searchValue]);
 
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    };
+  }, []);
+
   const handleCategoryChange = (key: string) => {
     setCategory(key as "order" | "payment");
     setActiveStatus("all");
@@ -102,7 +109,6 @@ const OrdersFilterTabs: React.FC<Props> = ({
     setActiveStatus(status);
 
     let filtered = orders;
-
     if (status !== "all") {
       filtered =
         category === "order"
@@ -127,9 +133,16 @@ const OrdersFilterTabs: React.FC<Props> = ({
     onFilter(finalFiltered);
   };
 
+  const handleInputChange = (value: string) => {
+    onSearchChange(value);
+    setIsTyping(true);
+
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => setIsTyping(false), 800);
+  };
+
   const getStatusCount = (status: string) => {
     if (status === "all") return orders.length;
-
     return category === "order"
       ? orders.filter((o) => o.status === status).length
       : orders.filter((o) => o.payment_status === status).length;
@@ -149,15 +162,22 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 flex-wrap">
         <div className="w-full sm:w-auto flex-1">
-          <Space.Compact >
+          <Space.Compact>
             <Input
               placeholder="Search by Order #"
               value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               allowClear
               onPressEnter={(e) => onSearchChange(e.currentTarget.value)}
+              suffix={
+                isTyping ? <span className="text-xs">Typing...</span> : null
+              }
             />
-            <Button type="primary" icon={<SearchOutlined />} />
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={() => onSearchChange(searchValue)}
+            />
           </Space.Compact>
         </div>
 

@@ -6,21 +6,28 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { StoreOrder } from "@/lib/types/order";
 import OrdersTable from "./OrdersTable";
+import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
   const { user, loading: userLoading } = useCurrentUser();
 
+  // Sync state with URL
+  const [search, setSearch] = useUrlSync<string>("search", "", undefined, 500);
+  const [page, setPage] = useUrlSync<number>("page", 1, parseInteger);
+  const [pageSize, setPageSize] = useUrlSync<number>(
+    "pageSize",
+    10,
+    parseInteger
+  );
+
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
   const fetchOrders = useCallback(
-    async (pageNum = page, pageSizeNum = pageSize, searchTerm = search) => {
+    async (pageNum: number, pageSizeNum: number, searchTerm: string) => {
       if (!user?.store_id) return;
 
       try {
@@ -38,40 +45,42 @@ const MainOrders: React.FC = () => {
 
         setOrders(storeOrders);
         setTotal(total);
-        setPage(pageNum);
-        setPageSize(pageSizeNum);
+        // ❌ REMOVE setPage / setPageSize here
       } catch (err: unknown) {
-        let message = "Failed to load orders";
-        if (err instanceof Error) message = err.message;
-        console.error("Error fetching orders:", err);
+        const message =
+          err instanceof Error ? err.message : "Failed to load orders";
         setError(message);
         notification.error({
           message: "Error Loading Orders",
-          description: "Failed to load orders from the database.",
+          description: message,
         });
       } finally {
         setLoading(false);
       }
     },
-    [user?.store_id, page, pageSize, search, notification] // dependencies
+    [user?.store_id, notification]
   );
 
+  // ✅ UseEffect now includes fetchOrders
   useEffect(() => {
     if (!userLoading && user?.store_id) {
-      fetchOrders();
+      fetchOrders(page, pageSize, search); // fetch automatically when these change
     }
-  }, [user?.store_id, userLoading, fetchOrders]);
+  }, [userLoading, user?.store_id, page, pageSize, search, fetchOrders]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    fetchOrders(1, pageSize, value); // reset to page 1 on search
+    setPage(1); // reset page on new search
+    // ✅ Again, useEffect will handle fetching
   };
 
   const handleTableChange = (pagination: {
     current: number;
     pageSize: number;
   }) => {
-    fetchOrders(pagination.current, pagination.pageSize);
+    setPage(pagination.current);
+    setPageSize(pagination.pageSize);
+    // ✅ No need to call fetchOrders manually; useEffect will handle it
   };
 
   if (userLoading) {
@@ -92,7 +101,7 @@ const MainOrders: React.FC = () => {
           showIcon
           action={
             <button
-              onClick={() => fetchOrders()}
+              onClick={() => fetchOrders(page, pageSize, search)} // Pass all 3 arguments
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
               Try Again
@@ -128,7 +137,7 @@ const MainOrders: React.FC = () => {
           )
         }
         loading={loading}
-        search={search} // <- pass the latest search
+        search={search}
         onSearchChange={handleSearch}
       />
     </div>

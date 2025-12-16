@@ -11,7 +11,7 @@ import {
   ProductRow,
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
-import { ProductRowWithMatch } from "./StockChangeTable";
+// import { ProductRowWithMatch } from "./StockChangeTable";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -207,7 +207,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 onChange={(value) =>
                   onStockChange(parentId, variantId, Number(value ?? 0))
                 }
-                className={`!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold ${
+                className={`w-20! text-center font-bold [&>input]:text-center [&>input]:font-bold ${
                   isLowStock
                     ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
                     : ""
