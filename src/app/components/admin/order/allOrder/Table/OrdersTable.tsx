@@ -36,6 +36,8 @@ interface Props {
   onUpdate: (orderId: string, changes: Partial<StoreOrder>) => void;
   loading?: boolean;
   onSearchChange: (value: string) => void; // add this
+  onStatusChange?: (status: string) => void;
+  onPaymentStatusChange?: (status: string) => void;
 }
 
 const OrdersTable: React.FC<Props> = ({
@@ -43,6 +45,8 @@ const OrdersTable: React.FC<Props> = ({
   onUpdate,
   search,
   onSearchChange,
+  onStatusChange,
+  onPaymentStatusChange,
   page,
   total,
   pageSize,
@@ -79,22 +83,7 @@ const OrdersTable: React.FC<Props> = ({
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
-  const handleTabFilter = (filtered: StoreOrder[]) => {
-    const finalFiltered = filtered.filter((o) => {
-      const search = searchOrderId.toLowerCase();
-      const customerEmail = getCustomerEmail(o).toLowerCase();
-      const customerPhone = getCustomerPhone(o).toLowerCase();
-      const customerName = getCustomerName(o).toLowerCase();
-
-      return (
-        o.order_number.toLowerCase().includes(search) ||
-        customerEmail.includes(search) ||
-        customerPhone.includes(search) ||
-        customerName.includes(search)
-      );
-    });
-    setFilteredOrders(finalFiltered);
-  };
+ 
 
   const handleEdit = (order: StoreOrder) => {
     router.push(`/dashboard/orders/edit-order/${order.order_number}`);
@@ -653,9 +642,11 @@ const OrdersTable: React.FC<Props> = ({
       <div className="mb-4">
         <OrdersFilterTabs
           orders={orders}
-          onFilter={handleTabFilter}
+          // onFilter={handleTabFilter}
           searchValue={search} // <- use parent search state
           onSearchChange={onSearchChange}
+          onStatusChange={onStatusChange} // optional now
+          onPaymentStatusChange={onPaymentStatusChange} // optional now
         />
       </div>
 
@@ -769,6 +760,9 @@ const OrdersTable: React.FC<Props> = ({
           showQuickJumper
           onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
           pageSizeOptions={["5", "10", "20", "50"]}
+          showTotal={(total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`
+          }
         />
       </div>
 

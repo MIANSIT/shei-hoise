@@ -1,14 +1,71 @@
 "use client";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useMemo, useRef, useEffect } from "react";
+
+// Global state for URL updates
+const pendingUpdates: Map<string, string | null> = new Map();
+let isProcessing = false;
+
+async function processPendingUpdates(
+  router: ReturnType<typeof useRouter>,
+  pathname: string,
+  currentParamsRef: React.RefObject<string>
+) {
+  if (isProcessing || pendingUpdates.size === 0) return;
+
+  isProcessing = true;
+
+  try {
+    // Get current params
+    const params = new URLSearchParams(currentParamsRef.current);
+
+    console.log("🔄 Processing pending updates:", {
+      pending: Object.fromEntries(pendingUpdates),
+      currentParams: params.toString(),
+    });
+
+    // Apply all pending updates
+    pendingUpdates.forEach((value, key) => {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+
+    // Clear pending updates
+    pendingUpdates.clear();
+
+    // Update the ref
+    const newParamsString = params.toString();
+    currentParamsRef.current = newParamsString;
+
+    // Create the new URL
+    const queryString = newParamsString;
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+
+    console.log("🔗 Final URL after batch update:", newUrl);
+
+    // Update the URL
+    await router.replace(newUrl, {
+      scroll: false,
+    });
+  } finally {
+    isProcessing = false;
+
+    // Check if new updates came in while processing
+    if (pendingUpdates.size > 0) {
+      setTimeout(
+        () => processPendingUpdates(router, pathname, currentParamsRef),
+        10
+      );
+    }
+  }
+}
 
 /**
  * useUrlSync: A hook to sync any state with URL query params
- *
- * @param key - The query parameter key
- * @param defaultValue - Default value if not in URL
- * @param parseFn - Optional function to parse string from URL
- * @param debounceMs - Optional debounce delay in milliseconds
+ * Fixed with batched updates to prevent race conditions
  */
 export function useUrlSync<T>(
   key: string,
@@ -17,8 +74,15 @@ export function useUrlSync<T>(
   debounceMs: number = 0
 ) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentParamsRef = useRef<string>(searchParams.toString());
+
+  // Update ref whenever searchParams change
+  useEffect(() => {
+    currentParamsRef.current = searchParams.toString();
+  }, [searchParams]);
 
   // Get current value from URL
   const value = useMemo(() => {
@@ -26,37 +90,54 @@ export function useUrlSync<T>(
     return param !== null ? parseFn(param) : defaultValue;
   }, [searchParams, key, defaultValue, parseFn]);
 
-  // Set new value and update URL without full reload
+  // Set new value and update URL
   const setValue = useCallback(
     (newValue: T | null) => {
       // Clear any existing timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
       }
 
-      const updateUrl = () => {
-        const params = new URLSearchParams(searchParams.toString());
-
-        if (newValue === defaultValue || newValue === null) {
-          params.delete(key);
+      const scheduleUpdate = () => {
+        // For pagination params, NEVER delete them
+        if (key === "page" || key === "pageSize") {
+          if (newValue !== null && newValue !== undefined) {
+            pendingUpdates.set(key, String(newValue));
+          }
+        }
+        // For other params
+        else if (
+          newValue === defaultValue ||
+          newValue === null ||
+          newValue === "" ||
+          newValue === undefined
+        ) {
+          pendingUpdates.set(key, null); // Mark for deletion
         } else {
-          params.set(key, String(newValue));
+          pendingUpdates.set(key, String(newValue));
         }
 
-        router.replace(`?${params.toString()}`);
+        console.log(`📝 Scheduled update [${key}]:`, {
+          newValue,
+          pendingUpdates: Object.fromEntries(pendingUpdates),
+        });
+
+        // Process updates with a small delay to allow batching
+        setTimeout(() => {
+          processPendingUpdates(router, pathname, currentParamsRef);
+        }, 10);
       };
 
       if (debounceMs > 0) {
-        timeoutRef.current = setTimeout(updateUrl, debounceMs);
+        timeoutRef.current = setTimeout(scheduleUpdate, debounceMs);
       } else {
-        updateUrl();
+        scheduleUpdate();
       }
     },
-    [router, searchParams, key, defaultValue, debounceMs]
+    [router, pathname, key, defaultValue, debounceMs]
   );
 
-  // Cleanup timeout on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -68,9 +149,8 @@ export function useUrlSync<T>(
   return [value, setValue] as const;
 }
 
-// Helper function to parse integer from URL
 export function parseInteger(value: string | null): number {
   if (!value) return 1;
   const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? 1 : Math.max(1, parsed); // Ensure at least 1
+  return isNaN(parsed) ? 1 : Math.max(1, parsed);
 }

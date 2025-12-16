@@ -186,29 +186,68 @@ const deleteOrderImpl = async (
 const getStoreOrdersImpl = async (
   options: GetStoreOrdersOptions
 ): Promise<{ orders: StoreOrder[]; total: number }> => {
-  const { storeId, search, page = 1, pageSize = 10 } = options;
+  const { storeId, search, page = 1, pageSize = 10, filters } = options;
 
-  // Call your original query (unchanged)
-  let orders: StoreOrder[] = await originalGetStoreOrders(storeId);
+  console.log("🎯 getStoreOrdersImpl called with:", {
+    storeId,
+    search,
+    page,
+    pageSize,
+    filters,
+  });
 
-  // Filter by order_number if search exists
+  // Fetch all orders (without pagination)
+  const { orders: allOrders } = await originalGetStoreOrders(storeId);
+
+  console.log("📦 All orders from DB:", allOrders.length);
+
+  let filteredOrders = allOrders;
+
+  // Apply search filter
   if (search?.trim()) {
     const searchTerm = search.trim().toLowerCase();
-    orders = orders.filter((o) =>
+    filteredOrders = filteredOrders.filter((o) =>
       o.order_number?.toLowerCase().includes(searchTerm)
     );
+    console.log("🔍 After search filter:", filteredOrders.length);
   }
 
-  const total = orders.length;
+  // Apply status filter
+  if (filters) {
+    if (filters.status && filters.status !== "all") {
+      filteredOrders = filteredOrders.filter(
+        (o) => o.status === filters.status
+      );
+      console.log("🏷️ After status filter:", filteredOrders.length);
+    }
+    if (filters.payment_status && filters.payment_status !== "all") {
+      filteredOrders = filteredOrders.filter(
+        (o) => o.payment_status === filters.payment_status
+      );
+      console.log("💰 After payment status filter:", filteredOrders.length);
+    }
+  }
+
+  const total = filteredOrders.length;
+  console.log("📊 Total filtered orders:", total);
 
   // Pagination
   const from = (page - 1) * pageSize;
   const to = from + pageSize;
-  const paginatedOrders = orders.slice(from, to);
+  const paginatedOrders = filteredOrders.slice(from, to);
+
+  console.log("📄 Pagination:", {
+    page,
+    pageSize,
+    from,
+    to,
+    paginatedCount: paginatedOrders.length,
+    firstItem: paginatedOrders[0]?.order_number,
+    lastItem: paginatedOrders[paginatedOrders.length - 1]?.order_number,
+  });
 
   return { orders: paginatedOrders, total };
 };
-
 // --- Export DataService ---
 export const dataService: DataService = {
   getProductsWithVariants,
