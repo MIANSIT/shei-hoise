@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SheiLoader } from "../../components/ui/SheiLoader/loader";
 import { supabase } from "@/lib/supabase";
-import { ArrowRight, Lock, Mail, CheckCircle, UserPlus, ArrowLeft, Shield } from "lucide-react";
+import { ArrowRight, Lock, Mail, CheckCircle, UserPlus, ArrowLeft, Shield, LogIn } from "lucide-react";
 import { refreshCustomerData } from "@/lib/hook/useCurrentCustomer";
 import { PasswordToggle } from "../../components/common/PasswordToggle";
 import {
@@ -378,7 +378,10 @@ export function LoginForm() {
                     Logging in...
                   </>
                 ) : (
-                  "Login"
+                  <div className="flex items-center gap-2">
+                  <LogIn className="w-4 h-4" />
+                  Login
+                  </div>
                 )}
               </Button>
 
