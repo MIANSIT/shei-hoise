@@ -84,7 +84,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
   return (
     <div className="space-y-4">
       {/* Header with Checkbox */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-3 text-white shadow-sm">
+      <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-lg p-3 text-white shadow-sm">
         <div className="flex justify-between items-start">
           <div className="flex items-start gap-2 flex-1">
             {onSelect && (
@@ -92,7 +92,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
                 type="checkbox"
                 checked={selected}
                 onChange={handleCheckboxChange}
-                className="h-4 w-4 text-blue-600 rounded mt-1 flex-shrink-0"
+                className="h-4 w-4 text-blue-600 rounded mt-1 shrink-0"
                 onClick={(e) => e.stopPropagation()}
               />
             )}

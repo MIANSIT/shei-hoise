@@ -54,7 +54,7 @@ const OrdersTable: React.FC<Props> = ({
   loading = false,
 }) => {
   const { notification, modal } = App.useApp();
-  const [searchOrderId, setSearchOrderId] = useState<string>("");
+  const [searchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
@@ -82,8 +82,6 @@ const OrdersTable: React.FC<Props> = ({
   }, [orders, searchOrderId]);
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
-
- 
 
   const handleEdit = (order: StoreOrder) => {
     router.push(`/dashboard/orders/edit-order/${order.order_number}`);
