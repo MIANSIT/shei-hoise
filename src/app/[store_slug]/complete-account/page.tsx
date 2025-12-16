@@ -204,7 +204,7 @@ export default function CompleteAccountPage() {
   };
 
   const handleLoginInstead = () => {
-    router.push(`/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(email)}`);
+    router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(email)}`);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {

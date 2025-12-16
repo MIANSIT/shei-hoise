@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/hooks/useCurrentCustomer.ts - OPTIMIZED VERSION (FIXED TAB SWITCHING)
+// lib/hooks/useCurrentCustomer.ts - UPDATED WITH FORCE REFRESH
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -24,6 +24,7 @@ let globalCustomerCache: {
   storeSlug: string | null;
   timestamp: number;
   tabId?: string;
+  authUserId?: string | null;
 } | null = null;
 
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
@@ -39,6 +40,21 @@ const getTabId = () => {
 // Track active fetches per tab
 const activeFetches = new Map<string, boolean>();
 
+// Add global refresh function
+let refreshListeners: ((storeSlug?: string) => void)[] = [];
+
+export function refreshCustomerData(storeSlug?: string) {
+  console.log('🔄 Manually refreshing customer data for store:', storeSlug);
+  const currentTabId = getTabId();
+  if (globalCustomerCache?.tabId === currentTabId) {
+    globalCustomerCache = null;
+  }
+  activeFetches.set(currentTabId, false);
+  
+  // Notify all listeners
+  refreshListeners.forEach(listener => listener(storeSlug));
+}
+
 declare global {
   interface Window {
     tabId?: string;
@@ -50,9 +66,11 @@ export function useCurrentCustomer(storeSlug?: string) {
   const [storeId, setStoreId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const isFetchingRef = useRef(false);
   const mountedRef = useRef(true);
+  const lastAuthUserIdRef = useRef<string | null>(null);
   
   const { session, loading: authLoading } = useSupabaseAuth();
   
@@ -67,19 +85,48 @@ export function useCurrentCustomer(storeSlug?: string) {
     clearAccountCreationFlags 
   } = useCheckoutStore();
 
-  // ✅ Create a stable reference to formData.email to prevent unnecessary re-fetches
+  // Track form data email
   const formEmailRef = useRef<string | null>(null);
   
   useEffect(() => {
     formEmailRef.current = formData?.email || null;
   }, [formData?.email]);
 
-  // ✅ Memoized fetch function with tab awareness
+  // Force refetch when auth user ID changes (login/logout)
+  useEffect(() => {
+    if (lastAuthUserIdRef.current !== authUserId) {
+      console.log('🔄 Auth user ID changed, clearing cache and refetching', {
+        old: lastAuthUserIdRef.current,
+        new: authUserId
+      });
+      
+      refreshCustomerData(storeSlug);
+      lastAuthUserIdRef.current = authUserId;
+    }
+  }, [authUserId, storeSlug]);
+
+  // Add refresh listener
+  useEffect(() => {
+    const handleRefresh = (slug?: string) => {
+      if (!slug || slug === storeSlug) {
+        console.log('📢 Received refresh signal for store:', storeSlug);
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+    
+    refreshListeners.push(handleRefresh);
+    
+    return () => {
+      refreshListeners = refreshListeners.filter(l => l !== handleRefresh);
+    };
+  }, [storeSlug]);
+
+  // Memoized fetch function
   const fetchCustomer = useCallback(async () => {
     const currentTabId = getTabId();
     
     // Skip if already fetching for this tab
-    if (activeFetches.get(currentTabId) || !mountedRef.current || !storeSlug || authLoading) {
+    if (activeFetches.get(currentTabId) || !mountedRef.current || !storeSlug) {
       return;
     }
 
@@ -87,31 +134,32 @@ export function useCurrentCustomer(storeSlug?: string) {
       activeFetches.set(currentTabId, true);
       isFetchingRef.current = true;
       
-      // ✅ Check if user just created account during checkout
+      // Check if user just created account during checkout
       const isNewAccount = Boolean(
         justCreatedAccount && 
         createdAccountEmail && 
         createdAccountEmail === formEmailRef.current
       );
       
-      // CRITICAL FIX: Check if we have formData email
       const hasFormEmail = !!formEmailRef.current;
       
       // Skip cache if:
-      // 1. We have formData email (guest checkout scenario)
+      // 1. We have formData email
       // 2. It's a new account
-      // 3. User is not logged in (guest checkout)
-      const shouldSkipCache = hasFormEmail || isNewAccount || !isLoggedIn;
-      
-      // Check cache - only use cache from same tab
+      // 3. User is not logged in
+      // 4. Cache has different auth state
+      const shouldSkipCache = hasFormEmail || isNewAccount || !isLoggedIn ||
+        (globalCustomerCache?.authUserId !== authUserId);
+
+      // Only use cache if we shouldn't skip it
       if (
+        !shouldSkipCache &&
         globalCustomerCache &&
         globalCustomerCache.storeSlug === storeSlug &&
         globalCustomerCache.tabId === currentTabId &&
-        Date.now() - globalCustomerCache.timestamp < CACHE_DURATION &&
-        !shouldSkipCache // Only use cache if we should NOT skip it
+        Date.now() - globalCustomerCache.timestamp < CACHE_DURATION
       ) {
-        console.log('📦 Using cached customer data (same tab)');
+        console.log('📦 Using cached customer data');
         if (mountedRef.current) {
           setCustomer(globalCustomerCache.customer);
           setStoreId(globalCustomerCache.storeId);
@@ -127,14 +175,13 @@ export function useCurrentCustomer(storeSlug?: string) {
         setError(null);
       }
 
-      console.log('🔍 Fetching store by slug:', storeSlug);
-      console.log('👤 Auth state:', { 
+      console.log('🔍 Fetching customer for store:', storeSlug);
+      console.log('👤 Current auth state:', { 
         isLoggedIn, 
         authEmail, 
         authUserId,
-        hasSession: !!session
+        sessionUser: session?.user
       });
-      console.log('📝 Form data email:', formEmailRef.current);
 
       // Resolve store
       const { data: store, error: storeError } = await supabase
@@ -168,13 +215,41 @@ export function useCurrentCustomer(storeSlug?: string) {
         searchEmail,
         authUserId,
         isLoggedIn,
-        hasFormEmail: !!formEmailRef.current,
-        hasAuthEmail: !!authEmail,
       });
 
-      // STRATEGY: Always try to find customer by email first (from form data)
-      if (searchEmail) {
-        console.log('🎯 Searching for ANY customer by email:', searchEmail);
+      // STRATEGY 1: Search by auth_user_id first (for logged in users)
+      if (authUserId && isLoggedIn) {
+        console.log('🎯 Searching by auth_user_id:', authUserId);
+        
+        const { data: authCustomerLink, error: authLinkError } = await supabase
+          .from("store_customer_links")
+          .select(`
+            customer_id,
+            store_customers!inner (
+              id,
+              email,
+              name,
+              phone,
+              auth_user_id,
+              profile_id
+            )
+          `)
+          .eq("store_id", resolvedStoreId)
+          .eq("store_customers.auth_user_id", authUserId)
+          .maybeSingle();
+
+        if (authLinkError) {
+          console.log('⚠️ No authenticated customer found:', authLinkError.message);
+        } else if (authCustomerLink?.store_customers) {
+          customerData = authCustomerLink.store_customers;
+          customerFound = true;
+          console.log('✅ Found customer by auth_user_id:', customerData);
+        }
+      }
+
+      // STRATEGY 2: If still not found and we have an email, search by email
+      if (!customerFound && searchEmail) {
+        console.log('🎯 Searching by email:', searchEmail);
         
         const { data: customerLink, error: customerError } = await supabase
           .from("store_customer_links")
@@ -203,40 +278,7 @@ export function useCurrentCustomer(storeSlug?: string) {
             id: customerData.id,
             email: customerData.email,
             auth_user_id: customerData.auth_user_id,
-            created_at: customerData.created_at
           });
-        } else {
-          console.log('⚠️ Customer link found but no store_customer data');
-        }
-      }
-
-      // If still not found and user is logged in, try by auth_user_id
-      if (!customerFound && authUserId && isLoggedIn) {
-        console.log('🔍 Fallback: Searching by auth_user_id:', authUserId);
-        
-        const { data: authCustomerLink, error: authLinkError } = await supabase
-          .from("store_customer_links")
-          .select(`
-            customer_id,
-            store_customers!inner (
-              id,
-              email,
-              name,
-              phone,
-              auth_user_id,
-              profile_id
-            )
-          `)
-          .eq("store_id", resolvedStoreId)
-          .eq("store_customers.auth_user_id", authUserId)
-          .maybeSingle();
-
-        if (authLinkError) {
-          console.log('⚠️ No authenticated customer found:', authLinkError.message);
-        } else if (authCustomerLink?.store_customers) {
-          customerData = authCustomerLink.store_customers;
-          customerFound = true;
-          console.log('✅ Found customer by auth_user_id:', customerData);
         }
       }
 
@@ -256,7 +298,7 @@ export function useCurrentCustomer(storeSlug?: string) {
 
         resolvedCustomer = {
           id: customerData.id,
-          email: customerData.email || '',
+          email: customerData.email || searchEmail || '',
           name: customerData.name || '',
           phone: customerData.phone || null,
           auth_user_id: customerData.auth_user_id || null,
@@ -264,7 +306,7 @@ export function useCurrentCustomer(storeSlug?: string) {
         };
       }
 
-      console.log('🎯 FINAL RESULT:', {
+      console.log('🎯 FINAL CUSTOMER RESULT:', {
         customerFound,
         customer: resolvedCustomer ? {
           id: resolvedCustomer.id,
@@ -274,25 +316,24 @@ export function useCurrentCustomer(storeSlug?: string) {
         } : null,
         isLoggedIn,
         searchEmail,
-        shouldShowCompleteAccount: !isLoggedIn && resolvedCustomer && !resolvedCustomer.auth_user_id,
-        shouldShowSignIn: !isLoggedIn && resolvedCustomer && resolvedCustomer.auth_user_id,
       });
 
       if (mountedRef.current) {
-        // Update cache with tab ID
+        // Update cache
         globalCustomerCache = {
           customer: resolvedCustomer,
           storeId: resolvedStoreId,
           storeSlug,
           timestamp: Date.now(),
           tabId: currentTabId,
+          authUserId: authUserId,
         };
 
         setCustomer(resolvedCustomer);
         setStoreId(resolvedStoreId);
         setLoading(false);
 
-        // Clear account creation flags after successful fetch
+        // Clear account creation flags
         if (isNewAccount) {
           console.log('🧹 Clearing account creation flags');
           setTimeout(() => {
@@ -319,25 +360,17 @@ export function useCurrentCustomer(storeSlug?: string) {
       activeFetches.set(currentTabId, false);
       isFetchingRef.current = false;
     }
-  }, [storeSlug, authUserId, authLoading, justCreatedAccount, createdAccountEmail, isLoggedIn, authEmail, session]);
+  }, [storeSlug, authUserId, authLoading, justCreatedAccount, createdAccountEmail, isLoggedIn, authEmail, session, refreshTrigger]);
 
-  // ✅ Optimized effect with visibility change handling
+  // Main effect
   useEffect(() => {
     mountedRef.current = true;
     const currentTabId = getTabId();
     
     // Function to handle visibility change
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Tab became visible, check if we need to refresh
-        const shouldRefresh = !globalCustomerCache || 
-          globalCustomerCache.storeSlug !== storeSlug ||
-          globalCustomerCache.tabId !== currentTabId ||
-          Date.now() - globalCustomerCache.timestamp > 30000; // 30 seconds
-        
-        if (shouldRefresh && !isFetchingRef.current) {
-          fetchCustomer();
-        }
+      if (document.visibilityState === 'visible' && !isFetchingRef.current) {
+        fetchCustomer();
       }
     };
 
@@ -365,6 +398,10 @@ export function useCurrentCustomer(storeSlug?: string) {
     activeFetches.set(currentTabId, false);
   };
 
+  const manualRefresh = () => {
+    refreshCustomerData(storeSlug);
+  };
+
   return {
     customer,
     storeId,
@@ -378,6 +415,7 @@ export function useCurrentCustomer(storeSlug?: string) {
     authEmail,
     authUserId,
     clearCache,
+    refresh: manualRefresh,
   };
 }
 
