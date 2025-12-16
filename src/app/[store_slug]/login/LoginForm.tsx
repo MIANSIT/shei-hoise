@@ -170,7 +170,7 @@ export function LoginForm() {
       }
 
       success("Login successful!", { duration: 1000 });
-      refreshCustomerData(storeSlug);
+      refreshCustomerData();
       
       const { clearAccountCreationFlags } = useCheckoutStore.getState();
       clearAccountCreationFlags();
@@ -222,10 +222,10 @@ export function LoginForm() {
   }
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-md mx-auto w-full">
       {/* Step 1: Email Input */}
       {step === "email" && (
-        <Card className="shadow-lg border-border">
+        <Card className="w-full max-w-xl shadow-xl border-border/40">
           <CardHeader className="text-center space-y-4">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
               <Shield className="h-8 w-8 text-chart-2" />
@@ -237,17 +237,6 @@ export function LoginForm() {
               Enter your email to access your account
             </CardDescription>
           </CardHeader>
-
-          {email && (
-            <div className="px-6">
-              <Alert className="bg-gradient-to-r from-chart-2/10 to-chart-2/20 border-chart-2/30">
-                <Mail className="h-5 w-5 text-chart-2" />
-                <AlertDescription className="text-foreground ml-2">
-                  Email <strong>{email}</strong> has been pre-filled
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
 
           <CardContent className="space-y-6 pt-6">
             <div className="space-y-2">
@@ -262,7 +251,7 @@ export function LoginForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="you@example.com"
-                  className="h-12 text-base pr-12"
+                  className="text-base pr-12"
                   disabled={isCheckingEmail}
                   autoFocus
                 />
@@ -270,8 +259,9 @@ export function LoginForm() {
                   type="button"
                   onClick={checkEmail}
                   disabled={!email || !email.includes("@") || isCheckingEmail}
-                  className="absolute right-1 top-1 h-10 w-10 p-0 bg-green-500 hover:bg-green-600 text-white"
+                  className="absolute right-1 top-1 h-10 w-10 p-0"
                   size="sm"
+                  variant={"greenish"}
                 >
                   {isCheckingEmail ? (
                     <SheiLoader size="sm" loaderColor="white" />
@@ -318,17 +308,11 @@ export function LoginForm() {
                   router.push(`/${storeSlug}/signup${email ? `?email=${encodeURIComponent(email)}` : ""}`);
                 }}
                 variant="outline"
-                className="w-full h-11"
+                className="w-full"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Create New Account
               </Button>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                Shopping at <span className="font-semibold text-primary">{storeSlug}</span>
-              </p>
             </div>
           </CardFooter>
         </Card>
@@ -385,15 +369,16 @@ export function LoginForm() {
                 type="button"
                 onClick={handleLogin}
                 disabled={!password || password.length < 6 || isLoggingIn}
-                className="w-full h-12 bg-green-500 hover:bg-green-600 text-white"
+                className="w-full"
+                variant={"greenish"}
               >
                 {isLoggingIn ? (
                   <>
                     <SheiLoader size="sm" loaderColor="white" className="mr-2" />
-                    Signing in...
+                    Logging in...
                   </>
                 ) : (
-                  "Sign In"
+                  "Login"
                 )}
               </Button>
 

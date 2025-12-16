@@ -23,25 +23,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const emailFromParams = searchParams.get("email");
   const storeSlug = params.store_slug as string;
   const redirectParam = searchParams.get("redirect");
-  const fromCheckout = searchParams.get("fromCheckout") === "true";
   
   const getRedirectUrl = () => {
     if (redirectParam) return redirectParam;
-    if (fromCheckout) return `/${storeSlug}/checkout`;
     return `/${storeSlug}`;
   };
   
   const redirectTo = getRedirectUrl();
-  const { success, error, info } = useSheiNotification();
+  const { success, error } = useSheiNotification();
   const { formData } = useCheckoutStore();
   
   const [isStoreLoaded, setIsStoreLoaded] = useState(false);
@@ -55,17 +51,13 @@ export function SignupForm() {
   // Check if passwords match
   const passwordsMatch = password === confirmPassword && password.length > 0;
 
-  // Pre-fill email
+  // Initialize
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsStoreLoaded(true);
-      const storedEmail = emailFromParams || formData.email || "";
-      if (storedEmail) {
-        setEmail(storedEmail);
-      }
     }, 100);
     return () => clearTimeout(timer);
-  }, [formData, emailFromParams]);
+  }, []);
 
   // Store current page
   useEffect(() => {
@@ -192,7 +184,7 @@ export function SignupForm() {
       }
 
       success("Account created successfully! Welcome!", { duration: 2000 });
-      refreshCustomerData(storeSlug);
+      refreshCustomerData();
 
       const { clearAccountCreationFlags } = useCheckoutStore.getState();
       clearAccountCreationFlags();
@@ -226,7 +218,7 @@ export function SignupForm() {
 
   if (!isStoreLoaded) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
+      <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <SheiLoader size="lg" loaderColor="primary" />
           <p className="mt-4 text-muted-foreground">Loading...</p>
@@ -236,34 +228,23 @@ export function SignupForm() {
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <Card className="shadow-lg border-border">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
-            <Shield className="h-8 w-8 text-chart-2" />
+    <div className="flex justify-center items-center min-h-screen w-full py-4">
+      <Card className="w-full max-w-xl shadow-xl border-border/40">
+        <CardHeader className="text-center space-y-4 px-8 pt-10">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
+            <Shield className="h-10 w-10 text-chart-2" />
           </div>
-          <CardTitle className="text-2xl font-bold">
+          <CardTitle className="text-3xl font-bold tracking-tight">
             Create Account
           </CardTitle>
-          <CardDescription className="text-base text-muted-foreground">
+          <CardDescription className="text-lg text-muted-foreground">
             Sign up to get started with your shopping
           </CardDescription>
         </CardHeader>
 
-        {email && (
-          <div className="px-6">
-            <Alert className="bg-gradient-to-r from-chart-2/10 to-chart-2/20 border-chart-2/30">
-              <Mail className="h-5 w-5 text-chart-2" />
-              <AlertDescription className="text-foreground ml-2">
-                Email <strong>{email}</strong> has been pre-filled
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        <CardContent className="space-y-6 pt-6">
+        <CardContent className="space-y-8 px-8 pt-2">
           {/* Email Field */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="email" className="text-base font-semibold">
               Email Address
             </Label>
@@ -275,12 +256,12 @@ export function SignupForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="you@example.com"
-                className="h-12 text-base pr-10"
+                className="text-base pr-12"
                 disabled={isSubmitting}
                 autoFocus
               />
               {email && email.includes("@") && (
-                <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-500" />
+                <Check className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-500" />
               )}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -289,7 +270,7 @@ export function SignupForm() {
           </div>
 
           {/* Password Field */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="password" className="text-base font-semibold">
               Password
             </Label>
@@ -301,14 +282,14 @@ export function SignupForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="••••••••"
-                className="h-12 text-base pr-12"
+                className="text-base pr-14"
                 disabled={isSubmitting}
               />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <PasswordToggle
                   show={showPassword}
                   onToggle={() => setShowPassword(!showPassword)}
-                  size={20}
+                  size={22}
                   className="hover:bg-accent/20"
                 />
               </div>
@@ -317,7 +298,7 @@ export function SignupForm() {
           </div>
 
           {/* Confirm Password Field */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="confirmPassword" className="text-base font-semibold">
               Confirm Password
             </Label>
@@ -329,23 +310,26 @@ export function SignupForm() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="••••••••"
-                className="h-12 text-base pr-12"
+                className="text-base pr-14"
                 disabled={isSubmitting}
               />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <PasswordToggle
                   show={showConfirmPassword}
                   onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                  size={20}
+                  size={22}
                   className="hover:bg-accent/20"
                 />
               </div>
             </div>
             {confirmPassword.length > 0 && !passwordsMatch && (
-              <p className="text-sm text-red-500">Passwords do not match</p>
+              <p className="text-sm text-red-500 flex items-center gap-2 mt-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                Passwords do not match
+              </p>
             )}
             {confirmPassword.length > 0 && passwordsMatch && (
-              <p className="text-sm text-green-600 flex items-center gap-1">
+              <p className="text-sm text-green-600 flex items-center gap-2 mt-2">
                 <Check className="h-4 w-4" />
                 Passwords match
               </p>
@@ -365,66 +349,60 @@ export function SignupForm() {
               password.length < 6 ||
               isSubmitting
             }
-            className="w-full h-12 bg-green-500 hover:bg-green-600 text-white mt-2"
+            className="w-full mt-6"
+            variant={"greenish"}
           >
             {isSubmitting ? (
               <>
-                <SheiLoader size="sm" loaderColor="white" className="mr-2" />
-                Creating Account...
+                <SheiLoader size="sm" loaderColor="white" className="mr-3" />
+                <span className="text-base font-medium">Creating Account...</span>
               </>
             ) : (
               <>
-                <UserPlus className="h-5 w-5 mr-2" />
-                Create Account
+                <UserPlus className="h-6 w-6 mr-3" />
+                <span className="text-base font-medium">Create Account</span>
               </>
             )}
           </Button>
 
           {/* Benefits Card */}
-          <div className="p-4 bg-chart-2/5 rounded-lg border border-chart-2/20">
-            <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-foreground">
-              <Check className="h-4 w-4 text-chart-2" />
+          <div className="p-5 bg-gradient-to-r from-chart-2/5 to-chart-2/10 rounded-xl border border-chart-2/20 mt-4">
+            <h4 className="font-semibold text-base mb-3 flex items-center gap-3 text-foreground">
+              <Check className="h-5 w-5 text-chart-2" />
               What you&apos;ll get:
             </h4>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li className="flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-chart-2"></div>
-                Access to all your orders and tracking
+            <ul className="text-sm text-muted-foreground space-y-2.5">
+              <li className="flex items-start gap-3">
+                <div className="h-2 w-2 rounded-full bg-chart-2 mt-2 flex-shrink-0"></div>
+                <span>Access to all your orders and tracking</span>
               </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-chart-2"></div>
-                Faster checkout on future purchases
+              <li className="flex items-start gap-3">
+                <div className="h-2 w-2 rounded-full bg-chart-2 mt-2 flex-shrink-0"></div>
+                <span>Faster checkout on future purchases</span>
               </li>
-              <li className="flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-chart-2"></div>
-                Order history and easy reordering
+              <li className="flex items-start gap-3">
+                <div className="h-2 w-2 rounded-full bg-chart-2 mt-2 flex-shrink-0"></div>
+                <span>Order history and easy reordering</span>
               </li>
             </ul>
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 pt-6 border-t">
+        <CardFooter className="flex flex-col gap-5 pt-8 pb-10 px-8 border-t border-border/40">
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-base text-muted-foreground mb-4">
               Already have an account?
             </p>
             <Button
               type="button"
               onClick={() => {
-                router.push(`/${storeSlug}/login${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+                router.push(`/${storeSlug}/login`);
               }}
               variant="outline"
-              className="w-full h-11"
+              className="w-full text-base"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Sign in instead
+              Login Instead
             </Button>
-          </div>
-          
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">
-              Creating account for <span className="font-semibold text-primary">{storeSlug}</span>
-            </p>
           </div>
         </CardFooter>
       </Card>

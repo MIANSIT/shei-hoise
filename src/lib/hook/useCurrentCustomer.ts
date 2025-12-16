@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/hooks/useCurrentCustomer.ts - UPDATED WITH FORCE REFRESH
+// lib/hooks/useCurrentCustomer.ts - UPDATED FOR GLOBAL CUSTOMER LOOKUP
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -20,11 +20,10 @@ export interface CurrentCustomer {
 // Cache with tab focus protection
 let globalCustomerCache: {
   customer: CurrentCustomer | null;
-  storeId: string | null;
-  storeSlug: string | null;
   timestamp: number;
   tabId?: string;
   authUserId?: string | null;
+  email?: string | null;
 } | null = null;
 
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
@@ -41,10 +40,10 @@ const getTabId = () => {
 const activeFetches = new Map<string, boolean>();
 
 // Add global refresh function
-let refreshListeners: ((storeSlug?: string) => void)[] = [];
+let refreshListeners: (() => void)[] = [];
 
-export function refreshCustomerData(storeSlug?: string) {
-  console.log('🔄 Manually refreshing customer data for store:', storeSlug);
+export function refreshCustomerData() {
+  console.log('🔄 Manually refreshing global customer data');
   const currentTabId = getTabId();
   if (globalCustomerCache?.tabId === currentTabId) {
     globalCustomerCache = null;
@@ -52,7 +51,7 @@ export function refreshCustomerData(storeSlug?: string) {
   activeFetches.set(currentTabId, false);
   
   // Notify all listeners
-  refreshListeners.forEach(listener => listener(storeSlug));
+  refreshListeners.forEach(listener => listener());
 }
 
 declare global {
@@ -63,7 +62,6 @@ declare global {
 
 export function useCurrentCustomer(storeSlug?: string) {
   const [customer, setCustomer] = useState<CurrentCustomer | null>(null);
-  const [storeId, setStoreId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -100,18 +98,16 @@ export function useCurrentCustomer(storeSlug?: string) {
         new: authUserId
       });
       
-      refreshCustomerData(storeSlug);
+      refreshCustomerData();
       lastAuthUserIdRef.current = authUserId;
     }
-  }, [authUserId, storeSlug]);
+  }, [authUserId]);
 
   // Add refresh listener
   useEffect(() => {
-    const handleRefresh = (slug?: string) => {
-      if (!slug || slug === storeSlug) {
-        console.log('📢 Received refresh signal for store:', storeSlug);
-        setRefreshTrigger(prev => prev + 1);
-      }
+    const handleRefresh = () => {
+      console.log('📢 Received global refresh signal');
+      setRefreshTrigger(prev => prev + 1);
     };
     
     refreshListeners.push(handleRefresh);
@@ -119,14 +115,14 @@ export function useCurrentCustomer(storeSlug?: string) {
     return () => {
       refreshListeners = refreshListeners.filter(l => l !== handleRefresh);
     };
-  }, [storeSlug]);
+  }, []);
 
-  // Memoized fetch function
+  // Memoized fetch function - NOW GLOBAL (not store-specific)
   const fetchCustomer = useCallback(async () => {
     const currentTabId = getTabId();
     
     // Skip if already fetching for this tab
-    if (activeFetches.get(currentTabId) || !mountedRef.current || !storeSlug) {
+    if (activeFetches.get(currentTabId) || !mountedRef.current) {
       return;
     }
 
@@ -155,14 +151,12 @@ export function useCurrentCustomer(storeSlug?: string) {
       if (
         !shouldSkipCache &&
         globalCustomerCache &&
-        globalCustomerCache.storeSlug === storeSlug &&
         globalCustomerCache.tabId === currentTabId &&
         Date.now() - globalCustomerCache.timestamp < CACHE_DURATION
       ) {
-        console.log('📦 Using cached customer data');
+        console.log('📦 Using cached global customer data');
         if (mountedRef.current) {
           setCustomer(globalCustomerCache.customer);
-          setStoreId(globalCustomerCache.storeId);
           setLoading(false);
         }
         activeFetches.set(currentTabId, false);
@@ -175,28 +169,13 @@ export function useCurrentCustomer(storeSlug?: string) {
         setError(null);
       }
 
-      console.log('🔍 Fetching customer for store:', storeSlug);
+      console.log('🔍 Fetching global customer data');
       console.log('👤 Current auth state:', { 
         isLoggedIn, 
         authEmail, 
         authUserId,
         sessionUser: session?.user
       });
-
-      // Resolve store
-      const { data: store, error: storeError } = await supabase
-        .from("stores")
-        .select("id")
-        .eq("store_slug", storeSlug)
-        .single();
-
-      if (storeError) {
-        console.error('❌ Store not found:', storeError);
-        throw new Error("Store not found");
-      }
-
-      const resolvedStoreId = store.id;
-      console.log('🏪 Store ID resolved:', resolvedStoreId);
 
       let customerData: any = null;
       let customerFound = false;
@@ -211,7 +190,7 @@ export function useCurrentCustomer(storeSlug?: string) {
         console.log('📧 Using AUTH email for search:', searchEmail);
       }
 
-      console.log('🔍 Customer search parameters:', {
+      console.log('🔍 Global customer search parameters:', {
         searchEmail,
         authUserId,
         isLoggedIn,
@@ -221,27 +200,24 @@ export function useCurrentCustomer(storeSlug?: string) {
       if (authUserId && isLoggedIn) {
         console.log('🎯 Searching by auth_user_id:', authUserId);
         
-        const { data: authCustomerLink, error: authLinkError } = await supabase
-          .from("store_customer_links")
+        // Find ANY customer with this auth_user_id
+        const { data: customers, error: customerError } = await supabase
+          .from("store_customers")
           .select(`
-            customer_id,
-            store_customers!inner (
-              id,
-              email,
-              name,
-              phone,
-              auth_user_id,
-              profile_id
-            )
+            id,
+            email,
+            name,
+            phone,
+            auth_user_id,
+            profile_id
           `)
-          .eq("store_id", resolvedStoreId)
-          .eq("store_customers.auth_user_id", authUserId)
-          .maybeSingle();
+          .eq("auth_user_id", authUserId)
+          .limit(1);
 
-        if (authLinkError) {
-          console.log('⚠️ No authenticated customer found:', authLinkError.message);
-        } else if (authCustomerLink?.store_customers) {
-          customerData = authCustomerLink.store_customers;
+        if (customerError) {
+          console.log('⚠️ No customer found with auth_user_id:', customerError.message);
+        } else if (customers && customers.length > 0) {
+          customerData = customers[0];
           customerFound = true;
           console.log('✅ Found customer by auth_user_id:', customerData);
         }
@@ -251,28 +227,25 @@ export function useCurrentCustomer(storeSlug?: string) {
       if (!customerFound && searchEmail) {
         console.log('🎯 Searching by email:', searchEmail);
         
-        const { data: customerLink, error: customerError } = await supabase
-          .from("store_customer_links")
+        // Find ANY customer with this email
+        const { data: customers, error: customerError } = await supabase
+          .from("store_customers")
           .select(`
-            customer_id,
-            store_customers!inner (
-              id,
-              email,
-              name,
-              phone,
-              auth_user_id,
-              profile_id,
-              created_at
-            )
+            id,
+            email,
+            name,
+            phone,
+            auth_user_id,
+            profile_id,
+            created_at
           `)
-          .eq("store_id", resolvedStoreId)
-          .eq("store_customers.email", searchEmail)
-          .maybeSingle();
+          .eq("email", searchEmail)
+          .limit(1);
 
         if (customerError) {
           console.log('⚠️ No customer found with email:', customerError.message);
-        } else if (customerLink?.store_customers) {
-          customerData = customerLink.store_customers;
+        } else if (customers && customers.length > 0) {
+          customerData = customers[0];
           customerFound = true;
           console.log('✅ Found customer by email:', {
             id: customerData.id,
@@ -306,7 +279,7 @@ export function useCurrentCustomer(storeSlug?: string) {
         };
       }
 
-      console.log('🎯 FINAL CUSTOMER RESULT:', {
+      console.log('🎯 FINAL GLOBAL CUSTOMER RESULT:', {
         customerFound,
         customer: resolvedCustomer ? {
           id: resolvedCustomer.id,
@@ -322,15 +295,13 @@ export function useCurrentCustomer(storeSlug?: string) {
         // Update cache
         globalCustomerCache = {
           customer: resolvedCustomer,
-          storeId: resolvedStoreId,
-          storeSlug,
           timestamp: Date.now(),
           tabId: currentTabId,
           authUserId: authUserId,
+          email: searchEmail || undefined,
         };
 
         setCustomer(resolvedCustomer);
-        setStoreId(resolvedStoreId);
         setLoading(false);
 
         // Clear account creation flags
@@ -347,7 +318,6 @@ export function useCurrentCustomer(storeSlug?: string) {
       if (mountedRef.current) {
         console.error("❌ useCurrentCustomer error:", err);
         setCustomer(null);
-        setStoreId(null);
         setError(err as Error);
         setLoading(false);
         const currentTabId = getTabId();
@@ -360,7 +330,7 @@ export function useCurrentCustomer(storeSlug?: string) {
       activeFetches.set(currentTabId, false);
       isFetchingRef.current = false;
     }
-  }, [storeSlug, authUserId, authLoading, justCreatedAccount, createdAccountEmail, isLoggedIn, authEmail, session, refreshTrigger]);
+  }, [authUserId, authLoading, justCreatedAccount, createdAccountEmail, isLoggedIn, authEmail, session, refreshTrigger]);
 
   // Main effect
   useEffect(() => {
@@ -375,7 +345,7 @@ export function useCurrentCustomer(storeSlug?: string) {
     };
 
     // Initial fetch
-    if (storeSlug && !activeFetches.get(currentTabId)) {
+    if (!activeFetches.get(currentTabId)) {
       fetchCustomer();
     }
 
@@ -388,7 +358,7 @@ export function useCurrentCustomer(storeSlug?: string) {
       activeFetches.set(currentTabId, false);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [storeSlug, fetchCustomer]);
+  }, [fetchCustomer]);
 
   const clearCache = () => {
     const currentTabId = getTabId();
@@ -399,12 +369,11 @@ export function useCurrentCustomer(storeSlug?: string) {
   };
 
   const manualRefresh = () => {
-    refreshCustomerData(storeSlug);
+    refreshCustomerData();
   };
 
   return {
     customer,
-    storeId,
     loading: loading || authLoading,
     error,
     isAuthenticated: !!customer?.auth_user_id && isLoggedIn,
