@@ -876,7 +876,6 @@ export default function CheckoutPage() {
             }}
             orderData={invoiceData}
             showCloseButton={true}
-            autoShow={true}
           />
         )}
       </AnimatePresence>

@@ -411,7 +411,6 @@ export default function StoreOrdersPage() {
             onClose={() => setShowInvoice(false)}
             orderData={selectedOrder}
             showCloseButton={true}
-            autoShow={false}
           />
         )}
       </AnimatePresence>
