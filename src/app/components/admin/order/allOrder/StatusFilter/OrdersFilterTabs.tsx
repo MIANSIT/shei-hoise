@@ -8,10 +8,14 @@ import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 
 interface Props {
   orders: StoreOrder[];
+  totalOrders: number;
   searchValue: string;
   onSearchChange: (value: string) => void;
   onStatusChange?: (status: string) => void;
   onPaymentStatusChange?: (status: string) => void;
+  // ✅ ADD THESE PROPS to receive URL params
+  initialCategory?: "order" | "payment";
+  initialStatus?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -49,14 +53,23 @@ const OrdersFilterTabs: React.FC<Props> = ({
   onSearchChange,
   onStatusChange,
   onPaymentStatusChange,
+  totalOrders,
+  // ✅ ADD THESE
+  initialCategory = "order",
+  initialStatus = "all",
 }) => {
-  // URL-synced category only
+  // URL-synced category
   const [category, setCategory] = useUrlSync<"order" | "payment">(
     "category",
-    "order"
+    initialCategory
   );
 
-  const [activeStatus, setActiveStatus] = useState<string>("all");
+  // ✅ ADD URL-synced status based on category
+  const [activeStatus, setActiveStatus] = useUrlSync<string>(
+    category === "order" ? "status" : "payment_status",
+    initialStatus
+  );
+
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,7 +81,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
     "delivered",
     "cancelled",
   ];
-  const paymentStatuses = ["all", "paid", "pending", "failed", "refunded"];
+  const paymentStatuses = ["all", "pending", "paid", "failed", "refunded"];
   const statuses = category === "order" ? orderStatuses : paymentStatuses;
 
   useEffect(() => {
@@ -76,6 +89,23 @@ const OrdersFilterTabs: React.FC<Props> = ({
       if (typingTimeout.current) clearTimeout(typingTimeout.current);
     };
   }, []);
+
+  // ✅ Update activeStatus when category changes to match the URL param
+  useEffect(() => {
+    if (category === "order") {
+      const params = new URLSearchParams(window.location.search);
+      const statusParam = params.get("status") || "all";
+      if (statusParam !== activeStatus) {
+        setActiveStatus(statusParam);
+      }
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      const paymentStatusParam = params.get("payment_status") || "all";
+      if (paymentStatusParam !== activeStatus) {
+        setActiveStatus(paymentStatusParam);
+      }
+    }
+  }, [category, activeStatus, setActiveStatus]);
 
   const handleInputChange = (value: string) => {
     onSearchChange(value);
@@ -86,7 +116,8 @@ const OrdersFilterTabs: React.FC<Props> = ({
   };
 
   const getStatusCount = (status: string) => {
-    if (status === "all") return orders.length;
+    if (status === "all") return totalOrders;
+
     return category === "order"
       ? orders.filter((o) => o.status === status).length
       : orders.filter((o) => o.payment_status === status).length;
@@ -102,6 +133,8 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
   const handleCategoryChange = (key: string) => {
     setCategory(key as "order" | "payment");
+
+    // Reset to "all" for the new category
     setActiveStatus("all");
 
     if (key === "order" && onStatusChange) onStatusChange("all");

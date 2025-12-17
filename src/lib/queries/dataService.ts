@@ -63,9 +63,11 @@ export interface DataService {
   ) => Promise<CustomerProfile | null>;
   getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
-  getStoreOrders: (
-    options: GetStoreOrdersOptions
-  ) => Promise<{ orders: StoreOrder[]; total: number }>;
+  getStoreOrders: (options: GetStoreOrdersOptions) => Promise<{
+    orders: StoreOrder[];
+    total: number; // filtered (pagination)
+    totalOrders: number; // ✅ store-wide
+  }>;
   getOrderByNumber: (
     storeId: string,
     orderNumber: string
@@ -190,7 +192,7 @@ const deleteOrderImpl = async (
 // --- Our custom wrapper for getStoreOrders with search + pagination ---
 const getStoreOrdersImpl = async (
   options: GetStoreOrdersOptions
-): Promise<{ orders: StoreOrder[]; total: number }> => {
+): Promise<{ orders: StoreOrder[]; total: number; totalOrders: number }> => {
   const { storeId, search, page = 1, pageSize = 10, filters } = options;
 
   console.log("🎯 getStoreOrdersImpl called with:", {
@@ -202,7 +204,9 @@ const getStoreOrdersImpl = async (
   });
 
   // Fetch all orders (without pagination)
-  const { orders: allOrders } = await originalGetStoreOrders(storeId);
+  const { orders: allOrders, totalOrders } = await originalGetStoreOrders(
+    storeId
+  );
 
   console.log("📦 All orders from DB:", allOrders.length);
 
@@ -251,7 +255,7 @@ const getStoreOrdersImpl = async (
     lastItem: paginatedOrders[paginatedOrders.length - 1]?.order_number,
   });
 
-  return { orders: paginatedOrders, total };
+  return { orders: paginatedOrders, total, totalOrders };
 };
 
 // --- Wrapper for getAllStoreCustomers to maintain backward compatibility ---

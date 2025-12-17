@@ -14,57 +14,58 @@ const MainOrders: React.FC = () => {
 
   // URL-synced state for filters and pagination
   const [search, setSearch] = useUrlSync<string>("search", "", undefined, 500);
-  const [page, setPage] = useUrlSync<number>("page", 1, parseInteger, 0); // 0 delay
+  const [page, setPage] = useUrlSync<number>("page", 1, parseInteger, 0);
   const [pageSize, setPageSize] = useUrlSync<number>(
     "pageSize",
     10,
     parseInteger,
     0
-  ); // 0 delay
+  );
+
+  // ✅ ADD category state
+  const [category, setCategory] = useUrlSync<"order" | "payment">(
+    "category",
+    "order"
+  );
+
   const [statusFilter, setStatusFilter] = useUrlSync<string>(
     "status",
     "all",
     undefined,
     0
-  ); // 0 delay
+  );
   const [paymentStatusFilter, setPaymentStatusFilter] = useUrlSync<string>(
     "payment_status",
     "all",
     undefined,
-    0 // 0 delay
+    0
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
 
   // Debug: Log URL parameters
   useEffect(() => {
     console.log("🔗 URL State Parameters:", {
       page,
       pageSize,
+      category,
       statusFilter,
       paymentStatusFilter,
       search,
     });
+  }, [page, pageSize, category, statusFilter, paymentStatusFilter, search]);
 
-    // Also log the actual browser URL
-    const urlParams = new URLSearchParams(window.location.search);
-    console.log("🌐 Actual Browser URL Parameters:", {
-      page: urlParams.get("page"),
-      pageSize: urlParams.get("pageSize"),
-      status: urlParams.get("status"),
-      payment_status: urlParams.get("payment_status"),
-      search: urlParams.get("search"),
-    });
-  }, [page, pageSize, statusFilter, paymentStatusFilter, search]);
   // Fetch orders based on current URL state
   const fetchOrders = useCallback(
     async (
       pageNum: number,
       pageSizeNum: number,
       searchTerm: string,
+      category: "order" | "payment",
       status: string,
       paymentStatus: string
     ) => {
@@ -78,14 +79,23 @@ const MainOrders: React.FC = () => {
           pageNum,
           pageSizeNum,
           searchTerm,
+          category,
           status,
           paymentStatus,
         });
 
         const filters: { status?: string; payment_status?: string } = {};
-        if (status && status !== "all") filters.status = status;
-        if (paymentStatus && paymentStatus !== "all")
+
+        // ✅ Apply filters based on category
+        if (category === "order" && status && status !== "all") {
+          filters.status = status;
+        } else if (
+          category === "payment" &&
+          paymentStatus &&
+          paymentStatus !== "all"
+        ) {
           filters.payment_status = paymentStatus;
+        }
 
         console.log("🎯 Filters:", filters);
 
@@ -97,15 +107,9 @@ const MainOrders: React.FC = () => {
           filters,
         });
 
-        console.log("✅ Orders received:", {
-          count: result.orders.length,
-          total: result.total,
-          firstOrder: result.orders[0]?.order_number,
-          page: pageNum,
-        });
-
         setOrders(result.orders);
         setTotal(result.total);
+        setTotalOrders(result.totalOrders);
       } catch (err: unknown) {
         console.error("❌ Error fetching orders:", err);
         const message =
@@ -124,10 +128,15 @@ const MainOrders: React.FC = () => {
 
   // Refetch orders whenever URL-synced state changes
   useEffect(() => {
-    console.log("🔄 useEffect triggered for fetchOrders");
     if (!userLoading && user?.store_id) {
-      console.log("🚀 Calling fetchOrders...");
-      fetchOrders(page, pageSize, search, statusFilter, paymentStatusFilter);
+      fetchOrders(
+        page,
+        pageSize,
+        search,
+        category,
+        statusFilter,
+        paymentStatusFilter
+      );
     }
   }, [
     userLoading,
@@ -135,6 +144,7 @@ const MainOrders: React.FC = () => {
     page,
     pageSize,
     search,
+    category,
     statusFilter,
     paymentStatusFilter,
     fetchOrders,
@@ -142,7 +152,6 @@ const MainOrders: React.FC = () => {
 
   // Handlers
   const handleSearch = (value: string) => {
-    console.log("🔍 Search changed:", value);
     setSearch(value);
     setPage(1);
   };
@@ -151,49 +160,49 @@ const MainOrders: React.FC = () => {
     current: number;
     pageSize: number;
   }) => {
-    console.log("📄 Table pagination changed:", pagination);
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", pagination.current.toString());
+    params.set("pageSize", pagination.pageSize.toString());
 
-    // Use a timeout to ensure both updates use the same base URL
-    setTimeout(() => {
-      // Get current URL params
-      const params = new URLSearchParams(window.location.search);
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}?${params.toString()}`
+    );
 
-      // Update both params
-      params.set("page", pagination.current.toString());
-      params.set("pageSize", pagination.pageSize.toString());
-
-      // Create new URL
-      const newUrl = `${window.location.pathname}?${params.toString()}`;
-
-      // Update URL directly
-      window.history.replaceState({}, "", newUrl);
-      console.log("🔗 Direct URL update:", newUrl);
-
-      // Update React state
-      setPage(pagination.current);
-      setPageSize(pagination.pageSize);
-
-      // Force fetch with new values
-      fetchOrders(
-        pagination.current,
-        pagination.pageSize,
-        search,
-        statusFilter,
-        paymentStatusFilter
-      );
-    }, 0);
+    setPage(pagination.current);
+    setPageSize(pagination.pageSize);
   };
 
   const handleStatusChange = (status: string) => {
-    console.log("🏷️ Status changed:", status);
     setStatusFilter(status);
+    setCategory("order"); // Ensure category is set to order
     setPage(1);
   };
 
   const handlePaymentStatusChange = (status: string) => {
-    console.log("💰 Payment status changed:", status);
     setPaymentStatusFilter(status);
+    setCategory("payment"); // Ensure category is set to payment
     setPage(1);
+  };
+
+  // ✅ Get current category and status from URL for initial state
+  const getInitialCategory = () => {
+    if (typeof window === "undefined") return "order";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("category") === "payment" ? "payment" : "order";
+  };
+
+  const getInitialStatus = () => {
+    if (typeof window === "undefined") return "all";
+    const params = new URLSearchParams(window.location.search);
+    const currentCategory = getInitialCategory();
+
+    if (currentCategory === "order") {
+      return params.get("status") || "all";
+    } else {
+      return params.get("payment_status") || "all";
+    }
   };
 
   if (userLoading)
@@ -217,6 +226,7 @@ const MainOrders: React.FC = () => {
                   page,
                   pageSize,
                   search,
+                  category,
                   statusFilter,
                   paymentStatusFilter
                 )
@@ -246,6 +256,7 @@ const MainOrders: React.FC = () => {
       <OrdersTable
         orders={orders}
         total={total}
+        totalOrders={totalOrders}
         page={page}
         pageSize={pageSize}
         onTableChange={handleTableChange}
@@ -257,8 +268,11 @@ const MainOrders: React.FC = () => {
         loading={loading}
         search={search}
         onSearchChange={handleSearch}
-        onStatusChange={handleStatusChange} // pass status setter
-        onPaymentStatusChange={handlePaymentStatusChange} // pass payment status setter
+        onStatusChange={handleStatusChange}
+        onPaymentStatusChange={handlePaymentStatusChange}
+        // ✅ Pass URL params to initialize filter tabs
+        initialCategory={getInitialCategory()}
+        initialStatus={getInitialStatus()}
       />
     </div>
   );

@@ -20,7 +20,7 @@ export async function getStoreOrders(
   page?: number,
   pageSize?: number,
   filters?: GetStoreOrdersOptions["filters"]
-): Promise<{ orders: StoreOrder[]; total: number }> {
+): Promise<{ orders: StoreOrder[]; total: number; totalOrders: number }> {
   try {
     console.log("📊 Original getStoreOrders called with:", {
       storeId,
@@ -77,7 +77,12 @@ export async function getStoreOrders(
       count: orders?.length || 0,
       totalCount: count,
     });
+    const { count: totalOrders, error: totalError } = await supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("store_id", storeId);
 
+    if (totalError) throw totalError;
     const transformedOrders: StoreOrder[] = (orders || []).map((order) => {
       const customerData = order.store_customers;
       let customer = null;
@@ -113,6 +118,7 @@ export async function getStoreOrders(
     return {
       orders: transformedOrders,
       total: count || 0,
+      totalOrders: totalOrders || 0, // ✅ NEW
     };
   } catch (error) {
     console.error("💥 Error in getStoreOrders:", error);

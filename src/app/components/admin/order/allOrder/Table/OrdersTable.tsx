@@ -39,6 +39,9 @@ interface Props {
   onSearchChange: (value: string) => void; // add this
   onStatusChange?: (status: string) => void;
   onPaymentStatusChange?: (status: string) => void;
+  totalOrders: number;
+  initialCategory?: "order" | "payment";
+  initialStatus?: string;
 }
 
 const OrdersTable: React.FC<Props> = ({
@@ -52,6 +55,9 @@ const OrdersTable: React.FC<Props> = ({
   total,
   pageSize,
   onTableChange,
+  totalOrders,
+  initialCategory,
+  initialStatus,
   loading = false,
 }) => {
   const { notification, modal } = App.useApp();
@@ -647,11 +653,14 @@ const OrdersTable: React.FC<Props> = ({
       <div className="mb-4">
         <OrdersFilterTabs
           orders={orders}
+          totalOrders={totalOrders}
           // onFilter={handleTabFilter}
           searchValue={search} // <- use parent search state
           onSearchChange={onSearchChange}
           onStatusChange={onStatusChange} // optional now
           onPaymentStatusChange={onPaymentStatusChange} // optional now
+          initialCategory={initialCategory}
+          initialStatus={initialStatus}
         />
       </div>
 
