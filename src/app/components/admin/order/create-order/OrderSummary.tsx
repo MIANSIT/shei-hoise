@@ -244,14 +244,16 @@ export default function OrderSummary({
             <Row gutter={16}>
               <Col span={24}>
                 <Form.Item label="Discount Amount (BDT)">
-                  <InputNumber
-                    min={0}
-                    max={subtotal}
-                    value={discount}
-                    onChange={(value) => setDiscount(value || 0)}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                  />
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      max={subtotal}
+                      value={discount}
+                      onChange={(value) => setDiscount(value || 0)}
+                      style={{ width: "100%" }}
+                    />
+                    <span style={{ padding: "0 8px" }}>৳</span>
+                  </Space.Compact>
                 </Form.Item>
               </Col>
             </Row>
@@ -259,14 +261,16 @@ export default function OrderSummary({
             <Row gutter={16}>
               <Col span={24}>
                 <Form.Item label="Additional Charges (BDT)">
-                  <InputNumber
-                    min={0}
-                    value={additionalCharges}
-                    onChange={(value) => setAdditionalCharges(value || 0)}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                    placeholder="Enter any additional charges"
-                  />
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      value={additionalCharges}
+                      onChange={(value) => setAdditionalCharges(value || 0)}
+                      style={{ width: "100%" }}
+                      placeholder="Enter any additional charges"
+                    />
+                    <span style={{ padding: "0 8px" }}>৳</span>
+                  </Space.Compact>
                 </Form.Item>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
                   Additional fees like packaging, handling, or special services
@@ -277,15 +281,17 @@ export default function OrderSummary({
             <Row gutter={16}>
               <Col span={24}>
                 <Form.Item label="Delivery Cost (BDT)">
-                  <InputNumber
-                    min={0}
-                    value={deliveryCost}
-                    onChange={handleDeliveryCostChange}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                    disabled={!isCustomDelivery}
-                    readOnly={!isCustomDelivery}
-                  />
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      value={deliveryCost}
+                      onChange={handleDeliveryCostChange}
+                      style={{ width: "100%" }}
+                      disabled={!isCustomDelivery}
+                      readOnly={!isCustomDelivery}
+                    />
+                    <span style={{ padding: "0 8px" }}>৳</span>
+                  </Space.Compact>
                 </Form.Item>
                 {customerDeliveryOption && !isCustomDelivery && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
