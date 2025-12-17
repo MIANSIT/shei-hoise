@@ -50,7 +50,7 @@ export default function CartCheckoutLayout({
         whileTap={{ scale: 0.98 }}
       >
         <Button 
-          className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
+          className="w-full bg-linear-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
           onClick={onCheckout}
         >
           {buttonText}

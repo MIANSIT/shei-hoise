@@ -160,7 +160,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
     <div className="rounded-3xl border   backdrop-blur-sm shadow-2xl shadow-gray-200/30 p-6 sm:p-8 lg:p-10">
       {/* Stats Overview - Better mobile layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-100">
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-600 mb-1">
@@ -188,7 +188,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 sm:p-6 border border-green-100">
+        <div className="bg-linear-to-r from-green-50 to-emerald-50 rounded-xl p-4 sm:p-6 border border-green-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-green-600 mb-1">
@@ -319,9 +319,9 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
 
       {/* Edit Mode Instructions */}
       {isEditing && (
-        <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+        <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
           <div className="flex items-start space-x-3">
-            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
               <svg
                 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600"
                 fill="currentColor"
