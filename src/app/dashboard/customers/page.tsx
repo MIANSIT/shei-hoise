@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, App } from "antd";
-import { TeamOutlined } from "@ant-design/icons";
+import { Card, App, Pagination, Spin, Button, Space } from "antd";
+import { TeamOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { DetailedCustomer } from "@/lib/types/users";
 import { PageHeader } from "@/app/components/admin/storeCustomers/view/PageHeader";
@@ -10,11 +10,15 @@ import { CustomerStats } from "@/app/components/admin/storeCustomers/view/Custom
 import { CustomerTable } from "@/app/components/admin/storeCustomers/view/CustomerTable";
 import { CustomerDetailsView } from "@/app/components/admin/storeCustomers/view/CustomerDetailsView";
 import { EditProfileForm } from "@/app/components/user-profile/EditProfileForm";
-import { ProfileFormData } from "@/lib/types/profile"; // Use ProfileFormData
+import { ProfileFormData } from "@/lib/types/profile";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useCustomerFormData } from "@/lib/hook/profile-user/useCustomerFormData";
 import { updateCustomerProfileAsAdmin } from "@/lib/queries/user/admin-customers";
+import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
+
+// Constants for pagination
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function CustomerPage() {
   const { notification } = App.useApp();
@@ -24,24 +28,54 @@ export default function CustomerPage() {
   const [selectedCustomer, setSelectedCustomer] =
     useState<DetailedCustomer | null>(null);
   const router = useRouter();
-  const [filteredCustomers, setFilteredCustomers] = useState<
-    DetailedCustomer[]
-  >([]);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const { storeId, loading: userLoading } = useCurrentUser();
   const userFormData = useCustomerFormData(selectedCustomer);
 
-  // Fetch customers
+  // Use URL sync for search and pagination
+  const [searchTerm, setSearchTerm] = useUrlSync("search", "", (v) => v || "");
+  const [currentPage, setCurrentPage] = useUrlSync("page", 1, parseInteger);
+  const [pageSize, setPageSize] = useUrlSync(
+    "pageSize",
+    DEFAULT_PAGE_SIZE,
+    parseInteger
+  );
+
+  // Pagination state
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Fetch customers with search and pagination
   useEffect(() => {
     if (!storeId || userLoading) return;
 
     const fetchCustomers = async () => {
       try {
         setLoading(true);
-        const allCustomers = await getAllStoreCustomers(storeId);
-        setCustomers(allCustomers);
-      } catch {
+
+        const result = await getAllStoreCustomers(
+          storeId,
+          searchTerm,
+          currentPage,
+          pageSize
+        );
+
+        if (
+          result &&
+          typeof result === "object" &&
+          "customers" in result &&
+          "totalCount" in result
+        ) {
+          setCustomers(result.customers);
+          setTotalCount(result.totalCount);
+          setTotalPages(result.totalPages);
+        } else {
+          setCustomers(result as DetailedCustomer[]);
+          setTotalCount((result as DetailedCustomer[]).length);
+          setTotalPages(1);
+        }
+      } catch (error) {
+        console.error("Error fetching customers:", error);
         notification.error({
           message: "Error",
           description: "Failed to load customers. Please try again.",
@@ -52,12 +86,12 @@ export default function CustomerPage() {
     };
 
     fetchCustomers();
-  }, [storeId, userLoading, notification]);
+  }, [storeId, userLoading, notification, searchTerm, currentPage, pageSize]);
 
   // Update customer - Use ProfileFormData type
   const handleUpdateCustomer = async (
     customerId: string,
-    data: ProfileFormData // Use ProfileFormData type
+    data: ProfileFormData
   ) => {
     try {
       const updated = await updateCustomerProfileAsAdmin(
@@ -69,7 +103,7 @@ export default function CustomerPage() {
         {
           date_of_birth: data.date_of_birth,
           gender: data.gender,
-          address: data.address, // Field name is 'address'
+          address: data.address,
           city: data.city,
           state: data.state,
           postal_code: data.postal_code,
@@ -77,7 +111,6 @@ export default function CustomerPage() {
         }
       );
 
-      // Extract first and last names for UI compatibility
       const nameParts = updated.customer.name.split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
@@ -85,8 +118,8 @@ export default function CustomerPage() {
       const updatedCustomer: DetailedCustomer = {
         id: updated.customer.id,
         name: updated.customer.name,
-        first_name: firstName, // For UI compatibility
-        last_name: lastName, // For UI compatibility
+        first_name: firstName,
+        last_name: lastName,
         email: updated.customer.email,
         phone: updated.customer.phone || "",
         status: "active",
@@ -99,8 +132,8 @@ export default function CustomerPage() {
         profile_details: {
           date_of_birth: updated.profile.date_of_birth,
           gender: updated.profile.gender,
-          address_line_1: updated.profile.address, // Map 'address' to 'address_line_1' for UI
-          address_line_2: null, // Not in your schema
+          address_line_1: updated.profile.address,
+          address_line_2: null,
           city: updated.profile.city,
           state: updated.profile.state,
           postal_code: updated.profile.postal_code,
@@ -168,20 +201,29 @@ export default function CustomerPage() {
     router.push("/dashboard/customers/create-customer");
   };
 
-  // Search filter
-  useEffect(() => {
-    const term = searchTerm.toLowerCase();
-    setFilteredCustomers(
-      customers.filter(
-        (c) =>
-          (c.name?.toLowerCase() || "").includes(term) ||
-          (c.email?.toLowerCase() || "").includes(term) ||
-          (c.phone?.toLowerCase() || "").includes(term)
-      )
-    );
-  }, [searchTerm, customers]);
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
 
-  const handleSearchChange = (value: string) => setSearchTerm(value);
+  const handlePageChange = (page: number, pageSize?: number) => {
+    setCurrentPage(page);
+    if (pageSize) {
+      setPageSize(pageSize);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   const activeCustomers = customers.length;
 
@@ -218,7 +260,7 @@ export default function CustomerPage() {
         onSearchChange={handleSearchChange}
       />
       <CustomerStats
-        totalCustomers={customers.length}
+        totalCustomers={totalCount}
         activeCustomers={activeCustomers}
       />
       <Card
@@ -226,17 +268,107 @@ export default function CustomerPage() {
           <div className="flex items-center gap-2">
             <TeamOutlined />
             Customer List
+            {loading && <Spin size="small" className="ml-2" />}
           </div>
         }
       >
         <CustomerTable
-          customers={filteredCustomers}
+          customers={customers}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onViewDetails={handleViewDetails}
           isLoading={loading}
-          storeId={storeId} // ✅ ADD THIS
+          storeId={storeId}
         />
+
+        {/* Responsive Pagination */}
+        {!loading && totalCount > 0 && (
+          <div className="mt-6">
+            {/* Desktop Pagination */}
+            <div className="hidden md:flex justify-between items-center">
+              <div className="text-gray-600">
+                Showing {(currentPage - 1) * pageSize + 1} to{" "}
+                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+                customers
+              </div>
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={totalCount}
+                onChange={handlePageChange}
+                onShowSizeChange={handlePageChange}
+                showSizeChanger
+                pageSizeOptions={[10, 25, 50, 100]}
+                showTotal={(total, range) =>
+                  `${range[0]}-${range[1]} of ${total} items`
+                }
+              />
+            </div>
+
+            {/* Mobile Pagination - Simple one by one */}
+            <div className="md:hidden">
+              <div className="flex flex-col gap-4">
+                {/* Page info */}
+                <div className="text-center text-gray-600 text-sm">
+                  Page {currentPage} of {totalPages} •{" "}
+                  {(currentPage - 1) * pageSize + 1}-
+                  {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+                  customers
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between items-center">
+                  <Button
+                    type="default"
+                    icon={<LeftOutlined />}
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                    className="flex-1 max-w-[120px]"
+                  >
+                    Previous
+                  </Button>
+
+                  <div className="text-center px-4">
+                    <span className="font-semibold text-gray-800">
+                      {currentPage}
+                    </span>
+                    <span className="text-gray-500"> / {totalPages}</span>
+                  </div>
+
+                  <Button
+                    type="default"
+                    icon={<RightOutlined />}
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className="flex-1 max-w-[120px]"
+                  >
+                    Next
+                  </Button>
+                </div>
+
+                {/* Page size selector for mobile */}
+                <div className="flex justify-center mt-2">
+                  <Space wrap>
+                    <span className="text-gray-600 text-sm">Show:</span>
+                    {[10, 25, 50].map((size) => (
+                      <Button
+                        key={size}
+                        type={pageSize === size ? "primary" : "default"}
+                        size="small"
+                        onClick={() => {
+                          setPageSize(size);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        {size}
+                      </Button>
+                    ))}
+                  </Space>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

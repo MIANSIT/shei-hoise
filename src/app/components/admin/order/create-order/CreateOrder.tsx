@@ -214,6 +214,7 @@ export default function CreateOrder() {
   }, [user?.store_id, loading, notification]);
 
   // Fetch customers from orders
+  // Fetch customers from orders
   const fetchCustomers = useCallback(async () => {
     if (!user?.store_id || customerLoading) return;
 
@@ -221,9 +222,20 @@ export default function CreateOrder() {
     try {
       console.log("🔄 Fetching customers from orders");
       const res = await getAllStoreCustomers(user.store_id);
-      setCustomers(res);
-      setFilteredCustomers(res);
-      console.log(`✅ Loaded ${res.length} customers from orders`);
+
+      // Handle both return types
+      let customerArray: DetailedCustomer[] = [];
+
+      if (Array.isArray(res)) {
+        // It's already an array
+        customerArray = res;
+      } else if (res && typeof res === "object" && "customers" in res) {
+        // It's a PaginatedCustomers object - extract the customers array
+        customerArray = res.customers;
+      }
+
+      setCustomers(customerArray);
+      setFilteredCustomers(customerArray);
 
       // Re-validate email after fetching customers
       if (customerInfo.email) {

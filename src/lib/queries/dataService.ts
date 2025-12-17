@@ -73,7 +73,7 @@ export interface DataService {
   deleteOrder: (
     orderId: string
   ) => Promise<{ success: boolean; error?: string }>;
-  getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>;
+  getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>; // Keep this signature
   updateOrderByNumber: (
     updateData: UpdateOrderByNumberData
   ) => Promise<{ success: boolean; error?: string }>;
@@ -253,6 +253,28 @@ const getStoreOrdersImpl = async (
 
   return { orders: paginatedOrders, total };
 };
+
+// --- Wrapper for getAllStoreCustomers to maintain backward compatibility ---
+const getAllStoreCustomersWrapper = async (
+  storeId: string
+): Promise<DetailedCustomer[]> => {
+  try {
+    // Call the new function without pagination parameters to get the simple array
+    const result = await getAllStoreCustomers(storeId);
+
+    // If it returns a PaginatedCustomers object, extract the customers array
+    if (result && typeof result === "object" && "customers" in result) {
+      return result.customers;
+    }
+
+    // Otherwise it's already the array
+    return result as DetailedCustomer[];
+  } catch (error) {
+    console.error("Error in getAllStoreCustomersWrapper:", error);
+    throw error;
+  }
+};
+
 // --- Export DataService ---
 export const dataService: DataService = {
   getProductsWithVariants,
@@ -270,7 +292,7 @@ export const dataService: DataService = {
   updatePaymentMethod,
   updateOrderNotes,
   bulkUpdateOrders,
-  getAllStoreCustomers,
+  getAllStoreCustomers: getAllStoreCustomersWrapper, // Use the wrapper
   getCustomerProfileByStoreCustomerId,
 };
 
