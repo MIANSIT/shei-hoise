@@ -225,7 +225,24 @@ export default function CustomerPage() {
     }
   };
 
-  const activeCustomers = customers.length;
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const activeCustomersOrders = customers.filter(
+    (c) => (c.order_count ?? 0) > 0
+  ).length;
+  const activeCustomersStatus = customers.filter(
+    (c) => c.status === "active"
+  ).length;
+
+  const customersThisMonth = customers.filter((c) => {
+    if (!c.created_at) return false;
+    const created = new Date(c.created_at);
+    return (
+      created.getMonth() === currentMonth &&
+      created.getFullYear() === currentYear
+    );
+  }).length;
 
   // Views
   if (viewMode === "edit" && userFormData) {
@@ -261,7 +278,9 @@ export default function CustomerPage() {
       />
       <CustomerStats
         totalCustomers={totalCount}
-        activeCustomers={activeCustomers}
+        activeCustomersOrders={activeCustomersOrders}
+        activeCustomersStatus={activeCustomersStatus}
+        thisMonth={customersThisMonth}
       />
       <Card
         title={

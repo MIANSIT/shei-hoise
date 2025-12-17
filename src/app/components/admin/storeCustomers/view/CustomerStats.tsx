@@ -5,20 +5,25 @@ import {
   TeamOutlined,
   CheckCircleOutlined,
   RiseOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 
 interface CustomerStatsProps {
   totalCustomers: number;
-  activeCustomers: number;
+  activeCustomersOrders: number; // customers with orders
+  activeCustomersStatus: number; // customers with status === "active"
+  thisMonth: number;
 }
 
 export function CustomerStats({
   totalCustomers,
-  activeCustomers,
+  activeCustomersOrders,
+  activeCustomersStatus,
+  thisMonth,
 }: CustomerStatsProps) {
   return (
     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={6}>
         <Card>
           <Statistic
             title="Total Customers"
@@ -28,21 +33,31 @@ export function CustomerStats({
           />
         </Card>
       </Col>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="Active Customers"
-            value={activeCustomers}
+            title="Active Customers (Orders)"
+            value={activeCustomersOrders}
             prefix={<CheckCircleOutlined />}
             valueStyle={{ color: "#52c41a" }}
           />
         </Card>
       </Col>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={6}>
+        <Card>
+          <Statistic
+            title="Active Customers (Status)"
+            value={activeCustomersStatus}
+            prefix={<UserOutlined />}
+            valueStyle={{ color: "#faad14" }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} sm={6}>
         <Card>
           <Statistic
             title="This Month"
-            value={totalCustomers}
+            value={thisMonth}
             prefix={<RiseOutlined />}
             valueStyle={{ color: "#722ed1" }}
           />

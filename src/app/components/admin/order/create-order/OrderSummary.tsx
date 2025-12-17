@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import {
   Card,
@@ -229,13 +228,15 @@ export default function OrderSummary({
             <Row gutter={16}>
               <Col span={24}>
                 <Form.Item label="Tax Amount (BDT)">
-                  <InputNumber
-                    min={0}
-                    value={taxAmount}
-                    onChange={(value) => setTaxAmount(value || 0)}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                  />
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      value={taxAmount}
+                      onChange={(value) => setTaxAmount(value || 0)}
+                      style={{ width: "100%" }}
+                    />
+                    <span style={{ padding: "0 8px" }}>৳</span>
+                  </Space.Compact>
                 </Form.Item>
               </Col>
             </Row>
