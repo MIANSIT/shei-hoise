@@ -6,7 +6,7 @@ import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 const { Text } = Typography;
 
 interface UpdateOrderButtonProps {
@@ -50,7 +50,11 @@ export default function UpdateOrderButton({
 }: UpdateOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
-
+ const {
+    currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const showConfirm = () => {
     if (emailError) {
       notification.error({
@@ -71,12 +75,12 @@ export default function UpdateOrderButton({
           <Text type="secondary">Email: {customerInfo.email}</Text>
           <Text type="secondary">Address: {customerInfo.address}, {customerInfo.city}</Text>
           <Text type="secondary">Phone: {customerInfo.phone}</Text>
-          <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
-          <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
-          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
-          <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
-          <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
-          <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">Subtotal:  {displayCurrencyIconSafe}{subtotal.toFixed(2)}</Text>
+          <Text type="secondary">Discount:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
+          <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
+          <Text type="secondary">Delivery:  {displayCurrencyIconSafe}{deliveryCost.toFixed(2)}</Text>
+          <Text type="secondary">Tax:  {displayCurrencyIconSafe}{taxAmount.toFixed(2)}</Text>
+          <Text strong>Total Amount:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
           <Text type="warning">
             This will update all order details including products, pricing, and
             customer information.
@@ -88,6 +92,12 @@ export default function UpdateOrderButton({
       onOk: handleUpdate,
     });
   };
+
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencySafe = displayCurrency || "BDT"; // fallback
 
   const handleUpdate = async () => {
     if (disabled || emailError) return;
@@ -149,7 +159,7 @@ export default function UpdateOrderButton({
         status: status, // ✅ Already using enum
         paymentStatus: paymentStatus, // ✅ Already using enum
         paymentMethod: paymentMethod,
-        currency: "BDT",
+        currency: displayCurrencySafe,
         deliveryOption: customerInfo.deliveryMethod || "",
         // ✅ ADDED: Shipping address object for the backend
         shippingAddress: {

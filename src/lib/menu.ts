@@ -4,18 +4,16 @@ import {
   ShoppingCart,
   UserPlus,
   User,
-  CreditCard,
-  DollarSign,
   PlusCircle,
   List,
   Clipboard,
   Edit,
-  BarChart2,
   FolderPlus,
   Link2,
   Settings,
   Truck,
   UserCircle,
+  Store,
 } from "lucide-react";
 import React from "react";
 
@@ -97,14 +95,19 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/shipping-Management",
         icon: Truck,
       },
+      {
+        title: "Store Management",
+        href: "/dashboard/store-management",
+        icon: Store,
+      },
     ],
   },
-  {
-    title: "Financial",
-    icon: DollarSign,
-    children: [
-      { title: "Billing", href: "/financial/billing", icon: CreditCard },
-      { title: "Cost", href: "/financial/cost", icon: BarChart2 },
-    ],
-  },
+  // {
+  //   title: "Financial",
+  //   icon: DollarSign,
+  //   children: [
+  //     { title: "Billing", href: "/financial/billing", icon: CreditCard },
+  //     { title: "Cost", href: "/financial/cost", icon: BarChart2 },
+  //   ],
+  // },
 ];

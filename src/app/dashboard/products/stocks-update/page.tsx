@@ -1,55 +1,79 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
-import { Input, Select } from "antd";
-import { useSearchParams } from "next/navigation";
+"use client"
+import React, { useState, useRef } from "react";
+import { Input, Select, Pagination, Space, Button } from "antd";
 import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable";
 import { StockFilter } from "@/lib/types/enums";
+import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 
-const { Search } = Input;
 const { Option } = Select;
 
 const StockPage = () => {
-  const searchParams = useSearchParams();
-  const queryFilter = searchParams.get("filter") as StockFilter | null;
-
-  const [searchText, setSearchText] = useState("");
-  const [stockFilter, setStockFilter] = useState<StockFilter>(
-    queryFilter || StockFilter.ALL
+  const [searchText, setSearchText] = useUrlSync<string>("search", "");
+  const [stockFilter, setStockFilter] = useUrlSync<StockFilter>(
+    "filter",
+    StockFilter.ALL,
+    (v) => (v as StockFilter) || StockFilter.ALL
   );
+  const [currentPage, setCurrentPage] = useUrlSync<number>(
+    "page",
+    1,
+    (v) => Number(v) || 1
+  );
+  const [pageSize, setPageSize] = useUrlSync<number>(
+    "pageSize",
+    10,
+    (v) => Number(v) || 10
+  );
+  const [totalProducts, setTotalProducts] = React.useState(0);
 
-  useEffect(() => {
-    if (queryFilter) setStockFilter(queryFilter as StockFilter);
-  }, [queryFilter]);
+  // Typing indicator
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSearch = (value: string) => {
-    setSearchText(value.trim().toLowerCase());
-  };
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value);
+    setIsTyping(true);
 
-  const handleFilterChange = (value: StockFilter) => {
-    setStockFilter(value);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // Stop showing "Typing..." after 800ms of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 800);
   };
 
   return (
-    <div className="px-4 md:px-8 py-4">
+    <div className="px-4 md:px-8 py-4 space-y-4">
+      {/* Search + Filter */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Search Input (Left) */}
         <div className="flex-1 md:max-w-md">
-          <Search
-            placeholder="Search by product name or SKU"
-            enterButton
-            allowClear
-            size="large"
-            onSearch={handleSearch}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
+          <Space.Compact className="w-full">
+            <Input
+              placeholder="Search by product name or SKU"
+              size="large"
+              allowClear
+              value={searchText}
+              onChange={handleSearchChange}
+              onPressEnter={() => setSearchText(searchText)}
+              suffix={
+                isTyping ? (
+                  <span className="text-xs text-gray-500">Typing...</span>
+                ) : null
+              }
+            />
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => setSearchText(searchText)}
+            >
+              Search
+            </Button>
+          </Space.Compact>
         </div>
-
-        {/* Stock Filter Dropdown (Right) */}
         <div className="w-full md:w-48">
           <Select
             value={stockFilter}
-            onChange={handleFilterChange}
+            onChange={setStockFilter}
             size="large"
             className="w-full"
           >
@@ -62,8 +86,30 @@ const StockPage = () => {
       </div>
 
       {/* Stock Table */}
-      <div className="mt-4">
-        <StockChangeTable searchText={searchText} stockFilter={stockFilter} />
+      <StockChangeTable
+        searchText={searchText}
+        stockFilter={stockFilter}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        onTotalChange={setTotalProducts}
+      />
+
+      {/* Pagination */}
+      <div className="flex justify-end">
+        <Pagination
+          current={currentPage}
+          pageSize={pageSize}
+          total={totalProducts}
+          showSizeChanger
+          pageSizeOptions={["10", "20", "50", "100"]}
+          onChange={(page, size) => {
+            setCurrentPage(page);
+            setPageSize(size);
+          }}
+          showTotal={(total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`
+          }
+        />
       </div>
     </div>
   );

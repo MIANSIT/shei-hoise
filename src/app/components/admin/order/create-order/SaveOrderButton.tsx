@@ -7,6 +7,7 @@ import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { useRouter } from "next/navigation";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -49,7 +50,11 @@ export default function SaveOrderButton({
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  
+   const {
+    currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const showConfirm = () => {
     if (emailError) {
       notification.error({
@@ -68,12 +73,12 @@ export default function SaveOrderButton({
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
           <Text type="secondary">Email: {customerInfo.email}</Text>
-          <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
-          <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
-          <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
-          <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
-          <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
-          <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">Subtotal:  {displayCurrencyIconSafe}{subtotal.toFixed(2)}</Text>
+          <Text type="secondary">Discount:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
+          <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
+          <Text type="secondary">Delivery:  {displayCurrencyIconSafe}{deliveryCost.toFixed(2)}</Text>
+          <Text type="secondary">Tax:  {displayCurrencyIconSafe}{taxAmount.toFixed(2)}</Text>
+          <Text strong>Total Amount:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
               A new customer record will be created in the system.
@@ -86,6 +91,12 @@ export default function SaveOrderButton({
       onOk: handleSave,
     });
   };
+
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencySafe = displayCurrency || "BDT"; // fallback
 
   const handleSave = async () => {
     if (disabled || emailError) return;
@@ -182,7 +193,7 @@ export default function SaveOrderButton({
         status,
         paymentStatus,
         paymentMethod,
-        currency: "BDT" as const,
+        currency: displayCurrencySafe,
         deliveryOption: finalCustomerInfo.deliveryMethod,
       };
 
@@ -212,9 +223,9 @@ export default function SaveOrderButton({
               <Text>{successMessage}</Text>
               <Text type="secondary">Order ID: {result.orderId}</Text>
               <Text type="secondary">Customer Email: {customerInfo.email}</Text>
-              <Text type="secondary">Discount Applied: ৳{discount.toFixed(2)}</Text>
-              <Text type="secondary">Additional Charges: ৳{additionalCharges.toFixed(2)}</Text>
-              <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
+              <Text type="secondary">Discount Applied:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
+              <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
+              <Text strong>Total:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
             </Space>
           ),
           onOk: () => {

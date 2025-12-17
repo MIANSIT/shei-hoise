@@ -9,7 +9,7 @@ import { Printer, Download, X, Store } from "lucide-react";
 import { StoreOrder } from "@/lib/types/order";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface AnimatedInvoiceProps {
   isOpen: boolean;
   onClose?: () => void;
@@ -37,8 +37,13 @@ export default function AnimatedInvoice({
 }: AnimatedInvoiceProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [storeTaxRate, setStoreTaxRate] = useState<number | null>(null);
-
-  // Get store slug from order data
+  const [taxLoading, setTaxLoading] = useState(false);
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
+  // Get store slug from order data - works for both admin and customer
   const storeSlug = orderData.stores?.store_slug || "";
   const storeId = orderData.store_id || orderData.stores?.id;
 
@@ -51,6 +56,11 @@ export default function AnimatedInvoice({
   // Get discount and additional charges from order data
   const discountAmount = orderData.discount_amount || 0;
   const additionalCharges = orderData.additional_charges || 0;
+
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "{displayCurrencyIconSafe}"; // fallback
 
   // Fetch store tax rate from store_settings
   useEffect(() => {
@@ -290,7 +300,7 @@ export default function AnimatedInvoice({
                         <div class="item-name">${productName} x${
                         item.quantity
                       }</div>
-                        <div class="item-price">৳${item.total_price.toFixed(
+                        <div class="item-price"> ${displayCurrencyIconSafe}${item.total_price.toFixed(
                           2
                         )}</div>
                       </div>
@@ -304,14 +314,14 @@ export default function AnimatedInvoice({
                 <div class="summary">
                   <div class="summary-row">
                     <span>Sub Total</span>
-                    <span>৳${enhancedOrderData.subtotal.toFixed(2)}</span>
+                    <span> ${displayCurrencyIconSafe}${enhancedOrderData.subtotal.toFixed(2)}</span>
                   </div>
                   ${
                     enhancedOrderData.discount_amount > 0
                       ? `
                       <div class="summary-row">
-                        <span>Order Discount</span>
-                        <span>-৳${enhancedOrderData.discount_amount.toFixed(
+                        <span>Discount</span>
+                        <span>- ${displayCurrencyIconSafe}${enhancedOrderData.discount_amount.toFixed(
                           2
                         )}</span>
                       </div>
@@ -323,7 +333,7 @@ export default function AnimatedInvoice({
                       ? `
                       <div class="summary-row">
                         <span>Additional Charges</span>
-                        <span>+৳${enhancedOrderData.additional_charges.toFixed(
+                        <span>+ ${displayCurrencyIconSafe}${enhancedOrderData.additional_charges.toFixed(
                           2
                         )}</span>
                       </div>
@@ -332,15 +342,15 @@ export default function AnimatedInvoice({
                   }
                   <div class="summary-row">
                     <span>Tax </span>
-                    <span>৳${taxAmount.toFixed(2)}</span>
+                    <span> ${displayCurrencyIconSafe}${taxAmount.toFixed(2)}</span>
                   </div>
                   <div class="summary-row">
                     <span>Shipping</span>
-                    <span>৳${enhancedOrderData.shipping_fee.toFixed(2)}</span>
+                    <span>${displayCurrencyIconSafe}${enhancedOrderData.shipping_fee.toFixed(2)}</span>
                   </div>
                   <div class="summary-row total-row">
                     <span>TOTAL</span>
-                    <span>৳${enhancedOrderData.total_amount.toFixed(2)}</span>
+                    <span>${displayCurrencyIconSafe}${enhancedOrderData.total_amount.toFixed(2)}</span>
                   </div>
                   ${taxNote}
                 </div>
@@ -529,7 +539,7 @@ export default function AnimatedInvoice({
                     )}
                   </div>
                   <div className="ml-2 font-medium text-foreground">
-                    ৳{item.total_price.toFixed(2)}
+                    {displayCurrencyIconSafe}{item.total_price.toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -542,21 +552,21 @@ export default function AnimatedInvoice({
             <div className="space-y-1">
               <div className="flex justify-between text-foreground">
                 <span>Sub Total</span>
-                <span>৳{enhancedOrderData.subtotal.toFixed(2)}</span>
+                <span>{displayCurrencyIconSafe}{enhancedOrderData.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-foreground">
                 <span>Tax</span>
-                <span>৳{taxAmount.toFixed(2)}</span>
+                <span>{displayCurrencyIconSafe}{taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-foreground">
                 <span>Shipping</span>
-                <span>৳{enhancedOrderData.shipping_fee.toFixed(2)}</span>
+                <span>{displayCurrencyIconSafe}{enhancedOrderData.shipping_fee.toFixed(2)}</span>
               </div>
               {enhancedOrderData.discount_amount > 0 && (
                 <div className="flex justify-between text-red-600">
                   <span>Order Discount</span>
                   <span>
-                    -৳{enhancedOrderData.discount_amount.toFixed(2)}
+                    -{displayCurrencyIconSafe}{enhancedOrderData.discount_amount.toFixed(2)}
                   </span>
                 </div>
               )}
@@ -564,13 +574,13 @@ export default function AnimatedInvoice({
                 <div className="flex justify-between text-blue-600">
                   <span>Additional Charges</span>
                   <span>
-                    ৳{enhancedOrderData.additional_charges.toFixed(2)}
+                    {displayCurrencyIconSafe}{enhancedOrderData.additional_charges.toFixed(2)}
                   </span>
                 </div>
               )}
               <div className="flex justify-between font-bold border-t-2 border-foreground pt-2 mt-2 text-foreground">
                 <span>TOTAL</span>
-                <span>৳{enhancedOrderData.total_amount.toFixed(2)}</span>
+                <span>{displayCurrencyIconSafe}{enhancedOrderData.total_amount.toFixed(2)}</span>
               </div>
             </div>
 

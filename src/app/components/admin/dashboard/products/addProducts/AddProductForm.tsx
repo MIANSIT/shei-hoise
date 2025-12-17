@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useDiscountCalculation } from "@/lib/hook/useDiscountCalculation";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface AddProductFormProps {
   product?: ProductType;
   storeId: string;
@@ -31,7 +31,11 @@ export interface AddProductFormRef {
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
     const { error: notifyError } = useSheiNotification();
-
+    const {
+      currency,
+      // icon: currencyIcon,
+      loading: currencyLoading,
+    } = useUserCurrencyIcon();
     const initialValues = React.useMemo<ProductType>(
       () => ({
         store_id: storeId,
@@ -122,6 +126,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     useEffect(() => {
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
+
+    // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+    const displayCurrency = currencyLoading ? "" : currency ?? "";
     return (
       <div className="">
         <form
@@ -188,27 +195,27 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               <h2 className="text-xl font-semibold ">Pricing</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                  label="TP Price (BDT)"
+                  label={`TP Price (${displayCurrency})`}
                   name="tp_price"
                   type="number"
                   control={control}
                   required
                 />
                 <FormField
-                  label="MRP Price (BDT)"
+                  label={`MRP Price (${displayCurrency})`}
                   name="base_price"
                   type="number"
                   control={control}
                   required
                 />
                 <FormField
-                  label="Discount Amount (BDT)"
+                  label={`Discount Amount (${displayCurrency})`}
                   name="discount_amount"
                   type="number"
                   control={control}
                 />
                 <FormField
-                  label="Discounted Price (BDT)"
+                  label={`Discounted Price (${displayCurrency})`}
                   name="discounted_price"
                   type="number"
                   control={control}

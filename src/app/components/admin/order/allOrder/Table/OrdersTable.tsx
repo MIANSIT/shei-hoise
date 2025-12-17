@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
+import { Avatar, Space, Tooltip, App, Card, Button, Pagination } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
@@ -25,22 +25,37 @@ import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
 import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import dataService from "@/lib/queries/dataService";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface Props {
   orders: StoreOrder[];
+  total: number;
+  page: number;
+  search: string;
+  pageSize: number;
+  onTableChange: (pagination: { current: number; pageSize: number }) => void;
   onUpdate: (orderId: string, changes: Partial<StoreOrder>) => void;
-  onRefresh?: () => void;
   loading?: boolean;
+  onSearchChange: (value: string) => void; // add this
+  onStatusChange?: (status: string) => void;
+  onPaymentStatusChange?: (status: string) => void;
 }
 
 const OrdersTable: React.FC<Props> = ({
   orders,
   onUpdate,
-  onRefresh,
+  search,
+  onSearchChange,
+  onStatusChange,
+  onPaymentStatusChange,
+  page,
+  total,
+  pageSize,
+  onTableChange,
   loading = false,
 }) => {
   const { notification, modal } = App.useApp();
-  const [searchOrderId, setSearchOrderId] = useState<string>("");
+  const [searchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
@@ -49,6 +64,11 @@ const OrdersTable: React.FC<Props> = ({
     useState<StoreOrder | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
+  const {
+    currency: storeCurrency,
+    // icon: currencyIcon,
+    // loading: currencyLoading,
+  } = useUserCurrencyIcon();
 
   useEffect(() => {
     const filtered = orders.filter((o) => {
@@ -67,24 +87,7 @@ const OrdersTable: React.FC<Props> = ({
     setFilteredOrders(filtered);
   }, [orders, searchOrderId]);
 
-  const handleSearchChange = (value: string) => setSearchOrderId(value);
-
-  const handleTabFilter = (filtered: StoreOrder[]) => {
-    const finalFiltered = filtered.filter((o) => {
-      const search = searchOrderId.toLowerCase();
-      const customerEmail = getCustomerEmail(o).toLowerCase();
-      const customerPhone = getCustomerPhone(o).toLowerCase();
-      const customerName = getCustomerName(o).toLowerCase();
-
-      return (
-        o.order_number.toLowerCase().includes(search) ||
-        customerEmail.includes(search) ||
-        customerPhone.includes(search) ||
-        customerName.includes(search)
-      );
-    });
-    setFilteredOrders(finalFiltered);
-  };
+  // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleEdit = (order: StoreOrder) => {
     router.push(`/dashboard/orders/edit-order/${order.order_number}`);
@@ -115,10 +118,6 @@ const OrdersTable: React.FC<Props> = ({
         message: "Order Deleted",
         description: "Order has been deleted successfully.",
       });
-
-      if (onRefresh) {
-        onRefresh();
-      }
     } catch (error: any) {
       console.error("Error deleting order:", error);
       notification.error({
@@ -143,9 +142,6 @@ const OrdersTable: React.FC<Props> = ({
 
   const handleBulkUpdateSuccess = () => {
     setSelectedRowKeys([]);
-    if (onRefresh) {
-      onRefresh();
-    }
   };
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -168,14 +164,15 @@ const OrdersTable: React.FC<Props> = ({
     </div>
   );
 
-  const formatCurrency = (amount: number, currency: string = "BDT") => {
+  const formatCurrency = (amount: number, currency?: string | null) => {
+    const finalCurrency = currency || storeCurrency || "";
+
     return new Intl.NumberFormat("en-BD", {
       style: "currency",
-      currency: currency,
+      currency: finalCurrency,
       minimumFractionDigits: 2,
     }).format(amount);
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -599,7 +596,6 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh}
                 />
               </div>
             )}
@@ -651,9 +647,11 @@ const OrdersTable: React.FC<Props> = ({
       <div className="mb-4">
         <OrdersFilterTabs
           orders={orders}
-          onFilter={handleTabFilter}
-          searchValue={searchOrderId}
-          onSearchChange={handleSearchChange}
+          // onFilter={handleTabFilter}
+          searchValue={search} // <- use parent search state
+          onSearchChange={onSearchChange}
+          onStatusChange={onStatusChange} // optional now
+          onPaymentStatusChange={onPaymentStatusChange} // optional now
         />
       </div>
 
@@ -682,14 +680,7 @@ const OrdersTable: React.FC<Props> = ({
             },
           ],
         }}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} orders`,
-          responsive: true,
-        }}
+        pagination={false}
         size="middle"
         expandable={{
           expandedRowKeys: expandedRowKey ? [expandedRowKey] : [],
@@ -755,7 +746,6 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh}
                 />
               )}
               <DetailedOrderView order={order} />
@@ -766,6 +756,20 @@ const OrdersTable: React.FC<Props> = ({
         responsive={true}
         renderCard={renderOrderCard}
       />
+      <div className="mt-4 flex justify-end">
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          showQuickJumper
+          onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
+          pageSizeOptions={["5", "10", "20", "50"]}
+          showTotal={(total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`
+          }
+        />
+      </div>
 
       {/* Invoice Modal */}
       {showInvoice && selectedOrderForInvoice && (

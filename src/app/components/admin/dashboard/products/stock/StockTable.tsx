@@ -11,7 +11,9 @@ import {
   ProductRow,
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
-import { ProductRowWithMatch } from "./StockChangeTable";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
+// import { ProductRowWithMatch } from "./StockChangeTable";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -40,6 +42,14 @@ const StockTable: React.FC<StockTableProps> = ({
   loading,
   bulkActive = false,
 }) => {
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
@@ -162,7 +172,12 @@ const StockTable: React.FC<StockTableProps> = ({
 
         const price =
           typeof record.currentPrice === "number" ? record.currentPrice : 0;
-        return <span>৳{price.toFixed(2)}</span>;
+        return (
+          <span>
+            {displayCurrencyIconSafe}
+            {price.toFixed(2)}
+          </span>
+        );
       },
     },
     {
@@ -207,7 +222,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 onChange={(value) =>
                   onStockChange(parentId, variantId, Number(value ?? 0))
                 }
-                className={`!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold ${
+                className={`w-20! text-center font-bold [&>input]:text-center [&>input]:font-bold ${
                   isLowStock
                     ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
                     : ""
