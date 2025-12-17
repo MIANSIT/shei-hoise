@@ -1,9 +1,6 @@
-// app/components/admin/customers/PageHeader.tsx
 import React from "react";
-import { Button, Divider, Input } from "antd";
-import { UserAddOutlined } from "@ant-design/icons";
-
-const { Search } = Input;
+import { Button, Divider, Input, Space } from "antd";
+import { UserAddOutlined, SearchOutlined } from "@ant-design/icons";
 
 interface PageHeaderProps {
   onAddCustomer: () => void;
@@ -16,21 +13,24 @@ export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         {/* Left Title Section */}
         <div className="w-80">
-          <Search
-            placeholder="Search name, email or phone"
-            allowClear
-            enterButton
-            onChange={(e) => onSearchChange(e.target.value)}
-            size="large"
-            className="h-12"
-          />
+          <Space.Compact className="w-full ">
+            <Input
+              placeholder="Search name, email or phone"
+              allowClear
+              onChange={(e) => onSearchChange(e.target.value)}
+              size="large"
+            />
+            <Button
+              type="primary"
+              size="large"
+              icon={<SearchOutlined />}
+              onClick={() => {}}
+            />
+          </Space.Compact>
         </div>
 
-        {/* Right Section: Search + Button */}
-        <div className="flex flex-wrap  gap-3">
-          {/* Search */}
-
-          {/* Add Button */}
+        {/* Right Section: Add Button */}
+        <div className="flex flex-wrap gap-3">
           <Button
             type="primary"
             icon={<UserAddOutlined />}
@@ -43,7 +43,7 @@ export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
         </div>
       </div>
 
-      <Divider className="!my-4" />
+      <Divider className="my-4!" />
     </div>
   );
 }

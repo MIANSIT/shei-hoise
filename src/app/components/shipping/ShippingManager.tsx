@@ -216,7 +216,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl p-4 sm:p-6 border border-purple-100">
+        <div className="bg-linear-to-r from-purple-50 to-violet-50 rounded-xl p-4 sm:p-6 border border-purple-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-purple-600 mb-1">

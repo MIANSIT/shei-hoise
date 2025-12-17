@@ -269,14 +269,22 @@ export const useDashboardMetrics = (
       }
 
       // Calculate metrics for CURRENT PERIOD (PAID orders only)
-      if (orderDate >= currentPeriod.start && orderDate <= currentPeriod.end && isPaid) {
+      if (
+        orderDate >= currentPeriod.start &&
+        orderDate <= currentPeriod.end &&
+        isPaid
+      ) {
         revenue += subtotal;
         paidOrders.push(order);
         paidOrderCount++;
       }
 
       // Calculate metrics for PREVIOUS PERIOD (PAID orders only)
-      if (orderDate >= prevPeriod.start && orderDate <= prevPeriod.end && isPaid) {
+      if (
+        orderDate >= prevPeriod.start &&
+        orderDate <= prevPeriod.end &&
+        isPaid
+      ) {
         prevRevenue += subtotal;
         prevOrderCount++;
         prevProfit += (order.order_items as OrderItem[]).reduce(
@@ -386,66 +394,36 @@ export const useDashboardMetrics = (
     // Process products to get stock information
     products.forEach((product) => {
       if (product.variants && product.variants.length > 0) {
-        // For products with variants, check each variant
+        // For products with variants, sum quantities
         product.variants.forEach((variant) => {
-          if (variant.stock) {
-            const quantity = variant.stock.quantity_available || 0;
-            const lowThreshold = variant.stock.low_stock_threshold || 5;
-            
-            if (quantity <= 0) {
-              outOfStockCount++;
-            } else if (quantity <= lowThreshold) {
-              lowStockCount++;
-            } else {
-              inStockCount++;
-            }
+          const quantity = variant.stock?.quantity_available ?? 0;
+          const lowThreshold = variant.stock?.low_stock_threshold ?? 5;
+
+          if (quantity <= 0) {
+            outOfStockCount++;
+          } else if (quantity <= lowThreshold) {
+            lowStockCount++;
+            inStockCount += quantity;
           } else {
-            // If no stock data, check product-level stock
-            if (product.stock) {
-              const quantity = product.stock.quantity_available || 0;
-              const lowThreshold = product.stock.low_stock_threshold || 5;
-              
-              if (quantity <= 0) {
-                outOfStockCount++;
-              } else if (quantity <= lowThreshold) {
-                lowStockCount++;
-              } else {
-                inStockCount++;
-              }
-            } else {
-              // If no stock data at all, count as in stock
-              inStockCount++;
-            }
+            inStockCount += quantity;
           }
         });
       } else {
-        // For products without variants, check product stock directly
-        if (product.stock) {
-          const quantity = product.stock.quantity_available || 0;
-          const lowThreshold = product.stock.low_stock_threshold || 5;
-          
-          if (quantity <= 0) {
-            outOfStockCount++;
-          } else if (quantity <= lowThreshold) {
-            lowStockCount++;
-          } else {
-            inStockCount++;
-          }
-        } else if (product.quantity_available !== undefined) {
-          // If using direct quantity_available property (from Product interface)
-          const quantity = product.quantity_available || 0;
-          const lowThreshold = product.low_stock_threshold || 5;
-          
-          if (quantity <= 0) {
-            outOfStockCount++;
-          } else if (quantity <= lowThreshold) {
-            lowStockCount++;
-          } else {
-            inStockCount++;
-          }
+        // Products without variants
+        const quantity =
+          product.stock?.quantity_available ?? product.quantity_available ?? 0;
+        const lowThreshold =
+          product.stock?.low_stock_threshold ??
+          product.low_stock_threshold ??
+          5;
+
+        if (quantity <= 0) {
+          outOfStockCount++;
+        } else if (quantity <= lowThreshold) {
+          lowStockCount++;
+          inStockCount += quantity;
         } else {
-          // If no stock data, count as in stock
-          inStockCount++;
+          inStockCount += quantity;
         }
       }
     });

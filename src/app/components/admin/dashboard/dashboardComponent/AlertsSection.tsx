@@ -55,9 +55,20 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
 
       router.push(`/dashboard/products/stocks-update?filter=${filter}`);
     } else if (alert.type === "order") {
-      router.push("/dashboard/orders");
+      // Check if the order message contains "pending"
+      const isPending = alert.message.toLowerCase().includes("pending");
+      const url = isPending
+        ? "/dashboard/orders?status=pending"
+        : "/dashboard/orders";
+
+      router.push(url);
     } else if (alert.type === "payment") {
-      router.push("/dashboard/orders");
+      const isPending = alert.message.toLowerCase().includes("pending");
+    const url = isPending
+      ? "/dashboard/orders?category=payment&payment_status=pending"
+      : "/dashboard/orders";
+
+    router.push(url);
     }
   };
 

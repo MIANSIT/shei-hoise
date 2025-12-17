@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUserProfile } from "@/lib/hook/profile-user/useAdminProfile";
 import { updateUserProfile } from "@/lib/queries/user/updateUserProfile";
 import Footer from "../../components/common/Footer";
@@ -19,8 +19,10 @@ import { ProfileFormData } from "@/lib/types/adminProfile";
 export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AdminUserWithProfile | null>(null);
-
+  const [currentUser, setCurrentUser] = useState<AdminUserWithProfile | null>(
+    null
+  );
+  const formRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (user) {
       setCurrentUser(user);
@@ -34,6 +36,11 @@ export default function StoreOwnerProfilePage() {
 
   const handleEdit = () => {
     setIsEditing(true);
+
+    // Wait for next render
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100); // small delay to ensure form is rendered
   };
 
   const handleCancel = () => {
@@ -148,7 +155,7 @@ export default function StoreOwnerProfilePage() {
               />
             </div>
 
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6" ref={formRef}>
               {isEditing ? (
                 <EditProfileForm
                   user={displayUser!}

@@ -24,7 +24,7 @@ import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { AuthResponse, User } from "@supabase/supabase-js";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,7 +34,11 @@ export default function CheckoutPage() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [taxLoaded, setTaxLoaded] = useState(false);
-
+ const {
+    currency,
+    // icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const params = useParams();
   const router = useRouter();
   const store_slug = params.store_slug as string;
@@ -135,6 +139,11 @@ export default function CheckoutPage() {
     showInvoice,
   ]);
 
+  
+  // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrency || "BDT"; // fallback
+
   // ✅ OPTIMIZED: Memoize shipping change handler
   const handleShippingChange = useCallback((shippingMethod: string, fee: number) => {
     setSelectedShipping(shippingMethod);
@@ -205,7 +214,7 @@ export default function CheckoutPage() {
       tax_amount: taxAmount,
       shipping_fee: shippingFee,
       total_amount: totalWithTax,
-      currency: "BDT",
+      currency: displayCurrencyIconSafe,
       payment_status: PaymentStatus.PENDING,
       payment_method: "cod",
       shipping_address: shippingAddress,

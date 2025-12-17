@@ -2,13 +2,12 @@
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStoreCurrency } from "@/lib/hook/currecncyStore/useStoreCurrency";
-import { DollarOutlined } from "@ant-design/icons";
-import { ElementType } from "react";
+import { ReactNode } from "react";
 
-// Map all currencies to string symbols or React components
-const currencyMap: Record<string, string | ElementType> = {
+// Map all currencies to string symbols or ReactNode (icon component)
+const currencyMap: Record<string, string | ReactNode> = {
   BDT: "৳",
-  USD: DollarOutlined,
+  USD: "$",
   EUR: "€",
   GBP: "£",
   JPY: "¥",
@@ -16,7 +15,7 @@ const currencyMap: Record<string, string | ElementType> = {
 
 export interface UseUserCurrencyIconResult {
   currency: string | null;
-  icon: string | ElementType | null;
+  icon: ReactNode | null; // Now safe to render directly in JSX
   loading: boolean;
   error: Error | null;
 }
@@ -29,7 +28,10 @@ export function useUserCurrencyIcon(): UseUserCurrencyIconResult {
     error: currencyError,
   } = useStoreCurrency(storeId);
 
-  const icon = currency ? currencyMap[currency.toUpperCase()] || null : null;
+  // Pick the icon or string for the currency
+  const icon: ReactNode | null = currency
+    ? currencyMap[currency.toUpperCase()] ?? null
+    : null;
 
   return {
     currency: currency || null,

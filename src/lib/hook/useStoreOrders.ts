@@ -26,14 +26,9 @@ export function useStoreOrders(storeId: string): UseStoreOrdersResult {
 
       try {
         const fetchedOrders = await getStoreOrders(storeId);
-        setOrders(fetchedOrders);
 
-        // Calculate total amount
-        const total = fetchedOrders.reduce(
-          (acc, order) => acc + order.total_amount,
-          0
-        );
-        setTotalAmount(total);
+        setOrders(fetchedOrders.orders); // ✅ only the array
+        setTotalAmount(fetchedOrders.total);
       } catch (err: unknown) {
         if (err instanceof Error) {
           setError(err.message);

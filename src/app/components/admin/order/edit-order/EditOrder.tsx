@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   Row,
@@ -12,16 +11,9 @@ import {
   Divider,
   Typography,
   Space,
-  Descriptions,
   App,
 } from "antd";
-import {
-  UserOutlined,
-  PhoneOutlined,
-  MailOutlined,
-  HomeOutlined,
-  ArrowLeftOutlined,
-} from "@ant-design/icons";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import CustomerInfo from "../create-order/CustomerInfo";
 import AdminOrderDetails from "../create-order/AdminOrderDetails";
@@ -34,7 +26,6 @@ import {
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import type { CustomerProfile } from "@/lib/types/customer";
 import {
   getStoreSettings,
   type ShippingFee,
@@ -48,16 +39,16 @@ interface EditOrderProps {
   orderNumber: string;
 }
 
-interface OrderItemData {
-  id: string;
-  product_id: string;
-  variant_id?: string;
-  product_name: string;
-  variant_details: any;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
+// interface OrderItemData {
+//   id: string;
+//   product_id: string;
+//   variant_id?: string;
+//   product_name: string;
+//   variant_details: any;
+//   quantity: number;
+//   unit_price: number;
+//   total_price: number;
+// }
 
 export default function EditOrder({ orderNumber }: EditOrderProps) {
   const { notification } = App.useApp();
@@ -90,13 +81,18 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(PaymentStatus.PENDING); // ✅ Using enum
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
+    PaymentStatus.PENDING
+  ); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
-  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [originalOrder, setOriginalOrder] = useState<OrderWithItems | null>(null);
+  // const [customerProfile, setCustomerProfile] =
+  //   useState<CustomerProfile | null>(null);
+  // const [profileLoading, setProfileLoading] = useState(false);
+  const [originalOrder, setOriginalOrder] = useState<OrderWithItems | null>(
+    null
+  );
   const [hasFetchedData, setHasFetchedData] = useState(false);
 
   // Store settings states
@@ -128,52 +124,59 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     } finally {
       setSettingsLoading(false);
     }
-  }, [user?.store_id, notification]);
+  }, [user?.store_id, settingsLoading, notification]);
 
   // Validate email uniqueness
-  const validateEmailUniqueness = useCallback((email: string): boolean => {
-    if (!email) {
-      setEmailError("");
-      return true;
-    }
-    
-    const normalizedEmail = email.toLowerCase().trim();
-    
-    // For edit mode, we need to check if the email exists for a DIFFERENT customer
-    if (customerInfo.customer_id) {
-      // In edit mode, we should allow the same customer to keep their email
-      // Only show error if email belongs to a different customer
-      const existingCustomerWithSameEmail = originalOrder?.customer?.email === normalizedEmail;
-      
-      if (existingCustomerWithSameEmail) {
-        // This is the same customer's email - allow it
+  const validateEmailUniqueness = useCallback(
+    (email: string): boolean => {
+      if (!email) {
         setEmailError("");
         return true;
       }
-      
-      // Check if email exists for another customer
-      // Note: This would require fetching all customers, but for now we'll skip this check in edit mode
-      // since it's complex and might not be necessary for order editing
+
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // For edit mode, we need to check if the email exists for a DIFFERENT customer
+      if (customerInfo.customer_id) {
+        // In edit mode, we should allow the same customer to keep their email
+        // Only show error if email belongs to a different customer
+        const existingCustomerWithSameEmail =
+          originalOrder?.customer?.email === normalizedEmail;
+
+        if (existingCustomerWithSameEmail) {
+          // This is the same customer's email - allow it
+          setEmailError("");
+          return true;
+        }
+
+        // Check if email exists for another customer
+        // Note: This would require fetching all customers, but for now we'll skip this check in edit mode
+        // since it's complex and might not be necessary for order editing
+        setEmailError("");
+        return true;
+      }
+
       setEmailError("");
       return true;
-    }
-    
-    setEmailError("");
-    return true;
-  }, [customerInfo.customer_id, originalOrder?.customer?.email]);
+    },
+    [customerInfo.customer_id, originalOrder?.customer?.email]
+  );
 
   // Handle email changes with validation
-  const handleEmailChange = useCallback((email: string) => {
-    setCustomerInfo(prev => ({ ...prev, email }));
-    validateEmailUniqueness(email);
-  }, [validateEmailUniqueness]);
+  const handleEmailChange = useCallback(
+    (email: string) => {
+      setCustomerInfo((prev) => ({ ...prev, email }));
+      validateEmailUniqueness(email);
+    },
+    [validateEmailUniqueness]
+  );
 
   // Fetch customer profile
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
-    setProfileLoading(true);
     try {
-      const profile = await dataService.getCustomerProfileByStoreCustomerId(customerId);
-      setCustomerProfile(profile);
+      const profile = await dataService.getCustomerProfileByStoreCustomerId(
+        customerId
+      );
       if (profile) {
         setCustomerInfo((prev) => ({
           ...prev,
@@ -184,20 +187,20 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       }
     } catch (error) {
       console.error("Error fetching customer profile:", error);
-      setCustomerProfile(null);
     } finally {
-      setProfileLoading(false);
     }
   }, []);
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!user?.store_id || loading) return;
-    
+
     setLoading(true);
     try {
-      const res = await dataService.getProductsWithVariants(user.store_id);
-      setProducts(res);
+      const res = await dataService.getProductsWithVariants({
+        storeId: user.store_id,
+      });
+      setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({
@@ -207,7 +210,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id, notification]);
+  }, [user?.store_id, loading, notification]);
 
   // Fetch order data
   const fetchOrderData = useCallback(async () => {
@@ -242,7 +245,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
           additional_charges: order.additional_charges,
           shipping_fee: order.shipping_fee,
           tax_amount: order.tax_amount,
-          total_amount: order.total_amount
+          total_amount: order.total_amount,
         });
 
         // Set customer info from order
@@ -259,11 +262,16 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
           if (order.shipping_address) {
             setCustomerInfo((prev) => ({
               ...prev,
-              address: order.shipping_address.address_line_1 || order.shipping_address.address || prev.address,
+              address:
+                order.shipping_address.address_line_1 ||
+                order.shipping_address.address ||
+                prev.address,
               city: order.shipping_address.city || prev.city,
-              postal_code: order.shipping_address.postal_code || prev.postal_code,
+              postal_code:
+                order.shipping_address.postal_code || prev.postal_code,
               deliveryMethod: order.delivery_option || prev.deliveryMethod,
-              deliveryOption: order.shipping_address.deliveryOption || prev.deliveryOption,
+              deliveryOption:
+                order.shipping_address.deliveryOption || prev.deliveryOption,
               notes: order.notes || prev.notes,
             }));
           }
@@ -307,7 +315,10 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       !customerInfo.deliveryOption
     ) {
       const currentShippingFee = Number(originalOrder.shipping_fee);
-      console.log("🔄 Auto-selecting delivery option for fee:", currentShippingFee);
+      console.log(
+        "🔄 Auto-selecting delivery option for fee:",
+        currentShippingFee
+      );
 
       // Method 1: Try to find exact match with shipping fees
       const matchingShippingFee = shippingFees.find(
@@ -331,7 +342,10 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         const isCustomAmount = !standardFees.includes(currentShippingFee);
 
         if (isCustomAmount) {
-          console.log("🔧 Custom delivery amount detected:", currentShippingFee);
+          console.log(
+            "🔧 Custom delivery amount detected:",
+            currentShippingFee
+          );
           setCustomerInfo((prev) => ({
             ...prev,
             deliveryOption: "custom",
@@ -366,14 +380,19 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     if (customerInfo.deliveryOption && shippingFees.length > 0) {
       // Don't change delivery cost for custom option - keep the backend value
       if (customerInfo.deliveryOption === "custom") {
-        console.log("🔧 Custom delivery - keeping backend value:", deliveryCost);
+        console.log(
+          "🔧 Custom delivery - keeping backend value:",
+          deliveryCost
+        );
         return;
       }
 
       const shippingFee = shippingFees.find((fee) => {
         if (!fee || typeof fee !== "object" || !fee.name) return false;
         const feeName = String(fee.name).toLowerCase().replace(/\s+/g, "-");
-        const deliveryOption = String(customerInfo.deliveryOption).toLowerCase();
+        const deliveryOption = String(
+          customerInfo.deliveryOption
+        ).toLowerCase();
         return feeName === deliveryOption;
       });
 
@@ -382,14 +401,14 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         setDeliveryCost(shippingFee.price);
       }
     }
-  }, [customerInfo.deliveryOption, shippingFees]);
+  }, [customerInfo.deliveryOption, deliveryCost, shippingFees]);
 
   // Initialize data
   useEffect(() => {
     if (user?.store_id && !userLoading && !hasFetchedData) {
-      console.log('🔄 Initializing EditOrder data');
+      console.log("🔄 Initializing EditOrder data");
       setHasFetchedData(true);
-      
+
       const initializeData = async () => {
         try {
           // Fetch all data in parallel
@@ -405,7 +424,14 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
       initializeData();
     }
-  }, [user?.store_id, userLoading, hasFetchedData, fetchProducts, fetchStoreSettings, fetchOrderData]);
+  }, [
+    user?.store_id,
+    userLoading,
+    hasFetchedData,
+    fetchProducts,
+    fetchStoreSettings,
+    fetchOrderData,
+  ]);
 
   // Calculate totals INCLUDING additional charges
   useEffect(() => {
@@ -414,18 +440,19 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       0
     );
     setSubtotal(newSubtotal);
-    
+
     // Calculate total amount with all components including additional charges
-    const calculatedTotal = newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
+    const calculatedTotal =
+      newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
     setTotalAmount(calculatedTotal);
-    
+
     console.log("📊 Total calculation in EditOrder:", {
       subtotal: newSubtotal,
       discount,
       additionalCharges,
       deliveryCost,
       taxAmount,
-      total: calculatedTotal
+      total: calculatedTotal,
     });
   }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
 
@@ -463,7 +490,9 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       <div className="flex justify-center items-center min-h-64 flex-col">
         <Spin size="large" />
         <Text type="secondary" className="mt-4">
-          {userLoading ? "Loading user information..." : "Loading order data..."}
+          {userLoading
+            ? "Loading user information..."
+            : "Loading order data..."}
         </Text>
       </div>
     );

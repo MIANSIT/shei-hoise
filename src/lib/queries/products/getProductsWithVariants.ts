@@ -1,6 +1,11 @@
 // lib/queries/products/getProductsWithVariants.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { supabase } from "@/lib/supabase";
+
+/* =========================
+   Types
+========================= */
 
 export interface ProductImage {
   id: string;
@@ -49,8 +54,29 @@ export interface ProductWithVariants {
   product_inventory: ProductStock[];
 }
 
-export async function getProductsWithVariants(storeId: string) {
-  const { data, error } = await supabase
+/* =========================
+   Query Options
+========================= */
+
+/* =========================
+   Query Function
+========================= */
+
+export async function getProductsWithVariants({
+  storeId,
+  search,
+  page,
+  pageSize,
+}: {
+  storeId: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  data: ProductWithVariants[];
+  total: number;
+}> {
+  let query = supabase
     .from("products")
     .select(
       `
@@ -88,41 +114,65 @@ export async function getProductsWithVariants(storeId: string) {
           alt_text,
           is_primary
         ),
-        product_inventory (quantity_available, quantity_reserved)
+        product_inventory (
+          quantity_available,
+          quantity_reserved
+        )
       ),
-      product_inventory (quantity_available, quantity_reserved)
-      `
+      product_inventory (
+        quantity_available,
+        quantity_reserved
+      )
+      `,
+      { count: "exact" } // total rows for pagination
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
 
+  // Apply search filter
+  if (search?.trim()) {
+    query = query.ilike("name", `%${search.trim()}%`);
+  }
+
+  // Apply pagination only if both page and pageSize are provided
+  if (page !== undefined && pageSize !== undefined) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+  }
+
+  const { data, error, count } = await query;
+
   if (error) throw error;
 
-  return (data ?? []).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    base_price: p.base_price,
-    discounted_price: p.discounted_price,
-    category_id: p.category_id,
-    category: p.categories
-      ? { id: p.categories.id, name: p.categories.name }
-      : null,
-    product_images: p.product_images ?? [],
-    product_variants: (p.product_variants ?? []).map((v: any) => ({
-      id: v.id,
-      variant_name: v.variant_name,
-      sku: v.sku,
-      base_price: v.base_price,
-      discounted_price: v.discounted_price,
-      discount_amount: v.discount_amount,
-      tp_price: v.tp_price,
-      weight: v.weight,
-      color: v.color,
-      is_active: v.is_active,
-      product_images: v.product_images ?? [],
-      product_inventory: v.product_inventory ?? [],
-    })),
-    product_inventory: p.product_inventory ?? [],
-  })) as ProductWithVariants[];
+  return {
+    total: count ?? 0,
+    data: (data ?? []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      base_price: p.base_price,
+      discounted_price: p.discounted_price,
+      category_id: p.category_id,
+      category: p.categories
+        ? { id: p.categories.id, name: p.categories.name }
+        : null,
+      product_images: p.product_images ?? [],
+      product_variants: (p.product_variants ?? []).map((v: any) => ({
+        id: v.id,
+        variant_name: v.variant_name,
+        sku: v.sku,
+        base_price: v.base_price,
+        discounted_price: v.discounted_price,
+        discount_amount: v.discount_amount,
+        tp_price: v.tp_price,
+        weight: v.weight,
+        color: v.color,
+        is_active: v.is_active,
+        product_images: v.product_images ?? [],
+        product_inventory: v.product_inventory ?? [],
+      })),
+      product_inventory: p.product_inventory ?? [],
+    })) as ProductWithVariants[],
+  };
 }

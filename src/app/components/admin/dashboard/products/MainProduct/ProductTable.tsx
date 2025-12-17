@@ -11,11 +11,14 @@ import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Image from "next/image";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout"; // adjust path if needed
+import type { TablePaginationConfig } from "antd/es/table";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface ProductTableProps {
   products: ProductWithVariants[];
   loading?: boolean;
   onDeleteSuccess?: () => void;
+  pagination?: TablePaginationConfig;
 }
 
 // Helper functions
@@ -40,12 +43,18 @@ const ProductTable: React.FC<ProductTableProps> = ({
   products,
   loading,
   onDeleteSuccess,
+  pagination,
 }) => {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const sheiNotif = useSheiNotification();
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
 
   const handleEdit = (slug: string) =>
     router.push(`/dashboard/products/edit-product/${slug}`);
@@ -71,6 +80,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
       setDeleteLoading(false);
     }
   };
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
   // AntD columns for desktop
   const columns: ColumnsType<ProductWithVariants> = [
@@ -159,7 +172,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         const price = getLowestBasePrice(record);
         return (
           <span className="font-medium">
-            {price ? `৳${price.toFixed(2)}` : "—"}
+            {price ? `${displayCurrencyIconSafe}${price.toFixed(2)}` : "—"}
           </span>
         );
       },
@@ -177,7 +190,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               price ? "text-green-600" : "text-gray-400"
             }`}
           >
-            {price ? `৳${price.toFixed(2)}` : "—"}
+            {price ? `${displayCurrencyIconSafe}${price.toFixed(2)}` : "—"}
           </span>
         );
       },
@@ -214,7 +227,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
         <div className="p-2.5 flex justify-between items-center">
           <h2 className="text-lg font-semibold">🛍️ Product List</h2>
           <span className="text-sm text-gray-500">
-            Total: {products.length} items
+            <span className="text-sm text-gray-500">
+              Showing {products.length} items
+            </span>
           </span>
         </div>
 
@@ -280,7 +295,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     <div className="flex justify-between items-center">
                       <div className="flex gap-2">
                         <span className="font-medium">
-                          {basePrice ? `৳${basePrice.toFixed(2)}` : "—"}
+                          {basePrice ? `${displayCurrencyIconSafe}${basePrice.toFixed(2)}` : "—"}
                         </span>
                         <span
                           className={`font-medium ${
@@ -288,7 +303,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           }`}
                         >
                           {discountedPrice
-                            ? `৳${discountedPrice.toFixed(2)}`
+                            ? `${displayCurrencyIconSafe}${discountedPrice.toFixed(2)}`
                             : ""}
                         </span>
                       </div>
@@ -324,7 +339,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             columns={columns}
             data={products}
             rowKey="id"
-            pagination={{ pageSize: 8 }}
+            pagination={pagination}
             loading={loading}
             size="middle"
             bordered={false}

@@ -41,7 +41,7 @@ const OrderProductTable: React.FC<Props> = ({
   const [selectedPaymentStatus, setSelectedPaymentStatus] =
     useState<PaymentStatus>(order.payment_status);
   const [selectedDeliveryOption, setSelectedDeliveryOption] =
-    useState<DeliveryOption>(order.delivery_option || "courier");
+    useState<DeliveryOption>(order.delivery_option ?? DeliveryOption.COURIER);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>((order.payment_method as PaymentMethod) || "cod"); // ✅ FIXED: Proper type casting
   const [selectedShippingFee, setSelectedShippingFee] = useState<number>(
@@ -152,7 +152,7 @@ const OrderProductTable: React.FC<Props> = ({
   const revertChanges = () => {
     setSelectedStatus(order.status);
     setSelectedPaymentStatus(order.payment_status);
-    setSelectedDeliveryOption(order.delivery_option || "courier");
+    setSelectedDeliveryOption(order.delivery_option ?? DeliveryOption.COURIER);
     setSelectedPaymentMethod((order.payment_method as PaymentMethod) || "cod");
     setSelectedShippingFee(order.shipping_fee);
     setCancelNote(order.notes || "");
@@ -168,7 +168,7 @@ const OrderProductTable: React.FC<Props> = ({
         paymentStatus={order.payment_status}
         selectedPaymentStatus={selectedPaymentStatus}
         onSelectPaymentStatus={setSelectedPaymentStatus}
-        deliveryOption={order.delivery_option || "courier"}
+        deliveryOption={order.delivery_option ?? DeliveryOption.COURIER}
         selectedDeliveryOption={selectedDeliveryOption}
         onSelectDeliveryOption={setSelectedDeliveryOption}
         paymentMethod={(order.payment_method as PaymentMethod) || "cod"} // ✅ FIXED: Proper type casting

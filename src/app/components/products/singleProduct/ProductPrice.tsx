@@ -1,5 +1,5 @@
 import { FC } from "react";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface ProductPriceProps {
   price: number;
   originalPrice?: number;
@@ -12,14 +12,24 @@ const ProductPrice: FC<ProductPriceProps> = ({
   discount,
 }) => {
   const hasDiscount = originalPrice && originalPrice > price;
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
 
+
+  
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   return (
     <div className="flex items-center gap-2 mt-2">
-      <span className="text-2xl font-bold">৳{price.toFixed(2)}</span>
+      <span className="text-2xl font-bold"> {displayCurrencyIconSafe}{price.toFixed(2)}</span>
       {hasDiscount && (
         <>
           <span className="line-through text-destructive">
-            ৳{originalPrice.toFixed(2)}
+             {displayCurrencyIconSafe}{originalPrice.toFixed(2)}
           </span>
 
           {discount && discount > 0 && (
