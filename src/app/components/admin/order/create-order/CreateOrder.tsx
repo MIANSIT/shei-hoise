@@ -65,7 +65,7 @@ export default function CreateOrder() {
   const [searchTerm, setSearchTerm] = useState("");
   // const { user, loading: userLoading, storeSlug } = useCurrentUser();
   const { user, loading: userLoading } = useCurrentUser();
-  const [storeName, setStoreName] = useState<string>("SHEI");
+  const [storeName, setStoreName] = useState<string>("");
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfoType>({
     name: "",
@@ -176,7 +176,6 @@ export default function CreateOrder() {
       );
       if (error) {
         console.error("Error fetching store:", error);
-        setStoreName("SHEI");
         return;
       }
 
@@ -185,11 +184,10 @@ export default function CreateOrder() {
           .replace(/\s+/g, "")
           .substring(0, 4)
           .toUpperCase();
-        setStoreName(prefix || "SHEI");
+        setStoreName(prefix);
       }
     } catch (error) {
       console.error("Error fetching store name:", error);
-      setStoreName("SHEI");
     }
   }, [user?.store_id]);
 
@@ -200,8 +198,10 @@ export default function CreateOrder() {
     setLoading(true);
     try {
       console.log("🔄 Fetching products");
-      const res = await dataService.getProductsWithVariants(user.store_id);
-      setProducts(res);
+      const res = await dataService.getProductsWithVariants({
+        storeId: user.store_id,
+      });
+      setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({

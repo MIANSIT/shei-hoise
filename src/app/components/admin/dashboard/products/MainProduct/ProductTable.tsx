@@ -11,11 +11,13 @@ import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Image from "next/image";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout"; // adjust path if needed
+import type { TablePaginationConfig } from "antd/es/table";
 
 interface ProductTableProps {
   products: ProductWithVariants[];
   loading?: boolean;
   onDeleteSuccess?: () => void;
+  pagination?: TablePaginationConfig;
 }
 
 // Helper functions
@@ -40,6 +42,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   products,
   loading,
   onDeleteSuccess,
+  pagination,
 }) => {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -214,7 +217,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
         <div className="p-2.5 flex justify-between items-center">
           <h2 className="text-lg font-semibold">🛍️ Product List</h2>
           <span className="text-sm text-gray-500">
-            Total: {products.length} items
+            <span className="text-sm text-gray-500">
+              Showing {products.length} items
+            </span>
           </span>
         </div>
 
@@ -324,7 +329,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             columns={columns}
             data={products}
             rowKey="id"
-            pagination={{ pageSize: 8 }}
+            pagination={pagination}
             loading={loading}
             size="middle"
             bordered={false}

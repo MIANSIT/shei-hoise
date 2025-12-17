@@ -51,7 +51,12 @@ import {
 } from "@/lib/types/enums";
 
 export interface DataService {
-  getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
+  getProductsWithVariants: (options: {
+    storeId: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) => Promise<{ data: ProductWithVariants[]; total: number }>;
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
   getCustomerProfileByStoreCustomerId: (
     storeCustomerId: string

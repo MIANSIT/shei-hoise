@@ -109,7 +109,7 @@ export function useCartItems(storeSlug?: string) {
             } else {
               const storeId = await getStoreIdBySlug(slug);
               if (storeId) {
-                const products = await getProductsWithVariants(storeId);
+                const products = await getProductsWithVariants({storeId});
                 storeProductsMap.set(slug, products);
                 productDataCacheRef.current.set(cacheKey, products);
               }

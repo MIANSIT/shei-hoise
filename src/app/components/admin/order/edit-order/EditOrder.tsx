@@ -48,16 +48,16 @@ interface EditOrderProps {
   orderNumber: string;
 }
 
-interface OrderItemData {
-  id: string;
-  product_id: string;
-  variant_id?: string;
-  product_name: string;
-  variant_details: any;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
+// interface OrderItemData {
+//   id: string;
+//   product_id: string;
+//   variant_id?: string;
+//   product_name: string;
+//   variant_details: any;
+//   quantity: number;
+//   unit_price: number;
+//   total_price: number;
+// }
 
 export default function EditOrder({ orderNumber }: EditOrderProps) {
   const { notification } = App.useApp();
@@ -196,8 +196,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     
     setLoading(true);
     try {
-      const res = await dataService.getProductsWithVariants(user.store_id);
-      setProducts(res);
+      const res = await dataService.getProductsWithVariants({storeId:user.store_id});
+      setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({
