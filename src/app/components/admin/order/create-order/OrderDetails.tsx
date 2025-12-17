@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2, ShoppingCart, Minus } from "lucide-react";
 import Image from "next/image";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface OrderDetailsProps {
   products: ProductWithVariants[];
   orderProducts: OrderProduct[];
@@ -45,7 +45,11 @@ export default function OrderDetails({
   const [selectedVariantId, setSelectedVariantId] =
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
-
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const selectedVariant = selectedProduct?.product_variants?.find(
     (v) => v.id === selectedVariantId
@@ -202,6 +206,10 @@ export default function OrderDetails({
     (sum, item) => sum + item.total_price,
     0
   );
+  
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
   return (
     <Card className="bg-card text-card-foreground border-border shadow-sm">
@@ -245,7 +253,7 @@ export default function OrderDetails({
                       <SelectItem key={product.id} value={product.id} className="py-2">
                         <div className="flex items-center gap-3">
                           {primaryImage && (
-                            <div className="flex-shrink-0 w-8 h-8 relative">
+                            <div className="shrink-0 w-8 h-8 relative">
                               <Image
                                 src={primaryImage.image_url}
                                 alt={product.name}
@@ -260,14 +268,14 @@ export default function OrderDetails({
                               {product.discounted_price ? (
                                 <>
                                   <span className="text-foreground font-semibold">
-                                    ৳{product.discounted_price}
+                                     {displayCurrencyIconSafe} {displayCurrencyIconSafe}{product.discounted_price}
                                   </span>
                                   <span className="line-through">
-                                    ৳{product.base_price}
+                                     {displayCurrencyIconSafe}{product.base_price}
                                   </span>
                                 </>
                               ) : (
-                                <span>৳{product.base_price || 0}</span>
+                                <span> {displayCurrencyIconSafe}{product.base_price || 0}</span>
                               )}
                               {product.product_variants &&
                                 product.product_variants.length > 0 && (
@@ -316,7 +324,7 @@ export default function OrderDetails({
                         <SelectItem key={variant.id} value={variant.id} className="py-2">
                           <div className="flex items-center gap-3">
                             {primaryImage && (
-                              <div className="flex-shrink-0 w-6 h-6 relative">
+                              <div className="shrink-0 w-6 h-6 relative">
                                 <Image
                                   src={primaryImage.image_url}
                                   alt={variant.variant_name || "Variant"}
@@ -409,7 +417,7 @@ export default function OrderDetails({
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted-foreground">Subtotal:</span>
                 <span className="text-xl font-bold text-card-foreground">
-                  ৳{subtotal.toFixed(2)}
+                   {displayCurrencyIconSafe}{subtotal.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -439,7 +447,7 @@ export default function OrderDetails({
                             </div>
                             <div className="flex items-center gap-4 text-sm">
                               <span className="text-muted-foreground">
-                                Unit: ৳{item.unit_price.toFixed(2)}
+                                Unit:  {displayCurrencyIconSafe}{item.unit_price.toFixed(2)}
                               </span>
                               <span className="text-muted-foreground">•</span>
                               <span className="text-muted-foreground">
@@ -447,7 +455,7 @@ export default function OrderDetails({
                               </span>
                               <span className="text-muted-foreground">•</span>
                               <span className="font-semibold text-card-foreground">
-                                Total: ৳{item.total_price.toFixed(2)}
+                                Total:  {displayCurrencyIconSafe}{item.total_price.toFixed(2)}
                               </span>
                             </div>
                           </div>

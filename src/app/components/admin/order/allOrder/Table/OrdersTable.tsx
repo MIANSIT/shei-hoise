@@ -25,6 +25,7 @@ import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
 import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import dataService from "@/lib/queries/dataService";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface Props {
   orders: StoreOrder[];
@@ -63,6 +64,11 @@ const OrdersTable: React.FC<Props> = ({
     useState<StoreOrder | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
+  const {
+    currency: storeCurrency,
+    // icon: currencyIcon,
+    // loading: currencyLoading,
+  } = useUserCurrencyIcon();
 
   useEffect(() => {
     const filtered = orders.filter((o) => {
@@ -158,14 +164,15 @@ const OrdersTable: React.FC<Props> = ({
     </div>
   );
 
-  const formatCurrency = (amount: number, currency: string = "BDT") => {
+  const formatCurrency = (amount: number, currency?: string | null) => {
+    const finalCurrency = currency || storeCurrency || "";
+
     return new Intl.NumberFormat("en-BD", {
       style: "currency",
-      currency: currency,
+      currency: finalCurrency,
       minimumFractionDigits: 2,
     }).format(amount);
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",

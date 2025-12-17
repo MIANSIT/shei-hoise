@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Check, Eye } from "lucide-react";
 import { Product } from "@/lib/types/product";
 import useCartStore from "@/lib/store/cartStore";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface ProductCardProps {
   store_slug: string;
   product: Product;
@@ -20,13 +20,17 @@ export default function ProductCard({
   store_slug,
   product,
   onAddToCart,
-  // isLoading = false,
-}: ProductCardProps) {
+}: // isLoading = false,
+ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const { cart } = useCartStore();
-
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const variant = product.variants?.[0];
   const hasVariants = product.variants && product.variants.length > 0;
   const displayPrice =
@@ -180,6 +184,10 @@ export default function ProductCard({
     return words.join(" ");
   };
 
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+
   return (
     <Card
       className={`flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border `}
@@ -242,12 +250,12 @@ export default function ProductCard({
                 productInStock ? "text-foreground" : "text-muted-foreground"
               }`}
             >
-              ৳{displayPrice.toFixed(2)}
+               {displayCurrencyIconSafe}{displayPrice.toFixed(2)}
             </span>
 
             {calculatedDiscount > 0 && productInStock && (
               <span className="text-sm sm:text-base text-chart-5 line-through relative">
-                ৳ {product.base_price.toFixed(2)}
+                 {displayCurrencyIconSafe} {product.base_price.toFixed(2)}
               </span>
             )}
           </div>

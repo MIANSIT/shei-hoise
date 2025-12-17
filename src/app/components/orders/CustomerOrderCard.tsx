@@ -2,10 +2,18 @@
 "use client";
 
 import { StoreOrder } from "../../../lib/types/order";
-import { Copy, Check, ExternalLink, Calendar, DollarSign, Package, Receipt } from "lucide-react";
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  Calendar,
+  DollarSign,
+  Package,
+  Receipt,
+} from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface OrdersCardProps {
   orders: StoreOrder[];
   onViewInvoice?: (order: StoreOrder) => void;
@@ -13,12 +21,16 @@ interface OrdersCardProps {
 
 export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
-
+  const { currency, icon, loading: currencyLoading } = useUserCurrencyIcon();
   // Format currency
   const formatCurrency = (amount: number) => {
+     if (currencyLoading) {
+    return "Loading..."; // or "Loading..."
+  }
+    if (!currency) return amount.toFixed(2); // fallback
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency,
     }).format(amount);
   };
 
@@ -109,7 +121,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => copyOrderId(getDisplayOrderId(order))}
-                  className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer flex-shrink-0"
+                  className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer shrink-0"
                   title="Copy Order ID"
                 >
                   {copiedOrderId === getDisplayOrderId(order) ? (
@@ -128,7 +140,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                   </div>
                 </div>
               </div>
-              
+
               {/* Store Link */}
               {storeUrl && (
                 <Link
@@ -184,7 +196,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                       : "Pending"}
                   </span>
                 </div>
-                
+
                 {/* Store Name */}
                 <div className="text-right">
                   <div className="text-xs text-muted-foreground">Store</div>
@@ -197,7 +209,8 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
               {/* Additional Info */}
               <div className="pt-2 border-t border-border">
                 <div className="text-xs text-muted-foreground">
-                  Shipping: {formatCurrency(order.shipping_fee) || 0} •{" "}
+                  Shipping: {icon && <span>{icon} </span>}
+                  {order.shipping_fee || 0} •{" "}
                   <span className="uppercase">{order.delivery_option}</span>
                 </div>
               </div>

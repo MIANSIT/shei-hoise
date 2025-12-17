@@ -19,6 +19,9 @@ import {
   Shield,
 } from "lucide-react";
 
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
+
 interface Props {
   order: StoreOrder;
   selected?: boolean;
@@ -32,7 +35,11 @@ const MobileDetailedViewFull: React.FC<Props> = ({
 }) => {
   const { message } = App.useApp();
   const [copiedField, setCopiedField] = useState<string | null>(null);
-
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const address = order.shipping_address;
   const billingAddress = order.billing_address || address;
   const fullShippingAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
@@ -81,6 +88,11 @@ const MobileDetailedViewFull: React.FC<Props> = ({
     }
   };
 
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+
   return (
     <div className="space-y-4">
       {/* Header with Checkbox */}
@@ -108,7 +120,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
           </div>
           <div className="text-right">
             <div className="font-bold text-base">
-              ৳{order.total_amount.toFixed(2)}
+              {displayCurrencyIconSafe}{order.total_amount.toFixed(2)}
             </div>
             <div className="text-xs flex items-center gap-1 mt-1">
               <BadgeCheck size={12} />
@@ -138,13 +150,13 @@ const MobileDetailedViewFull: React.FC<Props> = ({
         <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
           <Shield className="text-purple-600" />
           <div className="font-semibold text-sm">
-            ৳{order.tax_amount.toFixed(2)}
+          {displayCurrencyIconSafe}{order.tax_amount.toFixed(2)}
           </div>
           <div className="text-xs text-gray-500">Tax</div>
         </div>
         <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
           <DollarSign className="text-green-600" />
-          <div className="font-semibold text-sm">৳{subtotal.toFixed(2)}</div>
+          <div className="font-semibold text-sm"> {displayCurrencyIconSafe}{subtotal.toFixed(2)}</div>
           <div className="text-xs text-gray-500">Subtotal</div>
         </div>
         <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
@@ -152,7 +164,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
           <div className="font-semibold text-sm">
             {order.shipping_fee === 0
               ? "Free"
-              : `৳${order.shipping_fee.toFixed(2)}`}
+              : ` ${displayCurrencyIconSafe}${order.shipping_fee.toFixed(2)}`}
           </div>
           <div className="text-xs text-gray-500">Shipping</div>
         </div>
@@ -196,7 +208,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
                 <span>{item.product_name}</span>
                 {hasDiscount && (
                   <span className="line-through text-gray-400 text-[10px]">
-                    ৳{base.toFixed(2)}
+                     {displayCurrencyIconSafe}{base.toFixed(2)}
                   </span>
                 )}
                 <span
@@ -204,18 +216,18 @@ const MobileDetailedViewFull: React.FC<Props> = ({
                     hasDiscount ? "text-green-600" : ""
                   }`}
                 >
-                  ৳{discounted.toFixed(2)} × {item.quantity}
+                   {displayCurrencyIconSafe}{discounted.toFixed(2)} × {item.quantity}
                 </span>
               </div>
               <div className="font-semibold">
-                ৳{(discounted * item.quantity).toFixed(2)}
+                 {displayCurrencyIconSafe}{(discounted * item.quantity).toFixed(2)}
               </div>
             </div>
           );
         })}
         {totalSavings > 0 && (
           <div className="text-green-600 font-semibold text-xs text-right">
-            Saved: ৳{totalSavings.toFixed(2)}
+            Saved:  {displayCurrencyIconSafe}{totalSavings.toFixed(2)}
           </div>
         )}
       </div>
@@ -224,25 +236,25 @@ const MobileDetailedViewFull: React.FC<Props> = ({
       <div className="bg-white rounded-lg shadow-sm border p-2 text-xs space-y-1">
         <div className="flex justify-between">
           <span>Subtotal</span>
-          <span>৳{order.subtotal.toFixed(2)}</span>
+          <span> {displayCurrencyIconSafe}{order.subtotal.toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span>Discount</span>
-          <span>৳{(order.subtotal - order.total_amount).toFixed(2)}</span>
+          <span> {displayCurrencyIconSafe}{(order.subtotal - order.total_amount).toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span>Shipping</span>
-          <span>৳{order.shipping_fee.toFixed(2)}</span>
+          <span> {displayCurrencyIconSafe}{order.shipping_fee.toFixed(2)}</span>
         </div>
         {order.tax_amount > 0 && (
           <div className="flex justify-between">
             <span>Tax</span>
-            <span>৳{order.tax_amount.toFixed(2)}</span>
+            <span> {displayCurrencyIconSafe}{order.tax_amount.toFixed(2)}</span>
           </div>
         )}
         <div className="flex justify-between font-semibold border-t pt-1">
           <span>Total</span>
-          <span>৳{order.total_amount.toFixed(2)}</span>
+          <span> {displayCurrencyIconSafe}{order.total_amount.toFixed(2)}</span>
         </div>
       </div>
 

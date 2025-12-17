@@ -5,20 +5,34 @@ import { StoreOrder } from "../../../lib/types/order";
 import { Copy, Check, ExternalLink, Receipt, DollarSign } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface OrdersTableProps {
   orders: StoreOrder[];
   onViewInvoice?: (order: StoreOrder) => void;
 }
 
-export default function OrdersTable({ orders, onViewInvoice }: OrdersTableProps) {
+export default function OrdersTable({
+  orders,
+  onViewInvoice,
+}: OrdersTableProps) {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
-
+  const {
+    currency: storeCurrency,
+    // icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   // Format currency
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, orderCurrency?: string | null) => {
+    if (currencyLoading) {
+      return "Loading..";
+    }
+    const finalCurrency = orderCurrency || storeCurrency || "BDT";
+
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: finalCurrency,
+      minimumFractionDigits: 2,
     }).format(amount);
   };
 

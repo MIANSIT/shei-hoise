@@ -11,6 +11,8 @@ import {
   ProductRow,
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
 // import { ProductRowWithMatch } from "./StockChangeTable";
 
 interface StockTableProps {
@@ -40,6 +42,14 @@ const StockTable: React.FC<StockTableProps> = ({
   loading,
   bulkActive = false,
 }) => {
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
@@ -162,7 +172,12 @@ const StockTable: React.FC<StockTableProps> = ({
 
         const price =
           typeof record.currentPrice === "number" ? record.currentPrice : 0;
-        return <span>৳{price.toFixed(2)}</span>;
+        return (
+          <span>
+            {displayCurrencyIconSafe}
+            {price.toFixed(2)}
+          </span>
+        );
       },
     },
     {

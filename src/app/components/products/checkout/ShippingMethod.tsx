@@ -10,7 +10,7 @@ import {
   ShippingFee,
 } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface ShippingMethodProps {
   storeSlug: string;
   subtotal: number;
@@ -27,13 +27,24 @@ export default function ShippingMethod({
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
   const [taxAmount, setTaxAmount] = useState<number>(0); // Fixed tax amount for display only
-
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   // Filter out "custom" shipping options
   const filteredShippingOptions = useMemo(() => {
     return shippingOptions.filter(option => 
       option.name.toLowerCase() !== "custom"
     );
   }, [shippingOptions]);
+
+
+
+  
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
   // Fetch shipping options and tax amount (for display only)
   useEffect(() => {
@@ -137,7 +148,7 @@ export default function ShippingMethod({
                   {isFreeShipping ? (
                     <span className="text-green-600">FREE</span>
                   ) : (
-                    `৳${option.price.toFixed(2)}`
+                    `${displayCurrencyIconSafe}${option.price.toFixed(2)}`
                   )}
                 </span>
               </Label>
@@ -159,7 +170,7 @@ export default function ShippingMethod({
                 Additional tax fee
               </span>
               <span className="font-semibold text-purple-800">
-                ৳{taxAmount.toFixed(2)}
+                 {displayCurrencyIconSafe}{taxAmount.toFixed(2)}
               </span>
             </div>
             <p className="text-xs text-purple-600 mt-1">
@@ -175,12 +186,12 @@ export default function ShippingMethod({
               <span className="text-blue-700">
                 {isFreeShipping
                   ? "🎉 You've unlocked free shipping!"
-                  : `Add ৳${(freeShippingThreshold - subtotal).toFixed(
+                  : `Add ${displayCurrencyIconSafe}${(freeShippingThreshold - subtotal).toFixed(
                       2
                     )} for free shipping`}
               </span>
               <span className="text-blue-700 font-medium">
-                ৳{subtotal.toFixed(2)} / ৳{freeShippingThreshold.toFixed(2)}
+                 {displayCurrencyIconSafe}{subtotal.toFixed(2)} /  {displayCurrencyIconSafe}{freeShippingThreshold.toFixed(2)}
               </span>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">

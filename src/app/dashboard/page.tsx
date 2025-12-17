@@ -69,7 +69,7 @@ export default function DashboardPage() {
     if (CurrencyIcon)
       return (
         <>
-          <CurrencyIcon /> {amount.toFixed(2)}
+          {CurrencyIcon} {amount.toFixed(2)}
         </>
       );
     return amount.toFixed(2);

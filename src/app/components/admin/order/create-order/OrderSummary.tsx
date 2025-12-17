@@ -17,6 +17,7 @@ import { OrderProduct } from "@/lib/types/order";
 import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -97,7 +98,11 @@ export default function OrderSummary({
 
   // Check if delivery option is custom
   const isCustomDelivery = customerDeliveryOption === "custom";
-
+  const {
+    currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   // Get selected shipping fee details
   const selectedShippingFee = shippingFees.find((fee) => {
     if (!fee || typeof fee !== "object" || !fee.name || !customerDeliveryOption)
@@ -149,6 +154,9 @@ export default function OrderSummary({
       }
     : selectedShippingFee;
 
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
+
   return (
     <Card
       styles={{
@@ -173,7 +181,7 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>{displayShippingFee.name}</strong>: ৳
+                  <strong>{displayShippingFee.name}</strong>: ({displayCurrencyIcon})
                   {displayShippingFee.price}
                 </Text>
                 {displayShippingFee.description && (
@@ -201,7 +209,7 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>Custom Delivery</strong>: ৳{deliveryCost}
+                  <strong>Custom Delivery</strong>: ({displayCurrencyIcon}){deliveryCost}
                 </Text>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
                   You can manually adjust the delivery cost for custom delivery
@@ -220,14 +228,14 @@ export default function OrderSummary({
               <Text>Subtotal:</Text>
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
-              <Text strong>৳{subtotal.toFixed(2)}</Text>
+              <Text strong>{subtotal.toFixed(2)} ({displayCurrencyIcon})</Text>
             </Col>
           </Row>
 
           <Form layout="vertical" size="small">
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Tax Amount (BDT)">
+                <Form.Item label={`Tax Amount (${displayCurrency})`}>
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -235,7 +243,7 @@ export default function OrderSummary({
                       onChange={(value) => setTaxAmount(value || 0)}
                       style={{ width: "100%" }}
                     />
-                    <span style={{ padding: "0 8px" }}>৳</span>
+                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
                   </Space.Compact>
                 </Form.Item>
               </Col>
@@ -243,7 +251,7 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Discount Amount (BDT)">
+                <Form.Item label={`Discount Amount (${displayCurrency})`}>
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -252,7 +260,7 @@ export default function OrderSummary({
                       onChange={(value) => setDiscount(value || 0)}
                       style={{ width: "100%" }}
                     />
-                    <span style={{ padding: "0 8px" }}>৳</span>
+                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
                   </Space.Compact>
                 </Form.Item>
               </Col>
@@ -260,7 +268,7 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Additional Charges (BDT)">
+                <Form.Item label={`Additional Charges (${displayCurrency})`}>
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -269,7 +277,7 @@ export default function OrderSummary({
                       style={{ width: "100%" }}
                       placeholder="Enter any additional charges"
                     />
-                    <span style={{ padding: "0 8px" }}>৳</span>
+                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
                   </Space.Compact>
                 </Form.Item>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
@@ -280,7 +288,7 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Delivery Cost (BDT)">
+                <Form.Item label={`Delivery Cost (${displayCurrency})`}>
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -290,7 +298,7 @@ export default function OrderSummary({
                       disabled={!isCustomDelivery}
                       readOnly={!isCustomDelivery}
                     />
-                    <span style={{ padding: "0 8px" }}>৳</span>
+                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
                   </Space.Compact>
                 </Form.Item>
                 {customerDeliveryOption && !isCustomDelivery && (
@@ -321,7 +329,7 @@ export default function OrderSummary({
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
               <Text strong style={{ fontSize: "18px", color: "#1890ff" }}>
-                ৳{totalAmount.toFixed(2)}
+               ({displayCurrencyIcon}){""} {totalAmount.toFixed(2)}
               </Text>
             </Col>
           </Row>

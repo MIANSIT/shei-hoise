@@ -12,7 +12,7 @@ import CheckoutForm from "./UserCheckoutForm";
 import ShippingMethod from "./ShippingMethod";
 import { CartProductWithDetails, CartCalculations } from "@/lib/types/cart";
 import useCartStore from "@/lib/store/cartStore";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface UnifiedCheckoutLayoutProps {
   storeSlug: string;
   cartItems: CartProductWithDetails[];
@@ -47,10 +47,19 @@ export default function UnifiedCheckoutLayout({
 }: UnifiedCheckoutLayoutProps) {
   const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
   const [isClearing, setIsClearing] = useState(false);
-
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
   
   const totalWithShippingAndTax = calculations.totalPrice + shippingFee + taxAmount;
+
+  
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
   const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
     if (mode === "checkout") {
@@ -198,7 +207,7 @@ export default function UnifiedCheckoutLayout({
                 <div className="space-y-3 pt-4 border-t border-border">
                   <div className="flex justify-between text-foreground">
                     <span>Subtotal:</span>
-                    <span>৳{calculations.subtotal.toFixed(2)}</span>
+                    <span> {displayCurrencyIconSafe}{calculations.subtotal.toFixed(2)}</span>
                   </div>
 
                   <div className="border-t border-border pt-3">
@@ -218,7 +227,7 @@ export default function UnifiedCheckoutLayout({
                       animate={{ scale: 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      ৳{totalWithShippingAndTax.toFixed(2)}
+                       {displayCurrencyIconSafe}{totalWithShippingAndTax.toFixed(2)}
                     </motion.span>
                   </div>
 

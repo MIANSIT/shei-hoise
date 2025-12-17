@@ -24,10 +24,13 @@ const OrderAmountCard: React.FC<OrderAmountCardProps> = ({
   status,
 }) => {
   const color = status ? statusColorMap[status] : "#1677ff";
-  const { currency, icon } = useUserCurrencyIcon();
 
-  // If icon is a React component, assign to IconComponent
-  const IconComponent = icon && typeof icon !== "string" ? icon : null;
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
+
+  // Use loading fallback
+  const displayCurrency = currencyLoading ? null : currencyIcon;
+  const displayCurrencySafe = displayCurrency || "৳"; // fallback
 
   return (
     <Card className="rounded-xl p-4">
@@ -36,35 +39,16 @@ const OrderAmountCard: React.FC<OrderAmountCardProps> = ({
         <div>
           <Text className="text-sm font-medium text-gray-600">{title}</Text>
           <Title level={3} style={{ margin: 0, color, fontWeight: 800 }}>
-            {IconComponent ? (
-              <>
-                <IconComponent
-                  style={{ fontSize: 22, color, marginRight: 4 }}
-                />
-                {amount.toLocaleString()}
-              </>
-            ) : typeof icon === "string" ? (
-              <>
-                {icon} {amount.toLocaleString()}
-              </>
-            ) : (
-              <>
-                {currency} {amount.toLocaleString()}
-              </>
-            )}
+            {displayCurrencySafe} {amount.toLocaleString()}
           </Title>
         </div>
 
         {/* Icon Circle */}
         <div
           className="w-12 h-12 flex items-center justify-center rounded-full"
-          style={{ background: "#f0f0f0" }}
+          style={{ background: "#f0f0f0", color }}
         >
-          {IconComponent ? (
-            <IconComponent style={{ fontSize: 30, color }} />
-          ) : typeof icon === "string" ? (
-            <span style={{ fontSize: 30, color }}>{icon}</span>
-          ) : null}
+          <span style={{ fontSize: 30 }}>{displayCurrencySafe}</span>
         </div>
       </div>
     </Card>

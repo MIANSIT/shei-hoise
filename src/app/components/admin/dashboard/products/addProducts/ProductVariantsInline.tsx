@@ -8,6 +8,7 @@ import FormField from "./FormField";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calculateDiscountedPrice } from "@/lib/hook/useDiscountCalculation";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface ProductVariantsInlineProps {
   form: UseFormReturn<ProductType>;
@@ -17,7 +18,11 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   form,
 }) => {
   const variants = form.watch("variants") ?? [];
-
+  const {
+    currency,
+    // icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const handleAddVariant = () => {
     form.setValue("variants", [
       ...variants,
@@ -61,6 +66,9 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
       form.setValue(`variants.${idx}.discounted_price`, discounted);
     }
   };
+
+  // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
 
   return (
     <div className="col-span-1 md:col-span-2 space-y-6">
@@ -121,14 +129,14 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  label="TP Price (BDT)"
+                  label={`TP Price (${displayCurrency})`}
                   name={`variants.${idx}.tp_price`}
                   type="number"
                   required
                 />
                 <FormField
                   control={form.control}
-                  label="MRP (BDT)"
+                  label={`MRP Price (${displayCurrency})`}
                   name={`variants.${idx}.base_price`}
                   type="number"
                   required
@@ -136,14 +144,14 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 />
                 <FormField
                   control={form.control}
-                  label="Discount Amount (BDT)"
+                  label={`Discount Amount (${displayCurrency})`}
                   name={`variants.${idx}.discount_amount`}
                   type="number"
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
                 <FormField
                   control={form.control}
-                  label="Discounted Price (BDT)"
+                  label={`Discounted Price (${displayCurrency})`}
                   name={`variants.${idx}.discounted_price`}
                   type="number"
                   disabled
