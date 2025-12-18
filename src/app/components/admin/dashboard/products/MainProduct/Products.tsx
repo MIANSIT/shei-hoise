@@ -150,7 +150,9 @@ const Products: React.FC = () => {
               ProductStatus.DRAFT,
             ]}
             onChange={setStatus}
-            getLabel={(s) => statusLabels[s]}
+            getLabel={(s) =>
+              `${statusLabels[s]} (${counts[s as ProductStatus | "ALL"] ?? 0})`
+            }
           />
 
           {/* Desktop: normal buttons */}
