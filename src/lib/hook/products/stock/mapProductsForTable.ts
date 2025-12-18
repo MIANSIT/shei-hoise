@@ -1,6 +1,7 @@
 import { ProductWithStock } from "@/lib/queries/products/getProductWithStock";
 
 export interface VariantRow {
+  is_active: unknown;
   id: string;
   productId: string;
   title: string;
@@ -59,6 +60,7 @@ export function mapProductsForModernTable(
               v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
             isLowStock: isVariantLowStock,
             lowStockThreshold: variantLowStockThreshold,
+            is_active: v.is_active, // ← add this
           };
         })
       : undefined;

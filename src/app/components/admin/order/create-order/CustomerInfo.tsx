@@ -76,16 +76,16 @@ export default function CustomerInfo({
   }, [shippingFees]);
 
   // Get the selected shipping fee for display
-  const selectedShippingFee = React.useMemo(() => {
-    if (!customerInfo.deliveryOption || validShippingFees.length === 0)
-      return null;
+  // const selectedShippingFee = React.useMemo(() => {
+  //   if (!customerInfo.deliveryOption || validShippingFees.length === 0)
+  //     return null;
 
-    return validShippingFees.find(
-      (fee) =>
-        fee.name.toLowerCase().replace(/\s+/g, "-") ===
-        customerInfo.deliveryOption
-    );
-  }, [customerInfo.deliveryOption, validShippingFees]);
+  //   return validShippingFees.find(
+  //     (fee) =>
+  //       fee.name.toLowerCase().replace(/\s+/g, "-") ===
+  //       customerInfo.deliveryOption
+  //   );
+  // }, [customerInfo.deliveryOption, validShippingFees]);
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>

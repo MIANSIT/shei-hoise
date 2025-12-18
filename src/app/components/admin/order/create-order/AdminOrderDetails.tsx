@@ -29,6 +29,7 @@ import {
   ProductVariant,
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { ProductStatus } from "@/lib/types/enums";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -49,7 +50,7 @@ export default function AdminOrderDetails({
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
   const [api, contextHolder] = notification.useNotification(); // Add this
- const {
+  const {
     // currency,
     icon: currencyIcon,
     loading: currencyLoading,
@@ -208,7 +209,6 @@ export default function AdminOrderDetails({
     );
   };
 
-  
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
@@ -228,13 +228,24 @@ export default function AdminOrderDetails({
         return (
           <Space size="small">
             <Text delete type="secondary">
-             {displayCurrencyIconSafe}{variant.base_price}
+              {displayCurrencyIconSafe}
+              {variant.base_price}
             </Text>
-            <Text strong> {displayCurrencyIconSafe}{variant.discounted_price}</Text>
+            <Text strong>
+              {" "}
+              {displayCurrencyIconSafe}
+              {variant.discounted_price}
+            </Text>
           </Space>
         );
       }
-      return <Text> {displayCurrencyIconSafe}{variant.base_price}</Text>;
+      return (
+        <Text>
+          {" "}
+          {displayCurrencyIconSafe}
+          {variant.base_price}
+        </Text>
+      );
     }
 
     if (product) {
@@ -248,11 +259,21 @@ export default function AdminOrderDetails({
             <Text delete type="secondary">
               {displayCurrencyIconSafe} {product.base_price}
             </Text>
-            <Text strong> {displayCurrencyIconSafe}{product.discounted_price}</Text>
+            <Text strong>
+              {" "}
+              {displayCurrencyIconSafe}
+              {product.discounted_price}
+            </Text>
           </Space>
         );
       }
-      return <Text> {displayCurrencyIconSafe}{product.base_price}</Text>;
+      return (
+        <Text>
+          {" "}
+          {displayCurrencyIconSafe}
+          {product.base_price}
+        </Text>
+      );
     }
 
     return <Text> {displayCurrencyIconSafe} 0</Text>;
@@ -260,6 +281,12 @@ export default function AdminOrderDetails({
 
   // Filter products that have available stock
   const availableProducts = products.filter((product) => {
+    if (
+      product.status === ProductStatus.DRAFT ||
+      product.status === ProductStatus.INACTIVE
+    )
+      return false;
+
     const baseStockAvailable = getBaseProductAvailableQuantity(product) > 0;
     const variantsAvailable =
       product.product_variants?.some(
@@ -324,10 +351,31 @@ export default function AdminOrderDetails({
                               />
                             )}
                             <span>
-                              {product.name} - {formatPriceDisplay(product)}
+                              {product.name}
+
+                              {/* Filter only active variants */}
+                              {(!product.product_variants ||
+                                product.product_variants.filter(
+                                  (v) => v.is_active
+                                ).length === 0) && (
+                                <> - {formatPriceDisplay(product)}</>
+                              )}
+
+                              {/* Show active variant count if any */}
                               {product.product_variants &&
-                                product.product_variants.length > 0 &&
-                                ` (${product.product_variants.length} variants)`}
+                                product.product_variants.filter(
+                                  (v) => v.is_active
+                                ).length > 0 && (
+                                  <>
+                                    {" : "}(
+                                    {
+                                      product.product_variants.filter(
+                                        (v) => v.is_active
+                                      ).length
+                                    }{" "}
+                                    variants)
+                                  </>
+                                )}
                             </span>
                           </Space>
                         </Option>
@@ -461,7 +509,7 @@ export default function AdminOrderDetails({
               <Space style={{ width: "100%", justifyContent: "space-between" }}>
                 <Text strong>Added Items ({orderProducts.length})</Text>
                 <Text strong>
-                  Subtotal:  {displayCurrencyIconSafe}
+                  Subtotal: {displayCurrencyIconSafe}
                   {orderProducts
                     .reduce((sum, item) => sum + item.total_price, 0)
                     .toFixed(2)}
@@ -499,8 +547,13 @@ export default function AdminOrderDetails({
                           }
                           description={
                             <Text>
-                               {displayCurrencyIconSafe}{item.unit_price} × {item.quantity} ={" "}
-                              <Text strong> {displayCurrencyIconSafe}{item.total_price}</Text>
+                              {displayCurrencyIconSafe}
+                              {item.unit_price} × {item.quantity} ={" "}
+                              <Text strong>
+                                {" "}
+                                {displayCurrencyIconSafe}
+                                {item.total_price}
+                              </Text>
                             </Text>
                           }
                         />

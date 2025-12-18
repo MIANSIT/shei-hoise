@@ -166,6 +166,14 @@ export default function ProductPage() {
           categories: Array.isArray(productData.categories)
             ? productData.categories[0] || null
             : productData.categories,
+          product_variants: (productData.product_variants || []).map(
+            (variant: any) => ({
+              ...variant,
+              primary_image:
+                variant.product_images?.find((img: any) => img.is_primary) ||
+                null,
+            })
+          ),
         };
 
         setProduct(fixedProductData as ApiProduct);

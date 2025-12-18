@@ -32,6 +32,7 @@ export interface AddProductFormRef {
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
     const { currency, loading: currencyLoading } = useUserCurrencyIcon();
+
     const initialValues = React.useMemo<ProductType>(
       () => ({
         store_id: storeId,
@@ -48,7 +49,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         sku: "",
         stock: 0,
         featured: false,
-        status: "active",
+        status: ProductStatus.ACTIVE, // default active
         variants: [],
         images: [],
         dimensions: null,
@@ -74,14 +75,21 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const variants = form.watch("variants") ?? [];
 
     const hasActiveVariant = variants.some((v) => v.is_active);
-    const computedStatus = hasActiveVariant
-      ? form.getValues("status")
-      : ProductStatus.DRAFT;
 
-    // Show persistent warning if all variants inactive
+    // Force Draft only if all variants are inactive
     useEffect(() => {
-      setShowInactiveWarning(!hasActiveVariant);
-    }, [hasActiveVariant]);
+      if (variants.length > 0) {
+        if (!hasActiveVariant) {
+          // All variants inactive → set Draft
+          form.setValue("status", ProductStatus.DRAFT);
+          setShowInactiveWarning(true);
+        } else {
+          // At least one variant active → set Active
+          form.setValue("status", ProductStatus.ACTIVE);
+          setShowInactiveWarning(false);
+        }
+      }
+    }, [hasActiveVariant, variants.length, form]);
 
     useEffect(() => {
       form.reset(initialValues);
@@ -143,7 +151,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           <div className="fixed top-4 left-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 px-4 py-2 rounded shadow-md z-50 flex items-center justify-between min-w-[320px]">
             <span>
               At least one variant must be active. Since all variants are
-              inactive, The product status has been set to Draft.
+              inactive, the product status has been set to Draft.
             </span>
             <button
               onClick={() => setShowInactiveWarning(false)}
@@ -169,7 +177,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         >
           {/* Product Info */}
           <section className="p-6 rounded-xl shadow-inner space-y-4">
-            <h2 className="text-xl font-semibold ">Product Information</h2>
+            <h2 className="text-xl font-semibold">Product Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 label="Product Name"
@@ -211,7 +219,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           {/* Pricing if no variants */}
           {variants.length === 0 && (
             <section className="p-6 rounded-xl shadow-inner space-y-4">
-              <h2 className="text-xl font-semibold ">Pricing</h2>
+              <h2 className="text-xl font-semibold">Pricing</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   label={`TP Price (${displayCurrency})`}
@@ -299,8 +307,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 id="status"
                 {...form.register("status")}
                 className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition"
-                value={computedStatus}
-                disabled={!hasActiveVariant}
+                disabled={!hasActiveVariant} // disable only if no active variant
               >
                 {Object.values(ProductStatus).map((status) => (
                   <option key={status} value={status}>
