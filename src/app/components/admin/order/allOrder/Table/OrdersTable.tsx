@@ -9,9 +9,7 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
-import OrdersFilterTabs, {
-  highlightText,
-} from "../StatusFilter/OrdersFilterTabs";
+import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
 import {
@@ -42,6 +40,9 @@ interface Props {
   totalOrders: number;
   initialCategory?: "order" | "payment";
   initialStatus?: string;
+  totalByOrderStatus?: Record<string, number>; // <--- add this
+  totalByPaymentStatus?: Record<string, number>;
+  onRefresh?: () => void;
 }
 
 const OrdersTable: React.FC<Props> = ({
@@ -59,6 +60,9 @@ const OrdersTable: React.FC<Props> = ({
   initialCategory,
   initialStatus,
   loading = false,
+  totalByOrderStatus, // <--- add this
+  totalByPaymentStatus,
+  onRefresh,
 }) => {
   const { notification, modal } = App.useApp();
   const [searchOrderId] = useState<string>("");
@@ -262,7 +266,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "order_number",
       render: (orderNumber: string) => (
         <span className="font-medium text-blue-600 text-sm">
-          {highlightText(`#${orderNumber}`, searchOrderId)}
+          #{orderNumber}
         </span>
       ),
       width: 100,
@@ -287,10 +291,10 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="min-w-0">
             <div className="font-medium text-sm truncate max-w-[100px] lg:max-w-[120px]">
-              {highlightText(getCustomerName(order), searchOrderId)}
+              {getCustomerName(order)}
             </div>
             <div className="text-xs text-gray-500 truncate max-w-[100px] lg:max-w-[120px]">
-              {highlightText(getCustomerEmail(order), searchOrderId)}
+              {getCustomerEmail(order)}
             </div>
           </div>
         </Space>
@@ -303,7 +307,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "phone",
       render: (_, order: StoreOrder) => (
         <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
-          {highlightText(getCustomerPhone(order), searchOrderId)}
+          {getCustomerPhone(order)}
         </div>
       ),
       width: 120,
@@ -496,13 +500,13 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">
-              {highlightText(getCustomerName(order), searchOrderId)}
+              {getCustomerName(order)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {highlightText(getCustomerEmail(order), searchOrderId)}
+              {getCustomerEmail(order)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {highlightText(getCustomerPhone(order), searchOrderId)}
+              {getCustomerPhone(order)}
             </div>
           </div>
         </div>
@@ -602,6 +606,7 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
+                  onRefresh={onRefresh}
                 />
               </div>
             )}
@@ -654,11 +659,12 @@ const OrdersTable: React.FC<Props> = ({
         <OrdersFilterTabs
           orders={orders}
           totalOrders={totalOrders}
-          // onFilter={handleTabFilter}
-          searchValue={search} // <- use parent search state
+          totalByOrderStatus={totalByOrderStatus}
+          totalByPaymentStatus={totalByPaymentStatus}
+          searchValue={search}
           onSearchChange={onSearchChange}
-          onStatusChange={onStatusChange} // optional now
-          onPaymentStatusChange={onPaymentStatusChange} // optional now
+          onStatusChange={onStatusChange}
+          onPaymentStatusChange={onPaymentStatusChange}
           initialCategory={initialCategory}
           initialStatus={initialStatus}
         />

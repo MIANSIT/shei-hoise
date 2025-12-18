@@ -12,7 +12,6 @@ const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
   const { user, loading: userLoading } = useCurrentUser();
 
-  // URL-synced state for filters and pagination
   const [search, setSearch] = useUrlSync<string>("search", "", undefined, 500);
   const [page, setPage] = useUrlSync<number>("page", 1, parseInteger, 0);
   const [pageSize, setPageSize] = useUrlSync<number>(
@@ -21,13 +20,10 @@ const MainOrders: React.FC = () => {
     parseInteger,
     0
   );
-
-  // ✅ ADD category state
   const [category, setCategory] = useUrlSync<"order" | "payment">(
     "category",
     "order"
   );
-
   const [statusFilter, setStatusFilter] = useUrlSync<string>(
     "status",
     "all",
@@ -46,20 +42,16 @@ const MainOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [totalByOrderStatus, setTotalByOrderStatus] = useState<
+    Record<string, number>
+  >({});
+  const [totalByPaymentStatus, setTotalByPaymentStatus] = useState<
+    Record<string, number>
+  >({});
 
-  // Debug: Log URL parameters
-  useEffect(() => {
-    console.log("🔗 URL State Parameters:", {
-      page,
-      pageSize,
-      category,
-      statusFilter,
-      paymentStatusFilter,
-      search,
-    });
-  }, [page, pageSize, category, statusFilter, paymentStatusFilter, search]);
+  // ✅ ADD: refresh trigger state
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Fetch orders based on current URL state
   const fetchOrders = useCallback(
     async (
       pageNum: number,
@@ -70,34 +62,19 @@ const MainOrders: React.FC = () => {
       paymentStatus: string
     ) => {
       if (!user?.store_id) return;
-
       try {
         setLoading(true);
         setError(null);
 
-        console.log("📞 Fetching orders with:", {
-          pageNum,
-          pageSizeNum,
-          searchTerm,
-          category,
-          status,
-          paymentStatus,
-        });
-
         const filters: { status?: string; payment_status?: string } = {};
-
-        // ✅ Apply filters based on category
-        if (category === "order" && status && status !== "all") {
+        if (category === "order" && status && status !== "all")
           filters.status = status;
-        } else if (
+        else if (
           category === "payment" &&
           paymentStatus &&
           paymentStatus !== "all"
-        ) {
+        )
           filters.payment_status = paymentStatus;
-        }
-
-        console.log("🎯 Filters:", filters);
 
         const result = await dataService.getStoreOrders({
           storeId: user.store_id,
@@ -110,8 +87,9 @@ const MainOrders: React.FC = () => {
         setOrders(result.orders);
         setTotal(result.total);
         setTotalOrders(result.totalOrders);
+        setTotalByOrderStatus(result.totalByOrderStatus);
+        setTotalByPaymentStatus(result.totalByPaymentStatus);
       } catch (err: unknown) {
-        console.error("❌ Error fetching orders:", err);
         const message =
           err instanceof Error ? err.message : "Failed to load orders";
         setError(message);
@@ -126,7 +104,11 @@ const MainOrders: React.FC = () => {
     [user?.store_id, notification]
   );
 
-  // Refetch orders whenever URL-synced state changes
+  // ✅ ADD: refresh function
+  const handleRefresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
   useEffect(() => {
     if (!userLoading && user?.store_id) {
       fetchOrders(
@@ -148,9 +130,23 @@ const MainOrders: React.FC = () => {
     statusFilter,
     paymentStatusFilter,
     fetchOrders,
+    refreshTrigger, // ✅ ADD: refresh trigger dependency
   ]);
 
-  // Handlers
+  // ✅ ADD: update handler that also triggers refresh
+  const handleUpdate = useCallback(
+    (id: string, changes: Partial<StoreOrder>) => {
+      // Update local state immediately for better UX
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, ...changes } : o))
+      );
+
+      // Also trigger a refresh to get updated counts
+      handleRefresh();
+    },
+    [handleRefresh]
+  );
+
   const handleSearch = (value: string) => {
     setSearch(value);
     setPage(1);
@@ -160,33 +156,22 @@ const MainOrders: React.FC = () => {
     current: number;
     pageSize: number;
   }) => {
-    const params = new URLSearchParams(window.location.search);
-    params.set("page", pagination.current.toString());
-    params.set("pageSize", pagination.pageSize.toString());
-
-    window.history.replaceState(
-      {},
-      "",
-      `${window.location.pathname}?${params.toString()}`
-    );
-
     setPage(pagination.current);
     setPageSize(pagination.pageSize);
   };
 
   const handleStatusChange = (status: string) => {
     setStatusFilter(status);
-    setCategory("order"); // Ensure category is set to order
+    setCategory("order");
     setPage(1);
   };
 
   const handlePaymentStatusChange = (status: string) => {
     setPaymentStatusFilter(status);
-    setCategory("payment"); // Ensure category is set to payment
+    setCategory("payment");
     setPage(1);
   };
 
-  // ✅ Get current category and status from URL for initial state
   const getInitialCategory = () => {
     if (typeof window === "undefined") return "order";
     const params = new URLSearchParams(window.location.search);
@@ -197,12 +182,9 @@ const MainOrders: React.FC = () => {
     if (typeof window === "undefined") return "all";
     const params = new URLSearchParams(window.location.search);
     const currentCategory = getInitialCategory();
-
-    if (currentCategory === "order") {
-      return params.get("status") || "all";
-    } else {
-      return params.get("payment_status") || "all";
-    }
+    return currentCategory === "order"
+      ? params.get("status") || "all"
+      : params.get("payment_status") || "all";
   };
 
   if (userLoading)
@@ -251,28 +233,34 @@ const MainOrders: React.FC = () => {
             Manage and track your store orders
           </p>
         </div>
+        {/* ✅ ADD: Refresh button for manual refresh */}
+        <button
+          onClick={handleRefresh}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          Refresh
+        </button>
       </div>
 
       <OrdersTable
         orders={orders}
         total={total}
         totalOrders={totalOrders}
+        totalByOrderStatus={totalByOrderStatus}
+        totalByPaymentStatus={totalByPaymentStatus}
         page={page}
         pageSize={pageSize}
         onTableChange={handleTableChange}
-        onUpdate={(id, changes) =>
-          setOrders((prev) =>
-            prev.map((o) => (o.id === id ? { ...o, ...changes } : o))
-          )
-        }
+        onUpdate={handleUpdate} // ✅ Use the new update handler
         loading={loading}
         search={search}
         onSearchChange={handleSearch}
         onStatusChange={handleStatusChange}
         onPaymentStatusChange={handlePaymentStatusChange}
-        // ✅ Pass URL params to initialize filter tabs
         initialCategory={getInitialCategory()}
         initialStatus={getInitialStatus()}
+        // ✅ PASS the refresh function
+        onRefresh={handleRefresh}
       />
     </div>
   );

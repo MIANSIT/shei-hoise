@@ -1,19 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Tabs, Input, Button, Space } from "antd";
+import { Tabs, Input, Button, Space, Dropdown, MenuProps, Tag } from "antd";
 import { StoreOrder } from "@/lib/types/order";
-import { SearchOutlined } from "@ant-design/icons";
+import { SearchOutlined, FilterOutlined } from "@ant-design/icons";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 
 interface Props {
   orders: StoreOrder[];
   totalOrders: number;
+  totalByOrderStatus?: Record<string, number>;
+  totalByPaymentStatus?: Record<string, number>;
   searchValue: string;
   onSearchChange: (value: string) => void;
   onStatusChange?: (status: string) => void;
   onPaymentStatusChange?: (status: string) => void;
-  // ✅ ADD THESE PROPS to receive URL params
   initialCategory?: "order" | "payment";
   initialStatus?: string;
 }
@@ -32,21 +33,6 @@ const statusColors: Record<string, string> = {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export const highlightText = (text: string, search: string) => {
-  if (!search) return text;
-  const regex = new RegExp(`(${search})`, "gi");
-  const parts = text.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? (
-      <span key={i} className="bg-yellow-200 rounded px-1">
-        {part}
-      </span>
-    ) : (
-      part
-    )
-  );
-};
-
 const OrdersFilterTabs: React.FC<Props> = ({
   orders,
   searchValue,
@@ -54,17 +40,16 @@ const OrdersFilterTabs: React.FC<Props> = ({
   onStatusChange,
   onPaymentStatusChange,
   totalOrders,
-  // ✅ ADD THESE
+  totalByOrderStatus,
+  totalByPaymentStatus,
   initialCategory = "order",
   initialStatus = "all",
 }) => {
-  // URL-synced category
   const [category, setCategory] = useUrlSync<"order" | "payment">(
     "category",
     initialCategory
   );
 
-  // ✅ ADD URL-synced status based on category
   const [activeStatus, setActiveStatus] = useUrlSync<string>(
     category === "order" ? "status" : "payment_status",
     initialStatus
@@ -86,61 +71,120 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
   useEffect(() => {
     return () => {
-      if (typingTimeout.current) clearTimeout(typingTimeout.current);
+      if (typingTimeout.current) {
+        clearTimeout(typingTimeout.current);
+      }
     };
   }, []);
 
-  // ✅ Update activeStatus when category changes to match the URL param
-  useEffect(() => {
-    if (category === "order") {
-      const params = new URLSearchParams(window.location.search);
-      const statusParam = params.get("status") || "all";
-      if (statusParam !== activeStatus) {
-        setActiveStatus(statusParam);
-      }
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      const paymentStatusParam = params.get("payment_status") || "all";
-      if (paymentStatusParam !== activeStatus) {
-        setActiveStatus(paymentStatusParam);
-      }
-    }
-  }, [category, activeStatus, setActiveStatus]);
-
+  // Input typing debounce
   const handleInputChange = (value: string) => {
     onSearchChange(value);
     setIsTyping(true);
 
-    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+
     typingTimeout.current = setTimeout(() => setIsTyping(false), 800);
+  };
+
+  // Status change handler
+  const handleStatusChange = (status: string) => {
+    setActiveStatus(status);
+
+    if (category === "order" && onStatusChange) {
+      onStatusChange(status);
+    }
+    if (category === "payment" && onPaymentStatusChange) {
+      onPaymentStatusChange(status);
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", "1");
+
+    if (category === "order") {
+      if (status === "all") {
+        url.searchParams.delete("status");
+      } else {
+        url.searchParams.set("status", status);
+      }
+      url.searchParams.delete("payment_status");
+    } else {
+      if (status === "all") {
+        url.searchParams.delete("payment_status");
+      } else {
+        url.searchParams.set("payment_status", status);
+      }
+      url.searchParams.delete("status");
+    }
+
+    window.history.replaceState(null, "", url.toString());
+  };
+
+  // Category change handler
+  const handleCategoryChange = (key: string) => {
+    setCategory(key as "order" | "payment");
+    setActiveStatus("all");
+
+    if (key === "order" && onStatusChange) {
+      onStatusChange("all");
+    }
+    if (key === "payment" && onPaymentStatusChange) {
+      onPaymentStatusChange("all");
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", "1");
+    url.searchParams.set("category", key);
+    url.searchParams.delete("status");
+    url.searchParams.delete("payment_status");
+    window.history.replaceState(null, "", url.toString());
   };
 
   const getStatusCount = (status: string) => {
     if (status === "all") return totalOrders;
 
-    return category === "order"
-      ? orders.filter((o) => o.status === status).length
-      : orders.filter((o) => o.payment_status === status).length;
+    if (category === "order" && totalByOrderStatus) {
+      return totalByOrderStatus[status] || 0;
+    }
+
+    if (category === "payment" && totalByPaymentStatus) {
+      return totalByPaymentStatus[status] || 0;
+    }
+
+    // fallback to current page data
+    return orders.filter((o) =>
+      category === "order" ? o.status === status : o.payment_status === status
+    ).length;
   };
 
-  const handleStatusChange = (status: string) => {
-    setActiveStatus(status);
-
-    if (category === "order" && onStatusChange) onStatusChange(status);
-    if (category === "payment" && onPaymentStatusChange)
-      onPaymentStatusChange(status);
-  };
-
-  const handleCategoryChange = (key: string) => {
-    setCategory(key as "order" | "payment");
-
-    // Reset to "all" for the new category
-    setActiveStatus("all");
-
-    if (key === "order" && onStatusChange) onStatusChange("all");
-    if (key === "payment" && onPaymentStatusChange)
-      onPaymentStatusChange("all");
-  };
+  const filterItems: MenuProps["items"] = statuses.map((status) => ({
+    key: status,
+    label: (
+      <button
+        type="button"
+        onClick={() => handleStatusChange(status)}
+        className={`flex items-center justify-between w-full px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium transition-all duration-200 
+          ${statusColors[status]} ${
+          activeStatus === status
+            ? "ring-2 ring-offset-1 ring-blue-500 scale-105"
+            : "hover:scale-105 hover:shadow-sm"
+        }`}
+      >
+        <span>{capitalize(status)}</span>
+        <span
+          className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
+            activeStatus === status
+              ? "bg-white text-gray-800"
+              : "bg-black bg-opacity-20 text-white"
+          }`}
+        >
+          {getStatusCount(status)}
+        </span>
+      </button>
+    ),
+  }));
 
   return (
     <div className="mb-4 w-full">
@@ -154,9 +198,9 @@ const OrdersFilterTabs: React.FC<Props> = ({
         type="card"
       />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 flex-wrap">
-        <div className="w-full sm:w-auto flex-1">
-          <Space.Compact>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-4 flex-wrap">
+        <div className="w-full md:w-1/2">
+          <Space.Compact className="w-full">
             <Input
               placeholder="Search by Order #"
               value={searchValue}
@@ -175,41 +219,61 @@ const OrdersFilterTabs: React.FC<Props> = ({
           </Space.Compact>
         </div>
 
-        <div className="flex flex-wrap justify-start sm:justify-end gap-2 w-full sm:w-auto">
-          {statuses.map((status) => {
-            const isActive = activeStatus === status;
-            const count = getStatusCount(status);
+        <div className="flex flex-wrap justify-start md:justify-end gap-2 w-full md:w-auto">
+          <div className="md:hidden w-full flex justify-between">
+            <div>
+              {activeStatus !== "all" && (
+                <Tag
+                  color="blue"
+                  closable
+                  onClose={() => handleStatusChange("all")}
+                  className="mt-2"
+                >
+                  {capitalize(activeStatus)} ({getStatusCount(activeStatus)})
+                </Tag>
+              )}
+            </div>
+            <div>
+              <Dropdown
+                menu={{ items: filterItems }}
+                trigger={["click"]}
+                placement="bottomRight"
+              >
+                <Button icon={<FilterOutlined />}>Filter</Button>
+              </Dropdown>
+            </div>
+          </div>
 
-            return (
-              <button
-                key={status}
-                type="button"
-                onClick={() => handleStatusChange(status)}
-                aria-pressed={isActive}
-                className={`
-                  px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium 
-                  transition-all duration-200 flex items-center gap-2 
-                  ${statusColors[status]} 
-                  ${
+          <div className="hidden md:flex flex-wrap gap-2">
+            {statuses.map((status) => {
+              const isActive = activeStatus === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => handleStatusChange(status)}
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium flex items-center gap-2 transition-all duration-200 ${
+                    statusColors[status]
+                  } ${
                     isActive
                       ? "ring-2 ring-offset-1 ring-blue-500 scale-105"
                       : "hover:scale-105 hover:shadow-sm"
-                  }
-                `}
-              >
-                <span>{capitalize(status)}</span>
-                <span
-                  className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
-                    isActive
-                      ? "bg-white text-gray-800"
-                      : "bg-black bg-opacity-20 text-white"
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                  <span>{capitalize(status)}</span>
+                  <span
+                    className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
+                      isActive
+                        ? "bg-white text-gray-800"
+                        : "bg-black bg-opacity-20 text-white"
+                    }`}
+                  >
+                    {getStatusCount(status)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
