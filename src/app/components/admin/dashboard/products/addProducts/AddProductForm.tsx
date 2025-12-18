@@ -14,10 +14,10 @@ import ProductImages from "./ProductImages";
 import ProductVariantsInline from "./ProductVariantsInline";
 import { Button } from "@/components/ui/button";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
-import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useDiscountCalculation } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
+
 interface AddProductFormProps {
   product?: ProductType;
   storeId: string;
@@ -31,12 +31,7 @@ export interface AddProductFormRef {
 
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
-    const { error: notifyError } = useSheiNotification();
-    const {
-      currency,
-      // icon: currencyIcon,
-      loading: currencyLoading,
-    } = useUserCurrencyIcon();
+    const { currency, loading: currencyLoading } = useUserCurrencyIcon();
     const initialValues = React.useMemo<ProductType>(
       () => ({
         store_id: storeId,
@@ -73,8 +68,20 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const [categories, setCategories] = useState<
       { id: string; name: string; is_active: boolean }[]
     >([]);
+    const [showInactiveWarning, setShowInactiveWarning] = useState(false);
+
     const images = form.watch("images") ?? [];
     const variants = form.watch("variants") ?? [];
+
+    const hasActiveVariant = variants.some((v) => v.is_active);
+    const computedStatus = hasActiveVariant
+      ? form.getValues("status")
+      : ProductStatus.DRAFT;
+
+    // Show persistent warning if all variants inactive
+    useEffect(() => {
+      setShowInactiveWarning(!hasActiveVariant);
+    }, [hasActiveVariant]);
 
     useEffect(() => {
       form.reset(initialValues);
@@ -116,7 +123,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     };
 
     const { control, watch, setValue } = form;
-
     const basePrice = watch("base_price");
     const discountAmount = watch("discount_amount");
     const discountedPrice = useDiscountCalculation({
@@ -128,10 +134,26 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
 
-    // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
     const displayCurrency = currencyLoading ? "" : currency ?? "";
+
     return (
-      <div className="">
+      <div className="relative">
+        {/* Persistent warning popup */}
+        {showInactiveWarning && (
+          <div className="fixed top-4 left-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 px-4 py-2 rounded shadow-md z-50 flex items-center justify-between min-w-[320px]">
+            <span>
+              At least one variant must be active. Since all variants are
+              inactive, The product status has been set to Draft.
+            </span>
+            <button
+              onClick={() => setShowInactiveWarning(false)}
+              className="ml-4 text-yellow-800 font-bold hover:text-yellow-900"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
         <form
           onSubmit={form.handleSubmit(
             (data) =>
@@ -140,14 +162,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 formValues: () => form.getValues(),
               }),
             (errors) => {
-              notifyError(
-                "Please fix the highlighted required fields before saving."
-              );
               scrollToFirstError(errors);
             }
           )}
           className="space-y-8"
         >
+          {/* Product Info */}
           <section className="p-6 rounded-xl shadow-inner space-y-4">
             <h2 className="text-xl font-semibold ">Product Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,10 +186,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 placeholder="Select a category"
                 options={categories
                   .filter((c) => c.is_active)
-                  .map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                  }))}
+                  .map((c) => ({ value: c.id, label: c.name }))}
                 control={control}
                 required
               />
@@ -191,6 +208,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             />
           </section>
 
+          {/* Pricing if no variants */}
           {variants.length === 0 && (
             <section className="p-6 rounded-xl shadow-inner space-y-4">
               <h2 className="text-xl font-semibold ">Pricing</h2>
@@ -229,7 +247,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   control={control}
                 />
                 <FormField label="SKU" name="sku" control={control} required />
-
                 <FormField
                   label="Stock"
                   name="stock"
@@ -240,12 +257,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               </div>
             </section>
           )}
-          <section className=" rounded-xl space-y-4">
+
+          {/* Variants */}
+          <section className="rounded-xl space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProductVariantsInline form={form} addIsActive={true} />
             </div>
           </section>
 
+          {/* Images */}
           <section className="p-6 rounded-xl shadow-inner space-y-4">
             <h2 className="text-xl font-semibold">Images</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -257,6 +277,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
           </section>
 
+          {/* Featured & Status */}
           <section className="p-6 rounded-xl shadow-inner flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="flex items-center space-x-3">
               <input
@@ -278,6 +299,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 id="status"
                 {...form.register("status")}
                 className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition"
+                value={computedStatus}
+                disabled={!hasActiveVariant}
               >
                 {Object.values(ProductStatus).map((status) => (
                   <option key={status} value={status}>
@@ -288,6 +311,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
           </section>
 
+          {/* Submit */}
           <div className="flex justify-end">
             <Button
               type="submit"
