@@ -47,7 +47,7 @@ async function processPendingUpdates(
     console.log("🔗 Final URL after batch update:", newUrl);
 
     // Update the URL
-    await router.replace(newUrl, {
+    router.replace(newUrl, {
       scroll: false,
     });
   } finally {

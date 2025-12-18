@@ -7,9 +7,7 @@ import { createCategory } from "@/lib/queries/categories/createCategory";
 import { updateCategory } from "@/lib/queries/categories/updateCategory";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { deleteCategoryQuery } from "@/lib/queries/categories/deleteCategory";
-import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
-import { parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
-
+import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
 import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
 import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
@@ -67,6 +65,16 @@ export default function CategoryPage() {
     parseInteger
   );
 
+  const [statusFilter, setStatusFilter] = useUrlSync<boolean | null>(
+    "status",
+    null,
+    (value) => {
+      if (value === "true") return true;
+      if (value === "false") return false;
+      return null;
+    }
+  );
+
   const notify = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
   const width = useWindowWidth();
@@ -78,6 +86,7 @@ export default function CategoryPage() {
     searchText,
     page,
     pageSize,
+    statusFilter,
   });
 
   // Update ref when dependencies change
@@ -87,12 +96,13 @@ export default function CategoryPage() {
       searchText,
       page,
       pageSize,
+      statusFilter,
     };
-  }, [user?.store_id, searchText, page, pageSize]);
+  }, [user?.store_id, searchText, page, pageSize, statusFilter]);
 
   // Fetch categories function - stable reference
   const fetchCategories = useCallback(async () => {
-    const { userStoreId, searchText, page, pageSize } =
+    const { userStoreId, searchText, page, pageSize, statusFilter } =
       fetchDependenciesRef.current;
 
     if (!userStoreId) return;
@@ -104,6 +114,7 @@ export default function CategoryPage() {
         search: searchText,
         page,
         pageSize,
+        status: statusFilter,
       });
 
       if (error) throw error;
@@ -128,11 +139,20 @@ export default function CategoryPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependencies - stable reference
+  }, []);
+
+  const handleStatusFilter = useCallback(
+    (status: boolean | null) => {
+      setStatusFilter(status);
+      setPage(1); // Reset to first page when filtering
+    },
+    [setStatusFilter, setPage]
+  );
 
   // Trigger fetch when dependencies change
   useEffect(() => {
     if (!userLoading && user?.store_id) {
+      console.log("Triggering fetch with status:", statusFilter);
       fetchCategories();
     }
   }, [
@@ -141,6 +161,7 @@ export default function CategoryPage() {
     searchText,
     page,
     pageSize,
+    statusFilter, // This is CRITICAL - add statusFilter to dependencies
     fetchCategories,
   ]);
 
@@ -195,11 +216,11 @@ export default function CategoryPage() {
           user.store_id
         );
         fetchCategories(); // refetch to update status
-        notify.success(
-          `Category "${category.name}" is now ${
-            isActive ? "active" : "inactive"
-          }`
-        );
+        if (isActive) {
+          notify.success(`Category "${category.name}" is now active`);
+        } else {
+          notify.error(`Category "${category.name}" is now inactive`);
+        }
       } catch (err: unknown) {
         console.error("Failed to toggle category status:", err);
         notify.error("Failed to update category status");
@@ -293,6 +314,8 @@ export default function CategoryPage() {
         isLgUp={isLgUp}
         searchText={searchText}
         onSearchSubmit={handleSearchSubmit}
+        statusFilter={statusFilter}
+        onStatusFilter={handleStatusFilter}
       />
 
       <div className={`flex gap-6 ${isLgUp ? "flex-row" : "flex-col"}`}>

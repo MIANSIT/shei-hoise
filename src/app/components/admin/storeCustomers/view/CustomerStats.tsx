@@ -36,7 +36,7 @@ export function CustomerStats({
       <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="Active Customers (Orders)"
+            title="Active Customers (From Orders)"
             value={activeCustomersOrders}
             prefix={<CheckCircleOutlined />}
             valueStyle={{ color: "#52c41a" }}
@@ -46,7 +46,7 @@ export function CustomerStats({
       <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="Active Customers (Status)"
+            title="Active Customers (From Status)"
             value={activeCustomersStatus}
             prefix={<UserOutlined />}
             valueStyle={{ color: "#faad14" }}
