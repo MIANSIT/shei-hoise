@@ -179,7 +179,7 @@ export default function UnifiedCheckoutLayout({
                   </p>
                 </div>
               </div>
-              <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2"></div>
+              <div className="h-1 bg-linear-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2"></div>
             </CardHeader>
             <CardContent className="space-y-4">
               {cartItems.length === 0 ? (
@@ -261,7 +261,7 @@ export default function UnifiedCheckoutLayout({
                     </p>
                   </div>
                 </div>
-                <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full shadow-lg shadow-blue-500/30 mt-2"></div>
+                <div className="h-1 bg-linear-to-r from-blue-400 to-blue-600 rounded-full shadow-lg shadow-blue-500/30 mt-2"></div>
               </CardHeader>
               <CardContent>
                 <CheckoutForm
