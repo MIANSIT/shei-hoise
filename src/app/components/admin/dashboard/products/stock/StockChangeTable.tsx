@@ -174,7 +174,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-gray-500">No products found.</p>
       ) : (
         <>
-          <LowStockSummary products={products} />
+          <div>
+            <LowStockSummary products={products} />
+          </div>
           <BulkStockUpdate
             selectedCount={selectedRowKeys.length}
             onUpdate={handleBulkUpdate}

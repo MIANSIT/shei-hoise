@@ -12,10 +12,12 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 
 interface ProductVariantsInlineProps {
   form: UseFormReturn<ProductType>;
+  addIsActive?: boolean;
 }
 
 const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   form,
+  addIsActive = true,
 }) => {
   const variants = form.watch("variants") ?? [];
   const {
@@ -74,6 +76,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
     <div className="col-span-1 md:col-span-2 space-y-6">
       {variants.map((variant, idx) => {
         const error = variantErrors?.[idx] || {};
+        const isActive = form.watch(`variants.${idx}.is_active`) ?? true;
 
         return (
           <div
@@ -91,6 +94,32 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
+            {/* ---------------- Active Status Switch ---------------- */}
+            {addIsActive && (
+              <div className="flex items-center space-x-3 mt-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    {...form.register(`variants.${idx}.is_active`)}
+                    defaultChecked={variant.is_active ?? true}
+                    className="sr-only peer"
+                  />
+                  <div
+                    className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500 
+      after:content-[''] after:absolute after:top-0.5 after:left-0.5 
+      after:bg-white after:border after:border-gray-300 after:rounded-full 
+      after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"
+                  ></div>
+                </label>
+                <span
+                  className={`text-sm font-medium ${
+                    isActive ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
+            )}
 
             {/* ---------------- Variant Info Section ---------------- */}
             <div className="space-y-2">

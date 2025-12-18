@@ -1,14 +1,14 @@
 "use client";
 
-import { SearchOutlined } from "@ant-design/icons";
-import { Input, Button, Space, Dropdown, Tag, MenuProps } from "antd";
-import { useState, useEffect, useRef } from "react";
 import {
+  SearchOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   AppstoreOutlined,
-  FilterOutlined,
 } from "@ant-design/icons";
+import { Input, Button, Space } from "antd";
+import { useState, useEffect, useRef } from "react";
+import MobileFilter from "@/app/components/admin/common/MobileFilter"; // adjust path if needed
 
 interface Props {
   showForm: boolean;
@@ -60,76 +60,71 @@ export default function CategoryTopBar({
     setIsTyping(false);
   };
 
-  const filterItems: MenuProps["items"] = [
-    {
-      key: "all",
-      label: (
-        <div className="flex items-center gap-2">
-          <AppstoreOutlined className="text-blue-600" /> All
-        </div>
-      ),
-      onClick: () => onStatusFilter(null),
-    },
-    {
-      key: "active",
-      label: (
-        <div className="flex items-center gap-2">
-          <CheckCircleOutlined className="text-green-600" /> Active
-        </div>
-      ),
-      onClick: () => onStatusFilter(true),
-    },
-    {
-      key: "inactive",
-      label: (
-        <div className="flex items-center gap-2">
-          <CloseCircleOutlined className="text-red-600" /> Inactive
-        </div>
-      ),
-      onClick: () => onStatusFilter(false),
-    },
-  ];
-
-  const getFilterTag = () => {
-    if (statusFilter === true)
-      return (
-        <Tag
-          color="green"
-          closable
-          onClose={() => onStatusFilter(null)}
-          icon={<CheckCircleOutlined />}
-        >
-          Active
-        </Tag>
-      );
-    if (statusFilter === false)
-      return (
-        <Tag
-          color="red"
-          closable
-          onClose={() => onStatusFilter(null)}
-          icon={<CloseCircleOutlined />}
-        >
-          Inactive
-        </Tag>
-      );
-    return null;
+  const filterOptions = ["all", "active", "inactive"] as const;
+  const getFilterLabel = (opt: string): string => {
+    switch (opt) {
+      case "all":
+        return "All";
+      case "active":
+        return "Active";
+      case "inactive":
+        return "Inactive";
+      default:
+        return opt;
+    }
   };
+  const filterValue =
+    statusFilter === true
+      ? "active"
+      : statusFilter === false
+      ? "inactive"
+      : "all";
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 items-center justify-end">
-        {/* Filter Dropdown */}
-        <Dropdown
-          menu={{ items: filterItems }}
-          trigger={["click"]}
-          placement="bottomRight"
-        >
-          <Button icon={<FilterOutlined />}>Filter</Button>
-        </Dropdown>
+        {isLgUp ? (
+          // Desktop: buttons for All / Active / Inactive
+          <div className="flex gap-2">
+            {filterOptions.map((opt) => (
+              <Button
+                key={opt}
+                type={filterValue === opt ? "primary" : "default"}
+                icon={
+                  opt === "active" ? (
+                    <CheckCircleOutlined />
+                  ) : opt === "inactive" ? (
+                    <CloseCircleOutlined />
+                  ) : (
+                    <AppstoreOutlined />
+                  )
+                }
+                onClick={() => {
+                  if (opt === "all") onStatusFilter(null);
+                  if (opt === "active") onStatusFilter(true);
+                  if (opt === "inactive") onStatusFilter(false);
+                }}
+              >
+                {getFilterLabel(opt)}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          // Mobile: reusable MobileFilter
+          <MobileFilter
+            value={filterValue}
+            defaultValue="all"
+            options={[...filterOptions]}
+            onChange={(val) => {
+              if (val === "all") onStatusFilter(null);
+              if (val === "active") onStatusFilter(true);
+              if (val === "inactive") onStatusFilter(false);
+            }}
+            getLabel={getFilterLabel}
+          />
+        )}
 
         {/* Applied Filter Tag */}
-        {getFilterTag()}
       </div>
 
       <div
@@ -159,9 +154,7 @@ export default function CategoryTopBar({
             type="primary"
             onClick={handleSearchClick}
             icon={<SearchOutlined />}
-          >
-            {!isLgUp && "Search"}
-          </Button>
+          />
         </Space.Compact>
 
         {/* Create/Close */}

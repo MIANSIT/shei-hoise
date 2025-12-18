@@ -14,7 +14,7 @@ import CategoryFormPanel from "@/app/components/admin/dashboard/products/Product
 import CategoryCardList from "@/app/components/admin/dashboard/products/ProductCategory/CategoryCardList";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Pagination } from "antd";
+import { Button, Pagination } from "antd";
 
 import type { Category } from "@/lib/types/category";
 import type { CreateCategoryType } from "@/lib/schema/category.schema";
@@ -352,18 +352,62 @@ export default function CategoryPage() {
       </div>
 
       {/* Pagination */}
-      <div className="flex justify-end">
-        <Pagination
-          current={page}
-          pageSize={pageSize}
-          total={total}
-          showSizeChanger
-          pageSizeOptions={["10", "20", "50", "100"]}
-          onChange={handlePaginationChange}
-          showTotal={(total, range) =>
-            `${range[0]}-${range[1]} of ${total} items`
-          }
-        />
+      {/* Pagination */}
+      <div className="mt-4">
+        {/* Mobile Pagination */}
+        {!isLgUp && (
+          <div className="flex flex-col items-center gap-2">
+            {/* Total items */}
+            <div className="text-sm text-gray-600">
+              {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
+                page * pageSize,
+                total
+              )} of ${total} items`}
+            </div>
+
+            {/* Previous / Next */}
+            <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  className="px-2 py-0.5 text-xs bg-gray-200 rounded disabled:opacity-50"
+                  disabled={page === 1}
+                  onClick={() => handlePaginationChange(page - 1, pageSize)}
+                >
+                  ← Previous
+                </Button>
+
+                <span className="text-sm">
+                  {page} of {Math.ceil(total / pageSize) || 1}
+                </span>
+
+                <Button
+                  className="px-2 py-0.5 text-xs bg-gray-200 rounded disabled:opacity-50"
+                  disabled={page >= Math.ceil(total / pageSize)}
+                  onClick={() => handlePaginationChange(page + 1, pageSize)}
+                >
+                  Next →
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Pagination */}
+        {isLgUp && (
+          <div className="flex justify-end">
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={total}
+              showSizeChanger
+              pageSizeOptions={["10", "20", "50", "100"]}
+              onChange={handlePaginationChange}
+              showTotal={(total, range) =>
+                `${range[0]}-${range[1]} of ${total} items`
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* Modal for mobile */}

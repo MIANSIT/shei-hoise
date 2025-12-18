@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Tabs, Input, Button, Space, Dropdown, MenuProps, Tag } from "antd";
+import React, { useState, useRef } from "react";
+import { Tabs, Input, Button, Space } from "antd";
 import { StoreOrder } from "@/lib/types/order";
-import { SearchOutlined, FilterOutlined } from "@ant-design/icons";
+import { SearchOutlined } from "@ant-design/icons";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
+import MobileFilter from "@/app/components/admin/common/MobileFilter"; // adjust path
 
 interface Props {
   orders: StoreOrder[];
@@ -69,70 +70,44 @@ const OrdersFilterTabs: React.FC<Props> = ({
   const paymentStatuses = ["all", "pending", "paid", "failed", "refunded"];
   const statuses = category === "order" ? orderStatuses : paymentStatuses;
 
-  useEffect(() => {
-    return () => {
-      if (typingTimeout.current) {
-        clearTimeout(typingTimeout.current);
-      }
-    };
-  }, []);
-
-  // Input typing debounce
+  // Debounce input
   const handleInputChange = (value: string) => {
     onSearchChange(value);
     setIsTyping(true);
-
-    if (typingTimeout.current) {
-      clearTimeout(typingTimeout.current);
-    }
-
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => setIsTyping(false), 800);
   };
 
-  // Status change handler
   const handleStatusChange = (status: string) => {
     setActiveStatus(status);
 
-    if (category === "order" && onStatusChange) {
-      onStatusChange(status);
-    }
-    if (category === "payment" && onPaymentStatusChange) {
+    if (category === "order" && onStatusChange) onStatusChange(status);
+    if (category === "payment" && onPaymentStatusChange)
       onPaymentStatusChange(status);
-    }
 
     const url = new URL(window.location.href);
     url.searchParams.set("page", "1");
 
     if (category === "order") {
-      if (status === "all") {
-        url.searchParams.delete("status");
-      } else {
-        url.searchParams.set("status", status);
-      }
+      if (status === "all") url.searchParams.delete("status");
+      else url.searchParams.set("status", status);
       url.searchParams.delete("payment_status");
     } else {
-      if (status === "all") {
-        url.searchParams.delete("payment_status");
-      } else {
-        url.searchParams.set("payment_status", status);
-      }
+      if (status === "all") url.searchParams.delete("payment_status");
+      else url.searchParams.set("payment_status", status);
       url.searchParams.delete("status");
     }
 
     window.history.replaceState(null, "", url.toString());
   };
 
-  // Category change handler
   const handleCategoryChange = (key: string) => {
     setCategory(key as "order" | "payment");
     setActiveStatus("all");
 
-    if (key === "order" && onStatusChange) {
-      onStatusChange("all");
-    }
-    if (key === "payment" && onPaymentStatusChange) {
+    if (key === "order" && onStatusChange) onStatusChange("all");
+    if (key === "payment" && onPaymentStatusChange)
       onPaymentStatusChange("all");
-    }
 
     const url = new URL(window.location.href);
     url.searchParams.set("page", "1");
@@ -144,47 +119,14 @@ const OrdersFilterTabs: React.FC<Props> = ({
 
   const getStatusCount = (status: string) => {
     if (status === "all") return totalOrders;
-
-    if (category === "order" && totalByOrderStatus) {
+    if (category === "order" && totalByOrderStatus)
       return totalByOrderStatus[status] || 0;
-    }
-
-    if (category === "payment" && totalByPaymentStatus) {
+    if (category === "payment" && totalByPaymentStatus)
       return totalByPaymentStatus[status] || 0;
-    }
-
-    // fallback to current page data
     return orders.filter((o) =>
       category === "order" ? o.status === status : o.payment_status === status
     ).length;
   };
-
-  const filterItems: MenuProps["items"] = statuses.map((status) => ({
-    key: status,
-    label: (
-      <button
-        type="button"
-        onClick={() => handleStatusChange(status)}
-        className={`flex items-center justify-between w-full px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium transition-all duration-200 
-          ${statusColors[status]} ${
-          activeStatus === status
-            ? "ring-2 ring-offset-1 ring-blue-500 scale-105"
-            : "hover:scale-105 hover:shadow-sm"
-        }`}
-      >
-        <span>{capitalize(status)}</span>
-        <span
-          className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
-            activeStatus === status
-              ? "bg-white text-gray-800"
-              : "bg-black bg-opacity-20 text-white"
-          }`}
-        >
-          {getStatusCount(status)}
-        </span>
-      </button>
-    ),
-  }));
 
   return (
     <div className="mb-4 w-full">
@@ -219,31 +161,9 @@ const OrdersFilterTabs: React.FC<Props> = ({
           </Space.Compact>
         </div>
 
-        <div className="flex flex-wrap justify-start md:justify-end gap-2 w-full md:w-auto">
-          <div className="md:hidden w-full flex justify-between">
-            <div>
-              {activeStatus !== "all" && (
-                <Tag
-                  color="blue"
-                  closable
-                  onClose={() => handleStatusChange("all")}
-                  className="mt-2"
-                >
-                  {capitalize(activeStatus)} ({getStatusCount(activeStatus)})
-                </Tag>
-              )}
-            </div>
-            <div>
-              <Dropdown
-                menu={{ items: filterItems }}
-                trigger={["click"]}
-                placement="bottomRight"
-              >
-                <Button icon={<FilterOutlined />}>Filter</Button>
-              </Dropdown>
-            </div>
-          </div>
-
+        {/* Filter Buttons / MobileFilter */}
+        <div className="w-full md:w-auto">
+          {/* Desktop: button-style filters */}
           <div className="hidden md:flex flex-wrap gap-2">
             {statuses.map((status) => {
               const isActive = activeStatus === status;
@@ -274,6 +194,17 @@ const OrdersFilterTabs: React.FC<Props> = ({
               );
             })}
           </div>
+
+          {/* Mobile: MobileFilter */}
+          <MobileFilter
+            value={activeStatus}
+            defaultValue="all"
+            options={statuses}
+            onChange={handleStatusChange}
+            getLabel={(status) =>
+              `${capitalize(status)} (${getStatusCount(status)})`
+            }
+          />
         </div>
       </div>
     </div>

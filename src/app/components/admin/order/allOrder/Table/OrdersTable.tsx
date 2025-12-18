@@ -771,13 +771,45 @@ const OrdersTable: React.FC<Props> = ({
         responsive={true}
         renderCard={renderOrderCard}
       />
-      <div className="mt-4 flex justify-end">
+      {/* Mobile pagination */}
+      <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
+        
+        {/* Show total items */}
+        <div className="text-sm text-gray-600">
+          {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
+            page * pageSize,
+            total
+          )} of ${total} items`}
+        </div>
+
+        {/* Previous / Next buttons */}
+        <div className="flex gap-2">
+          <Button
+            size="small"
+            disabled={page === 1}
+            onClick={() => onTableChange({ current: page - 1, pageSize })}
+          >
+            ← Previous
+          </Button>
+          <span className="text-sm">
+            Page {page} of {Math.ceil(total / pageSize) || 1}
+          </span>
+          <Button
+            size="small"
+            disabled={page >= Math.ceil(total / pageSize)}
+            onClick={() => onTableChange({ current: page + 1, pageSize })}
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 justify-end hidden md:flex">
         <Pagination
           current={page}
           pageSize={pageSize}
           total={total}
           showSizeChanger
-          showQuickJumper
           onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
           pageSizeOptions={["5", "10", "20", "50"]}
           showTotal={(total, range) =>

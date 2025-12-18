@@ -1,10 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
-import { uploadOrUpdateProductImages  } from "@/lib/queries/storage/uploadProductImages";
-
+import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
+import { ProductStatus } from "@/lib/types/enums";
 /**
  * Fully atomic product creation with robust rollback
+ * Handles single-variant inactive scenario: sets product status to inactive
  */
 export async function createProduct(product: ProductType) {
   if (!product.store_id) throw new Error("Store ID is missing");
@@ -40,7 +41,17 @@ export async function createProduct(product: ProductType) {
   };
 
   try {
-    // 1️⃣ Insert main product
+    // ------------------ Determine product status ------------------
+    let productStatus = product.status ?? ProductStatus.ACTIVE;
+
+    if (
+      product.variants?.length === 1 &&
+      product.variants[0].is_active === false
+    ) {
+      productStatus = ProductStatus.DRAFT;
+    }
+
+    // ------------------ Insert main product ------------------
     const { data: productData, error: productError } = await supabaseAdmin
       .from("products")
       .insert({
@@ -56,7 +67,7 @@ export async function createProduct(product: ProductType) {
         discount_amount: product.discount_amount,
         weight: product.weight,
         sku: product.sku,
-        status: product.status ?? "draft",
+        status: productStatus,
         featured: product.featured,
       })
       .select("id")
@@ -66,7 +77,7 @@ export async function createProduct(product: ProductType) {
     if (!productData?.id) throw new Error("Product ID not returned");
     productId = productData.id;
 
-    // 2️⃣ Insert Variants (if any)
+    // ------------------ Insert Variants (if any) ------------------
     let firstVariantId: string | undefined = undefined;
 
     if (product.variants?.length) {
@@ -118,7 +129,7 @@ export async function createProduct(product: ProductType) {
       });
     }
 
-    // 3️⃣ Upload product images
+    // ------------------ Upload product images ------------------
     if (product.images?.length) {
       const imagesWithVariantId = product.images.map((img) => ({
         ...img,
