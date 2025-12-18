@@ -60,7 +60,7 @@ export default function AnimatedInvoice({
 
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "{displayCurrencyIconSafe}"; // fallback
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
   // Fetch store tax rate from store_settings
   useEffect(() => {
