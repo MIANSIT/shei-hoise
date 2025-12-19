@@ -334,7 +334,19 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label={`Delivery Cost (${displayCurrency})`}>
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Delivery Cost ({displayCurrency})</span>
+                      <Tooltip
+                        title="Delivery cost is automatically calculated based on the selected delivery option. For custom delivery, you can manually adjust this value."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
