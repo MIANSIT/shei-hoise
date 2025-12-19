@@ -53,12 +53,12 @@ export function OrderAuthPrompt({
   const handleLogin = () => {
     if (customerEmail) {
       router.push(
-        `/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(
+        `/${storeSlug}/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(
           customerEmail
         )}`
       );
     } else {
-      router.push(`/login?redirect=/${storeSlug}/order-status`);
+      router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status`);
     }
   };
 
@@ -114,7 +114,7 @@ export function OrderAuthPrompt({
 
             <div className="space-y-3">
               <Button 
-                onClick={() => router.push(`/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(customerEmail)}`)}
+                onClick={() => router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(customerEmail)}`)}
                 className="w-full h-12"
                 variant="greenish"
               >
@@ -237,7 +237,7 @@ export function OrderAuthPrompt({
                 Not your email?{" "}
                 <Button
                   variant="link"
-                  onClick={() => router.push(`/login?redirect=/${storeSlug}/order-status`)}
+                  onClick={() => router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status`)}
                   className="text-sm p-0"
                 >
                   Use another account

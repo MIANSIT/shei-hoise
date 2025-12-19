@@ -781,7 +781,6 @@ const OrdersTable: React.FC<Props> = ({
           }}
           orderData={selectedOrderForInvoice}
           showCloseButton={true}
-          autoShow={true}
         />
       )}
     </div>

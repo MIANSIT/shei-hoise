@@ -929,7 +929,6 @@ export default function ConfirmOrderPage() {
             }}
             orderData={invoiceData}
             showCloseButton={true}
-            autoShow={true}
           />
         )}
       </AnimatePresence>
