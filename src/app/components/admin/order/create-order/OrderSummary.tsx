@@ -11,8 +11,9 @@ import {
   Divider,
   Statistic,
   Alert,
+  Tooltip,
 } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
@@ -181,8 +182,8 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>{displayShippingFee.name}</strong>: ({displayCurrencyIcon})
-                  {displayShippingFee.price}
+                  <strong>{displayShippingFee.name}</strong>: (
+                  {displayCurrencyIcon}){displayShippingFee.price}
                 </Text>
                 {displayShippingFee.description && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
@@ -209,7 +210,8 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>Custom Delivery</strong>: ({displayCurrencyIcon}){deliveryCost}
+                  <strong>Custom Delivery</strong>: ({displayCurrencyIcon})
+                  {deliveryCost}
                 </Text>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
                   You can manually adjust the delivery cost for custom delivery
@@ -228,14 +230,28 @@ export default function OrderSummary({
               <Text>Subtotal:</Text>
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
-              <Text strong>{subtotal.toFixed(2)} ({displayCurrencyIcon})</Text>
+              <Text strong>
+                {subtotal.toFixed(2)} ({displayCurrencyIcon})
+              </Text>
             </Col>
           </Row>
 
           <Form layout="vertical" size="small">
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label={`Tax Amount (${displayCurrency})`}>
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Tax Amount ({displayCurrency})</span>
+                      <Tooltip
+                        title="Enter the tax amount to apply on the order. Ensure this aligns with local tax regulations."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -243,7 +259,9 @@ export default function OrderSummary({
                       onChange={(value) => setTaxAmount(value || 0)}
                       style={{ width: "100%" }}
                     />
-                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
                   </Space.Compact>
                 </Form.Item>
               </Col>
@@ -251,7 +269,19 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label={`Discount Amount (${displayCurrency})`}>
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Discount Amount ({displayCurrency})</span>
+                      <Tooltip
+                        title="Include any extra charges such as packaging, handling, or special services."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -260,7 +290,9 @@ export default function OrderSummary({
                       onChange={(value) => setDiscount(value || 0)}
                       style={{ width: "100%" }}
                     />
-                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
                   </Space.Compact>
                 </Form.Item>
               </Col>
@@ -268,7 +300,19 @@ export default function OrderSummary({
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label={`Additional Charges (${displayCurrency})`}>
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Additional Charges ({displayCurrency})</span>
+                      <Tooltip
+                        title="Include any extra charges such as packaging, handling, or special services."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
@@ -277,7 +321,9 @@ export default function OrderSummary({
                       style={{ width: "100%" }}
                       placeholder="Enter any additional charges"
                     />
-                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
                   </Space.Compact>
                 </Form.Item>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
@@ -298,9 +344,18 @@ export default function OrderSummary({
                       disabled={!isCustomDelivery}
                       readOnly={!isCustomDelivery}
                     />
-                    <span style={{ padding: "0 8px" }}>{displayCurrencyIcon}</span>
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
+                    <Tooltip
+                      title="Delivery cost is calculated based on the selected delivery option. For custom delivery, adjust manually if needed."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                    </Tooltip>
                   </Space.Compact>
                 </Form.Item>
+
                 {customerDeliveryOption && !isCustomDelivery && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
                     Delivery cost is automatically set based on selected
@@ -329,7 +384,7 @@ export default function OrderSummary({
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
               <Text strong style={{ fontSize: "18px", color: "#1890ff" }}>
-               ({displayCurrencyIcon}){""} {totalAmount.toFixed(2)}
+                ({displayCurrencyIcon}){""} {totalAmount.toFixed(2)}
               </Text>
             </Col>
           </Row>

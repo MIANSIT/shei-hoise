@@ -9,6 +9,8 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calculateDiscountedPrice } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface ProductVariantsInlineProps {
   form: UseFormReturn<ProductType>;
@@ -118,6 +120,12 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 >
                   {isActive ? "Active" : "Inactive"}
                 </span>
+                <Tooltip
+                  title="Toggle to activate or deactivate this variant. Inactive variants will not be available for purchase."
+                  placement="top"
+                >
+                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                </Tooltip>
               </div>
             )}
 
@@ -130,11 +138,13 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   label="Variant Name"
                   name={`variants.${idx}.variant_name`}
                   required
+                  tooltip="Enter a descriptive name for this variant, e.g., Small / Red. Keep it concise and clear."
                 />
                 <FormField
                   control={form.control}
                   label="SKU"
                   name={`variants.${idx}.sku`}
+                  tooltip="Provide a unique Stock Keeping Unit (SKU) to track this variant in your inventory."
                   required
                 />
                 <FormField
@@ -142,11 +152,13 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   label="Color"
                   name={`variants.${idx}.color`}
                   required
+                  tooltip="Specify the color of this variant, e.g., Red, Blue, or Natural."
                 />
                 <FormField
                   control={form.control}
                   label="Weight (Kg)"
                   name={`variants.${idx}.weight`}
+                  tooltip="Enter the weight of this variant in kilograms for shipping calculations."
                   type="number"
                 />
               </div>
@@ -161,6 +173,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   label={`TP Price (${displayCurrency})`}
                   name={`variants.${idx}.tp_price`}
                   type="number"
+                  tooltip="Enter the trade price for this variant in your store currency."
                   required
                 />
                 <FormField
@@ -169,6 +182,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   name={`variants.${idx}.base_price`}
                   type="number"
                   required
+                  tooltip="Enter the maximum retail price (MRP) before any discount."
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
                 <FormField
@@ -176,6 +190,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   label={`Discount Amount (${displayCurrency})`}
                   name={`variants.${idx}.discount_amount`}
                   type="number"
+                  tooltip="Optional: specify a discount amount to reduce the MRP."
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
                 <FormField
@@ -184,6 +199,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   name={`variants.${idx}.discounted_price`}
                   type="number"
                   disabled
+                  tooltip="Automatically calculated discounted price. Read-only."
                   readOnly
                 />
               </div>
@@ -201,6 +217,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     name={`variants.${idx}.stock`}
                     type="number"
                     required
+                    tooltip="Specify the number of units available for this variant in your inventory."
                   />
                 </div>
 
@@ -224,6 +241,12 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                         <div>
                           <label className="block mb-1 font-medium">
                             Attributes (Size-M, Color-Red)
+                            <Tooltip
+                              title="Optional: enter attributes in Key-Value format, e.g., Size-M, Color-Red. These help with filtering and variant identification."
+                              placement="top"
+                            >
+                              <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                            </Tooltip>
                           </label>
                           <textarea
                             className="w-full border rounded-md p-2"
