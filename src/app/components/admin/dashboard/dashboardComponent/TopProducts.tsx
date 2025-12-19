@@ -43,7 +43,7 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
           product.quantity > 0 ? product.revenue / product.quantity : 0;
 
         return (
-          <div key={idx} className="p-3 bg-ring rounded-lg">
+          <div key={idx} className="p-3 bg-sidebar-ring rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <div className="font-medium">{product.name}</div>
               <div className="font-semibold">

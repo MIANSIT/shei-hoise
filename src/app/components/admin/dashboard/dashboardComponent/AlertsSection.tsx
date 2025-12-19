@@ -85,8 +85,8 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
             <div className="flex items-center gap-3">
               <div className="text-xl">{getAlertIcon(alert.type)}</div>
               <div>
-                <div className="font-semibold text-accent">{alert.message}</div>
-                <div className="text-sm text-accent">
+                <div className="font-semibold text-primary">{alert.message}</div>
+                <div className="text-sm text-foreground">
                   {alert.count} item{alert.count > 1 ? "s" : ""} affected
                 </div>
               </div>

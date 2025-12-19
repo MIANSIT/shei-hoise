@@ -17,7 +17,7 @@ const CustomerSnapshot: React.FC<CustomerSnapshotProps> = ({ stats }) => {
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="flex items-center justify-between p-3 bg-ring rounded-lg"
+          className="flex items-center justify-between p-3 bg-sidebar-ring rounded-lg"
         >
           <div className="flex items-center gap-3">
             <div className="text-xl text-foreground">{stat.icon}</div>
