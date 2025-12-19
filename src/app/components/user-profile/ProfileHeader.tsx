@@ -31,7 +31,7 @@ export function ProfileHeader({
   };
 
   const getUserTypeBadge = () => {
-    const type = userType?.toLowerCase();
+    const type = userType?.toUpperCase();
     const variants = {
       admin: "destructive",
       store_owner: "default",
@@ -61,7 +61,7 @@ export function ProfileHeader({
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
-            {getUserStatusBadge()}
+            {/* {getUserStatusBadge()} */}
             {getUserTypeBadge()}
           </div>
         </div>
