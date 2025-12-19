@@ -71,12 +71,12 @@ export function OrderAuthPrompt({
   const handleSignUp = () => {
     if (customerEmail) {
       router.push(
-        `/sign-up?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(
+        `/${storeSlug}/signup?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(
           customerEmail
         )}`
       );
     } else {
-      router.push(`/sign-up?redirect=/${storeSlug}/order-status`);
+      router.push(`/${storeSlug}/signup?redirect=/${storeSlug}/order-status`);
     }
   };
 
