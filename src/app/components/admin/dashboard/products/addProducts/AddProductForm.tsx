@@ -344,15 +344,29 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
 
             <div className="flex flex-col w-full md:w-1/3">
-              <label htmlFor="status" className="text-sm font-medium mb-1">
-                Status
-                <Tooltip
-                  title="Set the current status of the product: Active (available), Draft (hidden), or Inactive (unavailable)."
-                  placement="top"
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="status"
+                  className="text-sm font-medium mb-1 flex items-center gap-1"
                 >
-                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
-                </Tooltip>
-              </label>
+                  Status
+                  <Tooltip
+                    title="Set the current status of the product: Active (available), Draft (hidden), or Inactive (unavailable)."
+                    placement="top"
+                  >
+                    <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                  </Tooltip>
+                </label>
+
+                {showInactiveWarning && (
+                  <Tooltip
+                    title="All variants are inactive, so status is locked as Draft until at least one variant becomes active."
+                    placement="topRight"
+                  >
+                    <InfoCircleOutlined className="text-red-500! cursor-pointer p-2" />
+                  </Tooltip>
+                )}
+              </div>
               <select
                 id="status"
                 {...form.register("status")}

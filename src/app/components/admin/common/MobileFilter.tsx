@@ -35,26 +35,21 @@ const MobileFilter = <T extends string>({
 
       {/* Active filter tag */}
       {value !== defaultValue && (
-        <div className="w-full">
+        <div className="flex justify-center relative">
           <Tag
-            color="blue"
-            className="w-full px-4 py-3 text-base rounded-lg flex items-center justify-center relative shadow-sm min-h-[50px]"
+            color="white"
+            className="relative flex items-center justify-center px-6 py-2 text-base rounded-lg shadow-sm text-black!"
           >
-            {/* Label */}
-            <span className="font-medium">{getLabel(value)}</span>
+            <span className="text-lg text-left pr-2">{getLabel(value)}</span>
 
-            {/* Close button */}
-            <button
-              type="button"
+            {/* Cross icon absolutely positioned top-right */}
+            <CloseCircleOutlined
               onClick={() => {
-                onChange(defaultValue); // reset filter
-                setOpen(false); // close dropdown
+                onChange(defaultValue);
+                setOpen(false);
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-600 transition text-lg"
-              aria-label="Remove filter"
-            >
-              <CloseCircleOutlined />
-            </button>
+              className="absolute -top-2 -right-2 text-red-500! cursor-pointer text-lg"
+            />
           </Tag>
         </div>
       )}
