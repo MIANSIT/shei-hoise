@@ -1,8 +1,14 @@
 "use client";
 
-import { SearchOutlined } from "@ant-design/icons";
+import {
+  SearchOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  AppstoreOutlined,
+} from "@ant-design/icons";
 import { Input, Button, Space } from "antd";
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import MobileFilter from "@/app/components/admin/common/MobileFilter"; // adjust path if needed
 
 interface Props {
   showForm: boolean;
@@ -10,6 +16,8 @@ interface Props {
   isLgUp: boolean;
   searchText: string;
   onSearchSubmit: (text: string) => void;
+  statusFilter: boolean | null;
+  onStatusFilter: (status: boolean | null) => void;
 }
 
 export default function CategoryTopBar({
@@ -18,12 +26,13 @@ export default function CategoryTopBar({
   isLgUp,
   searchText,
   onSearchSubmit,
+  statusFilter,
+  onStatusFilter,
 }: Props) {
   const [localSearch, setLocalSearch] = useState(searchText);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync local state with URL state
   useEffect(() => {
     setLocalSearch(searchText);
   }, [searchText]);
@@ -31,25 +40,16 @@ export default function CategoryTopBar({
   const handleInputChange = (value: string) => {
     setLocalSearch(value);
     setIsTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
-    // Clear previous timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Set new timeout for debounced search
     typingTimeoutRef.current = setTimeout(() => {
       onSearchSubmit(value);
       setIsTyping(false);
-    }, 500); // 500ms delay for instant search
+    }, 500);
   };
 
   const handleSearchClick = () => {
-    // Clear any pending timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     onSearchSubmit(localSearch);
     setIsTyping(false);
   };
@@ -58,67 +58,115 @@ export default function CategoryTopBar({
     setLocalSearch("");
     onSearchSubmit("");
     setIsTyping(false);
-
-    // Clear any pending timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, []);
+  const filterOptions = ["all", "active", "inactive"] as const;
+  const getFilterLabel = (opt: string): string => {
+    switch (opt) {
+      case "all":
+        return "All";
+      case "active":
+        return "Active";
+      case "inactive":
+        return "Inactive";
+      default:
+        return opt;
+    }
+  };
+  const filterValue =
+    statusFilter === true
+      ? "active"
+      : statusFilter === false
+      ? "inactive"
+      : "all";
 
   return (
-    <div
-      className={`flex ${
-        isLgUp ? "flex-row items-center justify-between" : "flex-col gap-2"
-      }`}
-    >
-      {/* Search Box */}
-      <Space.Compact style={{ width: isLgUp ? 250 : "100%" }}>
-        <Input
-          placeholder="Search by Category Name"
-          value={localSearch}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onPressEnter={() => {
-            // Clear any pending timeout
-            if (typingTimeoutRef.current) {
-              clearTimeout(typingTimeoutRef.current);
-              typingTimeoutRef.current = null;
-            }
-            onSearchSubmit(localSearch);
-            setIsTyping(false);
-          }}
-          allowClear
-          onClear={handleClear}
-          suffix={isTyping ? <span className="text-xs">Typing...</span> : null}
-        />
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-center justify-end">
+        {isLgUp ? (
+          // Desktop: buttons for All / Active / Inactive
+          <div className="flex gap-2">
+            {filterOptions.map((opt) => (
+              <Button
+                key={opt}
+                type={filterValue === opt ? "primary" : "default"}
+                icon={
+                  opt === "active" ? (
+                    <CheckCircleOutlined />
+                  ) : opt === "inactive" ? (
+                    <CloseCircleOutlined />
+                  ) : (
+                    <AppstoreOutlined />
+                  )
+                }
+                onClick={() => {
+                  if (opt === "all") onStatusFilter(null);
+                  if (opt === "active") onStatusFilter(true);
+                  if (opt === "inactive") onStatusFilter(false);
+                }}
+              >
+                {getFilterLabel(opt)}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          // Mobile: reusable MobileFilter
+          <MobileFilter
+            value={filterValue}
+            defaultValue="all"
+            options={[...filterOptions]}
+            onChange={(val) => {
+              if (val === "all") onStatusFilter(null);
+              if (val === "active") onStatusFilter(true);
+              if (val === "inactive") onStatusFilter(false);
+            }}
+            getLabel={getFilterLabel}
+          />
+        )}
 
+        {/* Applied Filter Tag */}
+      </div>
+
+      <div
+        className={`flex ${
+          isLgUp ? "flex-row items-center justify-between" : "flex-col gap-2"
+        }`}
+      >
+        {/* Search */}
+        <Space.Compact style={{ width: isLgUp ? 250 : "100%" }}>
+          <Input
+            placeholder="Search by Category Name"
+            value={localSearch}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onPressEnter={() => {
+              if (typingTimeoutRef.current)
+                clearTimeout(typingTimeoutRef.current);
+              onSearchSubmit(localSearch);
+              setIsTyping(false);
+            }}
+            allowClear
+            onClear={handleClear}
+            suffix={
+              isTyping ? <span className="text-xs">Typing...</span> : null
+            }
+          />
+          <Button
+            type="primary"
+            onClick={handleSearchClick}
+            icon={<SearchOutlined />}
+          />
+        </Space.Compact>
+
+        {/* Create/Close */}
         <Button
           type="primary"
-          onClick={handleSearchClick}
-          icon={<SearchOutlined />}
+          danger={showForm}
+          className={isLgUp ? "" : "w-full"}
+          onClick={toggleForm}
         >
-          {!isLgUp && "Search"}
+          {showForm ? "Close Form" : "Create Category"}
         </Button>
-      </Space.Compact>
-
-      {/* Create/Close Button */}
-      <Button
-        type="primary"
-        danger={showForm}
-        onClick={toggleForm}
-        className={isLgUp ? "" : "w-full"}
-      >
-        {showForm ? "Close Form" : "Create Category"}
-      </Button>
+      </div>
     </div>
   );
 }

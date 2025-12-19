@@ -13,6 +13,7 @@ import Image from "next/image";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout"; // adjust path if needed
 import type { TablePaginationConfig } from "antd/es/table";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { ProductStatus } from "@/lib/types/enums";
 
 interface ProductTableProps {
   products: ProductWithVariants[];
@@ -196,6 +197,42 @@ const ProductTable: React.FC<ProductTableProps> = ({
       },
     },
     {
+      title: "Status",
+      key: "status",
+      align: "center",
+      width: 120,
+      responsive: ["md"],
+      render: (_, record) => {
+        let color = "red";
+        let label = "Inactive";
+
+        switch (record.status) {
+          case ProductStatus.ACTIVE:
+            color = "green";
+            label = "Active";
+            break;
+          case ProductStatus.DRAFT:
+            color = "orange";
+            label = "Draft";
+            break;
+          case ProductStatus.INACTIVE:
+          default:
+            color = "red";
+            label = "Inactive";
+            break;
+        }
+
+        return (
+          <Tag
+            color={color}
+            className="rounded-lg px-2 py-0.5 text-sm font-medium"
+          >
+            {label}
+          </Tag>
+        );
+      },
+    },
+    {
       title: "Action",
       key: "actions",
       align: "center",
@@ -295,7 +332,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     <div className="flex justify-between items-center">
                       <div className="flex gap-2">
                         <span className="font-medium">
-                          {basePrice ? `${displayCurrencyIconSafe}${basePrice.toFixed(2)}` : "—"}
+                          {basePrice
+                            ? `${displayCurrencyIconSafe}${basePrice.toFixed(
+                                2
+                              )}`
+                            : "—"}
                         </span>
                         <span
                           className={`font-medium ${
@@ -303,9 +344,30 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           }`}
                         >
                           {discountedPrice
-                            ? `${displayCurrencyIconSafe}${discountedPrice.toFixed(2)}`
+                            ? `${displayCurrencyIconSafe}${discountedPrice.toFixed(
+                                2
+                              )}`
                             : ""}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Status:</span>
+                        <Tag
+                          color={
+                            record.status === ProductStatus.ACTIVE
+                              ? "green"
+                              : record.status === ProductStatus.DRAFT
+                              ? "orange"
+                              : "red"
+                          }
+                          className="rounded-lg px-2 py-0.5 text-xs"
+                        >
+                          {record.status === ProductStatus.ACTIVE
+                            ? "Active"
+                            : record.status === ProductStatus.DRAFT
+                            ? "Draft"
+                            : "Inactive"}
+                        </Tag>
                       </div>
                       <div
                         className="flex gap-2"

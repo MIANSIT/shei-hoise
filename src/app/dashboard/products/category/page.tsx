@@ -7,16 +7,14 @@ import { createCategory } from "@/lib/queries/categories/createCategory";
 import { updateCategory } from "@/lib/queries/categories/updateCategory";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { deleteCategoryQuery } from "@/lib/queries/categories/deleteCategory";
-import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
-import { parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
-
+import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
 import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
 import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
 import CategoryCardList from "@/app/components/admin/dashboard/products/ProductCategory/CategoryCardList";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Pagination } from "antd";
+import { Button, Pagination } from "antd";
 
 import type { Category } from "@/lib/types/category";
 import type { CreateCategoryType } from "@/lib/schema/category.schema";
@@ -67,6 +65,16 @@ export default function CategoryPage() {
     parseInteger
   );
 
+  const [statusFilter, setStatusFilter] = useUrlSync<boolean | null>(
+    "status",
+    null,
+    (value) => {
+      if (value === "true") return true;
+      if (value === "false") return false;
+      return null;
+    }
+  );
+
   const notify = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
   const width = useWindowWidth();
@@ -78,6 +86,7 @@ export default function CategoryPage() {
     searchText,
     page,
     pageSize,
+    statusFilter,
   });
 
   // Update ref when dependencies change
@@ -87,12 +96,13 @@ export default function CategoryPage() {
       searchText,
       page,
       pageSize,
+      statusFilter,
     };
-  }, [user?.store_id, searchText, page, pageSize]);
+  }, [user?.store_id, searchText, page, pageSize, statusFilter]);
 
   // Fetch categories function - stable reference
   const fetchCategories = useCallback(async () => {
-    const { userStoreId, searchText, page, pageSize } =
+    const { userStoreId, searchText, page, pageSize, statusFilter } =
       fetchDependenciesRef.current;
 
     if (!userStoreId) return;
@@ -104,6 +114,7 @@ export default function CategoryPage() {
         search: searchText,
         page,
         pageSize,
+        status: statusFilter,
       });
 
       if (error) throw error;
@@ -128,11 +139,20 @@ export default function CategoryPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependencies - stable reference
+  }, []);
+
+  const handleStatusFilter = useCallback(
+    (status: boolean | null) => {
+      setStatusFilter(status);
+      setPage(1); // Reset to first page when filtering
+    },
+    [setStatusFilter, setPage]
+  );
 
   // Trigger fetch when dependencies change
   useEffect(() => {
     if (!userLoading && user?.store_id) {
+      console.log("Triggering fetch with status:", statusFilter);
       fetchCategories();
     }
   }, [
@@ -141,6 +161,7 @@ export default function CategoryPage() {
     searchText,
     page,
     pageSize,
+    statusFilter, // This is CRITICAL - add statusFilter to dependencies
     fetchCategories,
   ]);
 
@@ -195,11 +216,11 @@ export default function CategoryPage() {
           user.store_id
         );
         fetchCategories(); // refetch to update status
-        notify.success(
-          `Category "${category.name}" is now ${
-            isActive ? "active" : "inactive"
-          }`
-        );
+        if (isActive) {
+          notify.success(`Category "${category.name}" is now active`);
+        } else {
+          notify.error(`Category "${category.name}" is now inactive`);
+        }
       } catch (err: unknown) {
         console.error("Failed to toggle category status:", err);
         notify.error("Failed to update category status");
@@ -293,6 +314,8 @@ export default function CategoryPage() {
         isLgUp={isLgUp}
         searchText={searchText}
         onSearchSubmit={handleSearchSubmit}
+        statusFilter={statusFilter}
+        onStatusFilter={handleStatusFilter}
       />
 
       <div className={`flex gap-6 ${isLgUp ? "flex-row" : "flex-col"}`}>
@@ -329,18 +352,62 @@ export default function CategoryPage() {
       </div>
 
       {/* Pagination */}
-      <div className="flex justify-end">
-        <Pagination
-          current={page}
-          pageSize={pageSize}
-          total={total}
-          showSizeChanger
-          pageSizeOptions={["10", "20", "50", "100"]}
-          onChange={handlePaginationChange}
-          showTotal={(total, range) =>
-            `${range[0]}-${range[1]} of ${total} items`
-          }
-        />
+      {/* Pagination */}
+      <div className="mt-4">
+        {/* Mobile Pagination */}
+        {!isLgUp && (
+          <div className="flex flex-col items-center gap-2">
+            {/* Total items */}
+            <div className="text-sm text-gray-600">
+              {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
+                page * pageSize,
+                total
+              )} of ${total} items`}
+            </div>
+
+            {/* Previous / Next */}
+            <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  className="px-2 py-0.5 text-xs bg-gray-200 rounded disabled:opacity-50"
+                  disabled={page === 1}
+                  onClick={() => handlePaginationChange(page - 1, pageSize)}
+                >
+                  ← Previous
+                </Button>
+
+                <span className="text-sm">
+                  {page} of {Math.ceil(total / pageSize) || 1}
+                </span>
+
+                <Button
+                  className="px-2 py-0.5 text-xs bg-gray-200 rounded disabled:opacity-50"
+                  disabled={page >= Math.ceil(total / pageSize)}
+                  onClick={() => handlePaginationChange(page + 1, pageSize)}
+                >
+                  Next →
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Pagination */}
+        {isLgUp && (
+          <div className="flex justify-end">
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={total}
+              showSizeChanger
+              pageSizeOptions={["10", "20", "50", "100"]}
+              onChange={handlePaginationChange}
+              showTotal={(total, range) =>
+                `${range[0]}-${range[1]} of ${total} items`
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* Modal for mobile */}

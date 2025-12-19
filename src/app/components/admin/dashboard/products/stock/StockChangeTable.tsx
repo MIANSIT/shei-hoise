@@ -15,7 +15,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
-import { StockFilter } from "@/lib/types/enums";
+import { ProductStatus, StockFilter } from "@/lib/types/enums";
 
 export interface ProductRowWithMatch extends ProductRow {
   hasMatchingVariants?: boolean;
@@ -58,9 +58,22 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         currentPage,
         pageSize
       );
-      const mapped = result.data?.length
-        ? mapProductsForModernTable(result.data)
+
+      // Step 1: Filter out DRAFT/INACTIVE products
+      const activeProducts = (result.data ?? []).filter(
+        (p) =>
+          p.status !== ProductStatus.DRAFT &&
+          p.status !== ProductStatus.INACTIVE
+      );
+
+      // Step 2: Map to table rows and remove inactive variants
+      const mapped: ProductRow[] = activeProducts.length
+        ? mapProductsForModernTable(activeProducts).map((product) => ({
+            ...product,
+            variants: product.variants?.filter((v) => v.is_active) || [],
+          }))
         : [];
+
       setProducts(mapped);
 
       if (onTotalChange) onTotalChange(result.total ?? 0);
@@ -174,7 +187,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-gray-500">No products found.</p>
       ) : (
         <>
-          <LowStockSummary products={products} />
+          <div>
+            <LowStockSummary products={products} />
+          </div>
           <BulkStockUpdate
             selectedCount={selectedRowKeys.length}
             onUpdate={handleBulkUpdate}

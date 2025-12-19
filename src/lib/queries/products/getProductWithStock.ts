@@ -1,5 +1,7 @@
+"use client";
+
 import { supabaseAdmin } from "@/lib/supabase";
-import { StockFilter } from "@/lib/types/enums";
+import { ProductStatus, StockFilter } from "@/lib/types/enums";
 
 export interface ProductImage {
   id: string;
@@ -28,9 +30,11 @@ export interface ProductVariant {
   color?: string | null;
   stock: ProductStock;
   primary_image: ProductImage | null;
+  is_active: boolean;
 }
 
 export interface ProductWithStock {
+  status: ProductStatus;
   sku: string | null;
   id: string;
   name: string;
@@ -40,36 +44,25 @@ export interface ProductWithStock {
   variants: ProductVariant[];
 }
 
-// Database response types
-interface DatabaseProductImage {
-  id: string;
-  product_id: string;
-  variant_id: string | null;
-  image_url: string;
-  alt_text: string | null;
-  is_primary: boolean;
-}
-
-interface DatabaseProductStock {
-  quantity_available: number;
-  quantity_reserved: number;
-  low_stock_threshold: number;
-  track_inventory: boolean;
-}
-
+// Database types
+type DatabaseProductImage = ProductImage;
+type DatabaseProductStock = ProductStock;
 interface DatabaseProductVariant {
   id: string;
+  product_id: string;
   variant_name: string;
   base_price: number;
   discounted_price: number | null;
   tp_price: number | null;
+  sku: string | null;
   color: string | null;
+  is_active: boolean;
   product_inventory: DatabaseProductStock[];
   product_images: DatabaseProductImage[];
-  sku: string | null;
 }
 
 interface DatabaseProduct {
+  status: ProductStatus;
   id: string;
   name: string;
   base_price: number;
@@ -90,6 +83,7 @@ export async function getProductWithStock(
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ data: ProductWithStock[]; total: number }> {
+  // Build Supabase query
   let query = supabaseAdmin
     .from("products")
     .select(
@@ -97,6 +91,7 @@ export async function getProductWithStock(
       id,
       name,
       base_price,
+      status, 
       sku,
       product_images(id, product_id, variant_id, image_url, alt_text, is_primary),
       product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
@@ -108,6 +103,7 @@ export async function getProductWithStock(
         discounted_price,
         tp_price,
         color,
+        is_active,
         product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
         product_images(id, product_id, variant_id, image_url, alt_text, is_primary)
       ),
@@ -128,14 +124,17 @@ export async function getProductWithStock(
   if (error) throw new Error(`Error fetching products: ${error.message}`);
   if (!data) return { data: [], total: 0 };
 
-  const mapped = data.map((p: DatabaseProduct) => {
+  // Type-safe assertion
+  const products = data as unknown as DatabaseProduct[];
+
+  const mapped: ProductWithStock[] = products.map((p) => {
     const primaryProductImage =
       p.product_images?.find((img) => img.is_primary) || null;
     const productInventory = p.product_inventory?.[0] || null;
     const lowStockThreshold = productInventory?.low_stock_threshold ?? 10;
 
-    const variants = p.product_variants.map((v) => {
-      const variantInventory = v.product_inventory?.[0];
+    const variants: ProductVariant[] = p.product_variants.map((v) => {
+      const variantInventory = v.product_inventory?.[0] || null;
       return {
         id: v.id,
         product_id: p.id,
@@ -145,6 +144,7 @@ export async function getProductWithStock(
         tp_price: v.tp_price,
         color: v.color || null,
         sku: v.sku ?? null,
+        is_active: v.is_active,
         stock: variantInventory || {
           quantity_available: 0,
           quantity_reserved: 0,
@@ -163,6 +163,7 @@ export async function getProductWithStock(
       primary_image: primaryProductImage,
       stock: productInventory,
       variants,
+      status: p.status as ProductStatus,
     };
   });
 

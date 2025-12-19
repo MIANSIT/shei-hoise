@@ -1,11 +1,10 @@
-"use client"
+"use client";
 import React, { useState, useRef } from "react";
-import { Input, Select, Pagination, Space, Button } from "antd";
+import { Input, Pagination, Space, Button } from "antd";
 import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable";
 import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
-
-const { Option } = Select;
+import MobileFilter from "@/app/components/admin/common/MobileFilter"; // adjust path
 
 const StockPage = () => {
   const [searchText, setSearchText] = useUrlSync<string>("search", "");
@@ -26,20 +25,36 @@ const StockPage = () => {
   );
   const [totalProducts, setTotalProducts] = React.useState(0);
 
-  // Typing indicator
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
     setIsTyping(true);
-
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 800);
+  };
 
-    // Stop showing "Typing..." after 800ms of inactivity
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 800);
+  const filterOptions: StockFilter[] = [
+    StockFilter.ALL,
+    StockFilter.LOW,
+    StockFilter.IN,
+    StockFilter.OUT,
+  ];
+
+  const getFilterLabel = (value: StockFilter) => {
+    switch (value) {
+      case StockFilter.ALL:
+        return "All Stocks";
+      case StockFilter.LOW:
+        return "Low Stock";
+      case StockFilter.IN:
+        return "In Stock";
+      case StockFilter.OUT:
+        return "Out of Stock";
+      default:
+        return value;
+    }
   };
 
   return (
@@ -70,18 +85,29 @@ const StockPage = () => {
             </Button>
           </Space.Compact>
         </div>
-        <div className="w-full md:w-48">
-          <Select
+
+        {/* Desktop: button filters */}
+        <div className="hidden md:flex gap-2">
+          {filterOptions.map((opt) => (
+            <Button
+              key={opt}
+              type={stockFilter === opt ? "primary" : "default"}
+              onClick={() => setStockFilter(opt)}
+            >
+              {getFilterLabel(opt)}
+            </Button>
+          ))}
+        </div>
+
+        {/* Mobile: MobileFilter */}
+        <div className="md:hidden w-full">
+          <MobileFilter
             value={stockFilter}
+            defaultValue={StockFilter.ALL}
+            options={filterOptions}
             onChange={setStockFilter}
-            size="large"
-            className="w-full"
-          >
-            <Option value={StockFilter.ALL}>All Stocks</Option>
-            <Option value={StockFilter.LOW}>Low Stock</Option>
-            <Option value={StockFilter.IN}>In Stock</Option>
-            <Option value={StockFilter.OUT}>Out of Stock</Option>
-          </Select>
+            getLabel={getFilterLabel}
+          />
         </div>
       </div>
 
@@ -94,8 +120,44 @@ const StockPage = () => {
         onTotalChange={setTotalProducts}
       />
 
-      {/* Pagination */}
-      <div className="flex justify-end">
+      {/* Mobile Pagination */}
+      <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
+        <div className="text-sm text-gray-600">
+          {`${Math.min(
+            (currentPage - 1) * pageSize + 1,
+            totalProducts
+          )}-${Math.min(
+            currentPage * pageSize,
+            totalProducts
+          )} of ${totalProducts} items`}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="small"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+          >
+            ← Previous
+          </Button>
+          <span className="text-sm">
+            Page {currentPage} of {Math.ceil(totalProducts / pageSize) || 1}
+          </span>
+          <Button
+            size="small"
+            disabled={currentPage >= Math.ceil(totalProducts / pageSize)}
+            onClick={() =>
+              setCurrentPage(
+                Math.min(currentPage + 1, Math.ceil(totalProducts / pageSize))
+              )
+            }
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
+
+      {/* Desktop Pagination */}
+      <div className="justify-end hidden md:flex">
         <Pagination
           current={currentPage}
           pageSize={pageSize}

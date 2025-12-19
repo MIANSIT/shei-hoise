@@ -4,14 +4,14 @@ export enum OrderStatus {
   CONFIRMED = "confirmed",
   SHIPPED = "shipped",
   DELIVERED = "delivered",
-  CANCELLED = "cancelled"
+  CANCELLED = "cancelled",
 }
 
 export enum PaymentStatus {
   PENDING = "pending",
   PAID = "paid",
   FAILED = "failed",
-  REFUNDED = "refunded"
+  REFUNDED = "refunded",
 }
 
 export enum PaymentMethod {
@@ -20,7 +20,7 @@ export enum PaymentMethod {
   ONLINE = "online",
   CARD = "card",
   BANK_TRANSFER = "bank_transfer",
-  MOBILE_BANKING = "mobile_banking"
+  MOBILE_BANKING = "mobile_banking",
 }
 
 export enum DeliveryOption {
@@ -28,13 +28,17 @@ export enum DeliveryOption {
   COURIER = "courier",
   OTHER = "other",
   INSIDE_DHAKA = "inside dhaka",
-  OUTSIDE_DHAKA = "outside dhaka"
+  OUTSIDE_DHAKA = "outside dhaka",
 }
 export enum StockFilter {
   ALL = "all",
   LOW = "low",
   IN = "in",
-  OUT = "out"
+  OUT = "out",
 }
 
-
+export enum ProductStatus {
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+  DRAFT = "draft",
+}

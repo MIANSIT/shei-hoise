@@ -678,8 +678,8 @@ export default function CreateOrder() {
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-full mx-auto">
+    <div className=" overflow-auto">
+      <div className="max-w-6xl mx-auto">
         <Space direction="vertical" size="large" className="w-full">
           <div>
             <Title level={2} className="m-0">

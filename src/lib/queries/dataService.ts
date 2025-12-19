@@ -63,9 +63,13 @@ export interface DataService {
   ) => Promise<CustomerProfile | null>;
   getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
-  getStoreOrders: (
-    options: GetStoreOrdersOptions
-  ) => Promise<{ orders: StoreOrder[]; total: number }>;
+  getStoreOrders: (options: GetStoreOrdersOptions) => Promise<{
+    orders: StoreOrder[];
+    total: number; // filtered (pagination)
+    totalOrders: number; // store-wide
+    totalByOrderStatus: Record<string, number>; // NEW
+    totalByPaymentStatus: Record<string, number>; // NEW
+  }>;
   getOrderByNumber: (
     storeId: string,
     orderNumber: string
@@ -190,68 +194,68 @@ const deleteOrderImpl = async (
 // --- Our custom wrapper for getStoreOrders with search + pagination ---
 const getStoreOrdersImpl = async (
   options: GetStoreOrdersOptions
-): Promise<{ orders: StoreOrder[]; total: number }> => {
+): Promise<{
+  orders: StoreOrder[];
+  total: number;
+  totalOrders: number;
+  totalByOrderStatus: Record<string, number>;
+  totalByPaymentStatus: Record<string, number>;
+}> => {
   const { storeId, search, page = 1, pageSize = 10, filters } = options;
 
-  console.log("🎯 getStoreOrdersImpl called with:", {
-    storeId,
-    search,
-    page,
-    pageSize,
-    filters,
-  });
-
-  // Fetch all orders (without pagination)
-  const { orders: allOrders } = await originalGetStoreOrders(storeId);
-
-  console.log("📦 All orders from DB:", allOrders.length);
+  const { orders: allOrders, totalOrders } = await originalGetStoreOrders(
+    storeId
+  );
 
   let filteredOrders = allOrders;
 
-  // Apply search filter
+  // Apply search
   if (search?.trim()) {
     const searchTerm = search.trim().toLowerCase();
     filteredOrders = filteredOrders.filter((o) =>
       o.order_number?.toLowerCase().includes(searchTerm)
     );
-    console.log("🔍 After search filter:", filteredOrders.length);
   }
 
-  // Apply status filter
+  // Apply filters
   if (filters) {
     if (filters.status && filters.status !== "all") {
       filteredOrders = filteredOrders.filter(
         (o) => o.status === filters.status
       );
-      console.log("🏷️ After status filter:", filteredOrders.length);
     }
     if (filters.payment_status && filters.payment_status !== "all") {
       filteredOrders = filteredOrders.filter(
         (o) => o.payment_status === filters.payment_status
       );
-      console.log("💰 After payment status filter:", filteredOrders.length);
     }
   }
 
   const total = filteredOrders.length;
-  console.log("📊 Total filtered orders:", total);
 
   // Pagination
   const from = (page - 1) * pageSize;
   const to = from + pageSize;
   const paginatedOrders = filteredOrders.slice(from, to);
 
-  console.log("📄 Pagination:", {
-    page,
-    pageSize,
-    from,
-    to,
-    paginatedCount: paginatedOrders.length,
-    firstItem: paginatedOrders[0]?.order_number,
-    lastItem: paginatedOrders[paginatedOrders.length - 1]?.order_number,
+  // Calculate totals by status
+  const totalByOrderStatus: Record<string, number> = {};
+  const totalByPaymentStatus: Record<string, number> = {};
+
+  allOrders.forEach((order) => {
+    totalByOrderStatus[order.status] =
+      (totalByOrderStatus[order.status] || 0) + 1;
+    totalByPaymentStatus[order.payment_status] =
+      (totalByPaymentStatus[order.payment_status] || 0) + 1;
   });
 
-  return { orders: paginatedOrders, total };
+  return {
+    orders: paginatedOrders,
+    total,
+    totalOrders,
+    totalByOrderStatus,
+    totalByPaymentStatus,
+  };
 };
 
 // --- Wrapper for getAllStoreCustomers to maintain backward compatibility ---
