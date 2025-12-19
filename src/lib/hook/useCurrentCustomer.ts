@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/hooks/useCurrentCustomer.ts - UPDATED FOR GLOBAL CUSTOMER LOOKUP
+// lib/hooks/useCurrentCustomer.ts - UPDATED FOR BETTER AUTH LINKING
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -57,6 +57,103 @@ export function refreshCustomerData() {
 declare global {
   interface Window {
     tabId?: string;
+  }
+}
+
+// Helper function to find or create customer
+async function findOrCreateCustomer(email: string, authUserId: string | null, storeSlug?: string): Promise<CurrentCustomer | null> {
+  try {
+    console.log('🔍 Finding or creating customer:', { email, authUserId, storeSlug });
+    
+    // Try to find customer by auth_user_id first
+    if (authUserId) {
+      const { data: customersByAuth, error: authError } = await supabase
+        .from("store_customers")
+        .select(`
+          id,
+          email,
+          name,
+          phone,
+          auth_user_id,
+          profile_id
+        `)
+        .eq("auth_user_id", authUserId)
+        .limit(1);
+
+      if (!authError && customersByAuth && customersByAuth.length > 0) {
+        console.log('✅ Found customer by auth_user_id:', customersByAuth[0].id);
+        return {
+          id: customersByAuth[0].id,
+          email: customersByAuth[0].email || email,
+          name: customersByAuth[0].name || '',
+          phone: customersByAuth[0].phone || null,
+          auth_user_id: customersByAuth[0].auth_user_id,
+          profile: null, // Will fetch separately if needed
+        };
+      }
+    }
+
+    // Try to find customer by email
+    const { data: customersByEmail, error: emailError } = await supabase
+      .from("store_customers")
+      .select(`
+        id,
+        email,
+        name,
+        phone,
+        auth_user_id,
+        profile_id
+      `)
+      .eq("email", email.toLowerCase())
+      .limit(1);
+
+    if (emailError) {
+      console.error('❌ Error finding customer by email:', emailError);
+      return null;
+    }
+
+    if (customersByEmail && customersByEmail.length > 0) {
+      const customer = customersByEmail[0];
+      
+      // If customer doesn't have auth_user_id but we have one, link them
+      if (!customer.auth_user_id && authUserId) {
+        console.log('🔗 Linking auth_user_id to existing customer:', {
+          customerId: customer.id,
+          authUserId
+        });
+        
+        const { error: updateError } = await supabase
+          .from("store_customers")
+          .update({
+            auth_user_id: authUserId,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", customer.id);
+
+        if (updateError) {
+          console.error('❌ Failed to link auth_user_id:', updateError);
+        } else {
+          console.log('✅ Successfully linked auth_user_id');
+        }
+      }
+
+      return {
+        id: customer.id,
+        email: customer.email || email,
+        name: customer.name || '',
+        phone: customer.phone || null,
+        auth_user_id: customer.auth_user_id || authUserId,
+        profile: null,
+      };
+    }
+
+    // No customer found - could create one if needed
+    console.log('📭 No customer found for:', email);
+    return null;
+
+  } catch (error) {
+    console.error('💥 Error in findOrCreateCustomer:', error);
+    return null;
   }
 }
 
@@ -177,11 +274,10 @@ export function useCurrentCustomer(storeSlug?: string) {
         sessionUser: session?.user
       });
 
-      let customerData: any = null;
-      let customerFound = false;
+      let resolvedCustomer: CurrentCustomer | null = null;
+      
+      // Determine which email to search with
       let searchEmail = null;
-
-      // Determine which email to search with - PRIORITIZE formData email
       if (formEmailRef.current) {
         searchEmail = formEmailRef.current.toLowerCase().trim();
         console.log('📧 Using FORM email for search:', searchEmail);
@@ -190,97 +286,12 @@ export function useCurrentCustomer(storeSlug?: string) {
         console.log('📧 Using AUTH email for search:', searchEmail);
       }
 
-      console.log('🔍 Global customer search parameters:', {
-        searchEmail,
-        authUserId,
-        isLoggedIn,
-      });
-
-      // STRATEGY 1: Search by auth_user_id first (for logged in users)
-      if (authUserId && isLoggedIn) {
-        console.log('🎯 Searching by auth_user_id:', authUserId);
-        
-        // Find ANY customer with this auth_user_id
-        const { data: customers, error: customerError } = await supabase
-          .from("store_customers")
-          .select(`
-            id,
-            email,
-            name,
-            phone,
-            auth_user_id,
-            profile_id
-          `)
-          .eq("auth_user_id", authUserId)
-          .limit(1);
-
-        if (customerError) {
-          console.log('⚠️ No customer found with auth_user_id:', customerError.message);
-        } else if (customers && customers.length > 0) {
-          customerData = customers[0];
-          customerFound = true;
-          console.log('✅ Found customer by auth_user_id:', customerData);
-        }
-      }
-
-      // STRATEGY 2: If still not found and we have an email, search by email
-      if (!customerFound && searchEmail) {
-        console.log('🎯 Searching by email:', searchEmail);
-        
-        // Find ANY customer with this email
-        const { data: customers, error: customerError } = await supabase
-          .from("store_customers")
-          .select(`
-            id,
-            email,
-            name,
-            phone,
-            auth_user_id,
-            profile_id,
-            created_at
-          `)
-          .eq("email", searchEmail)
-          .limit(1);
-
-        if (customerError) {
-          console.log('⚠️ No customer found with email:', customerError.message);
-        } else if (customers && customers.length > 0) {
-          customerData = customers[0];
-          customerFound = true;
-          console.log('✅ Found customer by email:', {
-            id: customerData.id,
-            email: customerData.email,
-            auth_user_id: customerData.auth_user_id,
-          });
-        }
-      }
-
-      let resolvedCustomer: CurrentCustomer | null = null;
-      
-      if (customerFound && customerData) {
-        // Fetch profile separately if profile_id exists
-        let profile = null;
-        if (customerData.profile_id) {
-          const { data: profileData } = await supabase
-            .from("customer_profiles")
-            .select("*")
-            .eq("id", customerData.profile_id)
-            .single();
-          profile = profileData;
-        }
-
-        resolvedCustomer = {
-          id: customerData.id,
-          email: customerData.email || searchEmail || '',
-          name: customerData.name || '',
-          phone: customerData.phone || null,
-          auth_user_id: customerData.auth_user_id || null,
-          profile: profile || null,
-        };
+      if (searchEmail) {
+        // Use the findOrCreateCustomer helper
+        resolvedCustomer = await findOrCreateCustomer(searchEmail, authUserId, storeSlug);
       }
 
       console.log('🎯 FINAL GLOBAL CUSTOMER RESULT:', {
-        customerFound,
         customer: resolvedCustomer ? {
           id: resolvedCustomer.id,
           email: resolvedCustomer.email,
@@ -330,7 +341,7 @@ export function useCurrentCustomer(storeSlug?: string) {
       activeFetches.set(currentTabId, false);
       isFetchingRef.current = false;
     }
-  }, [authUserId, authLoading, justCreatedAccount, createdAccountEmail, isLoggedIn, authEmail, session, refreshTrigger]);
+  }, [authUserId, authLoading, justCreatedAccount, createdAccountEmail, isLoggedIn, authEmail, session, refreshTrigger, storeSlug]);
 
   // Main effect
   useEffect(() => {
