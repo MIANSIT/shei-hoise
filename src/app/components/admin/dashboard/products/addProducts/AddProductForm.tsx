@@ -187,8 +187,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           className="space-y-10 max-w-6xl mx-auto p-6 lg:p-12 xl:p-16"
         >
           {/* Product Info */}
-          <section className="bg-white shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-6 max-w-full border">
-            <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800 border-b pb-2">
+          <section className=" shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-6 max-w-full border">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-foreground border-b pb-2">
               Product Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:gap-8">
@@ -238,14 +238,14 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               control={control}
               required
               tooltip="Provide a detailed description covering product features, materials, usage, and benefits."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none transition h-32"
+              className="w-full rounded-lg border border-muted-foreground px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none transition h-32"
             />
           </section>
 
           {/* Pricing */}
           {variants.length === 0 && (
-            <section className="bg-white shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-6">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800 border-b pb-2">
+            <section className=" shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-6">
+              <h2 className="text-2xl lg:text-3xl font-semibold text-foreground border-b pb-2">
                 Pricing
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:gap-8">
@@ -313,19 +313,19 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           )}
 
           {/* Variants */}
-          <section className="bg-white shadow-md rounded-2xl p-6 lg:p-8 xl:p-10">
-            <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800 border-b pb-2 mb-4">
+          <section className="border-muted-foreground shadow-md rounded-2xl p-6 lg:p-8 xl:p-10">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-foreground border-b pb-2 mb-4">
               Variants
             </h2>
             <ProductVariantsInline form={form} addIsActive={true} />
           </section>
 
           {/* Images */}
-          <section className="bg-white shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-4">
-            <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800 border-b pb-2">
+          <section className="border-priamry shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-4">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-foreground border-b pb-2">
               Images
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid w-full grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <ProductImages
                 images={images}
                 setImages={(files) => form.setValue("images", files)}
@@ -335,14 +335,14 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           </section>
 
           {/* Featured & Status */}
-          <section className="bg-white shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <section className=" shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             {/* Featured */}
             <div className="flex items-center space-x-3">
               <input
                 id="featured"
                 type="checkbox"
                 {...form.register("featured")}
-                className="w-5 h-5 rounded border-gray-300 accent-green-500"
+                className="w-5 h-5 rounded border-primary accent-green-500"
               />
               <label
                 htmlFor="featured"
@@ -367,7 +367,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 <select
                   id="status"
                   {...form.register("status")}
-                  className="w-full border rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition appearance-none"
+                  className="w-full bg-background border rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 transition appearance-none"
                   disabled={variants.length > 0 && !hasActiveVariant}
                   onClick={toggleStatusOpen} // toggle on click
                 >
@@ -380,7 +380,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
                 <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                   <svg
-                    className="w-4 h-4 text-gray-400 transition-transform duration-200"
+                    className="w-4 h-4 text-muted-foreground transition-transform duration-200"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

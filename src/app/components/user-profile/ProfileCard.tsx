@@ -41,9 +41,9 @@ export function ProfileCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
+    <div className="bg-background rounded-lg shadow-sm border p-6">
       <div className="flex flex-col items-center text-center space-y-4">
-        <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
+        <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
           <AvatarImage src={avatarUrl || undefined} alt={getAltText()} />
           <AvatarFallback className="text-lg bg-linear-to-br from-blue-500 to-purple-600 text-white">
             {getInitials()}
@@ -51,19 +51,19 @@ export function ProfileCard({
         </Avatar>
 
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-foreground">
             {firstName && lastName
               ? `${firstName} ${lastName}`
               : "Complete Your Profile"}
           </h2>
 
-          <div className="text-gray-600 flex items-center justify-center gap-2">
+          <div className="text-muted-foreground flex items-center justify-center gap-2">
             <Mail className="w-4 h-4" />
             <span>{email}</span>
           </div>
 
           {phone && (
-            <div className="text-gray-600 flex items-center justify-center gap-2">
+            <div className="text-muted-foreground flex items-center justify-center gap-2">
               <Phone className="w-4 h-4" />
               <span>{phone}</span>
             </div>

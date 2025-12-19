@@ -30,14 +30,14 @@ export function AccountInfoCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-gray-900">Member Since</div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm font-medium text-foreground">Member Since</div>
+          <div className="text-sm text-muted-foreground">
             {createdAt ? formatDate(createdAt) : "N/A"}
           </div>
         </div>
         <div>
-          <div className="text-sm font-medium text-gray-900">Last Updated</div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm font-medium text-foreground">Last Updated</div>
+          <div className="text-sm text-muted-foreground">
             {updatedAt ? formatDate(updatedAt) : "N/A"}
           </div>
         </div>

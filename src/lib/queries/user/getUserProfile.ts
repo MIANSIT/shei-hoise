@@ -32,6 +32,7 @@ export interface UserWithProfile {
   store_slug: string | null;
   store_name: string | null;
   user_type: USERTYPE;
+  is_active: boolean; // ✅ Add this
 }
 
 export async function getUserProfile(
@@ -46,7 +47,9 @@ export async function getUserProfile(
 
   if (customerError) {
     console.error("Error fetching customer:", customerError);
-    throw new Error(`Failed to fetch customer profile: ${customerError.message}`);
+    throw new Error(
+      `Failed to fetch customer profile: ${customerError.message}`
+    );
   }
 
   // Get profile data separately
@@ -76,7 +79,7 @@ export async function getUserProfile(
   // Get store link information
   let storeSlug: string | null = null;
   let storeName: string | null = null;
-  
+
   const { data: linkData } = await supabase
     .from("store_customer_links")
     .select("store_id")
@@ -99,9 +102,9 @@ export async function getUserProfile(
   // Ensure all fields are properly typed
   return {
     id: customerData.id,
-    name: customerData.name || '',
+    name: customerData.name || "",
     phone: customerData.phone || null,
-    email: customerData.email || '',
+    email: customerData.email || "",
     auth_user_id: customerData.auth_user_id || null,
     profile_id: customerData.profile_id || null,
     created_at: customerData.created_at || new Date().toISOString(),
@@ -110,5 +113,6 @@ export async function getUserProfile(
     store_slug: storeSlug,
     store_name: storeName,
     user_type: USERTYPE.CUSTOMER, // Store customers are always customers
+    is_active: customerData.is_active ?? true, // ✅ make sure to map it
   };
 }

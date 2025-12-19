@@ -33,8 +33,8 @@ const StatCard: React.FC<StatCardProps> = ({
     <Card className="shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-2xl font-bold text-gray-800">{value}</div>
-          <div className="text-sm text-gray-600 mt-1">{title}</div>
+          <div className="text-2xl font-bold text-foreground">{value}</div>
+          <div className="text-sm text-muted-foreground mt-1">{title}</div>
           <div
             className={`text-xs px-2 py-1 rounded-full inline-block mt-2 ${getChangeColor()}`}
           >

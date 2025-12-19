@@ -92,7 +92,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   };
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="p-6 min-h-screen  ">
       {/* Header */}
       <div className="mb-8">
         <Title level={2}>Dashboard Overview</Title>

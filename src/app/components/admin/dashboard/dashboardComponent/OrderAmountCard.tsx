@@ -37,7 +37,7 @@ const OrderAmountCard: React.FC<OrderAmountCardProps> = ({
       <div className="flex items-center justify-between">
         {/* Text and Amount */}
         <div>
-          <Text className="text-sm font-medium text-gray-600">{title}</Text>
+          <Text className="text-sm font-medium text-foreground">{title}</Text>
           <Title level={3} style={{ margin: 0, color, fontWeight: 800 }}>
             {displayCurrencySafe} {amount.toLocaleString()}
           </Title>

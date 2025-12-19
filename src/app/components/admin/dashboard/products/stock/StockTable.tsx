@@ -74,7 +74,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 className="rounded-md object-cover"
               />
             ) : (
-              <div className="w-12 h-12 bg-gray-200 rounded-md" />
+              <div className="w-12 h-12 bg-card rounded-md" />
             )}
             {/* Low Stock Badge on Image */}
             {shouldHighlight && (
@@ -86,7 +86,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 }
               >
                 <div className="absolute -top-1 -right-1">
-                  <div className="bg-red-500 text-white text-xs px-1 py-0.5 rounded-full">
+                  <div className="bg-red-500 text-foreground text-xs px-1 py-0.5 rounded-full">
                     !
                   </div>
                 </div>
@@ -147,14 +147,14 @@ const StockTable: React.FC<StockTableProps> = ({
         // If product row has variants, show "SKU depends on variants"
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="italic text-gray-400">
+            <span className="italic text-muted-foreground">
               SKU depends on variants
             </span>
           );
         }
 
         // Otherwise show SKU or fallback
-        return <span className="text-gray-600">{record.sku ?? "—"}</span>;
+        return <span className="text-muted-foreground">{record.sku ?? "—"}</span>;
       },
     },
     {
@@ -164,7 +164,7 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_price: number | null, record: ProductRow | VariantRow) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="italic text-gray-400">
+            <span className="italic text-muted-foreground">
               Price depends on variants
             </span>
           );
@@ -186,7 +186,7 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_value, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="italic text-gray-400">
+            <span className="italic text-muted-foreground">
               Stock managed in variants
             </span>
           );
