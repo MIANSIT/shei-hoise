@@ -1,102 +1,97 @@
+// components/header/UserDropdownMobile.tsx - FIXED VERSION
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer"; // UPDATED
-import { useAuthStore } from "@/lib/store/authStore";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { LogoutOutlined } from "@ant-design/icons";
-import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { ButtonSkeleton } from "@/app/components/skeletons/ButtonSkeleton";
-import { useParams } from "next/navigation";
+import { ChevronDown, User, Package, LogOut } from "lucide-react";
 import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer"; // ADD THIS
 
-export default function UserDropdownMobile() {
-  const params = useParams();
-  const storeSlug = params.store_slug as string;
-  
-  // UPDATED: Use useCurrentCustomer instead of useCurrentUser
-  const { 
-    customer, 
-    loading, 
-    isLoggedIn,
-    authEmail 
-  } = useCurrentCustomer(storeSlug);
-  
-  const { logout } = useAuthStore();
-  const [open, setOpen] = useState(false);
-  const { success, error } = useSheiNotification();
+interface UserDropdownMobileProps {
+  customerName: string;
+  customerEmail: string;
+  storeSlug: string;
+}
+
+export default function UserDropdownMobile({
+  customerName,
+  customerEmail,
+  storeSlug,
+}: UserDropdownMobileProps) { // ADD PROPS HERE
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      logout();
       clearCustomerCache(); // Clear customer cache
-      setOpen(false);
-      success("Logged out successfully ✅");
-    } catch (err) {
-      console.error("Logout failed:", err);
-      error("Failed to log out. Please try again.");
+      router.refresh(); // Refresh the page
+    } catch (error) {
+      console.error("Logout error:", error);
     }
   };
 
-  // ✅ Show skeleton while loading
-  if (loading) {
-    return <ButtonSkeleton fullWidth />;
-  }
-
-  // Get customer display name
-  const customerDisplayName = customer?.name || 
-                             customer?.email?.split('@')[0] || 
-                             authEmail?.split('@')[0] || 
-                             "Customer";
-
-  if (isLoggedIn && customer) {
-    return (
-      <div className="relative">
-        <button
-          onClick={() => setOpen(!open)}
-          className="w-full flex justify-between items-center px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium"
-        >
-          {customerDisplayName}
-          <span className="ml-2 transform transition-transform duration-200">
-            {open ? "▲" : "▼"}
-          </span>
-        </button>
-
-        {open && (
-          <div className="mt-2 bg-background border border-border rounded-md shadow-lg flex flex-col overflow-hidden">
-            <Link
-              href={`/${storeSlug}/my-profile`}
-              className="flex items-center px-4 py-2 hover:bg-accent transition duration-200 ease-in-out font-medium rounded-md"
-            >
-              👤 Profile
-            </Link>
-            <Link
-              href={`/${storeSlug}/order-status`}
-              className="flex items-center px-4 py-2 hover:bg-accent transition duration-200 ease-in-out font-medium rounded-md"
-            >
-              📦 Order Status
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 mt-1 rounded-md bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90 transition"
-            >
-              <LogoutOutlined /> Logout
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Not logged in - show sign in link
   return (
-    <Link
-      href={`/login?redirect=/${storeSlug}`}
-      className="w-full block text-center px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium"
-    >
-      Sign In
-    </Link>
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full p-3 rounded-md bg-accent hover:bg-accent/80 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-medium">{customerName}</p>
+            <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+              {customerEmail}
+            </p>
+          </div>
+        </div>
+        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-50">
+          <Link
+            href={`/${storeSlug}/my-profile`}
+            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors border-b"
+            onClick={() => setIsOpen(false)}
+          >
+            <User className="h-4 w-4" />
+            <span className="text-sm">My Profile</span>
+          </Link>
+          <Link
+            href={`/${storeSlug}/order-status`}
+            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors border-b"
+            onClick={() => setIsOpen(false)}
+          >
+            <Package className="h-4 w-4" />
+            <span className="text-sm">My Orders</span>
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 p-3 w-full text-left hover:bg-destructive/10 text-destructive transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-sm">Logout</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

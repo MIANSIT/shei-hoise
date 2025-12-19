@@ -69,7 +69,7 @@ export default function DashboardPage() {
     if (CurrencyIcon)
       return (
         <>
-          <CurrencyIcon /> {amount.toFixed(2)}
+          {CurrencyIcon} {amount.toFixed(2)}
         </>
       );
     return amount.toFixed(2);
@@ -250,21 +250,21 @@ export default function DashboardPage() {
   // 10. Inventory alerts
   const inventoryAlerts = [
     {
-      title: "In Stock",
+      title: "In Stock (Items)",
       value: metrics.inStockCount.toString(),
       icon: <CheckCircleOutlined className="text-green-600" />,
       color: "bg-green-100",
       actionText: "View Items",
     },
     {
-      title: "Low Stock",
+      title: "Low Stock (Products)",
       value: metrics.lowStockCount.toString(),
       icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
       actionText: "Review",
     },
     {
-      title: "Out of Stock",
+      title: "Out of Stock (Products)",
       value: metrics.outOfStockCount.toString(),
       icon: <CloseCircleOutlined className="text-red-600" />,
       color: "bg-red-100",

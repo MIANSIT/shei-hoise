@@ -95,7 +95,7 @@ export function useOrderProcess(store_slug: string) {
         }),
         subtotal: subtotal,
         taxAmount: taxAmount,
-        discount: calculations?.totalDiscount || 0,
+        discount: 0, // ✅ FIXED: Always 0 for customer orders - product price differences are not order discounts
         additionalCharges: 0, // Default to 0 for customer orders
         deliveryCost: shippingFee,
         totalAmount: totalWithTax,
@@ -113,7 +113,8 @@ export function useOrderProcess(store_slug: string) {
           customer_id: storeCustomerId
         },
         taxAmount,
-        totalAmount: totalWithTax
+        totalAmount: totalWithTax,
+        discount: orderData.discount // This should be 0
       });
 
       // Create the order

@@ -23,6 +23,7 @@ import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { AuthResponse, User } from "@supabase/supabase-js";
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
@@ -30,7 +31,11 @@ export default function ConfirmOrderPage() {
   const router = useRouter();
   const compressedData = searchParams.get("o");
   const store_slug = params.store_slug as string;
-  
+   const {
+    currency,
+    // icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
@@ -153,6 +158,9 @@ export default function ConfirmOrderPage() {
     setShippingFee(fee);
   };
 
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrency || "BDT"; // fallback
+
   // Create temporary order data for invoice
   const createTempOrderData = (
     values: any,
@@ -218,7 +226,7 @@ export default function ConfirmOrderPage() {
       tax_amount: taxAmount,
       shipping_fee: shippingFee,
       total_amount: totalWithTax,
-      currency: "BDT",
+      currency: displayCurrencyIconSafe,
       payment_status: PaymentStatus.PENDING,
       payment_method: "cod",
       shipping_address: shippingAddress,
@@ -921,7 +929,6 @@ export default function ConfirmOrderPage() {
             }}
             orderData={invoiceData}
             showCloseButton={true}
-            autoShow={true}
           />
         )}
       </AnimatePresence>

@@ -8,8 +8,8 @@ import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
-import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer"; // UPDATED IMPORT
-import UserDropdown from "./UserDropdownDesktop";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
+import UserDropdownDesktop from "./UserDropdownDesktop";
 import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
@@ -30,7 +30,6 @@ export default function DesktopHeader({
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [isStoreLoading, setIsStoreLoading] = useState(true);
 
-  // UPDATED: Use useCurrentCustomer instead of useCurrentUser
   const { 
     customer, 
     loading: customerLoading, 
@@ -68,53 +67,25 @@ export default function DesktopHeader({
   const authLinks: NavLink[] =
     !isAdmin && !isLoggedIn
       ? [
-          { name: "Log in", path: `/login?redirect=/${storeSlug}` },
-          { name: "Sign up", path: `/sign-up?redirect=/${storeSlug}`, isHighlighted: true },
+          { name: "Log in", path: `/${storeSlug}/login?redirect=/${storeSlug}` },
+          { name: "Sign up", path: `/${storeSlug}/signup?redirect=/${storeSlug}`, isHighlighted: true },
         ]
       : [];
 
-  // Skeleton for store logo/title
-  const StoreLogoSkeleton = () => (
-    <div className="flex items-center gap-3">
-      <SheiSkeleton className="w-8 h-8 rounded" />
-      <SheiSkeleton className="w-32 h-6 rounded" />
-    </div>
-  );
-
-  // Skeleton for navigation links
-  const NavLinksSkeleton = () => (
-    <div className="flex gap-4">
-      {[1, 2].map((item) => (
-        <SheiSkeleton key={item} className="w-20 h-10 rounded-md" />
-      ))}
-    </div>
-  );
-
-  // Skeleton for user auth section
-  const UserAuthSkeleton = () => (
-    <div className="flex items-center gap-5">
-      <SheiSkeleton className="w-6 h-6 rounded" />
-      <SheiSkeleton className="w-6 h-6 rounded" />
-      <div className="flex gap-2">
-        <SheiSkeleton className="w-16 h-10 rounded-md" />
-        <SheiSkeleton className="w-16 h-10 rounded-md" />
-      </div>
-    </div>
-  );
-
-  // Determine if we should show customer dropdown or auth buttons
-  const showCustomerDropdown = isLoggedIn && customer;
-  
-  // Get customer name for display (fallback to email)
-  const customerDisplayName = customer?.name || customer?.email?.split('@')[0] || "Customer";
+  // Get customer display info
+  const customerDisplayName = customer?.name || authEmail?.split('@')[0] || "Customer";
+  const customerDisplayEmail = customer?.email || authEmail || "";
 
   return (
     <>
       <header className="hidden md:flex fixed top-0 left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md">
         <div className="flex items-center gap-8">
-          {/* Store Logo & Title - Show skeleton while loading */}
+          {/* Store Logo & Title */}
           {isStoreLoading ? (
-            <StoreLogoSkeleton />
+            <div className="flex items-center gap-3">
+              <SheiSkeleton className="w-8 h-8 rounded" />
+              <SheiSkeleton className="w-32 h-6 rounded" />
+            </div>
           ) : (
             <StoreLogoTitle
               storeSlug={storeSlug}
@@ -124,9 +95,13 @@ export default function DesktopHeader({
             />
           )}
 
-          {/* Navigation Links - Show skeleton while loading */}
+          {/* Navigation Links */}
           {isStoreLoading ? (
-            <NavLinksSkeleton />
+            <div className="flex gap-4">
+              {[1, 2].map((item) => (
+                <SheiSkeleton key={item} className="w-20 h-10 rounded-md" />
+              ))}
+            </div>
           ) : (
             <div className="flex gap-4">
               {navLinks.map((link) => {
@@ -164,29 +139,37 @@ export default function DesktopHeader({
         </div>
 
         <div className="flex items-center gap-5">
-          {/* Show skeleton for entire right section while customer data is loading */}
+          {/* Show skeleton while loading */}
           {customerLoading ? (
-            <UserAuthSkeleton />
+            <div className="flex items-center gap-5">
+              <SheiSkeleton className="w-6 h-6 rounded" />
+              <SheiSkeleton className="w-6 h-6 rounded" />
+              <div className="flex gap-2">
+                <SheiSkeleton className="w-16 h-10 rounded-md" />
+                <SheiSkeleton className="w-16 h-10 rounded-md" />
+              </div>
+            </div>
           ) : (
             <>
               <ThemeToggle />
               <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
 
-              {showCustomerDropdown ? (
-                <UserDropdown 
+              {/* Show user dropdown or auth buttons */}
+              {isLoggedIn ? (
+                <UserDropdownDesktop 
                   customerName={customerDisplayName}
-                  customerEmail={customer?.email || authEmail || ""}
+                  customerEmail={customerDisplayEmail}
                   storeSlug={storeSlug}
                 />
-              ) : (
+              ) : !isAdmin ? (
                 <AuthButtons links={authLinks} isAdminPanel={false} />
-              )}
+              ) : null}
             </>
           )}
         </div>
       </header>
 
-      {/* Spacer to prevent content being hidden behind fixed header */}
+      {/* Spacer */}
       <div className="h-[64px] hidden lg:block" />
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>

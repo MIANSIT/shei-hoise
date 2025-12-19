@@ -4,29 +4,39 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import useCartStore from "../../lib/store/cartStore";
 import { getProductsWithVariants } from "../../lib/queries/products/getProductsWithVariants";
 import { getStoreIdBySlug } from "../../lib/queries/stores/getStoreIdBySlug";
-import { CartProductWithDetails, CartCalculations, CartItem } from "../../lib/types/cart";
+import {
+  CartProductWithDetails,
+  CartCalculations,
+  CartItem,
+} from "../../lib/types/cart";
 
 // ✅ FIX: Group duplicate items and sum quantities
-const groupAndSumCartItems = (items: CartProductWithDetails[]): CartProductWithDetails[] => {
+const groupAndSumCartItems = (
+  items: CartProductWithDetails[]
+): CartProductWithDetails[] => {
   const groupedMap = new Map();
-  
-  items.forEach(item => {
-    const key = `${item.productId}-${item.variantId || 'no-variant'}`;
-    
+
+  items.forEach((item) => {
+    const key = `${item.productId}-${item.variantId || "no-variant"}`;
+
     if (groupedMap.has(key)) {
       // If item already exists, sum the quantities
       const existingItem = groupedMap.get(key);
       groupedMap.set(key, {
         ...existingItem,
-        quantity: existingItem.quantity + item.quantity
+        quantity: existingItem.quantity + item.quantity,
       });
-      console.log(`🔄 Grouped duplicate item: ${key}, new quantity: ${existingItem.quantity + item.quantity}`);
+      console.log(
+        `🔄 Grouped duplicate item: ${key}, new quantity: ${
+          existingItem.quantity + item.quantity
+        }`
+      );
     } else {
       // If item doesn't exist, add it
       groupedMap.set(key, item);
     }
   });
-  
+
   return Array.from(groupedMap.values());
 };
 
@@ -42,7 +52,7 @@ export function useCartItems(storeSlug?: string) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Refs to track previous states
   const previousCartRef = useRef<CartItem[]>([]);
   const hasLoadedRef = useRef(false);
@@ -61,9 +71,15 @@ export function useCartItems(storeSlug?: string) {
     }
 
     // Check if new products were added (not just quantity changes)
-    const currentKeys = targetCart.map(item => `${item.productId}-${item.variantId}`).sort().join(',');
-    const previousKeys = previousCartRef.current.map(item => `${item.productId}-${item.variantId}`).sort().join(',');
-    
+    const currentKeys = targetCart
+      .map((item) => `${item.productId}-${item.variantId}`)
+      .sort()
+      .join(",");
+    const previousKeys = previousCartRef.current
+      .map((item) => `${item.productId}-${item.variantId}`)
+      .sort()
+      .join(",");
+
     return currentKeys !== previousKeys || !hasLoadedRef.current;
   }, [targetCart]);
 
@@ -95,8 +111,10 @@ export function useCartItems(storeSlug?: string) {
         }
 
         // Get unique store slugs from cart
-        const storeSlugs = [...new Set(targetCart.map(item => item.storeSlug))];
-        
+        const storeSlugs = [
+          ...new Set(targetCart.map((item) => item.storeSlug)),
+        ];
+
         const storeProductsMap = new Map<string, any>();
 
         // Fetch products for each store
@@ -105,13 +123,19 @@ export function useCartItems(storeSlug?: string) {
             // Check cache first
             const cacheKey = `store-${slug}`;
             if (productDataCacheRef.current.has(cacheKey)) {
-              storeProductsMap.set(slug, productDataCacheRef.current.get(cacheKey));
+              storeProductsMap.set(
+                slug,
+                productDataCacheRef.current.get(cacheKey)
+              );
             } else {
               const storeId = await getStoreIdBySlug(slug);
               if (storeId) {
-                const products = await getProductsWithVariants(storeId);
-                storeProductsMap.set(slug, products);
-                productDataCacheRef.current.set(cacheKey, products);
+                const productsResult = await getProductsWithVariants({
+                  storeId,
+                });
+                const productsArray = productsResult.data ?? [];
+                storeProductsMap.set(slug, productsArray);
+                productDataCacheRef.current.set(cacheKey, productsArray);
               }
             }
           } catch (err) {
@@ -121,12 +145,14 @@ export function useCartItems(storeSlug?: string) {
 
         // ✅ FIX: First group the raw cart items by productId and variantId
         const groupedRawCart = targetCart.reduce((acc, cartItem) => {
-          const key = `${cartItem.productId}-${cartItem.variantId || 'no-variant'}`;
+          const key = `${cartItem.productId}-${
+            cartItem.variantId || "no-variant"
+          }`;
           if (acc.has(key)) {
             const existing = acc.get(key);
             acc.set(key, {
               ...existing,
-              quantity: existing.quantity + cartItem.quantity
+              quantity: existing.quantity + cartItem.quantity,
             });
           } else {
             acc.set(key, { ...cartItem });
@@ -143,39 +169,50 @@ export function useCartItems(storeSlug?: string) {
           const storeProducts = storeProductsMap.get(cartItem.storeSlug);
           if (!storeProducts) continue;
 
-          const product = storeProducts.find((p: any) => p.id === cartItem.productId);
+          const product = storeProducts.find(
+            (p: any) => p.id === cartItem.productId
+          );
           if (!product) continue;
 
           // Handle variant - explicitly set to null if no variant exists
-          let variant: CartProductWithDetails['variant'] = null;
+          let variant: CartProductWithDetails["variant"] = null;
           if (cartItem.variantId) {
-            const foundVariant = product.product_variants.find((v: any) => v.id === cartItem.variantId);
+            const foundVariant = product.product_variants.find(
+              (v: any) => v.id === cartItem.variantId
+            );
             variant = foundVariant || null;
           }
 
           // Calculate prices - handle null values properly
           const variantPrice = variant?.discounted_price || variant?.base_price;
           const productPrice = product.discounted_price || product.base_price;
-          
+
           const displayPrice = variantPrice || productPrice || 0;
           const originalPrice = variant?.base_price || product.base_price || 0;
-          
-          const discountPercentage = calculateDiscountPercentage(originalPrice, displayPrice);
-          
+
+          const discountPercentage = calculateDiscountPercentage(
+            originalPrice,
+            displayPrice
+          );
+
           // Handle stock calculation
-          const stock = variant?.product_inventory?.[0]?.quantity_available || 
-                       product.product_inventory?.[0]?.quantity_available || 0;
+          const stock =
+            variant?.product_inventory?.[0]?.quantity_available ||
+            product.product_inventory?.[0]?.quantity_available ||
+            0;
 
           // Get image URL
-          const variantImage = variant?.product_images?.find((img: any) => img.is_primary)?.image_url ||
-                              variant?.product_images?.[0]?.image_url;
-          const productImage = product.product_images?.find((img: any) => img.is_primary)?.image_url ||
-                              product.product_images?.[0]?.image_url;
+          const variantImage =
+            variant?.product_images?.find((img: any) => img.is_primary)
+              ?.image_url || variant?.product_images?.[0]?.image_url;
+          const productImage =
+            product.product_images?.find((img: any) => img.is_primary)
+              ?.image_url || product.product_images?.[0]?.image_url;
           const imageUrl = variantImage || productImage || "/placeholder.png";
 
           // Create product name
-          const productName = variant 
-            ? `${product.name} - ${variant.variant_name}` 
+          const productName = variant
+            ? `${product.name} - ${variant.variant_name}`
             : product.name;
 
           enrichedItems.push({
@@ -197,7 +234,7 @@ export function useCartItems(storeSlug?: string) {
 
         // ✅ FIX: Group enriched items to ensure no duplicates
         const groupedEnrichedItems = groupAndSumCartItems(enrichedItems);
-        
+
         setCartItems(groupedEnrichedItems);
         previousCartRef.current = [...targetCart];
         hasLoadedRef.current = true;
@@ -205,7 +242,6 @@ export function useCartItems(storeSlug?: string) {
         // Calculate totals with grouped items
         const calculations = calculateCartTotals(groupedEnrichedItems);
         setCalculations(calculations);
-
       } catch (err) {
         console.error("Error fetching cart details:", err);
         setError("Failed to load cart items");
@@ -223,16 +259,24 @@ export function useCartItems(storeSlug?: string) {
   useEffect(() => {
     if (!hasLoadedRef.current || loading) return;
 
-    const currentKeys = new Set(targetCart.map(item => `${item.productId}-${item.variantId}`));
-    const previousKeys = new Set(previousCartRef.current.map(item => `${item.productId}-${item.variantId}`));
+    const currentKeys = new Set(
+      targetCart.map((item) => `${item.productId}-${item.variantId}`)
+    );
+    const previousKeys = new Set(
+      previousCartRef.current.map(
+        (item) => `${item.productId}-${item.variantId}`
+      )
+    );
 
     // Check if items were removed
     const itemsRemoved = previousKeys.size > currentKeys.size;
-    
+
     // Check if quantities changed
-    const quantitiesChanged = previousCartRef.current.some(prevItem => {
+    const quantitiesChanged = previousCartRef.current.some((prevItem) => {
       const currentItem = targetCart.find(
-        item => item.productId === prevItem.productId && item.variantId === prevItem.variantId
+        (item) =>
+          item.productId === prevItem.productId &&
+          item.variantId === prevItem.variantId
       );
       return currentItem && currentItem.quantity !== prevItem.quantity;
     });
@@ -242,10 +286,11 @@ export function useCartItems(storeSlug?: string) {
 
       // Handle removals
       if (itemsRemoved) {
-        updatedItems = updatedItems.filter(item => 
-          targetCart.some(cartItem => 
-            cartItem.productId === item.productId && 
-            cartItem.variantId === item.variantId
+        updatedItems = updatedItems.filter((item) =>
+          targetCart.some(
+            (cartItem) =>
+              cartItem.productId === item.productId &&
+              cartItem.variantId === item.variantId
           )
         );
       }
@@ -254,12 +299,14 @@ export function useCartItems(storeSlug?: string) {
       if (quantitiesChanged) {
         // ✅ FIX: Group the target cart first to get correct quantities
         const groupedTargetCart = targetCart.reduce((acc, cartItem) => {
-          const key = `${cartItem.productId}-${cartItem.variantId || 'no-variant'}`;
+          const key = `${cartItem.productId}-${
+            cartItem.variantId || "no-variant"
+          }`;
           if (acc.has(key)) {
             const existing = acc.get(key);
             acc.set(key, {
               ...existing,
-              quantity: existing.quantity + cartItem.quantity
+              quantity: existing.quantity + cartItem.quantity,
             });
           } else {
             acc.set(key, { ...cartItem });
@@ -267,14 +314,14 @@ export function useCartItems(storeSlug?: string) {
           return acc;
         }, new Map());
 
-        updatedItems = updatedItems.map(item => {
-          const key = `${item.productId}-${item.variantId || 'no-variant'}`;
+        updatedItems = updatedItems.map((item) => {
+          const key = `${item.productId}-${item.variantId || "no-variant"}`;
           const currentCartItem = groupedTargetCart.get(key);
-          
+
           if (currentCartItem && currentCartItem.quantity !== item.quantity) {
             return {
               ...item,
-              quantity: currentCartItem.quantity
+              quantity: currentCartItem.quantity,
             };
           }
           return item;
@@ -302,24 +349,30 @@ export function useCartItems(storeSlug?: string) {
 }
 
 // Helper function to calculate discount percentage
-function calculateDiscountPercentage(originalPrice: number, displayPrice: number): number {
+function calculateDiscountPercentage(
+  originalPrice: number,
+  displayPrice: number
+): number {
   if (!originalPrice || originalPrice <= displayPrice) return 0;
   return Math.round(((originalPrice - displayPrice) / originalPrice) * 100);
 }
 
 // Helper function to calculate cart totals
-function calculateCartTotals(items: CartProductWithDetails[]): CartCalculations {
+function calculateCartTotals(
+  items: CartProductWithDetails[]
+): CartCalculations {
   let totalItems = 0;
   let totalPrice = 0;
   let totalDiscount = 0;
   let subtotal = 0;
 
-  items.forEach(item => {
+  items.forEach((item) => {
     // Use displayPrice if available, otherwise fall back to originalPrice
     const effectivePrice = item.displayPrice || item.originalPrice || 0;
     const itemSubtotal = effectivePrice * item.quantity;
     const itemTotal = effectivePrice * item.quantity;
-    const itemDiscount = ((item.originalPrice || 0) - effectivePrice) * item.quantity;
+    const itemDiscount =
+      ((item.originalPrice || 0) - effectivePrice) * item.quantity;
 
     totalItems += item.quantity;
     subtotal += itemSubtotal;

@@ -14,6 +14,7 @@ import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus } from "lucide-react";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface ApiProduct {
   id: string;
@@ -72,7 +73,11 @@ export default function ProductPage() {
   const [inputValue, setInputValue] = useState<string>("");
   const [showMaxQuantityError, setShowMaxQuantityError] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const { cart, addToCart } = useCartStore();
 
   // Calculate selectedVariantData based on current state
@@ -161,6 +166,14 @@ export default function ProductPage() {
           categories: Array.isArray(productData.categories)
             ? productData.categories[0] || null
             : productData.categories,
+          product_variants: (productData.product_variants || []).map(
+            (variant: any) => ({
+              ...variant,
+              primary_image:
+                variant.product_images?.find((img: any) => img.is_primary) ||
+                null,
+            })
+          ),
         };
 
         setProduct(fixedProductData as ApiProduct);
@@ -229,6 +242,9 @@ export default function ProductPage() {
     stockStatus,
   ]);
 
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   if (loading) {
     return <ProductPageSkeleton />;
   }
@@ -619,7 +635,8 @@ export default function ProductPage() {
                     transition={{ duration: 0.2 }}
                     className="text-lg font-semibold text-foreground"
                   >
-                    ৳{totalPrice.toFixed(2)}
+                    {displayCurrencyIconSafe}
+                    {totalPrice.toFixed(2)}
                   </motion.span>
                 </div>
               </div>
@@ -687,16 +704,17 @@ export default function ProductPage() {
             <h5 className="font-medium mb-2">Product Pricing</h5>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <strong>Base Price:</strong> ৳{originalPrice.toFixed(2)}
+                <strong>Base Price:</strong> {displayCurrencyIconSafe}
+                {originalPrice.toFixed(2)}
               </li>
               {discount > 0 && (
                 <>
                   <li>
-                    <strong>Discounted Price:</strong> ৳
+                    <strong>Discounted Price:</strong> {displayCurrencyIconSafe}
                     {displayPrice.toFixed(2)}
                   </li>
                   {/* <li>
-                    <strong>You Save:</strong> ৳
+                    <strong>You Save:</strong> {displayCurrencyIconSafe}
                     {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
                   </li> */}
                 </>

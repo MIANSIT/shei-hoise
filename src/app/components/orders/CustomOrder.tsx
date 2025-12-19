@@ -79,8 +79,8 @@ export default function CustomOrder() {
         return;
       }
 
-      const res = await getProductsWithVariants(storeId);
-      setProducts(res);
+      const res = await getProductsWithVariants({ storeId });
+      setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
       showToast(

@@ -348,11 +348,11 @@ const CheckoutForm = ({
                     const currentPath = window.location.pathname;
                     const emailValue = form.getValues().email;
                     if (emailValue) {
-                      window.location.href = `/login?redirect=${encodeURIComponent(
+                      window.location.href = `/${storeSlug}/login?redirect=${encodeURIComponent(
                         currentPath
                       )}&email=${encodeURIComponent(emailValue)}`;
                     } else {
-                      window.location.href = `/login?redirect=${encodeURIComponent(
+                      window.location.href = `/${storeSlug}/login?redirect=${encodeURIComponent(
                         currentPath
                       )}`;
                     }

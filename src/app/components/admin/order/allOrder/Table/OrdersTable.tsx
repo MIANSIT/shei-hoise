@@ -2,16 +2,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button } from "antd";
+import { Avatar, Space, Tooltip, App, Card, Button, Pagination } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import StatusTag from "../StatusFilter/StatusTag";
 import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
-import OrdersFilterTabs, {
-  highlightText,
-} from "../StatusFilter/OrdersFilterTabs";
+import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
 import {
@@ -25,22 +23,49 @@ import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
 import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import dataService from "@/lib/queries/dataService";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface Props {
   orders: StoreOrder[];
+  total: number;
+  page: number;
+  search: string;
+  pageSize: number;
+  onTableChange: (pagination: { current: number; pageSize: number }) => void;
   onUpdate: (orderId: string, changes: Partial<StoreOrder>) => void;
-  onRefresh?: () => void;
   loading?: boolean;
+  onSearchChange: (value: string) => void; // add this
+  onStatusChange?: (status: string) => void;
+  onPaymentStatusChange?: (status: string) => void;
+  totalOrders: number;
+  initialCategory?: "order" | "payment";
+  initialStatus?: string;
+  totalByOrderStatus?: Record<string, number>; // <--- add this
+  totalByPaymentStatus?: Record<string, number>;
+  onRefresh?: () => void;
 }
 
 const OrdersTable: React.FC<Props> = ({
   orders,
   onUpdate,
-  onRefresh,
+  search,
+  onSearchChange,
+  onStatusChange,
+  onPaymentStatusChange,
+  page,
+  total,
+  pageSize,
+  onTableChange,
+  totalOrders,
+  initialCategory,
+  initialStatus,
   loading = false,
+  totalByOrderStatus, // <--- add this
+  totalByPaymentStatus,
+  onRefresh,
 }) => {
   const { notification, modal } = App.useApp();
-  const [searchOrderId, setSearchOrderId] = useState<string>("");
+  const [searchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
@@ -49,6 +74,11 @@ const OrdersTable: React.FC<Props> = ({
     useState<StoreOrder | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
+  const {
+    currency: storeCurrency,
+    // icon: currencyIcon,
+    // loading: currencyLoading,
+  } = useUserCurrencyIcon();
 
   useEffect(() => {
     const filtered = orders.filter((o) => {
@@ -67,24 +97,7 @@ const OrdersTable: React.FC<Props> = ({
     setFilteredOrders(filtered);
   }, [orders, searchOrderId]);
 
-  const handleSearchChange = (value: string) => setSearchOrderId(value);
-
-  const handleTabFilter = (filtered: StoreOrder[]) => {
-    const finalFiltered = filtered.filter((o) => {
-      const search = searchOrderId.toLowerCase();
-      const customerEmail = getCustomerEmail(o).toLowerCase();
-      const customerPhone = getCustomerPhone(o).toLowerCase();
-      const customerName = getCustomerName(o).toLowerCase();
-
-      return (
-        o.order_number.toLowerCase().includes(search) ||
-        customerEmail.includes(search) ||
-        customerPhone.includes(search) ||
-        customerName.includes(search)
-      );
-    });
-    setFilteredOrders(finalFiltered);
-  };
+  // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleEdit = (order: StoreOrder) => {
     router.push(`/dashboard/orders/edit-order/${order.order_number}`);
@@ -115,10 +128,6 @@ const OrdersTable: React.FC<Props> = ({
         message: "Order Deleted",
         description: "Order has been deleted successfully.",
       });
-
-      if (onRefresh) {
-        onRefresh();
-      }
     } catch (error: any) {
       console.error("Error deleting order:", error);
       notification.error({
@@ -143,9 +152,6 @@ const OrdersTable: React.FC<Props> = ({
 
   const handleBulkUpdateSuccess = () => {
     setSelectedRowKeys([]);
-    if (onRefresh) {
-      onRefresh();
-    }
   };
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -168,14 +174,15 @@ const OrdersTable: React.FC<Props> = ({
     </div>
   );
 
-  const formatCurrency = (amount: number, currency: string = "BDT") => {
+  const formatCurrency = (amount: number, currency?: string | null) => {
+    const finalCurrency = currency || storeCurrency || "";
+
     return new Intl.NumberFormat("en-BD", {
       style: "currency",
-      currency: currency,
+      currency: finalCurrency,
       minimumFractionDigits: 2,
     }).format(amount);
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -259,7 +266,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "order_number",
       render: (orderNumber: string) => (
         <span className="font-medium text-blue-600 text-sm">
-          {highlightText(`#${orderNumber}`, searchOrderId)}
+          #{orderNumber}
         </span>
       ),
       width: 100,
@@ -284,10 +291,10 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="min-w-0">
             <div className="font-medium text-sm truncate max-w-[100px] lg:max-w-[120px]">
-              {highlightText(getCustomerName(order), searchOrderId)}
+              {getCustomerName(order)}
             </div>
             <div className="text-xs text-gray-500 truncate max-w-[100px] lg:max-w-[120px]">
-              {highlightText(getCustomerEmail(order), searchOrderId)}
+              {getCustomerEmail(order)}
             </div>
           </div>
         </Space>
@@ -300,7 +307,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "phone",
       render: (_, order: StoreOrder) => (
         <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
-          {highlightText(getCustomerPhone(order), searchOrderId)}
+          {getCustomerPhone(order)}
         </div>
       ),
       width: 120,
@@ -493,13 +500,13 @@ const OrdersTable: React.FC<Props> = ({
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">
-              {highlightText(getCustomerName(order), searchOrderId)}
+              {getCustomerName(order)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {highlightText(getCustomerEmail(order), searchOrderId)}
+              {getCustomerEmail(order)}
             </div>
             <div className="text-xs text-gray-600 truncate">
-              {highlightText(getCustomerPhone(order), searchOrderId)}
+              {getCustomerPhone(order)}
             </div>
           </div>
         </div>
@@ -651,9 +658,15 @@ const OrdersTable: React.FC<Props> = ({
       <div className="mb-4">
         <OrdersFilterTabs
           orders={orders}
-          onFilter={handleTabFilter}
-          searchValue={searchOrderId}
-          onSearchChange={handleSearchChange}
+          totalOrders={totalOrders}
+          totalByOrderStatus={totalByOrderStatus}
+          totalByPaymentStatus={totalByPaymentStatus}
+          searchValue={search}
+          onSearchChange={onSearchChange}
+          onStatusChange={onStatusChange}
+          onPaymentStatusChange={onPaymentStatusChange}
+          initialCategory={initialCategory}
+          initialStatus={initialStatus}
         />
       </div>
 
@@ -682,14 +695,7 @@ const OrdersTable: React.FC<Props> = ({
             },
           ],
         }}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} orders`,
-          responsive: true,
-        }}
+        pagination={false}
         size="middle"
         expandable={{
           expandedRowKeys: expandedRowKey ? [expandedRowKey] : [],
@@ -755,7 +761,6 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
-                  onRefresh={onRefresh}
                 />
               )}
               <DetailedOrderView order={order} />
@@ -766,6 +771,52 @@ const OrdersTable: React.FC<Props> = ({
         responsive={true}
         renderCard={renderOrderCard}
       />
+      {/* Mobile pagination */}
+      <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
+        
+        {/* Show total items */}
+        <div className="text-sm text-gray-600">
+          {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
+            page * pageSize,
+            total
+          )} of ${total} items`}
+        </div>
+
+        {/* Previous / Next buttons */}
+        <div className="flex gap-2">
+          <Button
+            size="small"
+            disabled={page === 1}
+            onClick={() => onTableChange({ current: page - 1, pageSize })}
+          >
+            ← Previous
+          </Button>
+          <span className="text-sm">
+            Page {page} of {Math.ceil(total / pageSize) || 1}
+          </span>
+          <Button
+            size="small"
+            disabled={page >= Math.ceil(total / pageSize)}
+            onClick={() => onTableChange({ current: page + 1, pageSize })}
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 justify-end hidden md:flex">
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
+          pageSizeOptions={["5", "10", "20", "50"]}
+          showTotal={(total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`
+          }
+        />
+      </div>
 
       {/* Invoice Modal */}
       {showInvoice && selectedOrderForInvoice && (
@@ -777,7 +828,6 @@ const OrdersTable: React.FC<Props> = ({
           }}
           orderData={selectedOrderForInvoice}
           showCloseButton={true}
-          autoShow={true}
         />
       )}
     </div>
