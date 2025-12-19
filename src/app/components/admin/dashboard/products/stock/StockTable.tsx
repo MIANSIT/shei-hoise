@@ -100,7 +100,7 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Product / Variant",
       dataIndex: "title",
       key: "title",
-      className: "font-semibold",
+      className: "font-semibold text-primary",
       render: (title: string, record: ProductRow | VariantRow) => {
         const isProductRow = "variants" in record;
         const shouldHighlight = isProductRow
