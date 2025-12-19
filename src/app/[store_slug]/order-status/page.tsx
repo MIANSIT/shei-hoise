@@ -8,9 +8,9 @@ import { StoreOrder } from "@/lib/types/order";
 import Footer from "../../components/common/Footer";
 import OrdersTable from "../../components/orders/CustomerOrderTable";
 import OrdersCard from "../../components/orders/CustomerOrderCard";
-import { OrdersPageSkeleton } from "../../components/skeletons/OrdersPageSkeleton"; 
-import { EmptyOrdersSkeleton } from "../../components/skeletons/EmptyOrdersSkeleton"; 
-import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton"; 
+import { OrdersPageSkeleton } from "../../components/skeletons/OrdersPageSkeleton";
+import { EmptyOrdersSkeleton } from "../../components/skeletons/EmptyOrdersSkeleton";
+import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton";
 import { AnimatePresence } from "framer-motion";
 import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { useParams } from "next/navigation";
@@ -30,48 +30,54 @@ import { Store, Package } from "lucide-react";
 export default function StoreOrdersPage() {
   const params = useParams();
   const storeSlug = params.store_slug as string;
-  
-  const { 
-    customer, 
-    loading: customerLoading, 
+
+  const {
+    customer,
+    loading: customerLoading,
     error: customerError,
     hasAuthUserId,
     isLoggedIn,
     authEmail,
   } = useCurrentCustomer(storeSlug);
-  
+
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
-  const { justCreatedAccount, createdAccountEmail, clearAccountCreationFlags } = useCheckoutStore();
+  const { justCreatedAccount, createdAccountEmail, clearAccountCreationFlags } =
+    useCheckoutStore();
   const isFetchingOrdersRef = useRef(false);
   const mountedRef = useRef(true);
-  
+
   // Memoized values
-  const isNewlyCreatedAccount = useMemo(() => 
-    Boolean(justCreatedAccount && createdAccountEmail && createdAccountEmail === customer?.email),
+  const isNewlyCreatedAccount = useMemo(
+    () =>
+      Boolean(
+        justCreatedAccount &&
+          createdAccountEmail &&
+          createdAccountEmail === customer?.email
+      ),
     [justCreatedAccount, createdAccountEmail, customer?.email]
   );
 
-  const shouldForceShowOrders = useMemo(() => 
-    isNewlyCreatedAccount && customer?.auth_user_id,
+  const shouldForceShowOrders = useMemo(
+    () => isNewlyCreatedAccount && customer?.auth_user_id,
     [isNewlyCreatedAccount, customer?.auth_user_id]
   );
 
   // Group orders by store
   const ordersByStore = useMemo(() => {
     const grouped: { [storeSlug: string]: StoreOrder[] } = {};
-    
-    orders.forEach(order => {
-      const storeSlug = order.stores?.store_slug || 'unknown';
+
+    orders.forEach((order) => {
+      const storeSlug = order.stores?.store_slug || "unknown";
       if (!grouped[storeSlug]) {
         grouped[storeSlug] = [];
       }
       grouped[storeSlug].push(order);
     });
-    
+
     return grouped;
   }, [orders]);
 
@@ -79,8 +85,11 @@ export default function StoreOrdersPage() {
   const stats = useMemo(() => {
     const totalOrders = orders.length;
     const totalStores = Object.keys(ordersByStore).length;
-    const totalAmount = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-    
+    const totalAmount = orders.reduce(
+      (sum, order) => sum + (order.total_amount || 0),
+      0
+    );
+
     return { totalOrders, totalStores, totalAmount };
   }, [orders, ordersByStore]);
 
@@ -93,9 +102,10 @@ export default function StoreOrdersPage() {
     // Allow fetching orders if:
     // 1. User is logged in AND has auth_user_id, OR
     // 2. User just created account during checkout (even if not fully logged in yet)
-    const shouldFetchOrders = (isLoggedIn && hasAuthUserId) || shouldForceShowOrders;
-    
-    console.log('🔄 Should fetch global orders?', {
+    const shouldFetchOrders =
+      (isLoggedIn && hasAuthUserId) || shouldForceShowOrders;
+
+    console.log("🔄 Should fetch global orders?", {
       shouldFetchOrders,
       isLoggedIn,
       hasAuthUserId,
@@ -113,16 +123,18 @@ export default function StoreOrdersPage() {
       isFetchingOrdersRef.current = true;
       setLoadingOrders(true);
       setError(null);
-      console.log('🔄 Fetching ALL orders for customer globally:', customer.id);
-      
+      console.log("🔄 Fetching ALL orders for customer globally:", customer.id);
+
       const customerOrders = await getCustomerOrders(customer.id);
-      
+
       if (mountedRef.current) {
         setOrders(customerOrders);
-        
+
         // If this was a newly created account, clear the flags after fetching orders
         if (shouldForceShowOrders) {
-          console.log('🧹 Clearing account creation flags after fetching orders');
+          console.log(
+            "🧹 Clearing account creation flags after fetching orders"
+          );
           setTimeout(() => {
             clearAccountCreationFlags();
           }, 1000);
@@ -130,8 +142,8 @@ export default function StoreOrdersPage() {
       }
     } catch (err) {
       if (mountedRef.current) {
-        console.error('Error fetching global orders:', err);
-        setError('Failed to load orders. Please try again.');
+        console.error("Error fetching global orders:", err);
+        setError("Failed to load orders. Please try again.");
       }
     } finally {
       if (mountedRef.current) {
@@ -139,12 +151,18 @@ export default function StoreOrdersPage() {
         isFetchingOrdersRef.current = false;
       }
     }
-  }, [customer?.id, isLoggedIn, hasAuthUserId, shouldForceShowOrders, clearAccountCreationFlags]);
+  }, [
+    customer?.id,
+    isLoggedIn,
+    hasAuthUserId,
+    shouldForceShowOrders,
+    clearAccountCreationFlags,
+  ]);
 
   // Optimized effect for fetching orders
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // Only fetch if customer is loaded and not already fetching
     if (!customerLoading && customer && !isFetchingOrdersRef.current) {
       fetchOrders();
@@ -165,8 +183,12 @@ export default function StoreOrdersPage() {
   }, []);
 
   // Memoized decision logic
-  const isEmailMismatch = useMemo(() => 
-    isLoggedIn && authEmail && customer?.email && authEmail !== customer.email,
+  const isEmailMismatch = useMemo(
+    () =>
+      isLoggedIn &&
+      authEmail &&
+      customer?.email &&
+      authEmail !== customer.email,
     [isLoggedIn, authEmail, customer?.email]
   );
 
@@ -182,13 +204,11 @@ export default function StoreOrdersPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-destructive">Error</CardTitle>
-            <CardDescription>
-              Unable to load customer data
-            </CardDescription>
+            <CardDescription>Unable to load customer data</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => window.location.reload()}
               className="w-full"
             >
@@ -201,11 +221,11 @@ export default function StoreOrdersPage() {
   }
 
   // DECISION TREE (in order of priority):
-  
+
   // 1. Email mismatch - logged in with different email
   if (isEmailMismatch) {
     return (
-      <OrderAuthPrompt 
+      <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={customer?.email}
         hasAuthUserId={hasAuthUserId}
@@ -216,11 +236,11 @@ export default function StoreOrdersPage() {
       />
     );
   }
-  
+
   // 2. Has account but not logged in
   if (!isLoggedIn && hasAuthUserId && customer && !shouldForceShowOrders) {
     return (
-      <OrderAuthPrompt 
+      <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={customer.email}
         hasAuthUserId={hasAuthUserId}
@@ -231,11 +251,11 @@ export default function StoreOrdersPage() {
       />
     );
   }
-  
+
   // 3. Guest checkout - no auth_user_id
   if (!isLoggedIn && !hasAuthUserId && customer) {
     return (
-      <OrderAuthPrompt 
+      <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={customer.email}
         hasAuthUserId={hasAuthUserId}
@@ -246,11 +266,11 @@ export default function StoreOrdersPage() {
       />
     );
   }
-  
+
   // 4. No customer found at all
   if (!customer) {
     return (
-      <OrderAuthPrompt 
+      <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={undefined}
         hasAuthUserId={false}
@@ -261,7 +281,7 @@ export default function StoreOrdersPage() {
       />
     );
   }
-  
+
   // 5. Logged in with matching email and has auth_user_id - SHOW ALL ORDERS
 
   return (
@@ -291,7 +311,7 @@ export default function StoreOrdersPage() {
                 </CardContent>
               </Card>
             )} */}
-            
+
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-3xl font-bold">My Orders</h1>
@@ -347,29 +367,38 @@ export default function StoreOrdersPage() {
             {/* Group orders by store */}
             {Object.keys(ordersByStore).length > 0 && (
               <div className="space-y-8">
-                {Object.entries(ordersByStore).map(([storeSlug, storeOrders]) => (
-                  <div key={storeSlug} className="mb-8">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Store className="h-5 w-5 text-muted-foreground" />
-                      <h2 className="text-xl font-semibold capitalize">
-                        {storeOrders[0].stores?.store_name || storeSlug}
-                      </h2>
-                      <Badge variant="secondary">
-                        {storeOrders.length} order{storeOrders.length !== 1 ? 's' : ''}
-                      </Badge>
+                {Object.entries(ordersByStore).map(
+                  ([storeSlug, storeOrders]) => (
+                    <div key={storeSlug} className="mb-8">
+                      <div className="flex items-center gap-3 mb-4">
+                        <Store className="h-5 w-5 text-muted-foreground" />
+                        <h2 className="text-xl font-semibold capitalize">
+                          {storeOrders[0].stores?.store_name || storeSlug}
+                        </h2>
+                        <Badge variant="secondary">
+                          {storeOrders.length} order
+                          {storeOrders.length !== 1 ? "s" : ""}
+                        </Badge>
+                      </div>
+
+                      {/* Desktop Table View */}
+                      <div className="hidden lg:block">
+                        <OrdersTable
+                          orders={storeOrders}
+                          onViewInvoice={handleViewInvoice}
+                        />
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="lg:hidden space-y-4">
+                        <OrdersCard
+                          orders={storeOrders}
+                          onViewInvoice={handleViewInvoice}
+                        />
+                      </div>
                     </div>
-                    
-                    {/* Desktop Table View */}
-                    <div className="hidden lg:block">
-                      <OrdersTable orders={storeOrders} onViewInvoice={handleViewInvoice} />
-                    </div>
-                    
-                    {/* Mobile Card View */}
-                    <div className="lg:hidden space-y-4">
-                      <OrdersCard orders={storeOrders} onViewInvoice={handleViewInvoice} />
-                    </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             )}
           </div>
@@ -381,14 +410,26 @@ export default function StoreOrdersPage() {
               <CardContent className="pt-6">
                 <div className="text-center py-8">
                   <div className="text-destructive mb-4">
-                    <svg className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="h-12 w-12 mx-auto mb-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   </div>
-                  <h3 className="font-semibold text-destructive mb-1">Unable to Load Orders</h3>
+                  <h3 className="font-semibold text-destructive mb-1">
+                    Unable to Load Orders
+                  </h3>
                   <p className="text-destructive/80 text-sm">{error}</p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="mt-4"
                     onClick={() => window.location.reload()}
                   >
@@ -398,7 +439,27 @@ export default function StoreOrdersPage() {
               </CardContent>
             </Card>
           ) : orders.length === 0 ? (
-            <EmptyOrdersSkeleton />
+            <Card className="border-dashed">
+              <CardContent className="pt-12 pb-12">
+                <div className="text-center">
+                  <div className="mx-auto w-24 h-24 mb-6 rounded-full bg-muted flex items-center justify-center">
+                    <Package className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No Orders Yet</h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    You haven&apos;t placed any orders yet. Start shopping to
+                    see your orders here!
+                  </p>
+                  <Button
+                    onClick={() => (window.location.href = `/${storeSlug}`)}
+                    className="gap-2"
+                  >
+                    <Store className="h-4 w-4" />
+                    Start Shopping
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ) : null}
         </div>
       </div>

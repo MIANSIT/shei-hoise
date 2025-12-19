@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/[store_slug]/complete-account/page.tsx
+// app/[store_slug]/complete-account/page.tsx - UPDATED
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { useParams } from "next/navigation";
 import { PasswordStrength } from "../../components/common/PasswordStrength";
 import { PasswordToggle } from "../../components/common/PasswordToggle";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
+import { linkAuthToCustomer } from "@/lib/queries/customers/getCustomerByEmail";
 
 export default function CompleteAccountPage() {
   const router = useRouter();
@@ -30,9 +31,10 @@ export default function CompleteAccountPage() {
   const searchParams = useSearchParams();
   const storeSlug = params.store_slug as string;
   const emailFromUrl = searchParams.get("email") || "";
+  const customerIdFromUrl = searchParams.get("customer_id") || "";
   
   const { customer, clearCache } = useCurrentCustomer(storeSlug);
-  const { setJustCreatedAccount, setCreatedAccountEmail } = useCheckoutStore();
+  const { setJustCreatedAccount, setCreatedAccountEmail, clearAccountCreationFlags } = useCheckoutStore();
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -43,9 +45,17 @@ export default function CompleteAccountPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentCustomerId, setCurrentCustomerId] = useState<string>(customerIdFromUrl);
 
   // Use customer email if available, otherwise use from URL
   const email = customer?.email || emailFromUrl;
+
+  // Update customer ID from hook if available
+  useEffect(() => {
+    if (customer?.id && !currentCustomerId) {
+      setCurrentCustomerId(customer.id);
+    }
+  }, [customer?.id, currentCustomerId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +64,11 @@ export default function CompleteAccountPage() {
     // Validation
     if (!email) {
       setError("Email is required");
+      return;
+    }
+
+    if (!currentCustomerId) {
+      setError("Customer information is missing. Please try again.");
       return;
     }
 
@@ -133,7 +148,7 @@ export default function CompleteAccountPage() {
         
         // Try to auto-login after sign-up
         try {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password: formData.password,
           });
@@ -152,20 +167,38 @@ export default function CompleteAccountPage() {
         }
       }
 
-      // 2. If we have a customer record, update it with auth_user_id
-      if (customer?.id && authUserId) {
-        const { error: updateError } = await supabase
-          .from("store_customers")
-          .update({ 
-            auth_user_id: authUserId,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", customer.id);
+      // 2. CRITICAL FIX: Link auth_user_id to the EXISTING customer record
+      if (currentCustomerId && authUserId) {
+        console.log("🔗 Linking auth user to existing customer:", {
+          customerId: currentCustomerId,
+          authUserId: authUserId
+        });
+        
+        const linked = await linkAuthToCustomer(currentCustomerId, authUserId);
+        
+        if (!linked) {
+          console.warn("⚠️ Failed to link auth user ID to customer. Will try direct update.");
+          
+          // Try direct update as fallback
+          const { error: updateError } = await supabase
+            .from("store_customers")
+            .update({ 
+              auth_user_id: authUserId,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", currentCustomerId);
 
-        if (updateError) {
-          console.error("Failed to update customer auth ID:", updateError);
-          // Continue anyway - the user can still log in
+          if (updateError) {
+            console.error("❌ Direct update also failed:", updateError);
+            // Continue anyway - the user can still log in
+          } else {
+            console.log("✅ Direct update successful");
+          }
         }
+      } else if (customer?.id && authUserId) {
+        // Fallback to customer from hook
+        console.log("🔗 Linking auth user to customer from hook:", customer.id);
+        await linkAuthToCustomer(customer.id, authUserId);
       }
 
       // Clear customer cache
@@ -215,14 +248,14 @@ export default function CompleteAccountPage() {
     setFormData({ ...formData, confirmPassword: e.target.value });
   };
 
-  if (!email) {
+  if (!email || !currentCustomerId) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Email Required</CardTitle>
+            <CardTitle className="text-2xl">Information Required</CardTitle>
             <CardDescription>
-              Please provide an email to complete account setup
+              Please provide your email and customer information to complete account setup
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -252,6 +285,9 @@ export default function CompleteAccountPage() {
           <CardDescription className="text-base text-muted-foreground">
             Set a password for <strong className="text-foreground">{email}</strong> to access your orders
           </CardDescription>
+          <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+            Customer ID: {currentCustomerId.slice(0, 8)}...
+          </div>
         </CardHeader>
 
         <CardContent>

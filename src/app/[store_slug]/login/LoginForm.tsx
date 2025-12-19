@@ -11,6 +11,8 @@ import { EmailStep } from "../../components/auth/Customer/EmailStep";
 import { PasswordStep } from "../../components/auth/Customer/PasswordStep";
 import { LoadingStep } from "../../components/auth/Customer/LoadingStep";
 import { SheiLoader } from "../../components/ui/SheiLoader/loader";
+import { supabase } from "@/lib/supabase";
+import { linkAuthToCustomer } from "@/lib/queries/customers/getCustomerByEmail";
 
 type Step = "email" | "password" | "loading";
 
@@ -102,7 +104,7 @@ export function LoginForm() {
     }
   };
 
-  // Handle login function
+  // Handle login function - UPDATED TO LINK AUTH_USER_ID
   const handleLogin = async () => {
     if (!password || password.length < 6) {
       error("Please enter your password (minimum 6 characters)");
@@ -112,7 +114,67 @@ export function LoginForm() {
     setIsLoggingIn(true);
 
     try {
-      await authQueries.login(email, password);
+      // 1. Login with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase(),
+        password: password,
+      });
+
+      if (authError) {
+        if (authError.message.includes("Invalid login credentials")) {
+          throw new Error("Invalid password. Please try again.");
+        } else if (authError.message.includes("Email not confirmed")) {
+          throw new Error("Please verify your email address before logging in.");
+        } else {
+          throw authError;
+        }
+      }
+
+      if (!authData.user) {
+        throw new Error("Login failed. Please try again.");
+      }
+
+      // 2. Get the auth user ID
+      const authUserId = authData.user.id;
+      
+      // 3. Check if customer already has auth_user_id linked
+      if (customerData) {
+        if (!customerData.auth_user_id) {
+          // Customer exists but doesn't have auth_user_id linked - link it now
+          console.log("🔗 Linking auth user to existing customer:", {
+            customerId: customerData.id,
+            authUserId
+          });
+          
+          const linked = await linkAuthToCustomer(customerData.id, authUserId);
+          
+          if (linked) {
+            console.log("✅ Successfully linked auth user to customer");
+          } else {
+            console.warn("⚠️ Failed to link auth user to customer");
+          }
+        }
+        
+        // Also check for any other customers with same email that need linking
+        try {
+          const { data: otherCustomers } = await supabase
+            .from("store_customers")
+            .select("id, auth_user_id")
+            .eq("email", email.toLowerCase())
+            .neq("id", customerData.id);
+
+          if (otherCustomers && otherCustomers.length > 0) {
+            // Link auth_user_id to all customers with this email
+            for (const customer of otherCustomers) {
+              if (!customer.auth_user_id) {
+                await linkAuthToCustomer(customer.id, authUserId);
+              }
+            }
+          }
+        } catch (linkError) {
+          console.error("Error linking other customers:", linkError);
+        }
+      }
 
       success("Login successful!", { duration: 1000 });
       refreshCustomerData();
@@ -133,13 +195,8 @@ export function LoginForm() {
       }, 800);
 
     } catch (err: any) {
-      if (err.message.includes("Invalid login credentials")) {
-        error("Invalid password. Please try again.");
-      } else if (err.message.includes("Email not confirmed")) {
-        error("Please verify your email address before logging in.");
-      } else {
-        error(err.message || "Login failed. Please try again.");
-      }
+      console.error("Login error:", err);
+      error(err.message || "Login failed. Please try again.");
     } finally {
       setIsLoggingIn(false);
     }
