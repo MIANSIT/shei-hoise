@@ -15,8 +15,6 @@ export default function SidebarBrand({ collapsed }: SidebarBrandProps) {
         color: "var(--sidebar-foreground)",
         background: "var(--sidebar)",
       }}
-    >
-      {collapsed ? "🛒" : "Shei Admin"}
-    </div>
+    ></div>
   );
 }

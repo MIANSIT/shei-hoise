@@ -14,6 +14,10 @@ import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { USERTYPE } from "@/lib/types/users";
+import {
+  getStoreBySlugWithLogo,
+  StoreWithLogo,
+} from "@/lib/queries/stores/getStoreBySlugWithLogo";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -26,6 +30,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { session, loading } = useSupabaseAuth();
   const router = useRouter();
   const { role } = useCurrentUser();
+  const { storeSlug } = useCurrentUser();
+  const [store, setStore] = useState<StoreWithLogo | null>(null);
 
   // Set mounted to true after component mounts on client
   useEffect(() => {
@@ -41,6 +47,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       router.push("/");
     }
   }, [loading, session, router, role]);
+
+  useEffect(() => {
+    if (!storeSlug) return;
+
+    getStoreBySlugWithLogo(storeSlug)
+      .then((data) => setStore(data))
+      .catch((err) => console.error("Failed to fetch store:", err));
+  }, [storeSlug]);
 
   // Sidebar responsiveness - only run on client
   useEffect(() => {
@@ -74,9 +88,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Show loading state
   if (loading || (!loading && !session) || !mounted) {
     return (
-      <div className='flex items-center justify-center min-h-screen flex-col gap-4'>
-        <Spin size='large' />
-        <div className='text-gray-500'>Loading...</div>
+      <div className="flex items-center justify-center min-h-screen flex-col gap-4">
+        <Spin size="large" />
+        <div className="text-gray-500">Loading...</div>
       </div>
     );
   }
@@ -105,22 +119,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <AntdApp>
-        <div className='min-h-screen flex flex-col'>
+        <div className="min-h-screen flex flex-col">
           {/* Header */}
           <header
-            className='flex items-center justify-between p-4 shadow-md shrink-0'
+            className="flex items-center justify-between p-4 shadow-md shrink-0"
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
             }}
           >
-            <div className='flex items-center gap-2'>
-              <Image src='/logo.png' alt='Logo' width={40} height={40} />
-              <h1 className='text-lg font-bold'>Shei Hoise Dashboard</h1>
+            <div className="flex items-center gap-2">
+              {store?.logo_url ? (
+                <Image
+                  src={store.logo_url}
+                  alt={store.store_name || "Store Logo"}
+                  width={40} // set the desired width
+                  height={40} // set the desired height
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <Image src="/logo.png" alt="Logo" width={40} height={40} />
+              )}
+              <h1 className="text-lg font-bold">
+                {store?.store_name || "Dashboard"}
+              </h1>
 
               <button
                 onClick={() => setIsSidebarOpen((prev) => !prev)}
-                className='p-2 rounded hover:opacity-70 transition-transform duration-300'
+                className="p-2 rounded hover:opacity-70 transition-transform duration-300"
                 style={{ background: "var(--muted)" }}
               >
                 <PanelLeft
@@ -145,23 +171,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </button> */}
           </header>
 
-          <div className='flex flex-1 overflow-hidden'>
+          <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}
             <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
 
             {/* Main content */}
             <main
-              className='flex-1 flex flex-col overflow-hidden'
+              className="flex-1 flex flex-col overflow-hidden"
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
               }}
             >
-              <Toaster position='top-right' />
-              <div className='shrink-0'>
+              <Toaster position="top-right" />
+              <div className="shrink-0">
                 <Breadcrumb />
               </div>
-              <div className='flex-1 overflow-auto p-4'>{children}</div>
+              <div className="flex-1 overflow-auto p-4">{children}</div>
             </main>
           </div>
         </div>
