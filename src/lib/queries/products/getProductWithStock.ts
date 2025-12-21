@@ -1,4 +1,7 @@
+"use client";
+
 import { supabaseAdmin } from "@/lib/supabase";
+import { ProductStatus, StockFilter } from "@/lib/types/enums";
 
 export interface ProductImage {
   id: string;
@@ -23,12 +26,16 @@ export interface ProductVariant {
   base_price: number;
   discounted_price?: number | null;
   tp_price?: number | null;
+  sku: string | null;
   color?: string | null;
   stock: ProductStock;
   primary_image: ProductImage | null;
+  is_active: boolean;
 }
 
 export interface ProductWithStock {
+  status: ProductStatus;
+  sku: string | null;
   id: string;
   name: string;
   base_price: number;
@@ -37,130 +44,160 @@ export interface ProductWithStock {
   variants: ProductVariant[];
 }
 
-// Supabase response types
-interface DatabaseProductImage {
-  id: string;
-  product_id: string;
-  variant_id: string | null;
-  image_url: string;
-  alt_text: string | null;
-  is_primary: boolean;
-}
-
-interface DatabaseProductStock {
-  quantity_available: number;
-  quantity_reserved: number;
-  low_stock_threshold: number;
-  track_inventory: boolean;
-}
-
+// Database types
+type DatabaseProductImage = ProductImage;
+type DatabaseProductStock = ProductStock;
 interface DatabaseProductVariant {
   id: string;
+  product_id: string;
   variant_name: string;
   base_price: number;
   discounted_price: number | null;
   tp_price: number | null;
+  sku: string | null;
   color: string | null;
+  is_active: boolean;
   product_inventory: DatabaseProductStock[];
   product_images: DatabaseProductImage[];
 }
 
 interface DatabaseProduct {
+  status: ProductStatus;
   id: string;
   name: string;
   base_price: number;
+  sku: string | null;
   product_images: DatabaseProductImage[];
   product_inventory: DatabaseProductStock[];
   product_variants: DatabaseProductVariant[];
-  stores: Array<{
-    id: string;
-    store_slug: string;
-  }>;
+  stores: Array<{ id: string; store_slug: string }>;
 }
 
+/**
+ * Fetch products with optional search, stock filter, and pagination
+ */
 export async function getProductWithStock(
-  storeSlug: string
-): Promise<ProductWithStock[]> {
-  const { data, error } = await supabaseAdmin
+  storeSlug: string,
+  searchText?: string,
+  stockFilter: StockFilter = StockFilter.ALL,
+  page: number = 1,
+  pageSize: number = 10
+): Promise<{ data: ProductWithStock[]; total: number }> {
+  // Build Supabase query
+  let query = supabaseAdmin
     .from("products")
     .select(
       `
       id,
       name,
       base_price,
+      status, 
+      sku,
       product_images(id, product_id, variant_id, image_url, alt_text, is_primary),
-      product_inventory(
-        quantity_available, 
-        quantity_reserved, 
-        low_stock_threshold, 
-        track_inventory
-      ),
+      product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
       product_variants(
         id,
         variant_name,
         base_price,
+        sku,
         discounted_price,
         tp_price,
         color,
-        product_inventory(
-          quantity_available, 
-          quantity_reserved, 
-          low_stock_threshold, 
-          track_inventory
-        ),
+        is_active,
+        product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
         product_images(id, product_id, variant_id, image_url, alt_text, is_primary)
       ),
       stores!inner(id, store_slug)
-    `
+    `,
+      { count: "exact" }
     )
-    .eq("stores.store_slug", storeSlug);
+    .eq("stores.store_slug", storeSlug)
+    .range((page - 1) * pageSize, page * pageSize - 1);
 
-  if (error) {
-    throw new Error(
-      `Error fetching products for store ${storeSlug}: ${error.message}`
-    );
+  if (searchText) {
+    const pattern = `%${searchText}%`;
+    query = query.or(`name.ilike.${pattern},sku.ilike.${pattern}`);
   }
 
-  if (!data) {
-    return [];
-  }
+  const { data, count, error } = await query;
 
-  return data.map((p: DatabaseProduct) => {
+  if (error) throw new Error(`Error fetching products: ${error.message}`);
+  if (!data) return { data: [], total: 0 };
+
+  // Type-safe assertion
+  const products = data as unknown as DatabaseProduct[];
+
+  const mapped: ProductWithStock[] = products.map((p) => {
     const primaryProductImage =
       p.product_images?.find((img) => img.is_primary) || null;
+    const productInventory = p.product_inventory?.[0] || null;
+    const lowStockThreshold = productInventory?.low_stock_threshold ?? 10;
 
-    // Get product inventory with low_stock_threshold
-    const productInventory = p.product_inventory?.[0];
-    const lowStockThreshold = productInventory?.low_stock_threshold
-      ? Number(productInventory.low_stock_threshold)
-      : 10;
+    const variants: ProductVariant[] = p.product_variants.map((v) => {
+      const variantInventory = v.product_inventory?.[0] || null;
+      return {
+        id: v.id,
+        product_id: p.id,
+        variant_name: v.variant_name,
+        base_price: v.base_price,
+        discounted_price: v.discounted_price,
+        tp_price: v.tp_price,
+        color: v.color || null,
+        sku: v.sku ?? null,
+        is_active: v.is_active,
+        stock: variantInventory || {
+          quantity_available: 0,
+          quantity_reserved: 0,
+          low_stock_threshold: lowStockThreshold,
+          track_inventory: true,
+        },
+        primary_image: v.product_images?.find((img) => img.is_primary) || null,
+      };
+    });
 
     return {
       id: p.id,
       name: p.name,
       base_price: Number(p.base_price),
+      sku: p.sku ?? null,
       primary_image: primaryProductImage,
-      stock: productInventory || null,
-      variants: p.product_variants.map((v) => {
-        const variantInventory = v.product_inventory?.[0];
-        return {
-          id: v.id,
-          product_id: p.id,
-          variant_name: v.variant_name,
-          base_price: v.base_price,
-          discounted_price: v.discounted_price,
-          tp_price: v.tp_price,
-          color: v.color || null,
-          stock: variantInventory || {
-            quantity_available: 0,
-            quantity_reserved: 0,
-            low_stock_threshold: lowStockThreshold,
-            track_inventory: true,
-          },
-          primary_image:
-            v.product_images?.find((img) => img.is_primary) || null,
-        };
-      }),
+      stock: productInventory,
+      variants,
+      status: p.status as ProductStatus,
     };
   });
+
+  // Apply stock filter
+  const filtered = mapped.filter((product) => {
+    const productStockAvailable = product.stock?.quantity_available ?? 0;
+    const productLowStockThreshold = product.stock?.low_stock_threshold ?? 10;
+
+    const variantStockAvailable = product.variants.map(
+      (v) => v.stock.quantity_available
+    );
+
+    switch (stockFilter) {
+      case StockFilter.ALL:
+        return true;
+      case StockFilter.LOW:
+        return (
+          productStockAvailable <= productLowStockThreshold ||
+          variantStockAvailable.some((q) => q <= productLowStockThreshold)
+        );
+      case StockFilter.IN:
+        return (
+          productStockAvailable > productLowStockThreshold ||
+          variantStockAvailable.some((q) => q > productLowStockThreshold)
+        );
+      case StockFilter.OUT:
+        return (
+          productStockAvailable === 0 ||
+          variantStockAvailable.some((q) => q === 0)
+        );
+      default:
+        return true;
+    }
+  });
+
+  return { data: filtered, total: count ?? filtered.length };
 }

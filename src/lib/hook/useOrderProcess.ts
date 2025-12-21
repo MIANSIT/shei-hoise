@@ -1,11 +1,12 @@
-// lib/hook/useOrderProcess.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// lib/hook/useOrderProcess.ts - FIXED VERSION
 import { useState } from 'react';
 import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
 import useCartStore from '../store/cartStore';
 import { CartProductWithDetails, CartCalculations } from '../types/cart';
+import { OrderStatus, PaymentStatus } from '../types/enums';
 
 export function useOrderProcess(store_slug: string) {
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,8 @@ export function useOrderProcess(store_slug: string) {
     deliveryOption: string = 'standard',
     shippingFee: number = 0,
     cartItems?: CartProductWithDetails[],
-    calculations?: CartCalculations
+    calculations?: CartCalculations,
+    taxAmount: number = 0
   ) => {
     setLoading(true);
     setError(null);
@@ -32,6 +34,7 @@ export function useOrderProcess(store_slug: string) {
         paymentMethod,
         deliveryOption,
         shippingFee,
+        taxAmount,
         cartItems: cartItems?.length,
         calculations: calculations?.totalPrice
       });
@@ -57,7 +60,11 @@ export function useOrderProcess(store_slug: string) {
         throw new Error(`Some items are out of stock: ${itemNames}. Please update your cart.`);
       }
 
-      // Prepare order data
+      // ✅ Calculate total with tax
+      const subtotal = calculations?.subtotal || 0;
+      const totalWithTax = subtotal + shippingFee + taxAmount;
+
+      // Prepare order data with enum values
       const orderData = {
         storeId: storeId,
         orderNumber: generateCustomerOrderNumber(store_slug),
@@ -68,7 +75,7 @@ export function useOrderProcess(store_slug: string) {
           address: formData.shippingAddress,
           city: formData.city,
           country: formData.country,
-          customer_id: storeCustomerId,
+          customer_id: storeCustomerId, // This should come from the checkout page
         },
         orderProducts: cartItems.map(item => {
           return {
@@ -86,13 +93,14 @@ export function useOrderProcess(store_slug: string) {
             } : null,
           };
         }),
-        subtotal: calculations?.subtotal || 0,
-        taxAmount: 0,
-        discount: calculations?.totalDiscount || 0,
+        subtotal: subtotal,
+        taxAmount: taxAmount,
+        discount: 0, // ✅ FIXED: Always 0 for customer orders - product price differences are not order discounts
+        additionalCharges: 0, // Default to 0 for customer orders
         deliveryCost: shippingFee,
-        totalAmount: (calculations?.totalPrice || 0) + shippingFee,
-        status: 'pending' as const,
-        paymentStatus: 'pending' as const,
+        totalAmount: totalWithTax,
+        status: OrderStatus.PENDING,
+        paymentStatus: PaymentStatus.PENDING,
         paymentMethod,
         currency: 'BDT',
         deliveryOption,
@@ -103,7 +111,10 @@ export function useOrderProcess(store_slug: string) {
         customerInfo: {
           ...orderData.customerInfo,
           customer_id: storeCustomerId
-        }
+        },
+        taxAmount,
+        totalAmount: totalWithTax,
+        discount: orderData.discount // This should be 0
       });
 
       // Create the order
@@ -120,6 +131,7 @@ export function useOrderProcess(store_slug: string) {
         return {
           success: true,
           orderId: result.orderId,
+          orderNumber: orderData.orderNumber,
           message: 'Order placed successfully! Your cart has been cleared.'
         };
       } else {

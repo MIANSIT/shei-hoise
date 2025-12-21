@@ -11,6 +11,9 @@ import {
   ProductRow,
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
+// import { ProductRowWithMatch } from "./StockChangeTable";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -39,6 +42,14 @@ const StockTable: React.FC<StockTableProps> = ({
   loading,
   bulkActive = false,
 }) => {
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
@@ -103,19 +114,47 @@ const StockTable: React.FC<StockTableProps> = ({
             : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
 
         return (
-          <div className="flex items-center gap-2">
-            <span>{title}</span>
-            {shouldHighlight && (
-              <Tooltip title={tooltipTitle}>
-                <Tag color="red" className="text-xs">
-                  {isProductRow && (record as ProductRow).hasLowStockVariant
-                    ? "Has Low Stock"
-                    : "Low Stock"}
-                </Tag>
-              </Tooltip>
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span>{title}</span>
+              {shouldHighlight && (
+                <Tooltip title={tooltipTitle}>
+                  <Tag color="red" className="text-xs">
+                    {isProductRow && (record as ProductRow).hasLowStockVariant
+                      ? "Has Low Stock"
+                      : "Low Stock"}
+                  </Tag>
+                </Tooltip>
+              )}
+            </div>
+
+            {/* --- Show message if variants matched search --- */}
+            {/* {"variants" in record &&
+              (record as ProductRowWithMatch).hasMatchingVariants && (
+                <div className="text-sm text-blue-600 italic">
+                  Some variants match your search. Expand to view.
+                </div>
+              )} */}
           </div>
         );
+      },
+    },
+    {
+      title: "SKU",
+      dataIndex: "sku",
+      key: "sku",
+      render: (_sku, record: ProductRow | VariantRow) => {
+        // If product row has variants, show "SKU depends on variants"
+        if ("variants" in record && record.variants?.length) {
+          return (
+            <span className="italic text-gray-400">
+              SKU depends on variants
+            </span>
+          );
+        }
+
+        // Otherwise show SKU or fallback
+        return <span className="text-gray-600">{record.sku ?? "—"}</span>;
       },
     },
     {
@@ -133,7 +172,12 @@ const StockTable: React.FC<StockTableProps> = ({
 
         const price =
           typeof record.currentPrice === "number" ? record.currentPrice : 0;
-        return <span>৳{price.toFixed(2)}</span>;
+        return (
+          <span>
+            {displayCurrencyIconSafe}
+            {price.toFixed(2)}
+          </span>
+        );
       },
     },
     {
@@ -178,7 +222,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 onChange={(value) =>
                   onStockChange(parentId, variantId, Number(value ?? 0))
                 }
-                className={`!w-20 text-center font-bold [&>input]:text-center [&>input]:font-bold ${
+                className={`w-20! text-center font-bold [&>input]:text-center [&>input]:font-bold ${
                   isLowStock
                     ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
                     : ""
@@ -233,7 +277,21 @@ const StockTable: React.FC<StockTableProps> = ({
         expandedRowRender: (record) =>
           "variants" in record && record.variants?.length ? (
             <DataTable
-              columns={columns}
+              columns={columns.map((col) => ({
+                ...col,
+                width:
+                  col.key === "image"
+                    ? 50
+                    : col.key === "title"
+                    ? 150
+                    : col.key === "sku"
+                    ? 100
+                    : col.key === "currentPrice"
+                    ? 80
+                    : col.key === "stock"
+                    ? 80
+                    : col.width,
+              }))}
               data={record.variants.map((v) => ({
                 ...v,
                 productId: record.id,
@@ -247,6 +305,7 @@ const StockTable: React.FC<StockTableProps> = ({
               }
             />
           ) : null,
+
         rowExpandable: (record) =>
           "variants" in record && !!record.variants?.length,
       }}

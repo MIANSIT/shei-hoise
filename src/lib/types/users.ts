@@ -1,9 +1,12 @@
 // lib/types/users.ts
 import { z } from "zod";
+import { AdminUserWithProfile } from "../queries/user/getAdminUser";
+import { UserWithProfile } from "../queries/user/getUserProfile";
 
 export enum USERTYPE {
   STORE_OWNER = "store_owner",
   CUSTOMER = "customer",
+  ADMIN = "admin",
   SUPER_ADMIN = "super_admin",
 }
 
@@ -51,8 +54,10 @@ export interface DetailedCustomer extends TableCustomer {
   updated_at?: string;
   store_slug?: string;
   store_name?: string;
-  profile_id?: string | null; // ✅ ADDED PROFILE_ID
+  profile_id?: string | null;
   profile_details?: {
+    id?: string;
+    avatar_url?: string | null;
     date_of_birth?: string | null;
     gender?: string | null;
     address_line_1?: string | null;
@@ -64,3 +69,6 @@ export interface DetailedCustomer extends TableCustomer {
     country?: string | null;
   } | null;
 }
+
+// Add this type for union types
+export type AnyUserProfile = UserWithProfile | AdminUserWithProfile;

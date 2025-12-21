@@ -59,7 +59,7 @@ export function PersonalInfoCard({
             </div>
             <div className="mt-1 text-gray-900 space-y-2">
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 flex-shrink-0" />
+                <Mail className="w-4 h-4 shrink-0" />
                 <span className="break-all">{email}</span>
               </div>
               {emailVerified && (

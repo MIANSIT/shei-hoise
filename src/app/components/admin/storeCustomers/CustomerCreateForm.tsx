@@ -25,7 +25,7 @@ interface CustomerCreateFormProps {
   showSuccessMessage?: boolean;
   buttonText?: string;
   compact?: boolean;
-  resetKey?: number; // Add this to force reset
+  resetKey?: number;
 }
 
 interface CustomerFormData {
@@ -35,6 +35,7 @@ interface CustomerFormData {
   address: string;
   city: string;
   postal_code: string;
+  country?: string;
   notes?: string;
 }
 
@@ -43,14 +44,13 @@ export default function CustomerCreateForm({
   showSuccessMessage = true,
   buttonText = "Create Customer",
   compact = false,
-  resetKey, // Add this to destructuring
+  resetKey,
 }: CustomerCreateFormProps) {
   const { notification } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const { user, loading: userLoading } = useCurrentUser();
 
-  // Add this useEffect for reset functionality
   React.useEffect(() => {
     if (resetKey) {
       form.resetFields();
@@ -81,8 +81,7 @@ export default function CustomerCreateForm({
         address_line_1: values.address,
         city: values.city,
         postal_code: values.postal_code,
-        password: "AdminCustomer1232*",
-        country: "Bangladesh",
+        country: values.country || "Bangladesh",
       };
 
       const newCustomer = await dataService.createCustomer(customerData);
@@ -108,7 +107,9 @@ export default function CustomerCreateForm({
 
       notification.error({
         message: "Failed to Create Customer",
-        description: errorMessage,
+        description: errorMessage.includes("already exists")
+          ? "A customer with this email already exists. Please use a different email."
+          : errorMessage,
       });
     } finally {
       setLoading(false);
@@ -137,6 +138,7 @@ export default function CustomerCreateForm({
           layout="vertical"
           onFinish={onFinish}
           disabled={loading}
+          initialValues={{ country: "Bangladesh" }}
         >
           <Row gutter={16}>
             <Col xs={24} md={compact ? 24 : 12}>
@@ -164,7 +166,6 @@ export default function CustomerCreateForm({
                 ]}
               >
                 <Input
-                  type="email"
                   placeholder="customer@example.com"
                   size="large"
                   disabled={loading}
@@ -186,13 +187,12 @@ export default function CustomerCreateForm({
                         return Promise.reject(
                           new Error("Phone number is required")
                         );
-                      if (!validatePhone(value)) {
+                      if (!validatePhone(value))
                         return Promise.reject(
                           new Error(
                             "Please enter a valid Bangladeshi phone number"
                           )
                         );
-                      }
                       return Promise.resolve();
                     },
                   },
@@ -212,7 +212,7 @@ export default function CustomerCreateForm({
                 rules={[{ required: true, message: "City is required" }]}
               >
                 <Input
-                  placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
+                  placeholder="Enter city (e.g., Dhaka, Chittagong)"
                   size="large"
                   disabled={loading}
                 />
@@ -240,22 +240,26 @@ export default function CustomerCreateForm({
                 rules={[{ required: true, message: "Postal code is required" }]}
               >
                 <Input
-                  placeholder="Enter postal code (e.g., 1200, 1216)"
+                  placeholder="Enter postal code (e.g., 1200)"
                   size="large"
                   disabled={loading}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} md={compact ? 24 : 12}>
-              <Form.Item name="notes" label="Notes (Optional)">
-                <Input
-                  placeholder="Any additional notes..."
-                  size="large"
-                  disabled={loading}
-                />
+              <Form.Item name="country" label="Country">
+                <Input placeholder="Country" size="large" disabled={loading} />
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item name="notes" label="Notes (Optional)">
+            <Input
+              placeholder="Any additional notes..."
+              size="large"
+              disabled={loading}
+            />
+          </Form.Item>
 
           <Form.Item>
             <Button
@@ -276,15 +280,14 @@ export default function CustomerCreateForm({
           description={
             <Space direction="vertical" size={0}>
               <Text>
-                A customer account will be created with the provided
-                information.
+                The admin will create the customer account without a password.
               </Text>
               <Text>
-                Default password is set to:{" "}
-                <Text strong>AdminCustomer1232*</Text>
+                The customer will receive an email/letter to generate their own
+                password.
               </Text>
               <Text type="secondary">
-                Customer can change their password later.
+                Customer can update their information later.
               </Text>
             </Space>
           }

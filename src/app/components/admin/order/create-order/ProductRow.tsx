@@ -1,9 +1,9 @@
 "use client";
-import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Input } from "../../../../../components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../../../../../components/ui/select";
 import { Trash2 } from "lucide-react";
 import Image from "next/image";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface ProductItem {
   id: string;
   title: string;
@@ -31,7 +31,14 @@ export default function ProductRow({
 }: ProductRowProps) {
   const selectedProduct = allProducts.find((p) => p.id === product.id);
   const total = selectedProduct ? selectedProduct.currentPrice * product.quantity : 0;
-
+ const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   return (
     <div className="border border-white/20 rounded-md p-4 space-y-3">
       <Select
@@ -64,7 +71,7 @@ export default function ProductRow({
         <div className="flex-1 text-sm space-y-1">
           <div>
             <span className="font-medium">Unit Price:</span>{" "}
-            {selectedProduct ? `৳${selectedProduct.currentPrice}` : "-"}
+            {selectedProduct ? ` ${displayCurrencyIconSafe}${selectedProduct.currentPrice}` : "-"}
           </div>
           <div>
             <span className="font-medium">Stock:</span>{" "}
@@ -73,7 +80,7 @@ export default function ProductRow({
         </div>
 
         {selectedProduct?.images?.[0] && (
-          <div className="w-14 h-14 flex-shrink-0 relative">
+          <div className="w-14 h-14 shrink-0 relative">
             <Image
               src={selectedProduct.images[0]}
               alt={selectedProduct.title}
@@ -85,7 +92,7 @@ export default function ProductRow({
       </div>
 
       <div className="flex justify-between items-center mt-2 text-sm">
-        <div className="font-medium">Total: ৳{total}</div>
+        <div className="font-medium">Total:  {displayCurrencyIconSafe}{total}</div>
         <button onClick={() => onRemove(rowIndex)} className="text-red-400 hover:text-red-500">
           <Trash2 size={18} />
         </button>

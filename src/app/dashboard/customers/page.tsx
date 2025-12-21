@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Card, Typography, App, Tag } from "antd";
-import { TeamOutlined, ShoppingOutlined } from "@ant-design/icons";
+import { useState, useEffect } from "react";
+import { Card, App, Pagination, Spin, Button, Space } from "antd";
+import { TeamOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { DetailedCustomer } from "@/lib/types/users";
 import { PageHeader } from "@/app/components/admin/storeCustomers/view/PageHeader";
@@ -14,11 +14,11 @@ import { ProfileFormData } from "@/lib/types/profile";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useCustomerFormData } from "@/lib/hook/profile-user/useCustomerFormData";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { updateCustomerProfileAsAdmin } from "@/lib/queries/user/admin-customers";
+import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 
-const { Text } = Typography;
+// Constants for pagination
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function CustomerPage() {
   const { notification } = App.useApp();
@@ -27,24 +27,53 @@ export default function CustomerPage() {
   const [viewMode, setViewMode] = useState<"list" | "details" | "edit">("list");
   const [selectedCustomer, setSelectedCustomer] =
     useState<DetailedCustomer | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
 
-  // Use the custom hook
+  const { storeId, loading: userLoading } = useCurrentUser();
   const userFormData = useCustomerFormData(selectedCustomer);
 
-  // Use the hook to get store ID
-  const { storeId, loading: userLoading } = useCurrentUser();
+  // Use URL sync for search and pagination
+  const [searchTerm, setSearchTerm] = useUrlSync("search", "", (v) => v || "");
+  const [currentPage, setCurrentPage] = useUrlSync("page", 1, parseInteger);
+  const [pageSize, setPageSize] = useUrlSync(
+    "pageSize",
+    DEFAULT_PAGE_SIZE,
+    parseInteger
+  );
 
+  // Pagination state
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Fetch customers with search and pagination
   useEffect(() => {
-    const fetchCustomers = async () => {
-      if (!storeId || userLoading) return;
+    if (!storeId || userLoading) return;
 
+    const fetchCustomers = async () => {
       try {
         setLoading(true);
-        console.log("Fetching customers for store:", storeId);
-        const allCustomers = await getAllStoreCustomers(storeId);
-        setCustomers(allCustomers);
+
+        const result = await getAllStoreCustomers(
+          storeId,
+          searchTerm,
+          currentPage,
+          pageSize
+        );
+
+        if (
+          result &&
+          typeof result === "object" &&
+          "customers" in result &&
+          "totalCount" in result
+        ) {
+          setCustomers(result.customers);
+          setTotalCount(result.totalCount);
+          setTotalPages(result.totalPages);
+        } else {
+          setCustomers(result as DetailedCustomer[]);
+          setTotalCount((result as DetailedCustomer[]).length);
+          setTotalPages(1);
+        }
       } catch (error) {
         console.error("Error fetching customers:", error);
         notification.error({
@@ -57,92 +86,79 @@ export default function CustomerPage() {
     };
 
     fetchCustomers();
-  }, [storeId, userLoading, notification]);
+  }, [storeId, userLoading, notification, searchTerm, currentPage, pageSize]);
 
-  // Handle customer update - single function used by both edit views
+  // Update customer - Use ProfileFormData type
   const handleUpdateCustomer = async (
     customerId: string,
     data: ProfileFormData
   ) => {
-    setIsSaving(true);
     try {
-      // Use the admin function to update in database
-      await updateCustomerProfileAsAdmin(
+      const updated = await updateCustomerProfileAsAdmin(
         customerId,
         {
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone || "",
+          name: data.name,
+          phone: data.phone,
         },
         {
-          date_of_birth: data.date_of_birth || "",
-          gender: data.gender || "",
-          address_line_1: data.address_line_1 || "",
-          address_line_2: data.address_line_2 || "",
-          city: data.city || "",
-          state: data.state || "",
-          postal_code: data.postal_code || "",
-          country: data.country || "",
+          date_of_birth: data.date_of_birth,
+          gender: data.gender,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          postal_code: data.postal_code,
+          country: data.country,
         }
       );
 
-      // Transform the form data back to DetailedCustomer format
+      const nameParts = updated.customer.name.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       const updatedCustomer: DetailedCustomer = {
-        id: customerId,
-        name: `${data.first_name} ${data.last_name}`.trim(),
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        phone: data.phone || undefined,
+        id: updated.customer.id,
+        name: updated.customer.name,
+        first_name: firstName,
+        last_name: lastName,
+        email: updated.customer.email,
+        phone: updated.customer.phone || "",
+        status: "active",
+        order_count: 0,
+        source: "direct",
+        user_type: "customer",
+        created_at: updated.customer.created_at,
+        updated_at: updated.customer.updated_at,
+        profile_id: updated.customer.profile_id,
         profile_details: {
-          date_of_birth: data.date_of_birth || null,
-          gender: data.gender || null,
-          address_line_1: data.address_line_1 || null,
-          address_line_2: data.address_line_2 || null,
-          city: data.city || null,
-          state: data.state || null,
-          postal_code: data.postal_code || null,
-          country: data.country || null,
+          date_of_birth: updated.profile.date_of_birth,
+          gender: updated.profile.gender,
+          address_line_1: updated.profile.address,
+          address_line_2: null,
+          city: updated.profile.city,
+          state: updated.profile.state,
+          postal_code: updated.profile.postal_code,
+          country: updated.profile.country,
         },
-        updated_at: new Date().toISOString(),
-        // Preserve other existing properties
-        created_at: selectedCustomer?.created_at || new Date().toISOString(),
-        user_type: selectedCustomer?.user_type || "customer",
-        status: selectedCustomer?.status || "active",
-        source: selectedCustomer?.source || "direct",
-        order_count: selectedCustomer?.order_count || 0,
-        last_order_date: selectedCustomer?.last_order_date,
-        avatar_url: selectedCustomer?.avatar_url,
       };
 
-      // Update the customer in the local state
-      setCustomers((prevCustomers) =>
-        prevCustomers.map((c) =>
-          c.id === customerId ? { ...c, ...updatedCustomer } : c
-        )
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === customerId ? updatedCustomer : c))
       );
-
-      // Also update the selected customer if it's the same one
-      if (selectedCustomer && selectedCustomer.id === customerId) {
+      if (selectedCustomer?.id === customerId)
         setSelectedCustomer(updatedCustomer);
-      }
 
-      // Show success notification
       notification.success({
         message: "Customer Updated",
-        description: `${updatedCustomer.name} has been updated successfully.`,
+        description: `${updatedCustomer.name} updated successfully.`,
       });
 
       return updatedCustomer;
     } catch (error) {
-      console.error("Error saving customer:", error);
       notification.error({
         message: "Error",
-        description: "Failed to update customer. Please try again.",
+        description: "Failed to update customer.",
       });
       throw error;
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -153,16 +169,9 @@ export default function CustomerPage() {
 
   const handleSaveEdit = async (data: ProfileFormData) => {
     if (!selectedCustomer) return;
-
-    try {
-      await handleUpdateCustomer(selectedCustomer.id, data);
-      // Return to list view
-      setViewMode("list");
-      setSelectedCustomer(null);
-    } catch (error) {
-      // Error is already handled in handleUpdateCustomer
-      throw error;
-    }
+    await handleUpdateCustomer(selectedCustomer.id, data);
+    setViewMode("list");
+    setSelectedCustomer(null);
   };
 
   const handleCancelEdit = () => {
@@ -171,10 +180,10 @@ export default function CustomerPage() {
   };
 
   const handleDelete = (customer: DetailedCustomer) => {
-    setCustomers(customers.filter((c) => c.id !== customer.id));
+    setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
     notification.success({
       message: "Customer Deleted",
-      description: `${customer.name} has been deleted successfully.`,
+      description: `${customer.name} deleted successfully.`,
     });
   };
 
@@ -192,70 +201,54 @@ export default function CustomerPage() {
     router.push("/dashboard/customers/create-customer");
   };
 
-  const activeCustomers = customers.length;
-  const customersFromOrders = customers.filter(
-    (c) => c.source === "orders"
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number, pageSize?: number) => {
+    setCurrentPage(page);
+    if (pageSize) {
+      setPageSize(pageSize);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const activeCustomersOrders = customers.filter(
+    (c) => (c.order_count ?? 0) > 0
+  ).length;
+  const activeCustomersStatus = customers.filter(
+    (c) => c.status === "active"
   ).length;
 
-  // Render edit view directly
+  const customersThisMonth = customers.filter((c) => {
+    if (!c.created_at) return false;
+    const created = new Date(c.created_at);
+    return (
+      created.getMonth() === currentMonth &&
+      created.getFullYear() === currentYear
+    );
+  }).length;
+
+  // Views
   if (viewMode === "edit" && userFormData) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {/* Mobile Layout - Back button top right, title below */}
-            <div className="block sm:hidden">
-              <div className="flex justify-end mb-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-2"
-                  disabled={isSaving}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Cancel
-                </Button>
-              </div>
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Edit Customer
-                </h1>
-                <p className="text-gray-600 mt-2">
-                  Update customer information
-                </p>
-              </div>
-            </div>
-
-            {/* Desktop Layout - Back button left, title center */}
-            <div className="hidden sm:flex relative items-center justify-center">
-              <div className="absolute left-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  className="flex items-center gap-2"
-                  disabled={isSaving}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Customers
-                </Button>
-              </div>
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Edit Customer
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Update customer information
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Edit Form */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8">
           <EditProfileForm
             user={userFormData}
             onCancel={handleCancelEdit}
@@ -266,47 +259,35 @@ export default function CustomerPage() {
     );
   }
 
-  // Render details view
   if (viewMode === "details" && selectedCustomer) {
     return (
       <CustomerDetailsView
         customer={selectedCustomer}
         onBack={handleBackToList}
         onEdit={handleEdit}
-        onUpdateCustomer={handleUpdateCustomer} // Pass the update function
+        onUpdateCustomer={handleUpdateCustomer}
       />
     );
   }
 
-  // Render list view
   return (
-    <div style={{ padding: "24px" }}>
-      <PageHeader onAddCustomer={handleAddCustomer} />
-
-      <CustomerStats
-        totalCustomers={customers.length}
-        activeCustomers={activeCustomers}
+    <div>
+      <PageHeader
+        onAddCustomer={handleAddCustomer}
+        onSearchChange={handleSearchChange}
       />
-
+      <CustomerStats
+        totalCustomers={totalCount}
+        activeCustomersOrders={activeCustomersOrders}
+        activeCustomersStatus={activeCustomersStatus}
+        thisMonth={customersThisMonth}
+      />
       <Card
         title={
-          <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-            <div className="flex items-center gap-2 mb-1 md:mb-0">
-              <TeamOutlined />
-              <span>Customer List</span>
-            </div>
-            <Tag
-              icon={<ShoppingOutlined />}
-              color="blue"
-              className="w-fit text-center"
-            >
-              {customersFromOrders} from orders
-            </Tag>
-          </div>
-        }
-        extra={
-          <div className="hidden md:block">
-            <Text type="secondary">{customers.length} customers found</Text>
+          <div className="flex items-center gap-2">
+            <TeamOutlined />
+            Customer List
+            {loading && <Spin size="small" className="ml-2" />}
           </div>
         }
       >
@@ -316,7 +297,97 @@ export default function CustomerPage() {
           onDelete={handleDelete}
           onViewDetails={handleViewDetails}
           isLoading={loading}
+          storeId={storeId}
         />
+
+        {/* Responsive Pagination */}
+        {!loading && totalCount > 0 && (
+          <div className="mt-6">
+            {/* Desktop Pagination */}
+            <div className="hidden md:flex justify-between items-center">
+              <div className="text-gray-600">
+                Showing {(currentPage - 1) * pageSize + 1} to{" "}
+                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+                customers
+              </div>
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={totalCount}
+                onChange={handlePageChange}
+                onShowSizeChange={handlePageChange}
+                showSizeChanger
+                pageSizeOptions={[10, 25, 50, 100]}
+                showTotal={(total, range) =>
+                  `${range[0]}-${range[1]} of ${total} items`
+                }
+              />
+            </div>
+
+            {/* Mobile Pagination - Simple one by one */}
+            <div className="md:hidden">
+              <div className="flex flex-col gap-4">
+                {/* Page info */}
+                <div className="text-center text-gray-600 text-sm">
+                  Page {currentPage} of {totalPages} •{" "}
+                  {(currentPage - 1) * pageSize + 1}-
+                  {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+                  customers
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between items-center">
+                  <Button
+                    type="default"
+                    icon={<LeftOutlined />}
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                    className="flex-1 max-w-[120px]"
+                  >
+                    Previous
+                  </Button>
+
+                  <div className="text-center px-4">
+                    <span className="font-semibold text-gray-800">
+                      {currentPage}
+                    </span>
+                    <span className="text-gray-500"> / {totalPages}</span>
+                  </div>
+
+                  <Button
+                    type="default"
+                    icon={<RightOutlined />}
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className="flex-1 max-w-[120px]"
+                  >
+                    Next
+                  </Button>
+                </div>
+
+                {/* Page size selector for mobile */}
+                <div className="flex justify-center mt-2">
+                  <Space wrap>
+                    <span className="text-gray-600 text-sm">Show:</span>
+                    {[10, 25, 50].map((size) => (
+                      <Button
+                        key={size}
+                        type={pageSize === size ? "primary" : "default"}
+                        size="small"
+                        onClick={() => {
+                          setPageSize(size);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        {size}
+                      </Button>
+                    ))}
+                  </Space>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { CartProductWithDetails } from "@/lib/types/cart";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface CartItemsListProps {
   items?: CartProductWithDetails[];
   onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
@@ -29,7 +29,11 @@ export default function CartItemsList({
 }: CartItemsListProps) {
   const params = useParams();
   const currentStoreSlug = storeSlug || (params.store_slug as string);
-  
+   const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
   const [changingQuantities, setChangingQuantities] = useState<Record<string, "up" | "down">>({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -93,6 +97,11 @@ export default function CartItemsList({
       });
     }, 300);
   };
+
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
   const handleInputChange = (productId: string, variantId: string | null | undefined, value: string) => {
     const itemKey = `${productId}-${variantId || 'no-variant'}`;
@@ -305,10 +314,10 @@ export default function CartItemsList({
                 )}
 
                 <p className="text-sm text-muted-foreground">
-                  ৳{item.displayPrice.toFixed(2)} each
+                   {displayCurrencyIconSafe}{item.displayPrice.toFixed(2)} each
                   {item.discountPercentage > 0 && (
                     <span className="line-through text-xs ml-1">
-                      ৳{item.originalPrice.toFixed(2)}
+                       {displayCurrencyIconSafe}{item.originalPrice.toFixed(2)}
                     </span>
                   )}
                 </p>
@@ -383,7 +392,7 @@ export default function CartItemsList({
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.2 }}
               >
-                ৳{(item.displayPrice * item.quantity).toFixed(2)}
+                 {displayCurrencyIconSafe}{(item.displayPrice * item.quantity).toFixed(2)}
               </motion.p>
             </div>
           </div>

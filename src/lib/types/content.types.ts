@@ -23,6 +23,6 @@ export interface CTASectionProps {
   title: string;
   description: string;
   buttonText: string;
-  buttonHref: string;
+  buttonHref?: string;
   variant?: "primary" | "secondary";
 }

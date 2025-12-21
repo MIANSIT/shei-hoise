@@ -78,7 +78,7 @@ export default function StoresSection() {
           >
             <Link
               href={`/${store.store_slug}`}
-              className="relative flex flex-col items-center bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md border border-transparent rounded-xl shadow-2xl p-6 cursor-pointer hover:shadow-2xl transition-all"
+              className="relative flex flex-col items-center bg-linear-to-br from-white/30 to-white/10 backdrop-blur-md border border-transparent rounded-xl shadow-2xl p-6 cursor-pointer hover:shadow-2xl transition-all"
             >
               {/* Featured Ribbon */}
               {store.is_active && (

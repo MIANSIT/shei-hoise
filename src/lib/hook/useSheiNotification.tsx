@@ -40,12 +40,12 @@ export function useSheiNotification() {
         info: "#2563eb",    // text-blue-600 equivalent
       };
       
-      const closeBgColors: Record<ToastType, string> = {
-        success: "#bbf7d0", // hover:bg-green-200 equivalent
-        warning: "#fef08a", // hover:bg-yellow-200 equivalent
-        error: "#fecaca",   // hover:bg-red-200 equivalent
-        info: "#bfdbfe",    // hover:bg-blue-200 equivalent
-      };
+      // const closeBgColors: Record<ToastType, string> = {
+      //   success: "#bbf7d0", // hover:bg-green-200 equivalent
+      //   warning: "#fef08a", // hover:bg-yellow-200 equivalent
+      //   error: "#fecaca",   // hover:bg-red-200 equivalent
+      //   info: "#bfdbfe",    // hover:bg-blue-200 equivalent
+      // };
 
       const icons: Record<ToastType, ReactNode> = {
         success: <CheckCircle2 className="h-5 w-5" style={{ color: iconColors[type] }} />,
@@ -59,8 +59,8 @@ export function useSheiNotification() {
       
       toast(
         <div className="relative flex items-start gap-3 w-full max-w-[90vw]">
-          <div className="flex-shrink-0 mt-0.5">{icons[type]}</div>
-          <div className="flex-1 min-w-0 break-words text-sm font-medium" style={{ color: textColors[type] }}>
+          <div className="shrink-0 mt-0.5">{icons[type]}</div>
+          <div className="flex-1 min-w-0 wrap-break-word text-sm font-medium" style={{ color: textColors[type] }}>
             {content}
           </div>
           <Button

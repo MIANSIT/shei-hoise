@@ -2,16 +2,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { App } from "antd";
 import {
-  StoreOrder,
   OrderStatus,
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
+import { StoreOrder } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
 import dataService from "@/lib/queries/dataService";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification"; // Adjust the import path
 
 interface Props {
   order: StoreOrder;
@@ -34,23 +34,23 @@ const OrderProductTable: React.FC<Props> = ({
   onSaveShippingFee,
   onRefresh,
 }) => {
-  const { message } = App.useApp();
+  const notify = useSheiNotification(); // ✅ Using custom notification hook
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>(
     order.status
   );
   const [selectedPaymentStatus, setSelectedPaymentStatus] =
     useState<PaymentStatus>(order.payment_status);
   const [selectedDeliveryOption, setSelectedDeliveryOption] =
-    useState<DeliveryOption>(order.delivery_option || "courier");
+    useState<DeliveryOption>(order.delivery_option ?? DeliveryOption.COURIER);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<PaymentMethod>(order.payment_method as PaymentMethod || "cod"); // ✅ FIXED: Proper type casting
+    useState<PaymentMethod>((order.payment_method as PaymentMethod) || "cod");
   const [selectedShippingFee, setSelectedShippingFee] = useState<number>(
     order.shipping_fee
   );
   const [cancelNote, setCancelNote] = useState(order.notes || "");
   const [saving, setSaving] = useState(false);
 
-  const isLocked = order.status === "delivered" || order.status === "cancelled"; // ✅ FIXED: "delivered" not "delevered"
+  const isLocked = order.status === "delivered" || order.status === "cancelled";
 
   const handleSaveAll = async () => {
     if (saving) return;
@@ -84,11 +84,12 @@ const OrderProductTable: React.FC<Props> = ({
 
       if (selectedShippingFee !== order.shipping_fee && onSaveShippingFee) {
         updateData.shipping_fee = selectedShippingFee;
-        // Recalculate total amount if shipping fee changes
-        // Include discount_amount in calculation if it exists
         const discountAmount = (order as any).discount_amount || 0;
         updateData.total_amount =
-          order.subtotal - discountAmount + order.tax_amount + selectedShippingFee;
+          order.subtotal -
+          discountAmount +
+          order.tax_amount +
+          selectedShippingFee;
       }
 
       if (cancelNote !== order.notes) {
@@ -100,7 +101,8 @@ const OrderProductTable: React.FC<Props> = ({
         const result = await dataService.updateOrder(order.id, updateData);
 
         if (result.success) {
-          message.success("Order updated successfully!");
+          // ✅ Use custom notification hook
+          notify.success("Order updated successfully!", { duration: 3000 });
 
           // Update local state through parent callbacks
           if (selectedStatus !== order.status) onSaveStatus(selectedStatus);
@@ -123,23 +125,27 @@ const OrderProductTable: React.FC<Props> = ({
           }
           if (cancelNote !== order.notes) onSaveCancelNote?.(cancelNote);
 
-          // Refresh the orders list
+          // Trigger a complete refresh of orders and statistics
           if (onRefresh) {
-            setTimeout(() => {
-              onRefresh();
-            }, 500);
+            onRefresh();
           }
         } else {
-          message.error(`Failed to update order: ${result.error}`);
-          // Revert local state changes on error
+          // ✅ Use custom notification hook
+          notify.error(`Failed to update order: ${result.error}`, {
+            duration: 5000,
+          });
           revertChanges();
         }
       } else {
-        message.info("No changes to save.");
+        // ✅ Use custom notification hook
+        notify.info("No changes to save.", { duration: 2000 });
       }
-    } catch (error: any) {
-      console.error("Error saving order changes:", error);
-      message.error("Failed to save changes. Please try again.");
+    } catch (err: any) {
+      console.error("Error saving order changes:", err);
+      // ✅ Use custom notification hook
+      notify.error(err.message || "Failed to save changes. Please try again.", {
+        duration: 5000,
+      });
       revertChanges();
     } finally {
       setSaving(false);
@@ -149,14 +155,14 @@ const OrderProductTable: React.FC<Props> = ({
   const revertChanges = () => {
     setSelectedStatus(order.status);
     setSelectedPaymentStatus(order.payment_status);
-    setSelectedDeliveryOption(order.delivery_option || "courier");
-    setSelectedPaymentMethod(order.payment_method as PaymentMethod || "cod");
+    setSelectedDeliveryOption(order.delivery_option ?? DeliveryOption.COURIER);
+    setSelectedPaymentMethod((order.payment_method as PaymentMethod) || "cod");
     setSelectedShippingFee(order.shipping_fee);
     setCancelNote(order.notes || "");
   };
 
   return (
-    <div className="p-3 sm:p-4  rounded-md space-y-3 sm:space-y-4 border">
+    <div className="p-3 sm:p-4 rounded-md space-y-3 sm:space-y-4 border">
       <h3 className="font-semibold text-base sm:text-lg">Order Management</h3>
       <OrderControls
         status={order.status}
@@ -165,10 +171,10 @@ const OrderProductTable: React.FC<Props> = ({
         paymentStatus={order.payment_status}
         selectedPaymentStatus={selectedPaymentStatus}
         onSelectPaymentStatus={setSelectedPaymentStatus}
-        deliveryOption={order.delivery_option || "courier"}
+        deliveryOption={order.delivery_option ?? DeliveryOption.COURIER}
         selectedDeliveryOption={selectedDeliveryOption}
         onSelectDeliveryOption={setSelectedDeliveryOption}
-        paymentMethod={order.payment_method as PaymentMethod || "cod"} // ✅ FIXED: Proper type casting
+        paymentMethod={(order.payment_method as PaymentMethod) || "cod"}
         selectedPaymentMethod={selectedPaymentMethod}
         onSelectPaymentMethod={setSelectedPaymentMethod}
         cancelNote={cancelNote}

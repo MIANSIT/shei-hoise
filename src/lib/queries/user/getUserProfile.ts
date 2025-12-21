@@ -1,15 +1,16 @@
+// lib/queries/user/getUserProfile.ts
 import { supabase } from "@/lib/supabase";
+import { USERTYPE } from "@/lib/types/users";
 
-export type UserRole = "admin" | "store_owner" | "customer";
-
-export interface UserProfile {
+export interface CustomerProfile {
   id: string;
-  user_id: string;
+  store_customer_id: string;
   avatar_url: string | null;
   date_of_birth: string | null;
-  gender: string | null;
-  address_line_1: string | null;
-  address_line_2: string | null;
+  gender: "male" | "female" | "other" | null;
+  address: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
   city: string | null;
   state: string | null;
   postal_code: string | null;
@@ -20,58 +21,94 @@ export interface UserProfile {
 
 export interface UserWithProfile {
   id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
+  name: string;
   phone: string | null;
-  user_type: UserRole | null;
-  email_verified: boolean;
-  is_active: boolean;
+  email: string;
+  auth_user_id: string | null;
+  profile_id: string | null;
   created_at: string;
   updated_at: string;
-  store_id: string | null;
-  store_slug: string | null; // Add store_slug to the interface
-  store_name: string | null; // Add this
-  profile: UserProfile | null;
+  profile: CustomerProfile | null;
+  store_slug: string | null;
+  store_name: string | null;
+  user_type: USERTYPE;
 }
 
-export async function getUserProfile(userId: string): Promise<UserWithProfile> {
-  // Fetch user data with profile
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select(
-      `
-      *,
-      user_profiles (*)
-    `
-    )
-    .eq("id", userId)
+export async function getUserProfile(
+  customerId: string
+): Promise<UserWithProfile> {
+  // Get customer data
+  const { data: customerData, error: customerError } = await supabase
+    .from("store_customers")
+    .select("*")
+    .eq("id", customerId)
     .single();
 
-  if (userError) {
-    throw new Error(`Failed to fetch user profile: ${userError.message}`);
+  if (customerError) {
+    console.error("Error fetching customer:", customerError);
+    throw new Error(`Failed to fetch customer profile: ${customerError.message}`);
   }
 
-  // Fetch store data if store_id exists
-  let storeSlug = null;
-  let storeName = null;
-  if (userData.store_id) {
-    const { data: storeData, error: storeError } = await supabase
-      .from("stores")
-      .select("store_slug, store_name")
-      .eq("id", userData.store_id)
+  // Get profile data separately
+  let profile: CustomerProfile | null = null;
+  if (customerData.profile_id) {
+    const { data: profileData, error: profileError } = await supabase
+      .from("customer_profiles")
+      .select("*")
+      .eq("id", customerData.profile_id)
       .single();
 
-    if (!storeError && storeData) {
+    if (!profileError && profileData) {
+      profile = {
+        ...profileData,
+        avatar_url: profileData.avatar_url ?? null,
+        date_of_birth: profileData.date_of_birth ?? null,
+        gender: profileData.gender ?? null,
+        address: profileData.address ?? null,
+        city: profileData.city ?? null,
+        state: profileData.state ?? null,
+        postal_code: profileData.postal_code ?? null,
+        country: profileData.country ?? null,
+      };
+    }
+  }
+
+  // Get store link information
+  let storeSlug: string | null = null;
+  let storeName: string | null = null;
+  
+  const { data: linkData } = await supabase
+    .from("store_customer_links")
+    .select("store_id")
+    .eq("customer_id", customerId)
+    .limit(1);
+
+  if (linkData && linkData.length > 0) {
+    const { data: storeData } = await supabase
+      .from("stores")
+      .select("store_slug, store_name")
+      .eq("id", linkData[0].store_id)
+      .single();
+
+    if (storeData) {
       storeSlug = storeData.store_slug;
       storeName = storeData.store_name;
     }
   }
 
+  // Ensure all fields are properly typed
   return {
-    ...userData,
+    id: customerData.id,
+    name: customerData.name || '',
+    phone: customerData.phone || null,
+    email: customerData.email || '',
+    auth_user_id: customerData.auth_user_id || null,
+    profile_id: customerData.profile_id || null,
+    created_at: customerData.created_at || new Date().toISOString(),
+    updated_at: customerData.updated_at || new Date().toISOString(),
+    profile: profile,
     store_slug: storeSlug,
-    store_name: storeName, // Add store name
-    profile: userData.user_profiles?.[0] || null,
+    store_name: storeName,
+    user_type: USERTYPE.CUSTOMER, // Store customers are always customers
   };
 }

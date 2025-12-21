@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Check, Eye } from "lucide-react";
 import { Product } from "@/lib/types/product";
 import useCartStore from "@/lib/store/cartStore";
-
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface ProductCardProps {
   store_slug: string;
   product: Product;
@@ -20,13 +20,17 @@ export default function ProductCard({
   store_slug,
   product,
   onAddToCart,
-  isLoading = false,
-}: ProductCardProps) {
+}: // isLoading = false,
+ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const { cart } = useCartStore();
-
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const variant = product.variants?.[0];
   const hasVariants = product.variants && product.variants.length > 0;
   const displayPrice =
@@ -180,6 +184,10 @@ export default function ProductCard({
     return words.join(" ");
   };
 
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+
   return (
     <Card
       className={`flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border `}
@@ -197,7 +205,7 @@ export default function ProductCard({
           />
           <div className="absolute inset-0 flex justify-between items-start p-4">
             {/* Category Badge */}
-            <span className="text-card-foreground text-xs uppercase tracking-wider bg-[var(--badge)] px-2 py-1 rounded-lg">
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
               {product.category?.name || "Uncategorized"}
             </span>
 
@@ -242,16 +250,16 @@ export default function ProductCard({
                 productInStock ? "text-foreground" : "text-muted-foreground"
               }`}
             >
-              ৳{displayPrice.toFixed(2)}
+               {displayCurrencyIconSafe}{displayPrice.toFixed(2)}
             </span>
 
             {calculatedDiscount > 0 && productInStock && (
               <span className="text-sm sm:text-base text-chart-5 line-through relative">
-                ৳ {product.base_price.toFixed(2)}
+                 {displayCurrencyIconSafe} {product.base_price.toFixed(2)}
               </span>
             )}
           </div>
-          <div className="mt-1 h-[10px]">
+          <div className="mt-1 h-2.5">
             {hasVariants ? (
               <span className="text-xs font-medium text-popover bg-card-foreground px-1 rounded">
                 Price varies by variant
@@ -293,7 +301,7 @@ export default function ProductCard({
                   size="sm"
                   className={`w-full gap-2 overflow-hidden cursor-pointer ${
                     showSuccess
-                      ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
+                      ? "bg-linear-to-r from-yellow-400 to-yellow-600 text-primary-foreground shadow-lg"
                       : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
                   }`}
                 >

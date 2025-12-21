@@ -7,7 +7,7 @@ import FooterBottom from "./FooterBottom";
 
 export default function Footer() {
   return (
-    <footer className="bg-background text-muted-foreground  w-full mt-auto border-t border-border">
+    <footer className=" text-muted-foreground  w-full mt-auto border-t border-border">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="block md:hidden">
           <FooterMobile />

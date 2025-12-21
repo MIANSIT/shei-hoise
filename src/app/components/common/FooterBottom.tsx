@@ -21,7 +21,7 @@ export default function FooterBottom({
   isStore = false, // Default to false for main website
 }: FooterBottomProps) {
   return (
-    <div className="border-t border-border bg-background">
+    <div className="border-t border-border ">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Desktop Layout */}
         <div className="hidden md:block">

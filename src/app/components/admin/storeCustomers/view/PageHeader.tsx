@@ -1,44 +1,49 @@
-// app/components/admin/customers/PageHeader.tsx
 import React from "react";
-import { Button, Typography, Divider } from "antd";
-import { UserAddOutlined } from "@ant-design/icons";
-
-const { Title, Text } = Typography;
+import { Button, Divider, Input, Space } from "antd";
+import { UserAddOutlined, SearchOutlined } from "@ant-design/icons";
 
 interface PageHeaderProps {
   onAddCustomer: () => void;
+  onSearchChange: (value: string) => void;
 }
 
-export function PageHeader({ onAddCustomer }: PageHeaderProps) {
+export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: 16,
-        }}
-      >
-        <div>
-          <Title level={2} style={{ margin: 0 }}>
-            Customers
-          </Title>
-          <Text type="secondary">
-            Manage your customer information and details
-          </Text>
+    <div className="mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        {/* Left Title Section */}
+        <div className="w-80">
+          <Space.Compact className="w-full ">
+            <Input
+              placeholder="Search name, email or phone"
+              allowClear
+              onChange={(e) => onSearchChange(e.target.value)}
+              size="large"
+            />
+            <Button
+              type="primary"
+              size="large"
+              icon={<SearchOutlined />}
+              onClick={() => {}}
+            />
+          </Space.Compact>
         </div>
-        <Button
-          type="primary"
-          icon={<UserAddOutlined />}
-          size="large"
-          onClick={onAddCustomer}
-        >
-          Add Customer
-        </Button>
+
+        {/* Right Section: Add Button */}
+        <div className="flex flex-wrap gap-3">
+          <Button
+            type="primary"
+            icon={<UserAddOutlined />}
+            size="large"
+            onClick={onAddCustomer}
+            className="h-12"
+          >
+            Add Customer
+          </Button>
+        </div>
       </div>
-      <Divider style={{ margin: "16px 0" }} />
+
+      <Divider className="my-4!" />
     </div>
   );
 }

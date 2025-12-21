@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useUserProfile } from "@/lib/hook/profile-user/useUserProfile";
+import { useState, useEffect, useRef } from "react";
+import { useUserProfile } from "@/lib/hook/profile-user/useAdminProfile";
 import { updateUserProfile } from "@/lib/queries/user/updateUserProfile";
 import Footer from "../../components/common/Footer";
 import { UserLoadingSkeleton } from "../../components/skeletons/UserLoadingSkeleton";
@@ -11,16 +11,18 @@ import { ProfileCard } from "../../components/user-profile/ProfileCard";
 import { StoreInfoCard } from "../../components/user-profile/StoreInfoCard";
 import { AccountInfoCard } from "../../components/user-profile/AccountInfoCard";
 import { PersonalInfoCard } from "../../components/user-profile/PersonalInfoCard";
-import { ProfileDetailsCard } from "../../components/user-profile/ProfileDetailsCard";
-import { EditProfileForm } from "../../components/user-profile/EditProfileForm";
-import { UserWithProfile } from "@/lib/queries/user/getUserProfile";
-import { ProfileFormData } from "@/lib/types/profile";
+import { ProfileDetailsCard } from "../../components/user-profile/adminProfile/AdminPersonalDetails";
+import { EditProfileForm } from "../../components/user-profile/adminProfile/EditAdminProfile";
+import { AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
+import { ProfileFormData } from "@/lib/types/adminProfile";
 
 export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserWithProfile | null>(null);
-
+  const [currentUser, setCurrentUser] = useState<AdminUserWithProfile | null>(
+    null
+  );
+  const formRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (user) {
       setCurrentUser(user);
@@ -34,6 +36,11 @@ export default function StoreOwnerProfilePage() {
 
   const handleEdit = () => {
     setIsEditing(true);
+
+    // Wait for next render
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100); // small delay to ensure form is rendered
   };
 
   const handleCancel = () => {
@@ -120,7 +127,7 @@ export default function StoreOwnerProfilePage() {
         emailVerified={displayUser?.email_verified}
       />
 
-      <main className="flex-grow py-8">
+      <main className="grow py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 space-y-6">
@@ -148,7 +155,7 @@ export default function StoreOwnerProfilePage() {
               />
             </div>
 
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6" ref={formRef}>
               {isEditing ? (
                 <EditProfileForm
                   user={displayUser!}

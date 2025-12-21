@@ -1,207 +1,204 @@
-// File: components/forms/FormField.tsx
 "use client";
 
 import React from "react";
 import { Controller, Control, FieldValues, Path } from "react-hook-form";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
 
 type Option = { label: string; value: string | number };
 
 type BaseProps<T extends FieldValues> = {
-  control: Control<T>;
+  control?: Control<T>; // optional for react-hook-form
+  value?: T[Path<T>]; // controlled input
+  onChange?: (value: T[Path<T>]) => void; // controlled input
   name: Path<T>;
   label?: string;
   required?: boolean;
-  // error?: string | null;
   readOnly?: boolean;
-  disabled?: boolean; // <-- add this
+  disabled?: boolean;
   placeholder?: string;
-  onChange?: (value: T[Path<T>]) => void;
-  className?: string; // <-- add this
+  className?: string;
+  tooltip?: string;
+  as?: "input" | "textarea" | "select" | "checkbox";
+  type?: "text" | "email" | "password" | "number"; // input type
+  options?: Option[]; // for select
 };
 
-// Input
-type InputFieldProps<T extends FieldValues> = BaseProps<T> & {
-  as?: "input";
-  type?: "text" | "email" | "password" | "number";
-};
-
-// Textarea
-type TextareaFieldProps<T extends FieldValues> = BaseProps<T> & {
-  as: "textarea";
-};
-
-// Select
-type SelectFieldProps<T extends FieldValues> = BaseProps<T> & {
-  as: "select";
-  options?: Option[];
-};
-
-// Checkbox
-type CheckboxFieldProps<T extends FieldValues> = BaseProps<T> & {
-  as: "checkbox";
-};
-
-// Number
-type NumberFieldProps<T extends FieldValues> = BaseProps<T> & {
-  as?: "input";
-  type: "number";
-};
-
-export type FormFieldProps<T extends FieldValues> =
-  | InputFieldProps<T>
-  | TextareaFieldProps<T>
-  | SelectFieldProps<T>
-  | CheckboxFieldProps<T>
-  | NumberFieldProps<T>;
+export type FormFieldProps<T extends FieldValues> = BaseProps<T>;
 
 const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
-  const { control, name, label, required, onChange } = props as BaseProps<T>;
+  const {
+    control,
+    value,
+    onChange,
+    name,
+    label,
+    required,
+    readOnly,
+    disabled,
+    placeholder,
+    className,
+    tooltip,
+    as = "input",
+    type = "text",
+    options = [],
+  } = props;
 
   const commonClasses =
     "w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500";
-
   const readOnlyClasses = "bg-gray-100 text-gray-600 cursor-not-allowed";
+  const extraClass = className ?? "";
 
-  const extraClass = props.className ?? "";
+  // Strongly typed field & error
+  type FieldType = {
+    value: T[Path<T>] | undefined;
+    onChange: (value: T[Path<T>]) => void;
+  };
+  type FieldStateType = {
+    error?: { message?: string };
+  };
+
+  const renderInput = (field: FieldType, fieldState?: FieldStateType) => {
+    const inputValue =
+      type === "number" ? field.value ?? "" : field.value ?? "";
+
+    if (as === "textarea") {
+      return (
+        <>
+          <textarea
+            id={name}
+            placeholder={placeholder}
+            className={`${commonClasses} ${extraClass} resize-none min-h-20`}
+            disabled={readOnly || disabled}
+            value={inputValue as string}
+            onChange={(e) => {
+              field.onChange(e.target.value as T[Path<T>]);
+              onChange?.(e.target.value as T[Path<T>]);
+            }}
+          />
+          {fieldState?.error?.message && (
+            <p className="text-red-500 text-sm mt-1">
+              {fieldState.error.message}
+            </p>
+          )}
+        </>
+      );
+    }
+
+    if (as === "select") {
+      return (
+        <>
+          <select
+            id={name}
+            value={inputValue as string | number}
+            disabled={readOnly || disabled}
+            className={`${commonClasses} ${extraClass}`}
+            onChange={(e) => {
+              field.onChange(e.target.value as T[Path<T>]);
+              onChange?.(e.target.value as T[Path<T>]);
+            }}
+          >
+            {placeholder && (
+              <option value="" disabled hidden>
+                {placeholder}
+              </option>
+            )}
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {fieldState?.error?.message && (
+            <p className="text-red-500 text-sm mt-1">
+              {fieldState.error.message}
+            </p>
+          )}
+        </>
+      );
+    }
+
+    if (as === "checkbox") {
+      return (
+        <>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={!!inputValue}
+              disabled={readOnly || disabled}
+              onChange={(e) => {
+                const val = e.target.checked as T[Path<T>];
+                field.onChange(val);
+                onChange?.(val);
+              }}
+              className="w-4 h-4 rounded border-gray-300"
+            />
+            {label && <span>{label}</span>}
+          </div>
+          {fieldState?.error?.message && (
+            <p className="text-red-500 text-sm mt-1">
+              {fieldState.error.message}
+            </p>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <input
+          type={type}
+          id={name}
+          placeholder={placeholder}
+          className={`${commonClasses} ${
+            readOnly ? readOnlyClasses : ""
+          } ${extraClass}`}
+          readOnly={readOnly}
+          disabled={disabled}
+          value={inputValue as string | number}
+          onChange={(e) => {
+            const val: T[Path<T>] =
+              type === "number"
+                ? e.target.value === ""
+                  ? (undefined as unknown as T[Path<T>])
+                  : (parseFloat(e.target.value) as T[Path<T>])
+                : (e.target.value as T[Path<T>]);
+            field.onChange(val);
+            onChange?.(val);
+          }}
+        />
+        {fieldState?.error?.message && (
+          <p className="text-red-500 text-sm mt-1">
+            {fieldState.error.message}
+          </p>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="flex flex-col w-full scroll-mt-24" id={`field-${name}`}>
-      {label && (
+      {label && as !== "checkbox" && (
         <label htmlFor={name} className="text-sm font-semibold mb-1">
           {label} {required && <span className="text-red-500">*</span>}
+          {tooltip && (
+            <Tooltip title={tooltip} placement="top">
+              <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+            </Tooltip>
+          )}
         </label>
       )}
-
-      <Controller
-        control={control}
-        name={name}
-        render={({ field, fieldState }) => {
-          // TEXTAREA
-          if ("as" in props && props.as === "textarea") {
-            const p = props as TextareaFieldProps<T>;
-            return (
-              <>
-                <textarea
-                  id={name}
-                  {...field}
-                  placeholder={p.placeholder}
-                  className={`${commonClasses}${extraClass} resize-none min-h-[80px]`}
-                  disabled={p.readOnly}
-                  onChange={(e) => {
-                    field.onChange(e.target.value as T[Path<T>]);
-                    onChange?.(e.target.value as T[Path<T>]);
-                  }}
-                  value={field.value ?? ""}
-                />
-                <p className="text-red-500 text-sm mt-1">
-                  {fieldState.error?.message}
-                </p>
-              </>
-            );
+      {control ? (
+        <Controller
+          control={control}
+          name={name}
+          render={({ field, fieldState }) =>
+            renderInput(field as FieldType, fieldState as FieldStateType)
           }
-
-          // SELECT
-          if ("as" in props && props.as === "select") {
-            const p = props as SelectFieldProps<T>;
-            return (
-              <>
-                <select
-                  id={name}
-                  {...field}
-                  value={field.value ?? ""}
-                  className={commonClasses}
-                  disabled={p.readOnly}
-                  onChange={(e) => {
-                    field.onChange(e.target.value as T[Path<T>]);
-                    onChange?.(e.target.value as T[Path<T>]);
-                  }}
-                >
-                  {p.placeholder && (
-                    <option value="" disabled hidden>
-                      {p.placeholder}
-                    </option>
-                  )}
-                  {p.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-red-500 text-sm mt-1">
-                  {fieldState.error?.message}
-                </p>
-              </>
-            );
-          }
-
-          // CHECKBOX
-          if ("as" in props && props.as === "checkbox") {
-            const p = props as CheckboxFieldProps<T>;
-            return (
-              <>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={!!field.value}
-                    onChange={(e) => {
-                      field.onChange(e.target.checked as T[Path<T>]);
-                      onChange?.(e.target.checked as T[Path<T>]);
-                    }}
-                    className="w-4 h-4 rounded border-gray-300"
-                    disabled={p.disabled || p.readOnly}
-                  />
-                  <span>{p.label}</span>
-                </div>
-                <p className="text-red-500 text-sm mt-1">
-                  {fieldState.error?.message}
-                </p>
-              </>
-            );
-          }
-
-          // NUMBER or DEFAULT INPUT
-          // NUMBER or DEFAULT INPUT
-          const p = props as InputFieldProps<T> | NumberFieldProps<T>;
-          const isNumber = p.type === "number";
-
-          // Controlled value for input element
-          const inputValue: string | number = isNumber
-            ? field.value ?? "" // show "" when undefined
-            : field.value ?? "";
-
-          return (
-            <>
-              <input
-                {...field}
-                type={p.type ?? "text"}
-                placeholder={p.placeholder}
-                className={`${commonClasses} ${
-                  p.readOnly ? readOnlyClasses : ""
-                } ${extraClass}`}
-                readOnly={p.readOnly} // make input actually read-only
-                value={inputValue}
-                onChange={(e) => {
-                  let newValue: T[Path<T>];
-
-                  if (isNumber) {
-                    newValue =
-                      e.target.value === ""
-                        ? (undefined as unknown as T[Path<T>])
-                        : (parseFloat(e.target.value) as T[Path<T>]);
-                  } else {
-                    newValue = e.target.value as T[Path<T>];
-                  }
-
-                  field.onChange(newValue);
-                  onChange?.(newValue);
-                }}
-              />
-              <p className="text-red-500 text-sm mt-1">
-                {fieldState.error?.message}
-              </p>
-            </>
-          );
-        }}
-      />
+        />
+      ) : (
+        renderInput({ value, onChange } as FieldType)
+      )}
     </div>
   );
 };

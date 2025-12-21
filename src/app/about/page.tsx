@@ -98,7 +98,7 @@ export default function AboutPage() {
                 </p>
               </div>
             </div>
-            <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-8 text-primary-foreground">
+            <div className="bg-linear-to-br from-primary to-primary/80 rounded-2xl p-8 text-primary-foreground">
               <div className="bg-primary-foreground/10 rounded-xl p-6 backdrop-blur-sm">
                 <h3 className="text-2xl font-bold mb-4">
                   Why Choose Shei Hoise?
@@ -168,7 +168,7 @@ export default function AboutPage() {
           title="Start Your Shei Hoise Journey Today"
           description="Join thousands of successful entrepreneurs and transform your Facebook business with our 1-month free trial"
           buttonText="Schedule Free Trial"
-          buttonHref="/signup"
+          buttonHref="/demo-request"
           variant="primary"
         />
       </main>

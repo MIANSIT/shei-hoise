@@ -12,8 +12,8 @@ import CheckoutForm from "./UserCheckoutForm";
 import ShippingMethod from "./ShippingMethod";
 import { CartProductWithDetails, CartCalculations } from "@/lib/types/cart";
 import useCartStore from "@/lib/store/cartStore";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
-
 interface UnifiedCheckoutLayoutProps {
   storeSlug: string;
   cartItems: CartProductWithDetails[];
@@ -24,8 +24,12 @@ interface UnifiedCheckoutLayoutProps {
   onShippingChange: (method: string, fee: number) => void;
   selectedShipping: string;
   shippingFee: number;
+  taxAmount: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
+  // Removed unused props:
+  // currentCustomer?: any;
+  // isUserLoggedIn?: boolean;
 }
 
 export default function UnifiedCheckoutLayout({
@@ -38,6 +42,7 @@ export default function UnifiedCheckoutLayout({
   onShippingChange,
   selectedShipping,
   shippingFee,
+  taxAmount,
   isProcessing,
   mode = "checkout",
 }: UnifiedCheckoutLayoutProps) {
@@ -45,14 +50,20 @@ export default function UnifiedCheckoutLayout({
     "cart"
   );
   const [isClearing, setIsClearing] = useState(false);
-
-  // Get cart store functions for checkout mode
+  const {
+    // currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
 
-  // Calculate total with shipping
-  const totalWithShipping = calculations.totalPrice + shippingFee;
+  const totalWithShippingAndTax =
+    calculations.totalPrice + shippingFee + taxAmount;
 
-  // Handle quantity changes
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  // const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+
   const handleQuantityChange = (
     productId: string,
     variantId: string | null,
@@ -61,28 +72,22 @@ export default function UnifiedCheckoutLayout({
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Handle item removal
   const handleRemoveItem = (productId: string, variantId: string | null) => {
     if (mode === "checkout") {
       removeItem(productId, variantId);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Handle cart clearing
   const handleClearCart = () => {
     if (mode === "checkout") {
       setIsClearing(true);
       clearStoreCart(storeSlug);
       setTimeout(() => setIsClearing(false), 300);
     }
-    // In confirm mode, we don't update the cart as it's from URL
   };
 
-  // Show error state
   if (error) {
     return (
       <div className='container mx-auto p-4 lg:p-8'>
@@ -102,7 +107,6 @@ export default function UnifiedCheckoutLayout({
     );
   }
 
-  // Show loading state
   if (loading && cartItems.length === 0) {
     return (
       <div className='container mx-auto p-4 lg:p-8'>
@@ -122,7 +126,6 @@ export default function UnifiedCheckoutLayout({
 
   return (
     <div className='container mx-auto p-4 lg:p-8 pb-20 lg:pb-8'>
-      {/* Header */}
       <div className='text-center lg:text-left mb-6 lg:mb-8'>
         <h1 className='text-2xl lg:text-3xl font-bold text-foreground'>
           {mode === "confirm" ? "Confirm Your Order" : "Checkout"}
@@ -134,7 +137,6 @@ export default function UnifiedCheckoutLayout({
         </p>
       </div>
 
-      {/* Progress Indicator - Mobile Only */}
       <div className='lg:hidden mb-6'>
         <div className='flex items-center justify-between text-sm mb-2'>
           <button
@@ -171,7 +173,6 @@ export default function UnifiedCheckoutLayout({
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8'>
-        {/* Cart Items Card */}
         <div
           className={`${
             activeSection === "customer" ? "hidden lg:block" : "block"
@@ -193,7 +194,7 @@ export default function UnifiedCheckoutLayout({
                   </p>
                 </div>
               </div>
-              <div className='h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2'></div>
+              <div className='h-1 bg-linear-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2'></div>
             </CardHeader>
             <CardContent className='space-y-4'>
               {cartItems.length === 0 ? (
@@ -227,10 +228,13 @@ export default function UnifiedCheckoutLayout({
                 <div className='space-y-3 pt-4 border-t border-border'>
                   <div className='flex justify-between text-foreground'>
                     <span>Subtotal:</span>
-                    <span>৳{calculations.subtotal.toFixed(2)}</span>
+                    <span>
+                      {" "}
+                      {displayCurrencyIconSafe}
+                      {calculations.subtotal.toFixed(2)}
+                    </span>
                   </div>
 
-                  {/* Shipping Method */}
                   <div className='border-t border-border pt-3'>
                     <ShippingMethod
                       storeSlug={storeSlug}
@@ -243,16 +247,16 @@ export default function UnifiedCheckoutLayout({
                   <div className='flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border'>
                     <span>Total:</span>
                     <motion.span
-                      key={`total-${totalWithShipping}`}
+                      key={`total-${totalWithShippingAndTax}`}
                       initial={{ scale: 1.1 }}
                       animate={{ scale: 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                      ৳{totalWithShipping.toFixed(2)}
+                      {displayCurrencyIconSafe}
+                      {totalWithShippingAndTax.toFixed(2)}
                     </motion.span>
                   </div>
 
-                  {/* Continue to Details Button - Mobile Only */}
                   <Button
                     className='w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4'
                     onClick={() => setActiveSection("customer")}
@@ -266,7 +270,6 @@ export default function UnifiedCheckoutLayout({
           </Card>
         </div>
 
-        {/* Customer Information Card */}
         <div
           className={`${
             activeSection === "cart" ? "hidden lg:block" : "block"
@@ -288,7 +291,7 @@ export default function UnifiedCheckoutLayout({
                     </p>
                   </div>
                 </div>
-                <div className='h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full shadow-lg shadow-blue-500/30 mt-2'></div>
+                <div className='h-1 bg-linear-to-r from-blue-400 to-blue-600 rounded-full shadow-lg shadow-blue-500/30 mt-2'></div>
               </CardHeader>
               <CardContent>
                 <CheckoutForm
@@ -296,11 +299,11 @@ export default function UnifiedCheckoutLayout({
                   isLoading={isProcessing}
                   shippingMethod={selectedShipping}
                   shippingFee={shippingFee}
-                  totalAmount={totalWithShipping}
+                  taxAmount={taxAmount}
+                  totalAmount={totalWithShippingAndTax}
                   mode={mode}
                 />
 
-                {/* Back Button - Mobile Only */}
                 <Button
                   variant='outline'
                   className='w-full lg:hidden mt-4'

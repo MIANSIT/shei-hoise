@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { getProductWithStock } from "@/lib/queries/products/getProductWithStock";
 import StockTableMobile from "./StockTableMobile";
 import StockTable from "./StockTable"; // desktop table
@@ -15,40 +15,87 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
+import { ProductStatus, StockFilter } from "@/lib/types/enums";
 
-const StockChangeTable: React.FC = () => {
+export interface ProductRowWithMatch extends ProductRow {
+  hasMatchingVariants?: boolean;
+}
+
+interface StockChangeTableProps {
+  searchText: string;
+  stockFilter: StockFilter;
+  currentPage: number;
+  pageSize: number;
+  onTotalChange?: (total: number) => void; // notify parent about total items
+}
+
+const StockChangeTable: React.FC<StockChangeTableProps> = ({
+  searchText,
+  stockFilter,
+  currentPage,
+  pageSize,
+  onTotalChange,
+}) => {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [loading, setLoading] = useState(true);
   const [bulkActive, setBulkActive] = useState(false);
 
-  const notify = useSheiNotification();
   const { storeSlug, loading: userLoading } = useCurrentUser();
+  const notify = useSheiNotification();
 
-  const fetchProducts = async () => {
-    if (!storeSlug) {
-      console.warn("⚠️ No store slug found, skipping product fetch");
-      return;
-    }
+  // Fetch products
+  const fetchProducts = useCallback(async () => {
+    if (!storeSlug) return;
+
     setLoading(true);
     try {
-      const data = await getProductWithStock(storeSlug);
-      setProducts(mapProductsForModernTable(data));
+      const result = await getProductWithStock(
+        storeSlug,
+        searchText,
+        stockFilter,
+        currentPage,
+        pageSize
+      );
+
+      // Step 1: Filter out DRAFT/INACTIVE products
+      const activeProducts = (result.data ?? []).filter(
+        (p) =>
+          p.status !== ProductStatus.DRAFT &&
+          p.status !== ProductStatus.INACTIVE
+      );
+
+      // Step 2: Map to table rows and remove inactive variants
+      const mapped: ProductRow[] = activeProducts.length
+        ? mapProductsForModernTable(activeProducts).map((product) => ({
+            ...product,
+            variants: product.variants?.filter((v) => v.is_active) || [],
+          }))
+        : [];
+
+      setProducts(mapped);
+
+      if (onTotalChange) onTotalChange(result.total ?? 0);
     } catch (err) {
-      console.error("❌ Failed to fetch products:", err);
-      notify.error("Failed to load product stock");
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    storeSlug,
+    searchText,
+    stockFilter,
+    currentPage,
+    pageSize,
+    onTotalChange,
+  ]);
 
   useEffect(() => {
-    if (!userLoading && storeSlug) {
-      fetchProducts();
-    }
-  }, [userLoading, storeSlug]);
+    if (!userLoading && storeSlug) fetchProducts();
+  }, [userLoading, storeSlug, fetchProducts]);
 
+  // --- Stock editing ---
   const handleStockChange = (
     productId: string,
     variantId: string | null,
@@ -63,16 +110,8 @@ const StockChangeTable: React.FC = () => {
     quantity: number
   ) => {
     const product = products.find((p) => p.id === productId);
-    if (!product) {
-      notify.error("Product not found");
-      return;
-    }
-
-    // Check for negative stock
-    if (quantity < 0) {
-      notify.error("Stock cannot be negative");
-      return;
-    }
+    if (!product) return notify.error("Product not found");
+    if (quantity < 0) return notify.error("Stock cannot be negative");
 
     try {
       await updateInventory({
@@ -88,14 +127,13 @@ const StockChangeTable: React.FC = () => {
       await fetchProducts();
       notify.success("Stock updated successfully");
     } catch (err) {
-      console.error("Failed to update stock:", err);
+      console.error(err);
       notify.error("Failed to update stock");
     }
   };
 
   const handleBulkUpdate = async (value: number) => {
     if (value === 0 || selectedRowKeys.length === 0) return;
-
     setBulkActive(true);
 
     for (const key of selectedRowKeys) {
@@ -127,62 +165,58 @@ const StockChangeTable: React.FC = () => {
     setBulkActive(false);
   };
 
-  // Fixed rowSelection with proper typing
+  // --- Row selection for desktop table ---
   const rowSelection: TableRowSelection<ProductRow | VariantRow> = {
     selectedRowKeys,
-    onChange: (newSelectedRowKeys: React.Key[]) => {
-      setSelectedRowKeys(newSelectedRowKeys);
-    },
-    // Optional: Only allow selecting products (not variants)
+    onChange: setSelectedRowKeys,
     getCheckboxProps: (record: ProductRow | VariantRow) => ({
-      disabled: !("variants" in record), // Disable selection for variants
+      disabled: !("variants" in record),
     }),
   };
 
-  if (userLoading) {
+  if (userLoading)
     return <p className="text-center text-gray-500">Loading user...</p>;
-  }
-
-  if (!storeSlug) {
+  if (!storeSlug)
     return (
       <p className="text-center text-gray-500">No store found for this user.</p>
     );
-  }
 
   return (
     <div className="space-y-4">
-      <div>
-        <LowStockSummary products={products} />
-      </div>
-      <BulkStockUpdate
-        selectedCount={selectedRowKeys.length}
-        onUpdate={handleBulkUpdate}
-        loading={bulkActive}
-      />
-
-      {/* Mobile view */}
-      <StockTableMobile
-        products={products}
-        editedStocks={editedStocks}
-        onStockChange={handleStockChange}
-        onSingleUpdate={handleSingleUpdate}
-        selectedRowKeys={selectedRowKeys}
-        onSelectChange={setSelectedRowKeys}
-        bulkActive={bulkActive}
-      />
-
-      {/* Desktop view */}
-      <div className="hidden md:block">
-        <StockTable
-          products={products}
-          editedStocks={editedStocks}
-          onStockChange={handleStockChange}
-          onSingleUpdate={handleSingleUpdate}
-          rowSelection={rowSelection} // Use the properly typed rowSelection
-          loading={loading}
-          bulkActive={bulkActive}
-        />
-      </div>
+      {products.length === 0 && !loading ? (
+        <p className="text-center text-gray-500">No products found.</p>
+      ) : (
+        <>
+          <div>
+            <LowStockSummary products={products} />
+          </div>
+          <BulkStockUpdate
+            selectedCount={selectedRowKeys.length}
+            onUpdate={handleBulkUpdate}
+            loading={bulkActive}
+          />
+          <StockTableMobile
+            products={products}
+            editedStocks={editedStocks}
+            onStockChange={handleStockChange}
+            onSingleUpdate={handleSingleUpdate}
+            selectedRowKeys={selectedRowKeys}
+            onSelectChange={setSelectedRowKeys}
+            bulkActive={bulkActive}
+          />
+          <div className="hidden md:block">
+            <StockTable
+              products={products}
+              editedStocks={editedStocks}
+              onStockChange={handleStockChange}
+              onSingleUpdate={handleSingleUpdate}
+              rowSelection={rowSelection}
+              loading={loading}
+              bulkActive={bulkActive}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };

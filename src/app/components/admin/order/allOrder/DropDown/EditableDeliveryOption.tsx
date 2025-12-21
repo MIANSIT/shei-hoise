@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
-import { DeliveryOption } from "../../../../../../lib/types/order";
+import { DeliveryOption } from "../../../../../../lib/types/enums"; // Change this import path
 
 interface Props {
   option: DeliveryOption;
@@ -13,6 +13,8 @@ const DELIVERY_OPTIONS = [
   { value: "pathao", label: "Pathao" },
   { value: "courier", label: "Courier" },
   { value: "other", label: "Other" },
+  { value: "inside dhaka", label: "Inside Dhaka" },
+  { value: "outside dhaka", label: "Outside Dhaka" },
 ];
 
 const DeliveryOptionSelect: React.FC<{

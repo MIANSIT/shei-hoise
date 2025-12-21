@@ -6,6 +6,8 @@ import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { useRouter } from "next/navigation";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -16,10 +18,11 @@ interface SaveOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "shipped" | "cancelled";
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  status: OrderStatus; // ✅ CHANGED: Use enum
+  paymentStatus: PaymentStatus; // ✅ CHANGED: Use enum
   paymentMethod: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
@@ -34,6 +37,7 @@ export default function SaveOrderButton({
   subtotal,
   taxAmount,
   discount,
+  additionalCharges,
   deliveryCost,
   totalAmount,
   status,
@@ -46,9 +50,12 @@ export default function SaveOrderButton({
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  
+   const {
+    currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   const showConfirm = () => {
-    // Prevent submission if there's an email error
     if (emailError) {
       notification.error({
         message: "Cannot Create Order",
@@ -66,11 +73,12 @@ export default function SaveOrderButton({
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
           <Text type="secondary">Email: {customerInfo.email}</Text>
-          <Text type="secondary">Subtotal: ৳{subtotal.toFixed(2)}</Text>
-          <Text type="secondary">Discount: ৳{discount.toFixed(2)}</Text>
-          <Text type="secondary">Delivery: ৳{deliveryCost.toFixed(2)}</Text>
-          <Text type="secondary">Tax: ৳{taxAmount.toFixed(2)}</Text>
-          <Text strong>Total Amount: ৳{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">Subtotal:  {displayCurrencyIconSafe}{subtotal.toFixed(2)}</Text>
+          <Text type="secondary">Discount:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
+          <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
+          <Text type="secondary">Delivery:  {displayCurrencyIconSafe}{deliveryCost.toFixed(2)}</Text>
+          <Text type="secondary">Tax:  {displayCurrencyIconSafe}{taxAmount.toFixed(2)}</Text>
+          <Text strong>Total Amount:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
               A new customer record will be created in the system.
@@ -84,6 +92,12 @@ export default function SaveOrderButton({
     });
   };
 
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencySafe = displayCurrency || "BDT"; // fallback
+
   const handleSave = async () => {
     if (disabled || emailError) return;
 
@@ -92,7 +106,6 @@ export default function SaveOrderButton({
       const finalCustomerInfo = { ...customerInfo };
       let customerCreated = false;
 
-      // Only create new customer if no customer_id exists AND no email error
       if (!customerInfo.customer_id && !emailError) {
         try {
           if (
@@ -136,7 +149,6 @@ export default function SaveOrderButton({
         } catch (customerError: any) {
           console.error("Error creating customer:", customerError);
 
-          // Show detailed error and ask if they want to continue
           const shouldContinue = await new Promise((resolve) => {
             modal.confirm({
               title: "Customer Creation Failed",
@@ -162,10 +174,8 @@ export default function SaveOrderButton({
 
           if (!shouldContinue) {
             setIsLoading(false);
-            return; // Stop the process if user cancels
+            return;
           }
-
-          // Continue without customer_id
         }
       }
 
@@ -177,17 +187,19 @@ export default function SaveOrderButton({
         subtotal,
         taxAmount,
         discount,
+        additionalCharges,
         deliveryCost,
         totalAmount,
         status,
         paymentStatus,
         paymentMethod,
-        currency: "BDT" as const,
+        currency: displayCurrencySafe,
         deliveryOption: finalCustomerInfo.deliveryMethod,
       };
 
-      console.log("📦 Sending order data with discount:", {
+      console.log("📦 Sending order data with additional charges:", {
         discount,
+        additionalCharges,
         subtotal,
         deliveryCost,
         taxAmount,
@@ -211,8 +223,9 @@ export default function SaveOrderButton({
               <Text>{successMessage}</Text>
               <Text type="secondary">Order ID: {result.orderId}</Text>
               <Text type="secondary">Customer Email: {customerInfo.email}</Text>
-              <Text type="secondary">Discount Applied: ৳{discount.toFixed(2)}</Text>
-              <Text strong>Total: ৳{totalAmount.toFixed(2)}</Text>
+              <Text type="secondary">Discount Applied:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
+              <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
+              <Text strong>Total:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
             </Space>
           ),
           onOk: () => {

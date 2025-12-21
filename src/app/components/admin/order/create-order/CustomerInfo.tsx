@@ -1,24 +1,12 @@
-// app/components/admin/order/create-order/CustomerInfo.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
 import React from "react";
-import {
-  Card,
-  Form,
-  Input,
-  Select,
-  Row,
-  Col,
-  Tag,
-  Alert,
-  Space,
-  Typography,
-} from "antd";
+import { Card, Row, Col, Space, Typography, Alert } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
 import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
+import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
 
-const { Option } = Select;
-const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 interface CustomerInfoProps {
@@ -47,23 +35,18 @@ export default function CustomerInfo({
     return phoneRegex.test(phone.replace(/\s/g, ""));
   };
 
-  const isPhoneValid = customerInfo.phone
-    ? validatePhone(customerInfo.phone)
-    : true;
+  const [touchedFields, setTouchedFields] = React.useState<
+    Partial<Record<keyof CustomerInfoType, boolean>>
+  >({});
 
   const handleFieldChange = (field: keyof CustomerInfoType, value: any) => {
     setCustomerInfo((prev) => ({ ...prev, [field]: value }));
-    
-    // Special handling for email to trigger validation
-    if (field === "email") {
-      onEmailChange(value);
-    }
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    if (field === "email") onEmailChange(value);
   };
 
-  // Filter valid shipping fees with proper locations
   const validShippingFees = React.useMemo(() => {
     if (!Array.isArray(shippingFees)) return [];
-
     return shippingFees.filter(
       (fee) =>
         fee &&
@@ -75,17 +58,12 @@ export default function CustomerInfo({
     );
   }, [shippingFees]);
 
-  // Get the selected shipping fee for display
-  const selectedShippingFee = React.useMemo(() => {
-    if (!customerInfo.deliveryOption || validShippingFees.length === 0)
-      return null;
+  const showPhoneError =
+    touchedFields.phone &&
+    (!customerInfo.phone || !validatePhone(customerInfo.phone));
 
-    return validShippingFees.find(
-      (fee) =>
-        fee.name.toLowerCase().replace(/\s+/g, "-") ===
-        customerInfo.deliveryOption
-    );
-  }, [customerInfo.deliveryOption, validShippingFees]);
+  const showEmailError =
+    touchedFields.email && (!customerInfo.email || emailError);
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -96,223 +74,178 @@ export default function CustomerInfo({
               Customer Information
             </Title>
             {isExistingCustomer && (
-              <Tag color="blue" style={{ marginTop: "8px" }}>
+              <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
                 Existing Customer
-              </Tag>
+              </Text>
             )}
           </div>
 
-          <Form layout="vertical">
-            <Form.Item label="Order ID">
-              <Input value={orderId} disabled size="large" />
-            </Form.Item>
+          <FormField name="orderId" label="Order ID" value={orderId} readOnly />
 
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="Customer Name"
-                  required
-                  validateStatus={!customerInfo.name ? "error" : ""}
-                  help={!customerInfo.name ? "Customer name is required" : ""}
-                >
-                  <Input
-                    placeholder="Enter customer name"
-                    value={customerInfo.name}
-                    onChange={(e) => handleFieldChange("name", e.target.value)}
-                    size="large"
-                    disabled={isExistingCustomer}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="Customer Email"
-                  required
-                  validateStatus={
-                    !customerInfo.email ? "error" : emailError ? "error" : ""
-                  }
-                  help={
-                    emailError 
-                      ? emailError 
-                      : !customerInfo.email 
-                      ? "Email is required" 
-                      : ""
-                  }
-                >
-                  <Input
-                    type="email"
-                    placeholder="customer@example.com"
-                    value={customerInfo.email}
-                    onChange={(e) => handleFieldChange("email", e.target.value)}
-                    size="large"
-                    disabled={isExistingCustomer}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="Customer Phone"
-                  required
-                  validateStatus={
-                    !isPhoneValid ? "error" : !customerInfo.phone ? "error" : ""
-                  }
-                  help={
-                    !isPhoneValid
-                      ? "Please enter a valid phone number"
-                      : !customerInfo.phone
-                      ? "Phone number is required"
-                      : ""
-                  }
-                >
-                  <Input
-                    placeholder="017********"
-                    value={customerInfo.phone}
-                    onChange={(e) => handleFieldChange("phone", e.target.value)}
-                    size="large"
-                    disabled={isExistingCustomer}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              label="Customer Address"
-              required
-              validateStatus={!customerInfo.address ? "error" : ""}
-              help={!customerInfo.address ? "Address is required" : ""}
-            >
-              <TextArea
-                placeholder="Enter complete address"
-                value={customerInfo.address}
-                onChange={(e) => handleFieldChange("address", e.target.value)}
-                rows={3}
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                name="name"
+                label="Customer Name"
+                placeholder="Enter customer name"
+                required
+                tooltip="Enter the full name of the customer as it appears on official documents or for delivery purposes."
+                value={customerInfo.name}
+                onChange={(val) => handleFieldChange("name", val)}
               />
-            </Form.Item>
-
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="City"
-                  required
-                  validateStatus={!customerInfo.city ? "error" : ""}
-                  help={!customerInfo.city ? "City is required" : ""}
-                >
-                  <Input
-                    placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
-                    value={customerInfo.city}
-                    onChange={(e) => handleFieldChange("city", e.target.value)}
-                    size="large"
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="Postal Code"
-                  required
-                  validateStatus={!customerInfo.postal_code ? "error" : ""}
-                  help={
-                    !customerInfo.postal_code ? "Postal code is required" : ""
-                  }
-                >
-                  <Input
-                    placeholder="Enter postal code (e.g., 1200, 1216)"
-                    value={customerInfo.postal_code || ""}
-                    onChange={(e) =>
-                      handleFieldChange("postal_code", e.target.value)
-                    }
-                    size="large"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="Delivery City Option"
-                  required
-                  validateStatus={!customerInfo.deliveryOption ? "error" : ""}
-                  help={
-                    !customerInfo.deliveryOption
-                      ? "Delivery option is required"
-                      : ""
-                  }
-                >
-                  <Select
-                    placeholder="Select delivery option"
-                    value={customerInfo.deliveryOption || undefined}
-                    onChange={(value) =>
-                      handleFieldChange("deliveryOption", value)
-                    }
-                    size="large"
-                    loading={settingsLoading}
-                    disabled={settingsLoading}
-                  >
-                    {validShippingFees.map((fee) => (
-                      <Option
-                        key={fee.name}
-                        value={fee.name.toLowerCase().replace(/\s+/g, "-")}
-                      >
-                        <Space
-                          direction="vertical"
-                          size={0}
-                          style={{ width: "100%" }}
-                        >
-                          <Space>
-                            <span>{fee.name}</span>
-                          </Space>
-                        </Space>
-                      </Option>
-                    ))}
-
-                    {validShippingFees.length === 0 && !settingsLoading && (
-                      <Option disabled value="no-options">
-                        No delivery options configured
-                      </Option>
-                    )}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label="Delivery Method"
-                  required
-                  validateStatus={!customerInfo.deliveryMethod ? "error" : ""}
-                  help={
-                    !customerInfo.deliveryMethod
-                      ? "Delivery method is required"
-                      : ""
-                  }
-                >
-                  <Select
-                    placeholder="Select delivery method"
-                    value={customerInfo.deliveryMethod || undefined}
-                    onChange={(value) =>
-                      handleFieldChange("deliveryMethod", value)
-                    }
-                    size="large"
-                  >
-                    <Option value="courier">Courier</Option>
-                    <Option value="pathao">Pathao</Option>
-                    <Option value="redx">RedX</Option>
-                    <Option value="steadfast">Steadfast</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item label="Order Notes">
-              <TextArea
-                placeholder="Any special instructions or notes..."
-                value={customerInfo.notes}
-                onChange={(e) => handleFieldChange("notes", e.target.value)}
-                rows={2}
+              {touchedFields.name && !customerInfo.name && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  Customer name is required
+                </Text>
+              )}
+            </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                name="email"
+                label="Customer Email"
+                placeholder="customer@example.com"
+                required
+                tooltip="Enter a valid email address. Used for order confirmation and communication. Ensure it’s unique unless linking to an existing customer."
+                value={customerInfo.email}
+                onChange={(val) => handleFieldChange("email", val)}
               />
-            </Form.Item>
-          </Form>
+              {showEmailError && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  {emailError || "Email is required"}
+                </Text>
+              )}
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                name="phone"
+                label="Customer Phone"
+                placeholder="017********"
+                required
+                tooltip="Enter a valid phone number, e.g., 017XXXXXXXX. Include country code if necessary for international deliveries."
+                value={customerInfo.phone}
+                onChange={(val) => handleFieldChange("phone", val)}
+              />
+              {showPhoneError && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  {!customerInfo.phone
+                    ? "Phone number is required"
+                    : "Please enter a valid phone number"}
+                </Text>
+              )}
+            </Col>
+          </Row>
+
+          <FormField
+            name="address"
+            label="Customer Address"
+            placeholder="Enter complete address"
+            as="textarea"
+            required
+            tooltip="Enter the complete delivery address including street, house number, and any landmarks to ensure accurate delivery."
+            value={customerInfo.address}
+            onChange={(val) => handleFieldChange("address", val)}
+          />
+          {touchedFields.address && !customerInfo.address && (
+            <Text type="danger" style={{ fontSize: 12 }}>
+              Address is required
+            </Text>
+          )}
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                name="city"
+                label="City"
+                placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
+                required
+                tooltip="Enter the city where the order will be delivered, e.g., Dhaka, Chittagong."
+                value={customerInfo.city}
+                onChange={(val) => handleFieldChange("city", val)}
+              />
+              {touchedFields.city && !customerInfo.city && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  City is required
+                </Text>
+              )}
+            </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                name="postal_code"
+                tooltip="Provide the postal or ZIP code for the delivery address to assist with accurate shipping."
+                label="Postal Code"
+                placeholder="Enter postal code (e.g., 1200, 1216)"
+                required
+                value={customerInfo.postal_code || ""}
+                onChange={(val) => handleFieldChange("postal_code", val)}
+              />
+              {touchedFields.postal_code && !customerInfo.postal_code && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  Postal code is required
+                </Text>
+              )}
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                name="deliveryOption"
+                label="Delivery City Option"
+                tooltip="Select the city-specific delivery option. This determines the shipping fees and available delivery partners."
+                as="select"
+                required
+                placeholder="Select delivery option"
+                options={validShippingFees.map((fee) => ({
+                  label: fee.name,
+                  value: fee.name.toLowerCase().replace(/\s+/g, "-"),
+                }))}
+                value={customerInfo.deliveryOption}
+                onChange={(val) => handleFieldChange("deliveryOption", val)}
+                disabled={settingsLoading}
+              />
+              {touchedFields.deliveryOption && !customerInfo.deliveryOption && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  Delivery option is required
+                </Text>
+              )}
+            </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                name="deliveryMethod"
+                label="Delivery Method"
+                tooltip="Select the preferred delivery method, e.g., Courier, Pathao, RedX, Steadfast. This affects delivery time and cost."
+                as="select"
+                required
+                placeholder="Select delivery method"
+                options={[
+                  { label: "Courier", value: "courier" },
+                  { label: "Pathao", value: "pathao" },
+                  { label: "RedX", value: "redx" },
+                  { label: "Steadfast", value: "steadfast" },
+                ]}
+                value={customerInfo.deliveryMethod}
+                onChange={(val) => handleFieldChange("deliveryMethod", val)}
+              />
+              {touchedFields.deliveryMethod && !customerInfo.deliveryMethod && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  Delivery method is required
+                </Text>
+              )}
+            </Col>
+          </Row>
+
+          <FormField
+            name="notes"
+            label="Order Notes"
+            tooltip="Optional: Provide special instructions for delivery or any other notes related to the order."
+            as="textarea"
+            placeholder="Any special instructions or notes..."
+            value={customerInfo.notes}
+            onChange={(val) => handleFieldChange("notes", val)}
+          />
 
           {!isExistingCustomer && emailError && (
             <Alert
@@ -321,7 +254,8 @@ export default function CustomerInfo({
                 <Space direction="vertical" size={0}>
                   <Text>{emailError}</Text>
                   <Text type="secondary">
-                    Please use the existing customer option or use a different email address.
+                    Please use the existing customer option or a different email
+                    address.
                   </Text>
                 </Space>
               }
@@ -336,10 +270,12 @@ export default function CustomerInfo({
               description={
                 <Space direction="vertical" size={0}>
                   <Text>
-                    A customer record will be created in the system with the provided information.
+                    A customer record will be created in the system with the
+                    provided information.
                   </Text>
                   <Text type="secondary">
-                    No password required - customer will be created in store_customers table.
+                    No password is required at this stage — the customer will
+                    create their own password later.
                   </Text>
                 </Space>
               }

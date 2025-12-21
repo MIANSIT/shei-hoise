@@ -3,16 +3,18 @@ import {
   getProductsWithVariants,
   ProductWithVariants,
 } from "./products/getProductsWithVariants";
-import {
-  getCustomerProfileByStoreCustomerId,
-} from "./customers/getCustomerProfile";
+import { getCustomerProfileByStoreCustomerId } from "./customers/getCustomerProfile";
 import { createCustomer, CreateCustomerData } from "./customers/createCustomer";
 import {
   createOrder,
   CreateOrderData,
   CreateOrderResult,
 } from "./orders/orderService";
-import { getStoreOrders } from "./orders/getStoreOrders";
+import {
+  getStoreOrders as originalGetStoreOrders,
+  StoreOrder,
+  GetStoreOrdersOptions,
+} from "./orders/getStoreOrders";
 
 import {
   updateOrder,
@@ -33,53 +35,52 @@ import {
   type UpdateOrderByNumberData,
 } from "./orders/updateOrderByNumber";
 import {
-  StoreOrder,
-  OrderStatus,
-  PaymentStatus,
-  DeliveryOption,
-  PaymentMethod,
-} from "@/lib/types/order";
-
-import {
   bulkUpdateOrders,
   BulkUpdateData,
   BulkUpdateResult,
 } from "./orders/bulkUpdateOrders";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
-
-// Import CustomerProfile from the shared types file
 import { CustomerProfile } from "@/lib/types/customer";
 import { supabase } from "@/lib/supabase";
+import {
+  OrderStatus,
+  PaymentStatus,
+  DeliveryOption,
+  PaymentMethod,
+} from "@/lib/types/enums";
 
 export interface DataService {
-  // Product methods
-  getProductsWithVariants: (storeId: string) => Promise<ProductWithVariants[]>;
-
-  // Customer methods
-  // REMOVED: getCustomerProfile - it was broken
+  getProductsWithVariants: (options: {
+    storeId: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) => Promise<{ data: ProductWithVariants[]; total: number }>;
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
-  getCustomerProfileByStoreCustomerId: (storeCustomerId: string) => Promise<CustomerProfile | null>;
-
-  // Store methods
+  getCustomerProfileByStoreCustomerId: (
+    storeCustomerId: string
+  ) => Promise<CustomerProfile | null>;
   getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
-
-  // Order methods
   createOrder: (orderData: CreateOrderData) => Promise<CreateOrderResult>;
-  getStoreOrders: (storeId: string) => Promise<StoreOrder[]>;
+  getStoreOrders: (options: GetStoreOrdersOptions) => Promise<{
+    orders: StoreOrder[];
+    total: number; // filtered (pagination)
+    totalOrders: number; // store-wide
+    totalByOrderStatus: Record<string, number>; // NEW
+    totalByPaymentStatus: Record<string, number>; // NEW
+  }>;
   getOrderByNumber: (
     storeId: string,
     orderNumber: string
   ) => Promise<OrderWithItems | null>;
-  deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
-
-  getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>;
-
+  deleteOrder: (
+    orderId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  getAllStoreCustomers: (storeId: string) => Promise<DetailedCustomer[]>; // Keep this signature
   updateOrderByNumber: (
     updateData: UpdateOrderByNumberData
   ) => Promise<{ success: boolean; error?: string }>;
-
-  // Order update methods - Fixed types
   updateOrder: (
     orderId: string,
     updates: UpdateOrderData
@@ -107,34 +108,30 @@ export interface DataService {
   bulkUpdateOrders: (updateData: BulkUpdateData) => Promise<BulkUpdateResult>;
 }
 
-// Implementation for getStoreById
+// --- Implementation functions ---
+
 const getStoreByIdImpl = async (storeId: string) => {
   try {
     const { data, error } = await supabase
-      .from('stores')
-      .select('id, store_name, store_slug')
-      .eq('id', storeId)
+      .from("stores")
+      .select("id, store_name, store_slug")
+      .eq("id", storeId)
       .single();
 
     return { data, error };
   } catch (error: any) {
-    console.error('Error in dataService.getStoreById:', error);
+    console.error("Error in dataService.getStoreById:", error);
     return { data: null, error };
   }
 };
 
-// Implementation for getOrderByNumber
 const getOrderByNumberImpl = async (
   storeId: string,
   orderNumber: string
 ): Promise<OrderWithItems | null> => {
   try {
     const result = await getOrderByNumber(storeId, orderNumber);
-
-    if (result.error) {
-      throw new Error(result.error);
-    }
-
+    if (result.error) throw new Error(result.error);
     return result.data;
   } catch (error: any) {
     console.error("Error in dataService.getOrderByNumber:", error);
@@ -142,17 +139,12 @@ const getOrderByNumberImpl = async (
   }
 };
 
-// Implementation for updateOrderByNumber
 const updateOrderByNumberImpl = async (
   updateData: UpdateOrderByNumberData
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const result = await updateOrderByNumber(updateData);
-
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-
+    if (!result.success) throw new Error(result.error);
     return { success: true };
   } catch (error: any) {
     console.error("Error in dataService.updateOrderByNumber:", error);
@@ -160,64 +152,140 @@ const updateOrderByNumberImpl = async (
   }
 };
 
-// Implementation for deleteOrder
-const deleteOrderImpl = async (orderId: string): Promise<{ success: boolean; error?: string }> => {
+const deleteOrderImpl = async (
+  orderId: string
+): Promise<{ success: boolean; error?: string }> => {
   try {
-    // First, check if the order exists
     const { data: order, error: fetchError } = await supabase
-      .from('orders')
-      .select('id, order_number')
-      .eq('id', orderId)
+      .from("orders")
+      .select("id, order_number")
+      .eq("id", orderId)
       .single();
 
-    if (fetchError) {
-      console.error('Error fetching order:', fetchError);
-      return { success: false, error: 'Order not found' };
-    }
+    if (fetchError || !order)
+      return { success: false, error: "Order not found" };
 
-    if (!order) {
-      return { success: false, error: 'Order not found' };
-    }
-
-    // Delete order items first (due to foreign key constraints)
     const { error: itemsError } = await supabase
-      .from('order_items')
+      .from("order_items")
       .delete()
-      .eq('order_id', orderId);
+      .eq("order_id", orderId);
+    if (itemsError)
+      return { success: false, error: "Failed to delete order items" };
 
-    if (itemsError) {
-      console.error('Error deleting order items:', itemsError);
-      return { success: false, error: 'Failed to delete order items' };
-    }
-
-    // Delete the order
     const { error: deleteError } = await supabase
-      .from('orders')
+      .from("orders")
       .delete()
-      .eq('id', orderId);
+      .eq("id", orderId);
+    if (deleteError) return { success: false, error: "Failed to delete order" };
 
-    if (deleteError) {
-      console.error('Error deleting order:', deleteError);
-      return { success: false, error: 'Failed to delete order' };
-    }
-
-    console.log(`Order #${order.order_number} (ID: ${orderId}) deleted successfully`);
+    console.log(
+      `Order #${order.order_number} (ID: ${orderId}) deleted successfully`
+    );
     return { success: true };
   } catch (error: any) {
-    console.error('Error in dataService.deleteOrder:', error);
-    return { success: false, error: error.message || 'An unexpected error occurred' };
+    console.error("Error in dataService.deleteOrder:", error);
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred",
+    };
   }
 };
 
-// REMOVED: getCustomerProfile implementation - it was broken
+// --- Our custom wrapper for getStoreOrders with search + pagination ---
+const getStoreOrdersImpl = async (
+  options: GetStoreOrdersOptions
+): Promise<{
+  orders: StoreOrder[];
+  total: number;
+  totalOrders: number;
+  totalByOrderStatus: Record<string, number>;
+  totalByPaymentStatus: Record<string, number>;
+}> => {
+  const { storeId, search, page = 1, pageSize = 10, filters } = options;
 
+  const { orders: allOrders, totalOrders } = await originalGetStoreOrders(
+    storeId
+  );
+
+  let filteredOrders = allOrders;
+
+  // Apply search
+  if (search?.trim()) {
+    const searchTerm = search.trim().toLowerCase();
+    filteredOrders = filteredOrders.filter((o) =>
+      o.order_number?.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // Apply filters
+  if (filters) {
+    if (filters.status && filters.status !== "all") {
+      filteredOrders = filteredOrders.filter(
+        (o) => o.status === filters.status
+      );
+    }
+    if (filters.payment_status && filters.payment_status !== "all") {
+      filteredOrders = filteredOrders.filter(
+        (o) => o.payment_status === filters.payment_status
+      );
+    }
+  }
+
+  const total = filteredOrders.length;
+
+  // Pagination
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize;
+  const paginatedOrders = filteredOrders.slice(from, to);
+
+  // Calculate totals by status
+  const totalByOrderStatus: Record<string, number> = {};
+  const totalByPaymentStatus: Record<string, number> = {};
+
+  allOrders.forEach((order) => {
+    totalByOrderStatus[order.status] =
+      (totalByOrderStatus[order.status] || 0) + 1;
+    totalByPaymentStatus[order.payment_status] =
+      (totalByPaymentStatus[order.payment_status] || 0) + 1;
+  });
+
+  return {
+    orders: paginatedOrders,
+    total,
+    totalOrders,
+    totalByOrderStatus,
+    totalByPaymentStatus,
+  };
+};
+
+// --- Wrapper for getAllStoreCustomers to maintain backward compatibility ---
+const getAllStoreCustomersWrapper = async (
+  storeId: string
+): Promise<DetailedCustomer[]> => {
+  try {
+    // Call the new function without pagination parameters to get the simple array
+    const result = await getAllStoreCustomers(storeId);
+
+    // If it returns a PaginatedCustomers object, extract the customers array
+    if (result && typeof result === "object" && "customers" in result) {
+      return result.customers;
+    }
+
+    // Otherwise it's already the array
+    return result as DetailedCustomer[];
+  } catch (error) {
+    console.error("Error in getAllStoreCustomersWrapper:", error);
+    throw error;
+  }
+};
+
+// --- Export DataService ---
 export const dataService: DataService = {
   getProductsWithVariants,
-  // REMOVED: getCustomerProfile - it was broken
   createCustomer,
   getStoreById: getStoreByIdImpl,
   createOrder,
-  getStoreOrders,
+  getStoreOrders: getStoreOrdersImpl,
   getOrderByNumber: getOrderByNumberImpl,
   updateOrderByNumber: updateOrderByNumberImpl,
   deleteOrder: deleteOrderImpl,
@@ -228,7 +296,7 @@ export const dataService: DataService = {
   updatePaymentMethod,
   updateOrderNotes,
   bulkUpdateOrders,
-  getAllStoreCustomers,
+  getAllStoreCustomers: getAllStoreCustomersWrapper, // Use the wrapper
   getCustomerProfileByStoreCustomerId,
 };
 

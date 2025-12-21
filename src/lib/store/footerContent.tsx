@@ -17,14 +17,14 @@ export const footerContent = {
       // { label: "Careers", href: "#" },
       // { label: "Blog", href: "#" },
       // { label: "Press", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Contact", href: "/contact-us" },
     ],
     support: [
-      { label: "Help Center", href: "#" },
+      { label: "Help Center", href: "/help-center" },
       // { label: "Shipping & Returns", href: "#" },
       // { label: "Warranty", href: "#" },
-      { label: "Privacy Policy", href: "#" },
-      { label: "Terms of Service", href: "#" },
+      // { label: "Privacy Policy", href: "#" },
+      // { label: "Terms of Service", href: "#" },
     ],
   },
   bottomLinks: [
@@ -33,9 +33,9 @@ export const footerContent = {
     // { label: "Cookies", href: "#" },
     // { label: "Sitemap", href: "#" },
   ],
-  bottomLinksStore: [
-    { label: "Privacy & Policy", href: "#" },
-    { label: "Terms & Condition", href: "#" },
+  bottomLinksStore: (store_slug: string) => [
+    { label: "Privacy & Policy", href: `/${store_slug}/privacy-policy` },
+    { label: "Terms & Condition", href: `/${store_slug}/terms-and-conditions` },
     // { label: "Cookies", href: "#" },
     // { label: "Sitemap", href: "#" },
   ],

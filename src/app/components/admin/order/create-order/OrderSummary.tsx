@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import {
   Card,
@@ -12,14 +11,46 @@ import {
   Divider,
   Statistic,
   Alert,
+  Tooltip,
 } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
+
+// Helper functions for dropdown options
+const getOrderStatusOptions = () => {
+  return [
+    { value: OrderStatus.PENDING, label: "Pending" },
+    { value: OrderStatus.CONFIRMED, label: "Confirmed" },
+    { value: OrderStatus.SHIPPED, label: "Shipped" },
+    { value: OrderStatus.DELIVERED, label: "Delivered" },
+    { value: OrderStatus.CANCELLED, label: "Cancelled" },
+  ];
+};
+
+const getPaymentStatusOptions = () => {
+  return [
+    { value: PaymentStatus.PENDING, label: "Pending" },
+    { value: PaymentStatus.PAID, label: "Paid" },
+    { value: PaymentStatus.FAILED, label: "Failed" },
+    { value: PaymentStatus.REFUNDED, label: "Refunded" },
+  ];
+};
+
+const getPaymentMethodOptions = () => {
+  return [
+    { value: "cod", label: "Cash on Delivery" },
+    { value: "card", label: "Credit/Debit Card" },
+    { value: "bkash", label: "bKash" },
+    { value: "nagad", label: "Nagad" },
+  ];
+};
 
 interface OrderSummaryProps {
   orderProducts: OrderProduct[];
@@ -28,17 +59,15 @@ interface OrderSummaryProps {
   setTaxAmount: (amount: number) => void;
   discount: number;
   setDiscount: (discount: number) => void;
+  additionalCharges: number;
+  setAdditionalCharges: (charges: number) => void;
   deliveryCost: number;
   setDeliveryCost: (cost: number) => void;
   totalAmount: number;
-  status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped"; // ✅ FIXED: "delivered" not "delivered"
-  setStatus: (
-    status: "pending" | "confirmed" | "delivered" | "cancelled" | "shipped" // ✅ FIXED: "delivered" not "delivered"
-  ) => void;
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
-  setPaymentStatus: (
-    status: "pending" | "paid" | "failed" | "refunded"
-  ) => void;
+  status: OrderStatus; // ✅ Using enum
+  setStatus: (status: OrderStatus) => void; // ✅ Using enum
+  paymentStatus: PaymentStatus; // ✅ Using enum
+  setPaymentStatus: (status: PaymentStatus) => void; // ✅ Using enum
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   shippingFees?: ShippingFee[];
@@ -52,6 +81,8 @@ export default function OrderSummary({
   setTaxAmount,
   discount,
   setDiscount,
+  additionalCharges,
+  setAdditionalCharges,
   deliveryCost,
   setDeliveryCost,
   totalAmount,
@@ -68,7 +99,11 @@ export default function OrderSummary({
 
   // Check if delivery option is custom
   const isCustomDelivery = customerDeliveryOption === "custom";
-
+  const {
+    currency,
+    icon: currencyIcon,
+    loading: currencyLoading,
+  } = useUserCurrencyIcon();
   // Get selected shipping fee details
   const selectedShippingFee = shippingFees.find((fee) => {
     if (!fee || typeof fee !== "object" || !fee.name || !customerDeliveryOption)
@@ -98,12 +133,11 @@ export default function OrderSummary({
 
   // Handle manual delivery cost changes - only for custom delivery
   const handleDeliveryCostChange = (value: number | null) => {
-    if (!isCustomDelivery) return; // Only allow changes for custom delivery
+    if (!isCustomDelivery) return;
 
     const newCost = value || 0;
     setDeliveryCost(newCost);
 
-    // Check if this is a manual change (different from the auto-calculated fee)
     if (selectedShippingFee && newCost !== selectedShippingFee.price) {
       setIsManualDeliveryCost(true);
     } else {
@@ -120,6 +154,9 @@ export default function OrderSummary({
         estimated_days: selectedShippingFee?.estimated_days || "3-5",
       }
     : selectedShippingFee;
+
+  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrency = currencyLoading ? "" : currency ?? "";
 
   return (
     <Card
@@ -145,8 +182,8 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>{displayShippingFee.name}</strong>: ৳
-                  {displayShippingFee.price}
+                  <strong>{displayShippingFee.name}</strong>: (
+                  {displayCurrencyIcon}){displayShippingFee.price}
                 </Text>
                 {displayShippingFee.description && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
@@ -173,11 +210,11 @@ export default function OrderSummary({
             description={
               <Space direction="vertical" size={0}>
                 <Text>
-                  <strong>Custom Delivery</strong>: ৳{deliveryCost}
+                  <strong>Custom Delivery</strong>: ({displayCurrencyIcon})
+                  {deliveryCost}
                 </Text>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
                   You can manually adjust the delivery cost for custom delivery
-                  Price
                 </Text>
               </Space>
             }
@@ -193,53 +230,144 @@ export default function OrderSummary({
               <Text>Subtotal:</Text>
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
-              <Text strong>৳{subtotal.toFixed(2)}</Text>
+              <Text strong>
+                {subtotal.toFixed(2)} ({displayCurrencyIcon})
+              </Text>
             </Col>
           </Row>
 
           <Form layout="vertical" size="small">
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Tax Amount (BDT)">
-                  <InputNumber
-                    min={0}
-                    value={taxAmount}
-                    onChange={(value) => setTaxAmount(value || 0)}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                  />
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Tax Amount ({displayCurrency})</span>
+                      <Tooltip
+                        title="Enter the tax amount to apply on the order. Ensure this aligns with local tax regulations."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      value={taxAmount}
+                      onChange={(value) => setTaxAmount(value || 0)}
+                      style={{ width: "100%" }}
+                    />
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
+                  </Space.Compact>
                 </Form.Item>
               </Col>
             </Row>
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Discount Amount (BDT)">
-                  <InputNumber
-                    min={0}
-                    max={subtotal}
-                    value={discount}
-                    onChange={(value) => setDiscount(value || 0)}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                  />
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Discount Amount ({displayCurrency})</span>
+                      <Tooltip
+                        title="Include any extra charges such as packaging, handling, or special services."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      max={subtotal}
+                      value={discount}
+                      onChange={(value) => setDiscount(value || 0)}
+                      style={{ width: "100%" }}
+                    />
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
+                  </Space.Compact>
                 </Form.Item>
               </Col>
             </Row>
 
             <Row gutter={16}>
               <Col span={24}>
-                <Form.Item label="Delivery Cost (BDT)">
-                  <InputNumber
-                    min={0}
-                    value={deliveryCost}
-                    onChange={handleDeliveryCostChange}
-                    style={{ width: "100%" }}
-                    addonAfter="৳"
-                    disabled={!isCustomDelivery}
-                    readOnly={!isCustomDelivery}
-                  />
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Additional Charges ({displayCurrency})</span>
+                      <Tooltip
+                        title="Include any extra charges such as packaging, handling, or special services."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      value={additionalCharges}
+                      onChange={(value) => setAdditionalCharges(value || 0)}
+                      style={{ width: "100%" }}
+                      placeholder="Enter any additional charges"
+                    />
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
+                  </Space.Compact>
                 </Form.Item>
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  Additional fees like packaging, handling, or special services
+                </Text>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  label={
+                    <span className="flex items-center space-x-1">
+                      <span>Delivery Cost ({displayCurrency})</span>
+                      <Tooltip
+                        title="Delivery cost is automatically calculated based on the selected delivery option. For custom delivery, you can manually adjust this value."
+                        placement="top"
+                      >
+                        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                      </Tooltip>
+                    </span>
+                  }
+                >
+                  <Space.Compact style={{ width: "100%" }}>
+                    <InputNumber
+                      min={0}
+                      value={deliveryCost}
+                      onChange={handleDeliveryCostChange}
+                      style={{ width: "100%" }}
+                      disabled={!isCustomDelivery}
+                      readOnly={!isCustomDelivery}
+                    />
+                    <span style={{ padding: "0 8px" }}>
+                      {displayCurrencyIcon}
+                    </span>
+                    <Tooltip
+                      title="Delivery cost is calculated based on the selected delivery option. For custom delivery, adjust manually if needed."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
+                    </Tooltip>
+                  </Space.Compact>
+                </Form.Item>
+
                 {customerDeliveryOption && !isCustomDelivery && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
                     Delivery cost is automatically set based on selected
@@ -268,7 +396,7 @@ export default function OrderSummary({
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
               <Text strong style={{ fontSize: "18px", color: "#1890ff" }}>
-                ৳{totalAmount.toFixed(2)}
+                ({displayCurrencyIcon}){""} {totalAmount.toFixed(2)}
               </Text>
             </Col>
           </Row>
@@ -283,15 +411,15 @@ export default function OrderSummary({
               <Form.Item label="Order Status">
                 <Select
                   value={status}
-                  onChange={(value: any) => setStatus(value)}
+                  onChange={(value: OrderStatus) => setStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
                 >
-                  <Option value="pending">Pending</Option>
-                  <Option value="confirmed">Confirmed</Option>
-                  <Option value="delivered">Delivered</Option> {/* ✅ FIXED: "delivered" not "delivered" */}
-                  <Option value="shipped">Shipped</Option>
-                  <Option value="cancelled">Cancelled</Option>
+                  {getOrderStatusOptions().map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -300,14 +428,15 @@ export default function OrderSummary({
               <Form.Item label="Payment Status">
                 <Select
                   value={paymentStatus}
-                  onChange={(value: any) => setPaymentStatus(value)}
+                  onChange={(value: PaymentStatus) => setPaymentStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
                 >
-                  <Option value="pending">Pending</Option>
-                  <Option value="paid">Paid</Option>
-                  <Option value="failed">Failed</Option>
-                  <Option value="refunded">Refunded</Option>
+                  {getPaymentStatusOptions().map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>
@@ -321,7 +450,11 @@ export default function OrderSummary({
               size="large"
               placeholder="Select payment method"
             >
-              <Option value="cod">Cash on Delivery</Option>
+              {getPaymentMethodOptions().map((option) => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
         </Space>

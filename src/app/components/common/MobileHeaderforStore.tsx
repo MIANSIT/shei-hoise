@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react"; // Added useRef
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
@@ -10,7 +10,7 @@ import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartBottomBar from "../cart/CartBottomBar";
 import StoreLogoTitle from "../header/StoreLogoTitle";
 import UserDropdownMobile from "./UserDropdownMobile";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
@@ -25,18 +25,22 @@ interface MobileHeaderProps {
 
 export default function MobileHeader({
   storeSlug,
-}: // isAdmin = false,
-MobileHeaderProps) {
+  isAdmin = false,
+}: MobileHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [isStoreLoading, setIsStoreLoading] = useState(true);
 
-  const { user, loading: userLoading } = useCurrentUser();
-  const pathname = usePathname();
+  const {
+    customer,
+    loading: customerLoading,
+    isLoggedIn,
+    authEmail,
+  } = useCurrentCustomer(storeSlug);
 
-  // Ref for the mobile menu
+  const pathname = usePathname();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,59 +91,38 @@ MobileHeaderProps) {
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
 
-  // Skeleton for store logo/title
-  const StoreLogoSkeleton = () => (
-    <div className="flex items-center gap-3">
-      <SheiSkeleton className="w-8 h-8 rounded" />
-      <SheiSkeleton className="w-32 h-6 rounded" />
-    </div>
-  );
+  // AuthLinks for mobile menu
+  const authLinks: NavLink[] =
+    !isAdmin && !isLoggedIn
+      ? [
+          { name: "Log in", path: `/${storeSlug}/login?redirect=/${storeSlug}` },
+          {
+            name: "Sign up",
+            path: `/${storeSlug}/signup?redirect=/${storeSlug}`,
+            isHighlighted: true,
+          },
+        ]
+      : [];
 
-  // Skeleton for navigation menu items
-  const NavMenuSkeleton = () => (
-    <div className="space-y-2 p-3">
-      {[1, 2].map((item) => (
-        <SheiSkeleton key={item} className="w-full h-10 rounded-md" />
-      ))}
-      <div className="border-t border-border my-2" />
-      <div className="flex flex-col gap-2">
-        <SheiSkeleton className="w-full h-10 rounded-md" />
-        <SheiSkeleton className="w-full h-10 rounded-md" />
-      </div>
-    </div>
-  );
+  // Get customer display name
+  const customerDisplayName = customer?.name || authEmail?.split('@')[0] || "Customer";
+  const customerDisplayEmail = customer?.email || authEmail || "";
 
-  // Skeleton for user section in mobile menu
-  const UserSectionSkeleton = () => (
-    <>
-      <li>
-        <div className="border-t border-border my-2" />
-      </li>
-      <li>
-        <SheiSkeleton className="w-full h-10 rounded-md" />
-      </li>
-    </>
-  );
-
-  // Skeleton for header icons
-  const HeaderIconsSkeleton = () => (
-    <div className="flex items-center gap-2">
-      <SheiSkeleton className="w-6 h-6 rounded" />
-      <SheiSkeleton className="w-6 h-6 rounded" />
-      <SheiSkeleton className="w-6 h-6 rounded" />
-    </div>
-  );
+  // Skeleton components...
 
   return (
     <>
       <header
-        ref={menuRef} // Added ref here
+        ref={menuRef}
         className="bg-background px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50"
       >
         <div className="flex items-center justify-between">
-          {/* Store Logo & Title - Show skeleton while loading */}
+          {/* Store Logo & Title */}
           {isStoreLoading ? (
-            <StoreLogoSkeleton />
+            <div className="flex items-center gap-3">
+              <SheiSkeleton className="w-8 h-8 rounded" />
+              <SheiSkeleton className="w-32 h-6 rounded" />
+            </div>
           ) : (
             <StoreLogoTitle
               storeSlug={storeSlug}
@@ -149,9 +132,13 @@ MobileHeaderProps) {
             />
           )}
 
-          {/* Header Icons - Show skeleton while user data is loading */}
-          {userLoading ? (
-            <HeaderIconsSkeleton />
+          {/* Header Icons */}
+          {customerLoading ? (
+            <div className="flex items-center gap-2">
+              <SheiSkeleton className="w-6 h-6 rounded" />
+              <SheiSkeleton className="w-6 h-6 rounded" />
+              <SheiSkeleton className="w-6 h-6 rounded" />
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -177,9 +164,13 @@ MobileHeaderProps) {
           }`}
         >
           <ul className="space-y-2 p-3">
-            {/* Navigation Links - Show skeleton while store data is loading */}
             {isStoreLoading ? (
-              <NavMenuSkeleton />
+              // Skeleton for nav
+              <div className="space-y-2">
+                {[1, 2].map((item) => (
+                  <SheiSkeleton key={item} className="w-full h-10 rounded-md" />
+                ))}
+              </div>
             ) : (
               <>
                 {navLinks.map((link) => {
@@ -201,39 +192,60 @@ MobileHeaderProps) {
                   );
                 })}
 
-                {/* User Section - Show skeleton while user data is loading */}
-                {userLoading ? (
-                  <UserSectionSkeleton />
-                ) : user ? (
+                {/* My Orders link for logged-in customers */}
+                {isLoggedIn && (
+                  <li>
+                    <Link
+                      href={`/${storeSlug}/order-status`}
+                      className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
+                        pathname === `/${storeSlug}/order-status`
+                          ? "bg-accent text-accent-foreground"
+                          : "text-foreground hover:bg-accent"
+                      }`}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      My Orders
+                    </Link>
+                  </li>
+                )}
+
+                {/* User Section */}
+                {customerLoading ? (
                   <>
                     <li>
                       <div className="border-t border-border my-2" />
                     </li>
                     <li>
-                      <UserDropdownMobile />
+                      <SheiSkeleton className="w-full h-10 rounded-md" />
                     </li>
                   </>
-                ) : (
+                ) : isLoggedIn ? (
+                  <>
+                    <li>
+                      <div className="border-t border-border my-2" />
+                    </li>
+                    <li>
+                      <UserDropdownMobile 
+                        customerName={customerDisplayName}
+                        customerEmail={customerDisplayEmail}
+                        storeSlug={storeSlug}
+                      />
+                    </li>
+                  </>
+                ) : !isAdmin ? (
                   <>
                     <li>
                       <div className="border-t border-border my-2" />
                     </li>
                     <li>
                       <AuthButtons
-                        links={[
-                          { name: "Log in", path: "/login" },
-                          {
-                            name: "Sign up",
-                            path: "/sign-up",
-                            isHighlighted: true,
-                          },
-                        ]}
+                        links={authLinks}
                         isVertical={true}
                         isAdminPanel={false}
                       />
                     </li>
                   </>
-                )}
+                ) : null}
               </>
             )}
           </ul>

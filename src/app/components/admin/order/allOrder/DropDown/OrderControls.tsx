@@ -12,7 +12,7 @@ import {
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
-} from "@/lib/types/order";
+} from "@/lib/types/enums";
 
 interface Props {
   status: OrderStatus;
@@ -48,7 +48,7 @@ const OrderControls: React.FC<Props> = ({
   onSelectPaymentStatus,
   deliveryOption,
   selectedDeliveryOption,
-  onSelectDeliveryOption,
+  // onSelectDeliveryOption,
   paymentMethod,
   selectedPaymentMethod,
   onSelectPaymentMethod,

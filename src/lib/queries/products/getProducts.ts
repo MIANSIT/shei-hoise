@@ -61,6 +61,8 @@ export interface Product {
   images: ProductImage[];
   variants: ProductVariant[];
   is_low_stock?: boolean;
+  quantity_available?: number;
+  low_stock_threshold?: number;
 }
 
 /* ---------- DB Types ---------- */

@@ -1,107 +1,156 @@
-// lib/queries/customers/getAllStoreCustomers.ts
 import { DetailedCustomer } from "@/lib/types/users";
-import { getStoreOrders } from "../orders/getStoreOrders";
 import { supabase } from "@/lib/supabase";
-import { getCustomerProfileByStoreCustomerId } from "./getCustomerProfile";
+
+// Define proper response types
+interface PaginatedCustomers {
+  customers: DetailedCustomer[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+  hasMore: boolean;
+}
 
 export async function getAllStoreCustomers(
-  storeId: string
-): Promise<DetailedCustomer[]> {
+  storeId: string,
+  search?: string,
+  page?: number,
+  pageSize?: number
+): Promise<DetailedCustomer[] | PaginatedCustomers> {
+  if (!storeId) throw new Error("Store ID is required");
+
   try {
-    if (!storeId) {
-      throw new Error("Store ID is required");
-    }
+    // Step 1: Get linked customer IDs
+    const { data: links, error: linkError } = await supabase
+      .from("store_customer_links")
+      .select("customer_id")
+      .eq("store_id", storeId);
 
-    console.log("🔄 Getting customers for store:", storeId);
-
-    // Get all orders for THIS STORE ONLY
-    const orders = await getStoreOrders(storeId);
-    console.log(`✅ Found ${orders.length} orders for store ${storeId}`);
-
-    if (orders.length === 0) {
-      console.log("📭 No orders found for this store");
+    if (linkError) throw linkError;
+    if (!links || links.length === 0) {
+      // Return empty array or paginated response
+      if (page !== undefined && pageSize !== undefined) {
+        return {
+          customers: [],
+          totalCount: 0,
+          currentPage: page,
+          totalPages: 0,
+          hasMore: false,
+        };
+      }
       return [];
     }
 
-    // Extract unique customers from orders
-    const customerMap = new Map<string, DetailedCustomer>();
-    
-    for (const order of orders) {
-      if (order.customers && order.customers.id) {
-        const customer = order.customers;
-        const storeCustomerId = customer.id; // This is the store_customers.id
-        
-        if (!customerMap.has(storeCustomerId)) {
-          console.log(`👤 Processing customer:`, {
-            store_customer_id: storeCustomerId,
-            name: customer.first_name,
-            email: customer.email
-          });
+    const customerIds = links.map((link) => link.customer_id);
 
-          // Try to find the customer profile using store_customer_id
-          let profileDetails = null;
+    // Step 2: Build query for customers
+    let query = supabase
+      .from("store_customers")
+      .select(
+        `id, name, email, phone, profile_id, created_at, updated_at,
+         customer_profiles!customer_profiles_store_customer_id_fkey(*)`,
+        { count: page !== undefined ? "exact" : undefined }
+      )
+      .in("id", customerIds);
 
-          try {
-            const profile = await getCustomerProfileByStoreCustomerId(storeCustomerId);
-            
-            if (profile) {
-              profileDetails = {
-                date_of_birth: profile.date_of_birth || null,
-                gender: profile.gender || null,
-                address_line_1: profile.address || null,
-                address: profile.address || null,
-                address_line_2: null,
-                city: profile.city || null,
-                state: profile.state || null,
-                postal_code: profile.postal_code || null,
-                country: profile.country || null,
-              };
-              console.log(`✅ Found profile for store_customer_id ${storeCustomerId}`);
-            } else {
-              console.log(`❌ No profile found for store_customer_id: ${storeCustomerId}`);
-            }
-          } catch (profileError) {
-            console.log(`ℹ️ Error fetching profile for customer ${storeCustomerId}:`, profileError);
-          }
-
-          // Create customer object
-          const customerName = customer.first_name || 'Unknown Customer';
-          
-          customerMap.set(storeCustomerId, {
-            id: storeCustomerId, // This is store_customers.id
-            name: customerName,
-            email: customer.email || '',
-            phone: customer.phone || undefined,
-            status: "active" as const,
-            order_count: orders.filter(o => o.customers?.id === storeCustomerId).length,
-            source: "orders" as const,
-            first_name: customer.first_name,
-            last_name: '',
-            user_type: "customer",
-            profile_details: profileDetails, // This contains the actual profile data
-            created_at: order.created_at,
-            updated_at: order.updated_at,
-          });
-        }
-      }
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      query = query.or(
+        `name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`
+      );
     }
 
-    const customers = Array.from(customerMap.values());
-    console.log(`✅ Returning ${customers.length} unique customers for store ${storeId}`);
+    // Apply pagination if provided
+    if (page !== undefined && pageSize !== undefined) {
+      const offset = (page - 1) * pageSize;
+      query = query.range(offset, offset + pageSize - 1);
+    }
 
-    // Log profile summary
-    const withProfiles = customers.filter(c => c.profile_details);
-    console.log("📊 Profile summary for store:", {
-      storeId,
-      totalCustomers: customers.length,
-      withProfiles: withProfiles.length,
-      withoutProfiles: customers.length - withProfiles.length
+    // Apply ordering
+    query = query.order("created_at", { ascending: false });
+
+    const { data: customers, error: customerError, count } = await query;
+
+    if (customerError) throw customerError;
+    if (!customers) {
+      if (page !== undefined && pageSize !== undefined) {
+        return {
+          customers: [],
+          totalCount: 0,
+          currentPage: page || 1,
+          totalPages: 0,
+          hasMore: false,
+        };
+      }
+      return [];
+    }
+
+    // Step 3: Fetch orders for all customers in this store
+    const { data: orders, error: ordersError } = await supabase
+      .from("orders")
+      .select("id, customer_id, created_at")
+      .in("customer_id", customerIds)
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false });
+
+    if (ordersError) throw ordersError;
+
+    // Step 4: Transform to DetailedCustomer
+    const detailedCustomers: DetailedCustomer[] = customers.map((c) => {
+      const profiles = c.customer_profiles || [];
+      const profile = profiles[0] || null;
+
+      // Filter orders for this customer
+      const customerOrders =
+        orders?.filter((o) => o.customer_id === c.id) || [];
+
+      return {
+        id: c.id,
+        name: c.name || "Unknown Customer",
+        email: c.email,
+        phone: c.phone || undefined,
+        status: "active",
+        order_count: customerOrders.length,
+        last_order_date: customerOrders[0]?.created_at || null,
+        source: "direct",
+        user_type: "customer",
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        profile_id: c.profile_id || null,
+        profile_details: profile
+          ? {
+              date_of_birth: profile.date_of_birth || null,
+              gender: profile.gender || null,
+              address_line_1: profile.address || null,
+              address_line_2: null,
+              city: profile.city || null,
+              state: profile.state || null,
+              postal_code: profile.postal_code || null,
+              country: profile.country || null,
+              address: profile.address || null,
+            }
+          : null,
+      };
     });
 
-    return customers;
+    // Return paginated response if page and pageSize are provided
+    if (page !== undefined && pageSize !== undefined) {
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
 
+      return {
+        customers: detailedCustomers,
+        totalCount,
+        currentPage: page,
+        totalPages,
+        hasMore: page < totalPages,
+      };
+    }
+
+    // Return simple array if no pagination
+    return detailedCustomers;
   } catch (error) {
-    console.error("❌ Error getting customers for store:", storeId, error);
+    console.error("Error fetching store customers:", error);
     throw error;
   }
 }

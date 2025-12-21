@@ -8,23 +8,16 @@ import {
   type CreateCategoryType,
 } from "@/lib/schema/category.schema";
 import {
-  Form,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
-import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import type { Category } from "@/lib/types/category";
+import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
 
 interface AddCategoryCardFormProps {
   onSubmit?: (data: CreateCategoryType) => Promise<void> | void;
@@ -49,10 +42,8 @@ export default function AddCategoryCardForm({
     is_active: true,
   });
 
-  // Watch name value to auto-generate slug
   const nameValue = form.watch("name");
 
-  // ✅ Reset when editingCategory changes
   useEffect(() => {
     if (editingCategory) {
       form.reset({
@@ -68,7 +59,6 @@ export default function AddCategoryCardForm({
     }
   }, [editingCategory, form]);
 
-  // ✅ Auto-generate slug when name changes
   useEffect(() => {
     const slugValue = nameValue
       ? nameValue
@@ -118,69 +108,53 @@ export default function AddCategoryCardForm({
       </CardHeader>
 
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input {...form.register("name")} placeholder="Category name" />
-              </FormControl>
-              <FormMessage>{form.formState.errors.name?.message}</FormMessage>
-            </FormItem>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="name"
+            label="Name"
+            placeholder="Category name"
+            required
+            tooltip="Enter the official name of the category. This will appear in your store’s catalog and navigation."
+          />
 
-            <FormItem>
-              <FormLabel>Slug</FormLabel>
-              <FormControl>
-                <Input
-                  {...form.register("slug")}
-                  placeholder="Auto Generated Slug"
-                  readOnly
-                  className="cursor-not-allowed bg-gray-100"
-                />
-              </FormControl>
-              <FormMessage>{form.formState.errors.slug?.message}</FormMessage>
-            </FormItem>
+          <FormField
+            control={form.control}
+            name="slug"
+            label="Slug"
+            tooltip="Auto-generated URL-friendly identifier based on the category name. Only lowercase letters, numbers, and hyphens are allowed."
+            placeholder="Auto Generated Slug"
+            readOnly
+          />
 
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Input
-                  {...form.register("description")}
-                  placeholder="Optional description"
-                />
-              </FormControl>
-              <FormMessage>
-                {form.formState.errors.description?.message}
-              </FormMessage>
-            </FormItem>
+          <FormField
+            control={form.control}
+            name="description"
+            tooltip="Provide a brief description of the category. This helps customers understand the products within this category."
+            label="Description"
+            placeholder="Optional description"
+            as="textarea"
+          />
 
-            <FormItem>
-              <FormLabel>Parent Category</FormLabel>
-              <FormControl>
-                <select
-                  {...form.register("parent_id")}
-                  className="border rounded w-full p-2"
-                >
-                  <option value="">None</option>
-                  {allCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
-              <FormMessage>
-                {form.formState.errors.parent_id?.message}
-              </FormMessage>
-            </FormItem>
+          <FormField
+            control={form.control}
+            name="parent_id"
+            label="Parent Category"
+            placeholder="Select parent category"
+            tooltip="Optionally, select a parent category to create a hierarchy. Leave empty for top-level categories."
+            as="select"
+            options={allCategories.map((cat) => ({
+              label: cat.name,
+              value: cat.id,
+            }))}
+          />
 
-            <CardFooter className="px-0 pt-4">
-              <Button type="submit" className="w-full" variant="destructive">
-                {editingCategory ? "Update Category" : "Create Category"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
+          <CardFooter className="px-0 pt-4">
+            <Button type="submit" className="w-full" variant="destructive">
+              {editingCategory ? "Update Category" : "Create Category"}
+            </Button>
+          </CardFooter>
+        </form>
       </CardContent>
     </Card>
   );

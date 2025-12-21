@@ -1,4 +1,7 @@
-// app/components/products/checkout/UserCheckoutForm.tsx
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// app/components/products/checkout/UserCheckoutForm.tsx - FIXED VERSION
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -15,7 +18,7 @@ import {
 import { CountryFlag } from "../../common/CountryFlag";
 import { PasswordStrength } from "../../common/PasswordStrength";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Eye,
   EyeOff,
@@ -24,7 +27,6 @@ import {
   ShoppingBag,
   Plus,
 } from "lucide-react";
-import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
 import { useParams } from "next/navigation";
@@ -35,6 +37,7 @@ interface CheckoutFormProps {
   shippingMethod?: string;
   shippingFee?: number;
   totalAmount?: number;
+  taxAmount?: number;
   mode?: "checkout" | "confirm";
 }
 
@@ -44,92 +47,115 @@ const CheckoutForm = ({
   shippingMethod = "",
   shippingFee = 0,
   totalAmount = 0,
+  taxAmount = 0,
   mode = "checkout",
 }: CheckoutFormProps) => {
-  const { formData, setFormData, setStoreSlug } = useCheckoutStore();
-
   const params = useParams();
   const storeSlug = params.store_slug as string;
 
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordField, setShowPasswordField] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const {
-    user: currentUser,
-    loading: userLoading,
-    error: userError,
-    profile,
-  } = useCurrentUser();
+  
   const { session, loading: authLoading } = useSupabaseAuth();
-
-  // ✅ Memoize computed values
-  const isLoadingAuth = authLoading || userLoading;
-  const isUserLoggedIn = Boolean(currentUser && session);
+  const { formData, setFormData, setStoreSlug } = useCheckoutStore();
+  
+  const isUserLoggedIn = useMemo(() => Boolean(session), [session]);
   const isSubmitting = isLoading;
+  
+  // ✅ CRITICAL FIX: Use ref to track initialization
+  const isInitializedRef = useRef(false);
+  
+  // ✅ Memoized user data
+  const loggedInUserEmail = useMemo(() => session?.user?.email || null, [session]);
+  const loggedInUserName = useMemo(() => {
+    if (!session?.user?.user_metadata) return null;
+    const meta = session.user.user_metadata;
+    return meta.first_name 
+      ? `${meta.first_name} ${meta.last_name || ''}`.trim()
+      : meta.full_name || null;
+  }, [session]);
+  
+  const loggedInUserPhone = useMemo(() => 
+    session?.user?.user_metadata?.phone || null, 
+  [session]);
 
-  // ✅ Create clean boolean disabled states
-  const disabledStates = useMemo(
-    () => ({
-      name: Boolean(isSubmitting || isUserLoggedIn),
-      email: Boolean(isSubmitting || isUserLoggedIn),
-      phone: Boolean(isSubmitting || (isUserLoggedIn && currentUser?.phone)),
-      password: Boolean(isSubmitting || isUserLoggedIn),
-      addressFields: Boolean(isSubmitting),
-    }),
-    [isSubmitting, isUserLoggedIn, currentUser?.phone]
-  );
-
-  // ✅ Handle auth errors gracefully
-  useEffect(() => {
-    if (userError) {
-      const isMissingSessionError =
-        userError.message?.includes("Auth session missing") ||
-        userError.name === "AuthSessionMissingError";
-
-      if (isMissingSessionError) {
-        console.log(
-          "🔐 No auth session - user is not logged in (this is normal)"
-        );
-        return;
-      }
-      console.error("User hook error:", userError);
+  // ✅ Memoized default values - ONLY include static initial values
+  const defaultValues = useMemo(() => {
+    // For logged-in users, use session data
+    if (isUserLoggedIn) {
+      return {
+        name: loggedInUserName || "",
+        email: loggedInUserEmail || "",
+        phone: loggedInUserPhone || "",
+        password: "",
+        country: "Bangladesh",
+        city: "Dhaka",
+        postCode: "",
+        shippingAddress: "",
+      };
     }
-  }, [userError]);
+    
+    // For guest users, use formData but don't include password in defaults
+    return {
+      name: formData.name || "",
+      email: formData.email || "",
+      phone: formData.phone || "",
+      password: "", // ALWAYS empty for guest users on initialization
+      country: formData.country || "Bangladesh",
+      city: formData.city || "Dhaka",
+      postCode: formData.postCode || "",
+      shippingAddress: formData.shippingAddress || "",
+    };
+  }, [isUserLoggedIn, loggedInUserName, loggedInUserEmail, loggedInUserPhone, formData]);
 
-  // ✅ Default values from formData - use ALL saved data
-  const defaultValues: CustomerCheckoutFormValues = {
-    name: formData.name || "",
-    email: formData.email || "",
-    phone: formData.phone || "",
-    password: "", // Always start with empty password for security
-    country: formData.country || "Bangladesh",
-    city: formData.city || "Dhaka",
-    postCode: formData.postCode || "",
-    shippingAddress: formData.shippingAddress || "",
-  };
-
-  // ✅ Use different schema based on login status
-  const formSchema = isUserLoggedIn
-    ? customerCheckoutSchemaForLoggedIn
-    : customerCheckoutSchema;
+  // ✅ Schema selection
+  const formSchema = useMemo(() => 
+    isUserLoggedIn ? customerCheckoutSchemaForLoggedIn : customerCheckoutSchema,
+    [isUserLoggedIn]
+  );
 
   const form = useForm<CustomerCheckoutFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
+    mode: "onChange",
   });
 
-  // ✅ Handle form submission - FIXED: Properly handle optional password
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ Optimized save function - DON'T save password to Zustand
+  const saveFormData = useCallback((values: Partial<CustomerCheckoutFormValues>) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      // ✅ CRITICAL: Don't save password to Zustand store
+      setFormData({
+        name: values.name || "",
+        email: values.email || "",
+        phone: values.phone || "",
+        country: values.country || "Bangladesh",
+        city: values.city || "Dhaka",
+        shippingAddress: values.shippingAddress || "",
+        postCode: values.postCode || "",
+      });
+    }, 3000);
+  }, [setFormData]);
+
+  // ✅ Handle form submission
   const handleSubmit = useCallback(
     (values: CustomerCheckoutFormValues) => {
-      console.log("Form submitted with values:", {
+      console.log("Submitting form with values:", {
         ...values,
-        password: values.password ? "***" : "not-provided",
-        isUserLoggedIn,
+        password: values.password ? "***" : "empty",
       });
 
-      // ✅ Save ALL checkout data to store
+      // For logged-in users, ensure password is empty
+      const submitValues = isUserLoggedIn 
+        ? { ...values, password: "" }
+        : { ...values, password: values.password || "" };
+
+      // Save to Zustand (without password)
       setFormData({
         name: values.name,
         email: values.email,
@@ -140,137 +166,104 @@ const CheckoutForm = ({
         postCode: values.postCode,
       });
 
-      // ✅ Save store slug for redirection
       setStoreSlug(storeSlug);
-
-      // ✅ For logged-in users, set a dummy password that passes validation
-      if (isUserLoggedIn) {
-        values.password = "logged-in-user-password";
-      }
-
-      // ✅ Ensure password is always a string (not undefined)
-      const submitValues: CustomerCheckoutFormValues = {
-        ...values,
-        password: values.password || "", // Convert undefined to empty string
-      };
-
       onSubmit(submitValues);
     },
     [onSubmit, isUserLoggedIn, setFormData, setStoreSlug, storeSlug]
   );
 
-  // ✅ Handle Create Password button click
-  const handleCreatePasswordClick = () => {
-    setShowPasswordField(true);
-    // Focus on password field when shown
-    setTimeout(() => {
-      const passwordInput = document.querySelector(
-        'input[name="password"]'
-      ) as HTMLInputElement;
-      if (passwordInput) {
-        passwordInput.focus();
-      }
-    }, 100);
-  };
-
-  // ✅ Phone number formatting function
-  const formatPhoneNumber = (value: string) => {
-    // Remove any non-digit characters
+  // ✅ Phone formatting
+  const formatPhoneNumber = useCallback((value: string) => {
     const digitsOnly = value.replace(/\D/g, "");
-
-    // If it starts with +88 or 88, remove it
     let cleaned = digitsOnly;
     if (digitsOnly.startsWith("88")) {
       cleaned = digitsOnly.substring(2);
     } else if (digitsOnly.startsWith("+88")) {
       cleaned = digitsOnly.substring(3);
     }
-
-    // Limit to 11 digits maximum
     return cleaned.slice(0, 11);
-  };
+  }, []);
 
-  // ✅ Handle phone number input change
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatPhoneNumber(e.target.value);
-    form.setValue("phone", formattedValue, { shouldValidate: true });
-  };
-
-  // ✅ Auto-population logic - Save form data as user types
+  // ✅ Watch form changes with debounce - EXCLUDE password field
   useEffect(() => {
     const subscription = form.watch((value) => {
-      // Save ALL form data to store as user types (debounced)
-      const debounceTimer = setTimeout(() => {
-        if (
-          value.name ||
-          value.email ||
-          value.phone ||
-          value.country ||
-          value.city ||
-          value.shippingAddress ||
-          value.postCode
-        ) {
-          setFormData({
-            name: value.name || "",
-            email: value.email || "",
-            phone: value.phone || "",
-            country: value.country || "Bangladesh",
-            city: value.city || "Dhaka",
-            shippingAddress: value.shippingAddress || "",
-            postCode: value.postCode || "",
-          });
-        }
-      }, 500);
-
-      return () => clearTimeout(debounceTimer);
+      // Create a copy without password to prevent it from being saved
+      const { password, ...valuesWithoutPassword } = value;
+      saveFormData(valuesWithoutPassword);
     });
 
-    return () => subscription.unsubscribe();
-  }, [form, setFormData]);
-
-  // ✅ Initialize form with saved data when component mounts
-  useEffect(() => {
-    if (!isLoadingAuth && !isUserLoggedIn) {
-      // Only reset if we have saved data and form is empty
-      const currentValues = form.getValues();
-      const hasEmptyForm =
-        !currentValues.name && !currentValues.email && !currentValues.phone;
-
-      if (hasEmptyForm && (formData.name || formData.email || formData.phone)) {
-        form.reset(defaultValues);
+    return () => {
+      subscription.unsubscribe();
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
-    }
-  }, [isLoadingAuth, isUserLoggedIn, formData, form, defaultValues]);
+    };
+  }, [form, saveFormData]);
 
-  // ✅ Get watched password value with proper type handling
+  // ✅ Initialize form ONCE on mount
+  useEffect(() => {
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      
+      console.log("🎯 Initializing checkout form for:", {
+        isUserLoggedIn,
+        email: defaultValues.email,
+        name: defaultValues.name,
+        storeSlug
+      });
+      
+      form.reset(defaultValues);
+      setStoreSlug(storeSlug);
+    }
+  }, []); // ✅ Empty dependency array - only run once on mount
+
+  // ✅ Handle auth state changes separately
+  useEffect(() => {
+    if (isUserLoggedIn && isInitializedRef.current) {
+      console.log("🔄 User logged in, updating form with session data");
+      
+      // Only update name, email, phone from session - preserve other fields
+      const currentValues = form.getValues();
+      form.reset({
+        ...currentValues,
+        name: loggedInUserName || currentValues.name,
+        email: loggedInUserEmail || currentValues.email,
+        phone: loggedInUserPhone || currentValues.phone,
+      });
+    }
+  }, [isUserLoggedIn, loggedInUserName, loggedInUserEmail, loggedInUserPhone, form]);
+
   const watchedPassword = form.watch("password") || "";
+  
+  // ✅ FIXED: getButtonText is now just a string, not a function
+  const getButtonText = useMemo(() => {
+    if (isUserLoggedIn) return "Place Order";
+    return watchedPassword && watchedPassword.length > 0 
+      ? "Create Account & Place Order" 
+      : "Place Order";
+  }, [isUserLoggedIn, watchedPassword]);
 
-  // ✅ Determine button text based on user status and password
-  const getButtonText = () => {
-    if (isUserLoggedIn) {
-      return "Place Order";
-    } else {
-      // For guest users, check if they're creating an account with password
-      const hasPassword = watchedPassword && watchedPassword.length > 0;
-      return hasPassword ? "Create Account & Place Order" : "Place Order";
-    }
-  };
+  // ✅ FIXED: Create a separate function to get loading text
+  const getLoadingText = useMemo(() => {
+    if (isUserLoggedIn) return "Placing Order...";
+    return watchedPassword && watchedPassword.length > 0 
+      ? "Creating Account & Placing Order..." 
+      : "Placing Order...";
+  }, [isUserLoggedIn, watchedPassword]);
 
-  // ✅ Show loading state
-  if (isLoadingAuth) {
+  if (authLoading) {
     return <CheckoutFormSkeleton />;
   }
 
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-      {/* Name (Full Width) */}
+      {/* Name Field */}
       <div className="grid gap-2">
         <Label htmlFor="name">Full Name</Label>
         <Input
           {...form.register("name")}
           placeholder="John Doe"
-          disabled={disabledStates.name}
-          className={isUserLoggedIn ? "bg-muted cursor-not-allowed" : ""}
+          disabled={isSubmitting}
         />
         {form.formState.errors.name && (
           <p className="text-sm text-red-500 mt-1">
@@ -279,7 +272,7 @@ const CheckoutForm = ({
         )}
       </div>
 
-      {/* Email + Phone */}
+      {/* Email + Phone fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
@@ -287,8 +280,7 @@ const CheckoutForm = ({
             {...form.register("email")}
             placeholder="john.doe@example.com"
             type="email"
-            disabled={disabledStates.email}
-            className={isUserLoggedIn ? "bg-muted cursor-not-allowed" : ""}
+            disabled={isSubmitting}
           />
           {form.formState.errors.email && (
             <p className="text-sm text-red-500 mt-1">
@@ -303,13 +295,11 @@ const CheckoutForm = ({
             {...form.register("phone")}
             placeholder="01XXXXXXXXX"
             type="tel"
-            disabled={disabledStates.phone}
-            onChange={handlePhoneChange}
-            className={
-              isUserLoggedIn && currentUser?.phone
-                ? "bg-muted cursor-not-allowed"
-                : ""
-            }
+            disabled={isSubmitting}
+            onChange={(e) => {
+              const formattedValue = formatPhoneNumber(e.target.value);
+              form.setValue("phone", formattedValue, { shouldValidate: true });
+            }}
           />
           {form.formState.errors.phone && (
             <p className="text-sm text-red-500 mt-1">
@@ -319,17 +309,27 @@ const CheckoutForm = ({
         </div>
       </div>
 
-      {/* ✅ Password section - Only for non-logged-in users */}
+      {/* ✅ FIXED: Password section - Only for non-logged-in users */}
       {!isUserLoggedIn && (
         <div className="space-y-3">
           {!showPasswordField ? (
-            // Create Password Button (when password field is hidden)
             <div className="flex justify-start">
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleCreatePasswordClick}
-                disabled={disabledStates.password}
+                onClick={() => {
+                  setShowPasswordField(true);
+                  // Focus on password field when shown
+                  setTimeout(() => {
+                    const passwordInput = document.querySelector(
+                      'input[name="password"]'
+                    ) as HTMLInputElement;
+                    if (passwordInput) {
+                      passwordInput.focus();
+                    }
+                  }, 100);
+                }}
+                disabled={isSubmitting}
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />
@@ -337,7 +337,6 @@ const CheckoutForm = ({
               </Button>
             </div>
           ) : (
-            // Password Field (when shown)
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Account Password (Optional)</Label>
@@ -347,9 +346,16 @@ const CheckoutForm = ({
                   className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
                   onClick={() => {
                     const currentPath = window.location.pathname;
-                    window.location.href = `/login?redirect=${encodeURIComponent(
-                      currentPath
-                    )}&email=${encodeURIComponent(form.getValues().email)}`;
+                    const emailValue = form.getValues().email;
+                    if (emailValue) {
+                      window.location.href = `/${storeSlug}/login?redirect=${encodeURIComponent(
+                        currentPath
+                      )}&email=${encodeURIComponent(emailValue)}`;
+                    } else {
+                      window.location.href = `/${storeSlug}/login?redirect=${encodeURIComponent(
+                        currentPath
+                      )}`;
+                    }
                   }}
                 >
                   Already have an account? Login
@@ -360,20 +366,20 @@ const CheckoutForm = ({
                   {...form.register("password")}
                   placeholder="Enter your password (optional)"
                   type={showPassword ? "text" : "password"}
-                  disabled={disabledStates.password}
+                  disabled={isSubmitting}
                   className="pr-10"
+                  value={watchedPassword} // ✅ Controlled value
+                  onChange={(e) => {
+                    form.setValue("password", e.target.value, { shouldValidate: true });
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={disabledStates.password}
+                  disabled={isSubmitting}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {form.formState.errors.password && (
@@ -381,26 +387,23 @@ const CheckoutForm = ({
                   {form.formState.errors.password.message}
                 </p>
               )}
-              {/* ✅ Use the reusable PasswordStrength component */}
               <PasswordStrength password={watchedPassword} />
               <p className="text-xs text-muted-foreground">
-                Creating a password will save your information for faster
-                checkout next time. You can skip this if you prefer not to
-                create an account.
+                Creating a password will save your information for faster checkout next time.
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Address Fields */}
+      {/* Address fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="country">Country</Label>
           <CountryFlag
             value={form.watch("country")}
             onValueChange={(value) => form.setValue("country", value)}
-            disabled={disabledStates.addressFields}
+            disabled={isSubmitting}
             defaultCountry="Bangladesh"
           />
           {form.formState.errors.country && (
@@ -415,7 +418,7 @@ const CheckoutForm = ({
           <Input
             {...form.register("city")}
             placeholder="Dhaka"
-            disabled={disabledStates.addressFields}
+            disabled={isSubmitting}
           />
           {form.formState.errors.city && (
             <p className="text-sm text-red-500 mt-1">
@@ -429,7 +432,7 @@ const CheckoutForm = ({
           <Input
             {...form.register("postCode")}
             placeholder="1000"
-            disabled={disabledStates.addressFields}
+            disabled={isSubmitting}
           />
           {form.formState.errors.postCode && (
             <p className="text-sm text-red-500 mt-1">
@@ -445,7 +448,7 @@ const CheckoutForm = ({
         <Input
           {...form.register("shippingAddress")}
           placeholder="123 Main St, Apt 4B"
-          disabled={disabledStates.addressFields}
+          disabled={isSubmitting}
         />
         {form.formState.errors.shippingAddress && (
           <p className="text-sm text-red-500 mt-1">
@@ -454,47 +457,27 @@ const CheckoutForm = ({
         )}
       </div>
 
-      {/* Success Message */}
-      {success && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-sm text-green-600">{success}</p>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
-
-      {/* ✅ Submit Button - Always enabled and with dynamic text */}
+      {/* Submit Button */}
       <Button
         type="submit"
         className="w-full mt-6 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
-        disabled={isSubmitting} // ✅ Only disable when submitting, not based on form validity
+        disabled={isSubmitting || !form.formState.isValid}
       >
         {isSubmitting ? (
           <div className="flex items-center justify-center gap-2">
             <SheiLoader
               size="sm"
               loaderColor="white"
-              loadingText={
-                isUserLoggedIn
-                  ? "Placing Order..."
-                  : watchedPassword && watchedPassword.length > 0
-                  ? "Creating Account & Placing Order..."
-                  : "Placing Order..."
-              }
+              loadingText={getLoadingText}
             />
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2">
-            {!isUserLoggedIn &&
-              watchedPassword &&
-              watchedPassword.length > 0 && <UserPlus className="h-4 w-4" />}
+            {!isUserLoggedIn && watchedPassword && watchedPassword.length > 0 && (
+              <UserPlus className="h-4 w-4" />
+            )}
             <ShoppingBag className="h-4 w-4" />
-            {getButtonText()}
+            {getButtonText}
             <ArrowRight className="h-4 w-4" />
           </div>
         )}

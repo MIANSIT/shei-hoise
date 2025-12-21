@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Tag } from "antd";
-import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus, DeliveryOption, PaymentMethod } from "@/lib/types/enums";
 
 export type StatusType = OrderStatus | PaymentStatus | DeliveryOption | PaymentMethod;
 
@@ -11,6 +11,7 @@ interface Props {
   size?: "small" | "default" | "large";
 }
 
+// Map status to AntD color
 // Map status to AntD color
 const statusColors: Record<StatusType, string> = {
   // Order statuses
@@ -29,12 +30,18 @@ const statusColors: Record<StatusType, string> = {
   pathao: "blue",
   courier: "cyan",
   other: "geekblue",
+  "inside dhaka": "geekblue",
+  "outside dhaka": "volcano",
 
   // Payment methods
   cod: "magenta",
   cash: "magenta",
   online: "purple",
+  card: "purple",
+  bank_transfer: "gold",
+  mobile_banking: "lime",
 };
+
 
 // Friendly labels for statuses - SHORTENED VERSIONS
 const statusLabels: Record<StatusType, string> = {
@@ -54,12 +61,18 @@ const statusLabels: Record<StatusType, string> = {
   pathao: "Pathao",
   courier: "Courier",
   other: "Other",
+  "inside dhaka": "Inside Dhaka",
+  "outside dhaka": "Outside Dhaka",
 
-  // Payment methods - SHORTENED
+  // Payment methods
   cod: "COD",
   cash: "COD",
   online: "Online",
+  card: "Card",
+  bank_transfer: "Bank Transfer",
+  mobile_banking: "Mobile Banking",
 };
+
 
 // Tailwind size classes
 const sizeClasses = {
