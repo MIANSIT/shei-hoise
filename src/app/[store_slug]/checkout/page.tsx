@@ -895,9 +895,9 @@ export default function CheckoutPage() {
   // Store not found
   if (storeError || !invoiceStoreData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold mb-4'>Store Not Found</h1>
           <p>The store you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
@@ -923,7 +923,7 @@ export default function CheckoutPage() {
         shippingFee={shippingFee}
         taxAmount={taxAmount}
         isProcessing={isSubmitting}
-        mode="checkout"
+        mode='checkout'
       />
 
       <AnimatePresence>
