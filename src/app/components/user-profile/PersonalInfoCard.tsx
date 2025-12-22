@@ -23,7 +23,7 @@ export function PersonalInfoCard({
   lastName,
   email,
   phone,
-  emailVerified,
+  // emailVerified,
   userType,
   showAdminMessage = true, // Default to false since it's also used on user side
 }: PersonalInfoCardProps) {
@@ -42,51 +42,49 @@ export function PersonalInfoCard({
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <div className="text-sm font-medium text-gray-700">First Name</div>
-            <div className="mt-1 text-gray-900">
-              {firstName || <span className="text-gray-400">Not provided</span>}
+            <div className="text-sm font-medium text-foreground">
+              First Name
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              {firstName || (
+                <span className="text-muted-foreground">Not provided</span>
+              )}
             </div>
           </div>
           <div>
-            <div className="text-sm font-medium text-gray-700">Last Name</div>
-            <div className="mt-1 text-gray-900">
-              {lastName || <span className="text-gray-400">Not provided</span>}
-            </div>
-          </div>
-          <div className="md:col-span-1">
-            <div className="text-sm font-medium text-gray-700">
-              Email Address
-            </div>
-            <div className="mt-1 text-gray-900 space-y-2">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 shrink-0" />
-                <span className="break-all">{email}</span>
-              </div>
-              {emailVerified && (
-                <Badge
-                  variant="default"
-                  className="bg-green-100 text-green-800 text-xs w-full sm:w-fit justify-center sm:justify-start"
-                >
-                  ✓ Email Verified
-                </Badge>
+            <div className="text-sm font-medium text-foreground">Last Name</div>
+            <div className="mt-1 text-muted-foreground">
+              {lastName || (
+                <span className="text-muted-foreground">Not provided</span>
               )}
             </div>
           </div>
           <div className="md:col-span-1">
-            <div className="text-sm font-medium text-gray-700">
+            <div className="text-sm font-medium text-foreground">
+              Email Address
+            </div>
+            <div className="mt-1 text-muted-foreground space-y-2">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 shrink-0" />
+                <span className="break-all">{email}</span>
+              </div>
+            </div>
+          </div>
+          <div className="md:col-span-1">
+            <div className="text-sm font-medium text-foreground">
               Phone Number
             </div>
-            <div className="mt-1 text-gray-900 flex items-center gap-2">
+            <div className="mt-1 text-muted-foreground flex items-center gap-2">
               <Phone className="w-4 h-4" />
               <span>
-                {phone || <span className="text-gray-400">Not provided</span>}
+                {phone || <span className="text-muted-foreground">Not provided</span>}
               </span>
             </div>
           </div>
 
           {isAdminOrVendor && (
             <div className="md:col-span-2">
-              <div className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <div className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 Account Role
               </div>
@@ -99,7 +97,7 @@ export function PersonalInfoCard({
                   {userType?.toUpperCase()}
                 </Badge>
                 {showAdminMessage && (
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-foreground">
                     {userType === "admin"
                       ? "Full system access"
                       : "Store management access"}
@@ -108,7 +106,7 @@ export function PersonalInfoCard({
               </div>
 
               {isAdminOrVendor && showAdminMessage && (
-                <div className="text-sm text-gray-500 mt-2">
+                <div className="text-sm text-muted-foreground mt-2">
                   Profile editing is managed through the administrative system.
                 </div>
               )}

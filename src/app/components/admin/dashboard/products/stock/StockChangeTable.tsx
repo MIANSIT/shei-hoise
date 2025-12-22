@@ -175,16 +175,16 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   };
 
   if (userLoading)
-    return <p className="text-center text-gray-500">Loading user...</p>;
+    return <p className="text-center text-muted-foreground">Loading user...</p>;
   if (!storeSlug)
     return (
-      <p className="text-center text-gray-500">No store found for this user.</p>
+      <p className="text-center text-muted-foreground">No store found for this user.</p>
     );
 
   return (
     <div className="space-y-4">
       {products.length === 0 && !loading ? (
-        <p className="text-center text-gray-500">No products found.</p>
+        <p className="text-center text-muted-foreground">No products found.</p>
       ) : (
         <>
           <div>

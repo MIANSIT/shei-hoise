@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Layout } from "antd";
-import SidebarBrand from "./SidebarBrand";
+// import SidebarBrand from "./SidebarBrand";
 import SidebarMenu from "./SidebarMenu";
 import SidebarProfile from "./SidebarProfile";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -35,7 +35,7 @@ export default function Sidebar({
     >
       <div className="flex flex-col flex-1">
         {/* Top: Logo / Brand */}
-        <SidebarBrand collapsed={collapsed} />
+        {/* <SidebarBrand collapsed={collapsed} /> */}
 
         {/* Middle: Menu */}
         <SidebarMenu themeMode={themeMode} storeSlug={storeSlug} />

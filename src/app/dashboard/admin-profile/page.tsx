@@ -124,7 +124,7 @@ export default function StoreOwnerProfilePage() {
         lastName={displayUser?.last_name}
         userType={displayUser?.user_type}
         isActive={displayUser?.is_active}
-        emailVerified={displayUser?.email_verified}
+        // emailVerified={displayUser?.email_verified}
       />
 
       <main className="grow py-8">
