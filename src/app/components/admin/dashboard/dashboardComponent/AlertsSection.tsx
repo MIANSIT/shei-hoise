@@ -24,11 +24,11 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   const getAlertIcon = (type: string) => {
     switch (type) {
       case "stock":
-        return <ExclamationCircleOutlined className="text-amber-500" />;
+        return <ExclamationCircleOutlined className="text-chart-3!" />;
       case "order":
-        return <ClockCircleOutlined className="text-red-500" />;
+        return <ClockCircleOutlined className="text-chart-5!" />;
       case "payment":
-        return <WarningOutlined className="text-purple-500" />;
+        return <WarningOutlined className="text-chart-4!" />;
       default:
         return <ExclamationCircleOutlined />;
     }
@@ -64,11 +64,11 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
       router.push(url);
     } else if (alert.type === "payment") {
       const isPending = alert.message.toLowerCase().includes("pending");
-    const url = isPending
-      ? "/dashboard/orders?category=payment&payment_status=pending"
-      : "/dashboard/orders";
+      const url = isPending
+        ? "/dashboard/orders?category=payment&payment_status=pending"
+        : "/dashboard/orders";
 
-    router.push(url);
+      router.push(url);
     }
   };
 
@@ -85,8 +85,8 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
             <div className="flex items-center gap-3">
               <div className="text-xl">{getAlertIcon(alert.type)}</div>
               <div>
-                <div className="font-semibold">{alert.message}</div>
-                <div className="text-sm text-gray-600">
+                <div className="font-semibold text-primary">{alert.message}</div>
+                <div className="text-sm text-foreground">
                   {alert.count} item{alert.count > 1 ? "s" : ""} affected
                 </div>
               </div>

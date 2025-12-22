@@ -80,9 +80,9 @@ export function CustomerDetailsView({
 
   if (isEditing && userFormData) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen ">
         {/* Header */}
-        <div className="bg-white shadow-sm border-b">
+        <div className=" shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Mobile Layout - Back button top right, title below */}
             <div className="block sm:hidden">
@@ -147,9 +147,9 @@ export function CustomerDetailsView({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className=" shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Mobile Layout - Back button top right, title below */}
           <div className="block sm:hidden">
@@ -165,10 +165,10 @@ export function CustomerDetailsView({
               </Button>
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-primary">
                 Customer Details
               </h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-foreground mt-2">
                 View and manage customer information
               </p>
             </div>
@@ -188,10 +188,10 @@ export function CustomerDetailsView({
               </Button>
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-primary">
                 Customer Details
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-foreground mt-1">
                 View and manage customer information
               </p>
             </div>
@@ -230,7 +230,7 @@ export function CustomerDetailsView({
               lastName={lastName}
               userType={currentCustomer.user_type || "customer"}
               isActive={currentCustomer.status === "active"}
-              emailVerified={true}
+              // emailVerified={true}
             />
 
             <PersonalInfoCard
@@ -257,19 +257,19 @@ export function CustomerDetailsView({
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <div className="text-sm font-medium text-gray-700">
+                    <div className="text-sm font-medium text-foreground">
                       Total Orders
                     </div>
-                    <div className="mt-1 text-2xl font-bold text-gray-900">
+                    <div className="mt-1 text-lg font-bold text-muted-foreground">
                       {currentCustomer.order_count || 0}
                     </div>
                   </div>
                   {currentCustomer.last_order_date && (
                     <div>
-                      <div className="text-sm font-medium text-gray-700">
+                      <div className="text-sm font-medium text-foreground">
                         Last Order
                       </div>
-                      <div className="mt-1 text-gray-900">
+                      <div className="mt-1 text-muted-foreground">
                         {new Date(
                           currentCustomer.last_order_date
                         ).toLocaleDateString()}

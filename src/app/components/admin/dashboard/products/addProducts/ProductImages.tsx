@@ -17,7 +17,7 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   error,
 }) => {
   return (
-    <div className="col-span-1 md:col-span-2">
+    <div className="col-span-full w-full">
       {images.length === 0 ? (
         <ImageUploader images={images} setImages={setImages} />
       ) : (

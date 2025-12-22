@@ -43,7 +43,7 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
           <div className="text-2xl shrink-0">{icon || defaultIcon}</div>
           <div className="min-w-0">
             <div className="text-lg font-semibold truncate">{value}</div>
-            <div className="text-sm text-gray-600 truncate">{title}</div>
+            <div className="text-sm text-foreground truncate">{title}</div>
           </div>
         </div>
         {/* <Button

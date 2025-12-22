@@ -21,20 +21,20 @@ export function StoreInfoCard({ storeSlug, storeName }: StoreInfoCardProps) {
         <div className="space-y-4">
           {storeName && (
             <div>
-              <div className="text-sm font-medium text-gray-900">Store Name</div>
-              <div className="text-sm text-gray-600 mt-1">{storeName}</div>
+              <div className="text-sm font-medium text-foreground">Store Name</div>
+              <div className="text-sm text-muted-foreground mt-1">{storeName}</div>
             </div>
           )}
           {storeSlug && (
             <div>
-              <div className="text-sm font-medium text-gray-900">Store URL</div>
+              <div className="text-sm font-medium text-foreground">Store URL</div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="text-sm text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded border">
                   {storeSlug}
                 </div>
                 <ExternalLink className="w-3 h-3 text-gray-400" />
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-2">
                 Your store&apos;s unique web address
               </div>
             </div>

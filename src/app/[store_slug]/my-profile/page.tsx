@@ -30,7 +30,8 @@ function isCustomerUser(user: DisplayUser): user is UserWithProfile {
 }
 
 export default function UserProfilePage() {
-  const { user, loading, error, isAuthenticated, isCustomer } = useUserProfile();
+  const { user, loading, error, isAuthenticated, isCustomer } =
+    useUserProfile();
   const [currentUser, setCurrentUser] = useState<DisplayUser | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -45,40 +46,43 @@ export default function UserProfilePage() {
 
   const handleSave = async (formData: ProfileFormData) => {
     if (!currentUser || !isCustomerUser(currentUser)) {
-      console.log('Only customers can edit profile from this page');
+      console.log("Only customers can edit profile from this page");
       return;
     }
 
     try {
       // Update store customer profile
-      const { data: userUpdate, profile: profileUpdate } = await updateCustomerProfile(
-        currentUser.id,
-        {
-          name: formData.name,
-          phone: formData.phone,
-        },
-        {
-          date_of_birth: formData.date_of_birth,
-          gender: formData.gender,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          postal_code: formData.postal_code,
-          country: formData.country,
-        }
-      );
+      const { data: userUpdate, profile: profileUpdate } =
+        await updateCustomerProfile(
+          currentUser.id,
+          {
+            name: formData.name,
+            phone: formData.phone,
+          },
+          {
+            date_of_birth: formData.date_of_birth,
+            gender: formData.gender,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            postal_code: formData.postal_code,
+            country: formData.country,
+          }
+        );
 
       // Update the local state
       const updatedUser: UserWithProfile = {
         ...currentUser,
         name: formData.name,
         phone: formData.phone,
-        profile: profileUpdate ? {
-          ...currentUser.profile,
-          ...profileUpdate,
-        } : currentUser.profile
+        profile: profileUpdate
+          ? {
+              ...currentUser.profile,
+              ...profileUpdate,
+            }
+          : currentUser.profile,
       };
-      
+
       setCurrentUser(updatedUser);
       setIsEditing(false);
     } catch (err) {
@@ -112,14 +116,14 @@ export default function UserProfilePage() {
   // Safely get names using type guard
   const firstName = isAdminUser(displayUser)
     ? displayUser.first_name
-    : displayUser.name?.split(' ')[0] || displayUser.name;
+    : displayUser.name?.split(" ")[0] || displayUser.name;
   const lastName = isAdminUser(displayUser)
     ? displayUser.last_name
-    : displayUser.name?.split(' ').slice(1).join(' ') || '';
-  
-  const fullName = isAdminUser(displayUser)
-    ? `${displayUser.first_name || ''} ${displayUser.last_name || ''}`.trim()
-    : displayUser.name || '';
+    : displayUser.name?.split(" ").slice(1).join(" ") || "";
+
+  // const fullName = isAdminUser(displayUser)
+  //   ? `${displayUser.first_name || ""} ${displayUser.last_name || ""}`.trim()
+  //   : displayUser.name || "";
 
   // Prepare profile data for EditProfileForm
   const getProfileData = () => {
@@ -129,16 +133,18 @@ export default function UserProfilePage() {
         email: displayUser.email,
         name: displayUser.name,
         phone: displayUser.phone,
-        profile: displayUser.profile
+        profile: displayUser.profile,
       };
     }
     // For admin users (though they shouldn't edit from here)
     return {
       id: displayUser.id,
       email: displayUser.email,
-      name: `${displayUser.first_name || ''} ${displayUser.last_name || ''}`.trim(),
+      name: `${displayUser.first_name || ""} ${
+        displayUser.last_name || ""
+      }`.trim(),
       phone: displayUser.phone,
-      profile: displayUser.profile
+      profile: displayUser.profile,
     };
   };
 
@@ -147,10 +153,11 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <ProfileHeader 
-        firstName={firstName} 
+      <ProfileHeader
+        firstName={firstName}
         lastName={lastName}
         userType={displayUser.user_type}
+        isActive={displayUser.is_active} // <-- add this
       />
 
       <main className="grow py-8">

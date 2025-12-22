@@ -20,7 +20,7 @@ const OrderStatusCard: React.FC<OrderStatusCardProps> = ({
 }) => {
   return (
     <Card className={`${color} border-0 shadow-sm`}>
-      <div className="text-sm font-bold text-gray-600">{title}</div>
+      <div className="text-sm font-bold text-foreground">{title}</div>
       <div className="flex items-center justify-between">
         <div className={`text-lg font-semibold ${textColor}`}>{value}</div>
         <div className={`text-2xl ${textColor}`}>{icon}</div>
