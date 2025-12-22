@@ -29,9 +29,9 @@ export default function ConfirmOrderPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const router = useRouter();
-  const compressedData = searchParams.get("o");
+  const token = searchParams.get("t");
   const store_slug = params.store_slug as string;
-   const {
+  const {
     currency,
     // icon: currencyIcon,
     loading: currencyLoading,
@@ -43,6 +43,8 @@ export default function ConfirmOrderPage() {
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
+  const [tokenData, setTokenData] = useState<any>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   const notify = useSheiNotification();
   const {
@@ -51,11 +53,12 @@ export default function ConfirmOrderPage() {
     setCreatedAccountEmail,
     clearAccountCreationFlags,
   } = useCheckoutStore();
-  
+
   const { clearStoreCart } = useCartStore();
 
   // Validate store_slug before using it
-  const validatedStoreSlug = store_slug && store_slug !== "undefined" ? store_slug : "";
+  const validatedStoreSlug =
+    store_slug && store_slug !== "undefined" ? store_slug : "";
 
   const {
     cartItems,
@@ -64,7 +67,7 @@ export default function ConfirmOrderPage() {
     error: cartError,
   } = useUnifiedCartData({
     storeSlug: validatedStoreSlug,
-    compressedData,
+    tokenData: tokenData,
     useZustand: false,
   });
 
@@ -83,12 +86,12 @@ export default function ConfirmOrderPage() {
   } = useOrderProcess(validatedStoreSlug);
 
   const { session, loading: authLoading } = useSupabaseAuth();
-  const { 
-    customer: currentCustomer, 
+  const {
+    customer: currentCustomer,
     loading: customerLoading,
     isAuthenticated,
     authEmail,
-    authUserId
+    authUserId,
   } = useCurrentCustomer(validatedStoreSlug);
 
   const isUserLoggedIn = Boolean(session && currentCustomer?.auth_user_id);
@@ -105,7 +108,10 @@ export default function ConfirmOrderPage() {
           const storeSettings = await getStoreSettings(storeId);
           if (storeSettings && storeSettings.tax_rate) {
             setTaxAmount(storeSettings.tax_rate);
-            console.log("✅ Tax amount fetched from store:", storeSettings.tax_rate);
+            console.log(
+              "✅ Tax amount fetched from store:",
+              storeSettings.tax_rate
+            );
           }
         }
       } catch (error) {
@@ -117,10 +123,27 @@ export default function ConfirmOrderPage() {
       fetchTaxAmount();
     }
   }, [validatedStoreSlug]);
-
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (!token) return;
+
+    const fetchTokenData = async () => {
+      try {
+        const res = await fetch(`/api/confirm-order-token?t=${token}`);
+        const json = await res.json();
+
+        if (!res.ok) {
+          throw new Error(json.error || "Invalid order link");
+        }
+
+        setTokenData(json.data);
+      } catch (err: any) {
+        console.error("❌ Failed to load order token:", err);
+        setTokenError(err.message);
+      }
+    };
+
+    fetchTokenData();
+  }, [token]);
 
   useEffect(() => {
     if (!validatedStoreSlug) {
@@ -323,7 +346,10 @@ export default function ConfirmOrderPage() {
 
       // 🧑‍🧾 GUEST / NON-LOGGED USER
       if (!isUserLoggedIn) {
-        const existing = await getCustomerByEmail(values.email, validatedStoreSlug);
+        const existing = await getCustomerByEmail(
+          values.email,
+          validatedStoreSlug
+        );
 
         if (existing) {
           storeCustomerId = existing.id;
@@ -363,7 +389,10 @@ export default function ConfirmOrderPage() {
           }
         } else {
           if (values.password) {
-            const authResult = await createAuthAndCustomer(values, validatedStoreSlug);
+            const authResult = await createAuthAndCustomer(
+              values,
+              validatedStoreSlug
+            );
             storeCustomerId = authResult.customerId;
             authUserId = authResult.authUserId;
             loginSuccess = authResult.loginSuccess;
@@ -382,7 +411,10 @@ export default function ConfirmOrderPage() {
               );
             }
           } else {
-            storeCustomerId = await createGuestCustomer(values, validatedStoreSlug);
+            storeCustomerId = await createGuestCustomer(
+              values,
+              validatedStoreSlug
+            );
           }
         }
       }
@@ -436,14 +468,16 @@ export default function ConfirmOrderPage() {
       }
 
       // Clear cart (only if using compressed data)
-      if (compressedData) {
+      if (tokenData) {
         setTimeout(() => clearStoreCart(validatedStoreSlug), 3000);
       }
-      
+
       clearFormData();
     } catch (error: any) {
       console.error("❌ Confirm order error:", error);
-      notify.error(error.message || "Failed to process order. Please try again.");
+      notify.error(
+        error.message || "Failed to process order. Please try again."
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -564,7 +598,7 @@ export default function ConfirmOrderPage() {
 
     throw new Error("Failed to create customer after retries");
   }
-  
+
   async function handleLogin(
     email: string,
     password: string
@@ -582,7 +616,7 @@ export default function ConfirmOrderPage() {
     console.log("Login successful! Session data:", data);
     return data.user;
   }
-  
+
   async function createAuthAndCustomer(
     values: CustomerCheckoutFormValues,
     storeSlug: string
@@ -654,7 +688,7 @@ export default function ConfirmOrderPage() {
         }
       } else if (authData?.user) {
         authUserId = authData.user.id;
-        await handleLogin(values.email.toLowerCase(), values.password!)
+        await handleLogin(values.email.toLowerCase(), values.password!);
       }
     } catch (authError) {
       console.error("❌ Auth creation error:", authError);
@@ -853,10 +887,12 @@ export default function ConfirmOrderPage() {
   // Don't render if store slug is invalid
   if (!validatedStoreSlug) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Invalid Store</h1>
-          <p className="text-gray-600 mt-2">The store URL is invalid. Please check the link and try again.</p>
+      <div className='flex justify-center items-center min-h-screen'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold text-red-600'>Invalid Store</h1>
+          <p className='text-gray-600 mt-2'>
+            The store URL is invalid. Please check the link and try again.
+          </p>
         </div>
       </div>
     );
@@ -865,10 +901,10 @@ export default function ConfirmOrderPage() {
   // Loading states
   if (isLoadingOverall) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading order details...</p>
+      <div className='flex justify-center items-center min-h-screen'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto'></div>
+          <p className='mt-4 text-gray-600'>Loading order details...</p>
         </div>
       </div>
     );
@@ -877,9 +913,9 @@ export default function ConfirmOrderPage() {
   // Store not found
   if (storeError || !invoiceStoreData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold mb-4'>Store Not Found</h1>
           <p>The store you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
@@ -889,9 +925,9 @@ export default function ConfirmOrderPage() {
   // Order complete
   if (cartItems.length === 0 && !isLoadingOverall && !showInvoice) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Order Complete</h1>
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold mb-4'>Order Complete</h1>
           <p>Your order has been placed successfully!</p>
         </div>
       </div>
@@ -912,7 +948,7 @@ export default function ConfirmOrderPage() {
         shippingFee={shippingFee}
         taxAmount={taxAmount}
         isProcessing={isSubmitting}
-        mode="confirm"
+        mode='confirm'
       />
 
       <AnimatePresence>
