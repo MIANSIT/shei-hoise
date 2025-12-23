@@ -42,3 +42,9 @@ export enum ProductStatus {
   INACTIVE = "inactive",
   DRAFT = "draft",
 }
+export enum StoreStatus {
+  PENDING = "pending",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+  TRAIL = "trail",
+}
