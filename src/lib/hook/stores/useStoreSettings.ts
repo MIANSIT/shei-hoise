@@ -1,11 +1,8 @@
-// lib/hooks/useStoreSettings.ts
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getStoreSettings,
-  StoreSettings,
-} from "@/lib/queries/stores/getStoreSettings";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import type { StoreSettings } from "@/lib/types/store/store"; // IMPORT from centralized types
 
 export function useStoreSettings(storeId: string | null) {
   const [settings, setSettings] = useState<StoreSettings | null>(null);

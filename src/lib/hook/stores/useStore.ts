@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
-import { StoreData } from "@/lib/queries/stores/getStoreBySlug";
+import type { StoreData } from "@/lib/types/store/store";
 
 export function useStore(storeId: string | null) {
   const [store, setStore] = useState<StoreData | null>(null);

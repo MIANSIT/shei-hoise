@@ -48,3 +48,17 @@ export enum StoreStatus {
   REJECTED = "rejected",
   TRAIL = "trail",
 }
+export enum Currency {
+  BDT = "BDT",
+  USD = "USD",
+  EUR = "EUR",
+  GBP = "GBP",
+  INR = "INR",
+}
+export const CURRENCY_LABELS: Record<Currency, string> = {
+  [Currency.BDT]: "BDT (৳)",
+  [Currency.USD]: "USD ($)",
+  [Currency.EUR]: "EUR (€)",
+  [Currency.GBP]: "GBP (£)",
+  [Currency.INR]: "INR (₹)",
+};

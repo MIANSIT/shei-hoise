@@ -2,11 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getStoreSettings,
-  StoreSettings,
-} from "@/lib/queries/stores/getStoreSettings";
-
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import type { StoreSettings } from "@/lib/types/store/store";
 export interface UseStoreCurrencyResult {
   currency: string | null;
   loading: boolean;
