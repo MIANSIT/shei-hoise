@@ -13,13 +13,14 @@ import ShippingMethod from "./ShippingMethod";
 import { CartProductWithDetails, CartCalculations } from "@/lib/types/cart";
 import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 interface UnifiedCheckoutLayoutProps {
   storeSlug: string;
   cartItems: CartProductWithDetails[];
   calculations: CartCalculations;
   loading: boolean;
   error: string | null;
-  onCheckout: (values: any) => void;
+  onCheckout: (values: CustomerCheckoutFormValues) => void;
   onShippingChange: (method: string, fee: number) => void;
   selectedShipping: string;
   shippingFee: number;
@@ -45,23 +46,29 @@ export default function UnifiedCheckoutLayout({
   isProcessing,
   mode = "checkout",
 }: UnifiedCheckoutLayoutProps) {
-  const [activeSection, setActiveSection] = useState<"cart" | "customer">("cart");
+  const [activeSection, setActiveSection] = useState<"cart" | "customer">(
+    "cart"
+  );
   const [isClearing, setIsClearing] = useState(false);
- const {
+  const {
     // currency,
     icon: currencyIcon,
     loading: currencyLoading,
   } = useUserCurrencyIcon();
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
-  
-  const totalWithShippingAndTax = calculations.totalPrice + shippingFee + taxAmount;
 
-  
+  const totalWithShippingAndTax =
+    calculations.totalPrice + shippingFee + taxAmount;
+
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
-  const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
+  const handleQuantityChange = (
+    productId: string,
+    variantId: string | null,
+    newQuantity: number
+  ) => {
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
     }
@@ -83,13 +90,15 @@ export default function UnifiedCheckoutLayout({
 
   if (error) {
     return (
-      <div className="container mx-auto p-4 lg:p-8">
-        <div className="text-center py-12">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-red-800 mb-2">Invalid Order Data</h2>
-            <p className="text-red-600 mb-4">{error}</p>
-            <p className="text-sm text-muted-foreground">
+      <div className='container mx-auto p-4 lg:p-8'>
+        <div className='text-center py-12'>
+          <div className='bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto'>
+            <div className='text-red-500 text-6xl mb-4'>⚠️</div>
+            <h2 className='text-xl font-bold text-red-800 mb-2'>
+              Invalid Order Data
+            </h2>
+            <p className='text-red-600 mb-4'>{error}</p>
+            <p className='text-sm text-muted-foreground'>
               Please check your order link or try again.
             </p>
           </div>
@@ -100,14 +109,14 @@ export default function UnifiedCheckoutLayout({
 
   if (loading && cartItems.length === 0) {
     return (
-      <div className="container mx-auto p-4 lg:p-8">
-        <div className="text-center py-12">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-64 mx-auto mb-6"></div>
-            <div className="h-4 bg-gray-200 rounded w-48 mx-auto mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-gray-100 rounded-lg h-96"></div>
-              <div className="bg-gray-100 rounded-lg h-96"></div>
+      <div className='container mx-auto p-4 lg:p-8'>
+        <div className='text-center py-12'>
+          <div className='animate-pulse'>
+            <div className='h-8 bg-gray-200 rounded w-64 mx-auto mb-6'></div>
+            <div className='h-4 bg-gray-200 rounded w-48 mx-auto mb-8'></div>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+              <div className='bg-gray-100 rounded-lg h-96'></div>
+              <div className='bg-gray-100 rounded-lg h-96'></div>
             </div>
           </div>
         </div>
@@ -116,20 +125,20 @@ export default function UnifiedCheckoutLayout({
   }
 
   return (
-    <div className="container mx-auto p-4 lg:p-8 pb-20 lg:pb-8">
-      <div className="text-center lg:text-left mb-6 lg:mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+    <div className='container mx-auto p-4 lg:p-8 pb-20 lg:pb-8'>
+      <div className='text-center lg:text-left mb-6 lg:mb-8'>
+        <h1 className='text-2xl lg:text-3xl font-bold text-foreground'>
           {mode === "confirm" ? "Confirm Your Order" : "Checkout"}
         </h1>
-        <p className="text-sm lg:text-base text-muted-foreground mt-2">
-          {mode === "confirm" 
-            ? "Review your items and enter your details" 
+        <p className='text-sm lg:text-base text-muted-foreground mt-2'>
+          {mode === "confirm"
+            ? "Review your items and enter your details"
             : "Complete your purchase"}
         </p>
       </div>
 
-      <div className="lg:hidden mb-6">
-        <div className="flex items-center justify-between text-sm mb-2">
+      <div className='lg:hidden mb-6'>
+        <div className='flex items-center justify-between text-sm mb-2'>
           <button
             onClick={() => setActiveSection("cart")}
             className={`flex items-center gap-1 ${
@@ -138,7 +147,9 @@ export default function UnifiedCheckoutLayout({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {activeSection === "customer" && <ChevronLeft className="h-4 w-4" />}
+            {activeSection === "customer" && (
+              <ChevronLeft className='h-4 w-4' />
+            )}
             Cart
           </button>
           <button
@@ -150,52 +161,62 @@ export default function UnifiedCheckoutLayout({
             }`}
           >
             Details
-            {activeSection === "cart" && <ChevronRight className="h-4 w-4" />}
+            {activeSection === "cart" && <ChevronRight className='h-4 w-4' />}
           </button>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className='w-full bg-gray-200 rounded-full h-2'>
           <div
-            className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+            className='bg-yellow-500 h-2 rounded-full transition-all duration-300'
             style={{ width: activeSection === "cart" ? "50%" : "100%" }}
           ></div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-        <div className={`${activeSection === "customer" ? "hidden lg:block" : "block"}`}>
-          <Card className="bg-card lg:sticky lg:top-8">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-yellow-100 p-2 rounded-full">
-                  <ShoppingBag className="h-5 w-5 text-yellow-600" />
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8'>
+        <div
+          className={`${
+            activeSection === "customer" ? "hidden lg:block" : "block"
+          }`}
+        >
+          <Card className='bg-card lg:sticky lg:top-8'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='bg-yellow-100 p-2 rounded-full'>
+                  <ShoppingBag className='h-5 w-5 text-yellow-600' />
                 </div>
                 <div>
-                  <CardTitle className="text-lg lg:text-xl font-semibold text-card-foreground">
+                  <CardTitle className='text-lg lg:text-xl font-semibold text-card-foreground'>
                     Your Order
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground">
+                  <p className='text-sm text-muted-foreground'>
                     {calculations.totalItems}{" "}
                     {calculations.totalItems === 1 ? "item" : "items"}
                   </p>
                 </div>
               </div>
-              <div className="h-1 bg-linear-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2"></div>
+              <div className='h-1 bg-linear-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2'></div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className='space-y-4'>
               {cartItems.length === 0 ? (
-                <div className="text-center py-8">
-                  <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">
+                <div className='text-center py-8'>
+                  <ShoppingBag className='h-12 w-12 text-muted-foreground mx-auto mb-3' />
+                  <p className='text-muted-foreground'>
                     No products found in your order
                   </p>
                 </div>
               ) : (
-                <div className="max-h-[400px] lg:max-h-[500px] overflow-y-auto">
-                  <CartItemsList 
+                <div className='max-h-[400px] lg:max-h-[500px] overflow-y-auto'>
+                  <CartItemsList
                     items={cartItems}
-                    onQuantityChange={mode === "checkout" ? handleQuantityChange : undefined}
-                    onRemoveItem={mode === "checkout" ? handleRemoveItem : undefined}
-                    onClearCart={mode === "checkout" ? handleClearCart : undefined}
+                    onQuantityChange={
+                      mode === "checkout" ? handleQuantityChange : undefined
+                    }
+                    onRemoveItem={
+                      mode === "checkout" ? handleRemoveItem : undefined
+                    }
+                    onClearCart={
+                      mode === "checkout" ? handleClearCart : undefined
+                    }
                     isClearing={isClearing}
                     showStoreInfo={mode === "checkout"}
                     storeSlug={storeSlug}
@@ -204,13 +225,17 @@ export default function UnifiedCheckoutLayout({
               )}
 
               {cartItems.length > 0 && (
-                <div className="space-y-3 pt-4 border-t border-border">
-                  <div className="flex justify-between text-foreground">
+                <div className='space-y-3 pt-4 border-t border-border'>
+                  <div className='flex justify-between text-foreground'>
                     <span>Subtotal:</span>
-                    <span> {displayCurrencyIconSafe}{calculations.subtotal.toFixed(2)}</span>
+                    <span>
+                      {" "}
+                      {displayCurrencyIconSafe}
+                      {calculations.subtotal.toFixed(2)}
+                    </span>
                   </div>
 
-                  <div className="border-t border-border pt-3">
+                  <div className='border-t border-border pt-3'>
                     <ShippingMethod
                       storeSlug={storeSlug}
                       subtotal={calculations.subtotal}
@@ -219,7 +244,7 @@ export default function UnifiedCheckoutLayout({
                     />
                   </div>
 
-                  <div className="flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border">
+                  <div className='flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border'>
                     <span>Total:</span>
                     <motion.span
                       key={`total-${totalWithShippingAndTax}`}
@@ -227,16 +252,17 @@ export default function UnifiedCheckoutLayout({
                       animate={{ scale: 1 }}
                       transition={{ duration: 0.2 }}
                     >
-                       {displayCurrencyIconSafe}{totalWithShippingAndTax.toFixed(2)}
+                      {displayCurrencyIconSafe}
+                      {totalWithShippingAndTax.toFixed(2)}
                     </motion.span>
                   </div>
 
                   <Button
-                    className="w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4"
+                    className='w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4'
                     onClick={() => setActiveSection("customer")}
                   >
                     Continue to Details
-                    <ChevronRight className="h-4 w-4 ml-2" />
+                    <ChevronRight className='h-4 w-4 ml-2' />
                   </Button>
                 </div>
               )}
@@ -244,24 +270,28 @@ export default function UnifiedCheckoutLayout({
           </Card>
         </div>
 
-        <div className={`${activeSection === "cart" ? "hidden lg:block" : "block"}`}>
-          <div className="space-y-6">
-            <Card className="bg-card">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 p-2 rounded-full">
-                    <User className="h-5 w-5 text-blue-600" />
+        <div
+          className={`${
+            activeSection === "cart" ? "hidden lg:block" : "block"
+          }`}
+        >
+          <div className='space-y-6'>
+            <Card className='bg-card'>
+              <CardHeader className='pb-4'>
+                <div className='flex items-center gap-3'>
+                  <div className='bg-blue-100 p-2 rounded-full'>
+                    <User className='h-5 w-5 text-blue-600' />
                   </div>
                   <div>
-                    <CardTitle className="text-lg lg:text-xl font-semibold text-card-foreground">
+                    <CardTitle className='text-lg lg:text-xl font-semibold text-card-foreground'>
                       Customer Information
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className='text-sm text-muted-foreground'>
                       Shipping and contact details
                     </p>
                   </div>
                 </div>
-                <div className="h-1 bg-linear-to-r from-blue-400 to-blue-600 rounded-full shadow-lg shadow-blue-500/30 mt-2"></div>
+                <div className='h-1 bg-linear-to-r from-blue-400 to-blue-600 rounded-full shadow-lg shadow-blue-500/30 mt-2'></div>
               </CardHeader>
               <CardContent>
                 <CheckoutForm
@@ -275,11 +305,11 @@ export default function UnifiedCheckoutLayout({
                 />
 
                 <Button
-                  variant="outline"
-                  className="w-full lg:hidden mt-4"
+                  variant='outline'
+                  className='w-full lg:hidden mt-4'
                   onClick={() => setActiveSection("cart")}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <ChevronLeft className='h-4 w-4 mr-2' />
                   Back to Cart
                 </Button>
               </CardContent>
