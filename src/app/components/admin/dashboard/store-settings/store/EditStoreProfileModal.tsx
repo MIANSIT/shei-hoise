@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
+import { useForm, Controller } from "react-hook-form";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-// import { Switch } from "antd"; // Import from antd
-import { Upload, X } from "lucide-react";
-import Image from "next/image";
-import React from "react";
-import type { StoreData } from "@/lib/types/store/store"; // Use correct path
+
+import UploadImage from "@/app/components/admin/dashboard/store-settings/store/UploadImage"; // <-- adjust path
+import type { StoreData } from "@/lib/types/store/store";
 
 interface EditStoreProfileModalProps {
   store: StoreData;
@@ -25,121 +24,75 @@ interface EditStoreProfileModalProps {
   onSave: (updatedData: Partial<StoreData>) => Promise<void>;
 }
 
+type StoreFormValues = {
+  store_name: string;
+  store_slug: string;
+  description?: string;
+  contact_email: string;
+  contact_phone: string;
+  business_address: string;
+  tax_id?: string;
+  business_license?: string;
+  logo?: File | string;
+  banner?: File | string;
+};
+
 export default function EditStoreProfileModal({
   store,
   isOpen,
   onClose,
   onSave,
 }: EditStoreProfileModalProps) {
-  const [formData, setFormData] = useState({
-    store_name: store.store_name,
-    store_slug: store.store_slug,
-    description: store.description || "",
-    contact_email: store.contact_email || "",
-    contact_phone: store.contact_phone || "",
-    business_address: store.business_address || "",
-    tax_id: store.tax_id || "",
-    business_license: store.business_license || "",
-    is_active: store.is_active,
+  const {
+    control,
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<StoreFormValues>({
+    defaultValues: {
+      store_name: store.store_name,
+      store_slug: store.store_slug,
+      description: store.description || "",
+      contact_email: store.contact_email || "",
+      contact_phone: store.contact_phone || "",
+      business_address: store.business_address || "",
+      tax_id: store.tax_id || "",
+      business_license: store.business_license || "",
+      logo: store.logo_url || undefined,
+      banner: store.banner_url || undefined,
+    },
   });
 
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(
-    store.logo_url || null
-  );
-  const [bannerPreview, setBannerPreview] = useState<string | null>(
-    store.banner_url || null
-  );
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSwitchChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, is_active: checked }));
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setLogoPreview(previewUrl);
-    }
-  };
-
-  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setBannerFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setBannerPreview(previewUrl);
-    }
-  };
-
-  const removeLogo = () => {
-    setLogoFile(null);
-    setLogoPreview(null);
-    // Clean up object URL to prevent memory leaks
-    if (logoPreview && logoPreview.startsWith("blob:")) {
-      URL.revokeObjectURL(logoPreview);
-    }
-  };
-
-  const removeBanner = () => {
-    setBannerFile(null);
-    setBannerPreview(null);
-    // Clean up object URL to prevent memory leaks
-    if (bannerPreview && bannerPreview.startsWith("blob:")) {
-      URL.revokeObjectURL(bannerPreview);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const onSubmit = async (data: StoreFormValues) => {
     try {
-      const updatedData: Partial<StoreData> = { ...formData };
+      const payload: Partial<StoreData> = {
+        store_name: data.store_name,
+        store_slug: data.store_slug,
+        description: data.description,
+        contact_email: data.contact_email,
+        contact_phone: data.contact_phone,
+        business_address: data.business_address,
+        tax_id: data.tax_id,
+        business_license: data.business_license,
+      };
 
-      // Handle file uploads
-      if (logoFile) {
-        // Upload logo to your storage service
-        // const logoUrl = await uploadFile(logoFile);
-        // updatedData.logo_url = logoUrl;
+      // Handle files
+      if (data.logo instanceof File) {
+        // upload logo
+        // payload.logo_url = uploadedLogoUrl;
       }
 
-      if (bannerFile) {
-        // Upload banner to your storage service
-        // const bannerUrl = await uploadFile(bannerFile);
-        // updatedData.banner_url = bannerUrl;
+      if (data.banner instanceof File) {
+        // upload banner
+        // payload.banner_url = uploadedBannerUrl;
       }
 
-      await onSave(updatedData);
+      await onSave(payload);
       onClose();
     } catch (error) {
       console.error("Error updating store:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
-
-  // Clean up object URLs when component unmounts
-  React.useEffect(() => {
-    return () => {
-      if (logoPreview && logoPreview.startsWith("blob:")) {
-        URL.revokeObjectURL(logoPreview);
-      }
-      if (bannerPreview && bannerPreview.startsWith("blob:")) {
-        URL.revokeObjectURL(bannerPreview);
-      }
-    };
-  }, [logoPreview, bannerPreview]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -148,193 +101,126 @@ export default function EditStoreProfileModal({
           <DialogTitle className="text-2xl">Edit Store Profile</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Banner Upload Section */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* ================= Banner Upload ================= */}
           <div className="space-y-3">
-            <Label>Store Banner<span className="text-red-600">*</span></Label>
-            <div className="relative h-32 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors">
-              {bannerPreview ? (
-                <div className="relative h-full w-full">
-                  <Image
-                    src={bannerPreview}
-                    alt="Banner preview"
-                    fill
-                    className="object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeBanner}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="cursor-pointer h-full w-full flex flex-col items-center justify-center">
-                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500">
-                    Click to upload banner
-                  </span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleBannerUpload}
-                    required
-                  />
-                </label>
+            <Label>
+              Store Banner <span className="text-red-600">*</span>
+            </Label>
+
+            <Controller
+              name="banner"
+              control={control}
+              rules={{ required: "Banner is required" }}
+              render={({ field }) => (
+                <UploadImage field={field} label="Upload Banner" />
               )}
-            </div>
+            />
           </div>
 
-          {/* Logo Upload Section */}
+          {/* ================= Logo Upload ================= */}
           <div className="space-y-3">
-            <Label>Store Logo<span className="text-red-600">*</span></Label>
-            <div className="flex items-center gap-4">
-              <div className="relative w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors">
-                {logoPreview ? (
-                  <div className="relative h-full w-full">
-                    <Image
-                      src={logoPreview}
-                      alt="Logo preview"
-                      fill
-                      className="object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeLogo}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer h-full w-full flex flex-col items-center justify-center">
-                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                    <span className="text-xs text-gray-500">Upload logo</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      required
-                    />
-                  </label>
-                )}
-              </div>
-              <div className="text-sm text-gray-500">
-                <p>• Recommended size: 400×400px</p>
-                <p>• Max file size: 2MB</p>
-                <p>• Formats: JPG, PNG, SVG</p>
-              </div>
+            <Label>
+              Store Logo <span className="text-red-600">*</span>
+            </Label>
+
+            <Controller
+              name="logo"
+              control={control}
+              shouldUnregister // ⭐ THIS FIXES IT
+              render={({ field }) => (
+                <UploadImage field={field} label="Upload Logo" />
+              )}
+            />
+
+            <p className="text-sm text-gray-500">
+              • Recommended size: 400×400px <br />
+              • Max file size: 5MB <br />• Formats: JPG, PNG, SVG
+            </p>
+          </div>
+
+          {/* ================= Store Info ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>
+                Store Name <span className="text-red-600">*</span>
+              </Label>
+              <Input {...register("store_name", { required: true })} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Store Slug <span className="text-red-600">*</span>
+              </Label>
+              <Input {...register("store_slug", { required: true })} />
             </div>
           </div>
 
-          {/* Store Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="store_name">Store Name <span className="text-red-600">*</span></Label>
-              <Input
-                id="store_name"
-                name="store_name"
-                value={formData.store_name}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="store_slug">Store Slug <span className="text-red-600">*</span></Label>
-              <Input
-                id="store_slug"
-                name="store_slug"
-                value={formData.store_slug}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-          </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Store Description </Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-            />
+            <Label>Store Description</Label>
+            <Textarea {...register("description")} />
           </div>
-          {/* Contact Information */}
+
+          {/* ================= Contact Info ================= */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="contact_email">Contact Email<span className="text-red-600">*</span></Label>
+              <Label>
+                Contact Email <span className="text-red-600">*</span>
+              </Label>
               <Input
-                id="contact_email"
-                name="contact_email"
                 type="email"
-                value={formData.contact_email}
-                onChange={handleInputChange}
-                required              />
+                {...register("contact_email", { required: true })}
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact_phone">Contact Phone<span className="text-red-600">*</span></Label>
+              <Label>
+                Contact Phone <span className="text-red-600">*</span>
+              </Label>
               <Input
-                id="contact_phone"
-                name="contact_phone"
                 type="tel"
-                required
-                value={formData.contact_phone}
-                onChange={handleInputChange}
+                {...register("contact_phone", { required: true })}
               />
             </div>
           </div>
 
-          {/* Business Address */}
+          {/* ================= Address ================= */}
           <div className="space-y-2">
-            <Label htmlFor="business_address">Business Address<span className="text-red-600">*</span></Label>
+            <Label>
+              Business Address <span className="text-red-600">*</span>
+            </Label>
             <Textarea
-              id="business_address"
-              name="business_address"
-              required
-              value={formData.business_address}
-              onChange={handleInputChange}
               rows={3}
+              {...register("business_address", { required: true })}
             />
           </div>
 
-          {/* Legal Information */}
+          {/* ================= Legal ================= */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="tax_id">Tax ID</Label>
-              <Input
-                id="tax_id"
-                name="tax_id"
-                value={formData.tax_id}
-                onChange={handleInputChange}
-              />
+              <Label>Tax ID</Label>
+              <Input {...register("tax_id")} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="business_license">Business License</Label>
-              <Input
-                id="business_license"
-                name="business_license"
-                value={formData.business_license}
-                onChange={handleInputChange}
-              />
+              <Label>Business License</Label>
+              <Input {...register("business_license")} />
             </div>
           </div>
 
+          {/* ================= Footer ================= */}
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
+
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>

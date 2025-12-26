@@ -3,166 +3,116 @@
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStore } from "@/lib/hook/stores/useStore";
 import { useStoreSettings } from "@/lib/hook/stores/useStoreSettings";
+
+import { StoreHeader } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreHeader";
+import { StoreInfoCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreInfoCard";
+import { StoreSettingsCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSettingsCard";
+import { ShippingFeesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/ShippingFeesCard";
+import { PoliciesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PoliciesCard";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
-import StoreProfileCard from "@/app/components/admin/dashboard/store-settings/store/StoreProfileCard";
-import ContactCard from "@/app/components/admin/dashboard/store-settings/store/ContactCard";
-import LegalCard from "@/app/components/admin/dashboard/store-settings/store/LegalCard";
-import OperationalSettingsCard from "@/app/components/admin/dashboard/store-settings/store/OperationalSettingsCard";
-import PolicyCard from "@/app/components/admin/dashboard/store-settings/store/PolicyCard";
 
-// Import types from the correct path - adjust based on your actual structure
-// Option 1: If types are in "@/types/store"
-
-// Option 2: If types are in "@/lib/types/store/store"
-import type {
-  UpdatedStoreData,
-  UpdatedStoreSettings,
-  PolicyType,
-} from "@/lib/types/store/store";
-
-export default function StoreManagementPage() {
-  const { storeId } = useCurrentUser();
+export default function StorePage() {
+  const { storeId, loading: userLoading } = useCurrentUser();
   const { store, loading: storeLoading } = useStore(storeId);
   const { settings, loading: settingsLoading } = useStoreSettings(storeId);
 
-  const loading = storeLoading || settingsLoading;
+  /* =======================
+     LOADING STATES
+  ======================= */
+  if (userLoading) {
+    return <SheiSkeleton />;
+  }
 
-  if (loading) {
+  if (!storeId) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <SheiSkeleton className="h-64 w-full lg:w-2/3 rounded-2xl" />
-          <SheiSkeleton className="h-64 w-full lg:w-1/3 rounded-2xl" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <svg
+            className="w-8 h-8 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+            />
+          </svg>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SheiSkeleton key={i} className="h-48 rounded-xl" />
-          ))}
+        <div className="text-center">
+          <h3 className="text-lg font-medium">No Store Found</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            You don&apos;t have a store assigned to your account.
+          </p>
         </div>
       </div>
     );
   }
 
-  if (!store) return null;
+  if (storeLoading || settingsLoading) {
+    return (
+      <div className="space-y-6">
+        <SheiSkeleton />
 
-  // Handler for policy updates
-  const handlePolicySave = async (type: PolicyType, content: string) => {
-    console.log(`Saving ${type}:`, content);
+        <div className="grid gap-6 md:grid-cols-2">
+          <SheiSkeleton />
 
-    try {
-      // In a real app, you would call your API here:
-      // const response = await fetch(`/api/store-settings/${settings?.id}`, {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     [type === 'terms' ? 'terms_and_conditions' : 'privacy_policy']: content
-      //   }),
-      // });
-
-      // if (!response.ok) throw new Error('Failed to update policy');
-
-      // return await response.json();
-
-      return Promise.resolve(); // Simulate async operation
-    } catch (error) {
-      console.error(`Error saving ${type}:`, error);
-      throw error;
-    }
-  };
-
-  // Handler for operational settings updates
-  const handleSettingsUpdate = async (
-    updatedSettings: UpdatedStoreSettings
-  ) => {
-    console.log("Updating operational settings:", updatedSettings);
-
-    try {
-      // In a real app, you would call your API here:
-      // const response = await fetch(`/api/store-settings/${settings?.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(updatedSettings),
-      // });
-
-      // if (!response.ok) throw new Error('Failed to update settings');
-
-      // return await response.json();
-
-      return Promise.resolve(); // Simulate async operation
-    } catch (error) {
-      console.error("Error updating settings:", error);
-      throw error;
-    }
-  };
-
-  // Handler for store profile updates
-  const handleStoreUpdate = async (updatedStore: UpdatedStoreData) => {
-    console.log("Updating store profile:", updatedStore);
-
-    try {
-      // In a real app, you would call your API here:
-      // const response = await fetch(`/api/stores/${store.id}`, {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(updatedStore),
-      // });
-
-      // if (!response.ok) throw new Error('Failed to update store');
-
-      // return await response.json();
-
-      return Promise.resolve(); // Simulate async operation
-    } catch (error) {
-      console.error("Error updating store:", error);
-      throw error;
-    }
-  };
-
-  return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          Store Profile
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Manage your store identity, settings, and policies
-        </p>
-      </div>
-
-      {/* Store Profile Card */}
-      <StoreProfileCard store={store} onStoreUpdate={handleStoreUpdate} />
-
-      {/* Contact & Legal Info Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ContactCard store={store} />
-        <LegalCard store={store} />
-      </div>
-
-      {/* Operational Settings */}
-      {settings && (
-        <OperationalSettingsCard
-          settings={settings}
-          onSettingsUpdate={handleSettingsUpdate}
-        />
-      )}
-
-      {/* Policies */}
-      {settings && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-          <PolicyCard
-            title="Terms & Conditions"
-            content={settings.terms_and_conditions ?? ""}
-            iconType="terms"
-            onSave={(content) => handlePolicySave("terms", content)}
-          />
-          <PolicyCard
-            title="Privacy Policy"
-            content={settings.privacy_policy ?? ""}
-            iconType="privacy"
-            onSave={(content) => handlePolicySave("privacy", content)}
-          />
+          <SheiSkeleton />
+          <SheiSkeleton />
         </div>
+        <SheiSkeleton />
+        <SheiSkeleton />
+      </div>
+    );
+  }
+
+  if (!store) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+          <svg
+            className="w-8 h-8 text-destructive"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.698-.833-2.464 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
+          </svg>
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-medium">Store Not Found</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            The requested store could not be found in our system.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* =======================
+     UI
+  ======================= */
+  return (
+    <div className="space-y-8 pb-8">
+      <StoreHeader store={store} />
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <StoreInfoCard store={store} />
+        {settings && <StoreSettingsCard settings={settings} />}
+      </div>
+
+      {settings && (
+        <>
+          <ShippingFeesCard fees={settings.shipping_fees} settings={settings} />
+          <PoliciesCard settings={settings} />
+        </>
       )}
     </div>
   );

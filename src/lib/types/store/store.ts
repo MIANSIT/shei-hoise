@@ -5,7 +5,7 @@ import { Currency } from "../enums";
 // Store types
 export interface StoreData {
   id: string;
-//   owner_id: string;
+  //   owner_id: string;
   store_name: string;
   store_slug: string;
   description?: string | null;
@@ -63,4 +63,3 @@ export interface PolicyUpdate {
   content: string;
 }
 export { Currency };
-

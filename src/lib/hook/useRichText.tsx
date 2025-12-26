@@ -1,13 +1,9 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo } from "react";
 import JoditEditor from "jodit-react";
 
-interface UseRichTextProps {
-  initialValue?: string;
-}
-
-export const useRichText = ({ initialValue = "" }: UseRichTextProps = {}) => {
+export const useRichText = () => {
   const editorConfig = useMemo(
     () => ({
       readonly: false,
@@ -15,6 +11,7 @@ export const useRichText = ({ initialValue = "" }: UseRichTextProps = {}) => {
       height: 600,
       toolbarAdaptive: false,
       toolbarButtonSize: "middle" as const,
+
       buttons: [
         "bold",
         "italic",
@@ -23,30 +20,19 @@ export const useRichText = ({ initialValue = "" }: UseRichTextProps = {}) => {
         "|",
         "ul",
         "ol",
-        "outdent",
-        "indent",
-        "|",
-        "font",
-        "fontsize",
-        "brush",
-        "paragraph",
         "|",
         "left",
         "center",
         "right",
-        "justify",
-        "|",
-        "hr",
         "|",
         "link",
         "|",
         "undo",
         "redo",
-        "|",
-        "preview",
-      ],
-      removeButtons: ["source", "about"],
-      useSearch: false,
+      ] as string[],
+
+      removeButtons: ["source", "about"] as string[],
+
       showCharsCounter: false,
       showWordsCounter: false,
       showXPathInStatusbar: false,
@@ -55,44 +41,20 @@ export const useRichText = ({ initialValue = "" }: UseRichTextProps = {}) => {
   );
 
   const Editor = ({
-    value,
-    onChange,
+    initialValue,
+    onBlur,
   }: {
-    value?: string | null;
-    onChange: (val: string) => void;
+    initialValue: string;
+    onBlur: (val: string) => void;
   }) => {
-    const [content, setContent] = useState(value ?? initialValue);
-    const skipNextChange = useRef(false);
-
-    // Sync external value
-    useEffect(() => {
-      if (value !== content) {
-        setContent(value ?? "");
-      }
-    }, [content, value]);
-
     return (
-      <div className="border border-gray-300 rounded-md overflow-hidden">
+      <div className="border rounded-md overflow-hidden">
         <JoditEditor
-          value={content}
+          key={initialValue} // re-init only when opening dialog
+          value={initialValue}
           config={editorConfig}
           onBlur={(newContent: string) => {
-            if (newContent !== content) {
-              setContent(newContent);
-              onChange(newContent);
-            }
-          }}
-          onChange={(newContent: string) => {
-            // Skip if this is just setting initial value
-            if (skipNextChange.current) {
-              skipNextChange.current = false;
-              return;
-            }
-
-            if (newContent !== content) {
-              setContent(newContent);
-              onChange(newContent);
-            }
+            onBlur(newContent);
           }}
         />
       </div>
