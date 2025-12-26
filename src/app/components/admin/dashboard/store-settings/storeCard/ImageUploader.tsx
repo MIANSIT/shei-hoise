@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 
 interface ImageUploaderProps {
-  value?: string; // existing image URL
+  value?: string;
   onChange: (file: File | null) => void;
   label?: string;
 }
@@ -60,15 +60,19 @@ export function ImageUploader({ value, onChange, label }: ImageUploaderProps) {
   const handleCancel = () => setPreviewOpen(false);
 
   const uploadButton = (
-    <div className="flex flex-col items-center justify-center">
-      <PlusOutlined style={{ fontSize: 24 }} />
-      <div style={{ marginTop: 8 }}>Upload</div>
+    <div className="flex flex-col items-center justify-center p-2">
+      <PlusOutlined className="text-lg sm:text-xl" />
+      <div className="mt-1 text-xs sm:text-sm">Upload</div>
     </div>
   );
 
   return (
     <div className="mb-4">
-      {label && <label className="block mb-1 font-semibold">{label}</label>}
+      {label && (
+        <label className="block mb-1 sm:mb-2 text-sm sm:text-base font-medium">
+          {label}
+        </label>
+      )}
       <Upload
         listType="picture-card"
         fileList={fileList}
@@ -76,6 +80,7 @@ export function ImageUploader({ value, onChange, label }: ImageUploaderProps) {
         beforeUpload={() => false}
         maxCount={1}
         onPreview={handlePreview}
+        className="image-uploader"
       >
         {fileList.length >= 1 ? null : uploadButton}
       </Upload>
@@ -85,13 +90,16 @@ export function ImageUploader({ value, onChange, label }: ImageUploaderProps) {
         title={previewTitle}
         footer={null}
         onCancel={handleCancel}
+        width="90vw"
+        className="max-w-3xl"
       >
-        <div className="relative w-full h-[400px]">
+        <div className="relative w-full h-[50vh] sm:h-[60vh] md:h-[70vh]">
           <Image
             alt="preview"
             src={previewImage}
             fill
-            style={{ objectFit: "contain" }}
+            className="object-contain"
+            sizes="90vw"
           />
         </div>
       </Modal>

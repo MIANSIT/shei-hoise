@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import PolicyBlock from "@/app/components/admin/dashboard/store-settings/PolicyBlock";
-import { RichTextController } from "@/app/components/admin/dashboard/store-settings/store/RichEditor";
+import { RichTextController } from "@/app/components/admin/dashboard/store-settings/storeCard/RichEditor";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import type { StoreSettings } from "@/lib/types/store/store";
 
 import {
@@ -379,7 +378,7 @@ function PolicyEditorDialog({
   type,
   formData,
   isSubmitting,
-  onTitleChange,
+  // onTitleChange,
   onRichTextChange,
   onSave,
 }: PolicyEditorDialogProps) {
