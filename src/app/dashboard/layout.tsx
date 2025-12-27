@@ -18,7 +18,7 @@ import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
-import { StoreStatusBadge } from "@/app/components/admin/common/StoreStatusBadge";
+import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -188,10 +188,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               <div className="flex justify-between items-center mb-4 px-4">
                 <Breadcrumb />
-                <StoreStatusBadge
-                  status={storeStatus}
-                  isActive={storeIsActive}
-                />
+                {store && storeStatus && (
+                  <StoreStatusPopup
+                    status={storeStatus}
+                    isActive={storeIsActive}
+                    createdAt={store.created_at}
+                  />
+                )}
               </div>
               <div className="flex-1 overflow-auto p-4">{children}</div>
             </main>

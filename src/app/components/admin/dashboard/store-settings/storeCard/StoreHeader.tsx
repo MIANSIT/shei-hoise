@@ -61,7 +61,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
     [StoreStatus.PENDING]: { variant: "secondary", label: "Pending" },
     [StoreStatus.APPROVED]: { variant: "default", label: "Verified" },
     [StoreStatus.REJECTED]: { variant: "destructive", label: "Rejected" },
-    [StoreStatus.TRAIL]: { variant: "outline", label: "Trial" },
+    [StoreStatus.TRIAL]: { variant: "outline", label: "Trial" },
   };
 
   const statusInfo = store.status

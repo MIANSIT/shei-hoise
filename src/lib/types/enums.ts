@@ -46,8 +46,16 @@ export enum StoreStatus {
   PENDING = "pending",
   APPROVED = "approved",
   REJECTED = "rejected",
-  TRAIL = "trail",
+  TRIAL = "trial",
 }
+
+const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
+  [StoreStatus.PENDING]: "PENDING",
+  [StoreStatus.APPROVED]: "APPROVED",
+  [StoreStatus.REJECTED]: "REJECTED",
+  [StoreStatus.TRIAL]: "TRIAL", // display label
+};
+
 export enum Currency {
   BDT = "BDT",
   USD = "USD",
