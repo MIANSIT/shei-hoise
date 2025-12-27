@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ShippingFees, StoreSettings } from "@/lib/types/store/store";
+import { CURRENCY_ICONS, Currency } from "@/lib/types/enums";
 
 export function ShippingFeesCard({
   fees,
@@ -12,6 +13,9 @@ export function ShippingFeesCard({
   fees?: ShippingFees | null;
   settings: StoreSettings;
 }) {
+  // Get currency icon from settings
+  const currencyIcon = CURRENCY_ICONS[settings.currency as Currency];
+
   return (
     <Card className="border shadow-sm">
       <CardHeader className="p-4 sm:p-6">
@@ -32,7 +36,7 @@ export function ShippingFeesCard({
             variant="outline"
             className="font-normal self-start sm:self-auto text-xs sm:text-sm px-2 py-1"
           >
-            {settings.currency}
+            {currencyIcon}
           </Badge>
         </div>
       </CardHeader>
@@ -56,9 +60,7 @@ export function ShippingFeesCard({
                   )}
                 </div>
                 <span className="font-bold text-sm sm:text-base whitespace-nowrap">
-                  {fee.price === 0
-                    ? "FREE"
-                    : `${fee.price} ${settings.currency}`}
+                  {fee.price === 0 ? "FREE" : `${currencyIcon} ${fee.price}`}
                 </span>
               </div>
             ))}
@@ -69,9 +71,13 @@ export function ShippingFeesCard({
       {/* Persistent Manage Shipping link using Next.js Link */}
       <div className="px-4 py-3 border-t text-xs sm:text-sm text-muted-foreground">
         <p className="text-center sm:text-left">
-          You can manage shipping methods in the{" "}<span className="md:hidden"><br/></span>
+          You can manage shipping methods in the{" "}
+          <span className="md:hidden">
+            <br />
+          </span>
           <Link
-            href="/dashboard/shipping-management"
+            href="/dashboard/shipping-Management"
+            target="_blank"
             className="text-primary underline hover:text-primary/80 transition-colors font-medium"
           >
             Shipping Management page

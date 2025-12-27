@@ -15,8 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import type { StoreSettings } from "@/lib/types/store/store";
-
 import {
   FileTextOutlined,
   LockOutlined,
@@ -28,6 +26,7 @@ import {
   SaveOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
+import type { StoreSettings } from "@/lib/types/store/store";
 
 interface PolicySectionProps {
   title: string;
@@ -91,7 +90,7 @@ function PolicySection({ title, content, type, onEdit }: PolicySectionProps) {
 
       <div
         className={`transition-all duration-300 ${
-          expanded ? "" : "max-h-[200px] overflow-hidden"
+          expanded ? "" : "max-h-50 overflow-hidden"
         }`}
       >
         <PolicyBlock
@@ -121,7 +120,12 @@ interface PolicyFormData {
   content: string;
 }
 
-export function PoliciesCard({ settings }: { settings: StoreSettings }) {
+interface PoliciesCardProps {
+  settings: StoreSettings;
+  onUpdatePolicy: (type: "terms" | "privacy", content: string) => Promise<void>;
+}
+
+export function PoliciesCard({ settings, onUpdatePolicy }: PoliciesCardProps) {
   const hasTerms = !!settings.terms_and_conditions;
   const hasPrivacy = !!settings.privacy_policy;
 
@@ -142,10 +146,7 @@ export function PoliciesCard({ settings }: { settings: StoreSettings }) {
         : settings.privacy_policy;
 
     setFormType(type);
-    setFormData({
-      title: defaultTitle,
-      content: existingContent || "",
-    });
+    setFormData({ title: defaultTitle, content: existingContent || "" });
     setIsDialogOpen(true);
   };
 
@@ -155,107 +156,27 @@ export function PoliciesCard({ settings }: { settings: StoreSettings }) {
     title: string
   ) => {
     setFormType(type);
-    setFormData({
-      title,
-      content,
-    });
+    setFormData({ title, content });
     setIsDialogOpen(true);
   };
 
   const handleSavePolicy = async () => {
     setIsSubmitting(true);
-
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      console.log("Saving policy:", {
-        type: formType,
-        data: formData,
-      });
-
-      // Refresh data or update local state here
+      await onUpdatePolicy(formType, formData.content);
       setIsDialogOpen(false);
       setFormData({ title: "", content: "" });
-    } catch (error) {
-      console.error("Failed to save policy:", error);
+    } catch (err) {
+      console.error("Failed to update policy:", err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRichTextChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      content: value,
-    }));
-  };
-
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      title: e.target.value,
-    }));
-  };
-
-  if (!hasTerms && !hasPrivacy) {
-    return (
-      <>
-        <Card className="border shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">
-              Store Policies
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              No policies configured yet
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-6 md:py-8">
-              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                <FileTextOutlined className="text-2xl md:text-3xl text-muted-foreground" />
-              </div>
-              <p className="text-muted-foreground mb-6 px-4 md:px-0">
-                Add terms and privacy policy to build customer trust
-              </p>
-              <div className="flex flex-col sm:flex-row justify-center gap-3 px-4 sm:px-0">
-                <Button
-                  onClick={() => handleAddPolicy("privacy")}
-                  className="w-full sm:w-auto"
-                >
-                  <PlusOutlined className="mr-2" />
-                  <span className="hidden xs:inline">Add Privacy Policy</span>
-                  <span className="xs:hidden">Privacy Policy</span>
-                </Button>
-                <Button
-                  onClick={() => handleAddPolicy("terms")}
-                  className="w-full sm:w-auto"
-                >
-                  <PlusOutlined className="mr-2" />
-                  <span className="hidden xs:inline">
-                    Add Terms & Conditions
-                  </span>
-                  <span className="xs:hidden">Terms & Conditions</span>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Policy Editor Dialog */}
-        <PolicyEditorDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          type={formType}
-          formData={formData}
-          isSubmitting={isSubmitting}
-          onTitleChange={handleTitleChange}
-          onRichTextChange={handleRichTextChange}
-          onSave={handleSavePolicy}
-        />
-      </>
-    );
-  }
+  const handleRichTextChange = (value: string) =>
+    setFormData((prev) => ({ ...prev, content: value }));
+  // const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+  //   setFormData((prev) => ({ ...prev, title: e.target.value }));
 
   return (
     <>
@@ -283,7 +204,6 @@ export function PoliciesCard({ settings }: { settings: StoreSettings }) {
                   <span className="sm:hidden">Terms</span>
                 </Button>
               )}
-
               {!hasPrivacy && (
                 <Button
                   className="w-full xs:w-auto"
@@ -301,7 +221,6 @@ export function PoliciesCard({ settings }: { settings: StoreSettings }) {
         </CardHeader>
 
         <CardContent className="space-y-6 md:space-y-8">
-          {/* Responsive layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             {hasTerms && (
               <div className="p-3 sm:p-4 rounded-lg border bg-card/50 h-full">
@@ -313,7 +232,6 @@ export function PoliciesCard({ settings }: { settings: StoreSettings }) {
                 />
               </div>
             )}
-
             {hasPrivacy && (
               <div className="p-3 sm:p-4 rounded-lg border bg-card/50 h-full">
                 <PolicySection
@@ -347,143 +265,110 @@ export function PoliciesCard({ settings }: { settings: StoreSettings }) {
       </Card>
 
       {/* Policy Editor Dialog */}
-      <PolicyEditorDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        type={formType}
-        formData={formData}
-        isSubmitting={isSubmitting}
-        onTitleChange={handleTitleChange}
-        onRichTextChange={handleRichTextChange}
-        onSave={handleSavePolicy}
-      />
-    </>
-  );
-}
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => !open && setIsDialogOpen(false)}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col w-[95vw] sm:w-full mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              {formType === "terms" ? (
+                <FileTextOutlined className="text-blue-600" />
+              ) : (
+                <LockOutlined className="text-purple-600" />
+              )}
+              <span className="truncate">
+                {formData.content ? "Edit" : "Add"}{" "}
+                {formType === "terms" ? "Terms & Conditions" : "Privacy Policy"}
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {formType === "terms"
+                ? "Define the terms and conditions for using your store"
+                : "Specify how customer data is collected and used"}
+            </DialogDescription>
+          </DialogHeader>
 
-interface PolicyEditorDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  type: "terms" | "privacy";
-  formData: PolicyFormData;
-  isSubmitting: boolean;
-  onTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRichTextChange: (value: string) => void;
-  onSave: () => void;
-}
-
-function PolicyEditorDialog({
-  isOpen,
-  onClose,
-  type,
-  formData,
-  isSubmitting,
-  // onTitleChange,
-  onRichTextChange,
-  onSave,
-}: PolicyEditorDialogProps) {
-  const getDialogTitle = () => {
-    if (formData.content) {
-      return `Edit ${
-        type === "terms" ? "Terms & Conditions" : "Privacy Policy"
-      }`;
-    }
-    return `Add ${type === "terms" ? "Terms & Conditions" : "Privacy Policy"}`;
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col w-[95vw] sm:w-full mx-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            {type === "terms" ? (
-              <FileTextOutlined className="text-blue-600" />
-            ) : (
-              <LockOutlined className="text-purple-600" />
-            )}
-            <span className="truncate">{getDialogTitle()}</span>
-          </DialogTitle>
-          <DialogDescription className="text-sm">
-            {type === "terms"
-              ? "Define the terms and conditions for using your store"
-              : "Specify how customer data is collected and used"}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto space-y-4 ">
-          <div className="space-y-2">
-            <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
-              <Label htmlFor="policy-content" className="text-sm sm:text-base">
-                Legal Content
-              </Label>
-              <Badge variant="outline" className="text-xs w-fit">
-                {formData.content.split(/\s+/).length} words
-              </Badge>
+          <div className="flex-1 overflow-y-auto space-y-4 ">
+            <div className="space-y-2">
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
+                <Label
+                  htmlFor="policy-content"
+                  className="text-sm sm:text-base"
+                >
+                  Legal Content
+                </Label>
+                <Badge variant="outline" className="text-xs w-fit">
+                  {formData.content.split(/\s+/).length} words
+                </Badge>
+              </div>
+              <div className="min-h-75 sm:min-h-100">
+                <RichTextController
+                  value={formData.content}
+                  onChange={handleRichTextChange}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use the toolbar above to format your text.
+              </p>
             </div>
-            <div className="min-h-[300px] sm:min-h-[400px]">
-              <RichTextController
-                value={formData.content}
-                onChange={onRichTextChange}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Use the toolbar above to format your text. Changes are saved
-              automatically as you type.
-            </p>
-          </div>
 
-          <div
-            className={`rounded-lg p-3 sm:p-4 border ${
-              type === "terms"
-                ? "bg-blue-50 border-blue-200"
-                : "bg-purple-50 border-purple-200"
-            }`}
-          >
-            <p
-              className={`text-xs sm:text-sm ${
-                type === "terms" ? "text-blue-800" : "text-purple-800"
+            <div
+              className={`rounded-lg p-3 sm:p-4 border ${
+                formType === "terms"
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-purple-50 border-purple-200"
               }`}
             >
-              <strong>
-                Tip for{" "}
-                {type === "terms" ? "Terms & Conditions" : "Privacy Policy"}:
-              </strong>{" "}
-              {type === "terms"
-                ? "Include sections on user responsibilities, payment terms, shipping policies, returns & refunds, and liability limitations."
-                : "Clearly state what data you collect, how it's used, who it's shared with, and how users can control their data."}
-            </p>
+              <p
+                className={`text-xs sm:text-sm ${
+                  formType === "terms" ? "text-blue-800" : "text-purple-800"
+                }`}
+              >
+                <strong>
+                  Tip for{" "}
+                  {formType === "terms"
+                    ? "Terms & Conditions"
+                    : "Privacy Policy"}
+                  :
+                </strong>{" "}
+                {formType === "terms"
+                  ? "Include sections on user responsibilities, payment terms, shipping policies, returns & refunds, and liability limitations."
+                  : "Clearly state what data you collect, how it's used, who it's shared with, and how users can control their data."}
+              </p>
+            </div>
           </div>
-        </div>
 
-        <DialogFooter className="border-t pt-4 flex flex-col-reverse sm:flex-row gap-3">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto"
-          >
-            <CloseOutlined className="mr-2" />
-            Cancel
-          </Button>
-          <Button
-            onClick={onSave}
-            disabled={isSubmitting || !formData.content.trim()}
-            className="w-full sm:w-auto"
-          >
-            {isSubmitting ? (
-              <>
-                <span className="animate-spin mr-2">⟳</span>
-                Saving...
-              </>
-            ) : (
-              <>
-                <SaveOutlined className="mr-2" />
-                Save Policy
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="border-t pt-4 flex flex-col-reverse sm:flex-row gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              <CloseOutlined className="mr-2" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePolicy}
+              disabled={isSubmitting || !formData.content.trim()}
+              className="w-full sm:w-auto"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <SaveOutlined className="mr-2" />
+                  Save Policy
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

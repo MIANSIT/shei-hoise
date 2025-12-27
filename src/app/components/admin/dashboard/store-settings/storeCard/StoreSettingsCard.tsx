@@ -9,7 +9,12 @@ import {
   CloseOutlined,
   CheckOutlined,
 } from "@ant-design/icons";
-import type { StoreSettings } from "@/lib/types/store/store";
+import type {
+  StoreSettings,
+  UpdatedStoreSettings,
+} from "@/lib/types/store/store";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { Currency, CURRENCY_ICONS } from "@/lib/types/enums";
 
 interface SettingItemProps {
   label: string;
@@ -18,6 +23,8 @@ interface SettingItemProps {
   isHighlighted?: boolean;
   info?: string;
   editing?: boolean;
+  readOnly?: boolean; // ✅ new
+  options?: { label: string; value: string | number }[]; // ✅ for dropdown
   onChange?: (val: string | number) => void;
 }
 
@@ -29,7 +36,14 @@ function SettingItem({
   info,
   editing,
   onChange,
+  options,
+  readOnly,
 }: SettingItemProps) {
+  const displayValue =
+    typeof value === "string" &&
+    Object.values(Currency).includes(value as Currency)
+      ? `${CURRENCY_ICONS[value as Currency]} ${value}`
+      : value;
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-lg transition-colors relative ${
@@ -44,12 +58,7 @@ function SettingItem({
           {info && (
             <div className="group relative flex items-center">
               <InfoCircleOutlined className="text-muted-foreground cursor-pointer text-sm sm:text-base" />
-              {/* Tooltip - hidden on mobile, shown on hover for desktop */}
               <div className="hidden sm:group-hover:block absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-xs rounded-md bg-gray-800 text-white text-xs px-2 py-1 shadow-lg z-10">
-                {info}
-              </div>
-              {/* Mobile tooltip - appears on click/tap */}
-              <div className="sm:hidden absolute -top-8 left-0 w-max max-w-xs rounded-md bg-gray-800 text-white text-xs px-2 py-1 shadow-lg z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                 {info}
               </div>
             </div>
@@ -63,10 +72,23 @@ function SettingItem({
       </div>
 
       <div className="text-right mt-1 sm:mt-0">
-        {editing ? (
+        {editing && options ? (
+          <select
+            value={value ?? ""}
+            onChange={(e) => onChange?.(e.target.value)}
+            className="w-full sm:w-32 border px-2 py-1 rounded text-right text-sm sm:text-base"
+          >
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        ) : editing ? (
           <input
             type="text"
             value={value ?? ""}
+            readOnly={readOnly}
             onChange={(e) =>
               onChange
                 ? onChange(
@@ -79,25 +101,46 @@ function SettingItem({
             className="w-full sm:w-32 border px-2 py-1 rounded text-right text-sm sm:text-base"
           />
         ) : (
-          <div className="text-base sm:text-lg font-semibold">{value}</div>
+          <div className="text-base sm:text-lg font-semibold">
+            {displayValue}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-export function StoreSettingsCard({ settings }: { settings: StoreSettings }) {
+interface StoreSettingsCardProps {
+  settings: StoreSettings;
+  onUpdate?: (updatedSettings: UpdatedStoreSettings) => Promise<void>;
+}
+
+export function StoreSettingsCard({
+  settings,
+  onUpdate,
+}: StoreSettingsCardProps) {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({ ...settings });
-
+  const [loading, setLoading] = useState(false);
+  const notify = useSheiNotification();
   const handleChange = (field: keyof StoreSettings, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    console.log("Updated settings:", formData);
-    setEditing(false);
-    // Call API to save settings here
+  const handleSubmit = async () => {
+    if (onUpdate) {
+      try {
+        setLoading(true);
+        await onUpdate(formData);
+        setEditing(false);
+        notify.success("Store Settings updated successfully!");
+      } catch (err) {
+        console.error("Failed to update settings:", err);
+        notify.error("Failed to update Store Settings.");
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const handleCancel = () => {
@@ -123,8 +166,9 @@ export function StoreSettingsCard({ settings }: { settings: StoreSettings }) {
               <Button
                 size="sm"
                 variant="default"
-                className="h-9 px-4 flex-1 sm:flex-none min-w-[100px]"
+                className="h-9 px-4 flex-1 sm:flex-none min-w-25"
                 onClick={handleSubmit}
+                disabled={loading}
               >
                 <CheckOutlined className="mr-2 text-sm" />
                 <span>Submit</span>
@@ -132,8 +176,9 @@ export function StoreSettingsCard({ settings }: { settings: StoreSettings }) {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 px-4 flex-1 sm:flex-none min-w-[100px]"
+                className="h-9 px-4 flex-1 sm:flex-none min-w-25"
                 onClick={handleCancel}
+                disabled={loading}
               >
                 <CloseOutlined className="mr-2 text-sm" />
                 <span>Close</span>
@@ -144,7 +189,7 @@ export function StoreSettingsCard({ settings }: { settings: StoreSettings }) {
               <Button
                 variant="default"
                 size="sm"
-                className="h-9 px-4 w-full sm:w-auto min-w-[120px]"
+                className="h-9 px-4 w-full sm:w-auto min-w-30"
                 onClick={() => setEditing(true)}
               >
                 <EditOutlined className="mr-2 text-sm" />
@@ -163,31 +208,36 @@ export function StoreSettingsCard({ settings }: { settings: StoreSettings }) {
             info="Primary currency for all transactions"
             isHighlighted
             editing={editing}
+            options={Object.values(Currency).map((cur) => ({
+              label: `${CURRENCY_ICONS[cur]} ${cur}`,
+              value: cur,
+            }))}
             onChange={(val) => handleChange("currency", String(val))}
           />
 
           <SettingItem
             label="Tax Rate"
-            value={formData.tax_rate}
+            value={`${formData.tax_rate} ${
+              CURRENCY_ICONS[formData.currency as Currency] ?? formData.currency
+            }`}
             info="Applied to all orders"
             isHighlighted
             editing={editing}
             onChange={(val) => handleChange("tax_rate", Number(val))}
           />
-
           <SettingItem
             label="Minimum Order Amount"
-            value={formData.min_order_amount}
+            value={`${formData.min_order_amount} ${
+              CURRENCY_ICONS[formData.currency as Currency] ?? formData.currency
+            }`}
             info="Minimum amount required to place an order"
             isHighlighted
             editing={editing}
             onChange={(val) => handleChange("min_order_amount", Number(val))}
           />
-
           <SettingItem
             label="Order Processing Time"
-            value={formData.processing_time_days}
-            description="days"
+            value={`${formData.processing_time_days} days`}
             info="Average time to process and ship orders"
             isHighlighted
             editing={editing}
@@ -195,20 +245,19 @@ export function StoreSettingsCard({ settings }: { settings: StoreSettings }) {
               handleChange("processing_time_days", Number(val))
             }
           />
-
           <SettingItem
             label="Return Policy Period"
-            value={formData.return_policy_days}
-            description="days"
+            value={`${formData.return_policy_days} days`}
             info="Timeframe for customer returns"
             isHighlighted
             editing={editing}
             onChange={(val) => handleChange("return_policy_days", Number(val))}
           />
-
           <SettingItem
             label="Free Shipping Threshold"
-            value={freeShipping}
+            value={`${freeShipping} ${
+              CURRENCY_ICONS[formData.currency as Currency] ?? formData.currency
+            }`}
             info="Order amount to qualify for free shipping"
             isHighlighted
             editing={editing}

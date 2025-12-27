@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { StoreData } from "@/lib/types/store/store";
-import { format } from "date-fns";
 import {
   MailOutlined,
   PhoneOutlined,
@@ -17,6 +15,8 @@ import {
   CloseOutlined,
   CheckOutlined,
 } from "@ant-design/icons";
+import type { StoreData, UpdatedStoreData } from "@/lib/types/store/store";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 interface InfoItemProps {
   icon: React.ReactNode;
@@ -26,7 +26,6 @@ interface InfoItemProps {
   onChange?: (val: string) => void;
   action?: React.ReactNode;
   className?: string;
-  style?: React.CSSProperties;
   isHighlighted?: boolean;
   multiline?: boolean;
 }
@@ -88,8 +87,15 @@ function InfoItem({
   );
 }
 
-export function StoreInfoCard({ store }: { store: StoreData }) {
+interface StoreInfoCardProps {
+  store: StoreData;
+  onUpdate: (data: UpdatedStoreData) => Promise<void>;
+}
+
+export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
   const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const notify = useSheiNotification();
   const [formData, setFormData] = useState({
     contact_email: store.contact_email || "",
     contact_phone: store.contact_phone || "",
@@ -102,10 +108,18 @@ export function StoreInfoCard({ store }: { store: StoreData }) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    console.log("Submit updated data:", formData);
-    setEditing(false);
-    // Call your API here to save changes
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await onUpdate(formData);
+      setEditing(false);
+      notify.success("Store information updated successfully!");
+    } catch (err) {
+      console.error("Failed to update store info:", err);
+       notify.error("Failed to update store information.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -136,17 +150,19 @@ export function StoreInfoCard({ store }: { store: StoreData }) {
               <Button
                 size="sm"
                 variant="default"
-                className="h-9 px-4 flex-1 sm:flex-none min-w-[100px]"
+                className="h-9 px-4 flex-1 sm:flex-none min-w-25"
                 onClick={handleSubmit}
+                disabled={loading}
               >
                 <CheckOutlined className="mr-2 text-sm" />
-                <span>Submit</span>
+                <span>{loading ? "Updating..." : "Submit"}</span>
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 px-4 flex-1 sm:flex-none min-w-[100px]"
+                className="h-9 px-4 flex-1 sm:flex-none min-w-25"
                 onClick={handleCancel}
+                disabled={loading}
               >
                 <CloseOutlined className="mr-2 text-sm" />
                 <span>Close</span>
@@ -157,7 +173,7 @@ export function StoreInfoCard({ store }: { store: StoreData }) {
               <Button
                 variant="default"
                 size="sm"
-                className="h-9 px-4 w-full sm:w-auto min-w-[120px]"
+                className="h-9 px-4 w-full sm:w-auto min-w-30"
                 onClick={() => setEditing(true)}
               >
                 <EditOutlined className="mr-2 text-sm" />
@@ -230,7 +246,7 @@ export function StoreInfoCard({ store }: { store: StoreData }) {
       {store.created_at && (
         <div className="mt-2 px-4 pb-3 text-xs text-muted-foreground italic flex justify-end items-center gap-1">
           <CalendarOutlined className="text-[10px]" />
-          <span>{format(new Date(store.created_at), "MMM dd, yyyy")}</span>
+          <span>{new Date(store.created_at).toLocaleDateString()}</span>
         </div>
       )}
     </Card>

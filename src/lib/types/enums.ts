@@ -55,10 +55,10 @@ export enum Currency {
   GBP = "GBP",
   INR = "INR",
 }
-export const CURRENCY_LABELS: Record<Currency, string> = {
-  [Currency.BDT]: "BDT (৳)",
-  [Currency.USD]: "USD ($)",
-  [Currency.EUR]: "EUR (€)",
-  [Currency.GBP]: "GBP (£)",
-  [Currency.INR]: "INR (₹)",
+export const CURRENCY_ICONS: Record<Currency, string> = {
+  [Currency.BDT]: "(৳)",
+  [Currency.USD]: "($)",
+  [Currency.EUR]: "(€)",
+  [Currency.GBP]: "(£)",
+  [Currency.INR]: "(₹)",
 };

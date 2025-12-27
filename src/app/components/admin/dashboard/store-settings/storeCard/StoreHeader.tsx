@@ -1,3 +1,4 @@
+// File: app/components/admin/dashboard/store-settings/storeCard/StoreHeader.tsx
 "use client";
 
 import { useState } from "react";
@@ -8,21 +9,36 @@ import { Badge } from "@/components/ui/badge";
 import { StoreStatus } from "@/lib/types/enums";
 import { StoreData } from "@/lib/types/store/store";
 import { EditOutlined, EyeOutlined } from "@ant-design/icons";
-import { Modal, message } from "antd";
+import { Modal, message, Input } from "antd";
 import { ImageUploader } from "./ImageUploader";
 import Link from "next/link";
-import { BASE_URL } from "@/lib/utils/constants"; 
+import { BASE_URL } from "@/lib/utils/constants";
+import { Loader2 } from "lucide-react";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
 
 interface Props {
   store: StoreData;
+  onUpdate: (updatedStore: StoreData) => void;
+  updateStore: (data: {
+    store_name: string;
+    store_slug: string;
+    logoFile?: File | null;
+    bannerFile?: File | null;
+  }) => Promise<StoreData>;
 }
 
-export function StoreHeader({ store }: Props) {
+export function StoreHeader({ store, onUpdate, updateStore }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState(store.logo_url);
   const [bannerPreview, setBannerPreview] = useState(store.banner_url);
+  const [storeName, setStoreName] = useState(store.store_name);
+  const [storeSlug, setStoreSlug] = useState(store.store_slug);
+  const [loading, setLoading] = useState(false);
+
+  const notify = useSheiNotification();
 
   const getStoreAge = (createdAt: string | Date) => {
     const created = new Date(createdAt);
@@ -52,26 +68,48 @@ export function StoreHeader({ store }: Props) {
     ? statusConfig[store.status as StoreStatus]
     : null;
 
-  const handleModalOk = () => {
-    message.success("Images updated!");
-    setIsModalOpen(false);
-    if (logoFile) setLogoPreview(URL.createObjectURL(logoFile));
-    if (bannerFile) setBannerPreview(URL.createObjectURL(bannerFile));
+  const handleModalOk = async () => {
+    setLoading(true);
+    try {
+      const updatedStore = await updateStore({
+        store_name: storeName,
+        store_slug: storeSlug,
+        logoFile,
+        bannerFile,
+      });
+
+      // Update UI only after successful API
+      setLogoPreview(updatedStore.logo_url);
+      setBannerPreview(updatedStore.banner_url);
+      setStoreName(updatedStore.store_name);
+      setStoreSlug(updatedStore.store_slug);
+
+      // Notify parent page
+      onUpdate(updatedStore);
+
+      setLogoFile(null);
+      setBannerFile(null);
+      setIsModalOpen(false);
+      notify.success("Store updated successfully!");
+    } catch {
+      message.error("Failed to update store");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <>
       <Card className="overflow-hidden border shadow-sm">
-        {/* Banner - Responsive height */}
+        {/* Banner */}
         <div className="relative h-32 sm:h-40 md:h-48 w-full bg-linear-to-r from-primary/5 to-primary/10">
           {bannerPreview ? (
             <Image
-              src={bannerPreview}
+              src={getStoreMediaUrl(bannerPreview)}
               alt="Store banner"
               fill
               className="object-cover"
               priority
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, 100vw"
             />
           ) : (
             <div className="absolute inset-0 bg-linear-to-br from-gray-100 to-gray-200" />
@@ -79,19 +117,18 @@ export function StoreHeader({ store }: Props) {
           <div className="absolute inset-0 bg-linear-to-t from-background/10 to-background/30" />
         </div>
 
-        {/* Header content */}
+        {/* Header */}
         <div className="relative px-4 sm:px-6 pb-4 sm:pb-6 pt-4">
           <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 w-full md:w-auto">
-              {/* Logo - Responsive sizing */}
+              {/* Logo */}
               <div className="relative -mt-12 sm:-mt-14 md:-mt-16 h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 shrink-0 overflow-hidden rounded-xl sm:rounded-2xl border-4 border-background bg-background shadow-lg">
                 {logoPreview ? (
                   <Image
-                    src={logoPreview}
+                    src={getStoreMediaUrl(logoPreview)}
                     alt={store.store_name}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 640px) 80px, (max-width: 768px) 96px, 128px"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-primary/10 to-primary/20">
@@ -107,14 +144,14 @@ export function StoreHeader({ store }: Props) {
                 />
               </div>
 
-              {/* Store info */}
+              {/* Store Info */}
               <div className="space-y-1 pb-1 sm:pb-2 flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight wrap-break-word md:truncate">
-                    {store.store_name}
+                    {storeName}
                   </h1>
                   {statusInfo && (
-                    <Badge 
+                    <Badge
                       variant={statusInfo.variant}
                       className="text-xs sm:text-sm"
                     >
@@ -123,21 +160,23 @@ export function StoreHeader({ store }: Props) {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-                  <span className="font-mono bg-muted px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[120px] sm:max-w-none">
-                    @{store.store_slug}
+                  <span className="font-mono bg-muted px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-30 sm:max-w-none">
+                    @{storeSlug}
                   </span>
                   <span className="hidden sm:inline">•</span>
-                  <span className="whitespace-nowrap">Age: {getStoreAge(store.created_at!)}</span>
+                  <span className="whitespace-nowrap">
+                    Age: {getStoreAge(store.created_at!)}
+                  </span>
                   <span className="hidden sm:inline">•</span>
                   <span className="whitespace-nowrap">
                     {store.is_active ? (
                       <span className="flex items-center gap-1 text-green-600">
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />{" "}
                         Active
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-red-600">
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" />
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" />{" "}
                         Inactive
                       </span>
                     )}
@@ -146,22 +185,22 @@ export function StoreHeader({ store }: Props) {
               </div>
             </div>
 
-            {/* Actions - Responsive buttons */}
+            {/* Actions */}
             <div className="flex flex-wrap gap-2 mt-3 sm:mt-4 md:mt-0 w-full sm:w-auto">
               <Link
-                href={`${BASE_URL}/${store.store_slug}`}
+                href={`${BASE_URL}/${storeSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 sm:flex-none"
               >
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                <Button
+                  variant="default"
+                  size="sm"
                   className="w-full sm:w-auto"
                   icon={<EyeOutlined />}
                 >
-                  <span className="hidden xs:inline">View Public</span>
-                  <span className="xs:hidden">View</span>
+                  <span className="hidden sm:inline">View Public</span>
+                  <span className="sm:hidden">View</span>
                 </Button>
               </Link>
               <Button
@@ -171,8 +210,8 @@ export function StoreHeader({ store }: Props) {
                 icon={<EditOutlined />}
                 onClick={() => setIsModalOpen(true)}
               >
-                <span className="hidden xs:inline">Update Images</span>
-                <span className="xs:hidden">Edit</span>
+                <span className="hidden sm:inline">Update Images</span>
+                <span className="sm:hidden">Update</span>
               </Button>
             </div>
           </div>
@@ -188,56 +227,68 @@ export function StoreHeader({ store }: Props) {
         </div>
       </Card>
 
-      {/* Modal - Responsive layout */}
+      {/* Modal */}
       <Modal
-        title="Edit Store Images"
+        title="Edit Store"
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={
           <div className="flex flex-col sm:flex-row justify-end gap-2">
-            <Button 
+            <Button
               onClick={() => setIsModalOpen(false)}
               className="w-full sm:w-auto"
             >
-              Cancel
+              {loading ? "Canceling..." : "Cancel"}
             </Button>
-            <Button 
-              type="submit" 
+            <Button
               onClick={handleModalOk}
-              className="w-full sm:w-auto"
+              disabled={loading}
+              className="w-full sm:w-auto flex items-center gap-2"
             >
-              Update
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {loading ? "Updating..." : "Update"}
             </Button>
           </div>
         }
         width="90vw"
         className="max-w-2xl"
       >
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-          <div className="flex-1">
-            <ImageUploader
-              label="Logo"
-              value={logoPreview ?? undefined}
-              onChange={(file) => {
-                setLogoFile(file);
-                if (file) setLogoPreview(URL.createObjectURL(file));
-              }}
+        <div className="flex flex-col gap-4 sm:gap-6">
+          {/* Store Name / Slug */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Store Name</label>
+            <Input
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Store Slug</label>
+            <Input
+              value={storeSlug}
+              onChange={(e) => setStoreSlug(e.target.value)}
             />
           </div>
 
-          <div className="flex-1">
-            <ImageUploader
-              label="Banner"
-              value={bannerPreview ?? undefined}
-              onChange={(file) => {
-                setBannerFile(file);
-                if (file) setBannerPreview(URL.createObjectURL(file));
-              }}
-            />
+          {/* Images */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+            <div className="flex-1">
+              <ImageUploader
+                label="Logo"
+                value={logoPreview ?? undefined}
+                onChange={setLogoFile}
+              />
+            </div>
+            <div className="flex-1">
+              <ImageUploader
+                label="Banner"
+                value={bannerPreview ?? undefined}
+                onChange={setBannerFile}
+              />
+            </div>
           </div>
         </div>
       </Modal>
     </>
   );
 }
-
