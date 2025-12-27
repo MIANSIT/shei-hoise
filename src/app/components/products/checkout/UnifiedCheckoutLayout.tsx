@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 // app/components/products/checkout/UnifiedCheckoutLayout.tsx
 "use client";
 
@@ -205,7 +205,7 @@ export default function UnifiedCheckoutLayout({
                   </p>
                 </div>
               ) : (
-                <div className='max-h-[400px] lg:max-h-[500px] overflow-y-auto'>
+                <div className='max-h-100 lg:max-h-125 overflow-y-auto'>
                   <CartItemsList
                     items={cartItems}
                     onQuantityChange={

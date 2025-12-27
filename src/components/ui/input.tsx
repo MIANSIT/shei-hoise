@@ -1,11 +1,16 @@
 // components/ui/input.tsx
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({
+  className,
+  type,
+  value,
+  ...props
+}: React.ComponentProps<"input">) {
   return (
     <input
-      suppressHydrationWarning   // 👈 ignore extension-injected differences
+      suppressHydrationWarning
       type={type}
       data-slot="input"
       className={cn(
@@ -14,9 +19,10 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}
+      {...(value !== undefined && value !== null ? { value } : {})} // only pass value if defined
       {...props}
     />
-  )
+  );
 }
 
-export { Input }
+export { Input };

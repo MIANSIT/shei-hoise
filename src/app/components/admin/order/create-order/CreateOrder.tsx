@@ -39,10 +39,8 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import type { CustomerProfile } from "@/lib/types/customer";
-import {
-  getStoreSettings,
-  type ShippingFee,
-} from "@/lib/queries/stores/getStoreSettings";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import type { ShippingFee } from "@/lib/types/store/store";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";

@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { getStoreBySlug } from "@/lib/queries/stores/getStoreBySlug";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
-
+// import type { StoreSettings } from "@/lib/types/store/store"; // Import from centralized types
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 export interface StoreInvoiceData {
   id: string;
   store_name: string;
@@ -10,7 +11,7 @@ export interface StoreInvoiceData {
   business_address: string | null;
   contact_phone: string | null;
   contact_email: string | null;
-  tax_rate: number; 
+  tax_rate: number;
 }
 
 interface UseInvoiceDataProps {
@@ -28,7 +29,7 @@ export function useInvoiceData({ storeSlug, storeId }: UseInvoiceDataProps) {
       try {
         setLoading(true);
         setError(null);
-        
+
         // If neither storeSlug nor storeId is provided
         if (!storeSlug && !storeId) {
           setError("Store slug or store ID is required");
@@ -47,16 +48,17 @@ export function useInvoiceData({ storeSlug, storeId }: UseInvoiceDataProps) {
         if (!store && storeId) {
           store = await getStoreById(storeId);
         }
-        
         if (store) {
+          const settings = await getStoreSettings(store.id);
+
           setStoreData({
             id: store.id,
             store_name: store.store_name,
             store_slug: store.store_slug,
-            business_address: store.business_address,
-            contact_phone: store.contact_phone,
-            contact_email: store.contact_email,
-            tax_rate: store.tax_rate || 0,
+            business_address: store.business_address ?? null,
+            contact_phone: store.contact_phone || "",
+            contact_email: store.contact_email || "",
+            tax_rate: settings?.tax_rate || 0,
           });
         } else {
           setError("Store not found");

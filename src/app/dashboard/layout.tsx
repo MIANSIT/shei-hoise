@@ -18,6 +18,7 @@ import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -29,8 +30,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mounted, setMounted] = useState(false);
   const { session, loading } = useSupabaseAuth();
   const router = useRouter();
-  const { role } = useCurrentUser();
-  const { storeSlug } = useCurrentUser();
+  const { role, storeSlug, storeStatus, storeIsActive } = useCurrentUser();
+
   const [store, setStore] = useState<StoreWithLogo | null>(null);
 
   // Set mounted to true after component mounts on client
@@ -184,8 +185,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               }}
             >
               <Toaster position="top-right" />
-              <div className="shrink-0">
+
+              <div className="flex justify-between items-center mb-4 px-4">
                 <Breadcrumb />
+                {store && storeStatus && (
+                  <StoreStatusPopup
+                    status={storeStatus}
+                    isActive={storeIsActive}
+                    createdAt={store.created_at}
+                  />
+                )}
               </div>
               <div className="flex-1 overflow-auto p-4">{children}</div>
             </main>

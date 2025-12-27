@@ -170,7 +170,7 @@ export default function DesktopHeader({
       </header>
 
       {/* Spacer */}
-      <div className="h-[64px] hidden lg:block" />
+      <div className="h-16 hidden lg:block" />
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );

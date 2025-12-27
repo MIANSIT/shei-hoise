@@ -4,7 +4,7 @@
 import React from "react";
 import { Card, Row, Col, Space, Typography, Alert } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
-import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
+import type { ShippingFee } from "@/lib/types/store/store";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
 
 const { Title, Text } = Typography;

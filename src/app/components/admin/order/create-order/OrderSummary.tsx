@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { InfoCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
-import { ShippingFee } from "@/lib/queries/stores/getStoreSettings";
+import type { ShippingFee } from "@/lib/types/store/store";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";

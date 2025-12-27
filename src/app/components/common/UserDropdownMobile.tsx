@@ -57,7 +57,7 @@ export default function UserDropdownMobile({
           </div>
           <div className="text-left">
             <p className="text-sm font-medium">{customerName}</p>
-            <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+            <p className="text-xs text-muted-foreground truncate max-w-37.5">
               {customerEmail}
             </p>
           </div>

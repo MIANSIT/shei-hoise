@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { getAllStores, Store } from "@/lib/queries/stores/getallStores";
+import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
 
 export default function StoresSection() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -91,7 +92,7 @@ export default function StoresSection() {
               {store.logo_url ? (
                 <div className="relative w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-primary shadow-md">
                   <Image
-                    src={store.logo_url}
+                    src={getStoreMediaUrl(store.logo_url)}
                     alt={store.store_name}
                     fill
                     className="rounded-full object-cover"

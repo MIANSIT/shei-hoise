@@ -1,20 +1,29 @@
-export function PolicyBlock({
-  title,
-  content,
-}: {
+interface PolicyBlockProps {
   title: string;
   content: string;
-}) {
+  compact?: boolean;
+}
+
+export default function PolicyBlock({
+  title,
+  content,
+  compact = false,
+}: PolicyBlockProps) {
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-3">{title}</h2>
-      <div className="policy-content-wrapper">
+      {title && <h2 className="text-xl font-semibold mb-3">{title}</h2>}
+      <div
+        className={`policy-content-wrapper ${
+          compact ? "max-h-96 overflow-y-auto pr-2" : ""
+        }`}
+      >
         <div
-          className="
+          className={`
             prose 
             prose-gray 
             dark:prose-invert
             max-w-none
+            ${compact ? "prose-sm" : ""}
             [&_*[data-start]]:border-none
             [&_*[data-end]]:border-none
             [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:mt-6 [&_h1]:mb-4
@@ -27,9 +36,10 @@ export function PolicyBlock({
             [&_hr]:my-8 [&_hr]:border-gray-300 dark:[&_hr]:border-gray-700
             [&_strong]:font-semibold
             [&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline
-          "
+          `}
           dangerouslySetInnerHTML={{
-            __html: content || "<p>Not provided</p>",
+            __html:
+              content || "<p class='text-gray-500 italic'>Not provided</p>",
           }}
         />
       </div>

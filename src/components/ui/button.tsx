@@ -22,7 +22,7 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
-        accent: "bg-accent text-accent-foreground shadow-xs hover:bg-accent/90", 
+        accent: "bg-accent text-accent-foreground shadow-xs hover:bg-accent/90",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
@@ -37,17 +37,22 @@ const buttonVariants = cva(
     },
   }
 );
+interface ButtonProps
+  extends React.ComponentProps<"button">,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+  icon?: React.ReactNode; // ✅ add this
+}
 
 function Button({
   className,
   variant,
   size,
   asChild = false,
+  icon,
+  children,
   ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-  }) {
+}: ButtonProps) {
   const Comp = asChild ? Slot : "button";
 
   return (
@@ -55,7 +60,10 @@ function Button({
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {icon && icon} {/* render icon if provided */}
+      {children}
+    </Comp>
   );
 }
 
