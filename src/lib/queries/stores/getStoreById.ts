@@ -1,6 +1,6 @@
 // lib/queries/stores/getStoreById.ts
 import { supabase } from "@/lib/supabase";
-import { StoreData } from "./getStoreBySlug";
+import { StoreData } from "@/lib/types/store/store";
 
 export async function getStoreById(storeId: string): Promise<StoreData | null> {
   try {
