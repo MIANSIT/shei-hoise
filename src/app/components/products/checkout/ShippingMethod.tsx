@@ -5,10 +5,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Truck, Receipt } from "lucide-react";
-import {
-  getStoreSettings,
-  ShippingFee,
-} from "@/lib/queries/stores/getStoreSettings";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import type { ShippingFee } from "@/lib/types/store/store";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 interface ShippingMethodProps {
@@ -25,23 +23,22 @@ export default function ShippingMethod({
   onShippingChange,
 }: ShippingMethodProps) {
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<
+    number | null
+  >(null);
   const [taxAmount, setTaxAmount] = useState<number>(0); // Fixed tax amount for display only
- const {
+  const {
     // currency,
     icon: currencyIcon,
     loading: currencyLoading,
   } = useUserCurrencyIcon();
   // Filter out "custom" shipping options
   const filteredShippingOptions = useMemo(() => {
-    return shippingOptions.filter(option => 
-      option.name.toLowerCase() !== "custom"
+    return shippingOptions.filter(
+      (option) => option.name.toLowerCase() !== "custom"
     );
   }, [shippingOptions]);
 
-
-
-  
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
@@ -58,16 +55,17 @@ export default function ShippingMethod({
           if (storeSettings) {
             setShippingOptions(storeSettings.shipping_fees || []);
             setFreeShippingThreshold(storeSettings.free_shipping_threshold);
-            
+
             // ✅ SET TAX AMOUNT (fixed amount from store_settings)
             const storeTaxAmount = storeSettings.tax_rate || 0;
             setTaxAmount(storeTaxAmount);
 
             // Set default shipping method only if nothing is selected
-            const filteredOptions = storeSettings.shipping_fees?.filter(option => 
-              option.name.toLowerCase() !== "custom"
-            ) || [];
-            
+            const filteredOptions =
+              storeSettings.shipping_fees?.filter(
+                (option) => option.name.toLowerCase() !== "custom"
+              ) || [];
+
             if (filteredOptions.length > 0 && !selectedShipping) {
               const defaultShipping = filteredOptions[0];
               onShippingChange(defaultShipping.name, defaultShipping.price);
@@ -82,18 +80,21 @@ export default function ShippingMethod({
     fetchShippingOptions();
   }, [onShippingChange, selectedShipping, storeSlug]);
 
-  const handleShippingChange = useCallback((value: string) => {
-    const selectedOption = filteredShippingOptions.find(
-      (option) => option.name === value
-    );
-    if (selectedOption) {
-      const shippingFee =
-        freeShippingThreshold && subtotal >= freeShippingThreshold
-          ? 0
-          : selectedOption.price;
-      onShippingChange(value, shippingFee);
-    }
-  }, [filteredShippingOptions, freeShippingThreshold, subtotal, onShippingChange]);
+  const handleShippingChange = useCallback(
+    (value: string) => {
+      const selectedOption = filteredShippingOptions.find(
+        (option) => option.name === value
+      );
+      if (selectedOption) {
+        const shippingFee =
+          freeShippingThreshold && subtotal >= freeShippingThreshold
+            ? 0
+            : selectedOption.price;
+        onShippingChange(value, shippingFee);
+      }
+    },
+    [filteredShippingOptions, freeShippingThreshold, subtotal, onShippingChange]
+  );
 
   const isFreeShipping =
     freeShippingThreshold && subtotal >= freeShippingThreshold;
@@ -170,7 +171,8 @@ export default function ShippingMethod({
                 Additional tax fee
               </span>
               <span className="font-semibold text-purple-800">
-                 {displayCurrencyIconSafe}{taxAmount.toFixed(2)}
+                {displayCurrencyIconSafe}
+                {taxAmount.toFixed(2)}
               </span>
             </div>
             <p className="text-xs text-purple-600 mt-1">
@@ -186,12 +188,14 @@ export default function ShippingMethod({
               <span className="text-blue-700">
                 {isFreeShipping
                   ? "🎉 You've unlocked free shipping!"
-                  : `Add ${displayCurrencyIconSafe}${(freeShippingThreshold - subtotal).toFixed(
-                      2
-                    )} for free shipping`}
+                  : `Add ${displayCurrencyIconSafe}${(
+                      freeShippingThreshold - subtotal
+                    ).toFixed(2)} for free shipping`}
               </span>
               <span className="text-blue-700 font-medium">
-                 {displayCurrencyIconSafe}{subtotal.toFixed(2)} /  {displayCurrencyIconSafe}{freeShippingThreshold.toFixed(2)}
+                {displayCurrencyIconSafe}
+                {subtotal.toFixed(2)} / {displayCurrencyIconSafe}
+                {freeShippingThreshold.toFixed(2)}
               </span>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">

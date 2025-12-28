@@ -26,10 +26,8 @@ import {
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import {
-  getStoreSettings,
-  type ShippingFee,
-} from "@/lib/queries/stores/getStoreSettings";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import type { ShippingFee } from "@/lib/types/store/store";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 

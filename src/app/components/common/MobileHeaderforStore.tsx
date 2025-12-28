@@ -160,7 +160,7 @@ export default function MobileHeader({
 
         <nav
           className={`overflow-hidden transition-all duration-300 ease-in-out bg-background ${
-            menuOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"
+            menuOpen ? "max-h-125 opacity-100 mt-2" : "max-h-0 opacity-0"
           }`}
         >
           <ul className="space-y-2 p-3">
@@ -252,7 +252,7 @@ export default function MobileHeader({
         </nav>
       </header>
 
-      <div className="h-[60px] lg:hidden" />
+      <div className="h-15 lg:hidden" />
       <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
