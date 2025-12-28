@@ -15,6 +15,7 @@ import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSk
 import { Button } from "@/components/ui/button";
 import { Minus, Plus } from "lucide-react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification"; // ADD THIS IMPORT
 
 interface ApiProduct {
   id: string;
@@ -79,6 +80,7 @@ export default function ProductPage() {
     loading: currencyLoading,
   } = useUserCurrencyIcon();
   const { cart, addToCart } = useCartStore();
+  const { success: showSuccessNotification, error: showErrorNotification } = useSheiNotification(); // ADD THIS
 
   // Calculate selectedVariantData based on current state
   const selectedVariantData = product?.product_variants?.find(
@@ -324,11 +326,6 @@ export default function ProductPage() {
         product?.discount_amount
       );
 
-  // Check if variant is available (for variant buttons)
-  // const isVariantAvailable = (variant: any) => {
-  //   return variant.product_inventory?.[0]?.quantity_available > 0;
-  // };
-
   // Updated stock badge function - No numbers shown
   const getStockBadge = () => {
     switch (stockStatus) {
@@ -407,6 +404,8 @@ export default function ProductPage() {
       console.log("🛒 Adding to cart:", cartProduct);
       addToCart(cartProduct); // Remove await since we fixed the cart store
 
+      // Show success notification
+      showSuccessNotification(`${product.name} added to cart`);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
 
@@ -415,6 +414,7 @@ export default function ProductPage() {
       setInputValue("");
     } catch (error) {
       console.error("Error adding to cart:", error);
+      showErrorNotification("Failed to add product to cart");
     } finally {
       setIsAdding(false);
     }
@@ -428,6 +428,7 @@ export default function ProductPage() {
       setIsEditing(false);
     } else {
       setShowMaxQuantityError(true);
+      showErrorNotification("Maximum quantity reached");
     }
   };
 
@@ -467,6 +468,7 @@ export default function ProductPage() {
       if (newQuantity > currentRemaining) {
         newQuantity = currentRemaining;
         setShowMaxQuantityError(true);
+        showErrorNotification("Maximum quantity reached");
       }
 
       setQuantity(newQuantity);
@@ -539,7 +541,10 @@ export default function ProductPage() {
                     <button
                       key={variant.id}
                       onClick={() => {
-                        if (!isAvailable) return; // Prevent selection if out of stock
+                        if (!isAvailable) {
+                          showErrorNotification("This variant is out of stock");
+                          return;
+                        }
                         setSelectedVariant(variant.id);
                         setQuantity(1);
                         setInputValue("");

@@ -108,8 +108,6 @@ export default function MobileHeader({
   const customerDisplayName = customer?.name || authEmail?.split('@')[0] || "Customer";
   const customerDisplayEmail = customer?.email || authEmail || "";
 
-  // Skeleton components...
-
   return (
     <>
       <header
@@ -158,98 +156,104 @@ export default function MobileHeader({
           )}
         </div>
 
-        <nav
-          className={`overflow-hidden transition-all duration-300 ease-in-out bg-background ${
-            menuOpen ? "max-h-125 opacity-100 mt-2" : "max-h-0 opacity-0"
-          }`}
-        >
-          <ul className="space-y-2 p-3">
-            {isStoreLoading ? (
-              // Skeleton for nav
-              <div className="space-y-2">
-                {[1, 2].map((item) => (
-                  <SheiSkeleton key={item} className="w-full h-10 rounded-md" />
-                ))}
-              </div>
-            ) : (
-              <>
-                {navLinks.map((link) => {
-                  const isActive = isHydrated && pathname === link.path;
-                  return (
-                    <li key={link.path}>
+        <div className="relative">
+          <nav
+            className={`transition-all duration-300 ease-in-out bg-background ${
+              menuOpen 
+                ? "max-h-125 opacity-100 mt-2 overflow-visible" 
+                : "max-h-0 opacity-0 overflow-hidden"
+            }`}
+          >
+            <ul className={`space-y-2 p-3 ${menuOpen ? '' : 'pointer-events-none'}`}>
+              {isStoreLoading ? (
+                // Skeleton for nav
+                <div className="space-y-2">
+                  {[1, 2].map((item) => (
+                    <SheiSkeleton key={item} className="w-full h-10 rounded-md" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {navLinks.map((link) => {
+                    const isActive = isHydrated && pathname === link.path;
+                    return (
+                      <li key={link.path}>
+                        <Link
+                          href={link.path}
+                          className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
+                            isActive
+                              ? "bg-accent text-accent-foreground"
+                              : "text-foreground hover:bg-accent"
+                          } ${!menuOpen ? 'pointer-events-none' : ''}`}
+                          onClick={() => setMenuOpen(false)}
+                          tabIndex={menuOpen ? 0 : -1}
+                        >
+                          {link.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+
+                  {/* My Orders link for logged-in customers */}
+                  {isLoggedIn && (
+                    <li>
                       <Link
-                        href={link.path}
+                        href={`/${storeSlug}/order-status`}
                         className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
-                          isActive
+                          pathname === `/${storeSlug}/order-status`
                             ? "bg-accent text-accent-foreground"
                             : "text-foreground hover:bg-accent"
-                        }`}
+                        } ${!menuOpen ? 'pointer-events-none' : ''}`}
                         onClick={() => setMenuOpen(false)}
+                        tabIndex={menuOpen ? 0 : -1}
                       >
-                        {link.name}
+                        My Orders
                       </Link>
                     </li>
-                  );
-                })}
+                  )}
 
-                {/* My Orders link for logged-in customers */}
-                {isLoggedIn && (
-                  <li>
-                    <Link
-                      href={`/${storeSlug}/order-status`}
-                      className={`block py-2 px-3 rounded-md transition-colors duration-200 text-left text-sm ${
-                        pathname === `/${storeSlug}/order-status`
-                          ? "bg-accent text-accent-foreground"
-                          : "text-foreground hover:bg-accent"
-                      }`}
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      My Orders
-                    </Link>
-                  </li>
-                )}
-
-                {/* User Section */}
-                {customerLoading ? (
-                  <>
-                    <li>
-                      <div className="border-t border-border my-2" />
-                    </li>
-                    <li>
-                      <SheiSkeleton className="w-full h-10 rounded-md" />
-                    </li>
-                  </>
-                ) : isLoggedIn ? (
-                  <>
-                    <li>
-                      <div className="border-t border-border my-2" />
-                    </li>
-                    <li>
-                      <UserDropdownMobile 
-                        customerName={customerDisplayName}
-                        customerEmail={customerDisplayEmail}
-                        storeSlug={storeSlug}
-                      />
-                    </li>
-                  </>
-                ) : !isAdmin ? (
-                  <>
-                    <li>
-                      <div className="border-t border-border my-2" />
-                    </li>
-                    <li>
-                      <AuthButtons
-                        links={authLinks}
-                        isVertical={true}
-                        isAdminPanel={false}
-                      />
-                    </li>
-                  </>
-                ) : null}
-              </>
-            )}
-          </ul>
-        </nav>
+                  {/* User Section */}
+                  {customerLoading ? (
+                    <>
+                      <li>
+                        <div className="border-t border-border my-2" />
+                      </li>
+                      <li>
+                        <SheiSkeleton className="w-full h-10 rounded-md" />
+                      </li>
+                    </>
+                  ) : isLoggedIn ? (
+                    <>
+                      <li>
+                        <div className="border-t border-border my-2" />
+                      </li>
+                      <li className={`${!menuOpen ? 'pointer-events-none' : ''}`}>
+                        <UserDropdownMobile 
+                          customerName={customerDisplayName}
+                          customerEmail={customerDisplayEmail}
+                          storeSlug={storeSlug}
+                        />
+                      </li>
+                    </>
+                  ) : !isAdmin ? (
+                    <>
+                      <li>
+                        <div className="border-t border-border my-2" />
+                      </li>
+                      <li className={`${!menuOpen ? 'pointer-events-none' : ''}`}>
+                        <AuthButtons
+                          links={authLinks}
+                          isVertical={true}
+                          isAdminPanel={false}
+                        />
+                      </li>
+                    </>
+                  ) : null}
+                </>
+              )}
+            </ul>
+          </nav>
+        </div>
       </header>
 
       <div className="h-15 lg:hidden" />
