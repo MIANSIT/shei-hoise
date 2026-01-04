@@ -1,4 +1,3 @@
-// app/components/admin/order/create-order/OrderDetails.tsx
 "use client";
 import { useState } from "react";
 import { OrderProduct } from "@/lib/types/order";
@@ -30,6 +29,7 @@ import {
 import { Plus, Trash2, ShoppingCart, Minus } from "lucide-react";
 import Image from "next/image";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
 interface OrderDetailsProps {
   products: ProductWithVariants[];
   orderProducts: OrderProduct[];
@@ -45,8 +45,7 @@ export default function OrderDetails({
   const [selectedVariantId, setSelectedVariantId] =
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
- const {
-    // currency,
+  const {
     icon: currencyIcon,
     loading: currencyLoading,
   } = useUserCurrencyIcon();
@@ -110,13 +109,29 @@ export default function OrderDetails({
       return false;
     }
 
-    // Check stock availability
-    if (selectedVariantId !== "no-variant" && selectedVariant) {
-      return quantity <= getAvailableQuantity(selectedVariant);
+    // Check if the same product+variant already exists in order
+    const existingItem = orderProducts.find(
+      (item) =>
+        item.product_id === selectedProductId &&
+        item.variant_id ===
+          (selectedVariantId !== "no-variant" ? selectedVariantId : undefined)
+    );
+
+    if (existingItem) {
+      // Check if adding more quantity exceeds available stock
+      const newTotalQuantity = existingItem.quantity + quantity;
+      if (selectedVariantId !== "no-variant" && selectedVariant) {
+        return newTotalQuantity <= getAvailableQuantity(selectedVariant);
+      } else {
+        return newTotalQuantity <= getBaseProductAvailableQuantity(selectedProduct);
+      }
     } else {
-      return (
-        quantity <= (getBaseProductAvailableQuantity(selectedProduct) || 0)
-      );
+      // New item, check stock
+      if (selectedVariantId !== "no-variant" && selectedVariant) {
+        return quantity <= getAvailableQuantity(selectedVariant);
+      } else {
+        return quantity <= getBaseProductAvailableQuantity(selectedProduct);
+      }
     }
   };
 
@@ -135,8 +150,6 @@ export default function OrderDetails({
         ? selectedProduct.discounted_price
         : selectedProduct.base_price || 0;
 
-    const totalPrice = unitPrice * quantity;
-
     const variantDetails =
       selectedVariantId !== "no-variant" && selectedVariant
         ? {
@@ -147,22 +160,50 @@ export default function OrderDetails({
           }
         : undefined;
 
-    const newOrderProduct: OrderProduct = {
-      product_id: selectedProduct.id,
-      variant_id:
-        selectedVariantId !== "no-variant" ? selectedVariantId : undefined,
-      product_name: selectedProduct.name,
-      variant_details: variantDetails,
-      quantity: quantity,
-      unit_price: unitPrice,
-      total_price: totalPrice,
-      variant_name:
-        selectedVariantId !== "no-variant"
-          ? selectedVariant?.variant_name || undefined
-          : undefined,
-    };
+    const variantKey = selectedVariantId !== "no-variant" ? selectedVariantId : "base";
 
-    setOrderProducts((prev) => [...prev, newOrderProduct]);
+    // Check if the same product+variant already exists in order
+    const existingIndex = orderProducts.findIndex(
+      (item) =>
+        item.product_id === selectedProductId &&
+        item.variant_id ===
+          (selectedVariantId !== "no-variant" ? selectedVariantId : undefined)
+    );
+
+    if (existingIndex !== -1) {
+      // Update existing item
+      setOrderProducts((prev) =>
+        prev.map((item, index) =>
+          index === existingIndex
+            ? {
+                ...item,
+                quantity: item.quantity + quantity,
+                total_price: item.unit_price * (item.quantity + quantity),
+              }
+            : item
+        )
+      );
+    } else {
+      // Add new item
+      const totalPrice = unitPrice * quantity;
+
+      const newOrderProduct: OrderProduct = {
+        product_id: selectedProduct.id,
+        variant_id:
+          selectedVariantId !== "no-variant" ? selectedVariantId : undefined,
+        product_name: selectedProduct.name,
+        variant_details: variantDetails,
+        quantity: quantity,
+        unit_price: unitPrice,
+        total_price: totalPrice,
+        variant_name:
+          selectedVariantId !== "no-variant"
+            ? selectedVariant?.variant_name || undefined
+            : undefined,
+      };
+
+      setOrderProducts((prev) => [...prev, newOrderProduct]);
+    }
 
     // Reset form
     setSelectedProductId("");
@@ -175,7 +216,26 @@ export default function OrderDetails({
   };
 
   const handleQuantityChange = (index: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
+    if (newQuantity < 1) {
+      handleRemoveProduct(index);
+      return;
+    }
+
+    const item = orderProducts[index];
+    
+    // Check stock availability
+    const product = products.find((p) => p.id === item.product_id);
+    if (!product) return;
+
+    if (item.variant_id) {
+      const variant = product.product_variants?.find((v) => v.id === item.variant_id);
+      if (variant && newQuantity > getAvailableQuantity(variant)) {
+        // Show warning or prevent change
+        return;
+      }
+    } else if (newQuantity > getBaseProductAvailableQuantity(product)) {
+      return;
+    }
 
     setOrderProducts((prev) =>
       prev.map((item, i) =>
@@ -208,8 +268,7 @@ export default function OrderDetails({
   );
   
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
   return (
     <Card className="bg-card text-card-foreground border-border shadow-sm">
@@ -268,14 +327,14 @@ export default function OrderDetails({
                               {product.discounted_price ? (
                                 <>
                                   <span className="text-foreground font-semibold">
-                                     {displayCurrencyIconSafe} {displayCurrencyIconSafe}{product.discounted_price}
+                                    {displayCurrencyIconSafe}{product.discounted_price}
                                   </span>
                                   <span className="line-through">
-                                     {displayCurrencyIconSafe}{product.base_price}
+                                    {displayCurrencyIconSafe}{product.base_price}
                                   </span>
                                 </>
                               ) : (
-                                <span> {displayCurrencyIconSafe}{product.base_price || 0}</span>
+                                <span>{displayCurrencyIconSafe}{product.base_price || 0}</span>
                               )}
                               {product.product_variants &&
                                 product.product_variants.length > 0 && (
@@ -383,6 +442,18 @@ export default function OrderDetails({
                       "N/A"}{" "}
                   units
                 </p>
+                {orderProducts.find(
+                  (item) =>
+                    item.product_id === selectedProductId &&
+                    item.variant_id ===
+                      (selectedVariantId !== "no-variant"
+                        ? selectedVariantId
+                        : undefined)
+                ) && (
+                  <p className="text-xs text-amber-600">
+                    ⚠️ Item already in cart - quantity will be added to existing item
+                  </p>
+                )}
               </div>
             </div>
 
@@ -417,7 +488,7 @@ export default function OrderDetails({
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted-foreground">Subtotal:</span>
                 <span className="text-xl font-bold text-card-foreground">
-                   {displayCurrencyIconSafe}{subtotal.toFixed(2)}
+                  {displayCurrencyIconSafe}{subtotal.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -447,7 +518,7 @@ export default function OrderDetails({
                             </div>
                             <div className="flex items-center gap-4 text-sm">
                               <span className="text-muted-foreground">
-                                Unit:  {displayCurrencyIconSafe}{item.unit_price.toFixed(2)}
+                                Unit: {displayCurrencyIconSafe}{item.unit_price.toFixed(2)}
                               </span>
                               <span className="text-muted-foreground">•</span>
                               <span className="text-muted-foreground">
@@ -455,7 +526,7 @@ export default function OrderDetails({
                               </span>
                               <span className="text-muted-foreground">•</span>
                               <span className="font-semibold text-card-foreground">
-                                Total:  {displayCurrencyIconSafe}{item.total_price.toFixed(2)}
+                                Total: {displayCurrencyIconSafe}{item.total_price.toFixed(2)}
                               </span>
                             </div>
                           </div>

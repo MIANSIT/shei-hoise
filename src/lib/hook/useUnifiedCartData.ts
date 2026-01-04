@@ -9,7 +9,7 @@ import { CartProductWithDetails, CartCalculations } from "../types/cart";
 
 interface UseUnifiedCartDataProps {
   storeSlug: string;
-  compressedData?: string | null;
+  tokenData?: string | null;
   useZustand?: boolean;
 }
 
@@ -45,7 +45,7 @@ const groupAndSumItems = (
 
 export function useUnifiedCartData({
   storeSlug,
-  compressedData,
+  tokenData,
   useZustand = true,
 }: UseUnifiedCartDataProps) {
   const [cartItems, setCartItems] = useState<CartProductWithDetails[]>([]);
@@ -76,14 +76,13 @@ export function useUnifiedCartData({
           setCartItems(zustandData.items);
           setCalculations(zustandData.calculations);
         } else if (
-          compressedData &&
-          compressedData !== previousCompressedDataRef.current
+          tokenData &&
+          tokenData !== previousCompressedDataRef.current
         ) {
-          previousCompressedDataRef.current = compressedData;
+          previousCompressedDataRef.current = tokenData;
           hasFetchedUrlDataRef.current = true;
 
-          const decompressed =
-            decompressFromEncodedURIComponent(compressedData);
+          const decompressed = decompressFromEncodedURIComponent(tokenData);
           if (!decompressed) {
             throw new Error("Failed to decompress order data");
           }
@@ -222,7 +221,7 @@ export function useUnifiedCartData({
             totalDiscount,
             subtotal,
           });
-        } else if (!compressedData && !useZustand) {
+        } else if (!tokenData && !useZustand) {
           setCartItems([]);
           setCalculations({
             items: [],
@@ -243,7 +242,7 @@ export function useUnifiedCartData({
     };
 
     fetchCartData();
-  }, [storeSlug, compressedData, useZustand, zustandData]);
+  }, [storeSlug, tokenData, useZustand, zustandData]);
 
   return {
     cartItems,
