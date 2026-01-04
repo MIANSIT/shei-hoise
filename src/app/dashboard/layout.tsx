@@ -19,6 +19,8 @@ import {
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
+import Link from "next/link";
+import { StoreStatus } from "@/lib/types/enums";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -87,13 +89,129 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // };
 
   // Show loading state
-  if (loading || (!loading && !session) || !mounted) {
+  if (loading && storeIsActive == null && storeStatus == null) {
     return (
-      <div className="flex items-center justify-center min-h-screen flex-col gap-4">
-        <Spin size="large" />
-        <div className="text-gray-500">Loading...</div>
+      <div className='flex items-center justify-center min-h-screen flex-col gap-4'>
+        <Spin size='large' />
+        <div className='text-gray-500'>Loading...</div>
       </div>
     );
+  }
+  if (!storeIsActive) {
+    if (storeStatus === "trial") {
+      return (
+        <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 px-4'>
+          <div className='max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center'>
+            {/* Icon */}
+            <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100'>
+              <svg
+                className='h-7 w-7 text-green-700'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth={2}
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M12 8v4l3 3M12 2a10 10 0 1010 10A10 10 0 0012 2z'
+                />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h1 className='text-xl font-semibold text-gray-900'>
+              Your Free Trial Has Ended
+            </h1>
+
+            {/* Description */}
+            <p className='mt-3 text-sm text-gray-600 leading-relaxed'>
+              Thanks for trying our platform! Your trial period has now ended.
+            </p>
+
+            <p className='mt-2 text-sm text-gray-600 leading-relaxed'>
+              To continue managing your store, accessing orders, customers, and
+              analytics, please choose a plan and complete your payment.
+            </p>
+
+            {/* Highlight box */}
+            <div className='mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800'>
+              Your store and data are safe — nothing has been deleted.
+            </div>
+
+            {/* Actions */}
+            <div className='mt-6 space-y-3'>
+              <Link
+                href='/contact-us'
+                className='inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 transition'
+              >
+                Upgrade & Continue
+              </Link>
+            </div>
+
+            {/* Footer note */}
+            <p className='mt-6 text-xs text-gray-500'>
+              Need help choosing a plan? Our support team is happy to help.
+            </p>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 px-4'>
+          <div className='max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center'>
+            {/* Icon */}
+            <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-100'>
+              <svg
+                className='h-7 w-7 text-yellow-700'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth={2}
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M12 9v3m0 4h.01M12 2a10 10 0 1010 10A10 10 0 0012 2z'
+                />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h1 className='text-xl font-semibold text-gray-900'>
+              Dashboard Access Temporarily Restricted
+            </h1>
+
+            {/* Description */}
+            <p className='mt-3 text-sm text-gray-600 leading-relaxed'>
+              Your dashboard access has been temporarily restricted due to a
+              pending payment or subscription issue.
+            </p>
+
+            <p className='mt-2 text-sm text-gray-600 leading-relaxed'>
+              Your store, data, and customers are completely safe. Once the
+              payment is settled, full access will be restored automatically.
+            </p>
+
+            {/* Actions */}
+            <div className='mt-6 space-y-3'>
+              <Link
+                href='/contact-us'
+                className='inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 transition'
+              >
+                Contact Support
+              </Link>
+            </div>
+
+            {/* Footer note */}
+            <p className='mt-6 text-xs text-gray-500'>
+              If you believe this is a mistake, please reach out to our support
+              team.
+            </p>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (
@@ -120,34 +238,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col">
+        <div className='min-h-screen flex flex-col'>
           {/* Header */}
           <header
-            className="flex items-center justify-between p-4 shadow-md shrink-0"
+            className='flex items-center justify-between p-4 shadow-md shrink-0'
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
               {store?.logo_url ? (
                 <Image
                   src={store.logo_url}
                   alt={store.store_name || "Store Logo"}
                   width={40} // set the desired width
                   height={40} // set the desired height
-                  className="rounded-full object-cover"
+                  className='rounded-full object-cover'
                 />
               ) : (
-                <Image src="/logo.png" alt="Logo" width={40} height={40} />
+                <Image src='/logo.png' alt='Logo' width={40} height={40} />
               )}
-              <h1 className="text-lg font-bold">
+              <h1 className='text-lg font-bold'>
                 {store?.store_name || "Dashboard"}
               </h1>
 
               <button
                 onClick={() => setIsSidebarOpen((prev) => !prev)}
-                className="p-2 rounded hover:opacity-70 transition-transform duration-300"
+                className='p-2 rounded hover:opacity-70 transition-transform duration-300'
                 style={{ background: "var(--muted)" }}
               >
                 <PanelLeft
@@ -172,21 +290,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </button> */}
           </header>
 
-          <div className="flex flex-1 overflow-hidden">
+          <div className='flex flex-1 overflow-hidden'>
             {/* Sidebar */}
             <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
 
             {/* Main content */}
             <main
-              className="flex-1 flex flex-col overflow-hidden"
+              className='flex-1 flex flex-col overflow-hidden'
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
               }}
             >
-              <Toaster position="top-right" />
+              <Toaster position='top-right' />
 
-              <div className="flex justify-between items-center mb-4 px-4">
+              <div className='flex justify-between items-center mb-4 px-4'>
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -196,7 +314,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-4">{children}</div>
+              <div className='flex-1 overflow-auto p-4'>{children}</div>
             </main>
           </div>
         </div>
