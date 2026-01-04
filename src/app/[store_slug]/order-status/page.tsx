@@ -1,7 +1,8 @@
-// app/[store_slug]/order-status/page.tsx - UPDATED FOR GLOBAL ORDERS
+// app/[store_slug]/order-status/page.tsx - UPDATED WITH STORE LINKS
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import Link from "next/link"; // ADD THIS IMPORT
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
@@ -25,7 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Store, Package } from "lucide-react";
+import { Store, Package, ExternalLink } from "lucide-react"; // ADD ExternalLink
 
 export default function StoreOrdersPage() {
   const params = useParams();
@@ -290,28 +291,6 @@ export default function StoreOrdersPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8">
-            {/* {isLoggedIn && (
-              <Card className="mb-6 border-blue-200 bg-blue-50">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-blue-100 p-2 rounded-full">
-                      <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-blue-700 text-sm">
-                        Signed in as <strong>{authEmail}</strong>
-                      </p>
-                      <p className="text-blue-600 text-xs mt-1">
-                        Viewing all your orders across all stores
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )} */}
-
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-3xl font-bold">My Orders</h1>
@@ -321,49 +300,6 @@ export default function StoreOrdersPage() {
               </div>
             </div>
 
-            {/* Statistics */}
-            {/* {orders.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Orders</p>
-                        <p className="text-2xl font-bold">{stats.totalOrders}</p>
-                      </div>
-                      <Package className="h-8 w-8 text-primary opacity-70" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Stores</p>
-                        <p className="text-2xl font-bold">{stats.totalStores}</p>
-                      </div>
-                      <Store className="h-8 w-8 text-green-500 opacity-70" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Spent</p>
-                        <p className="text-2xl font-bold">${stats.totalAmount.toFixed(2)}</p>
-                      </div>
-                      <Badge variant="outline" className="text-lg">
-                        ALL
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )} */}
-
             {/* Group orders by store */}
             {Object.keys(ordersByStore).length > 0 && (
               <div className="space-y-8">
@@ -372,9 +308,15 @@ export default function StoreOrdersPage() {
                     <div key={storeSlug} className="mb-8">
                       <div className="flex items-center gap-3 mb-4">
                         <Store className="h-5 w-5 text-muted-foreground" />
-                        <h2 className="text-xl font-semibold capitalize">
-                          {storeOrders[0].stores?.store_name || storeSlug}
-                        </h2>
+                        <Link
+                          href={`/${storeSlug}`}
+                          className="group flex items-center gap-2 hover:underline"
+                        >
+                          <h2 className="text-xl font-semibold capitalize">
+                            {storeOrders[0].stores?.store_name || storeSlug}
+                          </h2>
+                          <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-70 transition-opacity" />
+                        </Link>
                         <Badge variant="secondary">
                           {storeOrders.length} order
                           {storeOrders.length !== 1 ? "s" : ""}

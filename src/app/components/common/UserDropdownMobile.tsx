@@ -1,4 +1,4 @@
-// components/header/UserDropdownMobile.tsx - FIXED VERSION
+// components/header/UserDropdownMobile.tsx - UPDATED VERSION
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ChevronDown, User, Package, LogOut } from "lucide-react";
-import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer"; // ADD THIS
+import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer";
 
 interface UserDropdownMobileProps {
   customerName: string;
@@ -18,7 +18,7 @@ export default function UserDropdownMobile({
   customerName,
   customerEmail,
   storeSlug,
-}: UserDropdownMobileProps) { // ADD PROPS HERE
+}: UserDropdownMobileProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -66,29 +66,29 @@ export default function UserDropdownMobile({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-50">
+        <div className="absolute left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-[100]">
           <Link
             href={`/${storeSlug}/my-profile`}
-            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors border-b"
+            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm" // Added text-sm and text-foreground
             onClick={() => setIsOpen(false)}
           >
             <User className="h-4 w-4" />
-            <span className="text-sm">My Profile</span>
+            <span>My Profile</span>
           </Link>
           <Link
             href={`/${storeSlug}/order-status`}
-            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors border-b"
+            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm" // Added text-sm and text-foreground
             onClick={() => setIsOpen(false)}
           >
             <Package className="h-4 w-4" />
-            <span className="text-sm">My Orders</span>
+            <span>My Orders</span>
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 p-3 w-full text-left hover:bg-destructive/10 text-destructive transition-colors"
+            className="flex items-center gap-3 p-3 w-full text-left hover:bg-destructive/10 text-destructive transition-colors text-sm" // Added text-sm
           >
             <LogOut className="h-4 w-4" />
-            <span className="text-sm">Logout</span>
+            <span>Logout</span>
           </button>
         </div>
       )}
