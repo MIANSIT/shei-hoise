@@ -29,6 +29,7 @@ import {
 import { Plus, Trash2, ShoppingCart, Minus } from "lucide-react";
 import Image from "next/image";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { ProductStatus } from "@/lib/types/enums";
 
 interface OrderDetailsProps {
   products: ProductWithVariants[];
@@ -54,10 +55,13 @@ export default function OrderDetails({
     (v) => v.id === selectedVariantId
   );
 
-  // Filter available variants with positive stock and active status
+  // Filter only active variants (is_active = true) with positive stock
   const availableVariants =
     selectedProduct?.product_variants?.filter((v) => {
+      // First check if variant is active
       if (!v.is_active) return false;
+      
+      // Then check stock availability
       const availableStock =
         v.product_inventory[0]?.quantity_available -
           v.product_inventory[0]?.quantity_reserved || 0;
@@ -100,9 +104,32 @@ export default function OrderDetails({
     return null;
   };
 
+  // Get price for display - use discounted_price if available, otherwise base_price
+  const getDisplayPrice = (product?: ProductWithVariants, variant?: ProductVariant) => {
+    if (variant) {
+      return variant.discounted_price && variant.discounted_price > 0
+        ? variant.discounted_price
+        : variant.base_price || 0;
+    }
+    if (product) {
+      return product.discounted_price && product.discounted_price > 0
+        ? product.discounted_price
+        : product.base_price || 0;
+    }
+    return 0;
+  };
+
+  // Check if product has any active variants
+  const hasActiveVariants = (product: ProductWithVariants) => {
+    return product.product_variants?.some(v => v.is_active) ?? false;
+  };
+
   // Check if we can add the product (validation)
   const canAddProduct = () => {
     if (!selectedProduct || quantity < 1) return false;
+
+    // Check if product is active
+    if (selectedProduct.status !== ProductStatus.ACTIVE) return false;
 
     // If product has active variants, must select a variant
     if (availableVariants.length > 0 && selectedVariantId === "no-variant") {
@@ -250,13 +277,19 @@ export default function OrderDetails({
     );
   };
 
-  // Filter products that have available stock
+  // Filter products that are ACTIVE and have available stock
   const availableProducts = products.filter((product) => {
+    // First check if product is active
+    if (product.status !== ProductStatus.ACTIVE) return false;
+
+    // Check if base product has stock
     const baseStockAvailable = getBaseProductAvailableQuantity(product) > 0;
-    const variantsAvailable =
-      product.product_variants?.some(
-        (v) => v.is_active && getAvailableQuantity(v) > 0
-      ) ?? false;
+    
+    // Check if any active variant has stock
+    const variantsAvailable = product.product_variants?.some(
+      (v) => v.is_active && getAvailableQuantity(v) > 0
+    ) ?? false;
+
     return baseStockAvailable || variantsAvailable;
   });
 
@@ -306,50 +339,70 @@ export default function OrderDetails({
                   <SelectValue placeholder="Select a product" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover text-popover-foreground border-border max-h-60">
-                  {availableProducts.map((product) => {
-                    const primaryImage = getPrimaryImage(product);
-                    return (
-                      <SelectItem key={product.id} value={product.id} className="py-2">
-                        <div className="flex items-center gap-3">
-                          {primaryImage && (
-                            <div className="shrink-0 w-8 h-8 relative">
-                              <Image
-                                src={primaryImage.image_url}
-                                alt={product.name}
-                                fill
-                                className="rounded-md object-cover"
-                              />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{product.name}</p>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              {product.discounted_price ? (
-                                <>
-                                  <span className="text-foreground font-semibold">
-                                    {displayCurrencyIconSafe}{product.discounted_price}
-                                  </span>
-                                  <span className="line-through">
-                                    {displayCurrencyIconSafe}{product.base_price}
-                                  </span>
-                                </>
-                              ) : (
-                                <span>{displayCurrencyIconSafe}{product.base_price || 0}</span>
-                              )}
-                              {product.product_variants &&
-                                product.product_variants.length > 0 && (
+                  {availableProducts.length === 0 ? (
+                    <div className="py-4 text-center text-sm text-muted-foreground">
+                      No active products with available stock
+                    </div>
+                  ) : (
+                    availableProducts.map((product) => {
+                      const primaryImage = getPrimaryImage(product);
+                      const activeVariantsCount = product.product_variants?.filter(v => v.is_active).length || 0;
+                      const hasVariants = activeVariantsCount > 0;
+                      
+                      return (
+                        <SelectItem key={product.id} value={product.id} className="py-2">
+                          <div className="flex items-center gap-3">
+                            {primaryImage && (
+                              <div className="shrink-0 w-8 h-8 relative">
+                                <Image
+                                  src={primaryImage.image_url}
+                                  alt={product.name}
+                                  fill
+                                  className="rounded-md object-cover"
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm truncate">{product.name}</p>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                {/* Show price only if product has no variants */}
+                                {!hasVariants && (
+                                  <>
+                                    {product.discounted_price ? (
+                                      <>
+                                        <span className="text-foreground font-semibold">
+                                          {displayCurrencyIconSafe}{product.discounted_price}
+                                        </span>
+                                        <span className="line-through">
+                                          {displayCurrencyIconSafe}{product.base_price}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span>{displayCurrencyIconSafe}{product.base_price || 0}</span>
+                                    )}
+                                  </>
+                                )}
+                                {hasVariants && (
                                   <span className="text-blue-600">
-                                    • {product.product_variants.length} variants
+                                    {activeVariantsCount} variants available
                                   </span>
                                 )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
+                        </SelectItem>
+                      );
+                    })
+                  )}
                 </SelectContent>
               </Select>
+              {availableProducts.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  No active products with available stock found. Please activate products or add inventory.
+                </p>
+              )}
             </div>
 
             {/* Variant and Quantity Row */}
@@ -379,20 +432,39 @@ export default function OrderDetails({
                         selectedProduct,
                         variant
                       );
+                      const variantPrice = getDisplayPrice(undefined, variant);
+                      const hasDiscount = variant.discounted_price && variant.discounted_price > 0;
+                      
                       return (
                         <SelectItem key={variant.id} value={variant.id} className="py-2">
-                          <div className="flex items-center gap-3">
-                            {primaryImage && (
-                              <div className="shrink-0 w-6 h-6 relative">
-                                <Image
-                                  src={primaryImage.image_url}
-                                  alt={variant.variant_name || "Variant"}
-                                  fill
-                                  className="rounded object-cover"
-                                />
-                              </div>
-                            )}
-                            <span className="font-medium">{variant.variant_name}</span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              {primaryImage && (
+                                <div className="shrink-0 w-6 h-6 relative">
+                                  <Image
+                                    src={primaryImage.image_url}
+                                    alt={variant.variant_name || "Variant"}
+                                    fill
+                                    className="rounded object-cover"
+                                  />
+                                </div>
+                              )}
+                              <span className="font-medium">{variant.variant_name}</span>
+                            </div>
+                            <div className="text-sm font-medium">
+                              {hasDiscount ? (
+                                <div className="flex flex-col items-end">
+                                  <span className="text-foreground">
+                                   - {displayCurrencyIconSafe}{variant.discounted_price}
+                                  </span>
+                                  <span className="text-muted-foreground line-through text-xs">
+                                    {displayCurrencyIconSafe}{variant.base_price}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span>- {displayCurrencyIconSafe}{variant.base_price || 0}</span>
+                              )}
+                            </div>
                           </div>
                         </SelectItem>
                       );
@@ -401,7 +473,7 @@ export default function OrderDetails({
                 </Select>
                 {selectedProductId && availableVariants.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No variants available
+                    No active variants available
                   </p>
                 )}
               </div>
@@ -467,6 +539,15 @@ export default function OrderDetails({
                   </SheiAlertDescription>
                 </SheiAlert>
               )}
+              
+            {/* Product Inactive Warning */}
+            {selectedProduct && selectedProduct.status !== ProductStatus.ACTIVE && (
+              <SheiAlert className="bg-red-50 border-red-200">
+                <SheiAlertDescription className="text-red-800">
+                  This product is not active ({selectedProduct.status}). Only active products can be added to orders.
+                </SheiAlertDescription>
+              </SheiAlert>
+            )}
           </CardContent>
         </Card>
 
