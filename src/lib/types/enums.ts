@@ -42,3 +42,31 @@ export enum ProductStatus {
   INACTIVE = "inactive",
   DRAFT = "draft",
 }
+export enum StoreStatus {
+  PENDING = "pending",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+  TRIAL = "trial",
+}
+
+const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
+  [StoreStatus.PENDING]: "PENDING",
+  [StoreStatus.APPROVED]: "APPROVED",
+  [StoreStatus.REJECTED]: "REJECTED",
+  [StoreStatus.TRIAL]: "TRIAL", // display label
+};
+
+export enum Currency {
+  BDT = "BDT",
+  USD = "USD",
+  EUR = "EUR",
+  GBP = "GBP",
+  INR = "INR",
+}
+export const CURRENCY_ICONS: Record<Currency, string> = {
+  [Currency.BDT]: "(৳)",
+  [Currency.USD]: "($)",
+  [Currency.EUR]: "(€)",
+  [Currency.GBP]: "(£)",
+  [Currency.INR]: "(₹)",
+};

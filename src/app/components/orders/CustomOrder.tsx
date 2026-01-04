@@ -111,38 +111,35 @@ export default function CustomOrder() {
   };
 
   // Ultra-compact encoding with compression
-  const handleGenerateLink = () => {
-    if (!isFormValid || !storeSlug) {
-      showToast(
-        "Cannot generate link",
-        "Please select products first.",
-        "destructive"
-      );
-      return;
+  const handleGenerateLink = async () => {
+    if (!isFormValid || !storeSlug) return;
+
+    try {
+      const res = await fetch("/api/generate-order-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_id: await getStoreIdBySlug(storeSlug),
+          store_slug: storeSlug,
+          products: orderProducts.map((item) => ({
+            product_id: item.product_id,
+            variant_id: item.variant_id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      setGeneratedLink(data.url);
+      copyLinkToClipboard(data.url);
+
+      showToast("Order Link Generated", "Link copied successfully!");
+    } catch (err) {
+      showToast("Error", "Failed to generate order link", "destructive");
     }
-
-    // Ultra-compact format
-    const compactData = orderProducts.map((item) => [
-      item.product_id, // [0] = product_id
-      item.variant_id, // [1] = variant_id (can be null)
-      item.quantity, // [2] = quantity
-    ]);
-
-    const jsonString = JSON.stringify(compactData);
-
-    // Compress the data (reduces size by 60-80%)
-    const compressed = compressToEncodedURIComponent(jsonString);
-
-    const url = `/${storeSlug}/confirm-order?o=${compressed}`;
-    setGeneratedLink(url);
-
-    // Auto-copy the generated link
-    copyLinkToClipboard(url);
-
-    showToast(
-      "Order Link Generated",
-      "Link generated and copied successfully!"
-    );
   };
 
   const handleCopyLink = () => {
@@ -155,14 +152,14 @@ export default function CustomOrder() {
   }
 
   return (
-    <div className="h-full overflow-auto p-4 md:p-6 rounded-xl bg-background">
+    <div className='h-full overflow-auto p-4 md:p-6 rounded-xl bg-background'>
       {/* Toast Notification */}
       {toast.show && (
-        <div className="fixed top-4 right-4 z-50 max-w-sm">
+        <div className='fixed top-4 right-4 z-50 max-w-sm'>
           <SheiAlert variant={toast.variant}>
             <SheiAlertDescription>
-              <div className="flex flex-col">
-                <span className="font-medium">{toast.title}</span>
+              <div className='flex flex-col'>
+                <span className='font-medium'>{toast.title}</span>
                 <span>{toast.description}</span>
               </div>
             </SheiAlertDescription>
@@ -170,21 +167,21 @@ export default function CustomOrder() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className='max-w-7xl mx-auto space-y-6'>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+        <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-2'>
           <div>
-            <h3 className="text-lg font-semibold text-foreground">
+            <h3 className='text-lg font-semibold text-foreground'>
               Quick Order Link
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className='text-sm text-muted-foreground'>
               Generate a unique order link for your customers instantly.
             </p>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="w-full">
+        <div className='w-full'>
           {products.length > 0 ? (
             <OrderDetails
               products={products}
@@ -197,32 +194,32 @@ export default function CustomOrder() {
         </div>
 
         {/* Divider / Spacing */}
-        <div className="border-t border-border mt-6 mb-4" />
+        <div className='border-t border-border mt-6 mb-4' />
 
         {/* Generate Link Section */}
-        <div className="flex flex-col sm:flex-row w-full justify-end sm:items-center gap-3">
+        <div className='flex flex-col sm:flex-row w-full justify-end sm:items-center gap-3'>
           {!generatedLink ? (
             <Button
               disabled={!isFormValid}
               onClick={handleGenerateLink}
-              className="w-full sm:w-auto"
+              className='w-full sm:w-auto'
             >
-              <Link className="w-4 h-4 mr-2" />
+              <Link className='w-4 h-4 mr-2' />
               Generate & Copy Order Link
             </Button>
           ) : (
             <>
               <Input
-                type="text"
+                type='text'
                 readOnly
                 value={window.location.origin + generatedLink}
-                className="border border-border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                className='border border-border rounded-lg px-3 py-2 text-sm w-full sm:w-96 focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground'
               />
-              <Button onClick={handleCopyLink} className="w-full sm:w-auto">
+              <Button onClick={handleCopyLink} className='w-full sm:w-auto'>
                 {copied ? (
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className='w-4 h-4 mr-2' />
                 ) : (
-                  <Copy className="w-4 h-4 mr-2" />
+                  <Copy className='w-4 h-4 mr-2' />
                 )}
                 {copied ? "Copied" : "Copy"}
               </Button>
