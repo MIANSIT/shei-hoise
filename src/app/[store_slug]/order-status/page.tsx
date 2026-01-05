@@ -105,15 +105,6 @@ export default function StoreOrdersPage() {
     // 2. User just created account during checkout (even if not fully logged in yet)
     const shouldFetchOrders =
       (isLoggedIn && hasAuthUserId) || shouldForceShowOrders;
-
-    console.log("🔄 Should fetch global orders?", {
-      shouldFetchOrders,
-      isLoggedIn,
-      hasAuthUserId,
-      shouldForceShowOrders,
-      customerId: customer?.id,
-    });
-
     if (!shouldFetchOrders) {
       setOrders([]);
       setLoadingOrders(false);
@@ -124,18 +115,12 @@ export default function StoreOrdersPage() {
       isFetchingOrdersRef.current = true;
       setLoadingOrders(true);
       setError(null);
-      console.log("🔄 Fetching ALL orders for customer globally:", customer.id);
-
       const customerOrders = await getCustomerOrders(customer.id);
-
       if (mountedRef.current) {
         setOrders(customerOrders);
 
         // If this was a newly created account, clear the flags after fetching orders
         if (shouldForceShowOrders) {
-          console.log(
-            "🧹 Clearing account creation flags after fetching orders"
-          );
           setTimeout(() => {
             clearAccountCreationFlags();
           }, 1000);

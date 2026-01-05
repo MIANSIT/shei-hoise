@@ -69,7 +69,6 @@ export function useCurrentUser() {
           globalUserCache &&
           Date.now() - globalUserCache.timestamp < CACHE_DURATION
         ) {
-          console.log("📦 Using cached user:", authUser.id);
 
           setUser(globalUserCache.user);
           setStoreSlug(globalUserCache.storeSlug);
@@ -98,7 +97,6 @@ export function useCurrentUser() {
            CUSTOMER FALLBACK
         ======================= */
         if (dbErr || !userData) {
-          console.log("⚠️ User not in users table, treating as CUSTOMER");
 
           const fallbackUser: CurrentUserWithProfile = {
             id: authUser.id,

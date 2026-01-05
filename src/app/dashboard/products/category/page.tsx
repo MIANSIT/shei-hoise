@@ -152,7 +152,6 @@ export default function CategoryPage() {
   // Trigger fetch when dependencies change
   useEffect(() => {
     if (!userLoading && user?.store_id) {
-      console.log("Triggering fetch with status:", statusFilter);
       fetchCategories();
     }
   }, [

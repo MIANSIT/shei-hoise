@@ -32,34 +32,20 @@ async function validateStockAvailability(
   orderProducts: OrderProduct[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(
-      "🔍 validateStockAvailability called with:",
-      orderProducts.map((p) => ({
-        product_name: p.product_name,
-        product_id: p.product_id,
-        variant_id: p.variant_id,
-        quantity: p.quantity,
-      }))
-    );
+    
 
     for (const item of orderProducts) {
-      console.log(`🔍 Checking inventory for: "${item.product_name}"`, {
-        product_id: item.product_id,
-        variant_id: item.variant_id,
-        is_variant: !!item.variant_id
-      });
+      
 
       let inventoryQuery;
 
       if (item.variant_id) {
-        console.log(`🔍 Checking VARIANT inventory for variant ${item.variant_id}`);
         inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("quantity_available, quantity_reserved")
           .eq("variant_id", item.variant_id)
           .single();
       } else {
-        console.log(`🔍 Checking BASE PRODUCT inventory for product ${item.product_id}`);
         inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("quantity_available, quantity_reserved")
@@ -70,17 +56,10 @@ async function validateStockAvailability(
 
       const { data: inventory, error } = await inventoryQuery;
 
-      console.log("📊 Inventory check result for", item.product_name, ":", {
-        inventory,
-        error,
-        variant_id: item.variant_id,
-        product_id: item.product_id,
-        is_variant: !!item.variant_id,
-      });
+      
 
       if (error) {
         if (error.code === 'PGRST116' && !item.variant_id) {
-          console.log(`⚠️ Multiple inventory records found for base product "${item.product_name}". Checking all records...`);
 
           const { data: allInventory, error: multiError } = await supabaseAdmin
             .from("product_inventory")
@@ -96,7 +75,6 @@ async function validateStockAvailability(
             };
           }
 
-          console.log(`📊 Found ${allInventory?.length || 0} inventory records for base product:`, allInventory);
 
           if (!allInventory || allInventory.length === 0) {
             return {
@@ -106,7 +84,6 @@ async function validateStockAvailability(
           }
 
           const firstInventory = allInventory[0];
-          console.log(`✅ Using first inventory record for "${item.product_name}":`, firstInventory);
 
           const availableStock = firstInventory.quantity_available || 0;
 
@@ -136,7 +113,6 @@ async function validateStockAvailability(
 
       const availableStock = inventory.quantity_available || 0;
 
-      console.log(`📦 Stock check: "${item.product_name}" - Available: ${availableStock}, Required: ${item.quantity}`);
 
       if (availableStock < item.quantity) {
         const inventoryType = item.variant_id ? "variant" : "product";
@@ -146,7 +122,6 @@ async function validateStockAvailability(
         };
       }
 
-      console.log(`✅ Sufficient stock available for "${item.product_name}"`);
     }
 
     return { success: true };
@@ -161,29 +136,16 @@ async function updateInventoryForOrder(
   orderProducts: OrderProduct[],
   action: "reserve" | "release"
 ): Promise<{ success: boolean; error?: string }> {
-  console.log("🔧 updateInventoryForOrder called with:", {
-    action,
-    products: orderProducts.map((p) => ({
-      product_id: p.product_id,
-      variant_id: p.variant_id,
-      quantity: p.quantity,
-      product_name: p.product_name,
-    })),
-  });
+  
 
   const inventoryUpdateResults = [];
 
   for (const item of orderProducts) {
     try {
-      console.log(
-        `🔄 Updating inventory for product "${item.product_name}", variant ${item.variant_id}, quantity ${item.quantity}, action: ${action}`
-      );
+      
 
       if (item.variant_id) {
-        console.log(
-          `📦 This is a VARIANT product. Only updating variant inventory for variant_id: ${item.variant_id}`
-        );
-
+        
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
           .select("id, quantity_available, quantity_reserved")
@@ -192,7 +154,6 @@ async function updateInventoryForOrder(
 
         const { data: inventoryData, error: fetchError } = await inventoryQuery;
 
-        console.log("📊 Variant inventory data:", inventoryData);
 
         if (fetchError) {
           console.error(
@@ -217,17 +178,13 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(
-            `📦 Reserving VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
-          );
+          
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(
-            `📦 Releasing VARIANT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
-          );
+          
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -249,9 +206,7 @@ async function updateInventoryForOrder(
             error: updateError.message,
           });
         } else {
-          console.log(
-            `✅ Successfully updated VARIANT inventory for variant ${item.variant_id}`
-          );
+          
           inventoryUpdateResults.push({
             type: "variant",
             id: item.variant_id,
@@ -259,7 +214,6 @@ async function updateInventoryForOrder(
           });
         }
       } else {
-        console.log(`📦 This is a BASE product. Checking for inventory records for product_id: ${item.product_id}`);
 
         const inventoryQuery = supabaseAdmin
           .from("product_inventory")
@@ -280,7 +234,6 @@ async function updateInventoryForOrder(
           continue;
         }
 
-        console.log(`📊 Found ${inventoryRecords?.length || 0} inventory records for base product:`, inventoryRecords);
 
         if (!inventoryRecords || inventoryRecords.length === 0) {
           console.error(`❌ No inventory records found for base product ${item.product_id}`);
@@ -294,7 +247,6 @@ async function updateInventoryForOrder(
         }
 
         const inventoryData = inventoryRecords[0];
-        console.log(`✅ Using first inventory record for base product update:`, inventoryData);
 
         const updateData: any = {};
         const currentAvailable = inventoryData.quantity_available || 0;
@@ -305,17 +257,13 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(
-            `📦 Reserving BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
-          );
+          
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          console.log(
-            `📦 Releasing BASE PRODUCT stock: Available ${currentAvailable} → ${newAvailable}, Reserved ${currentReserved} → ${newReserved}`
-          );
+          
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -334,7 +282,6 @@ async function updateInventoryForOrder(
             error: updateError.message,
           });
         } else {
-          console.log(`✅ Successfully updated BASE PRODUCT inventory for record ${inventoryData.id}`);
           inventoryUpdateResults.push({
             type: "product",
             id: item.product_id,
@@ -364,9 +311,7 @@ async function updateInventoryForOrder(
     (result) => !result.success
   );
 
-  console.log(
-    `📊 Inventory updates: ${successfulUpdates.length} successful, ${failedUpdates.length} failed`
-  );
+  
 
   if (failedUpdates.length > 0) {
     const errorMessage = `Failed to update inventory for ${failedUpdates.length} items: ${failedUpdates.map(f => f.error).join(', ')}`;
@@ -416,13 +361,11 @@ export async function createOrder(
     }
 
     // Step 0: Validate stock availability before creating order
-    console.log("🔍 Validating stock availability...");
     const stockValidation = await validateStockAvailability(orderProducts);
     if (!stockValidation.success) {
       throw new Error(`Insufficient stock: ${stockValidation.error}`);
     }
 
-    console.log("✅ Stock validation passed - sufficient stock available");
 
     // Prepare shipping address JSON
     const shippingAddress = {
@@ -433,17 +376,7 @@ export async function createOrder(
       country: "Bangladesh",
     };
 
-    console.log("🔄 Creating order with data:", {
-      orderNumber,
-      storeId,
-      customerId: customerInfo.customer_id,
-      orderProductsCount: orderProducts.length,
-      subtotal,
-      discount,
-      additionalCharges,
-      deliveryCost,
-      totalAmount,
-    });
+    
 
     // Step 1: Create the order - INCLUDING additional_charges
     const orderInsertData = {
@@ -466,7 +399,6 @@ export async function createOrder(
       delivery_option: orderData.deliveryOption,
     };
 
-    console.log("📦 Order insert data with additional_charges:", orderInsertData);
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
@@ -479,7 +411,6 @@ export async function createOrder(
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
 
-    console.log("✅ Order created successfully:", order);
 
     // Step 2: Insert order items
     const orderItemsData = orderProducts.map((item) => ({
@@ -493,7 +424,6 @@ export async function createOrder(
       variant_details: item.variant_details || null,
     }));
 
-    console.log("📝 Inserting order items:", orderItemsData);
 
     const { error: itemsError } = await supabaseAdmin
       .from("order_items")
@@ -508,10 +438,8 @@ export async function createOrder(
       throw new Error(`Failed to create order items: ${itemsError.message}`);
     }
 
-    console.log("✅ Order items inserted successfully");
 
     // Step 3: Update inventory quantities - RESERVE STOCK
-    console.log("🔄 Reserving inventory quantities...");
     const inventoryUpdateResult = await updateInventoryForOrder(
       orderProducts,
       "reserve"
@@ -526,10 +454,8 @@ export async function createOrder(
         "⚠️ Order created but inventory reservation failed. Manual intervention may be required."
       );
     } else {
-      console.log("✅ Inventory successfully reserved for order");
     }
 
-    console.log("🎉 Order process delivered successfully");
 
     return {
       success: true,
@@ -576,13 +502,11 @@ export async function createCustomerOrder(
     }
 
     // ✅ INVENTORY VALIDATION
-    console.log("🔍 Validating stock availability for customer order...");
     const stockValidation = await validateStockAvailability(orderProducts);
     if (!stockValidation.success) {
       throw new Error(`Insufficient stock: ${stockValidation.error}`);
     }
 
-    console.log("✅ Stock validation passed - sufficient stock available");
 
     // Prepare shipping address
     const shippingAddress = {
@@ -594,7 +518,6 @@ export async function createCustomerOrder(
       country: customerInfo.country || "Bangladesh",
     };
 
-    console.log("🔄 Creating customer order in database...");
 
     // ✅ FIX: Use store_customer_id instead of auth user ID
     const storeCustomerId = customerInfo.customer_id || null;
@@ -619,11 +542,7 @@ export async function createCustomerOrder(
       delivery_option: deliveryOption,
     };
 
-    console.log("📦 Customer order insert data with additional_charges:", {
-      ...orderInsertData,
-      customer_id: storeCustomerId,
-      has_customer: !!storeCustomerId
-    });
+    
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
@@ -659,7 +578,6 @@ export async function createCustomerOrder(
     }
 
     // ✅ INVENTORY UPDATE
-    console.log("🔄 Updating inventory for customer order...");
     const inventoryUpdateResult = await updateInventoryForOrder(
       orderProducts,
       "reserve"
@@ -674,10 +592,7 @@ export async function createCustomerOrder(
         "⚠️ Customer order created but inventory reservation failed. Manual intervention may be required."
       );
     } else {
-      console.log("✅ Inventory successfully reserved for customer order");
     }
-
-    console.log("✅ Customer order created successfully:", order.id);
 
     return {
       success: true,

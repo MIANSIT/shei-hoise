@@ -55,7 +55,6 @@ export async function updateOrderByNumber(
   updateData: UpdateOrderByNumberData
 ): Promise<UpdateOrderByNumberResult> {
   try {
-    console.log("Updating order with data:", updateData);
 
     const {
       orderId,
@@ -121,7 +120,6 @@ export async function updateOrderByNumber(
       deliveryMethod: customerInfo.deliveryMethod || "",
     };
 
-    console.log("📦 Shipping address to update:", shippingAddressUpdate);
 
     // Update the order with COMPLETE shipping address
     const updateOrderData = {
@@ -141,10 +139,7 @@ export async function updateOrderByNumber(
       updated_at: new Date().toISOString(),
     };
 
-    console.log("Updating order with complete address:", {
-      ...updateOrderData,
-      shipping_address: shippingAddressUpdate
-    });
+    
 
     // Update order with customer link
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
@@ -184,7 +179,6 @@ export async function updateOrderByNumber(
       orderProducts
     );
 
-    console.log("Order updated successfully with complete address");
 
     // Fetch updated order with items
     const { data: finalOrder } = await supabaseAdmin
@@ -312,15 +306,7 @@ async function handleInventoryUpdates(
   newItems: any[]
 ): Promise<void> {
   try {
-    console.log("🔄 Starting inventory updates...");
-    console.log("Existing items:", existingItems);
-    console.log("New items:", newItems);
-    console.log(
-      "Old status:",
-      existingOrder.status,
-      "New status:",
-      updateData.status
-    );
+    
 
     // Create maps for comparison
     const existingItemsMap = new Map();
@@ -335,15 +321,11 @@ async function handleInventoryUpdates(
       newItemsMap.set(key, item);
     });
 
-    console.log("Existing items map:", Array.from(existingItemsMap.keys()));
-    console.log("New items map:", Array.from(newItemsMap.keys()));
 
     // Handle items that were REMOVED from the order
     for (const [key, existingItem] of existingItemsMap) {
       if (!newItemsMap.has(key)) {
-        console.log(
-          `❌ Item removed: ${key}, quantity: ${existingItem.quantity}`
-        );
+       
         // Item was removed - return the reserved quantity to available
         await adjustInventory(existingItem, -existingItem.quantity);
       }
@@ -356,25 +338,20 @@ async function handleInventoryUpdates(
       if (existingItem) {
         // Item exists in both - check for quantity changes
         const quantityDiff = newItem.quantity - existingItem.quantity;
-        console.log(
-          `📊 Quantity change for ${key}: ${existingItem.quantity} -> ${newItem.quantity} (diff: ${quantityDiff})`
-        );
+      
 
         if (quantityDiff !== 0) {
           await adjustInventory(existingItem, quantityDiff);
         }
       } else {
         // This is a NEW item added to the order
-        console.log(`➕ New item added: ${key}, quantity: ${newItem.quantity}`);
         await adjustInventory(newItem, newItem.quantity);
       }
     }
 
     // Handle status changes
     if (updateData.status !== existingOrder.status) {
-      console.log(
-        `🔄 Status change: ${existingOrder.status} -> ${updateData.status}`
-      );
+     
       await handleStatusChangeInventory(
         existingOrder.status,
         updateData.status,
@@ -382,7 +359,6 @@ async function handleInventoryUpdates(
       );
     }
 
-    console.log("✅ Inventory updates delivered");
   } catch (error) {
     console.error("❌ Error in handleInventoryUpdates:", error);
     // Don't throw error here as order update was successful
@@ -393,15 +369,10 @@ async function handleInventoryUpdates(
 async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
   try {
     if (quantityDiff === 0) {
-      console.log(`➖ No quantity change for item ${item.product_id}`);
       return;
     }
 
-    console.log(
-      `📦 Adjusting inventory for ${item.product_name}: ${
-        quantityDiff > 0 ? "+" : ""
-      }${quantityDiff}`
-    );
+    
 
     const inventoryQuery = item.variant_id
       ? supabaseAdmin
@@ -430,9 +401,7 @@ async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
       const newAvailable = Math.max(0, currentAvailable - quantityDiff);
       const newReserved = Math.max(0, currentReserved + quantityDiff);
 
-      console.log(
-        `📊 Inventory update - Available: ${currentAvailable} -> ${newAvailable}, Reserved: ${currentReserved} -> ${newReserved}`
-      );
+      
 
       const updateQuery = item.variant_id
         ? supabaseAdmin
@@ -456,9 +425,7 @@ async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
       if (updateError) {
         console.error(`❌ Error updating inventory:`, updateError);
       } else {
-        console.log(
-          `✅ Inventory updated successfully for ${item.product_name}`
-        );
+        
       }
     }
   } catch (error) {
@@ -473,14 +440,12 @@ async function handleStatusChangeInventory(
   orderItems: any[]
 ): Promise<void> {
   try {
-    console.log(`🔄 Processing status change: ${oldStatus} -> ${newStatus}`);
 
     // From pending/confirmed to cancelled - return stock
     if (
       (oldStatus === OrderStatus.PENDING || oldStatus === OrderStatus.CONFIRMED) &&
       newStatus === OrderStatus.CANCELLED
     ) {
-      console.log("🔄 Returning reserved stock to available");
       await returnReservedStockToAvailable(orderItems);
     }
 
@@ -489,13 +454,11 @@ async function handleStatusChangeInventory(
       oldStatus === OrderStatus.CANCELLED &&
       (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
-      console.log("🔄 Reserving stock again");
       await reserveStock(orderItems);
     }
 
     // From any status to delivered - deduct reserved stock (finalize)
     if (newStatus === OrderStatus.DELIVERED) {
-      console.log("🔄 Deducting reserved stock (order delivered)");
       await deductReservedStock(orderItems);
     }
 
@@ -504,13 +467,10 @@ async function handleStatusChangeInventory(
       oldStatus === OrderStatus.DELIVERED &&
       (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
-      console.log("🔄 Reversing delivered order - reserving stock again");
       await reserveStock(orderItems);
     }
 
-    console.log(
-      `✅ Status change processing delivered: ${oldStatus} -> ${newStatus}`
-    );
+    
   } catch (error) {
     console.error("❌ Error in handleStatusChangeInventory:", error);
   }

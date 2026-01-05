@@ -46,7 +46,6 @@ export default function UserProfilePage() {
 
   const handleSave = async (formData: ProfileFormData) => {
     if (!currentUser || !isCustomerUser(currentUser)) {
-      console.log("Only customers can edit profile from this page");
       return;
     }
 

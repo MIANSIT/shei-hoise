@@ -59,7 +59,6 @@ export async function getOrderByNumber(
   orderNumber: string
 ): Promise<{ data: OrderWithItems | null; error?: string }> {
   try {
-    console.log("Fetching order:", { storeId, orderNumber });
 
     // Get the main order data - INCLUDING discount_amount
     const { data: order, error: orderError } = await supabaseAdmin
@@ -84,16 +83,7 @@ export async function getOrderByNumber(
       };
     }
 
-    console.log("📊 Raw order data from database:", {
-      id: order.id,
-      order_number: order.order_number,
-      subtotal: order.subtotal,
-      discount_amount: order.discount_amount, 
-      additional_charges: order.additional_charges, 
-      shipping_fee: order.shipping_fee,
-      tax_amount: order.tax_amount,
-      total_amount: order.total_amount
-    });
+    
 
     // Get customer data from store_customers table (NOT users table)
     let customer = null;
@@ -113,7 +103,6 @@ export async function getOrderByNumber(
           profile_id: storeCustomer.profile_id
         };
       } else {
-        console.log("No customer found in store_customers for ID:", order.customer_id);
       }
     }
 
@@ -181,22 +170,7 @@ export async function getOrderByNumber(
       order_items: orderItems || [],
     };
 
-    console.log("✅ Order fetched successfully with discount_amount:", {
-      orderNumber: orderWithItems.order_number,
-      status: orderWithItems.status,
-      payment_status: orderWithItems.payment_status,
-      customer: orderWithItems.customer ? `${orderWithItems.customer.name} (${orderWithItems.customer.email})` : 'No customer',
-      hasProfile: !!orderWithItems.customer_profile,
-      itemsCount: orderWithItems.order_items.length,
-      financials: {
-        subtotal: orderWithItems.subtotal,
-        discount_amount: orderWithItems.discount_amount,
-        additional_charges: orderWithItems.additional_charges,
-        shipping_fee: orderWithItems.shipping_fee,
-        tax_amount: orderWithItems.tax_amount,
-        total_amount: orderWithItems.total_amount
-      }
-    });
+    
 
     return {
       data: orderWithItems,

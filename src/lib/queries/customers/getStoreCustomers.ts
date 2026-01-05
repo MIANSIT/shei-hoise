@@ -16,7 +16,6 @@ export interface StoreCustomer extends CurrentUser {
 
 export async function getStoreCustomersSimple(storeId: string): Promise<StoreCustomer[]> {
   try {
-    console.log('Fetching simple customer list for store:', storeId);
     
     const { data, error } = await supabase
       .from('users')
@@ -30,7 +29,6 @@ export async function getStoreCustomersSimple(storeId: string): Promise<StoreCus
       throw error;
     }
 
-    console.log(`Found ${data?.length || 0} simple customers`);
 
     // Cast the data to StoreCustomer[] since it matches the CurrentUser interface
     return (data || []) as StoreCustomer[];

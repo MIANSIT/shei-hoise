@@ -237,15 +237,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         setDeliveryCost(Number(order.shipping_fee));
         setTotalAmount(Number(order.total_amount));
 
-        console.log("📊 Fetched order financial data:", {
-          subtotal: order.subtotal,
-          discount_amount: order.discount_amount,
-          additional_charges: order.additional_charges,
-          shipping_fee: order.shipping_fee,
-          tax_amount: order.tax_amount,
-          total_amount: order.total_amount,
-        });
-
         // Set customer info from order
         if (order.customer) {
           setCustomerInfo((prev) => ({
@@ -313,10 +304,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       !customerInfo.deliveryOption
     ) {
       const currentShippingFee = Number(originalOrder.shipping_fee);
-      console.log(
-        "🔄 Auto-selecting delivery option for fee:",
-        currentShippingFee
-      );
+      
 
       // Method 1: Try to find exact match with shipping fees
       const matchingShippingFee = shippingFees.find(
@@ -328,7 +316,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         const deliveryOptionValue = matchingShippingFee.name
           .toLowerCase()
           .replace(/\s+/g, "-");
-        console.log("✅ Exact match found:", deliveryOptionValue);
 
         setCustomerInfo((prev) => ({
           ...prev,
@@ -340,10 +327,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         const isCustomAmount = !standardFees.includes(currentShippingFee);
 
         if (isCustomAmount) {
-          console.log(
-            "🔧 Custom delivery amount detected:",
-            currentShippingFee
-          );
+          
           setCustomerInfo((prev) => ({
             ...prev,
             deliveryOption: "custom",
@@ -361,7 +345,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
             const deliveryOptionValue = closestFee.name
               .toLowerCase()
               .replace(/\s+/g, "-");
-            console.log("📌 Using closest match:", deliveryOptionValue);
 
             setCustomerInfo((prev) => ({
               ...prev,
@@ -378,10 +361,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     if (customerInfo.deliveryOption && shippingFees.length > 0) {
       // Don't change delivery cost for custom option - keep the backend value
       if (customerInfo.deliveryOption === "custom") {
-        console.log(
-          "🔧 Custom delivery - keeping backend value:",
-          deliveryCost
-        );
+        
         return;
       }
 
@@ -395,7 +375,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       });
 
       if (shippingFee) {
-        console.log("🔄 Updating delivery cost to:", shippingFee.price);
         setDeliveryCost(shippingFee.price);
       }
     }
@@ -404,7 +383,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   // Initialize data
   useEffect(() => {
     if (user?.store_id && !userLoading && !hasFetchedData) {
-      console.log("🔄 Initializing EditOrder data");
       setHasFetchedData(true);
 
       const initializeData = async () => {
@@ -444,14 +422,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
     setTotalAmount(calculatedTotal);
 
-    console.log("📊 Total calculation in EditOrder:", {
-      subtotal: newSubtotal,
-      discount,
-      additionalCharges,
-      deliveryCost,
-      taxAmount,
-      total: calculatedTotal,
-    });
   }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
 
   const isFormValid =

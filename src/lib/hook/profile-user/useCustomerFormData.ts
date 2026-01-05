@@ -30,11 +30,7 @@ export function useCustomerFormData(
 ): FormUserData | null {
   if (!customer) return null;
 
-  console.log("🔍 useCustomerFormData - Original customer data:", customer);
-  console.log(
-    "🔍 useCustomerFormData - profile_details:",
-    customer.profile_details
-  );
+  
 
   // Create profile object - handle both address_line_1 and address
   let profile: CustomerProfile | null = null;
@@ -46,7 +42,6 @@ export function useCustomerFormData(
       customer.profile_details.address_line_1 || // Mapped address field
       null;
 
-    console.log("🔍 useCustomerFormData - Extracted address:", address);
 
     profile = {
       id: customer.profile_id || "",
@@ -64,7 +59,6 @@ export function useCustomerFormData(
     };
   }
 
-  console.log("🔍 useCustomerFormData - Final profile object:", profile);
 
   return {
     id: customer.id,

@@ -41,23 +41,10 @@ export function useUserProfile() {
         setLoading(true);
         setError(null);
 
-        console.log('👤 User profile check:', {
-          hasCustomer: !!customer,
-          hasAdminUser: !!adminUser,
-          customerIsLoggedIn,
-          customerAuthUserId,
-          role,
-          storeSlug
-        });
-
-        // DECISION LOGIC:
-        // 1. If we have a store customer with auth_user_id → Show customer profile
-        // 2. If we have an admin/store_owner user → Show admin profile
-        // 3. Otherwise → No profile
+        
 
         // Scenario 1: Store customer with authentication
         if (customer?.auth_user_id && customerIsLoggedIn && customerAuthUserId === customer.auth_user_id) {
-          console.log('✅ Fetching authenticated store customer profile:', customer.id);
           const profile = await getUserProfile(customer.id);
           setUserProfile(profile);
         }
@@ -68,7 +55,6 @@ export function useUserProfile() {
           const isStoreOwner = role === USERTYPE.STORE_OWNER;
           
           if (isAdmin || isStoreOwner) {
-            console.log('👑 Fetching admin/store_owner profile:', adminUser.id);
             try {
               const adminProfile = await getAdminProfile(adminUser.id);
               setUserProfile(adminProfile);
@@ -91,7 +77,6 @@ export function useUserProfile() {
           }
         }
         else {
-          console.log('❌ No user profile to fetch');
           setUserProfile(null);
         }
       } catch (err) {

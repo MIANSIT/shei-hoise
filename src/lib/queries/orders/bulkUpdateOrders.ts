@@ -52,10 +52,7 @@ export async function bulkUpdateOrders(
   updateData: BulkUpdateData
 ): Promise<BulkUpdateResult> {
   try {
-    console.log("Bulk updating orders:", {
-      orderCount: updateData.orderIds.length,
-      updates: updateData,
-    });
+    
 
     // Validate input
     if (
@@ -96,7 +93,6 @@ export async function bulkUpdateOrders(
     if (payment_method) updatePayload.payment_method = payment_method;
     if (notes) updatePayload.notes = notes;
 
-    console.log("Bulk update payload:", updatePayload);
 
     // Perform bulk update
     const {
@@ -122,7 +118,6 @@ export async function bulkUpdateOrders(
 
     const updatedCount = updatedOrders?.length || 0;
 
-    console.log(`Bulk update successful. Updated ${updatedCount} orders`);
 
     // Handle inventory updates for status changes if needed
     if (status) {
@@ -164,11 +159,9 @@ async function handleBulkInventoryUpdates(
       .in("order_id", orderIds);
 
     if (error || !orderItems || orderItems.length === 0) {
-      console.log("No order items found for inventory update");
       return;
     }
 
-    console.log(`Processing inventory updates for ${orderItems.length} items`);
 
     if (newStatus === "cancelled") {
       await returnBulkReservedStockToAvailable(orderItems);
