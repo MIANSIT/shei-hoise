@@ -41,7 +41,9 @@ export default function AddCategoryCardForm({
     parent_id: null as any,
     is_active: true,
   });
-
+  const {
+    formState: { isSubmitting },
+  } = form;
   const nameValue = form.watch("name");
 
   useEffect(() => {
@@ -150,8 +152,22 @@ export default function AddCategoryCardForm({
           />
 
           <CardFooter className="px-0 pt-4">
-            <Button type="submit" className="w-full" variant="destructive">
-              {editingCategory ? "Update Category" : "Create Category"}
+            <Button
+              type="submit"
+              className="w-full"
+              variant="destructive"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  {editingCategory ? "Updating..." : "Creating..."}
+                </span>
+              ) : editingCategory ? (
+                "Update Category"
+              ) : (
+                "Create Category"
+              )}
             </Button>
           </CardFooter>
         </form>
