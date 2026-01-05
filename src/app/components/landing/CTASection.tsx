@@ -13,7 +13,7 @@ export default function CTASection() {
   const closeModal = () => setIsModalOpen(false);
 
   return (
-    <section className="py-16 md:py-20 px-6 bg-muted/50 border border-chart-2/20">
+    <section id= "request-demo" className="py-16 md:py-20 px-6 bg-muted/50 border border-chart-2/20">
       <div className="container mx-auto text-center">
         <motion.h2
           initial={{ opacity: 0, y: 40 }}
@@ -41,7 +41,7 @@ export default function CTASection() {
             size="lg"
             className="border-chart-2 text-chart-2 hover:bg-chart-2/10 px-6 md:px-8 py-3 text-base md:text-lg"
           >
-            Schedule Demo
+            Request For Demo
           </Button>
         </div>
 
@@ -54,9 +54,9 @@ export default function CTASection() {
       <Modal isOpen={isModalOpen} onClose={closeModal}>
         <ContactUSForm
           source="demo_request"
-          title="Schedule Your Free Demo"
+          title="Request for Your Free Demo"
           subtitle="Fill out the form and one of our specialists will reach out to you shortly."
-          buttonText="Schedule Demo"
+          buttonText="Demo Request"
         />
       </Modal>
     </section>

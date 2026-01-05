@@ -30,13 +30,13 @@ export default function DesktopHeader({
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [isStoreLoading, setIsStoreLoading] = useState(true);
 
-  const { 
-    customer, 
-    loading: customerLoading, 
-    isLoggedIn, 
-    authEmail 
+  const {
+    customer,
+    loading: customerLoading,
+    isLoggedIn,
+    authEmail,
   } = useCurrentCustomer(storeSlug);
-  
+
   const pathname = usePathname();
 
   useEffect(() => {
@@ -67,13 +67,21 @@ export default function DesktopHeader({
   const authLinks: NavLink[] =
     !isAdmin && !isLoggedIn
       ? [
-          { name: "Log in", path: `/${storeSlug}/login?redirect=/${storeSlug}` },
-          { name: "Sign up", path: `/${storeSlug}/signup?redirect=/${storeSlug}`, isHighlighted: true },
+          {
+            name: "Log in",
+            path: `/${storeSlug}/login?redirect=/${storeSlug}`,
+          },
+          {
+            name: "Sign up",
+            path: `/${storeSlug}/signup?redirect=/${storeSlug}`,
+            isHighlighted: true,
+          },
         ]
       : [];
 
   // Get customer display info
-  const customerDisplayName = customer?.name || authEmail?.split('@')[0] || "Customer";
+  const customerDisplayName =
+    customer?.name || authEmail?.split("@")[0] || "Customer";
   const customerDisplayEmail = customer?.email || authEmail || "";
 
   return (
@@ -106,6 +114,7 @@ export default function DesktopHeader({
             <div className="flex gap-4">
               {navLinks.map((link) => {
                 const isActive = isHydrated && pathname === link.path;
+                if (!link.path) return null;
                 return (
                   <Link
                     key={link.path}
@@ -120,7 +129,7 @@ export default function DesktopHeader({
                   </Link>
                 );
               })}
-              
+
               {/* Show My Orders link for logged-in customers */}
               {isLoggedIn && (
                 <Link
@@ -156,7 +165,7 @@ export default function DesktopHeader({
 
               {/* Show user dropdown or auth buttons */}
               {isLoggedIn ? (
-                <UserDropdownDesktop 
+                <UserDropdownDesktop
                   customerName={customerDisplayName}
                   customerEmail={customerDisplayEmail}
                   storeSlug={storeSlug}

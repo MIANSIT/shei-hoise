@@ -2,23 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-// import ShoppingCartIcon from "../cart/ShoppingCartIcon";
-// import CartBottomBar from "../cart/CartBottomBar";
 import { usePathname } from "next/navigation";
 import LogoTitle from "../header/LogoTitle";
 import { NavLink } from "../header/NavMenu";
-// import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
-import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
-// import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-// import UserDropdownMobile from "./UserDropdownMobile";
+import { HiOutlineMenu, HiOutlineX, HiChevronDown } from "react-icons/hi";
 
 export default function MobileHeader() {
-  // const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false); // Sections dropdown
   const pathname = usePathname();
-  // const { user, loading } = useCurrentUser();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -26,13 +20,15 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    { name: "Stores", path: "#stores" },
+    {
+      name: "Sections",
+      children: [
+        { name: "Store", path: "/#stores" },
+        { name: "Request Demo", path: "/#request" },
+      ],
+    },
+    { name: "All Stores", path: "/stores" },
   ];
-
-  // const authLinksUser: NavLink[] = [
-  //   { name: "Log in", path: "/login" },
-  //   { name: "Sign up", path: "/sign-up", isHighlighted: true },
-  // ];
 
   return (
     <>
@@ -42,7 +38,6 @@ export default function MobileHeader() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {/* <ShoppingCartIcon onClick={() => setIsCartOpen(true)} /> */}
 
             <button
               className="text-foreground hover:bg-accent rounded-full p-1 transition"
@@ -60,51 +55,102 @@ export default function MobileHeader() {
 
         {/* Mobile menu */}
         <nav
-          className={`overflow-hidden transition-all duration-300 ease-in-out bg-background rounded-md mt-2 ${
-            menuOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+          className={`overflow-hidden transition-all duration-300 ease-in-out mt-2 rounded-md bg-background ${
+            menuOpen ? "max-h-125 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <ul className="space-y-2 p-3">
+          <ul className="p-3 space-y-2">
             {navLinks.map((link) => {
-              const isActive = isHydrated && pathname === link.path;
+              // Normal link
+              if (!link.children) {
+                const isActive = isHydrated && pathname === link.path;
+                return (
+                  <li key={link.path}>
+                    <Link
+                      href={link.path!}
+                      onClick={() => setMenuOpen(false)}
+                      className={`block py-2 px-3 rounded-md text-sm font-medium transition-colors duration-200
+                        ${
+                          isActive
+                            ? "bg-accent text-accent-foreground"
+                            : "text-foreground hover:bg-accent"
+                        }
+                      `}
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                );
+              }
+
+              // Dropdown section
+              const isSectionActive = link.children.some(
+                (child) => child.path === pathname
+              );
+
               return (
-                <li key={link.path}>
-                  <Link
-                    href={link.path}
-                    className={`block py-2 px-3 rounded-md transition-colors duration-200 text-sm font-medium ${
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-foreground hover:bg-accent"
-                    }`}
-                    onClick={() => setMenuOpen(false)}
+                <li key={link.name}>
+                  <button
+                    type="button"
+                    onClick={() => setDropdownOpen((prev) => !prev)}
+                    className={`w-full flex justify-between items-center py-2 px-3 rounded-md text-sm font-medium transition-colors duration-200
+                      ${
+                        isSectionActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-foreground hover:bg-accent"
+                      }
+                    `}
                   >
                     {link.name}
-                  </Link>
+                    <HiChevronDown
+                      className={`ml-2 transition-transform duration-200 ${
+                        dropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {/* Dropdown items */}
+                  <ul
+                    className={`pl-4 mt-1 space-y-1 overflow-hidden transition-all duration-300 ${
+                      dropdownOpen
+                        ? "max-h-96 opacity-100"
+                        : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    {link.children.map((child) => {
+                      const childActive = isHydrated && pathname === child.path;
+                      return (
+                        <li key={child.path}>
+                          <Link
+                            href={child.path}
+                            onClick={() => {
+                              setMenuOpen(false);
+                              setDropdownOpen(false);
+                            }}
+                            className={`block py-2 px-3 rounded-md text-sm transition-colors duration-200
+                              ${
+                                childActive
+                                  ? "font-medium text-foreground"
+                                  : "text-foreground"
+                              }
+                              hover:bg-background/80 hover:text-foreground
+                            `}
+                          >
+                            {child.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </li>
               );
             })}
-
-            {/* <li>
-              <div className="border-t border-border my-2" />
-            </li> */}
-
-            {/* <li>
-              {!loading && user ? (
-                <UserDropdownMobile />
-              ) : (
-                <AuthButtons
-                  links={authLinksUser}
-                  isAdminPanel={false}
-                  isVertical={true}
-                />
-              )}
-            </li> */}
           </ul>
         </nav>
       </header>
 
-      <div className="h-[60px] lg:hidden" />
-      {/* <CartBottomBar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} /> */}
+      {/* Spacer so content is not hidden behind fixed header */}
+      <div className="h-15 lg:hidden" />
     </>
   );
 }
