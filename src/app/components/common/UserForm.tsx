@@ -63,7 +63,6 @@ export function UserForm({
   // ✅ Always initialize form with provided default values
   useEffect(() => {
     if (defaultValues) {
-      console.log("Initializing form with default values:", defaultValues);
       form.reset(defaultValues);
     }
   }, [defaultValues, form]);
@@ -71,7 +70,6 @@ export function UserForm({
   // Pre-fill email if available in URL params
   useEffect(() => {
     if (emailFromParams) {
-      console.log("Setting email from URL params:", emailFromParams);
       if (mode === "signup") {
         form.setValue("email", emailFromParams);
       } else {

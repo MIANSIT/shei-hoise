@@ -93,8 +93,6 @@ export function EditProfileForm({
         country: user.profile?.country || "",
       };
 
-      console.log("🔄 EditProfileForm - Setting form defaults:", defaultValues);
-      console.log("🔄 EditProfileForm - Profile data:", user.profile);
 
       reset(defaultValues);
     }
@@ -103,7 +101,6 @@ export function EditProfileForm({
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
     try {
-      console.log("📤 EditProfileForm - Submitting data:", data);
       await onSave(data);
     } catch (error) {
       console.error("Error saving profile:", error);

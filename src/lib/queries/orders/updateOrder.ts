@@ -25,7 +25,6 @@ export async function updateOrder(
   updates: UpdateOrderData
 ): Promise<UpdateOrderResult> {
   try {
-    console.log('Updating order:', { orderId, updates });
 
     // Validate order exists
     const { data: existingOrder, error: fetchError } = await supabaseAdmin
@@ -48,7 +47,6 @@ export async function updateOrder(
       updated_at: new Date().toISOString(),
     };
 
-    console.log('Update data:', updateData);
 
     // ✅ FIXED: Remove comments from the query string
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
@@ -75,7 +73,6 @@ export async function updateOrder(
       };
     }
 
-    console.log('Order updated successfully:', updatedOrder);
 
     // Handle inventory updates if status changes from/to specific states
     await handleInventoryUpdates(existingOrder, updates, orderId);
@@ -129,11 +126,9 @@ async function handleInventoryUpdates(
         
       case 'confirmed':
         // Additional logic for confirmed orders if needed
-        console.log('Order confirmed, no inventory changes needed');
         break;
         
       default:
-        console.log(`No specific inventory handling for status: ${updates.status}`);
     }
   } catch (error) {
     console.error('Error in handleInventoryUpdates:', error);

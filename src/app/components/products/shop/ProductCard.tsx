@@ -149,17 +149,7 @@ ProductCardProps) {
   const isMaxInCart = !hasVariants && totalCartQuantity >= totalAvailableStock;
 
   // Debug logs
-  console.log("🛒 ProductCard Debug:", {
-    productName: product.name,
-    productId: product.id,
-    hasVariants,
-    totalAvailableStock,
-    totalCartQuantity,
-    remainingStock,
-    isOutOfStock,
-    isMaxInCart,
-    variantCount: product.variants?.length || 0,
-  });
+  
 
   const handleAddToCart = async () => {
     if (adding || !isInStock() || isMaxInCart) return;

@@ -37,7 +37,6 @@ export async function getStoreCustomersSimple(
   storeId: string
 ): Promise<DetailedCustomer[]> {
   try {
-    console.log("🔄 DEBUG [getStoreCustomersSimple]: Fetching customers for store:", storeId);
 
     // Get customers linked to this store via store_customer_links
     // CHANGED: customer_profiles!inner → customer_profiles (left join instead of inner join)
@@ -79,22 +78,15 @@ export async function getStoreCustomersSimple(
       throw error;
     }
 
-    console.log(`✅ DEBUG [getStoreCustomersSimple]: Found ${data?.length || 0} customer links`);
 
     if (!data || data.length === 0) {
-      console.log("📭 DEBUG [getStoreCustomersSimple]: No customers found for store:", storeId);
       return [];
     }
 
     const storeCustomers: DetailedCustomer[] = data.map((item: any) => {
       const customer = item.store_customers;
       
-      console.log("🔍 DEBUG [getStoreCustomersSimple]: Processing customer:", {
-        id: customer.id,
-        name: customer.name,
-        profile_id: customer.profile_id,
-        hasCustomerProfiles: !!customer.customer_profiles
-      });
+      
 
       // Handle customer_profiles - it might be an array or single object
       let customerProfile = null;
@@ -155,28 +147,17 @@ export async function getStoreCustomersSimple(
         updated_at: customer.updated_at,
       };
 
-      console.log("✅ DEBUG [getStoreCustomersSimple]: Customer processed:", {
-        id: result.id,
-        name: result.name,
-        profile_id: result.profile_id,
-        hasProfileDetails: !!result.profile_details
-      });
+      
 
       return result;
     });
 
-    console.log(`✅ DEBUG [getStoreCustomersSimple]: Returning ${storeCustomers.length} customers`);
     
     // Log customers with and without profiles
     const withProfiles = storeCustomers.filter(c => c.profile_id);
     const withoutProfiles = storeCustomers.filter(c => !c.profile_id);
     
-    console.log("📊 DEBUG [getStoreCustomersSimple]: Profile summary:", {
-      total: storeCustomers.length,
-      withProfiles: withProfiles.length,
-      withoutProfiles: withoutProfiles.length,
-      withoutProfileIds: withoutProfiles.map(c => ({ id: c.id, name: c.name }))
-    });
+    
 
     return storeCustomers;
 

@@ -116,7 +116,6 @@ export default function CompleteAccountPage() {
       if (signUpError) {
         // If user already exists, try signing in
         if (signUpError.message.includes("already registered")) {
-          console.log("🔄 User exists, attempting sign-in...");
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password: formData.password,
@@ -138,7 +137,6 @@ export default function CompleteAccountPage() {
           if (signInData.user) {
             authUserId = signInData.user.id;
             loginSuccess = true;
-            console.log("✅ Auto-login successful for existing user");
           }
         } else {
           throw signUpError;
@@ -159,7 +157,6 @@ export default function CompleteAccountPage() {
             loginSuccess = false;
           } else {
             loginSuccess = true;
-            console.log("✅ Auto-login after sign-up successful");
           }
         } catch (loginError) {
           console.error("❌ Auto-login error:", loginError);
@@ -169,10 +166,7 @@ export default function CompleteAccountPage() {
 
       // 2. CRITICAL FIX: Link auth_user_id to the EXISTING customer record
       if (currentCustomerId && authUserId) {
-        console.log("🔗 Linking auth user to existing customer:", {
-          customerId: currentCustomerId,
-          authUserId: authUserId
-        });
+        
         
         const linked = await linkAuthToCustomer(currentCustomerId, authUserId);
         
@@ -192,12 +186,10 @@ export default function CompleteAccountPage() {
             console.error("❌ Direct update also failed:", updateError);
             // Continue anyway - the user can still log in
           } else {
-            console.log("✅ Direct update successful");
           }
         }
       } else if (customer?.id && authUserId) {
         // Fallback to customer from hook
-        console.log("🔗 Linking auth user to customer from hook:", customer.id);
         await linkAuthToCustomer(customer.id, authUserId);
       }
 
@@ -208,20 +200,17 @@ export default function CompleteAccountPage() {
       if (authUserId) {
         setJustCreatedAccount(true);
         setCreatedAccountEmail(email);
-        console.log("✅ Account created/setup complete, setting Zustand flags");
       }
       
       setSuccess(true);
 
       // Show appropriate success message
       if (loginSuccess) {
-        console.log("✅ Account setup complete! User is logged in.");
         // Redirect to orders page after 1 second
         setTimeout(() => {
           router.push(`/${storeSlug}/order-status`);
         }, 1000);
       } else {
-        console.log("✅ Account setup complete! User may need email verification.");
         // Wait a bit longer for email verification users
         setTimeout(() => {
           router.push(`/${storeSlug}/order-status`);

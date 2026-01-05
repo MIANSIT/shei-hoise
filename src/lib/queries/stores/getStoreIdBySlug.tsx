@@ -8,7 +8,6 @@ export async function getStoreIdBySlug(store_slug: string): Promise<string | nul
     return null;
   }
 
-  console.log("🔄 Fetching store ID for slug:", store_slug);
 
   try {
     const { data, error } = await supabase
@@ -32,7 +31,6 @@ export async function getStoreIdBySlug(store_slug: string): Promise<string | nul
       return null;
     }
 
-    console.log("✅ Store ID found:", data.id);
     return data.id;
   } catch (error) {
     console.error("💥 Unexpected error in getStoreIdBySlug:", error);

@@ -197,14 +197,6 @@ export default function SaveOrderButton({
         deliveryOption: finalCustomerInfo.deliveryMethod,
       };
 
-      console.log("📦 Sending order data with additional charges:", {
-        discount,
-        additionalCharges,
-        subtotal,
-        deliveryCost,
-        taxAmount,
-        totalAmount
-      });
 
       const result = await dataService.createOrder(orderData);
 

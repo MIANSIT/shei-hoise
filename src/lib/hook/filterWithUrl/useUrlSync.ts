@@ -19,10 +19,7 @@ async function processPendingUpdates(
     // Get current params
     const params = new URLSearchParams(currentParamsRef.current);
 
-    console.log("🔄 Processing pending updates:", {
-      pending: Object.fromEntries(pendingUpdates),
-      currentParams: params.toString(),
-    });
+    
 
     // Apply all pending updates
     pendingUpdates.forEach((value, key) => {
@@ -44,7 +41,6 @@ async function processPendingUpdates(
     const queryString = newParamsString;
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
 
-    console.log("🔗 Final URL after batch update:", newUrl);
 
     // Update the URL
     router.replace(newUrl, {
@@ -117,10 +113,7 @@ export function useUrlSync<T>(
           pendingUpdates.set(key, String(newValue));
         }
 
-        console.log(`📝 Scheduled update [${key}]:`, {
-          newValue,
-          pendingUpdates: Object.fromEntries(pendingUpdates),
-        });
+        
 
         // Process updates with a small delay to allow batching
         setTimeout(() => {

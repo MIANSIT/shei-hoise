@@ -705,10 +705,6 @@ export default function CheckoutPage() {
           );
 
           if (existing) {
-            console.log(
-              "✅ Found existing customer for logged-in user:",
-              existing.id
-            );
             storeCustomerId = existing.id;
             authUserId = existing.auth_user_id || session.user.id;
 
@@ -719,7 +715,6 @@ export default function CheckoutPage() {
             }
           } else {
             // Create new customer for logged-in user
-            console.log("📝 Creating new customer for logged-in user...");
             const storeId = await getStoreId(store_slug);
             if (!storeId) throw new Error("Store not found");
 

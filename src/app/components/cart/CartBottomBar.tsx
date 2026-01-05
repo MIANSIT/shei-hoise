@@ -28,14 +28,7 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   // Debug: Check what's in the cart
   useEffect(() => {
     if (isOpen) {
-      console.log("🛒 CartBottomBar Debug:", {
-        store_slug,
-        cartItems,
-        calculations,
-        loading,
-        error,
-        cartItemsLength: cartItems.length
-      });
+     
     }
   }, [isOpen, store_slug, cartItems, calculations, loading, error]);
 
@@ -63,19 +56,16 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
 
   // Handle quantity changes in cart
   const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
-    console.log("🔄 Changing quantity:", { productId, variantId, newQuantity });
     updateQuantity(productId, variantId, newQuantity);
   };
 
   // Handle item removal from cart
   const handleRemoveItem = (productId: string, variantId: string | null) => {
-    console.log("🗑️ Removing item:", { productId, variantId });
     removeItem(productId, variantId);
   };
 
   // Handle clearing entire cart for this store
   const handleClearCart = () => {
-    console.log("🧹 Clearing cart for store:", store_slug);
     clearStoreCart(store_slug);
   };
 

@@ -8,7 +8,6 @@ export async function GET(req: Request) {
   if (!token) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 });
   }
-  console.log(token);
   const redisKey = `order:${token}`;
   const data = await redis.get(redisKey);
 

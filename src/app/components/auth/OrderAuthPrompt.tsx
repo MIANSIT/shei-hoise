@@ -40,15 +40,7 @@ export function OrderAuthPrompt({
   const router = useRouter();
 
   // DEBUG LOGS - Enhanced
-  console.log('🔍 OrderAuthPrompt Props:', {
-    customerEmail,
-    hasAuthUserId,
-    isLoggedIn,
-    authEmail,
-    shouldShowCompleteAccount: !isLoggedIn && customerEmail && !hasAuthUserId,
-    shouldShowSignIn: !isLoggedIn && customerEmail && hasAuthUserId,
-    shouldShowEmailMismatch: isLoggedIn && authEmail && customerEmail && authEmail !== customerEmail,
-  });
+  
 
   const handleLogin = () => {
     if (customerEmail) {
@@ -82,7 +74,6 @@ export function OrderAuthPrompt({
 
   // SCENARIO 1: User is logged in with different email than order email
   if (isLoggedIn && authEmail && customerEmail && authEmail !== customerEmail) {
-    console.log('📢 OrderAuthPrompt: Showing email mismatch scenario');
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -138,7 +129,6 @@ export function OrderAuthPrompt({
   // SCENARIO 2: User is NOT logged in, customer exists WITHOUT auth_user_id (guest checkout)
   // THIS IS THE ONE THAT SHOULD SHOW FOR GUEST CHECKOUT
   if (!isLoggedIn && customerEmail && !hasAuthUserId) {
-    console.log('📢 OrderAuthPrompt: Showing COMPLETE ACCOUNT scenario (guest checkout)');
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -195,7 +185,6 @@ export function OrderAuthPrompt({
 
   // SCENARIO 3: User is NOT logged in, customer exists WITH auth_user_id
   if (!isLoggedIn && customerEmail && hasAuthUserId) {
-    console.log('📢 OrderAuthPrompt: Showing SIGN IN scenario (has account)');
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -251,7 +240,6 @@ export function OrderAuthPrompt({
   }
 
   // SCENARIO 4: No customer found (completely new)
-  console.log('📢 OrderAuthPrompt: Showing DEFAULT scenario (no customer)');
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
       <Card className="w-full max-w-md">

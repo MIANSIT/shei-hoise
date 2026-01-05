@@ -6,10 +6,8 @@ import Sidebar from "../components/admin/sidebar/Sidebar";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
 import { PanelLeft } from "lucide-react";
-// import { Sun, Moon } from "lucide-react";
 import { ConfigProvider, theme as antdTheme, App as AntdApp, Spin } from "antd";
 import "@ant-design/v5-patch-for-react-19";
-// import "antd/dist/reset.css";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -30,11 +28,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
-  const { session, loading } = useSupabaseAuth();
+  const { session, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
-  const { role, storeSlug, storeStatus, storeIsActive } = useCurrentUser();
+  const { role, storeSlug, storeStatus, storeIsActive, loading: userLoading } = useCurrentUser();
 
   const [store, setStore] = useState<StoreWithLogo | null>(null);
+  const [storeLoading, setStoreLoading] = useState(false);
 
   // Set mounted to true after component mounts on client
   useEffect(() => {
@@ -43,20 +42,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Redirect if no session
   useEffect(() => {
-    if (!loading && !session) {
+    if (!authLoading && !session) {
       router.replace("/admin-login");
     }
     if (role !== undefined && role !== USERTYPE.STORE_OWNER) {
       router.push("/");
     }
-  }, [loading, session, router, role]);
+  }, [authLoading, session, router, role]);
 
+  // Fetch store data
   useEffect(() => {
-    if (!storeSlug) return;
-
+    if (!storeSlug || storeLoading) return;
+    
+    setStoreLoading(true);
     getStoreBySlugWithLogo(storeSlug)
-      .then((data) => setStore(data))
-      .catch((err) => console.error("Failed to fetch store:", err));
+      .then((data) => {
+        setStore(data);
+        setStoreLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch store:", err);
+        setStoreLoading(false);
+      });
   }, [storeSlug]);
 
   // Sidebar responsiveness - only run on client
@@ -80,16 +87,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [mounted]);
 
-  // Toggle light/dark mode
-  // const toggleTheme = () => {
-  //   const newTheme = theme === "light" ? "dark" : "light";
-  //   setTheme(newTheme);
-  //   localStorage.setItem("theme", newTheme);
-  //   document.documentElement.classList.toggle("dark", newTheme === "dark");
-  // };
+  // Combined loading states
+  const isLoading = authLoading || userLoading || storeLoading;
 
-  // Show loading state
-  if (loading && storeIsActive == null && storeStatus == null) {
+  // Check if user should be blocked from accessing dashboard
+  const shouldBlockAccess = !isLoading && (!storeIsActive || storeStatus === "trial");
+
+  // Show loading state while all data is being fetched
+  if (isLoading) {
     return (
       <div className='flex items-center justify-center min-h-screen flex-col gap-4'>
         <Spin size='large' />
@@ -97,7 +102,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
     );
   }
-  if (!storeIsActive) {
+
+  // Show blocked access screen
+  if (shouldBlockAccess) {
     if (storeStatus === "trial") {
       return (
         <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 px-4'>
@@ -214,6 +221,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }
 
+  // Show dashboard
   return (
     <ConfigProvider
       theme={{
@@ -252,8 +260,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Image
                   src={store.logo_url}
                   alt={store.store_name || "Store Logo"}
-                  width={40} // set the desired width
-                  height={40} // set the desired height
+                  width={40}
+                  height={40}
                   className='rounded-full object-cover'
                 />
               ) : (
@@ -275,19 +283,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 />
               </button>
             </div>
-
-            {/* Theme toggle */}
-            {/* <button
-              onClick={toggleTheme}
-              className='p-2 rounded hover:opacity-70'
-              style={{ background: "var(--muted)" }}
-            >
-              {theme === "light" ? (
-                <Moon className='w-5 h-5' />
-              ) : (
-                <Sun className='w-5 h-5' />
-              )}
-            </button> */}
           </header>
 
           <div className='flex flex-1 overflow-hidden'>

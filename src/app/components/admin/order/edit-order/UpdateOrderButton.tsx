@@ -104,24 +104,7 @@ export default function UpdateOrderButton({
 
     setIsLoading(true);
     try {
-      console.log("🔄 Starting order update process...", {
-        storeId,
-        orderId: originalOrder.id,
-        orderNumber: orderId,
-        customerInfo,
-        orderProductsCount: orderProducts.length,
-        financials: { 
-          subtotal, 
-          taxAmount, 
-          discount, 
-          additionalCharges,
-          deliveryCost, 
-          totalAmount 
-        },
-        status,
-        paymentStatus,
-        paymentMethod
-      });
+      
 
       // Prepare the update data with COMPLETE shipping address
       const updateData = {
@@ -176,21 +159,10 @@ export default function UpdateOrderButton({
         }
       };
 
-      console.log("📦 Sending update data with complete address:", {
-        ...updateData,
-        customerInfo: {
-          ...updateData.customerInfo,
-          address: customerInfo.address,
-          city: customerInfo.city,
-          postal_code: customerInfo.postal_code,
-          country: customerInfo.country
-        },
-        shippingAddress: updateData.shippingAddress
-      });
+      
 
       const result = await dataService.updateOrderByNumber(updateData);
 
-      console.log("✅ Update response:", result);
 
       if (result.success) {
         notification.success({
@@ -200,7 +172,6 @@ export default function UpdateOrderButton({
         });
 
         if (onOrderUpdated) {
-          console.log("🔄 Calling onOrderUpdated callback");
           onOrderUpdated();
         }
       } else {

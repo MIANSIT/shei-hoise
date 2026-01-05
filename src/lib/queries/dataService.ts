@@ -178,9 +178,7 @@ const deleteOrderImpl = async (
       .eq("id", orderId);
     if (deleteError) return { success: false, error: "Failed to delete order" };
 
-    console.log(
-      `Order #${order.order_number} (ID: ${orderId}) deleted successfully`
-    );
+    
     return { success: true };
   } catch (error: any) {
     console.error("Error in dataService.deleteOrder:", error);

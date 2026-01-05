@@ -11,12 +11,10 @@ export async function getCustomerProfileByStoreCustomerId(storeCustomerId: strin
   // Check cache first
   const cached = profileCache.get(storeCustomerId);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    console.log('📦 Returning cached profile for store_customer_id:', storeCustomerId);
     return cached.data;
   }
 
   try {
-    console.log('🔄 Fetching profile for store_customer_id:', storeCustomerId);
     
     const { data: profile, error } = await supabaseAdmin
       .from('customer_profiles')
@@ -25,13 +23,11 @@ export async function getCustomerProfileByStoreCustomerId(storeCustomerId: strin
       .single();
 
     if (error) {
-      console.log('❌ No profile found for store_customer_id:', storeCustomerId, 'Error:', error.message);
       // Cache null result to avoid repeated failed requests
       profileCache.set(storeCustomerId, { data: null, timestamp: Date.now() });
       return null;
     }
 
-    console.log('✅ Profile found by store_customer_id:', profile);
     // Cache the successful result
     profileCache.set(storeCustomerId, { data: profile, timestamp: Date.now() });
     return profile;

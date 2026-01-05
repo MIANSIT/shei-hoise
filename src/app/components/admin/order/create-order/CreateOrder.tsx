@@ -145,7 +145,6 @@ export default function CreateOrder() {
 
     setSettingsLoading(true);
     try {
-      console.log("🔄 Fetching store settings");
       const settings = await getStoreSettings(user.store_id);
       if (settings) {
         setShippingFees(settings.shipping_fees || []);
@@ -195,7 +194,6 @@ export default function CreateOrder() {
 
     setLoading(true);
     try {
-      console.log("🔄 Fetching products");
       const res = await dataService.getProductsWithVariants({
         storeId: user.store_id,
       });
@@ -218,7 +216,6 @@ export default function CreateOrder() {
 
     setCustomerLoading(true);
     try {
-      console.log("🔄 Fetching customers from orders");
       const res = await getAllStoreCustomers(user.store_id);
 
       // Handle both return types
@@ -262,7 +259,6 @@ export default function CreateOrder() {
   // Main data fetching effect
   useEffect(() => {
     if (user?.store_id && !userLoading && !hasFetchedData) {
-      console.log("🔄 Initial data fetch for store:", user.store_id);
       setHasFetchedData(true);
 
       fetchStoreName().then(() => {
@@ -355,19 +351,10 @@ export default function CreateOrder() {
       newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
     setTotalAmount(calculatedTotal);
 
-    console.log("📊 Total calculation:", {
-      subtotal: newSubtotal,
-      discount,
-      additionalCharges,
-      deliveryCost,
-      taxAmount,
-      total: calculatedTotal,
-    });
   }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
 
   // Handle customer selection
   const handleCustomerSelect = async (customerId: string) => {
-    console.log("🎯 Customer selected:", customerId);
     const customer = customers.find((c) => c.id === customerId);
 
     if (customer) {
@@ -385,7 +372,6 @@ export default function CreateOrder() {
       setEmailError("");
 
       if (customer.profile_details) {
-        console.log("✅ Using pre-loaded profile_details for address");
         setCustomerInfo((prev) => ({
           ...prev,
           address:
@@ -407,12 +393,10 @@ export default function CreateOrder() {
           country: customer.profile_details.country || "",
         });
       } else {
-        console.log("❌ No profile details available for customer");
         setCustomerProfile(null);
       }
 
       setProfileLoading(false);
-      console.log("🎉 Customer selection delivered");
     }
   };
 

@@ -23,12 +23,10 @@ export async function getStoreBySlugWithLogo(
   // Check cache first
   const cached = storeCache.get(store_slug);
   if (cached && Date.now() - cached.timestamp < STORE_CACHE_DURATION) {
-    console.log("📦 Returning cached store for:", store_slug);
     return cached.data;
   }
 
   try {
-    console.log("🔄 Fetching store for slug:", store_slug);
 
     const { data, error } = await supabase
       .from("stores")
@@ -43,7 +41,6 @@ export async function getStoreBySlugWithLogo(
       return null;
     }
 
-    console.log("✅ Store found:", data);
     // Cache the successful result
     storeCache.set(store_slug, { data: data, timestamp: Date.now() });
     return data;

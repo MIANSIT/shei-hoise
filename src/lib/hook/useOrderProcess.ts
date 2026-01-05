@@ -27,17 +27,7 @@ export function useOrderProcess(store_slug: string) {
     setError(null);
 
     try {
-      console.log("🚀 Processing order with data:", {
-        store_slug,
-        storeCustomerId,
-        storeCustomerIdType: storeCustomerId ? 'store_customer_id' : 'guest',
-        paymentMethod,
-        deliveryOption,
-        shippingFee,
-        taxAmount,
-        cartItems: cartItems?.length,
-        calculations: calculations?.totalPrice
-      });
+     
 
       // Validate store slug first
       if (!store_slug || store_slug === "undefined") {
@@ -106,25 +96,14 @@ export function useOrderProcess(store_slug: string) {
         deliveryOption,
       };
 
-      console.log("📦 Creating order with data:", {
-        ...orderData,
-        customerInfo: {
-          ...orderData.customerInfo,
-          customer_id: storeCustomerId
-        },
-        taxAmount,
-        totalAmount: totalWithTax,
-        discount: orderData.discount // This should be 0
-      });
+      
 
       // Create the order
       const result = await createCustomerOrder(orderData);
-      console.log("📝 Order creation result:", result);
 
       if (result.success && result.orderId) {
         // Only clear cart if we're in checkout mode (not confirm mode)
         if (cartItems && cartItems.length > 0) {
-          console.log("🧹 Clearing cart for store:", store_slug);
           clearStoreCart(store_slug);
         }
 
