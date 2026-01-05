@@ -114,18 +114,13 @@ export function SignupForm() {
   // Clear all storage and cache
   const clearAllDataAndRefresh = async () => {
     try {
-      console.log("🧹 Clearing all local storage and cache...");
-      
-      // 1. Clear cart storage for this specific store
+    
       clearStoreCart(storeSlug);
       
-      // 2. Clear user information storage
       clearFormData();
       
-      // 3. Clear ALL customer cache
       clearCustomerCache();
       
-      // 4. Clear localStorage and sessionStorage
       if (typeof window !== "undefined") {
         // Remove specific items
         localStorage.removeItem("user-information-storage");
@@ -137,7 +132,6 @@ export function SignupForm() {
         sessionStorage.removeItem("preSignupPage");
       }
       
-      console.log("✅ All storage cleared");
     } catch (err) {
       console.error("❌ Error clearing storage:", err);
     }
@@ -154,11 +148,7 @@ export function SignupForm() {
         email: email,
         name: email.split("@")[0] // Auto-generate name from email for header display
       });
-      
-      console.log("✅ Updated user information store with new account:", {
-        email,
-        name: email.split("@")[0]
-      });
+     
     } catch (err) {
       console.error("❌ Error updating user information store:", err);
     }
@@ -219,11 +209,6 @@ export function SignupForm() {
 
       // Get current Supabase session to ensure auth state is updated
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        console.log("✅ User is authenticated:", session.user.email);
-      }
-
       success("Account created successfully! Welcome!", { duration: 2000 });
 
       // Clear account creation flags
@@ -242,9 +227,6 @@ export function SignupForm() {
           }
         }
         
-        console.log("🔄 Redirecting to:", finalRedirectUrl);
-        
-        // Use router.replace to avoid adding to history stack
         router.replace(finalRedirectUrl);
         
       }, 1000); // Increased delay to ensure all updates are processed

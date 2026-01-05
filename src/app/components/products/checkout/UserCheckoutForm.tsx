@@ -145,10 +145,7 @@ const CheckoutForm = ({
   // ✅ Handle form submission
   const handleSubmit = useCallback(
     (values: CustomerCheckoutFormValues) => {
-      console.log("Submitting form with values:", {
-        ...values,
-        password: values.password ? "***" : "empty",
-      });
+      
 
       // For logged-in users, ensure password is empty
       const submitValues = isUserLoggedIn 
@@ -205,12 +202,7 @@ const CheckoutForm = ({
     if (!isInitializedRef.current) {
       isInitializedRef.current = true;
       
-      console.log("🎯 Initializing checkout form for:", {
-        isUserLoggedIn,
-        email: defaultValues.email,
-        name: defaultValues.name,
-        storeSlug
-      });
+      
       
       form.reset(defaultValues);
       setStoreSlug(storeSlug);
@@ -220,9 +212,6 @@ const CheckoutForm = ({
   // ✅ Handle auth state changes separately
   useEffect(() => {
     if (isUserLoggedIn && isInitializedRef.current) {
-      console.log("🔄 User logged in, updating form with session data");
-      
-      // Only update name, email, phone from session - preserve other fields
       const currentValues = form.getValues();
       form.reset({
         ...currentValues,

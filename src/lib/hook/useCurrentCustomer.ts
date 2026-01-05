@@ -43,7 +43,6 @@ const activeFetches = new Map<string, boolean>();
 let refreshListeners: (() => void)[] = [];
 
 export function refreshCustomerData() {
-  console.log('🔄 Manually refreshing global customer data');
   const currentTabId = getTabId();
   if (globalCustomerCache?.tabId === currentTabId) {
     globalCustomerCache = null;
@@ -63,7 +62,6 @@ declare global {
 // Helper function to find or create customer
 async function findOrCreateCustomer(email: string, authUserId: string | null, storeSlug?: string): Promise<CurrentCustomer | null> {
   try {
-    console.log('🔍 Finding or creating customer:', { email, authUserId, storeSlug });
     
     // Try to find customer by auth_user_id first
     if (authUserId) {
@@ -81,7 +79,6 @@ async function findOrCreateCustomer(email: string, authUserId: string | null, st
         .limit(1);
 
       if (!authError && customersByAuth && customersByAuth.length > 0) {
-        console.log('✅ Found customer by auth_user_id:', customersByAuth[0].id);
         return {
           id: customersByAuth[0].id,
           email: customersByAuth[0].email || email,
@@ -117,11 +114,7 @@ async function findOrCreateCustomer(email: string, authUserId: string | null, st
       
       // If customer doesn't have auth_user_id but we have one, link them
       if (!customer.auth_user_id && authUserId) {
-        console.log('🔗 Linking auth_user_id to existing customer:', {
-          customerId: customer.id,
-          authUserId
-        });
-        
+       
         const { error: updateError } = await supabase
           .from("store_customers")
           .update({
@@ -133,7 +126,6 @@ async function findOrCreateCustomer(email: string, authUserId: string | null, st
         if (updateError) {
           console.error('❌ Failed to link auth_user_id:', updateError);
         } else {
-          console.log('✅ Successfully linked auth_user_id');
         }
       }
 
@@ -148,7 +140,6 @@ async function findOrCreateCustomer(email: string, authUserId: string | null, st
     }
 
     // No customer found - could create one if needed
-    console.log('📭 No customer found for:', email);
     return null;
 
   } catch (error) {
@@ -190,10 +181,7 @@ export function useCurrentCustomer(storeSlug?: string) {
   // Force refetch when auth user ID changes (login/logout)
   useEffect(() => {
     if (lastAuthUserIdRef.current !== authUserId) {
-      console.log('🔄 Auth user ID changed, clearing cache and refetching', {
-        old: lastAuthUserIdRef.current,
-        new: authUserId
-      });
+     
       
       refreshCustomerData();
       lastAuthUserIdRef.current = authUserId;
@@ -203,7 +191,6 @@ export function useCurrentCustomer(storeSlug?: string) {
   // Add refresh listener
   useEffect(() => {
     const handleRefresh = () => {
-      console.log('📢 Received global refresh signal');
       setRefreshTrigger(prev => prev + 1);
     };
     
@@ -251,7 +238,6 @@ export function useCurrentCustomer(storeSlug?: string) {
         globalCustomerCache.tabId === currentTabId &&
         Date.now() - globalCustomerCache.timestamp < CACHE_DURATION
       ) {
-        console.log('📦 Using cached global customer data');
         if (mountedRef.current) {
           setCustomer(globalCustomerCache.customer);
           setLoading(false);
@@ -266,13 +252,7 @@ export function useCurrentCustomer(storeSlug?: string) {
         setError(null);
       }
 
-      console.log('🔍 Fetching global customer data');
-      console.log('👤 Current auth state:', { 
-        isLoggedIn, 
-        authEmail, 
-        authUserId,
-        sessionUser: session?.user
-      });
+      
 
       let resolvedCustomer: CurrentCustomer | null = null;
       
@@ -280,27 +260,14 @@ export function useCurrentCustomer(storeSlug?: string) {
       let searchEmail = null;
       if (formEmailRef.current) {
         searchEmail = formEmailRef.current.toLowerCase().trim();
-        console.log('📧 Using FORM email for search:', searchEmail);
       } else if (authEmail) {
         searchEmail = authEmail.toLowerCase().trim();
-        console.log('📧 Using AUTH email for search:', searchEmail);
       }
 
       if (searchEmail) {
         // Use the findOrCreateCustomer helper
         resolvedCustomer = await findOrCreateCustomer(searchEmail, authUserId, storeSlug);
       }
-
-      console.log('🎯 FINAL GLOBAL CUSTOMER RESULT:', {
-        customer: resolvedCustomer ? {
-          id: resolvedCustomer.id,
-          email: resolvedCustomer.email,
-          auth_user_id: resolvedCustomer.auth_user_id,
-          hasAuthId: !!resolvedCustomer.auth_user_id
-        } : null,
-        isLoggedIn,
-        searchEmail,
-      });
 
       if (mountedRef.current) {
         // Update cache
@@ -317,7 +284,6 @@ export function useCurrentCustomer(storeSlug?: string) {
 
         // Clear account creation flags
         if (isNewAccount) {
-          console.log('🧹 Clearing account creation flags');
           setTimeout(() => {
             if (mountedRef.current) {
               clearAccountCreationFlags();

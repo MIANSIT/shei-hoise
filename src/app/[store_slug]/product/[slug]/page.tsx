@@ -158,7 +158,6 @@ export default function ProductPage() {
         const productData = await getClientProductBySlug(product_slug);
 
         if (!productData) {
-          console.log("Product not found for slug:", product_slug);
           setProduct(null);
           return;
         }
@@ -220,17 +219,7 @@ export default function ProductPage() {
 
   // Debug effect for cart changes - MOVED AFTER variable definitions
   useEffect(() => {
-    console.log("🛒 Cart Debug:", {
-      productId: product?.id,
-      variantId: selectedVariantData?.id,
-      availableStock,
-      cartQuantity,
-      remainingStock,
-      isOutOfStock,
-      isQuantityExceeded,
-      quantity,
-      stockStatus,
-    });
+   
   }, [
     cart,
     quantity,
@@ -368,27 +357,18 @@ export default function ProductPage() {
 
     // Emergency fallback - double check everything
     if (currentRemaining <= 0) {
-      console.log("🚨 EMERGENCY BLOCK: No remaining stock");
       setShowMaxQuantityError(true);
       return;
     }
 
     if (quantity > currentRemaining) {
-      console.log("🚨 EMERGENCY BLOCK: Quantity exceeds remaining");
       setShowMaxQuantityError(true);
       return;
     }
 
     // Original validation
     if (isOutOfStock || isQuantityExceeded || quantity > remainingStock) {
-      console.log("❌ Add to cart blocked:", {
-        isOutOfStock,
-        isQuantityExceeded,
-        quantity,
-        remainingStock,
-        currentCartQty,
-        currentRemaining,
-      });
+     
       return;
     }
 
@@ -401,10 +381,7 @@ export default function ProductPage() {
         variantId: selectedVariantData?.id || null, // Explicitly set to null if no variant
       };
 
-      console.log("🛒 Adding to cart:", cartProduct);
       addToCart(cartProduct); // Remove await since we fixed the cart store
-
-      // Show success notification
       showSuccessNotification(`${product.name} added to cart`);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);

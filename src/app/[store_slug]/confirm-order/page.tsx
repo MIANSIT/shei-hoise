@@ -151,7 +151,6 @@ export default function ConfirmOrderPage() {
       try {
         setLoadingToken(true);
         const data = await getConfirmOrderToken(token);
-        console.log("✅ Token data fetched:", data);
         setTokenData(data);
         hasFetchedTokenRef.current = true;
       } catch (err: any) {
@@ -172,9 +171,6 @@ export default function ConfirmOrderPage() {
 
     const fetchProductDetails = async () => {
       try {
-        console.log("🔍 Fetching product details for token:", tokenData);
-        
-        // Get store currency
         const { data: storeSettings, error: settingsError } = await supabase
           .from("store_settings")
           .select("currency")
@@ -189,8 +185,6 @@ export default function ConfirmOrderPage() {
 
         // Fetch products with variants - SIMPLIFIED APPROACH
         const productIds = tokenData.products.map((p: any) => p.product_id);
-        console.log("📦 Product IDs to fetch:", productIds);
-
         if (productIds.length === 0) {
           throw new Error("No product IDs found in token data");
         }
@@ -206,9 +200,6 @@ export default function ConfirmOrderPage() {
           console.error("❌ Error fetching products:", productsError);
           throw new Error(`Failed to fetch products: ${productsError.message}`);
         }
-
-        console.log("✅ Products fetched:", products?.length);
-
         if (!products || products.length === 0) {
           throw new Error("No products found for the given IDs");
         }
@@ -237,9 +228,6 @@ export default function ConfirmOrderPage() {
         const variantIds = tokenData.products
           .filter((p: any) => p.variant_id)
           .map((p: any) => p.variant_id);
-
-        console.log("🔄 Variant IDs to fetch:", variantIds);
-
         let variants: any[] = [];
         let variantImages: any[] = [];
         let variantInventory: any[] = [];
@@ -261,7 +249,6 @@ export default function ConfirmOrderPage() {
             });
           } else {
             variants = variantsData || [];
-            console.log("✅ Variants fetched:", variants.length);
           }
 
           // Fetch variant images
@@ -402,9 +389,6 @@ export default function ConfirmOrderPage() {
             productName,
           });
         }
-
-        console.log("✅ Enriched cart items:", enrichedItems);
-
         if (enrichedItems.length === 0) {
           throw new Error("Failed to load any products from the order link");
         }
@@ -549,9 +533,6 @@ export default function ConfirmOrderPage() {
     values: CustomerCheckoutFormValues
   ): Promise<string | null> => {
     try {
-      console.log("🔍 Finding or creating customer with email:", values.email);
-      
-      // Get store ID first
       const storeId = await getStoreIdBySlug(storeSlug);
       if (!storeId) {
         console.error("❌ Store not found for slug:", storeSlug);
@@ -574,9 +555,6 @@ export default function ConfirmOrderPage() {
       if (existingCustomers) {
         // Customer exists globally
         customerId = existingCustomers.id;
-        console.log("✅ Found existing customer globally:", customerId);
-        
-        // Check if link exists for this store
         const { data: existingLink, error: linkError } = await supabase
           .from("store_customer_links")
           .select("id")
@@ -590,7 +568,6 @@ export default function ConfirmOrderPage() {
 
         // Create link if it doesn't exist
         if (!existingLink) {
-          console.log("🔗 Creating store-customer link...");
           const { error: createLinkError } = await supabase
             .from("store_customer_links")
             .insert({
@@ -601,12 +578,9 @@ export default function ConfirmOrderPage() {
           if (createLinkError) {
             console.error("❌ Error creating customer link:", createLinkError);
           } else {
-            console.log("✅ Created store-customer link");
           }
         }
       } else {
-        // Create new customer
-        console.log("📝 Creating new customer...");
         
         // For logged-in users
         let authUserId = null;
@@ -631,10 +605,6 @@ export default function ConfirmOrderPage() {
         }
 
         customerId = newCustomer.id;
-        console.log("✅ Created new customer:", customerId);
-
-        // Create store-customer link
-        console.log("🔗 Creating store-customer link for new customer...");
         const { error: linkError } = await supabase
           .from("store_customer_links")
           .insert({
@@ -645,12 +615,8 @@ export default function ConfirmOrderPage() {
         if (linkError) {
           console.error("❌ Error creating customer link:", linkError);
         } else {
-          console.log("✅ Created store-customer link for new customer");
         }
       }
-
-      // Create or update customer profile
-      console.log("👤 Creating/updating customer profile...");
       const { data: existingProfile, error: profileFindError } = await supabase
         .from("customer_profiles")
         .select("id")
@@ -677,7 +643,6 @@ export default function ConfirmOrderPage() {
         if (updateError) {
           console.error("❌ Error updating profile:", updateError);
         } else {
-          console.log("✅ Updated existing profile");
         }
       } else {
         // Create new profile
@@ -701,13 +666,11 @@ export default function ConfirmOrderPage() {
             .from("store_customers")
             .update({ profile_id: newProfile.id })
             .eq("id", customerId);
-          console.log("✅ Created new profile");
         }
       }
 
       // Handle auth creation for guest users with password
       if (values.password && values.password.trim() !== "" && values.password !== "empty" && !session?.user) {
-        console.log("🔐 Creating auth account for guest user...");
         try {
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: values.email.toLowerCase(),
@@ -731,14 +694,12 @@ export default function ConfirmOrderPage() {
               .from("store_customers")
               .update({ auth_user_id: authData.user.id })
               .eq("id", customerId);
-            console.log("✅ Linked auth account to customer");
           }
         } catch (authError) {
           console.error("❌ Auth creation error:", authError);
         }
       }
 
-      console.log("✅ Customer process completed:", customerId);
       return customerId;
     } catch (error) {
       console.error("❌ Error in findOrCreateCustomerWithLinks:", error);
@@ -762,7 +723,6 @@ export default function ConfirmOrderPage() {
         
         // First, try to use the current customer if logged in
         if (session?.user && customer?.id) {
-          console.log("👤 User is logged in, using current customer:", customer.id);
           customerId = customer.id;
         }
         
@@ -772,8 +732,6 @@ export default function ConfirmOrderPage() {
         }
 
         if (!customerId) {
-          console.log("⚠️ No customer ID created, proceeding as guest order");
-          // Still proceed with order even without customer ID (pure guest order)
         }
 
         const formDataWithShipping = {

@@ -38,10 +38,7 @@ interface StoreCustomer {
 
 export async function getCustomerByEmail(email: string, store_slug?: string): Promise<StoreCustomer | null> {
   try {
-    console.log("🔍 Searching for customer by email:", { 
-      email: email.toLowerCase(),
-      store_slug 
-    });
+    
 
     if (!email || email.trim() === '') {
       console.error("❌ Email is required");
@@ -74,16 +71,10 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
     }
 
     if (!customer) {
-      console.log("📭 No customer found with email:", email);
       return null;
     }
 
-    console.log("✅ Customer found:", {
-      id: customer.id,
-      email: customer.email,
-      profile_id: customer.profile_id,
-      auth_user_id: customer.auth_user_id
-    });
+    
 
     // Step 2: Get customer profile if exists
     let customerProfile: CustomerProfile | null = null;
@@ -98,12 +89,9 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
         console.error("❌ Error fetching customer profile:", profileError);
       } else if (profile) {
         customerProfile = profile;
-        console.log("✅ Customer profile found:", profile.id);
       } else {
-        console.log("📭 No customer profile found for profile_id:", customer.profile_id);
       }
     } else {
-      console.log("📭 No profile_id for customer");
     }
 
     // Step 3: Get store links
@@ -138,14 +126,12 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
         });
       });
       
-      console.log("✅ Store links found:", storeLinks.length);
       
       // Filter by store_slug if provided
       if (store_slug) {
         const filteredLinks = storeLinks.filter(link => 
           link.stores && link.stores.store_slug === store_slug
         );
-        console.log("✅ Filtered store links for slug:", store_slug, filteredLinks.length);
         
         // Return combined data with filtered links
         const result: StoreCustomer = {
@@ -154,13 +140,7 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
           store_customer_links: filteredLinks
         };
 
-        console.log("📦 Final customer data:", {
-          id: result.id,
-          email: result.email,
-          hasProfile: !!result.customer_profiles,
-          hasAuthUserId: !!result.auth_user_id,
-          storeLinksCount: result.store_customer_links.length
-        });
+       
 
         return result;
       }
@@ -173,13 +153,7 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
       store_customer_links: storeLinks
     };
 
-    console.log("📦 Final customer data:", {
-      id: result.id,
-      email: result.email,
-      hasProfile: !!result.customer_profiles,
-      hasAuthUserId: !!result.auth_user_id,
-      storeLinksCount: result.store_customer_links.length
-    });
+    
 
     return result;
 
@@ -195,7 +169,6 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
 // NEW FUNCTION: Link auth user to existing customer
 export async function linkAuthToCustomer(customerId: string, authUserId: string): Promise<boolean> {
   try {
-    console.log("🔗 Linking auth user to customer:", { customerId, authUserId });
     
     const { error } = await supabaseAdmin
       .from("store_customers")
@@ -210,7 +183,6 @@ export async function linkAuthToCustomer(customerId: string, authUserId: string)
       return false;
     }
 
-    console.log("✅ Successfully linked auth user to customer");
     return true;
   } catch (error) {
     console.error("💥 Error linking auth user:", error);
@@ -221,7 +193,6 @@ export async function linkAuthToCustomer(customerId: string, authUserId: string)
 // NEW FUNCTION: Get customer by auth user ID
 export async function getCustomerByAuthUserId(authUserId: string, store_slug?: string): Promise<StoreCustomer | null> {
   try {
-    console.log("🔍 Searching for customer by auth_user_id:", authUserId);
     
     // First try to find customer by auth_user_id
     const { data: customer, error } = await supabaseAdmin
@@ -245,14 +216,10 @@ export async function getCustomerByAuthUserId(authUserId: string, store_slug?: s
     }
 
     if (!customer) {
-      console.log("📭 No customer found with auth_user_id:", authUserId);
       return null;
     }
 
-    console.log("✅ Customer found by auth_user_id:", {
-      id: customer.id,
-      email: customer.email
-    });
+    
 
     // Get store links
     const { data: links } = await supabaseAdmin

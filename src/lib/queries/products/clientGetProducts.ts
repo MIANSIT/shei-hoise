@@ -11,7 +11,6 @@ export async function clientGetProducts(
   categoryName?: string,
   searchQuery?: string
 ): Promise<{ products: Product[]; hasMore: boolean; totalCount: number }> {
-  console.log("Loading products with:", { store_slug, page, limit, categoryName, searchQuery });
 
   try {
     // Get store ID
@@ -64,7 +63,6 @@ export async function clientGetProducts(
 
     // Apply category filter - IMPORTANT: Use inner join with categories
     if (categoryName && categoryName !== "All Products") {
-      console.log("Applying category filter:", categoryName);
       
       // First, get the category ID
       const { data: categoryData } = await supabase
@@ -81,7 +79,6 @@ export async function clientGetProducts(
 
     // Apply search filter
     if (searchQuery && searchQuery.trim() !== "") {
-      console.log("Applying search filter:", searchQuery);
       const searchTerm = `%${searchQuery}%`;
       query = query.or(
         `name.ilike.${searchTerm},description.ilike.${searchTerm}`
@@ -98,7 +95,6 @@ export async function clientGetProducts(
       throw productError;
     }
 
-    console.log("Found products:", products?.length, "Total count:", count);
 
     // Map products
     const mappedProducts = (products ?? []).map((p: any) => {

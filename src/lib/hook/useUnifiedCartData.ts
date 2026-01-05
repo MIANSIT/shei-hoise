@@ -29,11 +29,7 @@ const groupAndSumItems = (
         ...existingItem,
         quantity: existingItem.quantity + item.quantity,
       });
-      console.log(
-        `🔄 Grouped duplicate item: ${key}, new quantity: ${
-          existingItem.quantity + item.quantity
-        }`
-      );
+      
     } else {
       // If item doesn't exist, add it
       groupedMap.set(key, item);

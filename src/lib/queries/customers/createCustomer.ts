@@ -14,7 +14,6 @@ export interface CreateCustomerData {
 
 export async function createCustomer(customerData: CreateCustomerData) {
   try {
-    console.log("Creating customer with data:", customerData);
 
     // Check if a customer with this email already exists
     const { data: existingCustomer, error: checkError } = await supabaseAdmin
@@ -54,7 +53,6 @@ export async function createCustomer(customerData: CreateCustomerData) {
       throw new Error(customerError.message);
     }
 
-    console.log("Customer created:", customerDataResult);
 
     // Optional: create customer profile if address info is provided
     let profileData = null;
@@ -79,7 +77,6 @@ export async function createCustomer(customerData: CreateCustomerData) {
         if (profileError) {
           console.error("Customer profile creation error:", profileError);
         } else {
-          console.log("Customer profile created:", profileResult);
           profileData = profileResult;
 
           // Update store_customer with profile_id
@@ -94,7 +91,6 @@ export async function createCustomer(customerData: CreateCustomerData) {
               updateError
             );
           } else {
-            console.log("Store customer updated with profile_id");
           }
         }
       } catch (profileError: any) {
@@ -117,7 +113,6 @@ export async function createCustomer(customerData: CreateCustomerData) {
       if (linkError) {
         console.error("Store customer link creation error:", linkError);
       } else {
-        console.log("Customer linked to store successfully");
       }
     } catch (linkError: any) {
       console.error("Unexpected error during store linking:", linkError);

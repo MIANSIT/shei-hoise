@@ -140,16 +140,8 @@ export function LoginForm() {
       // 3. Check if customer already has auth_user_id linked
       if (customerData) {
         if (!customerData.auth_user_id) {
-          // Customer exists but doesn't have auth_user_id linked - link it now
-          console.log("🔗 Linking auth user to existing customer:", {
-            customerId: customerData.id,
-            authUserId
-          });
-          
           const linked = await linkAuthToCustomer(customerData.id, authUserId);
-          
           if (linked) {
-            console.log("✅ Successfully linked auth user to customer");
           } else {
             console.warn("⚠️ Failed to link auth user to customer");
           }

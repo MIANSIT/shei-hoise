@@ -9,8 +9,8 @@ interface HeaderProps {
 }
 
 export default function Header({
-  isAdmin = false,
-  onSidebarToggle,
+  // isAdmin = false,
+  // onSidebarToggle,
 }: HeaderProps) {
   return (
     <>

@@ -134,7 +134,6 @@ export async function updateUserProfile(
       profileUpdate = data;
     } else {
       // If no profile exists, don't create one - just return null for profile
-      console.log("No existing profile found - skipping profile update");
     }
 
     return {

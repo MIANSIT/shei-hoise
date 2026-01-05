@@ -95,7 +95,10 @@ export default function MobileHeader({
   const authLinks: NavLink[] =
     !isAdmin && !isLoggedIn
       ? [
-          { name: "Log in", path: `/${storeSlug}/login?redirect=/${storeSlug}` },
+          {
+            name: "Log in",
+            path: `/${storeSlug}/login?redirect=/${storeSlug}`,
+          },
           {
             name: "Sign up",
             path: `/${storeSlug}/signup?redirect=/${storeSlug}`,
@@ -105,7 +108,8 @@ export default function MobileHeader({
       : [];
 
   // Get customer display name
-  const customerDisplayName = customer?.name || authEmail?.split('@')[0] || "Customer";
+  const customerDisplayName =
+    customer?.name || authEmail?.split("@")[0] || "Customer";
   const customerDisplayEmail = customer?.email || authEmail || "";
 
   return (
@@ -159,23 +163,32 @@ export default function MobileHeader({
         <div className="relative">
           <nav
             className={`transition-all duration-300 ease-in-out bg-background ${
-              menuOpen 
-                ? "max-h-125 opacity-100 mt-2 overflow-visible" 
+              menuOpen
+                ? "max-h-125 opacity-100 mt-2 overflow-visible"
                 : "max-h-0 opacity-0 overflow-hidden"
             }`}
           >
-            <ul className={`space-y-2 p-3 ${menuOpen ? '' : 'pointer-events-none'}`}>
+            <ul
+              className={`space-y-2 p-3 ${
+                menuOpen ? "" : "pointer-events-none"
+              }`}
+            >
               {isStoreLoading ? (
                 // Skeleton for nav
                 <div className="space-y-2">
                   {[1, 2].map((item) => (
-                    <SheiSkeleton key={item} className="w-full h-10 rounded-md" />
+                    <SheiSkeleton
+                      key={item}
+                      className="w-full h-10 rounded-md"
+                    />
                   ))}
                 </div>
               ) : (
                 <>
                   {navLinks.map((link) => {
                     const isActive = isHydrated && pathname === link.path;
+                    if (!link.path) return null;
+
                     return (
                       <li key={link.path}>
                         <Link
@@ -184,7 +197,7 @@ export default function MobileHeader({
                             isActive
                               ? "bg-accent text-accent-foreground"
                               : "text-foreground hover:bg-accent"
-                          } ${!menuOpen ? 'pointer-events-none' : ''}`}
+                          } ${!menuOpen ? "pointer-events-none" : ""}`}
                           onClick={() => setMenuOpen(false)}
                           tabIndex={menuOpen ? 0 : -1}
                         >
@@ -203,7 +216,7 @@ export default function MobileHeader({
                           pathname === `/${storeSlug}/order-status`
                             ? "bg-accent text-accent-foreground"
                             : "text-foreground hover:bg-accent"
-                        } ${!menuOpen ? 'pointer-events-none' : ''}`}
+                        } ${!menuOpen ? "pointer-events-none" : ""}`}
                         onClick={() => setMenuOpen(false)}
                         tabIndex={menuOpen ? 0 : -1}
                       >
@@ -227,8 +240,10 @@ export default function MobileHeader({
                       <li>
                         <div className="border-t border-border my-2" />
                       </li>
-                      <li className={`${!menuOpen ? 'pointer-events-none' : ''}`}>
-                        <UserDropdownMobile 
+                      <li
+                        className={`${!menuOpen ? "pointer-events-none" : ""}`}
+                      >
+                        <UserDropdownMobile
                           customerName={customerDisplayName}
                           customerEmail={customerDisplayEmail}
                           storeSlug={storeSlug}
@@ -240,7 +255,9 @@ export default function MobileHeader({
                       <li>
                         <div className="border-t border-border my-2" />
                       </li>
-                      <li className={`${!menuOpen ? 'pointer-events-none' : ''}`}>
+                      <li
+                        className={`${!menuOpen ? "pointer-events-none" : ""}`}
+                      >
                         <AuthButtons
                           links={authLinks}
                           isVertical={true}

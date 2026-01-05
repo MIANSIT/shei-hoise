@@ -25,11 +25,7 @@ export async function updateInventory({
   if (error) {
     console.error("Failed to update inventory:", error);
   } else {
-    console.log("Inventory updated:", {
-      product_id,
-      variant_id,
-      quantity_available,
-    });
+    
   }
 
   return data;

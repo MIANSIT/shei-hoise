@@ -22,7 +22,6 @@ export function SignUpForm() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsStoreLoaded(true);
-      console.log("Store data loaded for signup:", formData);
     }, 100);
 
     return () => clearTimeout(timer);
