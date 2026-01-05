@@ -68,9 +68,9 @@ const CTASection: React.FC<CTASectionProps> = ({
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <ContactUSForm
           source="demo_request"
-          title="Schedule Your Free Demo"
+          title="Request For Your Free Demo"
           subtitle="Fill out the form and one of our specialists will reach out to you shortly."
-          buttonText="Schedule Demo"
+          buttonText="Demo Request"
         />
       </Modal>
     </>
