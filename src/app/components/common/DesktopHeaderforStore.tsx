@@ -103,7 +103,7 @@ export default function DesktopHeader({
             />
           )}
 
-          {/* Navigation Links */}
+          {/* Navigation Links */}-
           {isStoreLoading ? (
             <div className="flex gap-4">
               {[1, 2].map((item) => (

@@ -23,8 +23,8 @@ interface SettingItemProps {
   isHighlighted?: boolean;
   info?: string;
   editing?: boolean;
-  readOnly?: boolean; // ✅ new
-  options?: { label: string; value: string | number }[]; // ✅ for dropdown
+  readOnly?: boolean;
+  options?: { label: string; value: string | number }[];
   onChange?: (val: string | number) => void;
 }
 
@@ -39,11 +39,9 @@ function SettingItem({
   options,
   readOnly,
 }: SettingItemProps) {
-  const displayValue =
-    typeof value === "string" &&
-    Object.values(Currency).includes(value as Currency)
-      ? `${CURRENCY_ICONS[value as Currency]} ${value}`
-      : value;
+  // displayValue only when not editing
+  const displayValue = typeof value === "number" || typeof value === "string" ? value : "";
+
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-lg transition-colors relative ${
@@ -86,24 +84,14 @@ function SettingItem({
           </select>
         ) : editing ? (
           <input
-            type="text"
+            type="number"
             value={value ?? ""}
             readOnly={readOnly}
-            onChange={(e) =>
-              onChange
-                ? onChange(
-                    isNaN(Number(value))
-                      ? e.target.value
-                      : Number(e.target.value)
-                  )
-                : null
-            }
+            onChange={(e) => onChange?.(Number(e.target.value))}
             className="w-full sm:w-32 border px-2 py-1 rounded text-right text-sm sm:text-base"
           />
         ) : (
-          <div className="text-base sm:text-lg font-semibold">
-            {displayValue}
-          </div>
+          <div className="text-base sm:text-lg font-semibold">{displayValue}</div>
         )}
       </div>
     </div>
@@ -123,6 +111,7 @@ export function StoreSettingsCard({
   const [formData, setFormData] = useState({ ...settings });
   const [loading, setLoading] = useState(false);
   const notify = useSheiNotification();
+
   const handleChange = (field: keyof StoreSettings, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -148,7 +137,8 @@ export function StoreSettingsCard({
     setEditing(false);
   };
 
-  const freeShipping = formData.free_shipping_threshold ?? 0;
+  const currencyIcon =
+    CURRENCY_ICONS[formData.currency as Currency] ?? "";
 
   return (
     <Card className="border shadow-sm">
@@ -217,27 +207,37 @@ export function StoreSettingsCard({
 
           <SettingItem
             label="Tax Rate"
-            value={`${formData.tax_rate} ${
-              CURRENCY_ICONS[formData.currency as Currency] ?? formData.currency
-            }`}
+            value={
+              editing
+                ? formData.tax_rate
+                : `${formData.tax_rate} ${currencyIcon}`
+            }
             info="Applied to all orders"
             isHighlighted
             editing={editing}
             onChange={(val) => handleChange("tax_rate", Number(val))}
           />
+
           <SettingItem
             label="Minimum Order Amount"
-            value={`${formData.min_order_amount} ${
-              CURRENCY_ICONS[formData.currency as Currency] ?? formData.currency
-            }`}
+            value={
+              editing
+                ? formData.min_order_amount
+                : `${formData.min_order_amount} ${currencyIcon}`
+            }
             info="Minimum amount required to place an order"
             isHighlighted
             editing={editing}
             onChange={(val) => handleChange("min_order_amount", Number(val))}
           />
+
           <SettingItem
             label="Order Processing Time"
-            value={`${formData.processing_time_days} days`}
+            value={
+              editing
+                ? formData.processing_time_days
+                : `${formData.processing_time_days} days`
+            }
             info="Average time to process and ship orders"
             isHighlighted
             editing={editing}
@@ -245,19 +245,27 @@ export function StoreSettingsCard({
               handleChange("processing_time_days", Number(val))
             }
           />
+
           <SettingItem
             label="Return Policy Period"
-            value={`${formData.return_policy_days} days`}
+            value={
+              editing
+                ? formData.return_policy_days
+                : `${formData.return_policy_days} days`
+            }
             info="Timeframe for customer returns"
             isHighlighted
             editing={editing}
             onChange={(val) => handleChange("return_policy_days", Number(val))}
           />
+
           <SettingItem
             label="Free Shipping Threshold"
-            value={`${freeShipping} ${
-              CURRENCY_ICONS[formData.currency as Currency] ?? formData.currency
-            }`}
+            value={
+              editing
+                ? formData.free_shipping_threshold
+                : `${formData.free_shipping_threshold} ${currencyIcon}`
+            }
             info="Order amount to qualify for free shipping"
             isHighlighted
             editing={editing}

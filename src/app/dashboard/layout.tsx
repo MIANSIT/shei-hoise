@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
       <div className='flex items-center justify-center min-h-screen flex-col gap-4'>
         <Spin size='large' />
-        <div className='text-gray-500'>Loading...</div>
+        <div className='text-primary'>Loading...</div>
       </div>
     );
   }
@@ -107,8 +107,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (shouldBlockAccess) {
     if (storeStatus === "trial") {
       return (
-        <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 px-4'>
-          <div className='max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center'>
+        <div className='min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-green-100 px-4'>
+          <div className='max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center'>
             {/* Icon */}
             <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100'>
               <svg
@@ -127,16 +127,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Title */}
-            <h1 className='text-xl font-semibold text-gray-900'>
+            <h1 className='text-xl font-semibold text-primary'>
               Your Free Trial Has Ended
             </h1>
 
             {/* Description */}
-            <p className='mt-3 text-sm text-gray-600 leading-relaxed'>
+            <p className='mt-3 text-sm text-primary leading-relaxed'>
               Thanks for trying our platform! Your trial period has now ended.
             </p>
 
-            <p className='mt-2 text-sm text-gray-600 leading-relaxed'>
+            <p className='mt-2 text-sm text-primary leading-relaxed'>
               To continue managing your store, accessing orders, customers, and
               analytics, please choose a plan and complete your payment.
             </p>
@@ -150,7 +150,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className='mt-6 space-y-3'>
               <Link
                 href='/contact-us'
-                className='inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 transition'
+                className='inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-primary hover:bg-green-800 transition'
               >
                 Upgrade & Continue
               </Link>
@@ -165,8 +165,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       );
     } else {
       return (
-        <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 px-4'>
-          <div className='max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center'>
+        <div className='min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-green-100 px-4'>
+          <div className='max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center'>
             {/* Icon */}
             <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-100'>
               <svg
@@ -185,17 +185,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Title */}
-            <h1 className='text-xl font-semibold text-gray-900'>
+            <h1 className='text-xl font-semibold text-primary'>
               Dashboard Access Temporarily Restricted
             </h1>
 
             {/* Description */}
-            <p className='mt-3 text-sm text-gray-600 leading-relaxed'>
+            <p className='mt-3 text-sm text-primary leading-relaxed'>
               Your dashboard access has been temporarily restricted due to a
               pending payment or subscription issue.
             </p>
 
-            <p className='mt-2 text-sm text-gray-600 leading-relaxed'>
+            <p className='mt-2 text-sm text-primary leading-relaxed'>
               Your store, data, and customers are completely safe. Once the
               payment is settled, full access will be restored automatically.
             </p>
@@ -204,14 +204,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className='mt-6 space-y-3'>
               <Link
                 href='/contact-us'
-                className='inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 transition'
+                className='inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-primary hover:bg-green-800 transition'
               >
                 Contact Support
               </Link>
             </div>
 
             {/* Footer note */}
-            <p className='mt-6 text-xs text-gray-500'>
+            <p className='mt-6 text-xs text-primary'>
               If you believe this is a mistake, please reach out to our support
               team.
             </p>

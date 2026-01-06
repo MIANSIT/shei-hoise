@@ -271,7 +271,7 @@ export default function CustomerPage() {
   }
 
   return (
-    <div>
+    <div className="">
       <PageHeader
         onAddCustomer={handleAddCustomer}
         onSearchChange={handleSearchChange}

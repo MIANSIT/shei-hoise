@@ -23,8 +23,8 @@ export default function MobileHeader() {
     {
       name: "Sections",
       children: [
-        { name: "Store", path: "/#stores" },
-        { name: "Request Demo", path: "/#request" },
+        { name: "Store", path: "#stores" },
+        { name: "Request Demo", path: "#request" },
       ],
     },
     { name: "All Stores", path: "/stores" },

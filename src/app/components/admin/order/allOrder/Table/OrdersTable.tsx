@@ -290,10 +290,10 @@ const OrdersTable: React.FC<Props> = ({
             {getCustomerInitial(order)}
           </Avatar>
           <div className="min-w-0">
-            <div className="font-medium text-sm truncate max-w-[100px] lg:max-w-[120px]">
+            <div className="font-medium text-sm truncate max-w-25 lg:max-w-30">
               {getCustomerName(order)}
             </div>
-            <div className="text-xs text-gray-500 truncate max-w-[100px] lg:max-w-[120px]">
+            <div className="text-xs text-gray-500 truncate max-w-25 lg:max-w-30">
               {getCustomerEmail(order)}
             </div>
           </div>
@@ -306,7 +306,7 @@ const OrdersTable: React.FC<Props> = ({
       title: "Phone",
       key: "phone",
       render: (_, order: StoreOrder) => (
-        <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
+        <div className="truncate max-w-30 lg:max-w-37.5 text-xs lg:text-sm">
           {getCustomerPhone(order)}
         </div>
       ),
@@ -322,7 +322,7 @@ const OrdersTable: React.FC<Props> = ({
 
         return (
           <Tooltip title={fullAddress}>
-            <div className="truncate max-w-[120px] lg:max-w-[150px] text-xs lg:text-sm">
+            <div className="truncate max-w-30 lg:max-w-37.5 text-xs lg:text-sm">
               {displayAddress}
             </div>
           </Tooltip>
@@ -641,7 +641,10 @@ const OrdersTable: React.FC<Props> = ({
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <BulkActions
                 selectedOrders={selectedOrderObjects}
-                onSuccess={handleBulkUpdateSuccess}
+                onSuccess={() => {
+                  handleBulkUpdateSuccess();
+                  onRefresh?.(); // ✅ TRIGGER REFRESH
+                }}
                 onClearSelection={() => setSelectedRowKeys([])}
               />
               <Button
@@ -773,7 +776,6 @@ const OrdersTable: React.FC<Props> = ({
       />
       {/* Mobile pagination */}
       <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
-        
         {/* Show total items */}
         <div className="text-sm text-gray-600">
           {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
