@@ -30,7 +30,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mounted, setMounted] = useState(false);
   const { session, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
-  const { role, storeSlug, storeStatus, storeIsActive, loading: userLoading } = useCurrentUser();
+  const {
+    role,
+    storeSlug,
+    storeStatus,
+    storeIsActive,
+    loading: userLoading,
+  } = useCurrentUser();
 
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
@@ -53,7 +59,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Fetch store data
   useEffect(() => {
     if (!storeSlug || storeLoading) return;
-    
+
     setStoreLoading(true);
     getStoreBySlugWithLogo(storeSlug)
       .then((data) => {
@@ -91,7 +97,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isLoading = authLoading || userLoading || storeLoading;
 
   // Check if user should be blocked from accessing dashboard
-  const shouldBlockAccess = !isLoading && (!storeIsActive || storeStatus === "trial");
+  const shouldBlockAccess = !isLoading && !storeIsActive;
 
   // Show loading state while all data is being fetched
   if (isLoading) {
