@@ -102,10 +102,10 @@ export const productSchema = z
           path: ["sku"],
         });
       }
-      if (data.stock === undefined || data.stock < 1) {
+      if (data.stock === undefined || data.stock < 0) {
         ctx.addIssue({
           code: "custom",
-          message: "Stock must be at least 1 when no variants exist.",
+          message: "Stock cannot be negative ",
           path: ["stock"],
         });
       }
