@@ -58,15 +58,15 @@ const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
 
 export enum Currency {
   BDT = "BDT",
-  USD = "USD",
-  EUR = "EUR",
-  GBP = "GBP",
-  INR = "INR",
+  // USD = "USD",
+  // EUR = "EUR",
+  // GBP = "GBP",
+  // INR = "INR",
 }
 export const CURRENCY_ICONS: Record<Currency, string> = {
   [Currency.BDT]: "(৳)",
-  [Currency.USD]: "($)",
-  [Currency.EUR]: "(€)",
-  [Currency.GBP]: "(£)",
-  [Currency.INR]: "(₹)",
+  // [Currency.USD]: "($)",
+  // [Currency.EUR]: "(€)",
+  // [Currency.GBP]: "(£)",
+  // [Currency.INR]: "(₹)",
 };

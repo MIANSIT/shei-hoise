@@ -10,8 +10,8 @@ export default function DesktopHeader() {
     {
       name: "Sections",
       children: [
-        { name: "Store", path: "/#stores" },
-        { name: "Request Demo", path: "/#request-demo" },
+        { name: "Store", path: "#stores" },
+        { name: "Request Demo", path: "#request-demo" },
       ],
     },
     { name: "All Stores", path: "/stores" },

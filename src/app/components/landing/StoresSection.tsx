@@ -15,7 +15,6 @@ const PREVIEW_LIMIT = 4;
 
 export default function StoresSection() {
   const [stores, setStores] = useState<Store[]>([]);
-  const [totalStores, setTotalStores] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +23,6 @@ export default function StoresSection() {
       try {
         const data: StoreResult = await getAllStores();
         setStores(data.stores);
-        setTotalStores(data.total);
       } catch (err) {
         console.error(err);
         setError("Failed to load stores");
@@ -63,11 +61,6 @@ export default function StoresSection() {
         >
           Check out some of the amazing stores created by our Store Owners.
         </motion.p>
-
-        {/* Total stores count */}
-        <div className="text-lg md:text-xl font-semibold">
-          Total Stores: <strong>{totalStores}</strong>
-        </div>
       </div>
 
       {/* Stores Grid */}
