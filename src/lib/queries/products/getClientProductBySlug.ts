@@ -27,6 +27,7 @@ interface Product {
   name: string;
   slug: string;
   description: string | null;
+  short_description: string | null;
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
@@ -51,6 +52,7 @@ export async function getClientProductBySlug(
       name,
       slug,
       description,
+      short_description,
       base_price,
       discounted_price,
       discount_amount,

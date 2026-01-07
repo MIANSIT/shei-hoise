@@ -14,6 +14,8 @@ export default function PrivacyPolicyPageClient() {
     : storeSlugParam;
 
   const [termsCondition, setTermsCondition] = useState<string | null>(null);
+  const [processingDays, setProcessingDays] = useState<number | null>(null);
+  const [returnDays, setReturnDays] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,37 +23,35 @@ export default function PrivacyPolicyPageClient() {
 
     const fetchPolicy = async () => {
       setLoading(true);
+
       const store = await getStoreBySlug(storeSlug);
       if (!store) {
         setTermsCondition(null);
+        setProcessingDays(null);
+        setReturnDays(null);
         setLoading(false);
         return;
       }
 
       const settings = await getStoreSettings(store.id);
 
-      // Clean HTML - remove data attributes and fix list structure
       if (settings?.terms_and_conditions) {
         let cleaned = settings.terms_and_conditions;
 
-        // Remove data attributes
         cleaned = cleaned.replace(/data-(start|end)="[^"]*"/g, "");
 
-        // Convert <p> inside <li> to just content (preserving formatting)
-        cleaned = cleaned.replace(
-          /<li[^>]*>\s*<p[^>]*>([^<]*)<\/p>\s*<\/li>/g,
-          "<li>$1</li>"
-        );
-
-        // For more complex <p> tags with nested elements
         cleaned = cleaned.replace(
           /<li[^>]*>\s*<p[^>]*>([\s\S]*?)<\/p>\s*<\/li>/g,
           "<li>$1</li>"
         );
 
         setTermsCondition(cleaned);
+        setProcessingDays(null);
+        setReturnDays(null);
       } else {
         setTermsCondition(null);
+        setProcessingDays(settings?.processing_time_days ?? null);
+        setReturnDays(settings?.return_policy_days ?? null);
       }
 
       setLoading(false);
@@ -61,8 +61,32 @@ export default function PrivacyPolicyPageClient() {
   }, [storeSlug]);
 
   if (loading) return <p>Loading Terms & Condition...</p>;
-  if (!termsCondition) return <p>No Terms & Condition found.</p>;
 
+  // 👉 FALLBACK VIEW (NO TERMS FOUND)
+  if (!termsCondition) {
+    return (
+      <div className="w-full py-16 px-4 sm:px-10 lg:px-10">
+         <h1>Terms & Condition</h1>
+        <div className="w-full border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-8 sm:p-12 space-y-4 mt-3">
+          {processingDays !== null && (
+            <div className="flex justify-between border-b pb-2 text-lg">
+              <span>Processing Time</span>
+              <span className="font-semibold">{processingDays} days</span>
+            </div>
+          )}
+
+          {returnDays !== null && (
+            <div className="flex justify-between border-b pb-2 text-lg">
+              <span>Return Policy</span>
+              <span className="font-semibold">{returnDays} days</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 👉 TERMS & CONDITION VIEW
   return (
     <div className="w-full py-16 px-4 sm:px-10 lg:px-10">
       <div className="w-full border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-8 sm:p-12">

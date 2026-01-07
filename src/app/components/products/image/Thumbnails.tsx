@@ -22,7 +22,7 @@ const Thumbnails: FC<ThumbnailsProps> = ({ images, mainIndex, onClick, desktop =
         <div
           key={idx}
           className={clsx(
-            desktop ? "w-16 h-16 sm:w-20 sm:h-20" : "flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20",
+            desktop ? "w-16 h-16 sm:w-20 sm:h-20" : "shrink-0 w-16 h-16 sm:w-20 sm:h-20",
             "rounded-lg overflow-hidden cursor-pointer relative transition-transform duration-300 shadow-sm",
             idx === mainIndex ? "scale-105 shadow-lg" : "hover:scale-110 hover:shadow-md",
             !desktop && "snap-start"
