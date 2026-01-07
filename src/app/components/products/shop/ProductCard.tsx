@@ -141,8 +141,8 @@ ProductCardProps) {
 
   const totalAvailableStock = getTotalAvailableStock();
   const totalCartQuantity = getTotalCartQuantity();
-  const remainingStock = totalAvailableStock - totalCartQuantity;
-  const isOutOfStock = remainingStock <= 0;
+  // const remainingStock = totalAvailableStock - totalCartQuantity;
+  // const isOutOfStock = remainingStock <= 0;
 
   // Only show "Max in Cart" for products WITHOUT variants
   // For products WITH variants, we can't determine max per variant from the card view
@@ -195,14 +195,14 @@ ProductCardProps) {
           />
           <div className="absolute inset-0 flex justify-between items-start p-4">
             {/* Category Badge */}
-            <span className="text-card-foreground text-xs uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
+            <span className="text-card-foreground text-xs  uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
               {product.category?.name || "Uncategorized"}
             </span>
 
             <div className="flex flex-col items-end gap-1">
               {/* Out of Stock */}
               {!productInStock && (
-                <span className="text-chart-5 text-xs font-bold bg-card-foreground px-2 py-1 rounded-lg">
+                <span className="text-white text-xs font-bold bg-chart-5 px-2 py-1 rounded-lg">
                   Stock Out
                 </span>
               )}

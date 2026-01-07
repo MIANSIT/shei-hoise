@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
+
 import {
   getAllStores,
   Store,
@@ -35,54 +36,63 @@ export default function StoresSection() {
   }, []);
 
   if (loading) return <p className="text-center py-10">Loading stores...</p>;
+
   if (error) return <p className="text-center py-10 text-red-500">{error}</p>;
+
   if (!stores.length)
     return <p className="text-center py-10">No stores available</p>;
 
   const previewStores = stores.slice(0, PREVIEW_LIMIT);
 
+  /**
+   * Desktop centering logic (lg: 4 columns)
+   */
+  const getGridClass = (length: number, index: number) => {
+    if (length === 1) {
+      return "lg:col-span-2 lg:col-start-2";
+    }
+
+    if (length === 2) {
+      return index === 0 ? "lg:col-start-2" : "lg:col-start-3";
+    }
+
+    return "";
+  };
+
   return (
     <section id="stores" className="py-16 md:py-20 px-6 bg-muted/10">
-      <div className="container mx-auto text-center mb-8 md:mb-12">
+      {/* Header */}
+      <div className="container mx-auto text-center mb-12">
         <motion.h2
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-3xl md:text-4xl font-bold mb-2"
+          transition={{ duration: 0.5 }}
+          className="text-3xl md:text-4xl font-bold mb-3"
         >
           Featured Stores
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-4"
+          transition={{ duration: 0.5 }}
+          className="text-lg text-muted-foreground max-w-2xl mx-auto"
         >
           Check out some of the amazing stores created by our Store Owners.
         </motion.p>
       </div>
 
       {/* Stores Grid */}
-      <motion.div
-        className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        variants={{
-          hidden: {},
-          visible: { transition: { staggerChildren: 0.1 } },
-        }}
-      >
-        {previewStores.map((store) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+        {previewStores.map((store, index) => (
           <motion.div
             key={store.id}
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0 },
-            }}
+            className={getGridClass(previewStores.length, index)}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
             whileHover={{ scale: 1.05, y: -5 }}
-            transition={{ type: "spring", stiffness: 300 }}
           >
             <Link
               href={`/${store.store_slug}`}
@@ -119,9 +129,9 @@ export default function StoresSection() {
             </Link>
           </motion.div>
         ))}
-      </motion.div>
+      </div>
 
-      {/* View More Button */}
+      {/* View More */}
       {stores.length > PREVIEW_LIMIT && (
         <div className="flex justify-center mt-12">
           <Link
