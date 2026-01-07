@@ -85,7 +85,7 @@ export default function CheckoutPage() {
 
   const isSubmitting = isProcessing || orderLoading;
   const isLoadingOverall = useMemo(() => {
-    return cartLoading || authLoading || storeLoading || !taxLoaded;
+    return cartLoading || authLoading || storeLoading || taxLoaded === false;
   }, [cartLoading, authLoading, storeLoading, taxLoaded]);
 
   // ✅ OPTIMIZED: Fetch tax amount once
@@ -95,16 +95,15 @@ export default function CheckoutPage() {
         const storeId = await getStoreIdBySlug(store_slug);
         if (storeId) {
           const storeSettings = await getStoreSettings(storeId);
-          if (storeSettings && storeSettings.tax_rate) {
-            setTaxAmount(storeSettings.tax_rate);
-            setTaxLoaded(true);
-          }
+          setTaxAmount(storeSettings?.tax_rate ?? 0); // fallback 0
         } else {
-          setTaxLoaded(true);
+          setTaxAmount(0);
         }
       } catch (error) {
         console.error("❌ Error fetching tax amount:", error);
-        setTaxLoaded(true);
+        setTaxAmount(0);
+      } finally {
+        setTaxLoaded(true); // ALWAYS mark as loaded
       }
     };
 
@@ -890,9 +889,9 @@ export default function CheckoutPage() {
   // Store not found
   if (storeError || !invoiceStoreData) {
     return (
-      <div className='min-h-screen flex items-center justify-center'>
-        <div className='text-center'>
-          <h1 className='text-2xl font-bold mb-4'>Store Not Found</h1>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
           <p>The store you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
@@ -918,7 +917,7 @@ export default function CheckoutPage() {
         shippingFee={shippingFee}
         taxAmount={taxAmount}
         isProcessing={isSubmitting}
-        mode='checkout'
+        mode="checkout"
       />
 
       <AnimatePresence>
