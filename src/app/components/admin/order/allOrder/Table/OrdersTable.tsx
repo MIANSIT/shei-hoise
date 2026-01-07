@@ -128,6 +128,7 @@ const OrdersTable: React.FC<Props> = ({
         message: "Order Deleted",
         description: "Order has been deleted successfully.",
       });
+      onRefresh?.();
     } catch (error: any) {
       console.error("Error deleting order:", error);
       notification.error({

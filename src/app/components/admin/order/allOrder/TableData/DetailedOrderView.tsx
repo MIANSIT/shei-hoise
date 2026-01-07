@@ -421,68 +421,79 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             );
           })}
 
-          <div className="border-t border-gray-200 dark:border-gray-600 mt-2 pt-2 space-y-2">
-            {/* Subtotal (Before Discounts) */}
-            <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Subtotal (Before Discounts)
-              </span>
-              <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
-                {displayCurrencyIconSafe}
-                {order.subtotal.toFixed(2)}
-              </span>
-            </div>
+          {/* Financial Summary */}
+          <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-500" />
+              Financial Summary
+            </h3>
 
-            {/* Discount (always show) */}
-            <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Discount
-              </span>
-              <span
-                className={`font-semibold text-sm ${
-                  order.total_amount < order.subtotal
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-gray-800 dark:text-gray-100"
-                }`}
-              >
-                {order.total_amount < order.subtotal
-                  ? `- ${displayCurrencyIconSafe}${(
-                      order.subtotal - order.total_amount
-                    ).toFixed(2)}`
-                  : `${displayCurrencyIconSafe} 0.00`}
-              </span>
-            </div>
-
-            {/* Shipping Fee (always show) */}
-            <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Shipping Fee
-              </span>
-              <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
-                {displayCurrencyIconSafe}
-                {order.shipping_fee ? order.shipping_fee.toFixed(2) : "0.00"}
-              </span>
-            </div>
-
-            {/* Tax (always show) */}
-            {order.tax_amount > 0 && (
+            <div className="space-y-2">
+              {/* Subtotal */}
               <div className="flex justify-between items-center py-1">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Tax
+                  Subtotal
                 </span>
                 <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
                   {displayCurrencyIconSafe}
-                  {order.tax_amount.toFixed(2)}
+                  {order.subtotal.toFixed(2)}
                 </span>
               </div>
-            )}
-            {/* Total */}
-            <div className="flex justify-between items-center pt-2 font-semibold border-t border-gray-200 dark:border-gray-600">
-              <span className="text-sm">Total Amount</span>
-              <span className="text-blue-600 dark:text-blue-400 text-sm">
-                {displayCurrencyIconSafe}
-                {order.total_amount.toFixed(2)}
-              </span>
+
+              {/* Discount */}
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Discount
+                </span>
+                <span className="font-semibold text-sm text-green-600 dark:text-green-400">
+                  -{displayCurrencyIconSafe}
+                  {(order.discount_amount || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Shipping Fee */}
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Shipping Fee
+                </span>
+                <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                  {displayCurrencyIconSafe}
+                  {(order.shipping_fee || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Tax */}
+              {(order.tax_amount ?? 0) > 0 && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Tax
+                  </span>
+                  <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                    {displayCurrencyIconSafe}
+                    {(order.tax_amount || 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {(order.additional_charges ?? 0) > 0 && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Additional Charges
+                  </span>
+                  <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                    {displayCurrencyIconSafe}
+                    {(order.additional_charges ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Total Amount */}
+              <div className="flex justify-between items-center pt-2 font-semibold border-t border-gray-200 dark:border-gray-600">
+                <span className="text-sm">Total Amount</span>
+                <span className="text-blue-600 dark:text-blue-400 text-sm">
+                  {displayCurrencyIconSafe}
+                  {order.total_amount.toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
