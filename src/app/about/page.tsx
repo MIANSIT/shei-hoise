@@ -17,13 +17,6 @@ import Footer from "../components/common/Footer";
 
 const features: Feature[] = [
   {
-    id: "store-creation",
-    icon: <Store className="w-7 h-7" />,
-    title: "Instant Store Creation",
-    description:
-      "Launch your professional online store in minutes. No technical skills required - just focus on your products and customers.",
-  },
-  {
     id: "dashboard",
     icon: <BarChart3 className="w-7 h-7" />,
     title: "Advanced Dashboard",
@@ -37,26 +30,13 @@ const features: Feature[] = [
     description:
       "Easily manage inventory, bulk operations, and product variations with automated stock tracking and alerts.",
   },
-  {
-    id: "customer-insights",
-    icon: <Users className="w-7 h-7" />,
-    title: "Customer Intelligence",
-    description:
-      "Deep insights into customer behavior, purchase patterns, and preferences to drive your business growth.",
-  },
+
   {
     id: "order-management",
     icon: <Package className="w-7 h-7" />,
     title: "Streamlined Order Processing",
     description:
       "Automated order workflows, status updates, and customer notifications to ensure smooth operations.",
-  },
-  {
-    id: "flexible-pricing",
-    icon: <CreditCard className="w-7 h-7" />,
-    title: "Scalable Pricing",
-    description:
-      "Choose from flexible monthly or annual plans designed to grow with your business success.",
   },
 ];
 
@@ -67,7 +47,7 @@ export default function AboutPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <PageHeader
           subtitle="About Shei Hoise"
-          title="Revolutionizing Facebook Commerce"
+          title="Modernizing CashFlow Operations"
           description="We provide enterprise-grade e-commerce tools for Facebook entrepreneurs, making professional online selling accessible to everyone."
         />
 
