@@ -1,7 +1,7 @@
 import { ProductWithStock } from "@/lib/queries/products/getProductWithStock";
+import { ProductStatus } from "@/lib/types/enums";
 
 export interface VariantRow {
-  is_active: unknown;
   id: string;
   productId: string;
   title: string;
@@ -11,6 +11,7 @@ export interface VariantRow {
   imageUrl: string | null;
   isLowStock: boolean;
   lowStockThreshold: number;
+  isActive: boolean; // ← add this
 }
 
 export interface ProductRow {
@@ -24,6 +25,8 @@ export interface ProductRow {
   isLowStock: boolean;
   lowStockThreshold: number;
   hasLowStockVariant: boolean;
+  status: ProductStatus; // ← add this
+  isInactiveProduct: boolean; // ← add this
 }
 
 export function mapProductsForModernTable(
@@ -60,7 +63,7 @@ export function mapProductsForModernTable(
               v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
             isLowStock: isVariantLowStock,
             lowStockThreshold: variantLowStockThreshold,
-            is_active: v.is_active, // ← add this
+            isActive: v.is_active, // ← use new field
           };
         })
       : undefined;
@@ -80,6 +83,10 @@ export function mapProductsForModernTable(
       lowStockThreshold: productLowStockThreshold,
       hasLowStockVariant,
       variants: processedVariants,
+      status: p.status, // ← add this
+      isInactiveProduct:
+        p.status === ProductStatus.DRAFT || p.status === ProductStatus.INACTIVE, // ← add this
     };
   });
 }
+

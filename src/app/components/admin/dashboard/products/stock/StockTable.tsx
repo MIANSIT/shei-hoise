@@ -12,8 +12,7 @@ import {
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
-
-// import { ProductRowWithMatch } from "./StockChangeTable";
+import { ProductStatus } from "@/lib/types/enums";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -28,7 +27,7 @@ interface StockTableProps {
     variantId: string | null,
     quantity: number
   ) => void;
-  rowSelection?: TableRowSelection<ProductRow | VariantRow>; // Updated type
+  rowSelection?: TableRowSelection<ProductRow | VariantRow>;
   loading?: boolean;
   bulkActive?: boolean;
 }
@@ -42,14 +41,10 @@ const StockTable: React.FC<StockTableProps> = ({
   loading,
   bulkActive = false,
 }) => {
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
+  const displayCurrencyIconSafe = currencyLoading ? "৳" : currencyIcon ?? "৳";
+
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
       title: "Image",
@@ -76,7 +71,6 @@ const StockTable: React.FC<StockTableProps> = ({
             ) : (
               <div className="w-12 h-12 bg-card rounded-md" />
             )}
-            {/* Low Stock Badge on Image */}
             {shouldHighlight && (
               <Tooltip
                 title={
@@ -113,6 +107,11 @@ const StockTable: React.FC<StockTableProps> = ({
             ? "One or more variants are low on stock"
             : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
 
+        const isInactiveProduct =
+          isProductRow && (record as ProductRow).isInactiveProduct;
+        const isInactiveVariant =
+          !isProductRow && !(record as VariantRow).isActive;
+
         return (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -126,15 +125,26 @@ const StockTable: React.FC<StockTableProps> = ({
                   </Tag>
                 </Tooltip>
               )}
-            </div>
 
-            {/* --- Show message if variants matched search --- */}
-            {/* {"variants" in record &&
-              (record as ProductRowWithMatch).hasMatchingVariants && (
-                <div className="text-sm text-blue-600 italic">
-                  Some variants match your search. Expand to view.
-                </div>
-              )} */}
+              {(isInactiveProduct || isInactiveVariant) && (
+                <Tag
+                  color={
+                    isInactiveProduct
+                      ? record.status === ProductStatus.DRAFT
+                        ? "gold" // yellow for draft
+                        : "red" // red for inactive
+                      : "red" // inactive variant
+                  }
+                  className="text-xs"
+                >
+                  {isInactiveProduct
+                    ? record.status === ProductStatus.DRAFT
+                      ? "Draft"
+                      : "Inactive"
+                    : "Inactive"}
+                </Tag>
+              )}
+            </div>
           </div>
         );
       },
@@ -144,7 +154,6 @@ const StockTable: React.FC<StockTableProps> = ({
       dataIndex: "sku",
       key: "sku",
       render: (_sku, record: ProductRow | VariantRow) => {
-        // If product row has variants, show "SKU depends on variants"
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="italic text-muted-foreground">
@@ -152,9 +161,9 @@ const StockTable: React.FC<StockTableProps> = ({
             </span>
           );
         }
-
-        // Otherwise show SKU or fallback
-        return <span className="text-muted-foreground">{record.sku ?? "—"}</span>;
+        return (
+          <span className="text-muted-foreground">{record.sku ?? "—"}</span>
+        );
       },
     },
     {
@@ -169,7 +178,6 @@ const StockTable: React.FC<StockTableProps> = ({
             </span>
           );
         }
-
         const price =
           typeof record.currentPrice === "number" ? record.currentPrice : 0;
         return (
@@ -184,7 +192,17 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Stock",
       key: "stock",
       render: (_value, record) => {
-        if ("variants" in record && record.variants?.length) {
+        const isProductRow = "variants" in record;
+        const parentId = isProductRow
+          ? record.id
+          : (record as VariantRow).productId;
+        const variantId = isProductRow ? null : (record as VariantRow).id;
+        const isInactiveProduct =
+          isProductRow && (record as ProductRow).isInactiveProduct;
+        const isInactiveVariant =
+          !isProductRow && !(record as VariantRow).isActive;
+
+        if (isProductRow && record.variants?.length) {
           return (
             <span className="italic text-muted-foreground">
               Stock managed in variants
@@ -196,13 +214,6 @@ const StockTable: React.FC<StockTableProps> = ({
         const editedValue = editedStocks[key] ?? record.stock;
         const showUpdateButton = key in editedStocks && !bulkActive;
         const isLowStock = record.isLowStock;
-        const currentStock = record.stock;
-        const threshold = record.lowStockThreshold || 10;
-
-        const parentId =
-          "variants" in record ? record.id : (record as VariantRow).productId;
-        const variantId =
-          "variants" in record ? null : (record as VariantRow).id;
 
         return (
           <div
@@ -212,8 +223,8 @@ const StockTable: React.FC<StockTableProps> = ({
             <Tooltip
               title={
                 isLowStock
-                  ? `Current: ${currentStock} / Threshold: ${threshold}`
-                  : `Current stock: ${currentStock}`
+                  ? `Current: ${record.stock} / Threshold: ${record.lowStockThreshold}`
+                  : `Current stock: ${record.stock}`
               }
             >
               <InputNumber
@@ -232,18 +243,18 @@ const StockTable: React.FC<StockTableProps> = ({
             </Tooltip>
 
             {isLowStock && (
-              <Tooltip title={`Below threshold (${threshold})`}>
+              <Tooltip title={`Below threshold (${record.lowStockThreshold})`}>
                 <span className="text-xs text-red-500 font-medium px-2 py-1 bg-red-50 rounded">
                   Low
                 </span>
               </Tooltip>
             )}
 
-            {showUpdateButton && (
+            {showUpdateButton && !(isInactiveProduct || isInactiveVariant) && (
               <SheiButton
                 onClick={async (e) => {
                   e.stopPropagation();
-                  await onSingleUpdate(parentId, variantId, editedValue);
+                  onSingleUpdate(parentId, variantId, editedValue);
                 }}
                 size="small"
               >
@@ -264,7 +275,6 @@ const StockTable: React.FC<StockTableProps> = ({
       rowSelection={rowSelection}
       pagination={false}
       loading={loading}
-      // Add row className for low stock highlighting - highlight products with low stock variants
       rowClassName={(record) => {
         const isProductRow = "variants" in record;
         const shouldHighlight = isProductRow
@@ -299,13 +309,14 @@ const StockTable: React.FC<StockTableProps> = ({
               rowKey="id"
               pagination={false}
               rowClassName={(variantRecord) =>
-                (variantRecord as VariantRow).isLowStock
+                !(variantRecord as VariantRow).isActive
+                  ? "bg-gray-100 hover:bg-gray-200"
+                  : (variantRecord as VariantRow).isLowStock
                   ? "bg-red-50 hover:bg-red-100"
                   : ""
               }
             />
           ) : null,
-
         rowExpandable: (record) =>
           "variants" in record && !!record.variants?.length,
       }}
