@@ -126,8 +126,8 @@ interface PoliciesCardProps {
 }
 
 export function PoliciesCard({ settings, onUpdatePolicy }: PoliciesCardProps) {
-  const hasTerms = !!settings.terms_and_conditions;
-  const hasPrivacy = !!settings.privacy_policy;
+  const hasTerms = !!settings?.terms_and_conditions;
+  const hasPrivacy = !!settings?.privacy_policy;
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formType, setFormType] = useState<"terms" | "privacy">("terms");

@@ -59,18 +59,20 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         pageSize
       );
 
-      // Step 1: Filter out DRAFT/INACTIVE products
-      const activeProducts = (result.data ?? []).filter(
-        (p) =>
-          p.status !== ProductStatus.DRAFT &&
-          p.status !== ProductStatus.INACTIVE
-      );
+      const allProducts = result.data ?? [];
 
-      // Step 2: Map to table rows and remove inactive variants
-      const mapped: ProductRow[] = activeProducts.length
-        ? mapProductsForModernTable(activeProducts).map((product) => ({
+      // Map products and keep inactive variants
+      const mapped: ProductRow[] = allProducts.length
+        ? mapProductsForModernTable(allProducts).map((product) => ({
             ...product,
-            variants: product.variants?.filter((v) => v.is_active) || [],
+            variants:
+              product.variants?.map((v) => ({
+                ...v,
+                isActive: v.isActive, // keep inactive variants
+              })) || [],
+            isInactiveProduct:
+              product.status === ProductStatus.DRAFT ||
+              product.status === ProductStatus.INACTIVE,
           }))
         : [];
 
@@ -143,13 +145,14 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       try {
         if (product.variants?.length) {
           for (const v of product.variants) {
+            if (!v.isActive) continue; // skip inactive variant
             await updateInventory({
               product_id: product.id,
               variant_id: v.id,
               quantity_available: v.stock + value,
             });
           }
-        } else {
+        } else if (!product.isInactiveProduct) {
           await updateInventory({
             product_id: product.id,
             quantity_available: product.stock + value,
@@ -178,7 +181,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     return <p className="text-center text-muted-foreground">Loading user...</p>;
   if (!storeSlug)
     return (
-      <p className="text-center text-muted-foreground">No store found for this user.</p>
+      <p className="text-center text-muted-foreground">
+        No store found for this user.
+      </p>
     );
 
   return (

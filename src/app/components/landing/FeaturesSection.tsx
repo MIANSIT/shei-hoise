@@ -14,7 +14,7 @@ export default function FeaturesSection() {
   ];
 
   return (
-    <section id="features" className="py-16 md:py-20 px-6 bg-muted/30">
+    <section  id="features" className="py-16 md:py-20 px-6 bg-muted/30">
       <div className="container mx-auto text-center mb-12 md:mb-16">
         <motion.h2 initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-3xl md:text-4xl font-bold mb-4">
           Everything You Need to Manage Your Store
