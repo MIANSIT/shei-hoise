@@ -2,7 +2,7 @@
 "use client";
 
 import { StoreOrder } from "../../../lib/types/order";
-import { Copy, Check, ExternalLink, Receipt, DollarSign } from "lucide-react";
+import { Copy, Check, ExternalLink, Receipt } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -205,7 +205,7 @@ export default function OrdersTable({
                         "payment"
                       )}`}
                     >
-                      <DollarSign className="h-3 w-3 mr-1" />
+                      <span className="text-md"> ৳&nbsp;</span>
                       {order.payment_status
                         ? order.payment_status.charAt(0).toUpperCase() +
                           order.payment_status.slice(1)

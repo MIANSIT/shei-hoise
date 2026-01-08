@@ -1,9 +1,13 @@
+// lib/queries/products/updateProduct.ts
+"use server";
+
 import { supabaseAdmin } from "@/lib/supabase";
 import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
 
 /**
  * Smartly update product, variants, inventory, and images.
+ * Deleted variants will be removed from DB along with their inventory.
  */
 export async function updateProduct(data: ProductUpdateType) {
   const { id, store_id, variants, images, stock, ...productData } = data;
@@ -18,11 +22,45 @@ export async function updateProduct(data: ProductUpdateType) {
 
   if (productError) throw productError;
 
-  // 2️⃣ Update or insert variants and their inventory
+  // 2️⃣ Handle variants
+  // Fetch existing variants
+  const { data: existingVariants, error: fetchError } = await supabaseAdmin
+    .from("product_variants")
+    .select("id")
+    .eq("product_id", id);
 
+  if (fetchError) throw fetchError;
+
+  const existingVariantIds = existingVariants?.map((v) => v.id) || [];
+  const updatedVariantIds = variants?.map((v) => v.id).filter(Boolean) || [];
+
+  // Determine variants to delete (existing in DB but not in form)
+  const variantIdsToDelete = existingVariantIds.filter(
+    (id) => !updatedVariantIds.includes(id)
+  );
+
+  if (variantIdsToDelete.length > 0) {
+    // Delete variants
+    const { error: deleteError } = await supabaseAdmin
+      .from("product_variants")
+      .delete()
+      .in("id", variantIdsToDelete);
+
+    if (deleteError) throw deleteError;
+
+    // Also delete corresponding inventory
+    const { error: invDeleteError } = await supabaseAdmin
+      .from("product_inventory")
+      .delete()
+      .in("variant_id", variantIdsToDelete);
+
+    if (invDeleteError) throw invDeleteError;
+  }
+
+  // Update or insert remaining variants
   if (variants && variants.length > 0) {
     for (const variant of variants) {
-      const { stock: variantStock, ...variantData } = variant; // 👈 exclude stock
+      const { stock: variantStock, ...variantData } = variant;
 
       if (variant.id) {
         // Update existing variant
@@ -36,7 +74,7 @@ export async function updateProduct(data: ProductUpdateType) {
           await supabaseAdmin
             .from("product_variants")
             .insert({ ...variantData, product_id: id })
-            .select("id") // 👈 explicitly request id
+            .select("id")
             .single();
 
         if (variantInsertError) throw variantInsertError;
@@ -50,7 +88,7 @@ export async function updateProduct(data: ProductUpdateType) {
         await supabaseAdmin.from("product_inventory").upsert(
           {
             product_id: id,
-            variant_id: variant?.id ?? null,
+            variant_id: variant.id ?? null,
             quantity_available: variantStock ?? stock ?? 0,
             quantity_reserved: 0,
             track_inventory: true,
@@ -61,7 +99,7 @@ export async function updateProduct(data: ProductUpdateType) {
     }
   }
 
-  // 3️⃣ Handle images (smartly)
+  // 3️⃣ Handle images
   if (images && images.length > 0) {
     // Fetch existing images
     const { data: existingImages } = await supabaseAdmin
@@ -101,11 +139,9 @@ export async function updateProduct(data: ProductUpdateType) {
         );
     }
 
-    // Insert or update images
-    // Determine variant ID for images
+    // Determine variant ID for images (optional, use first variant if exists)
     let variantIdForImages: string | null = null;
     if (variants && variants.length > 0) {
-      // Product has variants, use the first variant's ID
       variantIdForImages = variants[0].id ?? null;
     }
 
@@ -116,15 +152,15 @@ export async function updateProduct(data: ProductUpdateType) {
       const existing = existingImages?.find(
         (ex) => ex.image_url === img.imageUrl
       );
+
       if (existing) {
-        // Update metadata and ensure variant_id is set
         await supabaseAdmin
           .from("product_images")
           .update({
             alt_text: img.altText,
             sort_order: i,
             is_primary: i === 0,
-            variant_id: variantIdForImages, // <-- assign variant_id for updates
+            variant_id: variantIdForImages,
           })
           .eq("id", existing.id);
         continue;
@@ -140,6 +176,7 @@ export async function updateProduct(data: ProductUpdateType) {
         const { error: uploadError } = await supabaseAdmin.storage
           .from("shei-hoise-product")
           .upload(filePath, blob, { contentType: blob.type || "image/png" });
+
         if (uploadError) throw uploadError;
 
         const { data: publicUrlData } = await supabaseAdmin.storage
@@ -150,7 +187,6 @@ export async function updateProduct(data: ProductUpdateType) {
 
       uploadedImages.push({
         product_id: id,
-        variant_id: variantIdForImages!, // <-- assign variant_id for new images
         image_url: imageUrl,
         alt_text: img.altText,
         sort_order: i,
@@ -163,6 +199,7 @@ export async function updateProduct(data: ProductUpdateType) {
       const { error: insertError } = await supabaseAdmin
         .from("product_images")
         .insert(uploadedImages);
+
       if (insertError) throw insertError;
     }
   }
