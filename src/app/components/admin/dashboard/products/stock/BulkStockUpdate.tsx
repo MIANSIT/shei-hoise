@@ -1,3 +1,4 @@
+// File: BulkStockUpdate.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -19,7 +20,11 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
   const [bulkStock, setBulkStock] = useState<number>(0);
 
   const handleClick = async () => {
-    // Allow negative values
+    if (selectedCount === 0) return;
+
+    // Confirm only for 0
+
+    // Normal update
     await onUpdate(bulkStock);
     setBulkStock(0);
   };
@@ -28,9 +33,7 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
 
   return (
     <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-2 mb-4">
-      {/* Mobile: Vertical layout, Desktop: Horizontal layout */}
       <div className="flex flex-col items-center gap-2 md:flex-row md:gap-2">
-        {/* Quantity Controls - Centered for mobile */}
         <div className="flex items-center gap-2">
           <SheiButton
             onClick={() => setBulkStock((prev) => prev - 1)}
@@ -58,13 +61,11 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
           />
         </div>
 
-        {/* Selected Count Badge */}
         <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold border border-blue-200">
           {selectedCount} selected
         </div>
       </div>
 
-      {/* Update Button - Full width on mobile, auto on desktop */}
       <SheiButton
         onClick={handleClick}
         disabled={loading}
