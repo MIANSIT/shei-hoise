@@ -1,3 +1,4 @@
+// File: StockChangeTable.tsx
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -16,17 +17,14 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { ProductStatus, StockFilter } from "@/lib/types/enums";
-
-export interface ProductRowWithMatch extends ProductRow {
-  hasMatchingVariants?: boolean;
-}
+import { Modal } from "antd";
 
 interface StockChangeTableProps {
   searchText: string;
   stockFilter: StockFilter;
   currentPage: number;
   pageSize: number;
-  onTotalChange?: (total: number) => void; // notify parent about total items
+  onTotalChange?: (total: number) => void;
 }
 
 const StockChangeTable: React.FC<StockChangeTableProps> = ({
@@ -48,7 +46,6 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!storeSlug) return;
-
     setLoading(true);
     try {
       const result = await getProductWithStock(
@@ -60,16 +57,12 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       );
 
       const allProducts = result.data ?? [];
-
-      // Map products and keep inactive variants
       const mapped: ProductRow[] = allProducts.length
         ? mapProductsForModernTable(allProducts).map((product) => ({
             ...product,
             variants:
-              product.variants?.map((v) => ({
-                ...v,
-                isActive: v.isActive, // keep inactive variants
-              })) || [],
+              product.variants?.map((v) => ({ ...v, isActive: v.isActive })) ||
+              [],
             isInactiveProduct:
               product.status === ProductStatus.DRAFT ||
               product.status === ProductStatus.INACTIVE,
@@ -77,7 +70,6 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         : [];
 
       setProducts(mapped);
-
       if (onTotalChange) onTotalChange(result.total ?? 0);
     } catch (err) {
       console.error(err);
@@ -134,10 +126,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     }
   };
 
-  const handleBulkUpdate = async (value: number) => {
-    if (value === 0 || selectedRowKeys.length === 0) return;
+  // --- Bulk update logic ---
+  const bulkUpdate = async (value: number) => {
     setBulkActive(true);
-
     for (const key of selectedRowKeys) {
       const product = products.find((p) => p.id === key);
       if (!product) continue;
@@ -145,30 +136,52 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       try {
         if (product.variants?.length) {
           for (const v of product.variants) {
-            if (!v.isActive) continue; // skip inactive variant
+            if (!v.isActive) continue;
             await updateInventory({
               product_id: product.id,
               variant_id: v.id,
-              quantity_available: v.stock + value,
+              quantity_available: value === 0 ? 0 : v.stock + value,
             });
           }
         } else if (!product.isInactiveProduct) {
           await updateInventory({
             product_id: product.id,
-            quantity_available: product.stock + value,
+            quantity_available: value === 0 ? 0 : product.stock + value,
           });
         }
       } catch (err) {
         console.error(`Failed to update ${product.title}:`, err);
       }
     }
-
     setEditedStocks({});
     await fetchProducts();
     setBulkActive(false);
   };
 
-  // --- Row selection for desktop table ---
+  const handleBulkUpdate = async (value: number) => {
+    if (selectedRowKeys.length === 0) return;
+
+    if (value === 0) {
+      return new Promise<void>((resolve) => {
+        Modal.confirm({
+          title: "Set quantity to 0?",
+          content: `Are you sure you want to set the quantity of ${selectedRowKeys.length} selected product(s) to 0?`,
+          okText: "Yes, Set to 0",
+          cancelText: "Cancel",
+          okType: "danger",
+          onOk: async () => {
+            await bulkUpdate(0);
+            resolve();
+          },
+          onCancel: () => resolve(),
+        });
+      });
+    }
+
+    await bulkUpdate(value);
+  };
+
+  // --- Row selection ---
   const rowSelection: TableRowSelection<ProductRow | VariantRow> = {
     selectedRowKeys,
     onChange: setSelectedRowKeys,
@@ -192,9 +205,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-muted-foreground">No products found.</p>
       ) : (
         <>
-          <div>
-            <LowStockSummary products={products} />
-          </div>
+          <LowStockSummary products={products} />
           <BulkStockUpdate
             selectedCount={selectedRowKeys.length}
             onUpdate={handleBulkUpdate}

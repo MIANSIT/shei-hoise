@@ -197,10 +197,10 @@ const StockTable: React.FC<StockTableProps> = ({
           ? record.id
           : (record as VariantRow).productId;
         const variantId = isProductRow ? null : (record as VariantRow).id;
-        const isInactiveProduct =
-          isProductRow && (record as ProductRow).isInactiveProduct;
-        const isInactiveVariant =
-          !isProductRow && !(record as VariantRow).isActive;
+        // const isInactiveProduct =
+        //   isProductRow && (record as ProductRow).isInactiveProduct;
+        // const isInactiveVariant =
+        //   !isProductRow && !(record as VariantRow).isActive;
 
         if (isProductRow && record.variants?.length) {
           return (
@@ -250,7 +250,7 @@ const StockTable: React.FC<StockTableProps> = ({
               </Tooltip>
             )}
 
-            {showUpdateButton && !(isInactiveProduct || isInactiveVariant) && (
+            {showUpdateButton && (
               <SheiButton
                 onClick={async (e) => {
                   e.stopPropagation();
