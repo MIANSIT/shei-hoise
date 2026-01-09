@@ -6,12 +6,12 @@ import CTASection from "@/app/components/websiteDetialsSection/CTASection";
 import { Feature } from "@/lib/types/content.types";
 import Header from "../components/common/Header";
 import {
-  Store,
+  // Store,
   BarChart3,
   ShoppingCart,
-  Users,
+  // Users,
   Package,
-  CreditCard,
+  // CreditCard,
 } from "lucide-react";
 import Footer from "../components/common/Footer";
 
