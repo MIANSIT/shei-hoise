@@ -17,6 +17,41 @@ interface ContactUSFormProps {
   buttonText?: string;
 }
 
+/* ---------------- VALIDATION HELPERS ---------------- */
+
+const blockedEmailKeywords = [
+  "example",
+  "test",
+  "demo",
+  "sample",
+  "email",
+  "abc",
+  "xxx",
+];
+
+const isValidEmail = (email: string) => {
+  const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!basicRegex.test(email)) return false;
+
+  const localPart = email.split("@")[0].toLowerCase();
+  return !blockedEmailKeywords.some((word) => localPart.includes(word));
+};
+
+const isValidPhone = (phone: string) => {
+  // Remove spaces, dashes, parentheses
+  const cleaned = phone.replace(/[\s\-()]/g, "");
+
+  // Must be exactly 12 digits
+  if (!/^\d{12}$/.test(cleaned)) return false;
+
+  // Reject all zeros
+  if (/^0+$/.test(cleaned)) return false;
+
+  return true;
+};
+
+/* ---------------- COMPONENT ---------------- */
+
 export default function ContactUSForm({
   source = "demo_request",
   title = "Request a Demo",
@@ -27,14 +62,15 @@ export default function ContactUSForm({
     full_name: "",
     email: "",
     company_name: "",
+    phone_number: "",
     message: "",
     source,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const { success, error } = useSheiNotification();
 
-  // Update source in case prop changes dynamically
   useEffect(() => {
     setForm((prev) => ({ ...prev, source }));
   }, [source]);
@@ -42,19 +78,53 @@ export default function ContactUSForm({
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
+
+  /* ---------------- FORM VALIDATION ---------------- */
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!isValidEmail(form.email)) {
+      newErrors.email = "Please enter a valid business email address.";
+    }
+
+    if (!isValidPhone(form.phone_number)) {
+      newErrors.phone_number = "Please enter a valid 12-digit phone number.";
+    }
+
+    if (form.full_name.trim().length < 3) {
+      newErrors.full_name = "Full name must be at least 3 characters.";
+    }
+
+    if (form.company_name.trim().length < 2) {
+      newErrors.company_name = "Company name is required.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  /* ---------------- SUBMIT ---------------- */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) return;
+
     setLoading(true);
     try {
       await createContactUS(form);
       success("Form submitted successfully!");
+
       setForm({
         full_name: "",
         email: "",
         company_name: "",
+        phone_number: "",
         message: "",
         source,
       });
@@ -66,28 +136,34 @@ export default function ContactUSForm({
     }
   };
 
+  /* ---------------- UI ---------------- */
+
   return (
     <div className="w-full max-w-lg mx-auto">
       <h2 className="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6">
         {title}
       </h2>
+
       <p className="text-center text-gray-500 mb-6 sm:mb-8 text-sm sm:text-base">
         {subtitle}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+        {/* Full Name */}
         <div>
           <label className="block font-medium text-sm mb-1">Full Name</label>
           <Input
             name="full_name"
             value={form.full_name}
             onChange={handleChange}
-            className="h-12"
             placeholder="John Doe"
-            required
           />
+          {errors.full_name && (
+            <p className="text-red-500 text-xs mt-1">{errors.full_name}</p>
+          )}
         </div>
 
+        {/* Email */}
         <div>
           <label className="block font-medium text-sm mb-1">Email</label>
           <Input
@@ -95,40 +171,57 @@ export default function ContactUSForm({
             name="email"
             value={form.email}
             onChange={handleChange}
-            className="h-12"
-            placeholder="example@mail.com"
-            required
+            placeholder="xxx@xxxx.com"
           />
+          {errors.email && (
+            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+          )}
         </div>
 
+        {/* Phone */}
+        <div>
+          <label className="block font-medium text-sm mb-1">Phone Number</label>
+          <Input
+            type="tel"
+            name="phone_number"
+            value={form.phone_number}
+            onChange={handleChange}
+            placeholder="+880 1XXXXXXXXX"
+          />
+          {errors.phone_number && (
+            <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>
+          )}
+        </div>
+
+        {/* Company */}
         <div>
           <label className="block font-medium text-sm mb-1">Company Name</label>
           <Input
             name="company_name"
             value={form.company_name}
             onChange={handleChange}
-            className="h-12"
             placeholder="Acme Corp"
-            required
           />
+          {errors.company_name && (
+            <p className="text-red-500 text-xs mt-1">{errors.company_name}</p>
+          )}
         </div>
 
+        {/* Message */}
         <div>
           <label className="block font-medium text-sm mb-1">Message</label>
           <Textarea
             name="message"
             value={form.message}
             onChange={handleChange}
-            className="min-h-[100px] p-2 sm:p-3"
             placeholder="Your message..."
-            required
           />
         </div>
 
         <Button
           type="submit"
           disabled={loading}
-          className="w-full h-12 text-base font-medium"
+          className="w-full h-12"
           variant="greenish"
         >
           {loading ? "Submitting..." : buttonText}

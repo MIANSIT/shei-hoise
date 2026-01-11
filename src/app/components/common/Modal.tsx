@@ -29,12 +29,12 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center 
                  bg-black/30 backdrop-blur-sm px-4 sm:px-6"
-      onClick={onClose}
+      // Removed onClick here to prevent closing on overlay
     >
       <div
         className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto 
                    rounded-xl shadow-lg p-6 sm:p-8 bg-card"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // keep this to prevent inner clicks bubbling
       >
         {/* Close Button */}
         <button
