@@ -186,7 +186,23 @@ export default function ContactUSForm({
             name="phone_number"
             value={form.phone_number}
             onChange={handleChange}
-            placeholder="+880 1XXXXXXXXX"
+            onKeyDown={(e) => {
+              // Allow only digits, Backspace, Delete, Arrow keys, and Tab
+              if (
+                !/^\d$/.test(e.key) &&
+                ![
+                  "Backspace",
+                  "Delete",
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "Tab",
+                ].includes(e.key)
+              ) {
+                e.preventDefault();
+              }
+            }}
+            placeholder="8801XXXXXXXXX"
+            maxLength={12}
           />
           {errors.phone_number && (
             <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>
