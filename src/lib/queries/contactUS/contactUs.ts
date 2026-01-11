@@ -5,6 +5,7 @@ export interface ContactUSPayload {
   full_name: string;
   email: string;
   company_name: string;
+  phone_number: string; // <-- ADD THIS LINE
   message: string;
   source: string;
 }
