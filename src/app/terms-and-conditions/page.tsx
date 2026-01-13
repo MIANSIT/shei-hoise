@@ -6,6 +6,8 @@ import CTASection from "@/app/components/websiteDetialsSection/CTASection";
 import { Section } from "@/lib/types/content.types";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
+import { CONTACT_INFO } from "@/lib/store/contact";
+import Link from "next/link";
 
 const termsSections: Section[] = [
   {
@@ -112,21 +114,34 @@ export default function TermsAndConditions() {
                 </p>
                 <div className="space-y-2 text-muted-foreground">
                   <p>
-                    📧 Legal Email:{" "}
-                    <strong className="text-foreground">
-                      legal@storehub.com
-                    </strong>
+                    📧 Email:{" "}
+                    <Link
+                      href={CONTACT_INFO.emailHref}
+                      className="font-semibold text-foreground hover:underline"
+                    >
+                      {CONTACT_INFO.email}
+                    </Link>
                   </p>
                   <p>
-                    📍 Registered Office:{" "}
+                    📞 Phone:{" "}
+                    <Link
+                      href={CONTACT_INFO.phoneHref}
+                      className="font-semibold text-foreground hover:underline"
+                    >
+                      {CONTACT_INFO.phone}
+                    </Link>
+                  </p>
+                  <p>
+                    📍 Address:{" "}
                     <strong className="text-foreground">
-                      123 Commerce Street, Digital City, DC 10101
+                      {CONTACT_INFO.address}
                     </strong>
                   </p>
+
                   <p>
                     ⚖️ Dispute Resolution:{" "}
                     <strong className="text-foreground">
-                      30-day negotiation period required
+                      {CONTACT_INFO.support.disputeResolution}
                     </strong>
                   </p>
                 </div>
@@ -143,7 +158,7 @@ export default function TermsAndConditions() {
           variant="secondary"
         />
       </main>
-      <Footer/>
+      <Footer />
     </div>
   );
 }
