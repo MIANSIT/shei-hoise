@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import SuccessModal from "@/app/components/contactUs/SuccessModal";
 
 interface ContactUSFormProps {
   source?: string;
@@ -16,8 +17,6 @@ interface ContactUSFormProps {
   subtitle?: string;
   buttonText?: string;
 }
-
-/* ---------------- VALIDATION HELPERS ---------------- */
 
 const blockedEmailKeywords = [
   "example",
@@ -38,19 +37,11 @@ const isValidEmail = (email: string) => {
 };
 
 const isValidPhone = (phone: string) => {
-  // Remove spaces, dashes, parentheses
   const cleaned = phone.replace(/[\s\-()]/g, "");
-
-  // Must be exactly 12 digits
-  if (!/^\d{12}$/.test(cleaned)) return false;
-
-  // Reject all zeros
+  if (!/^\d{11}$/.test(cleaned)) return false;
   if (/^0+$/.test(cleaned)) return false;
-
   return true;
 };
-
-/* ---------------- COMPONENT ---------------- */
 
 export default function ContactUSForm({
   source = "demo_request",
@@ -69,7 +60,8 @@ export default function ContactUSForm({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const { success, error } = useSheiNotification();
+  const [successOpen, setSuccessOpen] = useState(false);
+  const { error } = useSheiNotification();
 
   useEffect(() => {
     setForm((prev) => ({ ...prev, source }));
@@ -83,43 +75,28 @@ export default function ContactUSForm({
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  /* ---------------- FORM VALIDATION ---------------- */
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!isValidEmail(form.email)) {
+    if (!isValidEmail(form.email))
       newErrors.email = "Please enter a valid business email address.";
-    }
-
-    if (!isValidPhone(form.phone_number)) {
-      newErrors.phone_number = "Please enter a valid 12-digit phone number.";
-    }
-
-    if (form.full_name.trim().length < 3) {
+    if (!isValidPhone(form.phone_number))
+      newErrors.phone_number = "Please enter a valid 11-digit phone number.";
+    if (form.full_name.trim().length < 3)
       newErrors.full_name = "Full name must be at least 3 characters.";
-    }
-
-    if (form.company_name.trim().length < 2) {
+    if (form.company_name.trim().length < 2)
       newErrors.company_name = "Company name is required.";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /* ---------------- SUBMIT ---------------- */
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     setLoading(true);
     try {
       await createContactUS(form);
-      success("Form submitted successfully!");
-
+      setSuccessOpen(true);
       setForm({
         full_name: "",
         email: "",
@@ -136,20 +113,18 @@ export default function ContactUSForm({
     }
   };
 
-  /* ---------------- UI ---------------- */
-
   return (
     <div className="w-full max-w-lg mx-auto">
+      <SuccessModal open={successOpen} onClose={() => setSuccessOpen(false)} />
+
       <h2 className="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6">
         {title}
       </h2>
-
       <p className="text-center text-gray-500 mb-6 sm:mb-8 text-sm sm:text-base">
         {subtitle}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-        {/* Full Name */}
         <div>
           <label className="block font-medium text-sm mb-1">Full Name</label>
           <Input
@@ -163,7 +138,6 @@ export default function ContactUSForm({
           )}
         </div>
 
-        {/* Email */}
         <div>
           <label className="block font-medium text-sm mb-1">Email</label>
           <Input
@@ -178,7 +152,6 @@ export default function ContactUSForm({
           )}
         </div>
 
-        {/* Phone */}
         <div>
           <label className="block font-medium text-sm mb-1">Phone Number</label>
           <Input
@@ -187,7 +160,6 @@ export default function ContactUSForm({
             value={form.phone_number}
             onChange={handleChange}
             onKeyDown={(e) => {
-              // Allow only digits, Backspace, Delete, Arrow keys, and Tab
               if (
                 !/^\d$/.test(e.key) &&
                 ![
@@ -201,7 +173,7 @@ export default function ContactUSForm({
                 e.preventDefault();
               }
             }}
-            placeholder="8801XXXXXXXXX"
+            placeholder="01XXXXXXXXX"
             maxLength={12}
           />
           {errors.phone_number && (
@@ -209,7 +181,6 @@ export default function ContactUSForm({
           )}
         </div>
 
-        {/* Company */}
         <div>
           <label className="block font-medium text-sm mb-1">Company Name</label>
           <Input
@@ -223,7 +194,6 @@ export default function ContactUSForm({
           )}
         </div>
 
-        {/* Message */}
         <div>
           <label className="block font-medium text-sm mb-1">Message</label>
           <Textarea
