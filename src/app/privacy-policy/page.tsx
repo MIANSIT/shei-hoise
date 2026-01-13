@@ -5,7 +5,8 @@ import ContentSection from "@/app/components/websiteDetialsSection/ContentSectio
 import { Section } from "@/lib/types/content.types";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
-
+import { CONTACT_INFO } from "@/lib/store/contact";
+import Link from "next/link";
 const privacySections: Section[] = [
   {
     id: "information-collection",
@@ -109,20 +110,33 @@ export default function PrivacyPolicy() {
                 <div className="space-y-2 text-muted-foreground">
                   <p>
                     📧 Email:{" "}
-                    <strong className="text-foreground">
-                      privacy@storehub.com
-                    </strong>
+                    <Link
+                      href={CONTACT_INFO.emailHref}
+                      className="font-semibold text-foreground hover:underline"
+                    >
+                      {CONTACT_INFO.email}
+                    </Link>
+                  </p>
+                  <p>
+                    📞 Phone:{" "}
+                    <Link
+                      href={CONTACT_INFO.phoneHref}
+                      className="font-semibold text-foreground hover:underline"
+                    >
+                      {CONTACT_INFO.phone}
+                    </Link>
                   </p>
                   <p>
                     📍 Address:{" "}
                     <strong className="text-foreground">
-                      123 Commerce Street, Digital City, DC 10101
+                      {CONTACT_INFO.address}
                     </strong>
                   </p>
+
                   <p>
                     🕒 Response Time:{" "}
                     <strong className="text-foreground">
-                      Within 24-48 hours
+                   {  CONTACT_INFO.support.responseTime}
                     </strong>
                   </p>
                 </div>
@@ -131,7 +145,7 @@ export default function PrivacyPolicy() {
           </div>
         </div>
       </main>
-      <Footer/>
+      <Footer />
     </div>
   );
 }
