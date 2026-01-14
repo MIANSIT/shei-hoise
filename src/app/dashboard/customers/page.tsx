@@ -148,14 +148,14 @@ export default function CustomerPage() {
         setSelectedCustomer(updatedCustomer);
 
       notification.success({
-        message: "Customer Updated",
+        title: "Customer Updated",
         description: `${updatedCustomer.name} updated successfully.`,
       });
 
       return updatedCustomer;
     } catch (error) {
       notification.error({
-        message: "Error",
+        title: "Error",
         description: "Failed to update customer.",
       });
       throw error;
@@ -342,7 +342,7 @@ export default function CustomerPage() {
                     icon={<LeftOutlined />}
                     onClick={handlePrevPage}
                     disabled={currentPage === 1}
-                    className="flex-1 max-w-[120px]"
+                    className="flex-1 max-w-30"
                   >
                     Previous
                   </Button>
@@ -359,7 +359,7 @@ export default function CustomerPage() {
                     icon={<RightOutlined />}
                     onClick={handleNextPage}
                     disabled={currentPage === totalPages}
-                    className="flex-1 max-w-[120px]"
+                    className="flex-1 max-w-30"
                   >
                     Next
                   </Button>

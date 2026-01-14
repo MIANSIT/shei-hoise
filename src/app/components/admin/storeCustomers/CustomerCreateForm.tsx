@@ -126,7 +126,7 @@ export default function CustomerCreateForm({
 
   return (
     <Card className={compact ? "compact-form" : ""}>
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         {!compact && (
           <Title level={4} style={{ margin: 0 }}>
             Create New Customer
@@ -276,9 +276,9 @@ export default function CustomerCreateForm({
         </Form>
 
         <Alert
-          message="Customer Account Creation"
+          title="Customer Account Creation"
           description={
-            <Space direction="vertical" size={0}>
+            <Space orientation="vertical" size={0}>
               <Text>
                 The admin will create the customer account without a password.
               </Text>

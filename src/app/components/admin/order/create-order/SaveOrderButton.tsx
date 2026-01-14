@@ -68,7 +68,7 @@ export default function SaveOrderButton({
       title: "Confirm Order Creation",
       icon: <ExclamationCircleOutlined />,
       content: (
-        <Space direction="vertical">
+        <Space orientation="vertical">
           <Text>Are you sure you want to create this order?</Text>
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
@@ -143,7 +143,7 @@ export default function SaveOrderButton({
           }
 
           notification.success({
-            message: "Customer Created",
+            title: "Customer Created",
             description: "New customer record created successfully in store_customers.",
           });
         } catch (customerError: any) {
@@ -153,7 +153,7 @@ export default function SaveOrderButton({
             modal.confirm({
               title: "Customer Creation Failed",
               content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                   <Text>
                     Failed to create customer record: {customerError.message}
                   </Text>
@@ -211,7 +211,7 @@ export default function SaveOrderButton({
         modal.success({
           title: "Order Created Successfully",
           content: (
-            <Space direction="vertical">
+            <Space orientation="vertical">
               <Text>{successMessage}</Text>
               <Text type="secondary">Order ID: {result.orderId}</Text>
               <Text type="secondary">Customer Email: {customerInfo.email}</Text>

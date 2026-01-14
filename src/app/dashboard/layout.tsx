@@ -7,7 +7,7 @@ import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
 import { PanelLeft } from "lucide-react";
 import { ConfigProvider, theme as antdTheme, App as AntdApp, Spin } from "antd";
-import "@ant-design/v5-patch-for-react-19";
+// import "@ant-design/v5-patch-for-react-19";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 import Link from "next/link";
-import { StoreStatus } from "@/lib/types/enums";
+// import { StoreStatus } from "@/lib/types/enums";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         console.error("Failed to fetch store:", err);
         setStoreLoading(false);
       });
-  }, [storeSlug]);
+  }, [storeLoading, storeSlug]);
 
   // Sidebar responsiveness - only run on client
   useEffect(() => {

@@ -22,13 +22,11 @@ export default function AddProductPage() {
   const handleSubmit = async (product: ProductType) => {
     try {
       await createProduct(product);
-
       success(
         <div>
           🎉 <b>{product.name}</b> has been added successfully!
         </div>
       );
-
       formRef.current?.reset();
       router.push("/dashboard/products");
     } catch (err: unknown) {
@@ -36,25 +34,8 @@ export default function AddProductPage() {
 
       let errorMessage = "❌ Failed to add product. Please try again.";
 
-      // Supabase error handling
-      if (err && typeof err === "object" && "code" in err) {
-        const supabaseErr = err as {
-          code: string;
-          message?: string;
-          details?: string;
-        };
-
-        if (supabaseErr.code === "23505") {
-          // Duplicate key error
-          errorMessage =
-            "❌ A product with this name or slug already exists. Please choose a different name or slug.";
-        } else {
-          errorMessage = `❌ ${supabaseErr.message ?? "Something went wrong."}`;
-        }
-      } else if (err instanceof Error) {
-        errorMessage = `❌ ${err.message}`;
-      } else if (typeof err === "string") {
-        errorMessage = `❌ ${err}`;
+      if (err instanceof Error) {
+        errorMessage = err.message; // <-- will now show friendly message for duplicates
       }
 
       error(errorMessage);

@@ -105,7 +105,7 @@ const BulkActions: React.FC<Props> = ({
       content: (
         <div className="p-1">
           <Alert
-            message="Bulk Update Action"
+            title="Bulk Update Action"
             description="This will update all selected orders with the following changes:"
             type="info"
             showIcon
@@ -212,7 +212,7 @@ const BulkActions: React.FC<Props> = ({
       >
         <div className="space-y-4 sm:space-y-6">
           <Alert
-            message="Bulk Update Instructions"
+            title="Bulk Update Instructions"
             description="Select the fields you want to update for all selected orders. Leave a field empty to keep its current value."
             type="info"
             showIcon
@@ -306,7 +306,7 @@ const BulkActions: React.FC<Props> = ({
 
           {hasUpdates && (
             <Alert
-              message="Ready to Update"
+              title="Ready to Update"
               description="Click 'Review Changes' to confirm the bulk update operation."
               type="success"
               showIcon

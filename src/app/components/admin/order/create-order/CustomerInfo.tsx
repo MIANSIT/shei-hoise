@@ -66,9 +66,9 @@ export default function CustomerInfo({
     touchedFields.email && (!customerInfo.email || emailError);
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+    <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div>
             <Title level={4} style={{ margin: 0 }}>
               Customer Information
@@ -249,9 +249,9 @@ export default function CustomerInfo({
 
           {!isExistingCustomer && emailError && (
             <Alert
-              message="Duplicate Email Detected"
+              title="Duplicate Email Detected"
               description={
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                   <Text>{emailError}</Text>
                   <Text type="secondary">
                     Please use the existing customer option or a different email
@@ -266,9 +266,9 @@ export default function CustomerInfo({
 
           {!isExistingCustomer && !emailError && (
             <Alert
-              message="Customer Record Creation"
+              title="Customer Record Creation"
               description={
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                   <Text>
                     A customer record will be created in the system with the
                     provided information.
@@ -286,7 +286,7 @@ export default function CustomerInfo({
 
           {isExistingCustomer && customerInfo.customer_id && (
             <Alert
-              message="Customer Information"
+              title="Customer Information"
               description="This order is linked to an existing customer. Basic customer information is auto-filled. You can modify the delivery address and city for this specific order."
               type="info"
               showIcon

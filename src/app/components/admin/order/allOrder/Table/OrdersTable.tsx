@@ -125,16 +125,16 @@ const OrdersTable: React.FC<Props> = ({
       await dataService.deleteOrder(orderId);
 
       notification.success({
-        message: "Order Deleted",
+        title: "Order Deleted",
         description: "Order has been deleted successfully.",
       });
       onRefresh?.();
     } catch (error: any) {
       console.error("Error deleting order:", error);
       notification.error({
-        message: "Delete Failed",
+        title: "Delete Failed",
         description:
-          error.message || "Failed to delete order. Please try again.",
+          error.title || "Failed to delete order. Please try again.",
       });
     } finally {
       setDeleteLoading(null);

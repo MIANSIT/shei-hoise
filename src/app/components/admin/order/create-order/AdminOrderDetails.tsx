@@ -7,7 +7,6 @@ import {
   Select,
   Row,
   Col,
-  List,
   Tag,
   Space,
   Typography,
@@ -159,30 +158,67 @@ export default function AdminOrderDetails({
           }
         : undefined;
 
-    const newOrderProduct: OrderProduct = {
-      product_id: selectedProduct.id,
-      variant_id:
-        selectedVariantId !== "no-variant" ? selectedVariantId : undefined,
-      product_name: selectedProduct.name,
-      variant_details: variantDetails,
-      quantity: quantity,
-      unit_price: unitPrice,
-      total_price: totalPrice,
-      variant_name:
-        selectedVariantId !== "no-variant"
-          ? selectedVariant?.variant_name || undefined
-          : undefined,
-    };
+    setOrderProducts((prev) => {
+      // Check if product + variant already exists
+      const existingIndex = prev.findIndex(
+        (p) =>
+          p.product_id === selectedProduct.id &&
+          (p.variant_id || "no-variant") ===
+            (selectedVariantId !== "no-variant"
+              ? selectedVariantId
+              : "no-variant")
+      );
 
-    setOrderProducts((prev) => [...prev, newOrderProduct]);
+      if (existingIndex !== -1) {
+        // Update existing quantity and total_price
+        const updated = [...prev];
+        const existingItem = updated[existingIndex];
+        const newQuantity = existingItem.quantity + quantity;
+
+        // Make sure not exceeding stock
+        const maxQuantity =
+          selectedVariantId !== "no-variant" && selectedVariant
+            ? getAvailableQuantity(selectedVariant)
+            : getBaseProductAvailableQuantity(selectedProduct);
+
+        updated[existingIndex] = {
+          ...existingItem,
+          quantity: Math.min(newQuantity, maxQuantity),
+          total_price: unitPrice * Math.min(newQuantity, maxQuantity),
+        };
+
+        return updated;
+      }
+
+      // Otherwise, add new product
+      return [
+        ...prev,
+        {
+          product_id: selectedProduct.id,
+          variant_id:
+            selectedVariantId !== "no-variant" ? selectedVariantId : undefined,
+          product_name: selectedProduct.name,
+          variant_details: variantDetails,
+          quantity: quantity,
+          unit_price: unitPrice,
+          total_price: totalPrice,
+          variant_name:
+            selectedVariantId !== "no-variant"
+              ? selectedVariant?.variant_name || undefined
+              : undefined,
+        },
+      ];
+    });
+
     api.success({
-      message: "Product Added Successfully",
+      title: "Product Added Successfully",
       description: `${selectedProduct.name}${
         selectedVariant ? ` - ${selectedVariant.variant_name}` : ""
       } (Qty: ${quantity}) has been added to the order.`,
       placement: "topRight",
       duration: 3,
     });
+
     // Reset form
     setSelectedProductId("");
     setSelectedVariantId("no-variant");
@@ -307,7 +343,7 @@ export default function AdminOrderDetails({
           },
         }}
       >
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <Title level={4} style={{ margin: 0 }}>
             Order Items
           </Title>
@@ -319,7 +355,7 @@ export default function AdminOrderDetails({
             <Row gutter={[16, 16]}>
               <Col xs={24}>
                 <Space
-                  direction="vertical"
+                  orientation="vertical"
                   style={{ width: "100%" }}
                   size="small"
                 >
@@ -390,7 +426,7 @@ export default function AdminOrderDetails({
             <Row gutter={[16, 16]} style={{ marginTop: "16px" }}>
               <Col xs={24} md={12}>
                 <Space
-                  direction="vertical"
+                  orientation="vertical"
                   style={{ width: "100%" }}
                   size="small"
                 >
@@ -446,7 +482,7 @@ export default function AdminOrderDetails({
 
               <Col xs={24} md={12}>
                 <Space
-                  direction="vertical"
+                  orientation="vertical"
                   style={{ width: "100%" }}
                   size="small"
                 >
@@ -493,7 +529,7 @@ export default function AdminOrderDetails({
               availableVariants.length > 0 &&
               selectedVariantId === "no-variant" && (
                 <Alert
-                  message="Variant Required"
+                  title="Variant Required"
                   description="Please select a variant for this product"
                   type="warning"
                   showIcon
@@ -504,7 +540,11 @@ export default function AdminOrderDetails({
 
           {/* Order Items List */}
           {orderProducts.length > 0 ? (
-            <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            <Space
+              orientation="vertical"
+              style={{ width: "100%" }}
+              size="middle"
+            >
               <Divider />
               <Space style={{ width: "100%", justifyContent: "space-between" }}>
                 <Text strong>Added Items ({orderProducts.length})</Text>
@@ -516,14 +556,16 @@ export default function AdminOrderDetails({
                 </Text>
               </Space>
 
-              <List
-                dataSource={orderProducts}
-                renderItem={(item, index) => (
-                  <List.Item
+              <div className="order-products-list">
+                {orderProducts.map((item, index) => (
+                  <div
+                    key={index}
                     style={{
+                      display: "flex",
                       flexDirection: "column",
                       alignItems: "flex-start",
                       padding: "12px 8px",
+                      borderBottom: "1px solid #f0f0f0",
                     }}
                   >
                     <Row
@@ -534,29 +576,26 @@ export default function AdminOrderDetails({
                     >
                       {/* Product Info */}
                       <Col xs={24} sm={16} md={16} lg={18}>
-                        <List.Item.Meta
-                          title={
-                            <Space wrap>
-                              <Text strong>{item.product_name}</Text>
-                              {item.variant_name && (
-                                <Tag color="blue" style={{ marginLeft: 4 }}>
-                                  {item.variant_name}
-                                </Tag>
-                              )}
-                            </Space>
-                          }
-                          description={
+                        <div>
+                          <Space wrap>
+                            <Text strong>{item.product_name}</Text>
+                            {item.variant_name && (
+                              <Tag color="blue" style={{ marginLeft: 4 }}>
+                                {item.variant_name}
+                              </Tag>
+                            )}
+                          </Space>
+                          <div>
                             <Text>
                               {displayCurrencyIconSafe}
                               {item.unit_price} × {item.quantity} ={" "}
                               <Text strong>
-                                {" "}
                                 {displayCurrencyIconSafe}
                                 {item.total_price}
                               </Text>
                             </Text>
-                          }
-                        />
+                          </div>
+                        </div>
                       </Col>
 
                       {/* Quantity Controls */}
@@ -596,10 +635,7 @@ export default function AdminOrderDetails({
                               onChange={(value) =>
                                 handleQuantityChange(index, value || 1)
                               }
-                              style={{
-                                width: "60px",
-                                textAlign: "center",
-                              }}
+                              style={{ width: "60px", textAlign: "center" }}
                             />
                             <Button
                               size="small"
@@ -622,9 +658,9 @@ export default function AdminOrderDetails({
                         </Space>
                       </Col>
                     </Row>
-                  </List.Item>
-                )}
-              />
+                  </div>
+                ))}
+              </div>
             </Space>
           ) : (
             <Empty

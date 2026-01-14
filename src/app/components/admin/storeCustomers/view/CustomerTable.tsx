@@ -130,7 +130,7 @@ export function CustomerTable({
         email: string,
         record: DetailedCustomer // Update type
       ) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Space>
             <MailOutlined style={{ color: "#1890ff" }} />
             <Text>{email}</Text>

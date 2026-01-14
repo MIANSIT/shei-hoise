@@ -257,28 +257,37 @@ export default function CreateOrder() {
   ]);
 
   // Main data fetching effect
+  const [initialLoading, setInitialLoading] = useState(true);
+
   useEffect(() => {
     if (user?.store_id && !userLoading && !hasFetchedData) {
       setHasFetchedData(true);
 
-      fetchStoreName().then(() => {
-        Promise.all([
-          fetchProducts(),
-          fetchCustomers(),
-          fetchStoreSettings(),
-        ]).catch((error) => {
-          console.error("Error in initial data fetch:", error);
-        });
-      });
+      const fetchAll = async () => {
+        try {
+          await Promise.allSettled([
+            fetchStoreName(), // fetch store prefix
+            fetchProducts(), // fetch products
+            fetchCustomers(), // fetch customers
+            fetchStoreSettings(), // fetch shipping fees & tax
+          ]);
+        } catch (error) {
+          console.error("Error fetching initial data:", error);
+        } finally {
+          setInitialLoading(false);
+        }
+      };
+
+      fetchAll();
     }
   }, [
     user?.store_id,
     userLoading,
     hasFetchedData,
+    fetchStoreName,
     fetchProducts,
     fetchCustomers,
     fetchStoreSettings,
-    fetchStoreName,
   ]);
 
   // Generate order ID with store name prefix
@@ -350,7 +359,6 @@ export default function CreateOrder() {
     const calculatedTotal =
       newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
     setTotalAmount(calculatedTotal);
-
   }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
 
   // Handle customer selection
@@ -480,7 +488,7 @@ export default function CreateOrder() {
     }
 
     return (
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Row gutter={[16, 16]} align="middle">
           <Col flex="auto">
             <Text strong>Select Existing Customer</Text>
@@ -516,16 +524,20 @@ export default function CreateOrder() {
             }
           />
         ) : (
-          <Space direction="vertical" style={{ width: "100%" }} size="large">
+          <Space orientation="vertical" style={{ width: "100%" }} size="large">
             <Select
               placeholder="Select a customer from order history..."
               value={selectedCustomer?.id || undefined}
               onChange={handleCustomerSelect}
               style={{ width: "100%" }}
               size="large"
-              showSearch
-              filterOption={false}
-              onSearch={setSearchTerm}
+              showSearch={{
+                filterOption: (input, option) => {
+                  const customer = option?.children?.[1]?.props?.children || "";
+                  return customer.toLowerCase().includes(input.toLowerCase());
+                },
+                onSearch: setSearchTerm,
+              }}
               notFoundContent={
                 searchTerm ? "No customers found" : "Type to search customers"
               }
@@ -593,7 +605,7 @@ export default function CreateOrder() {
 
                   {customerProfile ? (
                     <Alert
-                      message="Address Auto-filled"
+                      title="Address Auto-filled"
                       description="Customer address has been auto-filled from their recent order. You can modify if needed."
                       type="success"
                       showIcon
@@ -601,7 +613,7 @@ export default function CreateOrder() {
                     />
                   ) : (
                     <Alert
-                      message="Address Required"
+                      title="Address Required"
                       description="Please enter the delivery address, city, and postal code for this order."
                       type="info"
                       showIcon
@@ -625,7 +637,7 @@ export default function CreateOrder() {
 
             {!selectedCustomer && filteredCustomers.length > 0 && (
               <Alert
-                message="Select a Customer"
+                title="Select a Customer"
                 description="Choose a customer from the dropdown above to pre-fill their information."
                 type="info"
                 showIcon
@@ -637,23 +649,12 @@ export default function CreateOrder() {
     );
   };
 
-  if (userLoading) {
+  if (userLoading || initialLoading) {
     return (
       <div className="flex justify-center items-center min-h-64 flex-col">
         <Spin size="large" />
         <div className="mt-4">
-          <Text type="secondary">Loading user information...</Text>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-64 flex-col">
-        <Spin size="large" />
-        <div className="mt-4">
-          <Text type="secondary">Loading products...</Text>
+          <Text type="secondary">Loading data...</Text>
         </div>
       </div>
     );
@@ -662,7 +663,7 @@ export default function CreateOrder() {
   return (
     <div className=" overflow-auto">
       <div className="max-w-6xl mx-auto">
-        <Space direction="vertical" size="large" className="w-full">
+        <Space orientation="vertical" size="large" className="w-full">
           <div>
             <Title level={2} className="m-0">
               Create New Order
