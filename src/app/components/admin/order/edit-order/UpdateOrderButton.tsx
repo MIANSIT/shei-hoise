@@ -68,7 +68,7 @@ export default function UpdateOrderButton({
       title: "Confirm Order Update",
       icon: <ExclamationCircleOutlined />,
       content: (
-        <Space direction="vertical">
+        <Space orientation="vertical">
           <Text>Are you sure you want to update this order?</Text>
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
@@ -166,7 +166,7 @@ export default function UpdateOrderButton({
 
       if (result.success) {
         notification.success({
-          message: "Order Updated Successfully",
+          title: "Order Updated Successfully",
           description: `Order ${orderId} has been updated with all customer details.`,
           duration: 4,
         });
@@ -181,13 +181,13 @@ export default function UpdateOrderButton({
     } catch (error: any) {
       console.error("💥 Error updating order:", error);
       
-      let errorMessage = error.message || "Unknown error occurred. Please check the console for details.";
+      let errorMessage = error.title || "Unknown error occurred. Please check the console for details.";
       
-      if (error.message?.includes("order not found")) {
+      if (error.title?.includes("order not found")) {
         errorMessage = "Order not found. It may have been deleted.";
-      } else if (error.message?.includes("permission denied")) {
+      } else if (error.title?.includes("permission denied")) {
         errorMessage = "You don't have permission to update this order.";
-      } else if (error.message?.includes("network")) {
+      } else if (error.title?.includes("network")) {
         errorMessage = "Network error. Please check your connection and try again.";
       }
 

@@ -14,7 +14,7 @@ export default function CreateCustomerPage() {
 
   const handleCustomerCreated = (customer: CreateCustomerResponse) => {
     notification.success({
-      message: "Customer Created Successfully",
+      title: "Customer Created Successfully",
       description: `${customer.name} has been added to your store.`,
     });
 
@@ -24,7 +24,7 @@ export default function CreateCustomerPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Space direction="vertical" size="large" className="w-full">
+      <Space orientation="vertical" size="large" className="w-full">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
