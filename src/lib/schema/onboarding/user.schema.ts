@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  StoreStatus,
-  USER_TYPES,
-  Currency,
-} from "@/lib/types/enums";
+import { StoreStatus, USER_TYPES, Currency } from "@/lib/types/enums";
 
 /* ----------------------------------
    Helpers
@@ -48,7 +44,7 @@ const storeSchema = z.object({
   store_slug: z.string().nonempty("Store slug is required"),
 
   logo_url: requiredFileOrUrl,
-  banner_url: requiredFileOrUrl,
+  banner_url: fileOrUrl.optional(), // now optional
 
   description: z.string().optional(),
 
@@ -74,12 +70,17 @@ const storeSettingsSchema = z.object({
   shipping_fees: z
     .array(
       z.object({
-        name: z.string().nonempty("Shipping name required"),
-        price: z.number().min(0, "Price must be 0 or more"),
+        name: z.string().nonempty("Shipping method is required"),
+
+        price: z.number().min(1, "Shipping fee must be greater than 0"),
+
+        estimated_days: z
+          .number()
+          .int()
+          .min(1, "Estimated days must be greater than 0"),
       })
     )
-    .min(1, { message: "At least one shipping fee is required" }),
-
+    .min(1, { message: "At least one shipping method is required" }),
   free_shipping_threshold: z.number().min(0).optional(),
   min_order_amount: z.number().min(0),
 
@@ -91,7 +92,8 @@ const storeSettingsSchema = z.object({
 });
 
 /* ----------------------------------
-   Create User Schema
+   Create User Schema (BE payload only)
+   REMOVED: password_confirmation and accept_terms
 ---------------------------------- */
 
 export const createUserSchema = z.object({
@@ -109,9 +111,7 @@ export const createUserSchema = z.object({
   last_name: z.string().nonempty("Last name is required"),
   phone: z.string().nonempty("Phone number is required"),
 
-  user_type: z.enum(
-    Object.values(USER_TYPES) as [string, ...string[]]
-  ),
+  user_type: z.enum(Object.values(USER_TYPES) as [string, ...string[]]),
 
   profile: userProfileSchema.optional(),
 
