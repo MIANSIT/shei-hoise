@@ -1,4 +1,3 @@
-// components/FormItemWrapper.tsx
 import { Form, FormItemProps } from "antd";
 import { FieldError } from "react-hook-form";
 import React from "react";
@@ -6,25 +5,30 @@ import React from "react";
 interface FormItemWrapperProps extends FormItemProps {
   error?: FieldError | string;
   children: React.ReactNode;
-  className?: string;
+  label?: React.ReactNode; // Can be string or JSX (<span className="text-foreground">)
+  className?: string;      // For additional custom styling
 }
 
 export function FormItemWrapper({
   error,
   children,
+  label,
+  className = "",
   ...props
 }: FormItemWrapperProps) {
+  // Determine error message
   const errorMessage = typeof error === "string" ? error : error?.message;
 
   return (
     <Form.Item
       preserve={false}
-      label={props.label} // keep the label
-      colon={false} // optional: remove the colon
-      labelCol={{ span: 24 }} // make label take full width
-      wrapperCol={{ span: 24 }} // input takes full width
+      label={label}
+      colon={false}
+      labelCol={{ span: 24 }}
+      wrapperCol={{ span: 24 }}
       validateStatus={error ? "error" : undefined}
-      help={errorMessage}
+      help={errorMessage ? <span className="text-destructive text-xs">{errorMessage}</span> : undefined}
+      className={`mb-2 ${className}`} // <-- automatic compact margin
       {...props}
     >
       {children}

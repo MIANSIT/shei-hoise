@@ -9,7 +9,7 @@ import type { ControllerRenderProps, FieldValues, Path } from "react-hook-form";
 
 interface UploadImageProps<T extends FieldValues> {
   field: ControllerRenderProps<T, Path<T>>;
-  label?: string;
+  label?: React.ReactNode; // ✅ allow string or JSX
 }
 
 export default function UploadImage<T extends FieldValues>({
@@ -96,14 +96,12 @@ export default function UploadImage<T extends FieldValues>({
         onPreview={handlePreview}
       >
         <div>
-          <PlusOutlined />
+          <PlusOutlined className="text-primary! text-xl" />
           <div style={{ marginTop: 8 }}>{label}</div>
         </div>
       </Upload>
 
-      {error && (
-        <Alert message={error} type="error" showIcon className="mt-2" />
-      )}
+      {error && <Alert title={error} type="error" showIcon className="mt-2" />}
 
       <Modal
         open={previewOpen}
