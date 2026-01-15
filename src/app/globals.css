@@ -172,3 +172,36 @@
 /* Menu background black */
 /* Transparent background and white text for AntD Table */
 
+/* Step titles */
+.ant-steps-item-title {
+  color: var(--primary) !important;
+}
+
+/* Step titles hover */
+.ant-steps-item:hover .ant-steps-item-title {
+  color: var(--primary) !important;
+}
+
+/* Step titles for active step */
+.ant-steps-item.ant-steps-item-process .ant-steps-item-title {
+  color: var(--primary) !important;
+}
+
+/* Step number / icon - inactive */
+.ant-steps-item-icon {
+  color: var(--ring) !important; /* number text color if needed */
+  border-color: var(--ring) !important; /* circle border for number */
+  background-color: var(--background) !important; /* background inside circle */
+}
+
+/* Step number / icon - active */
+.ant-steps-item.ant-steps-item-process .ant-steps-item-icon {
+  color: var(--primary) !important; /* active number text */
+  border-color: var(--badge) !important; /* active border */
+  background-color: var(--badge) !important;
+}
+
+/* Step number / icon - hover */
+.ant-steps-item:hover .ant-steps-item-icon {
+  border-color: var(--ring) !important;
+}
