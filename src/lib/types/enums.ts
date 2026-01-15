@@ -49,7 +49,7 @@ export enum StoreStatus {
   TRIAL = "trial",
 }
 
-const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
+export const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
   [StoreStatus.PENDING]: "PENDING",
   [StoreStatus.APPROVED]: "APPROVED",
   [StoreStatus.REJECTED]: "REJECTED",
@@ -69,4 +69,17 @@ export const CURRENCY_ICONS: Record<Currency, string> = {
   // [Currency.EUR]: "(€)",
   // [Currency.GBP]: "(£)",
   // [Currency.INR]: "(₹)",
+};
+export const USER_TYPES = {
+  //   SUPER_ADMIN: "super_admin",
+  STORE_OWNER: "store_owner",
+  //   CUSTOMER: "customer",
+} as const;
+
+export type UserType = (typeof USER_TYPES)[keyof typeof USER_TYPES];
+
+export const USER_TYPE_LABELS: Record<UserType, string> = {
+  //   super_admin: "Super Admin",
+  store_owner: "Store Owner",
+  //   customer: "Customer",
 };

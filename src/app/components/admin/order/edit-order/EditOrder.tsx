@@ -438,7 +438,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   // Render customer information
   const renderCustomerInfo = () => {
     return (
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <CustomerInfo
           customerInfo={customerInfo}
           setCustomerInfo={setCustomerInfo}
@@ -481,7 +481,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     return (
       <div className="flex justify-center items-center min-h-64 flex-col">
         <Alert
-          message="Order Not Found"
+          title="Order Not Found"
           description={`Order with number ${orderNumber} was not found.`}
           type="error"
           showIcon
@@ -500,7 +500,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   return (
     <div className="h-full overflow-auto">
       <div className="max-w-full mx-auto">
-        <Space direction="vertical" size="large" className="w-full">
+        <Space orientation="vertical" size="large" className="w-full">
           <div className="flex justify-between items-center">
             <div>
               <Button

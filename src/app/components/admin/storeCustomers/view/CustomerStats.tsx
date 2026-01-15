@@ -29,7 +29,11 @@ export function CustomerStats({
             title="Total Customers"
             value={totalCustomers}
             prefix={<TeamOutlined />}
-            valueStyle={{ color: "#1890ff" }}
+            styles={{
+              content: {
+                color: "#1890ff", // now applied here
+              },
+            }}
           />
         </Card>
       </Col>
@@ -39,7 +43,11 @@ export function CustomerStats({
             title="Active Customers (From Orders)"
             value={activeCustomersOrders}
             prefix={<CheckCircleOutlined />}
-            valueStyle={{ color: "#52c41a" }}
+            styles={{
+              content: {
+                color: "#52c41a", // now applied here
+              },
+            }}
           />
         </Card>
       </Col>
@@ -49,7 +57,11 @@ export function CustomerStats({
             title="Active Customers (From Status)"
             value={activeCustomersStatus}
             prefix={<UserOutlined />}
-            valueStyle={{ color: "#faad14" }}
+            styles={{
+              content: {
+                color: "#faad14", // now applied here
+              },
+            }}
           />
         </Card>
       </Col>
@@ -59,7 +71,11 @@ export function CustomerStats({
             title="This Month"
             value={thisMonth}
             prefix={<RiseOutlined />}
-            valueStyle={{ color: "#722ed1" }}
+            styles={{
+              content: {
+                color: "#722ed1", // now applied here
+              },
+            }}
           />
         </Card>
       </Col>

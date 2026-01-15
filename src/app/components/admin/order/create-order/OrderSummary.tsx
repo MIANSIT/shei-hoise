@@ -166,7 +166,7 @@ export default function OrderSummary({
         },
       }}
     >
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Title level={4} style={{ margin: 0 }}>
           Order Summary
         </Title>
@@ -174,13 +174,13 @@ export default function OrderSummary({
         {/* Shipping Fee Alert */}
         {displayShippingFee && customerDeliveryOption && !isCustomDelivery && (
           <Alert
-            message={
+            title={
               isManualDeliveryCost
                 ? "Custom Shipping Fee"
                 : "Shipping Fee Applied"
             }
             description={
-              <Space direction="vertical" size={0}>
+              <Space orientation="vertical" size={0}>
                 <Text>
                   <strong>{displayShippingFee.name}</strong>: (
                   {displayCurrencyIcon}){displayShippingFee.price}
@@ -206,9 +206,9 @@ export default function OrderSummary({
         {/* Custom Delivery Alert */}
         {isCustomDelivery && (
           <Alert
-            message="Custom Delivery Fee"
+            title="Custom Delivery Fee"
             description={
-              <Space direction="vertical" size={0}>
+              <Space orientation="vertical" size={0}>
                 <Text>
                   <strong>Custom Delivery</strong>: ({displayCurrencyIcon})
                   {deliveryCost}
@@ -224,7 +224,7 @@ export default function OrderSummary({
         )}
 
         {/* Order Totals */}
-        <Space direction="vertical" style={{ width: "100%" }} size="small">
+        <Space orientation="vertical" style={{ width: "100%" }} size="small">
           <Row gutter={16}>
             <Col span={12}>
               <Text>Subtotal:</Text>
@@ -405,7 +405,7 @@ export default function OrderSummary({
         <Divider />
 
         {/* Order Status & Payment */}
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item label="Order Status">
