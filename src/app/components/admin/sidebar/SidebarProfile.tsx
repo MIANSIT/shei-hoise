@@ -52,7 +52,7 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
 
   return (
     <div
-      className='p-4 mt-auto'
+      className="p-4 mt-auto"
       style={{
         borderTop: "1px solid var(--sidebar-border)",
         background: "var(--sidebar)",
@@ -60,45 +60,51 @@ export default function SidebarProfile({ collapsed }: SidebarProfileProps) {
       }}
     >
       {collapsed ? (
-        <Dropdown menu={profileMenu} placement='topRight'>
-          <div className='flex items-center gap-3 cursor-pointer'>
+        <Dropdown menu={profileMenu} placement="topRight">
+          <div className="flex items-center gap-2 cursor-pointer">
             <Avatar
               style={{ backgroundColor: "var(--sidebar-primary)" }}
-              size={40}
+              size={30}
             >
-              AD
+              {user?.first_name ? user.first_name.charAt(0).toUpperCase() : "A"}
             </Avatar>
           </div>
         </Dropdown>
       ) : (
-        <div className='flex items-center justify-between gap-3'>
-          <div className='flex items-center gap-3'>
+        <div className="flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-2 min-w-0">
             <Avatar
               style={{ backgroundColor: "var(--sidebar-primary)" }}
-              size={40}
+              size={30}
             >
-              ADMIN
+              {user?.first_name ? user.first_name.charAt(0).toUpperCase() : "A"}
             </Avatar>
-            <div>
+            <div className="min-w-0">
               <div
-                className='text-sm font-medium'
+                className="text-sm font-medium truncate"
                 style={{ color: "var(--sidebar-foreground)" }}
+                title={user?.first_name} // shows full name on hover
               >
                 {user?.first_name}
               </div>
-              <div className='text-xs opacity-70'>{user?.email}</div>
+              <div
+                className="text-xs opacity-70 truncate"
+                title={user?.email} // shows full email on hover
+              >
+                {user?.email}
+              </div>
             </div>
           </div>
 
-          <Tooltip title='Logout'>
+          <Tooltip title="Logout">
             <button
               onClick={handleLogout}
-              className='transition flex items-center justify-center cursor-pointer'
+              className="transition flex items-center justify-center cursor-pointer"
               style={{ color: "var(--destructive)" }}
               disabled={loading}
             >
               {loading ? (
-                <Spin size='small' />
+                <Spin size="small" />
               ) : (
                 <LucideIcon icon={LogOut} size={20} />
               )}
