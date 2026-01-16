@@ -5,6 +5,8 @@ import { Controller, Control, UseFormReturn } from "react-hook-form";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { SafetyOutlined } from "@ant-design/icons";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -19,6 +21,8 @@ export default function FinalizeAccount({
 }: Props) {
   const {
     formState: { errors },
+    // setValue, // <-- important to update form state
+    watch,
   } = formState;
 
   // Local state ONLY for UI validation
@@ -27,10 +31,10 @@ export default function FinalizeAccount({
   const [confirmError, setConfirmError] = useState("");
   const [termsError, setTermsError] = useState("");
 
-  // Get password from form
-  const passwordValue = formState.getValues("password");
+  // Watch password for validation
+  const passwordValue = watch("password");
 
-  // Validate on change
+  // Validate confirm password on change
   const handleConfirmChange = (value: string) => {
     setConfirmPassword(value);
     if (value !== passwordValue) {
@@ -74,15 +78,22 @@ export default function FinalizeAccount({
       </p>
 
       <div className="grid grid-cols-1 gap-4">
-        {/* Email (readonly) */}
+        {/* Email (editable now) */}
         <FormItemWrapper
           label={<span className="text-foreground">Email</span>}
           error={errors.email?.message}
         >
-          <Input
-            value={formState.getValues("email") || ""}
-            readOnly
-            className="rounded-lg bg-input text-foreground border-border cursor-not-allowed"
+          <Controller
+            name="email"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                type="email"
+                placeholder="Enter your email"
+                className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
+              />
+            )}
           />
         </FormItemWrapper>
 
@@ -104,7 +115,7 @@ export default function FinalizeAccount({
           />
         </FormItemWrapper>
 
-        {/* Confirm Password (UI-only, not in form data) */}
+        {/* Confirm Password (UI-only) */}
         <FormItemWrapper
           label={<span className="text-foreground">Confirm Password</span>}
           error={confirmError}
@@ -117,15 +128,47 @@ export default function FinalizeAccount({
           />
         </FormItemWrapper>
 
-        {/* Terms & Privacy (UI-only, not in form data) */}
+        {/* Terms & Privacy (UI-only) */}
         <FormItemWrapper label="" error={termsError}>
           <Checkbox
             checked={acceptTerms}
             onChange={(e) => handleTermsChange(e.target.checked)}
           >
-            I agree to the <span className="underline">Terms & Privacy</span>
+            <span className="text-foreground">
+              {" "}
+              I have read and agree to the{" "}
+            </span>
+            <Link
+              href="/terms-and-conditions"
+              className="underline text-badge hover:text-ring"
+            >
+              Terms & Conditions
+            </Link>{" "}
+            <span className="text-foreground">and </span>
+            <Link
+              href="/privacy-policy"
+              className="underline text-badge hover:text-ring"
+            >
+              Privacy Policy
+            </Link>
+            .
           </Checkbox>
         </FormItemWrapper>
+      </div>
+      <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">
+        <div className="shrink-0 text-emerald-600">
+          <SafetyOutlined className="text-xl" />
+        </div>
+        <div>
+          <h4 className="font-semibold text-foreground">
+            Credentials & Privacy
+          </h4>
+          <p className="text-sm text-muted-foreground">
+            Your account information is securely encrypted and stored. We
+            respect your privacy and never share your credentials or personal
+            data with third parties without consent.
+          </p>
+        </div>
       </div>
     </div>
   );

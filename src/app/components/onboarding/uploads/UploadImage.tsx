@@ -51,9 +51,9 @@ export default function UploadImage<T extends FieldValues>({
     : [];
 
   const handleBeforeUpload = (file: RcFile) => {
-    const isValidSize = file.size / 1024 / 1024 <= 5;
+    const isValidSize = file.size / 1024 / 1024 <= 2; // ✅ changed from 5 to 2 MB
     if (!isValidSize) {
-      setError("File must be smaller than 5 MB!");
+      setError("File must be smaller than 2 MB!");
       return Upload.LIST_IGNORE;
     }
 

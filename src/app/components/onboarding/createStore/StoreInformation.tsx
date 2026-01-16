@@ -229,8 +229,8 @@ export default function StoreInformation({ control }: Props) {
 
       {/* Trust & Security Notice */}
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg">
-        <div className="shrink-0">
-          <SafetyOutlined />
+        <div className="shrink-0 text-emerald-600">
+          <SafetyOutlined className="text-xl" />
         </div>
         <div>
           <h4 className="font-semibold text-foreground">Your data is secure</h4>

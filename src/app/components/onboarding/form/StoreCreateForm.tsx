@@ -71,7 +71,7 @@ export default function StoreCreateForm({
     },
   });
 
-  const { control, handleSubmit, trigger, reset, formState } = form;
+  const { control, handleSubmit, trigger, reset } = form;
 
   // Step definitions
   const stepsList: StepType[] = [
@@ -231,11 +231,25 @@ export default function StoreCreateForm({
               </Button>
             ) : (
               <Button
-                type="primary"
+                type="primary" // remove AntD primary styles
                 onClick={handleSubmit(onSubmitForm)}
                 loading={loading}
                 htmlType="submit"
                 disabled={!isFinalStepValid}
+                className="rounded-lg px-6 py-2 font-semibold transition-colors duration-200"
+                style={{
+                  backgroundColor: "var(--chart-2)",
+
+                  border: "none",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "var(--badge)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "var(--chart-2)";
+                }}
               >
                 Request Onboard
               </Button>

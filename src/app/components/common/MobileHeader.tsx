@@ -20,13 +20,18 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    {
-      name: "Sections",
-      children: [
-        { name: "Store", path: "#stores" },
-        { name: "Request Demo", path: "#request" },
-      ],
-    },
+    // Only show Sections on the home page
+    ...(pathname === "/"
+      ? [
+          {
+            name: "Sections",
+            children: [
+              { name: "Store", path: "#stores" },
+              { name: "Request Demo", path: "#request-demo" },
+            ],
+          },
+        ]
+      : []),
     { name: "All Stores", path: "/stores" },
   ];
 

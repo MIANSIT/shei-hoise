@@ -3,20 +3,26 @@
 import LogoTitle from "../header/LogoTitle";
 import NavMenu, { NavLink } from "../header/NavMenu";
 import ThemeToggle from "../theme/ThemeToggle";
+import { usePathname } from "next/navigation";
 
 export default function DesktopHeader() {
+  const pathname = usePathname();
+
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    {
-      name: "Sections",
-      children: [
-        { name: "Store", path: "#stores" },
-        { name: "Request Demo", path: "#request-demo" },
-      ],
-    },
+    // Only show Sections on the home page
+    ...(pathname === "/"
+      ? [
+          {
+            name: "Sections",
+            children: [
+              { name: "Store", path: "#stores" },
+              { name: "Request Demo", path: "#request-demo" },
+            ],
+          },
+        ]
+      : []),
     { name: "All Stores", path: "/stores" },
-
-    // 🔽 New dropdown section
   ];
 
   return (
