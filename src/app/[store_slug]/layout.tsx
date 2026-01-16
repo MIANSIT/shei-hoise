@@ -38,7 +38,7 @@ export default async function StoreLayout({
           storeLogo={storeData?.logo_url} // Store logo
           storeName={storeData?.store_name} // Store name (optional)
           storeSlug={store_slug} // Pass storeSlug for the link
-          storeDescription={storeData?.description ?? undefined} // ✅ FIX
+          storeDescription={storeData?.description ?? undefined}
           isStore={true}
         />
       </div>
