@@ -151,7 +151,6 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   control={form.control}
                   label="Color"
                   name={`variants.${idx}.color`}
-                  required
                   tooltip="Specify the color of this variant, e.g., Red, Blue, or Natural."
                 />
                 <FormField

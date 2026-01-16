@@ -65,10 +65,10 @@ export const productSchema = z
             path: ["variants", index, "tp_price"],
           });
         }
-        if (!variant.stock) {
+        if (variant.stock === undefined || variant.stock < 0) {
           ctx.addIssue({
             code: "custom",
-            message: "Stock is required for each variant.",
+            message: "Stock cannot be negative.",
             path: ["variants", index, "stock"],
           });
         }
