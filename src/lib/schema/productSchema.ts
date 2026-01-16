@@ -123,6 +123,18 @@ export const productSchema = z
       }
     }
 
+    if (
+      data.base_price !== undefined &&
+      data.tp_price !== undefined &&
+      data.base_price < data.tp_price
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "MRP Price must be greater than or equal to TP price.",
+        path: ["base_price"],
+      });
+    }
+
     // Image validation
     if (!data.images || data.images.length === 0) {
       ctx.addIssue({
