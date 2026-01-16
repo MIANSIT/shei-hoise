@@ -37,7 +37,7 @@ export default function MobileHeader() {
 
   return (
     <>
-      <header className="bg-background/80 backdrop-blur-md px-4 py-3 shadow-lg lg:hidden fixed top-0 left-0 w-full z-50 transition-all">
+      <header className="bg-background/80 backdrop-blur-md px-4  shadow-lg lg:hidden fixed top-0 left-0 w-full z-50 transition-all">
         <div className="flex items-center justify-between">
           <LogoTitle showTitle={true} />
 

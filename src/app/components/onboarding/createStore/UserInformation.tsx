@@ -15,7 +15,7 @@ export default function UserInformation({ control, formState }: Props) {
   const { errors } = formState.formState;
 
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 border">
+    <div className="">
       {/* Section Title */}
       <h3 className="text-2xl font-semibold mb-4">User Information</h3>
       <p className="text-sm text-muted-foreground mb-4">

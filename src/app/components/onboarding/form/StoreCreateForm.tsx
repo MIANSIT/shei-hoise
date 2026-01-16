@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Steps } from "antd";
+import { Button } from "antd";
 import { Path, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -73,7 +73,6 @@ export default function StoreCreateForm({
 
   const { control, handleSubmit, trigger, reset } = form;
 
-  // Step definitions
   const stepsList: StepType[] = [
     {
       title: "User Info",
@@ -132,11 +131,7 @@ export default function StoreCreateForm({
           onValidationChange={setIsFinalStepValid}
         />
       ),
-      fields: [
-        "email",
-        "password",
-        // REMOVED: password_confirmation and accept_terms - they're UI-only now
-      ] as Path<CreateUserType>[],
+      fields: ["email", "password"] as Path<CreateUserType>[],
     },
   ];
 
@@ -152,108 +147,156 @@ export default function StoreCreateForm({
     currentFields,
   } = useStepForm(stepsList);
 
-  // Validate current step fields before moving next
   const handleNext = async () => {
     if (!currentFields || currentFields.length === 0) return;
-
-    // Trigger validation for only current step fields
     const isStepValid = await trigger(currentFields, { shouldFocus: true });
-
     if (!isStepValid) {
       notify.error("Please fix validation errors before proceeding");
       return;
     }
-
     next();
   };
 
   const handleStepClick = async (stepIndex: number) => {
     if (stepIndex < currentStep) {
-      // allow going back freely
       goTo(stepIndex);
     } else if (stepIndex === currentStep) {
       return;
     } else {
-      // trying to jump forward -> validate current step first
       const isStepValid = await trigger(currentFields, { shouldFocus: true });
-      if (isStepValid) {
-        goTo(stepIndex);
-      } else {
-        notify.error("Please fix validation errors before proceeding");
-      }
+      if (isStepValid) goTo(stepIndex);
+      else notify.error("Please fix validation errors before proceeding");
     }
   };
 
   const onSubmitForm = (data: CreateUserType) => {
-    // Final validation check
     if (!isFinalStepValid) {
       notify.error("Please complete password confirmation and accept terms");
       return;
     }
-
-    console.log("Submitting form", data);
     onSubmit(data, reset);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h2 className="text-3xl font-bold mb-6">Create Store</h2>
+    <div className="max-w-5xl mx-auto p-4 md:p-6 flex flex-col md:flex-col">
+      {/* Desktop: Top Horizontal Steps with Names */}
+      <div className="hidden md:flex mb-6 justify-between items-center">
+        {steps.map((step, idx) => (
+          <div key={idx} className="flex-1 flex items-center">
+            {/* Circle */}
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
+            ${
+              currentStep === idx
+                ? "bg-blue-500 text-white"
+                : idx < currentStep
+                ? "bg-blue-200 text-blue-600"
+                : "bg-gray-200 text-gray-500"
+            }
+          `}
+            >
+              {idx + 1}
+            </div>
+            {/* Step Name */}
+            <span
+              className={`ml-2 font-medium text-sm
+          ${
+            currentStep === idx
+              ? "text-blue-500"
+              : idx < currentStep
+              ? "text-blue-600"
+              : "text-gray-500"
+          }
+        `}
+            >
+              {step.title}
+            </span>
 
-      {/* Steps */}
-      <Steps
-        current={currentStep}
-        onChange={handleStepClick}
-        items={steps.map((step) => ({
-          key: step.title,
-          title: step.title,
-        }))}
-        className="mb-6 "
-      />
+            {/* Line */}
+            {idx < steps.length - 1 && (
+              <div
+                className={`flex-1 h-1 mx-2
+            ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}
+          `}
+              ></div>
+            )}
+          </div>
+        ))}
+      </div>
 
-      {/* Current Step Content */}
-      <div className="p-6 bg-card shadow-lg rounded-xl mt-6">
-        {currentContent}
-
-        {/* Navigation Buttons */}
-        <div className="mt-6 flex justify-between items-center">
-          {/* Previous button on the left */}
-          {!isFirst && (
-            <Button onClick={prev} type="default">
-              Previous
-            </Button>
-          )}
-
-          {/* Spacer to push Next / Submit button to the right */}
-          <div className="flex-1 flex justify-end">
-            {!isLast ? (
-              <Button type="primary" onClick={handleNext} htmlType="button">
-                Next
-              </Button>
-            ) : (
-              <Button
-                type="primary" // remove AntD primary styles
-                onClick={handleSubmit(onSubmitForm)}
-                loading={loading}
-                htmlType="submit"
-                disabled={!isFinalStepValid}
-                className="rounded-lg px-6 py-2 font-semibold transition-colors duration-200"
-                style={{
-                  backgroundColor: "var(--chart-2)",
-
-                  border: "none",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    "var(--badge)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    "var(--chart-2)";
-                }}
+      <div className="flex flex-1">
+        {/* Mobile: Vertical Sidebar with line & numbers */}
+        <div className="flex md:hidden flex-col items-center mr-4 sticky top-4">
+          {steps.map((step, idx) => (
+            <div key={idx} className="flex flex-col items-center mb-4">
+              {/* Circle */}
+              <button
+                onClick={() => handleStepClick(idx)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors duration-200
+              ${
+                currentStep === idx
+                  ? "bg-blue-500 text-white"
+                  : idx < currentStep
+                  ? "bg-blue-200 text-blue-600"
+                  : "bg-gray-200 text-gray-500"
+              }
+            `}
               >
-                Request Onboard
+                {idx + 1}
+              </button>
+
+              {/* Line below circle */}
+              {idx < steps.length - 1 && (
+                <div
+                  className={`w-1 h-8
+              ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}
+            `}
+                ></div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Form Content */}
+        <div className="flex-1 bg-card shadow-lg rounded-xl p-6">
+          {currentContent}
+
+          {/* Navigation Buttons */}
+          <div className="mt-6 flex justify-between items-center">
+            {!isFirst && (
+              <Button onClick={prev} type="default">
+                Previous
               </Button>
             )}
+
+            <div className="flex-1 flex justify-end">
+              {!isLast ? (
+                <Button type="primary" onClick={handleNext} htmlType="button">
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  onClick={handleSubmit(onSubmitForm)}
+                  loading={loading}
+                  disabled={!isFinalStepValid}
+                  className="rounded-lg px-6 py-2 font-semibold transition-colors duration-200"
+                  style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                  onMouseEnter={(e) => {
+                    (
+                      e.currentTarget as HTMLButtonElement
+                    ).style.backgroundColor = "var(--badge)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (
+                      e.currentTarget as HTMLButtonElement
+                    ).style.backgroundColor = "var(--chart-2)";
+                  }}
+                >
+                  Request Onboard
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

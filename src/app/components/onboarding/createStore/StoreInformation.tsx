@@ -13,7 +13,7 @@ interface Props {
 
 export default function StoreInformation({ control }: Props) {
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 space-y-4">
+    <div className="">
       <h3 className="text-2xl font-semibold mb-2">Store Information</h3>
       <p className="text-sm text-muted-foreground mb-4">
         Fill in your store details. Your data is secure and private.

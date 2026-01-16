@@ -44,7 +44,7 @@ export default function StoreCreatePage() {
       <Header />
 
       {/* Main content */}
-      <main className="flex-1 flex items-center justify-center px-4">
+      <main className="flex-1 flex items-center justify-center ">
         <StoreCreateForm onSubmit={handleCreateStore} loading={loading} />
       </main>
 

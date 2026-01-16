@@ -43,7 +43,7 @@ export default function StoreSettings({ control, errors }: Props) {
   const selectedOptions = fields.map((f) => f.name);
 
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 space-y-6">
+    <div className="">
       {/* Header */}
       <h3 className="text-2xl font-semibold mb-2">Store Settings</h3>
       <p className="text-sm text-muted-foreground">

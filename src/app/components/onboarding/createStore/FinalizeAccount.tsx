@@ -71,7 +71,7 @@ export default function FinalizeAccount({
   }, [passwordValue, confirmPassword]);
 
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 space-y-6">
+    <div className="">
       <h3 className="text-2xl font-semibold mb-4">Finalize Account</h3>
       <p className="text-sm text-muted-foreground mb-4">
         Set your account credentials and accept the terms & privacy policy.
