@@ -102,11 +102,11 @@ export default function AllStores() {
               href={`/${store.store_slug}`}
               className="relative flex flex-col items-center bg-linear-to-br from-white/30 to-white/10 backdrop-blur-md border border-transparent rounded-xl shadow-2xl p-6 cursor-pointer hover:shadow-2xl transition-all"
             >
-              {store.is_active && (
+              {/* {store.is_active && (
                 <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold z-10">
                   Active
                 </div>
-              )}
+              )} */}
 
               {store.logo_url ? (
                 <div className="relative w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-primary shadow-md">
