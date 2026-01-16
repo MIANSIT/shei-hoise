@@ -63,7 +63,7 @@ export default function AdminShippingPage() {
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent mb-2">
+              <h1 className="text-4xl font-bold bg-linear-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent mb-2">
                 Shipping Management
               </h1>
               <p className="text-xl text-gray-600 max-w-2xl">

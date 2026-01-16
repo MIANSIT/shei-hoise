@@ -99,13 +99,12 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   const updateShippingOption = (
     index: number,
     field: keyof ShippingOption,
-    value: string | number
+    value: string | number | undefined // allow undefined now
   ) => {
     const updated = [...shippingOptions];
     updated[index] = { ...updated[index], [field]: value };
     setShippingOptions(updated);
   };
-
   const removeShippingOption = (index: number) => {
     const optionName = shippingOptions[index].name || `Option ${index + 1}`;
     setShippingOptions(shippingOptions.filter((_, i) => i !== index));

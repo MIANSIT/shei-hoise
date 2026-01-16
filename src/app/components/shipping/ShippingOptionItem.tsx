@@ -9,7 +9,7 @@ interface ShippingOptionItemProps {
   onUpdate: (
     index: number,
     field: keyof ShippingOption,
-    value: string | number
+    value: string | number | undefined
   ) => void;
   onRemove: (index: number) => void;
 }
@@ -30,7 +30,7 @@ export function ShippingOptionItem({
           <div className="flex-1">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
               {/* Shipping Method */}
-              <div className="lg:col-span-8 space-y-3">
+              <div className="lg:col-span-6 space-y-3">
                 <label className="block text-sm font-semibold text-gray-700">
                   Shipping Method <span className="text-red-500">*</span>
                 </label>
@@ -44,7 +44,7 @@ export function ShippingOptionItem({
                 />
               </div>
 
-              {/* Cost with currency as label */}
+              {/* Cost */}
               <div className="lg:col-span-3 space-y-3">
                 <label className="block text-sm font-semibold text-gray-700">
                   Cost ({currency}) <span className="text-red-500">*</span>
@@ -63,6 +63,27 @@ export function ShippingOptionItem({
                 />
               </div>
 
+              {/* Estimated Days */}
+              <div className="lg:col-span-2 space-y-3">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Estimated Days
+                </label>
+                <input
+                  type="number"
+                  value={option.estimated_days ?? ""}
+                  onChange={(e) =>
+                    onUpdate(
+                      index,
+                      "estimated_days",
+                      e.target.value ? Number(e.target.value) : undefined
+                    )
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  min="0"
+                  placeholder="Optional"
+                />
+              </div>
+
               {/* Delete Button */}
               <div className="lg:col-span-1 flex items-center justify-center lg:justify-end pt-2">
                 <button
@@ -75,7 +96,7 @@ export function ShippingOptionItem({
               </div>
             </div>
 
-            {/* Free Shipping Badge - FIXED ALIGNMENT */}
+            {/* Free Shipping Badge */}
             {option.price === 0 && (
               <div className="mt-4 flex items-center justify-start">
                 <div className="inline-flex items-center space-x-2 text-green-700 px-3 py-2 rounded-lg border border-green-200 bg-green-50">
@@ -90,6 +111,7 @@ export function ShippingOptionItem({
     );
   }
 
+  // View Mode
   return (
     <div className="group border border-gray-200 rounded-2xl p-6 transition-all duration-300 shadow-sm hover:shadow-md">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -101,6 +123,14 @@ export function ShippingOptionItem({
             </h4>
             <p className="text-gray-500 text-sm mt-1">
               {option.price === 0 ? "Free delivery" : "Standard delivery"}
+            </p>
+            <p className="text-gray-400 text-sm mt-1">
+              Estimated Days:{" "}
+              {option.estimated_days !== undefined
+                ? `${option.estimated_days} day${
+                    option.estimated_days > 1 ? "s" : ""
+                  }`
+                : "None"}
             </p>
           </div>
         </div>

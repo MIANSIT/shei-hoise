@@ -4,11 +4,7 @@ import { supabase } from "@/lib/supabase";
 export interface ShippingOption {
   name: string;
   price: number;
-  description?: string;
-  estimated_days?: {
-    min: number;
-    max: number;
-  };
+  estimated_days?: number; // new optional field
 }
 
 export interface StoreShippingConfig {
