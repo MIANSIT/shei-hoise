@@ -11,36 +11,37 @@ export default function DesktopHeader() {
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },
     // Only show Sections on the home page
-    ...(pathname === "/"
-      ? [
-          {
-            name: "Sections",
-            children: [
-              { name: "Store", path: "#stores" },
-              { name: "Request Demo", path: "#request-demo" },
-            ],
-          },
-        ]
-      : []),
+    // ...(pathname === "/"
+    //   ? [
+    //       {
+    //         name: "Sections",
+    //         children: [
+    //           { name: "Store", path: "#stores" },
+    //           { name: "Request Demo", path: "#request-demo" },
+    //         ],
+    //       },
+    //     ]
+    //   : []),
+    { name: "Request Demo", path: "/#request-demo" },
     { name: "All Stores", path: "/stores" },
   ];
 
   return (
     <>
-      <header className="hidden md:flex fixed top-0 left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md">
+      <header className='hidden md:flex fixed top-0 left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md'>
         {/* Left */}
-        <div className="flex items-center gap-8">
+        <div className='flex items-center gap-8'>
           <LogoTitle showTitle={false} />
           <NavMenu links={mainLinks} />
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-5">
+        <div className='flex items-center gap-5'>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="pt-16" />
+      <main className='pt-16' />
     </>
   );
 }

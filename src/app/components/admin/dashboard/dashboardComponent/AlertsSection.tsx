@@ -24,11 +24,11 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   const getAlertIcon = (type: string) => {
     switch (type) {
       case "stock":
-        return <ExclamationCircleOutlined className="text-chart-3!" />;
+        return <ExclamationCircleOutlined className='text-chart-3!' />;
       case "order":
-        return <ClockCircleOutlined className="text-chart-5!" />;
+        return <ClockCircleOutlined className='text-chart-5!' />;
       case "payment":
-        return <WarningOutlined className="text-chart-4!" />;
+        return <WarningOutlined className='text-chart-4!' />;
       default:
         return <ExclamationCircleOutlined />;
     }
@@ -73,8 +73,8 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   };
 
   return (
-    <Card className="border-l-4 border-l-amber-500">
-      <div className="space-y-3">
+    <Card className='border-l-4 border-l-amber-500'>
+      <div className='space-y-3'>
         {alerts.map((alert, idx) => (
           <div
             key={idx}
@@ -82,18 +82,18 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
               alert.type
             )}`}
           >
-            <div className="flex items-center gap-3">
-              <div className="text-xl">{getAlertIcon(alert.type)}</div>
+            <div className='flex items-center gap-3'>
+              <div className='text-xl'>{getAlertIcon(alert.type)}</div>
               <div>
-                <div className="font-semibold text-primary">{alert.message}</div>
-                <div className="text-sm text-foreground">
+                <div className='font-semibold text-black'>{alert.message}</div>
+                <div className='text-sm text-black'>
                   {alert.count} item{alert.count > 1 ? "s" : ""} affected
                 </div>
               </div>
             </div>
             <Button
-              type="primary"
-              size="small"
+              type='primary'
+              size='small'
               onClick={() => handleActionClick(alert)}
             >
               Take Action
