@@ -13,7 +13,7 @@ export function DesktopLayout({ children, isAdmin = false }: DesktopLayoutProps)
       {/* Left side - Image */}
       <div className="hidden md:flex w-1/2 h-screen relative items-center justify-center">
         <Image
-          src={isAdmin ? "/adminBg.png" : "/bgImage.png"}
+          src={isAdmin ? "/adminBGi.png" : "/bgImage.png"}
           alt={isAdmin ? "Admin background" : "Login background"}
           fill
           className="object-cover" // image fits entirely, no crop
