@@ -63,10 +63,10 @@ export default function AdminShippingPage() {
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold bg-linear-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent mb-2">
+              <h1 className="text-4xl font-bold bg-linear-to-r dark:text-gray-300 from-gray-900 to-blue-900 bg-clip-text text-transparent mb-2">
                 Shipping Management
               </h1>
-              <p className="text-xl text-gray-600 max-w-2xl">
+              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl">
                 Configure delivery methods, shipping costs, and manage your
                 store&apos;s shipping strategy
               </p>

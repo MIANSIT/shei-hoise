@@ -24,15 +24,28 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   const variants = form.watch("variants") ?? [];
   const { setValue } = form;
 
-  const [priceMode, setPriceMode] = useState<"percentage" | "multiplier">(
-    "percentage"
+  const { currency, loading: currencyLoading } = useUserCurrencyIcon();
+  const displayCurrency = currencyLoading ? "" : (currency ?? "");
+
+  // Track variant pricing state to control dropdown + input
+  const [variantPricing, setVariantPricing] = useState<
+    { priceMode: "percentage" | "multiplier"; priceValue: number | "" }[]
+  >(() =>
+    variants.map(() => ({
+      priceMode: "percentage",
+      priceValue: "",
+    })),
   );
-  const [priceValue, setPriceValue] = useState<number | "">("");
-  const {
-    currency,
-    // icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+
+  // Sync variantPricing array when variants are added/removed
+  useEffect(() => {
+    setVariantPricing((prev) =>
+      variants.map(
+        (_, idx) => prev[idx] || { priceMode: "percentage", priceValue: "" },
+      ),
+    );
+  }, [variants.length]);
+
   const handleAddVariant = () => {
     form.setValue("variants", [
       ...variants,
@@ -55,8 +68,61 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   const handleRemoveVariant = (index: number) => {
     form.setValue(
       "variants",
-      variants.filter((_, i) => i !== index)
+      variants.filter((_, i) => i !== index),
     );
+  };
+
+  // Update MRP & discounted price based on TP, markup mode, and value
+  const updateVariantMRP = (
+    idx: number,
+    tp: number,
+    val: number,
+    mode: "percentage" | "multiplier",
+  ) => {
+    let mrp = 0;
+    if (mode === "percentage") mrp = tp * (1 + val / 100);
+    else mrp = tp * val;
+
+    setValue(`variants.${idx}.base_price`, Number(mrp.toFixed(2)), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    const discount = variants[idx]?.discount_amount ?? 0;
+    const discounted = calculateDiscountedPrice(mrp, discount);
+    setValue(`variants.${idx}.discounted_price`, discounted);
+  };
+
+  const handleVariantPriceModeChange = (
+    idx: number,
+    mode: "percentage" | "multiplier",
+  ) => {
+    setVariantPricing((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, priceMode: mode } : v)),
+    );
+
+    const tp = variants[idx]?.tp_price ?? 0;
+    const val = variantPricing[idx]?.priceValue ?? 0;
+    if (tp && val !== "") updateVariantMRP(idx, tp, val, mode);
+  };
+
+  const handleVariantPriceValueChange = (idx: number, val: number | "") => {
+    setVariantPricing((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, priceValue: val } : v)),
+    );
+
+    const tp = variants[idx]?.tp_price ?? 0;
+    const mode = variantPricing[idx]?.priceMode ?? "percentage";
+    if (tp && val !== "" && mode) updateVariantMRP(idx, tp, val, mode);
+  };
+
+  const updateVariantDiscountedPrice = (idx: number) => {
+    const variant = variants[idx];
+    const discounted = calculateDiscountedPrice(
+      Number(variant.base_price || 0),
+      Number(variant.discount_amount || 0),
+    );
+    setValue(`variants.${idx}.discounted_price`, discounted);
   };
 
   const variantErrors = form.formState.errors.variants as
@@ -66,55 +132,8 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
       )[]
     | undefined;
 
-  const updateVariantDiscountedPrice = (idx: number) => {
-    const variant = variants[idx];
-    const discounted = calculateDiscountedPrice(
-      Number(variant.base_price || 0),
-      Number(variant.discount_amount || 0)
-    );
-    if (form.getValues(`variants.${idx}.discounted_price`) !== discounted) {
-      form.setValue(`variants.${idx}.discounted_price`, discounted);
-    }
-  };
-
-  // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const tpPrice = form.watch("tp_price");
-  const mrpPrice = form.watch("base_price");
-
-  useEffect(() => {
-    if (!tpPrice || !priceValue) return;
-
-    let calculatedMRP = 0;
-
-    if (priceMode === "percentage") {
-      calculatedMRP = Number(tpPrice) * (1 + Number(priceValue) / 100);
-    } else {
-      calculatedMRP = Number(tpPrice) * Number(priceValue);
-    }
-
-    setValue("base_price", Number(calculatedMRP.toFixed(2)), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  }, [tpPrice, priceValue, priceMode]);
-
-  useEffect(() => {
-    if (!tpPrice || !mrpPrice) return;
-
-    if (priceMode === "percentage") {
-      const percent =
-        ((Number(mrpPrice) - Number(tpPrice)) / Number(tpPrice)) * 100;
-
-      setPriceValue(Number(percent.toFixed(2)));
-    } else {
-      const multiplier = Number(mrpPrice) / Number(tpPrice);
-      setPriceValue(Number(multiplier.toFixed(2)));
-    }
-  }, [mrpPrice, priceMode]);
-
   return (
-    <div className='col-span-1 md:col-span-2 space-y-6'>
+    <div className="col-span-1 md:col-span-2 space-y-6">
       {variants.map((variant, idx) => {
         const error = variantErrors?.[idx] || {};
         const isActive = form.watch(`variants.${idx}.is_active`) ?? true;
@@ -122,34 +141,36 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         return (
           <div
             key={idx}
-            className='border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4'
+            className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4"
           >
-            <div className='flex justify-between items-center mb-4'>
-              <h4 className='font-semibold text-lg'>Variant {idx + 1}</h4>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-semibold text-lg">Variant {idx + 1}</h4>
               <Button
-                type='button'
-                variant='destructive'
-                className='p-2'
+                type="button"
+                variant="destructive"
+                className="p-2"
                 onClick={() => handleRemoveVariant(idx)}
               >
-                <Trash2 className='w-4 h-4' />
+                <Trash2 className="w-4 h-4" />
               </Button>
             </div>
-            {/* ---------------- Active Status Switch ---------------- */}
+
+            {/* Active Toggle */}
             {addIsActive && (
-              <div className='flex items-center space-x-3 mt-2'>
-                <label className='relative inline-flex items-center cursor-pointer'>
+              <div className="flex items-center space-x-3 mt-2">
+                <label className="relative inline-flex items-center cursor-pointer">
                   <input
-                    type='checkbox'
+                    type="checkbox"
                     {...form.register(`variants.${idx}.is_active`)}
                     defaultChecked={variant.is_active ?? true}
-                    className='sr-only peer'
+                    className="sr-only peer"
                   />
                   <div
-                    className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500 
-      after:content-[''] after:absolute after:top-0.5 after:left-0.5 
-      after:bg-white after:border after:border-gray-300 after:rounded-full 
-      after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"
+                    className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500
+                    after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                    after:bg-white after:border after:border-gray-300 after:rounded-full
+                    after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"
                   ></div>
                 </label>
                 <span
@@ -160,138 +181,163 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   {isActive ? "Active" : "Inactive"}
                 </span>
                 <Tooltip
-                  title='Toggle to activate or deactivate this variant. Inactive variants will not be available for purchase.'
-                  placement='top'
+                  title="Toggle to activate or deactivate this variant. Inactive variants will not be available for purchase."
+                  placement="top"
                 >
-                  <InfoCircleOutlined className='text-gray-400 hover:text-gray-600 cursor-pointer' />
+                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
                 </Tooltip>
               </div>
             )}
 
-            {/* ---------------- Variant Info Section ---------------- */}
-            <div className='space-y-2'>
-              <h5 className='font-medium text-gray-700'>Variant Info</h5>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {/* Variant Info */}
+            <div className="space-y-2">
+              <h5 className="font-medium text-gray-700 dark:text-gray-400">
+                Variant Info
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  label='Variant Name'
+                  label="Variant Name"
                   name={`variants.${idx}.variant_name`}
                   required
-                  tooltip='Enter a descriptive name for this variant, e.g., Small / Red. Keep it concise and clear.'
+                  tooltip="Enter a descriptive name for this variant, e.g., Small / Red. Keep it concise and clear."
                 />
                 <FormField
                   control={form.control}
-                  label='SKU'
+                  label="SKU"
                   name={`variants.${idx}.sku`}
-                  tooltip='Provide a unique Stock Keeping Unit (SKU) to track this variant in your inventory.'
+                  tooltip="Provide a unique Stock Keeping Unit (SKU) to track this variant in your inventory."
                   required
                 />
                 <FormField
                   control={form.control}
-                  label='Color'
+                  label="Color"
                   name={`variants.${idx}.color`}
-                  tooltip='Specify the color of this variant, e.g., Red, Blue, or Natural.'
+                  tooltip="Specify the color of this variant, e.g., Red, Blue, or Natural."
                 />
                 <FormField
                   control={form.control}
-                  label='Weight (Kg)'
+                  label="Weight (Kg)"
                   name={`variants.${idx}.weight`}
-                  tooltip='Enter the weight of this variant in kilograms for shipping calculations.'
-                  type='number'
+                  tooltip="Enter the weight of this variant in kilograms for shipping calculations."
+                  type="number"
                 />
               </div>
             </div>
 
-            {/* ---------------- Pricing Section ---------------- */}
-            <div className='space-y-2'>
-              <h5 className='font-medium text-gray-700'>Pricing Info</h5>
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+            {/* Pricing */}
+            <div className="space-y-2">
+              <h5 className="font-medium text-gray-700 dark:text-gray-400">
+                Pricing Info
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   label={`TP Price (${displayCurrency})`}
                   name={`variants.${idx}.tp_price`}
-                  type='number'
-                  tooltip='Enter the trade price for this variant in your store currency.'
+                  type="number"
+                  tooltip="Enter the trade price for this variant."
                   required
+                  onChange={() => {
+                    const val = variantPricing[idx]?.priceValue ?? 0;
+                    const mode = variantPricing[idx]?.priceMode ?? "percentage";
+                    const tp = form.getValues(`variants.${idx}.tp_price`) ?? 0;
+                    if (tp && val !== "" && mode)
+                      updateVariantMRP(idx, tp, val, mode);
+                  }}
                 />
-                <div className='w-full md:max-w-lg xl:max-w-xl'>
-                  <label className='mb-1 block text-sm font-medium '>
+
+                {/* Price Markup */}
+                <div className="w-full md:max-w-lg xl:max-w-xl">
+                  <label className="mb-1 block text-sm font-medium">
                     Price Markup{" "}
-                    <span className='text-xs text-gray-500'>
+                    <span className="text-xs text-gray-500">
                       (Auto-calculates MRP)
                     </span>
                   </label>
-
-                  <div className='flex items-center gap-3'>
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                     <select
-                      className='w-fit rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500'
-                      value={priceMode}
+                      className="w-full md:w-fit rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
+                      value={variantPricing[idx]?.priceMode ?? "percentage"}
                       onChange={(e) =>
-                        setPriceMode(
-                          e.target.value as "percentage" | "multiplier"
+                        handleVariantPriceModeChange(
+                          idx,
+                          e.target.value as "percentage" | "multiplier",
                         )
                       }
                     >
-                      <option value='percentage'>Percentage (%)</option>
-                      <option value='multiplier'>Multiplier (×)</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="multiplier">Multiplier (×)</option>
                     </select>
 
                     <input
-                      type='number'
-                      className='w-fit min-w-[80px] rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500'
-                      placeholder={priceMode === "percentage" ? "20" : "1.2"}
-                      value={priceValue}
-                      onChange={(e) => setPriceValue(Number(e.target.value))}
+                      type="number"
+                      className="w-full md:w-fit min-w-20 rounded-md border border-gray-300 px-3 py-2"
+                      placeholder={
+                        variantPricing[idx]?.priceMode === "percentage"
+                          ? "20"
+                          : "1.2"
+                      }
+                      value={variantPricing[idx]?.priceValue ?? ""} // fully controlled
+                      onChange={(e) =>
+                        handleVariantPriceValueChange(
+                          idx,
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
                     />
                   </div>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   label={`MRP Price (${displayCurrency})`}
                   name={`variants.${idx}.base_price`}
-                  type='number'
+                  type="number"
                   required
-                  tooltip='Enter the maximum retail price (MRP) before any discount.'
+                  tooltip="Auto-calculated from TP and markup."
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
+
                 <FormField
                   control={form.control}
                   label={`Discount Amount (${displayCurrency})`}
                   name={`variants.${idx}.discount_amount`}
-                  type='number'
-                  tooltip='Optional: specify a discount amount to reduce the MRP.'
+                  type="number"
+                  tooltip="Optional discount."
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
+
                 <FormField
                   control={form.control}
                   label={`Discounted Price (${displayCurrency})`}
                   name={`variants.${idx}.discounted_price`}
-                  type='number'
-                  disabled
-                  tooltip='Automatically calculated discounted price. Read-only.'
+                  type="number"
+                  tooltip="Automatically calculated. Read-only."
                   readOnly
                 />
               </div>
             </div>
 
-            {/* ---------------- Stock & Attributes Section ---------------- */}
-            <div className='space-y-2'>
-              <h5 className='font-medium text-gray-700'>Stock & Attributes</h5>
-              <div className='grid grid-cols-1 md:grid-cols-6 gap-6'>
-                {/* Left: Stock (small width) */}
-                <div className='col-span-2'>
+            {/* Stock & Attributes */}
+            <div className="space-y-2">
+              <h5 className="font-medium text-gray-700 dark:text-gray-400">
+                Stock & Attributes
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+                <div className="col-span-2">
                   <FormField
                     control={form.control}
-                    label='Stock'
+                    label="Stock"
                     name={`variants.${idx}.stock`}
-                    type='number'
+                    type="number"
                     required
-                    tooltip='Specify the number of units available for this variant in your inventory.'
+                    tooltip="Number of units in stock."
                   />
                 </div>
 
-                {/* Right: Attributes (larger width) */}
-                <div className='col-span-4'>
+                <div className="col-span-4">
                   <Controller
                     control={form.control}
                     name={`variants.${idx}.attributes`}
@@ -301,33 +347,31 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                         typeof field.value === "string"
                           ? field.value
                           : field.value && typeof field.value === "object"
-                          ? Object.entries(field.value)
-                              .map(([k, v]) => `${k}-${v}`)
-                              .join(", ")
-                          : "";
+                            ? Object.entries(field.value)
+                                .map(([k, v]) => `${k}-${v}`)
+                                .join(", ")
+                            : "";
 
                       return (
                         <div>
-                          <label className='block mb-1 font-medium'>
+                          <label className="block mb-1 font-medium">
                             Attributes (Size-M, Color-Red)
                             <Tooltip
-                              title='Optional: enter attributes in Key-Value format, e.g., Size-M, Color-Red. These help with filtering and variant identification.'
-                              placement='top'
+                              title="Optional: enter attributes in Key-Value format, e.g., Size-M, Color-Red."
+                              placement="top"
                             >
-                              <InfoCircleOutlined className='text-gray-400 hover:text-gray-600 cursor-pointer p-2' />
+                              <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
                             </Tooltip>
                           </label>
                           <textarea
-                            className='w-full border rounded-md p-2'
-                            placeholder='Size-M, Color-Red'
+                            className="w-full border rounded-md p-2"
+                            placeholder="Size-M, Color-Red"
                             value={valueAsString}
                             onChange={(e) => field.onChange(e.target.value)}
                             onBlur={(e) => {
                               const val = e.target.value.trim();
-                              if (!val) {
-                                field.onChange(null);
-                                return;
-                              }
+                              if (!val) return field.onChange(null);
+
                               const obj: Record<string, string> = {};
                               val.split(",").forEach((pair) => {
                                 const [key, value] = pair
@@ -337,12 +381,12 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                                   obj[key] = value;
                               });
                               field.onChange(
-                                Object.keys(obj).length ? obj : null
+                                Object.keys(obj).length ? obj : null,
                               );
                             }}
                           />
                           {(fieldState.error || error.attributes?.message) && (
-                            <p className='text-red-500 text-sm mt-1'>
+                            <p className="text-red-500 text-sm mt-1">
                               {fieldState.error?.message ||
                                 error.attributes?.message}
                             </p>
@@ -358,7 +402,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         );
       })}
 
-      <Button type='button' variant='greenish' onClick={handleAddVariant}>
+      <Button type="button" variant="greenish" onClick={handleAddVariant}>
         + Add Variant
       </Button>
     </div>

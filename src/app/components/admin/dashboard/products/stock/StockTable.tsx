@@ -20,12 +20,12 @@ interface StockTableProps {
   onStockChange: (
     productId: string,
     variantId: string | null,
-    value: number
+    value: number,
   ) => void;
   onSingleUpdate: (
     productId: string,
     variantId: string | null,
-    quantity: number
+    quantity: number,
   ) => void;
   rowSelection?: TableRowSelection<ProductRow | VariantRow>;
   loading?: boolean;
@@ -43,7 +43,7 @@ const StockTable: React.FC<StockTableProps> = ({
 }) => {
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
-  const displayCurrencyIconSafe = currencyLoading ? "৳" : currencyIcon ?? "৳";
+  const displayCurrencyIconSafe = currencyLoading ? "৳" : (currencyIcon ?? "৳");
 
   const columns: ColumnsType<ProductRow | VariantRow> = [
     {
@@ -281,7 +281,12 @@ const StockTable: React.FC<StockTableProps> = ({
           ? (record as ProductRow).isLowStock ||
             (record as ProductRow).hasLowStockVariant
           : (record as VariantRow).isLowStock;
-        return shouldHighlight ? "bg-red-50 hover:bg-red-100" : "";
+
+        // Light: bg-red-50 / hover:bg-red-100
+        // Dark: bg-red-900/10 (very light red on dark) / hover:bg-red-800/20
+        return shouldHighlight
+          ? "bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-800/20"
+          : "";
       }}
       expandable={{
         expandedRowRender: (record) =>
@@ -293,14 +298,14 @@ const StockTable: React.FC<StockTableProps> = ({
                   col.key === "image"
                     ? 50
                     : col.key === "title"
-                    ? 150
-                    : col.key === "sku"
-                    ? 100
-                    : col.key === "currentPrice"
-                    ? 80
-                    : col.key === "stock"
-                    ? 80
-                    : col.width,
+                      ? 150
+                      : col.key === "sku"
+                        ? 100
+                        : col.key === "currentPrice"
+                          ? 80
+                          : col.key === "stock"
+                            ? 80
+                            : col.width,
               }))}
               data={record.variants.map((v) => ({
                 ...v,
@@ -312,8 +317,8 @@ const StockTable: React.FC<StockTableProps> = ({
                 !(variantRecord as VariantRow).isActive
                   ? "bg-gray-100 hover:bg-gray-200"
                   : (variantRecord as VariantRow).isLowStock
-                  ? "bg-red-50 hover:bg-red-100"
-                  : ""
+                    ? "bg-red-50 hover:bg-red-100"
+                    : ""
               }
             />
           ) : null,

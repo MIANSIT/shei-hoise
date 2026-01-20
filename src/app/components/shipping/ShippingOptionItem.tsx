@@ -118,13 +118,13 @@ export function ShippingOptionItem({
         <div className="flex items-center space-x-4">
           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
           <div>
-            <h4 className="font-semibold text-gray-900 text-lg">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-300 text-lg">
               {option.name}
             </h4>
             <p className="text-gray-500 text-sm mt-1">
               {option.price === 0 ? "Free delivery" : "Standard delivery"}
             </p>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-gray-400  text-sm mt-1">
               Estimated Days:{" "}
               {option.estimated_days !== undefined
                 ? `${option.estimated_days} day${

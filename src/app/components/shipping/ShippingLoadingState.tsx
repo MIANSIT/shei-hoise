@@ -7,7 +7,7 @@ export function ShippingLoadingState() {
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
         <div className="text-center">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-400 mb-2">
             Loading Shipping Configuration
           </h3>
           <p className="text-gray-600">
