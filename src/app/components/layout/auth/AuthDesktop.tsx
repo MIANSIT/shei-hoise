@@ -7,9 +7,12 @@ interface DesktopLayoutProps {
   isAdmin?: boolean;
 }
 
-export function DesktopLayout({ children, isAdmin = false }: DesktopLayoutProps) {
+export function DesktopLayout({
+  children,
+  isAdmin = false,
+}: DesktopLayoutProps) {
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex  w-full">
       {/* Left side - Image */}
       <div className="hidden md:flex w-1/2 h-screen relative items-center justify-center">
         <Image
