@@ -25,30 +25,27 @@ const OrderAmountCard: React.FC<OrderAmountCardProps> = ({
 }) => {
   const color = status ? statusColorMap[status] : "#1677ff";
 
-  const { icon: currencyIcon, loading: currencyLoading } =
-    useUserCurrencyIcon();
-
-  // Use loading fallback
-  const displayCurrency = currencyLoading ? null : currencyIcon;
-  const displayCurrencySafe = displayCurrency || "৳"; // fallback
+  const { icon: currencyIcon, loading } = useUserCurrencyIcon();
+  const displayCurrency = loading ? "৳" : currencyIcon || "৳";
 
   return (
     <Card className="rounded-xl p-4">
-      <div className="flex items-center justify-between">
-        {/* Text and Amount */}
-        <div>
-          <Text className="text-sm font-medium text-foreground">{title}</Text>
-          <Title level={3} style={{ margin: 0, color, fontWeight: 800 }}>
-            {displayCurrencySafe} {amount.toLocaleString()}
-          </Title>
-        </div>
-
-        {/* Icon Circle */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* ICON */}
         <div
-          className="w-12 h-12 flex items-center justify-center rounded-full"
+          className="w-10 h-10 sm:w-12 sm:h-12 mx-auto sm:mx-0 flex items-center justify-center rounded-full"
           style={{ background: "#f0f0f0", color }}
         >
-          <span style={{ fontSize: 30 }}>{displayCurrencySafe}</span>
+          <span className="text-xl sm:text-2xl">{displayCurrency}</span>
+        </div>
+
+        {/* VALUE + TITLE */}
+        <div className="text-center sm:text-left">
+          <Title level={3} style={{ margin: 0, color, fontWeight: 800 }}>
+            {amount.toLocaleString()} {displayCurrency}
+          </Title>
+
+          <Text className="text-sm font-medium text-foreground">{title}</Text>
         </div>
       </div>
     </Card>

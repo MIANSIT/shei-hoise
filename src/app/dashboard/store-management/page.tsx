@@ -30,38 +30,41 @@ export default function StorePage() {
 
   const [store, setStore] = useState<StoreData | null>(null);
   const [localSettings, setLocalSettings] = useState<StoreSettings | null>(
-    null
+    null,
   );
 
   useEffect(() => {
-    if (settings) {
-      setLocalSettings(settings);
-    }
-  }, [settings]);
-  useEffect(() => {
-    if (fetchedStore) {
-      setStore(fetchedStore);
-    }
+    if (fetchedStore) setStore(fetchedStore);
   }, [fetchedStore]);
 
+  useEffect(() => {
+    if (settings) setLocalSettings(settings);
+  }, [settings]);
+
+  // ✅ Updated handleUpdateStore to support logo/banner files
   const handleUpdateStore = async (
     data: UpdatedStoreData,
-    settingsPayload?: UpdatedStoreSettings
+    settingsPayload?: UpdatedStoreSettings,
+    logoFile?: File | null,
+    bannerFile?: File | null,
   ): Promise<StoreData> => {
     const updated = await update({
       data: {
-        ...store, // keep other store fields
+        ...store,
         ...data,
       },
-      settingsPayload, // optional settings update
+      settingsPayload,
+      logoFile,
+      bannerFile,
     });
 
     if (!updated.store) throw new Error("Failed to update store");
 
-    // Update store in state
     setStore(updated.store);
 
-    // settings are updated in backend, no need to store here
+    // optionally update local settings if returned
+    if (updated.settings) setLocalSettings(updated.settings);
+
     return updated.store;
   };
 
@@ -117,22 +120,28 @@ export default function StorePage() {
       <StoreHeader
         store={store}
         onUpdate={setStore}
-        updateStore={handleUpdateStore}
+        updateStore={({ store_name, store_slug, logoFile, bannerFile }) =>
+          handleUpdateStore(
+            { store_name, store_slug },
+            undefined,
+            logoFile,
+            bannerFile,
+          )
+        }
       />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <StoreInfoCard
           store={store}
           onUpdate={async (data) => {
-            await handleUpdateStore(data); // ignore return value
+            await handleUpdateStore(data);
           }}
         />
         {settings && (
           <StoreSettingsCard
             settings={settings}
             onUpdate={async (updatedSettings) => {
-              // Call your unified function
-              await handleUpdateStore({}, updatedSettings); // no store data, just settings
+              await handleUpdateStore({}, updatedSettings);
             }}
           />
         )}
@@ -144,16 +153,13 @@ export default function StorePage() {
           <PoliciesCard
             settings={localSettings!}
             onUpdatePolicy={async (type, content) => {
-              // Prepare payload for updateStoreSettings
               const payload: UpdatedStoreSettings =
                 type === "terms"
                   ? { terms_and_conditions: content }
                   : { privacy_policy: content };
-
-              // Use your centralized update function
               await handleUpdateStore({}, payload);
               setLocalSettings((prev) =>
-                prev ? { ...prev, ...payload } : prev
+                prev ? { ...prev, ...payload } : prev,
               );
             }}
           />

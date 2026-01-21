@@ -338,7 +338,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto">{children}</div>
+              <div className="flex-1 overflow-auto p-2">{children}</div>
             </main>
           </div>
         </div>

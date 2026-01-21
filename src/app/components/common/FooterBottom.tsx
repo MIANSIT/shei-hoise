@@ -5,7 +5,7 @@ import Image from "next/image";
 
 type FooterBottomProps = {
   links: { label: string; href: string }[];
-  brandName: string;
+  brandName: string | React.ReactNode;
   storeLogo?: string | null;
   storeName?: string;
   storeSlug?: string; // Make optional
@@ -52,7 +52,7 @@ export default function FooterBottom({
         <div className="hidden md:block">
           {isStore ? (
             // Store Layout
-            <div className="flex flex-row justify-between items-center mb-6">
+            <div className="flex flex-row justify-between items-center">
               {/* Left: Logo and Store Name */}
               <div className="flex items-center gap-3">
                 {isStore && (
@@ -63,7 +63,12 @@ export default function FooterBottom({
                         {storeLogo && (
                           <Image
                             src={storeLogo}
-                            alt={storeName || brandName}
+                            alt={
+                              storeName ||
+                              (typeof brandName === "string"
+                                ? brandName
+                                : "Shei Hoise")
+                            }
                             width={40}
                             height={40}
                             className="w-10 h-10 object-contain"
@@ -116,7 +121,15 @@ export default function FooterBottom({
                   className="text-foreground font-medium hover:text-primary hover:underline underline-offset-4 transition-all duration-200"
                 >
                   {brandName}
-                </Link>
+                  <span
+                    className="text-[10px] font-semibold text-white 
+               bg-linear-to-r from-teal-400 to-blue-500 
+               rounded-md px-1 -translate-y-1 shadow-md 
+               uppercase tracking-wider"
+                  >
+                    Beta
+                  </span>
+                </Link>{" "}
                 . All rights reserved.
               </p>
 
@@ -145,8 +158,16 @@ export default function FooterBottom({
                   className="text-foreground font-medium hover:text-primary hover:underline underline-offset-4 transition-all duration-200"
                 >
                   {brandName}
+                  <span
+                    className="text-[10px] font-semibold text-white 
+               bg-linear-to-r from-teal-400 to-blue-500 
+               rounded-md px-1 -translate-y-1 shadow-md 
+               uppercase tracking-wider"
+                  >
+                    Beta
+                  </span>
                 </Link>
-                . All rights reserved.
+               {" "} . All rights reserved.
               </p>
             </div>
           )}
@@ -164,11 +185,15 @@ export default function FooterBottom({
                 >
                   <Image
                     src={storeLogo}
-                    alt={storeName || brandName}
+                    alt={
+                      storeName ||
+                      (typeof brandName === "string" ? brandName : "Shei Hoise")
+                    }
                     width={40}
                     height={40}
                     className="w-10 h-10 object-contain"
                   />
+
                   {storeName && (
                     <span className="text-base font-semibold text-foreground">
                       {storeName}

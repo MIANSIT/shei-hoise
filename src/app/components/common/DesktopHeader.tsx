@@ -3,10 +3,10 @@
 import LogoTitle from "../header/LogoTitle";
 import NavMenu, { NavLink } from "../header/NavMenu";
 import ThemeToggle from "../theme/ThemeToggle";
-import { usePathname } from "next/navigation";
+// import { usePathname } from "next/navigation";
 
 export default function DesktopHeader() {
-  const pathname = usePathname();
+  // const pathname = usePathname();
 
   const mainLinks: NavLink[] = [
     { name: "Home", path: "/" },

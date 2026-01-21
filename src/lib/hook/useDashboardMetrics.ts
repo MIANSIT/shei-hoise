@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { StoreOrder } from "@/lib/types/order";
 import { Product } from "@/lib/queries/products/getProducts";
 
-export type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
+// export type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
+export type TimePeriod = "weekly" | "monthly" | "yearly";
 export type OrderStatus =
   | "pending"
   | "confirmed"
@@ -81,7 +82,7 @@ export const useDashboardMetrics = (
   storeId: string | null,
   orders: StoreOrder[],
   products: DashboardProduct[],
-  timePeriod: TimePeriod
+  timePeriod: TimePeriod,
 ) => {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     revenue: 0,
@@ -115,24 +116,24 @@ export const useDashboardMetrics = (
 
   const isOrderPaid = useCallback(
     (order: StoreOrder) => order.payment_status?.toLowerCase() === "paid",
-    []
+    [],
   );
 
   const getItemSellingPrice = useCallback(
     (item: OrderItem) => item.discounted_amount ?? item.unit_price,
-    []
+    [],
   );
 
   const ESTIMATED_COST_PERCENTAGE = 0.6;
 
   const getItemEstimatedCost = useCallback(
     (item: OrderItem) => getItemSellingPrice(item) * ESTIMATED_COST_PERCENTAGE,
-    [getItemSellingPrice]
+    [getItemSellingPrice],
   );
 
   const calculateItemProfit = useCallback(
     (item: OrderItem) => getItemSellingPrice(item) - getItemEstimatedCost(item),
-    [getItemSellingPrice, getItemEstimatedCost]
+    [getItemSellingPrice, getItemEstimatedCost],
   );
 
   const getCurrentPeriodDates = useCallback((period: TimePeriod) => {
@@ -141,10 +142,10 @@ export const useDashboardMetrics = (
     const endDate = new Date();
 
     switch (period) {
-      case "daily":
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
+      // case "daily":
+      //   startDate.setHours(0, 0, 0, 0);
+      //   endDate.setHours(23, 59, 59, 999);
+      //   break;
       case "weekly": {
         const day = now.getDay();
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
@@ -177,10 +178,10 @@ export const useDashboardMetrics = (
       const prevEnd = new Date(current.end);
 
       switch (period) {
-        case "daily":
-          prevStart.setDate(prevStart.getDate() - 1);
-          prevEnd.setDate(prevEnd.getDate() - 1);
-          break;
+        // case "daily":
+        //   prevStart.setDate(prevStart.getDate() - 1);
+        //   prevEnd.setDate(prevEnd.getDate() - 1);
+        //   break;
         case "weekly":
           prevStart.setDate(prevStart.getDate() - 7);
           prevEnd.setDate(prevEnd.getDate() - 7);
@@ -196,7 +197,7 @@ export const useDashboardMetrics = (
       }
       return { start: prevStart, end: prevEnd };
     },
-    [getCurrentPeriodDates]
+    [getCurrentPeriodDates],
   );
 
   const calculateAllMetrics = useCallback(() => {
@@ -289,7 +290,7 @@ export const useDashboardMetrics = (
         prevOrderCount++;
         prevProfit += (order.order_items as OrderItem[]).reduce(
           (sum, item) => sum + calculateItemProfit(item) * (item.quantity || 1),
-          0
+          0,
         );
       }
 
@@ -309,7 +310,7 @@ export const useDashboardMetrics = (
         if (salesTrendMap.has(dayKey)) {
           salesTrendMap.set(
             dayKey,
-            (salesTrendMap.get(dayKey) || 0) + subtotal
+            (salesTrendMap.get(dayKey) || 0) + subtotal,
           );
         }
       }
@@ -381,7 +382,7 @@ export const useDashboardMetrics = (
         sum +
         (order.order_items as OrderItem[]).reduce(
           (s, item) => s + calculateItemProfit(item) * (item.quantity || 1),
-          0
+          0,
         )
       );
     }, 0);
@@ -437,12 +438,12 @@ export const useDashboardMetrics = (
     const newCustomers = Array.from(customerMap.values()).filter(
       (c) =>
         c.firstOrderDate >= currentPeriod.start &&
-        c.firstOrderDate <= currentPeriod.end
+        c.firstOrderDate <= currentPeriod.end,
     ).length;
 
     const totalCustomers = customerMap.size;
     const returningCustomers = Array.from(customerMap.values()).filter(
-      (c) => c.orders > 1
+      (c) => c.orders > 1,
     ).length;
     const returningRate =
       totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
@@ -525,7 +526,7 @@ export const useDashboardMetrics = (
         orders: calculateChange(orderCount, prevOrderCount),
         aov: calculateChange(
           orderCount > 0 ? totalOrderValue / orderCount : 0,
-          prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0
+          prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0,
         ),
         profit: calculateChange(grossProfit, prevProfit),
       },

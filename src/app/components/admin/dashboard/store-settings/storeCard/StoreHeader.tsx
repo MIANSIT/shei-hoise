@@ -74,8 +74,8 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
       const updatedStore = await updateStore({
         store_name: storeName,
         store_slug: storeSlug,
-        logoFile,
-        bannerFile,
+        logoFile, // ✅ pass the selected file
+        bannerFile, // ✅ pass the selected file
       });
 
       // Update UI only after successful API

@@ -46,7 +46,19 @@ export default function AboutPage() {
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <PageHeader
-          subtitle="About Shei Hoise"
+          subtitle={
+            <div className="inline-flex items-center space-x-2">
+              <span>About Shei Hoise</span>
+              <span
+                className=" py-0.5 text-[10px] font-semibold text-white 
+                 bg-linear-to-r from-teal-400 to-blue-500 
+                 rounded-md px-1 -translate-y-1 shadow-md 
+                 uppercase tracking-wider"
+              >
+                Beta
+              </span>
+            </div>
+          }
           title="Modernizing CashFlow Operations"
           description="We provide enterprise-grade e-commerce tools for Facebook entrepreneurs, making professional online selling accessible to everyone."
         />

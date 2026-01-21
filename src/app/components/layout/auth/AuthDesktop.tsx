@@ -14,7 +14,7 @@ export function DesktopLayout({
   return (
     <div className="flex  w-full">
       {/* Left side - Image */}
-      <div className="hidden md:flex w-1/2 h-screen relative items-center justify-center">
+      <div className="hidden md:flex w-2/3 h-screen relative items-center justify-center">
         <Image
           src={isAdmin ? "/adminBGi.png" : "/bgImage.png"}
           alt={isAdmin ? "Admin background" : "Login background"}
