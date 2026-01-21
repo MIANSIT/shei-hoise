@@ -8,9 +8,9 @@ export function ShippingErrorState({
   onRetry,
 }: ShippingErrorStateProps) {
   return (
-    <div className="bg-gradient-to-br from-white to-red-50/30 rounded-2xl border border-red-100 shadow-2xl shadow-red-200/30 p-8 backdrop-blur-sm">
+    <div className="bg-linear-to-br from-white to-red-50/30 rounded-2xl border border-red-100 shadow-2xl shadow-red-200/30 p-8 backdrop-blur-sm">
       <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
-        <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-pink-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+        <div className="w-16 h-16 bg-linear-to-r from-red-100 to-pink-100 rounded-2xl flex items-center justify-center shrink-0">
           <svg
             className="w-8 h-8 text-red-500"
             fill="currentColor"
@@ -30,7 +30,7 @@ export function ShippingErrorState({
           <p className="text-red-700 mb-4">{error}</p>
           <button
             onClick={onRetry}
-            className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-red-500/25 font-medium"
+            className="inline-flex items-center space-x-2 bg-linear-to-r from-red-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-red-500/25 font-medium"
           >
             <svg
               className="w-5 h-5"

@@ -65,10 +65,10 @@ export const productSchema = z
             path: ["variants", index, "tp_price"],
           });
         }
-        if (!variant.stock) {
+        if (variant.stock === undefined || variant.stock < 0) {
           ctx.addIssue({
             code: "custom",
-            message: "Stock is required for each variant.",
+            message: "Stock cannot be negative.",
             path: ["variants", index, "stock"],
           });
         }
@@ -121,6 +121,18 @@ export const productSchema = z
           path: ["discounted_price"],
         });
       }
+    }
+
+    if (
+      data.base_price !== undefined &&
+      data.tp_price !== undefined &&
+      data.base_price < data.tp_price
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "MRP Price must be greater than or equal to TP price.",
+        path: ["base_price"],
+      });
     }
 
     // Image validation

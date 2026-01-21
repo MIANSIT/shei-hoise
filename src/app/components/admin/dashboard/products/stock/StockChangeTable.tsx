@@ -17,7 +17,7 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { ProductStatus, StockFilter } from "@/lib/types/enums";
-import { Modal } from "antd";
+import { App } from "antd";
 
 interface StockChangeTableProps {
   searchText: string;
@@ -42,7 +42,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
 
   const { storeSlug, loading: userLoading } = useCurrentUser();
   const notify = useSheiNotification();
-
+  const { modal } = App.useApp();
   // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!storeSlug) return;
@@ -163,7 +163,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
 
     if (value === 0) {
       return new Promise<void>((resolve) => {
-        Modal.confirm({
+        modal.confirm({
           title: "Set quantity to 0?",
           content: `Are you sure you want to set the quantity of ${selectedRowKeys.length} selected product(s) to 0?`,
           okText: "Yes, Set to 0",

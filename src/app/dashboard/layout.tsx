@@ -5,7 +5,7 @@ import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { PanelLeft } from "lucide-react";
+import { Moon, PanelLeft, Sun } from "lucide-react";
 import { ConfigProvider, theme as antdTheme, App as AntdApp, Spin } from "antd";
 // import "@ant-design/v5-patch-for-react-19";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
@@ -252,7 +252,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col sticky top-0 h-screen shadow-md p-2">
           {/* Header */}
           <header
             className="flex items-center justify-between p-4 shadow-md shrink-0"
@@ -289,15 +289,38 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 />
               </button>
             </div>
+            <button
+              onClick={() => {
+                const newTheme = theme === "light" ? "dark" : "light";
+                setTheme(newTheme);
+                localStorage.setItem("theme", newTheme);
+                document.documentElement.classList.toggle(
+                  "dark",
+                  newTheme === "dark",
+                );
+              }}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              {theme === "light" ? (
+                <Moon className="w-5 h-5" />
+              ) : (
+                <Sun className="w-5 h-5" />
+              )}
+            </button>
           </header>
 
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 ">
             {/* Sidebar */}
-            <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
+            <div
+              className="sticky top-0 h-screen shadow-md p-2"
+              style={{ background: "var(--sidebar)" }}
+            >
+              <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
+            </div>
 
             {/* Main content */}
             <main
-              className="flex-1 flex flex-col overflow-hidden"
+              className="flex-1 flex flex-col overflow-auto"
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
@@ -305,7 +328,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Toaster position="top-right" />
 
-              <div className="flex justify-between items-center mb-4 px-4">
+              <div className="flex justify-between items-center mb-2">
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -315,7 +338,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-4">{children}</div>
+              <div className="flex-1 overflow-auto p-2">{children}</div>
             </main>
           </div>
         </div>

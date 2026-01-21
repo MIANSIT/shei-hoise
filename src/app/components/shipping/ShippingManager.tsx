@@ -99,13 +99,12 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   const updateShippingOption = (
     index: number,
     field: keyof ShippingOption,
-    value: string | number
+    value: string | number | undefined // allow undefined now
   ) => {
     const updated = [...shippingOptions];
     updated[index] = { ...updated[index], [field]: value };
     setShippingOptions(updated);
   };
-
   const removeShippingOption = (index: number) => {
     const optionName = shippingOptions[index].name || `Option ${index + 1}`;
     setShippingOptions(shippingOptions.filter((_, i) => i !== index));
@@ -248,10 +247,10 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
       {/* Header - Simplified for mobile */}
       <div className="mb-6 sm:mb-8">
         <div className="text-center sm:text-left mb-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-400 ">
             Shipping Configuration
           </h2>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+          <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-sm sm:text-base">
             Manage delivery methods and shipping costs for your store
           </p>
         </div>

@@ -21,27 +21,30 @@ const StatCard: React.FC<StatCardProps> = ({
   const getChangeColor = () => {
     switch (changeType) {
       case "positive":
-        return "text-green-600 bg-green-50";
+        return "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900";
       case "negative":
-        return "text-red-600 bg-red-50";
+        return "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900";
       default:
-        return "text-gray-600 bg-gray-50";
+        return "text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-800";
     }
   };
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-2xl font-bold text-foreground">{value}</div>
-          <div className="text-sm text-muted-foreground mt-1">{title}</div>
-          <div
-            className={`text-xs px-2 py-1 rounded-full inline-block mt-2 ${getChangeColor()}`}
-          >
-            {change} 
-          </div>
+    <Card className="shadow-sm hover:shadow-md transition-shadow rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Icon */}
+      <div className="shrink-0 flex justify-center sm:justify-start items-center w-full sm:w-auto">
+        <div className="text-5xl sm:text-4xl text-blue-500">{icon}</div>
+      </div>
+
+      {/* Value + Title + Badge */}
+      <div className="flex flex-col items-center sm:items-start gap-2 text-center sm:text-left">
+        <div className="text-2xl sm:text-3xl font-bold text-foreground">{value}</div>
+        <div className="text-sm sm:text-base text-muted-foreground">{title}</div>
+        <div
+          className={`text-xs sm:text-sm px-3 py-1 rounded-full inline-block ${getChangeColor()}`}
+        >
+          {change}
         </div>
-        <div className="text-3xl text-blue-500">{icon}</div>
       </div>
     </Card>
   );

@@ -12,9 +12,16 @@ export function RichTextController({
   const { Editor } = useRichText();
 
   return (
-    <Editor
-      initialValue={value ?? ""}
-      onBlur={onChange}
-    />
+    <div
+      className="
+    rounded-md border
+    bg-white text-gray-900
+    border-gray-300
+    dark:bg-gray-900 dark:text-gray-100
+    dark:border-gray-700
+  "
+    >
+      <Editor initialValue={value ?? ""} onBlur={onChange} />
+    </div>
   );
 }

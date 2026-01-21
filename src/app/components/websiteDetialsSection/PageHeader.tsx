@@ -3,7 +3,7 @@ import React from "react";
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: string | React.ReactNode; // allow JSX now
   description?: string;
   centered?: boolean;
 }

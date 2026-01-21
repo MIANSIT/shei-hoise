@@ -17,10 +17,12 @@ const CustomerSnapshot: React.FC<CustomerSnapshotProps> = ({ stats }) => {
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="flex items-center justify-between p-3 bg-sidebar-ring rounded-lg"
+          className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-sidebar-ring rounded-lg"
         >
-          <div className="flex items-center gap-3">
-            <div className="text-xl text-foreground">{stat.icon}</div>
+          {/* Left content */}
+          <div className="flex items-start gap-3">
+            <div className="text-xl text-foreground mt-1">{stat.icon}</div>
+
             <div>
               <div className="text-sm text-foreground">{stat.title}</div>
               <div className="font-semibold">{stat.value}</div>
@@ -29,7 +31,11 @@ const CustomerSnapshot: React.FC<CustomerSnapshotProps> = ({ stats }) => {
               )}
             </div>
           </div>
-          <div className="text-sm text-foreground">Last 7 days</div>
+
+          {/* Right meta */}
+          <div className="text-xs md:text-sm text-foreground md:text-right">
+            Last 7 days
+          </div>
         </div>
       ))}
     </div>

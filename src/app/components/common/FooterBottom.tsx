@@ -5,19 +5,44 @@ import Image from "next/image";
 
 type FooterBottomProps = {
   links: { label: string; href: string }[];
-  brandName: string;
+  brandName: string | React.ReactNode;
   storeLogo?: string | null;
   storeName?: string;
   storeSlug?: string; // Make optional
   isStore?: boolean; // Add flag to identify if it's a store
+  storeDescription?: string; // NEW
 };
+function linkify(text: string) {
+  // Regex to match URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
 
+  // Split the text by URLs
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline hover:opacity-80"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
 export default function FooterBottom({
   links,
   brandName,
   storeLogo,
   storeName,
   storeSlug,
+  storeDescription,
   isStore = false, // Default to false for main website
 }: FooterBottomProps) {
   return (
@@ -27,36 +52,48 @@ export default function FooterBottom({
         <div className="hidden md:block">
           {isStore ? (
             // Store Layout
-            <div className="flex flex-row justify-between items-center mb-6">
+            <div className="flex flex-row justify-between items-center">
               {/* Left: Logo and Store Name */}
               <div className="flex items-center gap-3">
-                {storeLogo ? (
-                  <Link
-                    href={`/${storeSlug}`}
-                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                  >
-                    <Image
-                      src={storeLogo}
-                      alt={storeName || brandName}
-                      width={40}
-                      height={40}
-                      className="w-10 h-10 object-contain"
-                    />
-                    {storeName && (
-                      <span className="text-base font-semibold text-foreground">
-                        {storeName}
-                      </span>
-                    )}
-                  </Link>
-                ) : (
-                  storeName && (
-                    <Link
-                      href={`/${storeSlug}`}
-                      className="text-base font-semibold text-foreground hover:opacity-80 transition-opacity"
-                    >
-                      {storeName}
-                    </Link>
-                  )
+                {isStore && (
+                  <div className="flex justify-between items-start mb-6">
+                    {/* Left: Logo + Name on same line, Description below */}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-3">
+                        {storeLogo && (
+                          <Image
+                            src={storeLogo}
+                            alt={
+                              storeName ||
+                              (typeof brandName === "string"
+                                ? brandName
+                                : "Shei Hoise")
+                            }
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 object-contain"
+                          />
+                        )}
+
+                        {storeName && (
+                          <Link
+                            href={`/${storeSlug}`}
+                            className="text-base font-semibold text-foreground hover:opacity-80 transition-opacity"
+                          >
+                            {storeName}
+                          </Link>
+                        )}
+                      </div>
+
+                      {storeDescription && (
+                        <p className="text-sm text-muted-foreground mt-1 max-w-100">
+                          {linkify(storeDescription)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right: Links */}
+                  </div>
                 )}
               </div>
 
@@ -84,7 +121,15 @@ export default function FooterBottom({
                   className="text-foreground font-medium hover:text-primary hover:underline underline-offset-4 transition-all duration-200"
                 >
                   {brandName}
-                </Link>
+                  <span
+                    className="text-[10px] font-semibold text-white 
+               bg-linear-to-r from-teal-400 to-blue-500 
+               rounded-md px-1 -translate-y-1 shadow-md 
+               uppercase tracking-wider"
+                  >
+                    Beta
+                  </span>
+                </Link>{" "}
                 . All rights reserved.
               </p>
 
@@ -113,8 +158,16 @@ export default function FooterBottom({
                   className="text-foreground font-medium hover:text-primary hover:underline underline-offset-4 transition-all duration-200"
                 >
                   {brandName}
+                  <span
+                    className="text-[10px] font-semibold text-white 
+               bg-linear-to-r from-teal-400 to-blue-500 
+               rounded-md px-1 -translate-y-1 shadow-md 
+               uppercase tracking-wider"
+                  >
+                    Beta
+                  </span>
                 </Link>
-                . All rights reserved.
+               {" "} . All rights reserved.
               </p>
             </div>
           )}
@@ -132,11 +185,15 @@ export default function FooterBottom({
                 >
                   <Image
                     src={storeLogo}
-                    alt={storeName || brandName}
+                    alt={
+                      storeName ||
+                      (typeof brandName === "string" ? brandName : "Shei Hoise")
+                    }
                     width={40}
                     height={40}
                     className="w-10 h-10 object-contain"
                   />
+
                   {storeName && (
                     <span className="text-base font-semibold text-foreground">
                       {storeName}
@@ -151,6 +208,11 @@ export default function FooterBottom({
                 >
                   {storeName}
                 </Link>
+              )}
+              {storeDescription && (
+                <p className="text-sm text-muted-foreground mt-1 md:mt-0">
+                  {linkify(storeDescription)}
+                </p>
               )}
             </div>
           )}

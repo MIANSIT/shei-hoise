@@ -20,19 +20,24 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
-    {
-      name: "Sections",
-      children: [
-        { name: "Store", path: "#stores" },
-        { name: "Request Demo", path: "#request" },
-      ],
-    },
+    // Only show Sections on the home page
+    ...(pathname === "/"
+      ? [
+          {
+            name: "Sections",
+            children: [
+              { name: "Store", path: "#stores" },
+              { name: "Request Demo", path: "#request-demo" },
+            ],
+          },
+        ]
+      : []),
     { name: "All Stores", path: "/stores" },
   ];
 
   return (
     <>
-      <header className="bg-background/80 backdrop-blur-md px-4 py-3 shadow-lg lg:hidden fixed top-0 left-0 w-full z-50 transition-all">
+      <header className="bg-background/80 backdrop-blur-md px-4  shadow-lg lg:hidden fixed top-0 left-0 w-full z-50 transition-all">
         <div className="flex items-center justify-between">
           <LogoTitle showTitle={true} />
 

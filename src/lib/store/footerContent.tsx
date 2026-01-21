@@ -1,6 +1,6 @@
 export const footerContent = {
   brand: {
-    name: "Shei Hoise",
+    name: "Shei Hoise ",
     description:
       "Your ultimate destination for cutting-edge tech. Trendy gadgets, smart devices, and must-have electronics—all in one place.",
   },

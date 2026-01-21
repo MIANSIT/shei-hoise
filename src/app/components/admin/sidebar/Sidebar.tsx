@@ -27,13 +27,13 @@ export default function Sidebar({
     items: [
       {
         key: "go",
-        icon: <Home className="w-5 h-5" />,
+        icon: <Home className='w-5 h-5' />,
         label: "Go to Store",
         onClick: () => router.push(`/${storeSlug}`),
       },
       {
         key: "copy",
-        icon: <Copy className="w-5 h-5" />,
+        icon: <Copy className='w-5 h-5' />,
         label: "Copy Store Link",
         onClick: () => {
           const storeUrl = `${window.location.origin}/${storeSlug}`;
@@ -53,40 +53,40 @@ export default function Sidebar({
       trigger={null}
       width={240}
       collapsedWidth={70}
-      breakpoint="md"
-      className="flex flex-col shadow-md"
+      breakpoint='md'
+      className='flex flex-col'
       style={{ background: "var(--sidebar)" }}
     >
-      <div className="flex flex-col flex-1">
+      <div className='flex flex-col flex-1'>
         {/* Middle: Menu */}
         <SidebarMenu themeMode={themeMode} storeSlug={storeSlug} />
 
         {/* Bottom: Profile + Store Dropdown */}
-        <div className="mt-auto">
+        <div className='mt-auto'>
           <SidebarProfile collapsed={collapsed} />
 
           {storeSlug && (
-            <div className="p-2 flex items-center justify-center w-full">
+            <div className='p-2 flex items-center justify-center w-full'>
               <Dropdown menu={storeMenu} trigger={["click"]}>
-                <button className="flex items-center justify-center gap-3 px-4 py-3 bg-muted-foreground text-secondary rounded shadow transition-colors duration-200 cursor-pointer hover:bg-accent-foreground w-full">
+                <button className='flex items-center justify-center gap-3 px-4 py-3 bg-muted-foreground text-secondary rounded shadow transition-colors duration-200 cursor-pointer hover:bg-accent-foreground w-full'>
                   {/* Bigger Store / Copy Icon */}
                   <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                    xmlns='http://www.w3.org/2000/svg'
+                    className='h-4 w-4'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    stroke='currentColor'
                     strokeWidth={2}
                   >
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 9l9-6 9 6v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      d='M3 9l9-6 9 6v11a2 2 0 01-2 2H5a2 2 0 01-2-2z'
                     />
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9 22V12h6v10"
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      d='M9 22V12h6v10'
                     />
                   </svg>
                   {!collapsed && <span>Store Options</span>}

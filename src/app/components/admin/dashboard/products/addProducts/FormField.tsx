@@ -60,7 +60,11 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
 
   const renderInput = (field: FieldType, fieldState?: FieldStateType) => {
     const inputValue =
-      type === "number" ? field.value ?? "" : field.value ?? "";
+      type === "number"
+        ? field.value != null
+          ? String(field.value)
+          : ""
+        : (field.value ?? "");
 
     if (as === "textarea") {
       return (
@@ -92,7 +96,12 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             id={name}
             value={inputValue as string | number}
             disabled={readOnly || disabled}
-            className={`${commonClasses} ${extraClass}`}
+            className={`${commonClasses} ${extraClass} 
+    bg-white text-gray-700 border-gray-300 
+    focus:ring-gray-500 focus:border-gray-500
+    dark:bg-black dark:text-gray-200 dark:border-gray-600 
+    dark:focus:ring-gray-400 dark:focus:border-gray-400
+  `}
             onChange={(e) => {
               field.onChange(e.target.value as T[Path<T>]);
               onChange?.(e.target.value as T[Path<T>]);
@@ -109,6 +118,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
               </option>
             ))}
           </select>
+
           {fieldState?.error?.message && (
             <p className="text-red-500 text-sm mt-1">
               {fieldState.error.message}
@@ -144,6 +154,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
       );
     }
 
+    // Default input (text or number)
     return (
       <>
         <input
@@ -157,12 +168,18 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
           disabled={disabled}
           value={inputValue as string | number}
           onChange={(e) => {
-            const val: T[Path<T>] =
-              type === "number"
-                ? e.target.value === ""
-                  ? (undefined as unknown as T[Path<T>])
-                  : (parseFloat(e.target.value) as T[Path<T>])
-                : (e.target.value as T[Path<T>]);
+            let val: T[Path<T>];
+            if (type === "number") {
+              const raw = e.target.value;
+              // Remove leading zeros but keep "0"
+              const stripped = raw.replace(/^0+(?=\d)/, "");
+              // If empty, fallback to 0
+              const numericValue = stripped === "" ? 0 : Number(stripped);
+              val = numericValue as T[Path<T>];
+            } else {
+              val = e.target.value as T[Path<T>];
+            }
+
             field.onChange(val);
             onChange?.(val);
           }}

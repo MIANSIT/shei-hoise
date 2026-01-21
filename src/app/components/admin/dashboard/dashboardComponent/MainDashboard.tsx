@@ -4,19 +4,18 @@ import React from "react";
 import StatCard from "./StatCard";
 import OrderStatusCard from "./OrderStatusCard";
 import { Row, Col, Typography, Card, Select } from "antd";
-// import { Row, Col, Typography, Card, Button, Select } from "antd";
 import InventoryAlertCard from "./InventoryAlertCard";
 import OrderAmountCard from "./OrderAmountCard";
 import SalesTrendChart from "./SalesTrendChart";
 import TopProducts from "./TopProducts";
 import CustomerSnapshot from "./CustomerSnapshot";
 import AlertsSection from "./AlertsSection";
-// import { EyeOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
+// type TimePeriod = "daily" | "weekly" | "monthly" | "yearly"; // <- include daily
+type TimePeriod = "weekly" | "monthly" | "yearly"; // <- include daily
 
 interface MainDashboardProps {
   stats: {
@@ -75,11 +74,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   timePeriod,
   onTimePeriodChange,
 }) => {
-  // Get readable time period label
   const getTimePeriodLabel = (period: TimePeriod) => {
     switch (period) {
-      case "daily":
-        return "Daily";
       case "weekly":
         return "Weekly";
       case "monthly":
@@ -87,19 +83,19 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
       case "yearly":
         return "Yearly";
       default:
-        return "Daily";
+        return "Weekly";
     }
   };
 
   return (
-    <div className="p-6 min-h-screen  ">
+    <div className="min-h-screen space-y-10 px-2 sm:px-4 md:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <Title level={2}>Dashboard Overview</Title>
         <Text type="secondary">Key metrics and insights for your business</Text>
       </div>
 
-      {/* Section 1: KPI Cards with Time Period Selector */}
+      {/* KPI Cards with Time Period Selector */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
           <div>
@@ -117,10 +113,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             <Select
               value={timePeriod}
               onChange={onTimePeriodChange}
-              style={{ width: 120 }}
+              style={{ minWidth: 120 }}
               size="middle"
             >
-              <Option value="daily">Today&apos;s</Option>
               <Option value="weekly">Weekly</Option>
               <Option value="monthly">Monthly</Option>
               <Option value="yearly">Yearly</Option>
@@ -129,13 +124,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         </div>
         <Row gutter={[16, 16]}>
           {stats.map((stat, idx) => (
-            <Col key={idx} xs={24} sm={12} lg={6}>
+            <Col key={idx} xs={24} sm={12} md={12} lg={6}>
               <StatCard {...stat} />
             </Col>
           ))}
         </Row>
       </div>
 
+      {/* Order Status & Payment */}
       <div className="mb-8">
         <Row gutter={[16, 16]}>
           {/* Left: Order Status */}
@@ -148,7 +144,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             </div>
             <Row gutter={[16, 16]}>
               {orderStatusCards.map((card, idx) => (
-                <Col key={idx} xs={24} sm={12} lg={12}>
+                <Col key={idx} xs={24} sm={12}>
                   <OrderStatusCard {...card} />
                 </Col>
               ))}
@@ -165,7 +161,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             </div>
             <Row gutter={[16, 16]}>
               {orderAmounts.map((card, idx) => (
-                <Col key={idx} xs={24} sm={12} lg={12}>
+                <Col key={idx} xs={24} sm={12}>
                   <OrderAmountCard
                     title={card.title}
                     amount={card.amount}
@@ -178,7 +174,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         </Row>
       </div>
 
-      {/* Section 3: Inventory Alerts */}
+      {/* Inventory Alerts */}
       <div className="mb-8">
         <div className="mb-4">
           <Title level={4} className="m-0">
@@ -195,7 +191,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         </Row>
       </div>
 
-      {/* Section 3: Sales Trend */}
+      {/* Sales Trend */}
       <div className="mb-8">
         <div className="mb-4">
           <Title level={4} className="m-0">
@@ -206,40 +202,23 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         <SalesTrendChart data={salesTrend} />
       </div>
 
-      {/* Section 4: Top Products & Customer Snapshot */}
+      {/* Top Products & Customer Snapshot */}
       <div className="mb-8">
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
-            <Card
-              title="Top Products (Paid)"
-              // extra={
-              //   <Button type="link" icon={<EyeOutlined />}>
-              //     View All
-              //   </Button>
-              // }
-              className="h-full"
-            >
+            <Card title="Top Products (Paid)" className="h-full">
               <TopProducts products={topProducts} />
             </Card>
           </Col>
-
           <Col xs={24} lg={12}>
-            <Card
-              title="Customer Snapshot"
-              // extra={
-              //   <Button type="link" icon={<EyeOutlined />}>
-              //     View Details
-              //   </Button>
-              // }
-              className="h-full"
-            >
+            <Card title="Customer Snapshot" className="h-full">
               <CustomerSnapshot stats={customerStats} />
             </Card>
           </Col>
         </Row>
       </div>
 
-      {/* Section 5: Alerts */}
+      {/* Alerts Section */}
       {alerts.length > 0 && (
         <div className="mb-8">
           <div className="mb-4">

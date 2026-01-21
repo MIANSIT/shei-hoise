@@ -35,8 +35,20 @@ export default function SuccessModal({ open, onClose }: SuccessModalProps) {
 
         {/* Message */}
         <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-2 leading-relaxed">
-          Thank you for reaching out to <strong>Shei Hoise</strong>. Our support
-          team has received your message and will review it promptly.
+          Thank you for reaching out to{" "}
+          <strong>
+            Shei Hoise{" "}
+            <span
+              className="text-[10px] font-semibold text-white 
+                 bg-linear-to-r from-teal-400 to-blue-500 
+                 rounded-md px-1 -translate-y-1 shadow-md 
+                 uppercase tracking-wider"
+            >
+              Beta
+            </span>
+          </strong>
+          . Our support team has received your message and will review it
+          promptly.
         </p>
 
         <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-3">

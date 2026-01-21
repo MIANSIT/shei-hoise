@@ -78,22 +78,27 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
         {alerts.map((alert, idx) => (
           <div
             key={idx}
-            className={`flex items-center justify-between p-3 rounded-lg ${getAlertColor(
-              alert.type
+            className={`flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg ${getAlertColor(
+              alert.type,
             )}`}
           >
-            <div className="flex items-center gap-3">
-              <div className="text-xl">{getAlertIcon(alert.type)}</div>
+            {/* Left content */}
+            <div className="flex items-start gap-3">
+              <div className="text-xl mt-1">{getAlertIcon(alert.type)}</div>
+
               <div>
-                <div className="font-semibold text-primary">{alert.message}</div>
-                <div className="text-sm text-foreground">
+                <div className="font-semibold text-black">{alert.message}</div>
+                <div className="text-sm text-black">
                   {alert.count} item{alert.count > 1 ? "s" : ""} affected
                 </div>
               </div>
             </div>
+
+            {/* Action button */}
             <Button
               type="primary"
               size="small"
+              className="w-full md:w-auto"
               onClick={() => handleActionClick(alert)}
             >
               Take Action

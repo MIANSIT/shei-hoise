@@ -13,18 +13,17 @@ export function ShippingFeesCard({
   fees?: ShippingFees | null;
   settings: StoreSettings;
 }) {
-  // Get currency icon from settings
   const currencyIcon = CURRENCY_ICONS[settings.currency as Currency];
 
   return (
-    <Card className="border shadow-sm">
-      <CardHeader className="p-4 sm:p-6">
+    <Card className="border shadow-md rounded-2xl overflow-hidden">
+      <CardHeader className="bg-background  p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-lg sm:text-xl font-semibold">
+            <CardTitle className="text-lg sm:text-xl font-semibold text-primary">
               Shipping Methods
             </CardTitle>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {fees && fees.length > 0
                 ? `${fees.length} shipping option${
                     fees.length !== 1 ? "s" : ""
@@ -34,7 +33,7 @@ export function ShippingFeesCard({
           </div>
           <Badge
             variant="outline"
-            className="font-normal self-start sm:self-auto text-xs sm:text-sm px-2 py-1"
+            className="text-sm px-3 py-1 font-medium text-muted-foreground border-ring"
           >
             {currencyIcon}
           </Badge>
@@ -42,48 +41,63 @@ export function ShippingFeesCard({
       </CardHeader>
 
       {fees && fees.length > 0 && (
-        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <CardContent className="p-6 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {fees.map((fee, index) => (
               <div
                 key={index}
-                className="flex justify-between items-center p-3 sm:p-4 rounded-lg border hover:border-primary/50 transition-all hover:shadow-sm"
+                className="flex flex-col justify-between p-4 rounded-xl border hover:shadow-lg transition-shadow duration-200 bg-background"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                  <span className="font-semibold text-sm sm:text-base">
-                    {fee.name}
+                {/* Top row: Name + Description */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                  <div>
+                    <h4 className="font-semibold text-primary text-base sm:text-lg">
+                      {fee.name}
+                    </h4>
+                    {fee.description && (
+                      <p className="text-ring text-sm mt-1 sm:mt-0.5">
+                        {fee.description}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground text-sm sm:text-base mt-1 sm:mt-0">
+                    {fee.estimated_days !== undefined
+                      ? `${fee.estimated_days} day${
+                          fee.estimated_days > 1 ? "s" : ""
+                        }`
+                      : "No estimate"}
                   </span>
-                  {fee.description && (
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      {fee.description}
-                    </span>
-                  )}
                 </div>
-                <span className="font-bold text-sm sm:text-base whitespace-nowrap">
-                  {fee.price === 0 ? "FREE" : `${currencyIcon} ${fee.price}`}
-                </span>
+
+                {/* Bottom row: Price */}
+                <div className="mt-3 sm:mt-2 flex justify-end">
+                  <span
+                    className={`font-bold text-sm sm:text-base px-3 py-1 rounded-lg border ${
+                      fee.price === 0
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
+                  >
+                    {fee.price === 0 ? "FREE" : `${currencyIcon} ${fee.price}`}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
         </CardContent>
       )}
 
-      {/* Persistent Manage Shipping link using Next.js Link */}
-      <div className="px-4 py-3 border-t text-xs sm:text-sm text-muted-foreground">
-        <p className="text-center sm:text-left">
-          You can manage shipping methods in the{" "}
-          <span className="md:hidden">
-            <br />
-          </span>
-          <Link
-            href="/dashboard/shipping-Management"
-            target="_blank"
-            className="text-primary underline hover:text-primary/80 transition-colors font-medium"
-          >
-            Shipping Management page
-          </Link>
-          .
-        </p>
+      {/* Persistent Manage Shipping link */}
+      <div className="px-6 py-4 border-t bg-background text-xs sm:text-sm text-ring">
+        You can manage shipping methods in the{" "}
+        <Link
+          href="/dashboard/shipping-Management"
+          target="_blank"
+          className="text-badge underline font-medium hover:text-chart-1 transition-colors"
+        >
+          Shipping Management page
+        </Link>
+        .
       </div>
     </Card>
   );
