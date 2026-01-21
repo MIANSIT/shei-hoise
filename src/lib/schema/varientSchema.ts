@@ -13,7 +13,7 @@ export const variantSchema = z
       .optional(),
 
     weight: z.number().optional(),
-    color: z.string().min(1, "Color is required"),
+    color: z.string().optional(),
     is_active: z.boolean(),
 
     base_price: z.number().optional(),

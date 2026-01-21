@@ -5,6 +5,7 @@ import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { RichTextController } from "./RichTextController";
 import { Form } from "antd";
+import { SafetyOutlined } from "@ant-design/icons";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -51,12 +52,20 @@ export default function TermsPrivacy({ control }: Props) {
           </FormItemWrapper>
         </Form>
 
-        <div className="p-4 bg-blue-50 border border-blue-100 rounded-md mt-6">
-          <p className="text-sm text-blue-700">
-            <span className="font-medium">Important:</span> Ensure that your
-            Terms & Conditions and Privacy Policy are thorough, accurate, and
-            fully compliant with applicable local laws and regulations.
-          </p>
+        <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">
+          <div className="shrink-0 text-emerald-600">
+            <SafetyOutlined className="text-xl" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-foreground">
+              Store Security & Compliance
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              Ensure your store&apos;s security guidelines and data protection
+              policies are complete, accurate, and compliant with all applicable
+              laws, keeping your business and customers safe.
+            </p>
+          </div>
         </div>
       </div>
     </>

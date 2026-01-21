@@ -133,8 +133,7 @@ const OrdersTable: React.FC<Props> = ({
       console.error("Error deleting order:", error);
       notification.error({
         title: "Delete Failed",
-        description:
-          error.title || "Failed to delete order. Please try again.",
+        description: error.title || "Failed to delete order. Please try again.",
       });
     } finally {
       setDeleteLoading(null);
@@ -256,7 +255,7 @@ const OrdersTable: React.FC<Props> = ({
   };
 
   const selectedOrderObjects = filteredOrders.filter((order) =>
-    selectedRowKeys.includes(order.id)
+    selectedRowKeys.includes(order.id),
   );
 
   // ✅ FIXED: Updated columns with proper address display
@@ -447,7 +446,7 @@ const OrdersTable: React.FC<Props> = ({
                 setSelectedRowKeys([...selectedRowKeys, order.id]);
               } else {
                 setSelectedRowKeys(
-                  selectedRowKeys.filter((key) => key !== order.id)
+                  selectedRowKeys.filter((key) => key !== order.id),
                 );
               }
             }}
@@ -619,7 +618,7 @@ const OrdersTable: React.FC<Props> = ({
                   setSelectedRowKeys([...selectedRowKeys, orderId]);
                 } else {
                   setSelectedRowKeys(
-                    selectedRowKeys.filter((key) => key !== orderId)
+                    selectedRowKeys.filter((key) => key !== orderId),
                   );
                 }
               }}
@@ -708,9 +707,9 @@ const OrdersTable: React.FC<Props> = ({
           expandedRowRender: (order: StoreOrder) => (
             <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {/* Show backend values at the top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-gray-50 rounded">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
                 <div>
-                  <span className="text-sm font-medium text-gray-600">
+                  <span className="text-sm font-medium text-gray-300">
                     Delivery Option:
                   </span>
                   <div className="font-medium capitalize">
@@ -718,7 +717,7 @@ const OrdersTable: React.FC<Props> = ({
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-600">
+                  <span className="text-sm font-medium text-gray-300">
                     Payment Method:
                   </span>
                   <div className="font-medium capitalize">
@@ -728,14 +727,14 @@ const OrdersTable: React.FC<Props> = ({
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-600">
-                    Order Status:
+                  <span className="text-sm font-medium text-gray-300">
+                    Order Status: {""}
                   </span>
                   <StatusTag status={order.status as OrderStatus} />
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-600">
-                    Payment Status:
+                  <span className="text-sm font-medium text-gray-300">
+                    Payment Status: {" "}
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>
@@ -781,7 +780,7 @@ const OrdersTable: React.FC<Props> = ({
         <div className="text-sm text-gray-600">
           {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
             page * pageSize,
-            total
+            total,
           )} of ${total} items`}
         </div>
 

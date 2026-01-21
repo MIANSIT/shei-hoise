@@ -1,6 +1,14 @@
 "use client";
 
-import { InputNumber, Input, Button, Space, Select, Divider } from "antd";
+import {
+  InputNumber,
+  Input,
+  Button,
+  Space,
+  Select,
+  Divider,
+  Tooltip,
+} from "antd";
 import {
   Controller,
   Control,
@@ -8,7 +16,12 @@ import {
   FieldErrors,
 } from "react-hook-form";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
-import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  MinusOutlined,
+  InfoCircleOutlined,
+  SafetyOutlined,
+} from "@ant-design/icons";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { Currency } from "@/lib/types/enums";
 
@@ -30,7 +43,7 @@ export default function StoreSettings({ control, errors }: Props) {
   const selectedOptions = fields.map((f) => f.name);
 
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 space-y-6">
+    <div className="">
       {/* Header */}
       <h3 className="text-2xl font-semibold mb-2">Store Settings</h3>
       <p className="text-sm text-muted-foreground">
@@ -50,7 +63,7 @@ export default function StoreSettings({ control, errors }: Props) {
               <Select
                 {...field}
                 placeholder="Select currency"
-                style={{ width: "100%", maxWidth: 200 }}
+                style={{ width: "150px" }}
               >
                 {Object.values(Currency).map((c) => (
                   <Option key={c} value={c}>
@@ -64,14 +77,25 @@ export default function StoreSettings({ control, errors }: Props) {
 
         {/* Tax Rate */}
         <FormItemWrapper
-          label={<span className="text-foreground">Tax Rate (%)</span>}
+          label={
+            <span className="text-foreground flex items-center gap-2">
+              Tax Rate (%)
+              <Tooltip title="This tax is applied to every order.">
+                <InfoCircleOutlined className="text-muted-foreground" />
+              </Tooltip>
+            </span>
+          }
           error={errors?.store_settings?.tax_rate}
         >
           <Controller
             name="store_settings.tax_rate"
             control={control}
             render={({ field }) => (
-              <InputNumber {...field} min={0} className="w-full" />
+              <InputNumber
+                {...field}
+                min={0}
+                style={{ width: "150px" }} // increased width
+              />
             )}
           />
         </FormItemWrapper>
@@ -87,7 +111,7 @@ export default function StoreSettings({ control, errors }: Props) {
             name="store_settings.processing_time_days"
             control={control}
             render={({ field }) => (
-              <InputNumber {...field} min={1} className="w-full" />
+              <InputNumber {...field} min={1} style={{ width: "150px" }} />
             )}
           />
         </FormItemWrapper>
@@ -101,7 +125,7 @@ export default function StoreSettings({ control, errors }: Props) {
             name="store_settings.return_policy_days"
             control={control}
             render={({ field }) => (
-              <InputNumber {...field} min={0} className="w-full" />
+              <InputNumber {...field} min={0} style={{ width: "150px" }} />
             )}
           />
         </FormItemWrapper>
@@ -235,6 +259,19 @@ export default function StoreSettings({ control, errors }: Props) {
         >
           Add Shipping Method
         </Button>
+      </div>
+      <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">
+        <div className="shrink-0 text-emerald-600">
+          <SafetyOutlined className="text-xl" />
+        </div>
+        <div>
+          <h4 className="font-semibold text-foreground">Protected Store Information</h4>
+          <p className="text-sm text-muted-foreground">
+            Your store information, including pricing, shipping, and policies,
+            is securely encrypted and stored. Only authorized personnel can
+            access this data, ensuring your business remains safe and private.
+          </p>
+        </div>
       </div>
     </div>
   );

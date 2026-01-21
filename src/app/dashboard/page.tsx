@@ -55,7 +55,7 @@ export default function DashboardPage() {
   } = useStoreOrders(storeId || "");
 
   // 2. State for products and time period
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("daily");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("weekly");
   const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
@@ -138,8 +138,7 @@ export default function DashboardPage() {
   // UPDATED: Based on OPTION 2 implementation (current vs previous)
   const getPeriodLabel = (period: TimePeriod): string => {
     switch (period) {
-      case "daily":
-        return "Today's"; // Current: Today (not Yesterday)
+     
       case "weekly":
         return "This Week's"; // Current: This Week (not Last Week)
       case "monthly":
@@ -154,8 +153,7 @@ export default function DashboardPage() {
   // UPDATED: Comparison text for OPTION 2
   const getComparisonText = (period: TimePeriod): string => {
     switch (period) {
-      case "daily":
-        return "vs Yesterday"; // Today vs Yesterday (not Day Before Yesterday)
+     
       case "weekly":
         return "vs Last Week"; // This Week vs Last Week (not Week Before Last)
       case "monthly":
@@ -275,9 +273,7 @@ export default function DashboardPage() {
   const customerStats = [
     {
       title: `New Customers (${
-        timePeriod === "daily"
-          ? "Today"
-          : timePeriod === "weekly"
+       timePeriod === "weekly"
           ? "This Week"
           : timePeriod === "monthly"
           ? "This Month"

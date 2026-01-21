@@ -83,7 +83,7 @@ export default function StoresSection() {
       </div>
 
       {/* Stores Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2  gap-8 max-w-6xl mx-auto">
         {previewStores.map((store, index) => (
           <motion.div
             key={store.id}
@@ -98,12 +98,6 @@ export default function StoresSection() {
               href={`/${store.store_slug}`}
               className="relative flex flex-col items-center bg-linear-to-br from-white/30 to-white/10 backdrop-blur-md rounded-xl shadow-xl p-6"
             >
-              {store.is_active && (
-                <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                  Active
-                </div>
-              )}
-
               {store.logo_url ? (
                 <div className="relative w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-primary">
                   <Image
@@ -119,7 +113,6 @@ export default function StoresSection() {
                   {store.store_name.charAt(0).toUpperCase()}
                 </div>
               )}
-
               <h3 className="text-lg font-bold text-primary text-center">
                 {store.store_name}
               </h3>
@@ -130,6 +123,18 @@ export default function StoresSection() {
           </motion.div>
         ))}
       </div>
+
+      {/* View More button */}
+      {stores.length > PREVIEW_LIMIT && (
+        <div className="flex justify-center mt-12">
+          <Link
+            href="/stores"
+            className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
+          >
+            View More Stores →
+          </Link>
+        </div>
+      )}
 
       {/* View More */}
       {stores.length > PREVIEW_LIMIT && (

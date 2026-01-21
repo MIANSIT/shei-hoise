@@ -73,7 +73,7 @@ export const useRichText = ({ initialValue = "" }: UseRichTextProps = {}) => {
     }, [value, content]);
 
     return (
-      <div className="border border-gray-300 rounded-md overflow-hidden">
+      <div className="border border-ring rounded-md overflow-hidden">
         <JoditEditor
           value={content}
           config={editorConfig}

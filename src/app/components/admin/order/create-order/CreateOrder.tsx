@@ -86,7 +86,7 @@ export default function CreateOrder() {
 
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
-    PaymentStatus.PENDING
+    PaymentStatus.PENDING,
   ); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
@@ -112,14 +112,14 @@ export default function CreateOrder() {
 
       const normalizedEmail = email.toLowerCase().trim();
       const existingCustomer = customers.find(
-        (customer) => customer.email.toLowerCase().trim() === normalizedEmail
+        (customer) => customer.email.toLowerCase().trim() === normalizedEmail,
       );
 
       if (existingCustomer && customerType === "new") {
         setEmailError(
           `Email already exists for customer: ${
             existingCustomer.name || "Unnamed Customer"
-          }`
+          }`,
         );
         return false;
       }
@@ -127,7 +127,7 @@ export default function CreateOrder() {
       setEmailError("");
       return true;
     },
-    [customers, customerType]
+    [customers, customerType],
   );
 
   // Handle email changes with validation
@@ -136,7 +136,7 @@ export default function CreateOrder() {
       setCustomerInfo((prev) => ({ ...prev, email }));
       validateEmailUniqueness(email);
     },
-    [validateEmailUniqueness]
+    [validateEmailUniqueness],
   );
 
   // Fetch store settings with shipping fees
@@ -169,7 +169,7 @@ export default function CreateOrder() {
 
     try {
       const { data: storeData, error } = await dataService.getStoreById(
-        user.store_id
+        user.store_id,
       );
       if (error) {
         console.error("Error fetching store:", error);
@@ -313,12 +313,12 @@ export default function CreateOrder() {
       const filtered = customers.filter(
         (customer) =>
           (customer.name?.toLowerCase() || "").includes(
-            searchTerm.toLowerCase()
+            searchTerm.toLowerCase(),
           ) ||
           customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (customer.phone?.toLowerCase() || "").includes(
-            searchTerm.toLowerCase()
-          )
+            searchTerm.toLowerCase(),
+          ),
       );
       setFilteredCustomers(filtered);
     }
@@ -335,7 +335,7 @@ export default function CreateOrder() {
         if (!fee || typeof fee !== "object" || !fee.name) return false;
         const feeName = String(fee.name).toLowerCase().replace(/\s+/g, "-");
         const deliveryOption = String(
-          customerInfo.deliveryOption
+          customerInfo.deliveryOption,
         ).toLowerCase();
         return (
           feeName.includes(deliveryOption) || deliveryOption.includes(feeName)
@@ -351,7 +351,7 @@ export default function CreateOrder() {
   useEffect(() => {
     const newSubtotal = orderProducts.reduce(
       (sum, item) => sum + item.total_price,
-      0
+      0,
     );
     setSubtotal(newSubtotal);
 
@@ -559,18 +559,42 @@ export default function CreateOrder() {
             {selectedCustomer && (
               <>
                 <Card
+                  className="
+    border-2
+    border-[#1890ff]
+    bg-[#f0f8ff]
+
+    dark:border-[#177ddc]
+    dark:bg-[rgba(24,144,255,0.18)]
+  "
                   title={
                     <Space>
-                      <UserOutlined />
-                      <Text strong>Selected Customer Information</Text>
-                      <Tag color="blue">Existing Customer</Tag>
+                      <UserOutlined className="text-[#1890ff] dark:text-[#69b1ff]" />
+
+                      <Text
+                        strong
+                        className="text-[#1f1f1f] dark:text-[#e6f4ff]"
+                      >
+                        Selected Customer Information
+                      </Text>
+
+                      <Tag
+                        className="
+          border-[#1890ff]
+          text-[#1890ff]
+          bg-[#e6f4ff]
+
+          dark:border-[#177ddc]
+          dark:text-[#69b1ff]
+          dark:bg-[rgba(24,144,255,0.25)]
+        "
+                      >
+                        Existing Customer
+                      </Tag>
+
                       {profileLoading && <Spin size="small" />}
                     </Space>
                   }
-                  style={{
-                    border: "2px solid #1890ff",
-                    backgroundColor: "#f0f8ff",
-                  }}
                 >
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label="Name">

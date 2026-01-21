@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { UseFormReturn, Controller } from "react-hook-form";
 import { ProductType } from "@/lib/schema/productSchema";
 import { ProductVariantType } from "@/lib/schema/varientSchema";
@@ -22,26 +22,45 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   addIsActive = true,
 }) => {
   const variants = form.watch("variants") ?? [];
-  const {
-    currency,
-    // icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { setValue } = form;
+
+  const { currency, loading: currencyLoading } = useUserCurrencyIcon();
+  const displayCurrency = currencyLoading ? "" : (currency ?? "");
+
+  // Track variant pricing state to control dropdown + input
+  const [variantPricing, setVariantPricing] = useState<
+    { priceMode: "percentage" | "multiplier"; priceValue: number | "" }[]
+  >(() =>
+    variants.map(() => ({
+      priceMode: "percentage",
+      priceValue: "",
+    })),
+  );
+
+  // Sync variantPricing array when variants are added/removed
+  useEffect(() => {
+    setVariantPricing((prev) =>
+      variants.map(
+        (_, idx) => prev[idx] || { priceMode: "percentage", priceValue: "" },
+      ),
+    );
+  }, [variants.length]);
+
   const handleAddVariant = () => {
     form.setValue("variants", [
       ...variants,
       {
         variant_name: "",
         sku: "",
-        weight: 0,
+        weight: undefined,
         color: "",
-        stock: 0,
+        stock: undefined,
         is_active: true,
         attributes: null,
-        base_price: 0,
-        tp_price: 0,
-        discounted_price: 0,
-        discount_amount: 0,
+        base_price: undefined,
+        tp_price: undefined,
+        discounted_price: undefined,
+        discount_amount: undefined,
       } as ProductVariantType,
     ]);
   };
@@ -49,8 +68,61 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   const handleRemoveVariant = (index: number) => {
     form.setValue(
       "variants",
-      variants.filter((_, i) => i !== index)
+      variants.filter((_, i) => i !== index),
     );
+  };
+
+  // Update MRP & discounted price based on TP, markup mode, and value
+  const updateVariantMRP = (
+    idx: number,
+    tp: number,
+    val: number,
+    mode: "percentage" | "multiplier",
+  ) => {
+    let mrp = 0;
+    if (mode === "percentage") mrp = tp * (1 + val / 100);
+    else mrp = tp * val;
+
+    setValue(`variants.${idx}.base_price`, Number(mrp.toFixed(2)), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    const discount = variants[idx]?.discount_amount ?? 0;
+    const discounted = calculateDiscountedPrice(mrp, discount);
+    setValue(`variants.${idx}.discounted_price`, discounted);
+  };
+
+  const handleVariantPriceModeChange = (
+    idx: number,
+    mode: "percentage" | "multiplier",
+  ) => {
+    setVariantPricing((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, priceMode: mode } : v)),
+    );
+
+    const tp = variants[idx]?.tp_price ?? 0;
+    const val = variantPricing[idx]?.priceValue ?? 0;
+    if (tp && val !== "") updateVariantMRP(idx, tp, val, mode);
+  };
+
+  const handleVariantPriceValueChange = (idx: number, val: number | "") => {
+    setVariantPricing((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, priceValue: val } : v)),
+    );
+
+    const tp = variants[idx]?.tp_price ?? 0;
+    const mode = variantPricing[idx]?.priceMode ?? "percentage";
+    if (tp && val !== "" && mode) updateVariantMRP(idx, tp, val, mode);
+  };
+
+  const updateVariantDiscountedPrice = (idx: number) => {
+    const variant = variants[idx];
+    const discounted = calculateDiscountedPrice(
+      Number(variant.base_price || 0),
+      Number(variant.discount_amount || 0),
+    );
+    setValue(`variants.${idx}.discounted_price`, discounted);
   };
 
   const variantErrors = form.formState.errors.variants as
@@ -59,20 +131,6 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         | undefined
       )[]
     | undefined;
-
-  const updateVariantDiscountedPrice = (idx: number) => {
-    const variant = variants[idx];
-    const discounted = calculateDiscountedPrice(
-      Number(variant.base_price || 0),
-      Number(variant.discount_amount || 0)
-    );
-    if (form.getValues(`variants.${idx}.discounted_price`) !== discounted) {
-      form.setValue(`variants.${idx}.discounted_price`, discounted);
-    }
-  };
-
-  // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  const displayCurrency = currencyLoading ? "" : currency ?? "";
 
   return (
     <div className="col-span-1 md:col-span-2 space-y-6">
@@ -85,6 +143,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             key={idx}
             className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4"
           >
+            {/* Header */}
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-semibold text-lg">Variant {idx + 1}</h4>
               <Button
@@ -96,7 +155,8 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
-            {/* ---------------- Active Status Switch ---------------- */}
+
+            {/* Active Toggle */}
             {addIsActive && (
               <div className="flex items-center space-x-3 mt-2">
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -107,10 +167,10 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     className="sr-only peer"
                   />
                   <div
-                    className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500 
-      after:content-[''] after:absolute after:top-0.5 after:left-0.5 
-      after:bg-white after:border after:border-gray-300 after:rounded-full 
-      after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"
+                    className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500
+                    after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                    after:bg-white after:border after:border-gray-300 after:rounded-full
+                    after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"
                   ></div>
                 </label>
                 <span
@@ -129,9 +189,11 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               </div>
             )}
 
-            {/* ---------------- Variant Info Section ---------------- */}
+            {/* Variant Info */}
             <div className="space-y-2">
-              <h5 className="font-medium text-gray-700">Variant Info</h5>
+              <h5 className="font-medium text-gray-700 dark:text-gray-400">
+                Variant Info
+              </h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -151,7 +213,6 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   control={form.control}
                   label="Color"
                   name={`variants.${idx}.color`}
-                  required
                   tooltip="Specify the color of this variant, e.g., Red, Blue, or Natural."
                 />
                 <FormField
@@ -164,52 +225,107 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               </div>
             </div>
 
-            {/* ---------------- Pricing Section ---------------- */}
+            {/* Pricing */}
             <div className="space-y-2">
-              <h5 className="font-medium text-gray-700">Pricing Info</h5>
+              <h5 className="font-medium text-gray-700 dark:text-gray-400">
+                Pricing Info
+              </h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   label={`TP Price (${displayCurrency})`}
                   name={`variants.${idx}.tp_price`}
                   type="number"
-                  tooltip="Enter the trade price for this variant in your store currency."
+                  tooltip="Enter the trade price for this variant."
                   required
+                  onChange={() => {
+                    const val = variantPricing[idx]?.priceValue ?? 0;
+                    const mode = variantPricing[idx]?.priceMode ?? "percentage";
+                    const tp = form.getValues(`variants.${idx}.tp_price`) ?? 0;
+                    if (tp && val !== "" && mode)
+                      updateVariantMRP(idx, tp, val, mode);
+                  }}
                 />
+
+                {/* Price Markup */}
+                <div className="w-full md:max-w-lg xl:max-w-xl">
+                  <label className="mb-1 block text-sm font-medium">
+                    Price Markup{" "}
+                    <span className="text-xs text-gray-500">
+                      (Auto-calculates MRP)
+                    </span>
+                  </label>
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                    <select
+                      className="w-full md:w-fit rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
+                      value={variantPricing[idx]?.priceMode ?? "percentage"}
+                      onChange={(e) =>
+                        handleVariantPriceModeChange(
+                          idx,
+                          e.target.value as "percentage" | "multiplier",
+                        )
+                      }
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="multiplier">Multiplier (×)</option>
+                    </select>
+
+                    <input
+                      type="number"
+                      className="w-full md:w-fit min-w-20 rounded-md border border-gray-300 px-3 py-2"
+                      placeholder={
+                        variantPricing[idx]?.priceMode === "percentage"
+                          ? "20"
+                          : "1.2"
+                      }
+                      value={variantPricing[idx]?.priceValue ?? ""} // fully controlled
+                      onChange={(e) =>
+                        handleVariantPriceValueChange(
+                          idx,
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   label={`MRP Price (${displayCurrency})`}
                   name={`variants.${idx}.base_price`}
                   type="number"
                   required
-                  tooltip="Enter the maximum retail price (MRP) before any discount."
+                  tooltip="Auto-calculated from TP and markup."
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
+
                 <FormField
                   control={form.control}
                   label={`Discount Amount (${displayCurrency})`}
                   name={`variants.${idx}.discount_amount`}
                   type="number"
-                  tooltip="Optional: specify a discount amount to reduce the MRP."
+                  tooltip="Optional discount."
                   onChange={() => updateVariantDiscountedPrice(idx)}
                 />
+
                 <FormField
                   control={form.control}
                   label={`Discounted Price (${displayCurrency})`}
                   name={`variants.${idx}.discounted_price`}
                   type="number"
-                  disabled
-                  tooltip="Automatically calculated discounted price. Read-only."
+                  tooltip="Automatically calculated. Read-only."
                   readOnly
                 />
               </div>
             </div>
 
-            {/* ---------------- Stock & Attributes Section ---------------- */}
+            {/* Stock & Attributes */}
             <div className="space-y-2">
-              <h5 className="font-medium text-gray-700">Stock & Attributes</h5>
+              <h5 className="font-medium text-gray-700 dark:text-gray-400">
+                Stock & Attributes
+              </h5>
               <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
-                {/* Left: Stock (small width) */}
                 <div className="col-span-2">
                   <FormField
                     control={form.control}
@@ -217,11 +333,10 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     name={`variants.${idx}.stock`}
                     type="number"
                     required
-                    tooltip="Specify the number of units available for this variant in your inventory."
+                    tooltip="Number of units in stock."
                   />
                 </div>
 
-                {/* Right: Attributes (larger width) */}
                 <div className="col-span-4">
                   <Controller
                     control={form.control}
@@ -232,17 +347,17 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                         typeof field.value === "string"
                           ? field.value
                           : field.value && typeof field.value === "object"
-                          ? Object.entries(field.value)
-                              .map(([k, v]) => `${k}-${v}`)
-                              .join(", ")
-                          : "";
+                            ? Object.entries(field.value)
+                                .map(([k, v]) => `${k}-${v}`)
+                                .join(", ")
+                            : "";
 
                       return (
                         <div>
                           <label className="block mb-1 font-medium">
                             Attributes (Size-M, Color-Red)
                             <Tooltip
-                              title="Optional: enter attributes in Key-Value format, e.g., Size-M, Color-Red. These help with filtering and variant identification."
+                              title="Optional: enter attributes in Key-Value format, e.g., Size-M, Color-Red."
                               placement="top"
                             >
                               <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
@@ -255,10 +370,8 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                             onChange={(e) => field.onChange(e.target.value)}
                             onBlur={(e) => {
                               const val = e.target.value.trim();
-                              if (!val) {
-                                field.onChange(null);
-                                return;
-                              }
+                              if (!val) return field.onChange(null);
+
                               const obj: Record<string, string> = {};
                               val.split(",").forEach((pair) => {
                                 const [key, value] = pair
@@ -268,7 +381,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                                   obj[key] = value;
                               });
                               field.onChange(
-                                Object.keys(obj).length ? obj : null
+                                Object.keys(obj).length ? obj : null,
                               );
                             }}
                           />

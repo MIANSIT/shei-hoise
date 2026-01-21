@@ -15,7 +15,7 @@ export default function UserInformation({ control, formState }: Props) {
   const { errors } = formState.formState;
 
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 border">
+    <div className="">
       {/* Section Title */}
       <h3 className="text-2xl font-semibold mb-4">User Information</h3>
       <p className="text-sm text-muted-foreground mb-4">
@@ -142,8 +142,8 @@ export default function UserInformation({ control, formState }: Props) {
       <Divider className="my-4 border-border" />
 
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg">
-        <div className="shrink-0">
-          <SafetyOutlined />
+        <div className="shrink-0 text-emerald-600">
+          <SafetyOutlined className="text-xl" />
         </div>
         <div>
           <h4 className="font-semibold text-foreground">Security & Data</h4>

@@ -4,6 +4,10 @@ import { useMemo } from "react";
 import JoditEditor from "jodit-react";
 
 export const useRichText = () => {
+  const isDark =
+    typeof window !== "undefined" &&
+    document.documentElement.classList.contains("dark");
+
   const editorConfig = useMemo(
     () => ({
       readonly: false,
@@ -11,6 +15,13 @@ export const useRichText = () => {
       height: 600,
       toolbarAdaptive: false,
       toolbarButtonSize: "middle" as const,
+
+      theme: isDark ? "dark" : "default",
+
+      style: {
+        background: isDark ? "#000000" : "#ffffff",
+        color: isDark ? "#ffffff" : "#000000",
+      },
 
       buttons: [
         "bold",
@@ -29,15 +40,15 @@ export const useRichText = () => {
         "|",
         "undo",
         "redo",
-      ] as string[],
+      ],
 
-      removeButtons: ["source", "about"] as string[],
+      removeButtons: ["source", "about"],
 
       showCharsCounter: false,
       showWordsCounter: false,
       showXPathInStatusbar: false,
     }),
-    []
+    [isDark]
   );
 
   const Editor = ({
@@ -50,12 +61,9 @@ export const useRichText = () => {
     return (
       <div className="border rounded-md overflow-hidden">
         <JoditEditor
-          key={initialValue} // re-init only when opening dialog
           value={initialValue}
           config={editorConfig}
-          onBlur={(newContent: string) => {
-            onBlur(newContent);
-          }}
+          onBlur={(newContent: string) => onBlur(newContent)}
         />
       </div>
     );

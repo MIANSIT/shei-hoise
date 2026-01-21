@@ -13,7 +13,7 @@ interface Props {
 
 export default function StoreInformation({ control }: Props) {
   return (
-    <div className="bg-card text-card-foreground shadow-md rounded-xl p-6 space-y-4">
+    <div className="">
       <h3 className="text-2xl font-semibold mb-2">Store Information</h3>
       <p className="text-sm text-muted-foreground mb-4">
         Fill in your store details. Your data is secure and private.
@@ -229,8 +229,8 @@ export default function StoreInformation({ control }: Props) {
 
       {/* Trust & Security Notice */}
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg">
-        <div className="shrink-0">
-          <SafetyOutlined />
+        <div className="shrink-0 text-emerald-600">
+          <SafetyOutlined className="text-xl" />
         </div>
         <div>
           <h4 className="font-semibold text-foreground">Your data is secure</h4>
