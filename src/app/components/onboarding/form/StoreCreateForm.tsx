@@ -65,6 +65,12 @@ export default function StoreCreateForm({
         return_policy_days: 7,
         terms_and_conditions: "",
         privacy_policy: "",
+        store_social_media: {
+          facebook_link: "",
+          instagram_link: "",
+          youtube_link: "",
+          twitter_link: "",
+        },
       },
       profile: { country: "Bangladesh" },
       is_active: true,
@@ -190,8 +196,8 @@ export default function StoreCreateForm({
               currentStep === idx
                 ? "bg-blue-500 text-white"
                 : idx < currentStep
-                ? "bg-blue-200 text-blue-600"
-                : "bg-gray-200 text-gray-500"
+                  ? "bg-blue-200 text-blue-600"
+                  : "bg-gray-200 text-gray-500"
             }
           `}
             >
@@ -204,8 +210,8 @@ export default function StoreCreateForm({
             currentStep === idx
               ? "text-blue-500"
               : idx < currentStep
-              ? "text-blue-600"
-              : "text-gray-500"
+                ? "text-blue-600"
+                : "text-gray-500"
           }
         `}
             >
@@ -237,8 +243,8 @@ export default function StoreCreateForm({
                 currentStep === idx
                   ? "bg-blue-500 text-white"
                   : idx < currentStep
-                  ? "bg-blue-200 text-blue-600"
-                  : "bg-gray-200 text-gray-500"
+                    ? "bg-blue-200 text-blue-600"
+                    : "bg-gray-200 text-gray-500"
               }
             `}
               >

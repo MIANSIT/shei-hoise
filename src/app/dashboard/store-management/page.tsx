@@ -5,13 +5,14 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStore } from "@/lib/hook/stores/useStore";
 import { useStoreSettings } from "@/lib/hook/stores/useStoreSettings";
 import { useUpdateStore } from "@/lib/hook/stores/update/useUpdateStore";
-
+import type { UpdatedStoreSocialMedia } from "@/lib/types/store/store";
 import { StoreHeader } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreHeader";
 import { StoreInfoCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreInfoCard";
 import { StoreSettingsCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSettingsCard";
 import { ShippingFeesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/ShippingFeesCard";
 import { PoliciesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PoliciesCard";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
+import { StoreSocialMediaCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSocialMediaCard";
 
 import type {
   StoreData,
@@ -24,7 +25,13 @@ export default function StorePage() {
   const { storeId, loading: userLoading } = useCurrentUser();
   const safeStoreId = storeId ?? "";
 
-  const { store: fetchedStore, loading: storeLoading } = useStore(safeStoreId);
+  const {
+    store: fetchedStore,
+    socialMedia,
+    setSocialMedia,
+    loading: storeLoading,
+  } = useStore(safeStoreId);
+
   const { settings, loading: settingsLoading } = useStoreSettings(safeStoreId);
   const { update } = useUpdateStore(safeStoreId);
 
@@ -43,17 +50,14 @@ export default function StorePage() {
 
   // ✅ Updated handleUpdateStore to support logo/banner files
   const handleUpdateStore = async (
-    data: UpdatedStoreData,
-    settingsPayload?: UpdatedStoreSettings,
+    storeData: UpdatedStoreData = {},
+    settingsData?: UpdatedStoreSettings,
     logoFile?: File | null,
     bannerFile?: File | null,
   ): Promise<StoreData> => {
     const updated = await update({
-      data: {
-        ...store,
-        ...data,
-      },
-      settingsPayload,
+      storeData,
+      settingsData,
       logoFile,
       bannerFile,
     });
@@ -62,10 +66,23 @@ export default function StorePage() {
 
     setStore(updated.store);
 
-    // optionally update local settings if returned
     if (updated.settings) setLocalSettings(updated.settings);
 
     return updated.store;
+  };
+
+  const handleUpdateSocialMedia = async (
+    socialMediaData: UpdatedStoreSocialMedia,
+  ): Promise<void> => {
+    if (!store) return;
+
+    const updated = await update({
+      socialMediaData, // ✅ only social media fields
+    });
+
+    if (updated.socialMedia) {
+      setSocialMedia(updated.socialMedia); // update UI
+    }
   };
 
   if (userLoading) return <SheiSkeleton />;
@@ -146,7 +163,10 @@ export default function StorePage() {
           />
         )}
       </div>
-
+      <StoreSocialMediaCard
+        socialMedia={socialMedia}
+        onUpdate={handleUpdateSocialMedia}
+      />
       {settings && (
         <>
           <ShippingFeesCard fees={settings.shipping_fees} settings={settings} />

@@ -137,7 +137,7 @@ export default function StoresSection() {
       )}
 
       {/* View More */}
-      {stores.length > PREVIEW_LIMIT && (
+      {/* {stores.length > PREVIEW_LIMIT && (
         <div className="flex justify-center mt-12">
           <Link
             href="/stores"
@@ -146,7 +146,7 @@ export default function StoresSection() {
             View More Stores →
           </Link>
         </div>
-      )}
+      )} */}
     </section>
   );
 }
