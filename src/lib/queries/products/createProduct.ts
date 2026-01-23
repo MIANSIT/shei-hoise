@@ -27,14 +27,21 @@ export async function createProduct(product: ProductType) {
       { table: "product_images", column: "product_id", values: [productId] },
       { table: "product_inventory", column: "product_id", values: [productId] },
       insertedVariantIds.length
-        ? { table: "product_variants", column: "id", values: insertedVariantIds }
+        ? {
+            table: "product_variants",
+            column: "id",
+            values: insertedVariantIds,
+          }
         : null,
       { table: "products", column: "id", values: [productId] },
     ].filter(Boolean) as { table: string; column: string; values: string[] }[];
 
     for (const { table, column, values } of tablesToDelete) {
       if (!values.length) continue;
-      const { error } = await supabaseAdmin.from(table).delete().in(column, values);
+      const { error } = await supabaseAdmin
+        .from(table)
+        .delete()
+        .in(column, values);
       if (error) console.error(`Rollback failed for ${table}:`, error);
     }
   };
@@ -42,10 +49,19 @@ export async function createProduct(product: ProductType) {
   try {
     // ------------------ Determine product status ------------------
     let productStatus = product.status ?? ProductStatus.ACTIVE;
-    if (product.variants?.length === 1 && product.variants[0].is_active === false) {
+    if (
+      product.variants?.length === 1 &&
+      product.variants[0].is_active === false
+    ) {
       productStatus = ProductStatus.DRAFT;
     }
+    // ------------------ Resolve base price ------------------
+    const resolvedBasePrice =
+      product.base_price ?? product.variants?.[0]?.base_price;
 
+    if (!resolvedBasePrice) {
+      throw new Error("❌ Base price is required");
+    }
     // ------------------ Insert main product ------------------
     const { data: productData, error: productError } = await supabaseAdmin
       .from("products")
@@ -56,7 +72,7 @@ export async function createProduct(product: ProductType) {
         slug: product.slug.trim(),
         description: product.description.trim(),
         short_description: product.short_description,
-        base_price: product.base_price,
+        base_price: resolvedBasePrice,
         tp_price: product.tp_price,
         discounted_price: product.discounted_price,
         discount_amount: product.discount_amount,
@@ -71,9 +87,10 @@ export async function createProduct(product: ProductType) {
     if (productError) {
       // Handle unique constraint (duplicate name/slug)
       if (productError.code === "23505") {
-        const conflictField = productError.details?.match(/\((.*?)\)=/)?.[1] || "name or slug";
+        const conflictField =
+          productError.details?.match(/\((.*?)\)=/)?.[1] || "name or slug";
         throw new Error(
-          `❌ A product with this ${conflictField} already exists. Please choose a different ${conflictField}.`
+          `❌ A product with this ${conflictField} already exists. Please choose a different ${conflictField}.`,
         );
       }
       throw new Error(productError.message ?? "❌ Failed to create product");
@@ -86,24 +103,27 @@ export async function createProduct(product: ProductType) {
     let firstVariantId: string | undefined = undefined;
 
     if (product.variants?.length) {
-      const variantsToInsert = product.variants.map((v: ProductVariantType) => ({
-        product_id: productId,
-        variant_name: v.variant_name,
-        sku: v.sku,
-        base_price: v.base_price,
-        tp_price: v.tp_price,
-        discounted_price: v.discounted_price,
-        discount_amount: v.discount_amount,
-        weight: v.weight,
-        color: v.color,
-        attributes: v.attributes ?? {},
-        is_active: v.is_active,
-      }));
+      const variantsToInsert = product.variants.map(
+        (v: ProductVariantType) => ({
+          product_id: productId,
+          variant_name: v.variant_name,
+          sku: v.sku,
+          base_price: v.base_price,
+          tp_price: v.tp_price,
+          discounted_price: v.discounted_price,
+          discount_amount: v.discount_amount,
+          weight: v.weight,
+          color: v.color,
+          attributes: v.attributes ?? {},
+          is_active: v.is_active,
+        }),
+      );
 
-      const { data: insertedVariants, error: variantError } = await supabaseAdmin
-        .from("product_variants")
-        .insert(variantsToInsert)
-        .select("id");
+      const { data: insertedVariants, error: variantError } =
+        await supabaseAdmin
+          .from("product_variants")
+          .insert(variantsToInsert)
+          .select("id");
 
       if (variantError) throw variantError;
 
@@ -131,7 +151,11 @@ export async function createProduct(product: ProductType) {
         ...img,
         variantId: firstVariantId,
       }));
-      await uploadOrUpdateProductImages(product.store_id, productId!, imagesWithVariantId);
+      await uploadOrUpdateProductImages(
+        product.store_id,
+        productId!,
+        imagesWithVariantId,
+      );
     }
 
     return productId;
