@@ -5,12 +5,15 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname:
-          process.env.NEXT_PUBLIC_SERVER === "PROD"
-            ? "tzmrxxtrkwehdgzeyhgq.supabase.co"
-            : "lizjlqgrurjegmjeujki.supabase.co", // your Supabase bucket domain
-        pathname: "/**", // allow all paths under this domain
+        hostname: "tzmrxxtrkwehdgzeyhgq.supabase.co", // Production
+        pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "lizjlqgrurjegmjeujki.supabase.co", // Development
+        pathname: "/**",
+      },
+      // Add any other Supabase project URLs you might use
     ],
   },
 };
