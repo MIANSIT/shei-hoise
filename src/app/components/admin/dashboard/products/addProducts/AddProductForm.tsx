@@ -19,6 +19,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { ProductStatus } from "@/lib/types/enums";
 import { Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import ConfirmModal from "@/app/components/admin/common/ConfirmModal"; // Add this import
 
 interface AddProductFormProps {
   product?: ProductType;
@@ -43,6 +44,13 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const [mrpTouched, setMrpTouched] = useState(false);
     const [statusOpen, setStatusOpen] = useState(false);
     const toggleStatusOpen = () => setStatusOpen((prev) => !prev);
+
+    // Add these state variables for pricing validation modal
+    const [showWarningModal, setShowWarningModal] = useState(false);
+    const [pendingSubmit, setPendingSubmit] = useState<(() => void) | null>(
+      null,
+    );
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
     const initialValues = React.useMemo<ProductType>(
       () => ({
@@ -81,6 +89,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       control,
       watch,
       setValue,
+      handleSubmit,
       formState: { isSubmitting },
     } = form;
 
@@ -189,8 +198,112 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       }
     };
 
+    // Validation function to check TP > MRP
+    const validatePricing = (data: ProductType): string[] => {
+      const errors: string[] = [];
+
+      // Check main product pricing
+      if (data.tp_price && data.base_price) {
+        const tp = Number(data.tp_price);
+        const mrp = Number(data.base_price);
+        if (tp > mrp) {
+          errors.push(
+            `Main Product: TP Price (${displayCurrency}${tp}) is greater than MRP (${displayCurrency} ${mrp})`,
+          );
+        }
+      }
+
+      // Check variant pricing
+      if (data.variants && data.variants.length > 0) {
+        data.variants.forEach((variant, index) => {
+          if (variant.tp_price && variant.base_price) {
+            const tp = Number(variant.tp_price);
+            const mrp = Number(variant.base_price);
+            if (tp > mrp) {
+              const variantName =
+                variant.variant_name || `Variant ${index + 1}`;
+              errors.push(
+                `${variantName}: TP Price (${displayCurrency} ${tp}) is greater than MRP (${displayCurrency}${mrp})`,
+              );
+            }
+          }
+        });
+      }
+
+      return errors;
+    };
+
+    // Modified form submission handler with pricing validation
+    const handleFormSubmit = (data: ProductType) => {
+      const pricingErrors = validatePricing(data);
+
+      if (pricingErrors.length > 0) {
+        setValidationErrors(pricingErrors);
+        setPendingSubmit(
+          () => () =>
+            onSubmit(data, {
+              reset: () => form.reset(initialValues),
+              formValues: () => form.getValues(),
+            }),
+        );
+        setShowWarningModal(true);
+        return;
+      }
+
+      // No pricing issues, submit directly
+      onSubmit(data, {
+        reset: () => form.reset(initialValues),
+        formValues: () => form.getValues(),
+      });
+    };
+
+    const handleConfirmSubmit = () => {
+      if (pendingSubmit) {
+        pendingSubmit();
+        setShowWarningModal(false);
+        setPendingSubmit(null);
+        setValidationErrors([]);
+      }
+    };
+
+    const handleCancelSubmit = () => {
+      setShowWarningModal(false);
+      setPendingSubmit(null);
+      setValidationErrors([]);
+    };
+
     return (
       <div>
+        {/* Pricing Warning Modal */}
+        <ConfirmModal
+          isOpen={showWarningModal}
+          onClose={handleCancelSubmit}
+          onConfirm={handleConfirmSubmit}
+          title="Pricing Warning"
+          message={
+            <div className="space-y-3">
+              <p className="font-medium">
+                Are you sure you want to continue? The following pricing issues
+                were detected:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 text-sm max-h-60 overflow-y-auto">
+                {validationErrors.map((error, index) => (
+                  <li key={index} className="text-gray-700 dark:text-gray-400">
+                    {error}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                This means you might be selling products at a loss. Please
+                review the pricing.
+              </p>
+            </div>
+          }
+          confirmText="Continue Anyway"
+          cancelText="Review Pricing"
+          type="warning"
+        />
+
         {showInactiveWarning && (
           <div className="fixed top-4 right-4 bg-red-50 border-l-4 border-red-400 text-red-900 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center justify-between max-w-sm w-full animate-slideInRight">
             <span className="text-sm font-medium">
@@ -207,14 +320,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         )}
 
         <form
-          onSubmit={form.handleSubmit(
-            (data) =>
-              onSubmit(data, {
-                reset: () => form.reset(initialValues),
-                formValues: () => form.getValues(),
-              }),
-            scrollToFirstError,
-          )}
+          onSubmit={handleSubmit(handleFormSubmit, scrollToFirstError)}
           className="space-y-10 max-w-6xl mx-auto p-2 lg:p-12 xl:p-16"
         >
           {/* Product Info */}
@@ -228,6 +334,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 name="name"
                 control={control}
                 required
+                placeholder="Premium Cotton T-Shirt"
                 onChange={handleNameChange}
                 className="w-full md:max-w-lg xl:max-w-xl"
                 tooltip="Enter the official product name as it should appear in your catalog."
@@ -235,6 +342,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               <FormField
                 label="Slug"
                 name="slug"
+                placeholder="auto-generated-from-product-name"
                 control={control}
                 readOnly
                 tooltip="URL-friendly version of the product name. Auto-generated from the product name."
@@ -244,7 +352,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 label="Category"
                 name="category_id"
                 as="select"
-                placeholder="Select a category"
+                placeholder="Choose a product category"
                 options={categories
                   .filter((c) => c.is_active)
                   .map((c) => ({ value: c.id, label: c.name }))}
@@ -257,6 +365,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 label="Short Description"
                 name="short_description"
                 type="text"
+                placeholder="One-line summary shown in listings"
                 control={control}
                 className="w-full md:max-w-lg xl:max-w-xl h-12 rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none transition"
                 tooltip="Concise summary of the product (1–2 sentences)."
@@ -266,6 +375,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               label="Description"
               name="description"
               as="textarea"
+              placeholder="Describe features, materials, usage, warranty, etc."
               control={control}
               required
               className="w-full rounded-lg border border-muted-foreground px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none transition h-32"
@@ -284,6 +394,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   label={`TP Price (${displayCurrency})`}
                   name="tp_price"
                   type="number"
+                  placeholder="Cost price (what you pay)"
                   control={control}
                   required
                   className="w-full md:max-w-lg xl:max-w-xl"
@@ -337,6 +448,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   label={`MRP Price (${displayCurrency})`}
                   name="base_price"
                   type="number"
+                  placeholder="Selling price before discount"
                   control={control}
                   required
                   onChange={() => setMrpTouched(true)}
@@ -347,6 +459,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   label={`Discount Amount (${displayCurrency})`}
                   name="discount_amount"
                   type="number"
+                  placeholder="Amount to reduce from MRP (Optional)"
                   control={control}
                   className="w-full md:max-w-lg xl:max-w-xl"
                   tooltip="Enter the discount amount to subtract from the MRP. This value is deducted directly."
@@ -357,6 +470,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   name="discounted_price"
                   type="number"
                   control={control}
+                  placeholder="Final price after discount (auto)"
                   readOnly
                   className="w-full md:max-w-lg xl:max-w-xl"
                   tooltip="Final selling price after applying the discount. This is auto-calculated."
@@ -365,6 +479,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 <FormField
                   label="Weight (kg)"
                   name="weight"
+                  placeholder="0.75kg"
                   type="number"
                   control={control}
                   className="w-full md:max-w-lg xl:max-w-xl"
@@ -374,6 +489,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 <FormField
                   label="SKU"
                   name="sku"
+                  placeholder="Unique product code (e.g. TS-RED-M)"
                   control={control}
                   required
                   className="w-full md:max-w-lg xl:max-w-xl"
@@ -384,6 +500,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   label="Stock"
                   name="stock"
                   type="number"
+                  placeholder="Total available quantity"
                   control={control}
                   required
                   className="w-full md:max-w-lg xl:max-w-xl"
@@ -393,8 +510,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </section>
           )}
 
-          {/* Featured + Status */}
-
           {/* Variants & Images */}
           <ProductVariantsInline form={form} addIsActive={true} />
           <ProductImages
@@ -402,6 +517,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             setImages={(files) => form.setValue("images", files)}
             error={form.formState.errors.images?.message as string}
           />
+
+          {/* Featured + Status */}
           <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             {/* Featured */}
             <div className="flex items-center space-x-3">
@@ -485,6 +602,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               )}
             </div>
           </section>
+
+          {/* Submit Button */}
           <div className="flex justify-end">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting

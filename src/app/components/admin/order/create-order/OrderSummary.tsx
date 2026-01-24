@@ -111,7 +111,7 @@ export default function OrderSummary({
 
     const feeName = String(fee.name).toLowerCase().replace(/\s+/g, "-");
     const customerDeliveryOptionNormalized = String(
-      customerDeliveryOption
+      customerDeliveryOption,
     ).toLowerCase();
     return (
       feeName.includes(customerDeliveryOptionNormalized) ||
@@ -155,8 +155,8 @@ export default function OrderSummary({
       }
     : selectedShippingFee;
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
+  const displayCurrency = currencyLoading ? "" : (currency ?? "");
 
   return (
     <Card
@@ -255,10 +255,18 @@ export default function OrderSummary({
                   <Space.Compact style={{ width: "100%" }}>
                     <InputNumber
                       min={0}
-                      value={taxAmount}
-                      onChange={(value) => setTaxAmount(value || 0)}
                       style={{ width: "100%" }}
+                      value={taxAmount}
+                      stringMode
+                      onChange={(value) => {
+                        const normalized =
+                          value === null
+                            ? 0
+                            : Number(value.toString().replace(/^0+(?=\d)/, ""));
+                        setTaxAmount(normalized);
+                      }}
                     />
+
                     <span style={{ padding: "0 8px" }}>
                       {displayCurrencyIcon}
                     </span>
@@ -467,7 +475,7 @@ export default function OrderSummary({
                 title="Items"
                 value={orderProducts.reduce(
                   (sum, item) => sum + item.quantity,
-                  0
+                  0,
                 )}
                 prefix={<ShoppingCartOutlined />}
               />

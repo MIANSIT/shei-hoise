@@ -128,11 +128,7 @@ export const productSchema = z
       data.tp_price !== undefined &&
       data.base_price < data.tp_price
     ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "MRP Price must be greater than or equal to TP price.",
-        path: ["base_price"],
-      });
+      
     }
 
     // Image validation
