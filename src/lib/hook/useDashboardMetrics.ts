@@ -201,7 +201,7 @@ export const useDashboardMetrics = (
   );
 
   const calculateAllMetrics = useCallback(() => {
-    if (!storeId || orders.length === 0) return;
+    if (!storeId) return;
 
     const currentPeriod = getCurrentPeriodDates(timePeriod);
     const prevPeriod = getPreviousPeriodDates(timePeriod);
@@ -394,37 +394,51 @@ export const useDashboardMetrics = (
 
     // Process products to get stock information
     products.forEach((product) => {
+      // VARIANT PRODUCTS
       if (product.variants && product.variants.length > 0) {
-        // For products with variants, sum quantities
-        product.variants.forEach((variant) => {
-          const quantity = variant.stock?.quantity_available ?? 0;
-          const lowThreshold = variant.stock?.low_stock_threshold ?? 5;
+        let hasStock = false;
+        let hasLowStock = false;
 
-          if (quantity <= 0) {
-            outOfStockCount++;
-          } else if (quantity <= lowThreshold) {
-            lowStockCount++;
-            inStockCount += quantity;
-          } else {
-            inStockCount += quantity;
+        product.variants.forEach((variant) => {
+          const stock = variant.stock;
+
+          if (!stock || !stock.track_inventory) return;
+
+          const qty = stock.quantity_available ?? 0;
+          const threshold = stock.low_stock_threshold ?? 0;
+
+          if (qty > 0) {
+            hasStock = true;
+            inStockCount += qty;
+          }
+
+          if (qty > 0 && qty <= threshold) {
+            hasLowStock = true;
           }
         });
-      } else {
-        // Products without variants
-        const quantity =
-          product.stock?.quantity_available ?? product.quantity_available ?? 0;
-        const lowThreshold =
-          product.stock?.low_stock_threshold ??
-          product.low_stock_threshold ??
-          5;
 
-        if (quantity <= 0) {
+        if (!hasStock) {
+          outOfStockCount++; // ✅ product-level
+        } else if (hasLowStock) {
+          lowStockCount++; // ✅ product-level
+        }
+      }
+
+      // SIMPLE PRODUCTS
+      else {
+        const stock = product.stock;
+        if (!stock || !stock.track_inventory) return;
+
+        const qty = stock.quantity_available ?? 0;
+        const threshold = stock.low_stock_threshold ?? 0;
+
+        if (qty <= 0) {
           outOfStockCount++;
-        } else if (quantity <= lowThreshold) {
-          lowStockCount++;
-          inStockCount += quantity;
         } else {
-          inStockCount += quantity;
+          inStockCount += qty;
+          if (qty <= threshold) {
+            lowStockCount++;
+          }
         }
       }
     });
