@@ -512,12 +512,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
           {/* Variants & Images */}
           <ProductVariantsInline form={form} addIsActive={true} />
-          <ProductImages
-            images={images}
-            setImages={(files) => form.setValue("images", files)}
-            error={form.formState.errors.images?.message as string}
-          />
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Upload Images</h3>
 
+            <ProductImages
+              images={images}
+              setImages={(files) => form.setValue("images", files)}
+              error={form.formState.errors.images?.message as string}
+            />
+          </div>
           {/* Featured + Status */}
           <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             {/* Featured */}

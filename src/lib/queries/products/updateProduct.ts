@@ -95,8 +95,15 @@ export async function updateProduct(data: ProductUpdateType) {
   }
 
   // 4️⃣ Handle Images
+  // 4️⃣ Handle Images
   if (images && images.length > 0) {
-    await uploadOrUpdateProductImages(store_id, id, images);
+    // Force first image = primary
+    const imagesToSave = images.map((img, index) => ({
+      ...img,
+      isPrimary: index === 0,
+    }));
+
+    await uploadOrUpdateProductImages(store_id, id, imagesToSave);
   }
 
   return true;
