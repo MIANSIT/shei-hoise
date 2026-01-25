@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { InputNumber, Tooltip } from "antd";
+import { Tooltip } from "antd";
 import { Zap } from "lucide-react";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
+import { Input } from "@/components/ui/input";
 import {
   ProductRow,
   VariantRow,
@@ -28,11 +29,26 @@ const StockInputSection: React.FC<StockInputSectionProps> = ({
   showUpdateButton,
   bulkActive = false,
 }) => {
+  const [inputValue, setInputValue] = React.useState(String(editedValue));
+
   const isLowStock = item.isLowStock;
   const threshold = item.lowStockThreshold || 10;
 
   // Hide Low tag when update button is shown
   const shouldShowLowTag = isLowStock && !showUpdateButton;
+
+  // Keep input synced if editedValue changes from outside
+  React.useEffect(() => {
+    setInputValue(String(editedValue));
+  }, [editedValue]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Remove leading zeros immediately
+    const normalized = raw.replace(/^0+/, "");
+    setInputValue(normalized);
+    onStockChange(Number(normalized) || 0);
+  };
 
   return (
     <div className="flex items-center gap-3 justify-between flex-wrap">
@@ -49,20 +65,14 @@ const StockInputSection: React.FC<StockInputSectionProps> = ({
               {type === "product" ? "Product Stock" : "Variant Stock"}
             </label>
             <div className="flex items-center gap-3">
-              <InputNumber
-                min={0}
-                value={editedValue}
-                onChange={(value) => onStockChange(Number(value ?? 0))}
+              <Input
+                type="number"
+                value={inputValue}
+                onChange={handleInputChange}
                 className={`
                   !w-28 text-center font-bold rounded-xl transition-all duration-200 flex-shrink-0
-                  [&>input]:text-center [&>input]:font-bold [&>input]:rounded-lg [&>input]:text-base
-                  ${
-                    isLowStock
-                      ? "[&>input]:bg-orange-50 [&>input]:border-orange-300 [&>input]:text-orange-700 [&>input]:shadow-sm"
-                      : "[&>input]:bg-white [&>input]:border-gray-200"
-                  }
+                  ${isLowStock ? "bg-orange-50 border-orange-300 text-orange-700 shadow-sm" : "bg-white border-gray-200"}
                 `}
-                status={isLowStock ? "warning" : undefined}
               />
 
               {/* Show Low tag only when update button is NOT shown */}

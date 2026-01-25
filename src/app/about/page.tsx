@@ -158,7 +158,7 @@ export default function AboutPage() {
 
         <CTASection
           title="Start Your Shei Hoise Journey Today"
-          description="Join thousands of successful entrepreneurs and transform your Facebook business with our 1-month free trial"
+          description="Join thousands of successful entrepreneurs and transform your Facebook business with our 7-days free trial"
           buttonText="Request For Free Trial"
           buttonHref="/demo-request"
           variant="primary"

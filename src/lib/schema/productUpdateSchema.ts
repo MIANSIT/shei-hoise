@@ -78,13 +78,13 @@ export const productUpdateSchema = z
       }
     }
 
-    if (data.images && !data.images.some((img) => img.isPrimary)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "At least one image must be primary",
-        path: ["images"],
-      });
-    }
+    // if (data.images && !data.images.some((img) => img.isPrimary)) {
+    //   ctx.addIssue({
+    //     code: "custom",
+    //     message: "At least one image must be primary",
+    //     path: ["images"],
+    //   });
+    // }
   });
 
 export type ProductUpdateType = z.infer<typeof productUpdateSchema>;

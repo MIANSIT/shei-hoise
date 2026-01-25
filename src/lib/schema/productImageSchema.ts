@@ -1,7 +1,7 @@
-// src/lib/schema/productImageSchema.ts
 import { z } from "zod";
 
 export const productImageSchema = z.object({
+  id: z.string().optional(), // ✅ optional field
   product_id: z.string().uuid(),
   variant_id: z.string().uuid().optional(),
   image_url: z.string().url("Invalid image URL"),

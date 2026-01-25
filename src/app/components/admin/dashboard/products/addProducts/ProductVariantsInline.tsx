@@ -198,6 +198,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 <FormField
                   control={form.control}
                   label="Variant Name"
+                  placeholder="Size, Color"
                   name={`variants.${idx}.variant_name`}
                   required
                   tooltip="Enter a descriptive name for this variant, e.g., Small / Red. Keep it concise and clear."
@@ -205,6 +206,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 <FormField
                   control={form.control}
                   label="SKU"
+                  placeholder="Unique variant code (e.g. TS-RED-M)"
                   name={`variants.${idx}.sku`}
                   tooltip="Provide a unique Stock Keeping Unit (SKU) to track this variant in your inventory."
                   required
@@ -218,6 +220,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 <FormField
                   control={form.control}
                   label="Weight (Kg)"
+                  placeholder="0.75 (kg)"
                   name={`variants.${idx}.weight`}
                   tooltip="Enter the weight of this variant in kilograms for shipping calculations."
                   type="number"

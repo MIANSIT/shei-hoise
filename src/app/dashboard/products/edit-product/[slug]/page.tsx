@@ -50,6 +50,16 @@ const EditProductPage = () => {
     if (!user?.store_id) return;
 
     try {
+      // ✅ Ensure at least one primary image
+      if (updatedProduct.images && updatedProduct.images.length > 0) {
+        const primaryExists = updatedProduct.images.some(
+          (img) => img.isPrimary,
+        );
+        if (!primaryExists) {
+          updatedProduct.images[0].isPrimary = true; // fallback
+        }
+      }
+
       // Validate & transform to ProductUpdateType
       const payload: ProductUpdateType = productUpdateSchema.parse({
         ...updatedProduct,
@@ -62,13 +72,12 @@ const EditProductPage = () => {
       success(
         <div>
           <b>{updatedProduct.name}</b> has been updated successfully!
-        </div>
+        </div>,
       );
 
-      // ✅ Redirect after success
       setTimeout(() => {
         router.push("/dashboard/products");
-      }, 1000); // optional delay to let the toast show
+      }, 1000);
     } catch (err: unknown) {
       console.error("Update failed:", err);
       if (err instanceof Error) {

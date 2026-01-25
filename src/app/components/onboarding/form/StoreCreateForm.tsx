@@ -1,10 +1,9 @@
 "use client";
 
 import { Button } from "antd";
-import { Path, useForm } from "react-hook-form";
+import { useForm, Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-
 import {
   CreateUserType,
   createUserSchema,
@@ -65,6 +64,12 @@ export default function StoreCreateForm({
         return_policy_days: 7,
         terms_and_conditions: "",
         privacy_policy: "",
+        store_social_media: {
+          facebook_link: "",
+          instagram_link: "",
+          youtube_link: "",
+          twitter_link: "",
+        },
       },
       profile: { country: "Bangladesh" },
       is_active: true,
@@ -158,11 +163,9 @@ export default function StoreCreateForm({
   };
 
   const handleStepClick = async (stepIndex: number) => {
-    if (stepIndex < currentStep) {
-      goTo(stepIndex);
-    } else if (stepIndex === currentStep) {
-      return;
-    } else {
+    if (stepIndex < currentStep) goTo(stepIndex);
+    else if (stepIndex === currentStep) return;
+    else {
       const isStepValid = await trigger(currentFields, { shouldFocus: true });
       if (isStepValid) goTo(stepIndex);
       else notify.error("Please fix validation errors before proceeding");
@@ -178,125 +181,71 @@ export default function StoreCreateForm({
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6 flex flex-col md:flex-col">
-      {/* Desktop: Top Horizontal Steps with Names */}
-      <div className="hidden md:flex mb-6 justify-between items-center">
+    <div className="flex w-full flex-1 max-w-5xl gap-4 md:gap-6">
+      {/* Mobile Sidebar */}
+      <div className="flex md:hidden flex-col items-center sticky top-4 h-fit">
         {steps.map((step, idx) => (
-          <div key={idx} className="flex-1 flex items-center">
-            {/* Circle */}
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
-            ${
-              currentStep === idx
-                ? "bg-blue-500 text-white"
-                : idx < currentStep
-                ? "bg-blue-200 text-blue-600"
-                : "bg-gray-200 text-gray-500"
-            }
-          `}
+          <div key={idx} className="flex flex-col items-center mb-4">
+            <button
+              onClick={() => handleStepClick(idx)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors duration-200
+                ${
+                  currentStep === idx
+                    ? "bg-blue-500 text-white"
+                    : idx < currentStep
+                      ? "bg-blue-200 text-blue-600"
+                      : "bg-gray-200 text-gray-500"
+                }`}
             >
               {idx + 1}
-            </div>
-            {/* Step Name */}
-            <span
-              className={`ml-2 font-medium text-sm
-          ${
-            currentStep === idx
-              ? "text-blue-500"
-              : idx < currentStep
-              ? "text-blue-600"
-              : "text-gray-500"
-          }
-        `}
-            >
-              {step.title}
-            </span>
-
-            {/* Line */}
+            </button>
             {idx < steps.length - 1 && (
               <div
-                className={`flex-1 h-1 mx-2
-            ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}
-          `}
+                className={`w-1 h-8 ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}`}
               ></div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="flex flex-1">
-        {/* Mobile: Vertical Sidebar with line & numbers */}
-        <div className="flex md:hidden flex-col items-center mr-4 sticky top-4">
-          {steps.map((step, idx) => (
-            <div key={idx} className="flex flex-col items-center mb-4">
-              {/* Circle */}
-              <button
-                onClick={() => handleStepClick(idx)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors duration-200
-              ${
-                currentStep === idx
-                  ? "bg-blue-500 text-white"
-                  : idx < currentStep
-                  ? "bg-blue-200 text-blue-600"
-                  : "bg-gray-200 text-gray-500"
-              }
-            `}
+      {/* Scrollable Form */}
+      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-8rem)] bg-card shadow-lg rounded-xl p-6">
+        {currentContent}
+
+        <div className="mt-6 flex justify-between items-center">
+          {!isFirst && (
+            <Button onClick={prev} type="default">
+              Previous
+            </Button>
+          )}
+
+          <div className="flex-1 flex justify-end">
+            {!isLast ? (
+              <Button type="primary" onClick={handleNext} htmlType="button">
+                Next
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                onClick={handleSubmit(onSubmitForm)}
+                loading={loading}
+                disabled={!isFinalStepValid}
+                className="rounded-lg px-6 py-2 font-semibold transition-colors duration-200"
+                style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                onMouseEnter={(e) =>
+                  ((
+                    e.currentTarget as HTMLButtonElement
+                  ).style.backgroundColor = "var(--badge)")
+                }
+                onMouseLeave={(e) =>
+                  ((
+                    e.currentTarget as HTMLButtonElement
+                  ).style.backgroundColor = "var(--chart-2)")
+                }
               >
-                {idx + 1}
-              </button>
-
-              {/* Line below circle */}
-              {idx < steps.length - 1 && (
-                <div
-                  className={`w-1 h-8
-              ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}
-            `}
-                ></div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Form Content */}
-        <div className="flex-1 bg-card shadow-lg rounded-xl p-6">
-          {currentContent}
-
-          {/* Navigation Buttons */}
-          <div className="mt-6 flex justify-between items-center">
-            {!isFirst && (
-              <Button onClick={prev} type="default">
-                Previous
+                Request Onboard
               </Button>
             )}
-
-            <div className="flex-1 flex justify-end">
-              {!isLast ? (
-                <Button type="primary" onClick={handleNext} htmlType="button">
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  type="primary"
-                  onClick={handleSubmit(onSubmitForm)}
-                  loading={loading}
-                  disabled={!isFinalStepValid}
-                  className="rounded-lg px-6 py-2 font-semibold transition-colors duration-200"
-                  style={{ backgroundColor: "var(--chart-2)", border: "none" }}
-                  onMouseEnter={(e) => {
-                    (
-                      e.currentTarget as HTMLButtonElement
-                    ).style.backgroundColor = "var(--badge)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (
-                      e.currentTarget as HTMLButtonElement
-                    ).style.backgroundColor = "var(--chart-2)";
-                  }}
-                >
-                  Request Onboard
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </div>
