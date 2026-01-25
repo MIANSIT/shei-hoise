@@ -4,16 +4,20 @@ import { useState } from "react";
 import { updateStore } from "@/lib/queries/stores/update/updateStore";
 import { uploadStoreMedia } from "@/lib/queries/stores/update/storeMedia";
 import { updateStoreSettings } from "@/lib/queries/stores/update/updateStoreSettings";
+import { updateStoreSocialMedia } from "@/lib/queries/stores/update/updateStoreSocialMedia";
 import type {
   UpdatedStoreData,
   StoreData,
   UpdatedStoreSettings,
   StoreSettings,
+  StoreSocialMedia,
+  UpdatedStoreSocialMedia,
 } from "@/lib/types/store/store";
 
 interface UpdateStoreInput {
-  data: UpdatedStoreData;
-  settingsPayload?: UpdatedStoreSettings;
+  storeData?: UpdatedStoreData; // only store fields
+  settingsData?: UpdatedStoreSettings; // only settings
+  socialMediaData?: UpdatedStoreSocialMedia; // only social media
   logoFile?: File | null;
   bannerFile?: File | null;
 }
@@ -23,45 +27,56 @@ export function useUpdateStore(storeId: string) {
   const [error, setError] = useState<Error | null>(null);
 
   const update = async ({
-    data,
-    settingsPayload,
+    storeData,
+    settingsData,
+    socialMediaData,
     logoFile,
     bannerFile,
   }: UpdateStoreInput): Promise<{
     store: StoreData | null;
     settings: StoreSettings | null;
+    socialMedia: StoreSocialMedia | null;
   }> => {
     try {
       setLoading(true);
       setError(null);
 
-      const payload: UpdatedStoreData = { ...data };
+      const storePayload: UpdatedStoreData = { ...(storeData ?? {}) };
 
-      // Upload logo if provided
+      // Upload media if provided
       if (logoFile) {
         const logoUrl = await uploadStoreMedia(storeId, logoFile, "logo");
-        if (logoUrl) payload.logo_url = logoUrl;
+        if (logoUrl) storePayload.logo_url = logoUrl;
       }
 
-      // Upload banner if provided
       if (bannerFile) {
         const bannerUrl = await uploadStoreMedia(storeId, bannerFile, "banner");
-        if (bannerUrl) payload.banner_url = bannerUrl;
+        if (bannerUrl) storePayload.banner_url = bannerUrl;
       }
 
-      // Update store data
-      const updatedStore = await updateStore(storeId, payload);
+      // Update store
+      const updatedStore = storePayload
+        ? await updateStore(storeId, storePayload)
+        : null;
 
-      // Update store settings if provided
-      let updatedSettings: StoreSettings | null = null;
-      if (settingsPayload) {
-        updatedSettings = await updateStoreSettings(storeId, settingsPayload);
-      }
+      // Update settings
+      const updatedSettings = settingsData
+        ? await updateStoreSettings(storeId, settingsData)
+        : null;
 
-      return { store: updatedStore, settings: updatedSettings };
+      // Update social media
+      const updatedSocialMedia = socialMediaData
+        ? await updateStoreSocialMedia(storeId, socialMediaData)
+        : null;
+
+      return {
+        store: updatedStore,
+        settings: updatedSettings,
+        socialMedia: updatedSocialMedia,
+      };
     } catch (err) {
       setError(err as Error);
-      return { store: null, settings: null };
+      return { store: null, settings: null, socialMedia: null };
     } finally {
       setLoading(false);
     }

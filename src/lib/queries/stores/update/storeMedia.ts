@@ -6,45 +6,51 @@ export async function uploadStoreMedia(
   storeId: string,
   file: File,
   type: MediaType,
-  oldFileUrl?: string // optional: previous file URL to remove
 ): Promise<string | null> {
   const bucket = type === "logo" ? "store_logo" : "store-banner";
 
-  // 1️⃣ Remove old file if oldFileUrl is provided
-  if (oldFileUrl) {
-    try {
-      // Extract path from full URL
-      const url = new URL(oldFileUrl);
-      let oldPath = url.pathname;
-      // Supabase bucket paths usually start after "/storage/v1/object/public/{bucket}/"
-      const bucketPrefix = `/object/public/${bucket}/`;
-      if (oldPath.includes(bucketPrefix)) {
-        oldPath = oldPath.split(bucketPrefix)[1];
-        await supabaseAdmin.storage.from(bucket).remove([oldPath]);
+  try {
+    // 1️⃣ List existing files in the store folder for this media type
+    const folderPath = `store/${storeId}/`;
+    const { data: existingFiles } = await supabaseAdmin.storage
+      .from(bucket)
+      .list(folderPath);
+
+    // 2️⃣ Remove previous files of this type
+    if (existingFiles?.length) {
+      const filesToRemove = existingFiles
+        .filter((f) => f.name.startsWith(type)) // only remove logos or banners
+        .map((f) => `${folderPath}${f.name}`);
+
+      if (filesToRemove.length) {
+        await supabaseAdmin.storage.from(bucket).remove(filesToRemove);
       }
-    } catch (err) {
-      console.warn("Failed to remove old file:", err);
     }
-  }
 
-  // 2️⃣ Generate unique filename
-  const uniqueId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-  const path = `store/${storeId}/${type}-${uniqueId}.png`;
+    // 3️⃣ Generate a unique filename for the new upload
+    const uniqueId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const path = `store/${storeId}/${type}-${uniqueId}.png`;
 
-  // 3️⃣ Upload new file
-  const { error } = await supabaseAdmin.storage
-    .from(bucket)
-    .upload(path, file, {
-      upsert: true,
-      contentType: file.type,
-    });
+    // 4️⃣ Upload new file
+    const { error } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
 
-  if (error) {
-    console.error(`Error uploading ${type}:`, error);
+    if (error) {
+      console.error(`Error uploading ${type}:`, error);
+      return null;
+    }
+
+    // 5️⃣ Return public URL
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(bucket)
+      .getPublicUrl(path);
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error(`Error in uploadStoreMedia for ${type}:`, err);
     return null;
   }
-
-  // 4️⃣ Return new public URL
-  const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
 }

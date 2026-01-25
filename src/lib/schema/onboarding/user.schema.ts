@@ -16,7 +16,7 @@ const requiredFileOrUrl = fileOrUrl.refine(
     if (typeof val === "string") return val.trim().length > 0;
     return !!val;
   },
-  { message: "This field is required" }
+  { message: "This field is required" },
 );
 
 /* ----------------------------------
@@ -61,6 +61,19 @@ const storeSchema = z.object({
 /* ----------------------------------
    Store Settings Schema
 ---------------------------------- */
+/* ----------------------------------
+   Store Social Media Schema (Fixed)
+---------------------------------- */
+
+// Helper: optional URL, allow empty string
+const optionalUrl = z.string().url("Invalid URL").optional().or(z.literal("")); // allow empty string
+
+export const storeSocialMediaSchema = z.object({
+  facebook_link: optionalUrl,
+  instagram_link: optionalUrl,
+  youtube_link: optionalUrl,
+  twitter_link: optionalUrl,
+});
 
 const storeSettingsSchema = z.object({
   currency: z.nativeEnum(Currency),
@@ -78,7 +91,7 @@ const storeSettingsSchema = z.object({
           .number()
           .int()
           .min(1, "Estimated days must be greater than 0"),
-      })
+      }),
     )
     .min(1, { message: "At least one shipping method is required" }),
   free_shipping_threshold: z.number().min(0).optional(),
@@ -89,6 +102,7 @@ const storeSettingsSchema = z.object({
 
   terms_and_conditions: z.string().optional(),
   privacy_policy: z.string().optional(),
+  store_social_media: storeSocialMediaSchema.optional(),
 });
 
 /* ----------------------------------

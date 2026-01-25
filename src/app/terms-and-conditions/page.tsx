@@ -20,7 +20,7 @@ const termsSections: Section[] = [
     id: "free-trial",
     title: "Free Trial Period",
     content:
-      "We offer a comprehensive 1-month free trial to help you experience Shei Hoise fully:",
+      "We offer a comprehensive 7-days free trial to help you experience Shei Hoise fully:",
     items: [
       "Full access to all platform features and capabilities",
       "No payment information required to start your trial",
@@ -152,7 +152,7 @@ export default function TermsAndConditions() {
 
         <CTASection
           title="Ready to Get Started?"
-          description="Join thousands of successful entrepreneurs and begin your Shei Hoise journey with our 1-month free trial"
+          description="Join thousands of successful entrepreneurs and begin your Shei Hoise journey with our 7-days free trial"
           buttonText="Schedule Free Trial"
           buttonHref="/demo-request"
           variant="secondary"

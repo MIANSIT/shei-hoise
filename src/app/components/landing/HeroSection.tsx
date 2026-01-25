@@ -103,7 +103,7 @@ export default function HeroSection() {
               minutes
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-chart-2" /> Free 14-day trial
+              <CheckCircle className="w-4 h-4 text-chart-2" /> Free 7-day trial
             </div>
           </motion.div>
         </motion.div>
