@@ -139,11 +139,11 @@ export const productSchema = z
         path: ["images"],
       });
     } else if (!data.images.some((img) => img.isPrimary)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "At least one image must be marked as primary.",
-        path: ["images"],
-      });
+      // ctx.addIssue({
+      //   code: "custom",
+      //   message: "At least one image must be marked as primary.",
+      //   path: ["images"],
+      // });
     }
   });
 
