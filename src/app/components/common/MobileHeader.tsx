@@ -21,17 +21,19 @@ export default function MobileHeader() {
   const navLinks: NavLink[] = [
     { name: "Home", path: "/" },
     // Only show Sections on the home page
-    ...(pathname === "/"
-      ? [
-          {
-            name: "Sections",
-            children: [
-              { name: "Store", path: "#stores" },
-              { name: "Request Demo", path: "#request-demo" },
-            ],
-          },
-        ]
-      : []),
+    // ...(pathname === "/"
+    //   ? [
+    //       {
+    //         name: "Sections",
+    //         children: [
+    //           { name: "Store", path: "#stores" },
+    //           { name: "Request Demo", path: "#request-demo" },
+    //         ],
+    //       },
+    //     ]
+    //   : []),
+    { name: "Request Demo", path: "/#request-demo" },
+
     { name: "All Stores", path: "/stores" },
   ];
 
@@ -90,7 +92,7 @@ export default function MobileHeader() {
 
               // Dropdown section
               const isSectionActive = link.children.some(
-                (child) => child.path === pathname
+                (child) => child.path === pathname,
               );
 
               return (

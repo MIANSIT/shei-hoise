@@ -128,11 +128,7 @@ export const productSchema = z
       data.tp_price !== undefined &&
       data.base_price < data.tp_price
     ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "MRP Price must be greater than or equal to TP price.",
-        path: ["base_price"],
-      });
+      
     }
 
     // Image validation
@@ -143,11 +139,11 @@ export const productSchema = z
         path: ["images"],
       });
     } else if (!data.images.some((img) => img.isPrimary)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "At least one image must be marked as primary.",
-        path: ["images"],
-      });
+      // ctx.addIssue({
+      //   code: "custom",
+      //   message: "At least one image must be marked as primary.",
+      //   path: ["images"],
+      // });
     }
   });
 

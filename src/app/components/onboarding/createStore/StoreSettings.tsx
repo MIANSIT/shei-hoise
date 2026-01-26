@@ -179,7 +179,7 @@ export default function StoreSettings({ control, errors }: Props) {
                           .filter(
                             (option) =>
                               !selectedOptions.includes(option) ||
-                              option === nameField.value
+                              option === nameField.value,
                           )
                           .map((option) => (
                             <Option key={option} value={option}>
@@ -259,13 +259,98 @@ export default function StoreSettings({ control, errors }: Props) {
         >
           Add Shipping Method
         </Button>
+        <Divider className="border-border mt-8" />
+
+        {/* Social Media Links */}
+        <div className="space-y-4">
+          <h4 className="text-xl font-semibold">Social Media Links</h4>
+          <p className="text-sm text-muted-foreground">
+            Optional links to your store’s social media profiles.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Facebook */}
+            <Controller
+              name="store_settings.store_social_media.facebook_link"
+              control={control}
+              render={({ field, fieldState }) => (
+                <FormItemWrapper
+                  label={<span className="text-foreground">Facebook Page</span>}
+                  error={fieldState.error?.message}
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://facebook.com/yourstore"
+                    value={field.value ?? ""}
+                  />
+                </FormItemWrapper>
+              )}
+            />
+
+            {/* Instagram */}
+            <Controller
+              name="store_settings.store_social_media.instagram_link"
+              control={control}
+              render={({ field, fieldState }) => (
+                <FormItemWrapper
+                  label={
+                    <span className="text-foreground">Instagram Profile</span>
+                  }
+                  error={fieldState.error?.message}
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://instagram.com/yourstore"
+                    value={field.value ?? ""}
+                  />
+                </FormItemWrapper>
+              )}
+            />
+
+            {/* Twitter / X */}
+            <Controller
+              name="store_settings.store_social_media.youtube_link"
+              control={control}
+              render={({ field, fieldState }) => (
+                <FormItemWrapper
+                  label={<span className="text-foreground">Youtube</span>}
+                  error={fieldState.error?.message}
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://youtube.com/yourstore"
+                    value={field.value ?? ""}
+                  />
+                </FormItemWrapper>
+              )}
+            />
+            <Controller
+              name="store_settings.store_social_media.twitter_link"
+              control={control}
+              render={({ field, fieldState }) => (
+                <FormItemWrapper
+                  label={<span className="text-foreground">Twitter / X</span>}
+                  error={fieldState.error?.message}
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://twitter.com/yourstore"
+                    value={field.value ?? ""}
+                  />
+                </FormItemWrapper>
+              )}
+            />
+          </div>
+        </div>
       </div>
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">
         <div className="shrink-0 text-emerald-600">
           <SafetyOutlined className="text-xl" />
         </div>
         <div>
-          <h4 className="font-semibold text-foreground">Protected Store Information</h4>
+          <h4 className="font-semibold text-foreground">
+            Protected Store Information
+          </h4>
           <p className="text-sm text-muted-foreground">
             Your store information, including pricing, shipping, and policies,
             is securely encrypted and stored. Only authorized personnel can

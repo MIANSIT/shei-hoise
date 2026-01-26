@@ -17,7 +17,7 @@ export function ShippingFeesCard({
 
   return (
     <Card className="border shadow-md rounded-2xl overflow-hidden">
-      <CardHeader className="bg-background  p-6">
+      <CardHeader className="  border-b p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-lg sm:text-xl font-semibold text-primary">

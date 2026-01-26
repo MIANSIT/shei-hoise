@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
       // Add any other Supabase project URLs you might use
     ],
   },
+
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb", // ✅ increase this depending on max file size
+    },
+  },
 };
 
 export default nextConfig;

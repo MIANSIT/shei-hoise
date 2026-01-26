@@ -51,17 +51,23 @@ export default function UploadImage<T extends FieldValues>({
     : [];
 
   const handleBeforeUpload = (file: RcFile) => {
-    const isValidSize = file.size / 1024 / 1024 <= 2; // ✅ changed from 5 to 2 MB
+    const isValidSize = file.size / 1024 / 1024 <= 5;
+    const isValidType = ["image/jpeg", "image/png"].includes(file.type);
+
     if (!isValidSize) {
-      setError("File must be smaller than 2 MB!");
+      setError("File must be smaller than 5 MB!");
+      return Upload.LIST_IGNORE;
+    }
+
+    if (!isValidType) {
+      setError("Only JPG/PNG images are allowed!");
       return Upload.LIST_IGNORE;
     }
 
     setError(null);
-    field.onChange(file); // overwrite previous file
+    field.onChange(file);
     field.onBlur();
-
-    return false; // prevent auto-upload
+    return false;
   };
 
   const handleRemove = () => {

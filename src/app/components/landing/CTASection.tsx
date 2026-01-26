@@ -46,7 +46,7 @@ export default function CTASection() {
         </div>
 
         <p className="mt-4 text-xs md:text-sm text-muted-foreground">
-          No credit card required • 14-day free trial • Setup in minutes
+          No credit card required • 7-day free trial • Setup in minutes
         </p>
       </div>
 

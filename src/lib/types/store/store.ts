@@ -55,7 +55,16 @@ export interface StoreSettings {
 }
 
 export type UpdatedStoreSettings = Partial<StoreSettings>;
-
+export interface StoreSocialMedia {
+  id: string;
+  store_id: string;
+  facebook_link?: string | null;
+  instagram_link?: string | null;
+  twitter_link?: string | null;
+  youtube_link?: string | null;
+  created_at?: Date | string;
+}
+export type UpdatedStoreSocialMedia = Partial<StoreSocialMedia>;
 // Policy types
 export type PolicyType = "terms" | "privacy";
 export interface PolicyUpdate {
