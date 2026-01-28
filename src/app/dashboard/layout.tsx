@@ -5,9 +5,16 @@ import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { Moon, PanelLeft, Sun } from "lucide-react";
-import { ConfigProvider, theme as antdTheme, App as AntdApp, Spin } from "antd";
-// import "@ant-design/v5-patch-for-react-19";
+import { Moon, PanelLeft, Sun, X, LogOut, User } from "lucide-react";
+import {
+  ConfigProvider,
+  theme as antdTheme,
+  App as AntdApp,
+  Spin,
+  Drawer,
+  Dropdown,
+  MenuProps,
+} from "antd";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -18,7 +25,8 @@ import {
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 import Link from "next/link";
-// import { StoreStatus } from "@/lib/types/enums";
+import { supabase } from "@/lib/supabase";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -36,10 +44,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     storeStatus,
     storeIsActive,
     loading: userLoading,
+    user,
   } = useCurrentUser();
 
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const notify = useSheiNotification();
 
   // Set mounted to true after component mounts on client
   useEffect(() => {
@@ -72,14 +85,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       });
   }, [storeSlug]);
 
-  // Sidebar responsiveness - only run on client
+  // Check if mobile and handle sidebar - only run on client
   useEffect(() => {
     if (!mounted) return;
 
-    const handleResize = () => setIsSidebarOpen(window.innerWidth >= 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsSidebarOpen(false); // Hide sidebar on mobile by default
+      } else {
+        setIsSidebarOpen(true); // Show sidebar on desktop
+      }
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, [mounted]);
 
   // Load saved theme - only run on client
@@ -92,6 +114,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       document.documentElement.classList.toggle("dark", savedTheme === "dark");
     }
   }, [mounted]);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      await supabase.auth.signOut();
+      notify.success("Logout successful!");
+      router.push("/admin-login");
+    } catch (err: unknown) {
+      console.error("Logout error:", err);
+      if (err instanceof Error) {
+        notify.error(`Logout failed: ${err.message}`);
+      } else {
+        notify.error("Logout failed. Please try again.");
+      }
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
+
+  // User dropdown menu items
+  const userMenu: MenuProps = {
+    items: [
+      {
+        key: "profile",
+        icon: <User className="w-4 h-4" />,
+        label: "Profile",
+        disabled: true, // You can implement profile page later
+      },
+      {
+        type: "divider",
+      },
+      {
+        key: "logout",
+        icon: <LogOut className="w-4 h-4" />,
+        label: "Logout",
+        danger: true,
+        onClick: handleLogout,
+      },
+    ],
+  };
 
   // Combined loading states
   const isLoading = authLoading || userLoading || storeLoading;
@@ -227,6 +290,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }
 
+  // Handle sidebar toggle
+  const handleSidebarToggle = () => {
+    if (isMobile) {
+      setMobileDrawerOpen(true);
+    } else {
+      setIsSidebarOpen((prev) => !prev);
+    }
+  };
+
   // Show dashboard
   return (
     <ConfigProvider
@@ -248,14 +320,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             itemSelectedColor: "#ffffff",
             groupTitleColor: theme === "dark" ? "#d1d5db" : "#374151",
           },
+          Drawer: {
+            colorBgElevated: "var(--sidebar)",
+          },
         },
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col sticky top-0 h-screen shadow-md p-2">
+        <div className="min-h-screen flex flex-col">
           {/* Header */}
           <header
-            className="flex items-center justify-between p-4 shadow-md shrink-0"
+            className="flex items-center justify-between p-4 shadow-md sticky top-0 z-50"
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
@@ -278,49 +353,108 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </h1>
 
               <button
-                onClick={() => setIsSidebarOpen((prev) => !prev)}
+                onClick={handleSidebarToggle}
                 className="p-2 rounded hover:opacity-70 transition-transform duration-300"
                 style={{ background: "var(--muted)" }}
               >
                 <PanelLeft
                   className={`w-5 h-5 transition-transform duration-300 ${
-                    isSidebarOpen ? "rotate-0" : "rotate-180"
+                    isMobile || !isSidebarOpen ? "rotate-0" : "rotate-180"
                   }`}
                 />
               </button>
             </div>
-            <button
-              onClick={() => {
-                const newTheme = theme === "light" ? "dark" : "light";
-                setTheme(newTheme);
-                localStorage.setItem("theme", newTheme);
-                document.documentElement.classList.toggle(
-                  "dark",
-                  newTheme === "dark",
-                );
-              }}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-            >
-              {theme === "light" ? (
-                <Moon className="w-5 h-5" />
-              ) : (
-                <Sun className="w-5 h-5" />
-              )}
-            </button>
+
+            <div className="flex items-center gap-4">
+              {/* Theme toggle button */}
+              <button
+                onClick={() => {
+                  const newTheme = theme === "light" ? "dark" : "light";
+                  setTheme(newTheme);
+                  localStorage.setItem("theme", newTheme);
+                  document.documentElement.classList.toggle(
+                    "dark",
+                    newTheme === "dark",
+                  );
+                }}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+              >
+                {theme === "light" ? (
+                  <Moon className="w-5 h-5" />
+                ) : (
+                  <Sun className="w-5 h-5" />
+                )}
+              </button>
+
+              {/* User dropdown with logout */}
+              <Dropdown
+                menu={userMenu}
+                trigger={["click"]}
+                placement="bottomRight"
+              >
+                <button className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-medium">
+                    {user?.first_name
+                      ? user.first_name.charAt(0).toUpperCase()
+                      : "U"}
+                  </div>
+                  {logoutLoading && <Spin size="small" />}
+                </button>
+              </Dropdown>
+            </div>
           </header>
 
-          <div className="flex flex-1 ">
-            {/* Sidebar */}
-            <div
-              className="sticky top-0 h-screen shadow-md p-2"
-              style={{ background: "var(--sidebar)" }}
+          <div className="flex flex-1">
+            {/* Desktop Sidebar - Hidden on mobile */}
+            {!isMobile && (
+              <div
+                className={`sticky top-0 h-screen shadow-md transition-all duration-300 ${
+                  isSidebarOpen
+                }`}
+                style={{ background: "var(--sidebar)" }}
+              >
+                <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
+              </div>
+            )}
+
+            {/* Mobile Drawer for Sidebar - Now takes 100% width */}
+            <Drawer
+              title={
+                <div className="flex items-center justify-between">
+                  <span>Menu</span>
+                  <button
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              }
+              placement="left"
+              open={mobileDrawerOpen}
+              onClose={() => setMobileDrawerOpen(false)}
+              size="100%"
+              styles={{
+                body: { padding: 0 },
+                header: {
+                  padding: "16px 20px",
+                  borderBottom: "1px solid var(--border)",
+                },
+              }}
             >
-              <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
-            </div>
+              <div className="h-full">
+                <Sidebar
+                  collapsed={false}
+                  themeMode={theme}
+                  isMobile={true}
+                  onMobileMenuClick={() => setMobileDrawerOpen(false)}
+                />
+              </div>
+            </Drawer>
 
             {/* Main content */}
             <main
-              className="flex-1 flex flex-col overflow-auto"
+              className="flex-1 flex flex-col overflow-auto min-h-[calc(100vh-73px)]"
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
@@ -328,7 +462,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Toaster position="top-right" />
 
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-2 p-4">
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -338,7 +472,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-2">{children}</div>
+              <div className="flex-1 overflow-auto p-4">{children}</div>
             </main>
           </div>
         </div>
