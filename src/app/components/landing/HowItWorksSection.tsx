@@ -7,7 +7,7 @@ export default function HowItWorksSection() {
     {
       step: "01",
       title: "Sign Up & Create Store",
-      description: "Register and get your personalized store URL: shei-hoise/your-store-name",
+      description: "Register and get your personalized store URL: shei-hoise.com/your-store-name",
     },
     {
       step: "02",
