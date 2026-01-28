@@ -82,7 +82,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
     }
   };
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
@@ -280,7 +280,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 ?.flatMap((v) => v.product_images || [])
                 .find((img) => img.is_primary) ||
               record.product_variants?.flatMap(
-                (v) => v.product_images || []
+                (v) => v.product_images || [],
               )[0];
 
             const imageUrl =
@@ -329,27 +329,30 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <span className="italic"></span>
                       )}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex gap-2">
-                        <span className="font-medium">
-                          {basePrice
-                            ? `${displayCurrencyIconSafe}${basePrice.toFixed(
-                                2
-                              )}`
-                            : "—"}
-                        </span>
-                        <span
-                          className={`font-medium ${
-                            discountedPrice ? "text-green-600" : "text-gray-400"
-                          }`}
-                        >
-                          {discountedPrice
-                            ? `${displayCurrencyIconSafe}${discountedPrice.toFixed(
-                                2
-                              )}`
-                            : ""}
-                        </span>
+                    <div className="flex flex-wrap justify-between items-center gap-2">
+                      {/* Price */}
+                      <div className="flex gap-2 items-center">
+                        {discountedPrice ? (
+                          <>
+                            <span className="text-red-500 line-through">
+                              {basePrice
+                                ? `${displayCurrencyIconSafe}${basePrice.toFixed(2)}`
+                                : "—"}
+                            </span>
+                            <span className="font-medium text-green-600">
+                              {`${displayCurrencyIconSafe}${discountedPrice.toFixed(2)}`}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="font-medium">
+                            {basePrice
+                              ? `${displayCurrencyIconSafe}${basePrice.toFixed(2)}`
+                              : "—"}
+                          </span>
+                        )}
                       </div>
+
+                      {/* Status */}
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Status:</span>
                         <Tag
@@ -357,20 +360,22 @@ const ProductTable: React.FC<ProductTableProps> = ({
                             record.status === ProductStatus.ACTIVE
                               ? "green"
                               : record.status === ProductStatus.DRAFT
-                              ? "orange"
-                              : "red"
+                                ? "orange"
+                                : "red"
                           }
                           className="rounded-lg px-2 py-0.5 text-xs"
                         >
                           {record.status === ProductStatus.ACTIVE
                             ? "Active"
                             : record.status === ProductStatus.DRAFT
-                            ? "Draft"
-                            : "Inactive"}
+                              ? "Draft"
+                              : "Inactive"}
                         </Tag>
                       </div>
+
+                      {/* Action buttons */}
                       <div
-                        className="flex gap-2"
+                        className="flex gap-2 ml-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button

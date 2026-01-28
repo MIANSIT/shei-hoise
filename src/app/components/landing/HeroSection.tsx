@@ -54,7 +54,7 @@ export default function HeroSection() {
             customer orders, and real-time tracking. Start your personalized
             store at{" "}
             <span className="font-semibold text-foreground">
-              shei-hoise/your-store-name
+              shei-hoise.com/your-store-name
             </span>{" "}
             today!
           </motion.p>
@@ -125,7 +125,7 @@ export default function HeroSection() {
                   <div className="w-2 h-2 md:w-3 md:h-3 bg-green-400 rounded-full"></div>
                 </div>
                 <div className="text-xs md:text-sm font-medium">
-                  shei-hoise/[storeName].com
+                  shei-hoise.com/[storeName]
                 </div>
               </div>
               <div className="space-y-3 md:space-y-4">
