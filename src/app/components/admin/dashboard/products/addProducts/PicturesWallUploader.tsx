@@ -11,6 +11,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -47,6 +48,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
     transform: CSS.Transform.toString(transform),
     transition,
     cursor: "grab",
+    touchAction: "pan-y", // important for mobile scroll + drag
   };
 
   return (
@@ -54,15 +56,13 @@ const SortableItem: React.FC<SortableItemProps> = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...listeners} // attach listeners here for full item drag
       className="relative w-24 h-24 flex items-center justify-center border rounded"
     >
-      {/* Order number badge */}
       <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs font-bold px-1 rounded-br">
         {index + 1}
       </span>
 
-      {/* Image / fallback */}
       <div
         className="w-full h-full cursor-pointer"
         onClick={() => onPreview(file)}
@@ -95,7 +95,6 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
   const [previewImage, setPreviewImage] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
 
-  // Convert FrontendImage to UploadFile for AntD
   useEffect(() => {
     const uploadFiles: UploadFile[] = (images ?? []).map((img, index) => ({
       uid: `existing-${index}`,
@@ -112,8 +111,14 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
     setPreviewOpen(true);
   };
 
+  const handleBeforeUpload = (file: File) => {
+    const isLt5M = file.size / 1024 / 1024 <= 5;
+    if (!isLt5M) alert(`${file.name} is too large. Max size is 5MB.`);
+    return isLt5M;
+  };
+
   const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
-    const limitedFiles = newFileList.slice(0, 5); // max 5 images
+    const limitedFiles = newFileList.slice(0, 5);
     setFileList(limitedFiles);
 
     const newImages: FrontendImage[] = limitedFiles.map((file, index) => {
@@ -124,14 +129,23 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
       return {
         imageUrl: previewUrl,
         altText: file.name,
-        isPrimary: index === 0, // first image always primary
+        isPrimary: index === 0,
       };
     });
 
     setImages(newImages);
   };
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  // ✅ Mobile-compatible sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    }),
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -146,17 +160,13 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
     const newImages: FrontendImage[] = newFileList.map((file, index) => ({
       imageUrl: file.url || file.thumbUrl || "",
       altText: file.name,
-      isPrimary: index === 0, // first image always primary
+      isPrimary: index === 0,
     }));
-
     setImages(newImages);
   };
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Section title */}
-
-      {/* Drag-and-drop images */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -166,29 +176,26 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
           items={fileList.map((f) => f.uid)}
           strategy={verticalListSortingStrategy}
         >
-          {/* Upload button */}
           <Upload
             action={undefined}
             listType="picture-card"
             fileList={fileList}
             onPreview={handlePreview}
             onChange={handleChange}
-            beforeUpload={() => false}
+            beforeUpload={handleBeforeUpload}
           >
             {fileList.length >= 5 ? null : <div>Upload</div>}
           </Upload>
 
-          {/* Images grid */}
           <div className="mt-2">
-            <h3 className="text-lg font-semibold mb-2">Rearrage Image</h3>
-
+            <h3 className="text-lg font-semibold mb-2">Rearrange Images</h3>
             <div className="flex gap-2 flex-wrap">
               {fileList.map((file, index) => (
                 <SortableItem
                   key={file.uid}
                   file={file}
                   onPreview={handlePreview}
-                  index={index} // show order number
+                  index={index}
                 />
               ))}
             </div>
@@ -196,7 +203,6 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
         </SortableContext>
       </DndContext>
 
-      {/* Preview modal */}
       <Modal
         open={previewOpen}
         title={previewTitle}
@@ -216,7 +222,6 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
         )}
       </Modal>
 
-      {/* Error message */}
       {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
     </div>
   );

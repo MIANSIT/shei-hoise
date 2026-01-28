@@ -34,6 +34,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     onDrop,
     accept: { "image/*": [] },
     multiple: true,
+    maxSize: 5 * 1024 * 1024, // 5MB limit
+    onDropRejected: (rejectedFiles) => {
+      rejectedFiles.forEach((file) => {
+        if (file.file.size > 5 * 1024 * 1024) {
+          alert(`${file.file.name} is too large. Max size is 5MB.`);
+        }
+      });
+    },
   });
 
   return (
@@ -52,7 +60,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         </p>
         <p className="text-xs">
           Accepted formats: <span>.jpeg, .png, .webp</span> <br />
-          Max 5 images
+          Max 5 images, each ≤ 5MB
         </p>
       </div>
 
