@@ -87,7 +87,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
     }
   };
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
@@ -95,8 +95,8 @@ const MobileDetailedViewFull: React.FC<Props> = ({
     <div className="space-y-4">
       {/* Header with Checkbox */}
       <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-lg p-3 text-white shadow-sm">
-        <div className="flex justify-between items-start">
-          <div className="flex items-start gap-2 flex-1">
+        <div className="flex flex-wrap justify-between items-start">
+          <div className="flex items-start gap-2 flex-1 w-full sm:w-auto">
             {onSelect && (
               <input
                 type="checkbox"
@@ -107,7 +107,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
               />
             )}
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-base">
+              <div className="font-bold text-sm sm:text-base text-wrap">
                 Order #{order.order_number}
               </div>
               <div className="text-xs flex items-center gap-1 mt-1">
@@ -116,7 +116,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
               </div>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right w-full sm:w-auto mt-2 sm:mt-0">
             <div className="font-bold text-base">
               {displayCurrencyIconSafe}
               {order.total_amount.toFixed(2)}
@@ -139,63 +139,63 @@ const MobileDetailedViewFull: React.FC<Props> = ({
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
-          <Package className="text-blue-600" />
-          <div className="font-semibold text-sm">
+        <div className="p-2 bg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
+          <Package className="text-blue-600 dark:text-white" />
+          <div className="font-semibold text-sm ">
             {order.order_items.length}
           </div>
-          <div className="text-xs text-gray-500">Items</div>
+          <div className="text-xs text-gray-500 dark:text-white">Items</div>
         </div>
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
           <Shield className="text-purple-600" />
           <div className="font-semibold text-sm">
             {displayCurrencyIconSafe}
             {order.tax_amount.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500">Tax</div>
+          <div className="text-xs text-gray-500 dark:text-white">Tax</div>
         </div>
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bbg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
           <DollarSign className="text-green-600" />
           <div className="font-semibold text-sm">
             {" "}
             {displayCurrencyIconSafe}
             {subtotal.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500">Subtotal</div>
+          <div className="text-xs text-gray-500 dark:text-white">Subtotal</div>
         </div>
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
           <Truck className="text-orange-600" />
           <div className="font-semibold text-sm">
             {order.shipping_fee === 0
               ? "Free"
               : ` ${displayCurrencyIconSafe}${order.shipping_fee.toFixed(2)}`}
           </div>
-          <div className="text-xs text-gray-500">Shipping</div>
+          <div className="text-xs text-gray-500 dark:text-white">Shipping</div>
         </div>
       </div>
 
       {/* Status Overview */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bg-white dark:bg-blue-200 rounded-lg shadow-sm border flex flex-col items-center">
           <div className="text-xs text-gray-500">Order</div>
           <StatusTag status={order.status as StatusType} size="small" />
         </div>
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bg-white dark:bg-blue-200 rounded-lg shadow-sm border flex flex-col items-center">
           <div className="text-xs text-gray-500">Payment</div>
           <StatusTag status={order.payment_status as StatusType} size="small" />
         </div>
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bg-white  dark:bg-blue-200 rounded-lg shadow-sm border flex flex-col items-center">
           <div className="text-xs text-gray-500">Delivery</div>
           <StatusTag status={deliveryOption} size="small" />
         </div>
-        <div className="p-2 bg-white rounded-lg shadow-sm border flex flex-col items-center">
+        <div className="p-2 bg-white dark:bg-blue-200 rounded-lg shadow-sm border flex flex-col items-center">
           <div className="text-xs text-gray-500">Payment Method</div>
           <StatusTag status={paymentMethod} size="small" />
         </div>
       </div>
 
       {/* Products */}
-      <div className="bg-white rounded-lg shadow-sm border p-2 space-y-2">
+      <div className="bg-white dark:bg-blue-400 rounded-lg shadow-sm border p-2 space-y-2">
         {order.order_items.map((item) => {
           const base = item.variant_details?.base_price ?? item.unit_price;
           const discounted =
@@ -206,7 +206,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
           return (
             <div
               key={item.id}
-              className="flex justify-between items-center text-xs"
+              className="flex justify-between items-center text-xs "
             >
               <div className="flex flex-col">
                 <span>{item.product_name}</span>
@@ -241,7 +241,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
       </div>
 
       {/* Financial Summary */}
-      <div className="bg-white rounded-lg shadow-sm border p-2 text-xs space-y-1">
+      <div className="bg-white dark:bg-blue-200 dark:text-black rounded-lg shadow-sm border p-2 text-xs space-y-1">
         <div className="flex justify-between">
           <span>Subtotal</span>
           <span>
@@ -296,7 +296,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
       </div>
 
       {/* Addresses */}
-      <div className="bg-white rounded-lg shadow-sm border p-2 space-y-2 text-xs">
+      <div className="bg-white dark:bg-blue-200 rounded-lg shadow-sm border p-2 space-y-2 text-xs dark:text-black">
         <div className="flex items-center gap-1 font-semibold">
           <User size={12} /> Shipping
         </div>
@@ -309,7 +309,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
             copyToClipboard(
               fullShippingAddress,
               "Shipping Address",
-              "shipping-address"
+              "shipping-address",
             )
           }
         >
@@ -333,7 +333,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
             copyToClipboard(
               fullBillingAddress,
               "Billing Address",
-              "billing-address"
+              "billing-address",
             )
           }
         >
@@ -348,7 +348,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
 
       {/* Notes */}
       {order.notes && (
-        <div className="bg-white rounded-lg shadow-sm border p-2 text-xs">
+        <div className="bg-white dark:bg-blue-500 rounded-lg shadow-sm border p-2 text-xs">
           <div className="font-semibold mb-1 flex items-center gap-1">
             <FileText size={12} /> Notes
           </div>
