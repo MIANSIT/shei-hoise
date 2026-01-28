@@ -7,6 +7,7 @@ import { FormItemWrapper } from "./FormItemWrapper";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SafetyOutlined } from "@ant-design/icons";
+import { PasswordStrength } from "../../common/PasswordStrength";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -98,19 +99,21 @@ export default function FinalizeAccount({
         </FormItemWrapper>
 
         {/* Password */}
-        <FormItemWrapper
-          label={<span className="text-foreground">Password</span>}
-          error={errors.password?.message}
-        >
+        {/* ...inside your FinalizeAccount component, after the Password Input */}
+        <FormItemWrapper label="" error={errors.password?.message}>
           <Controller
             name="password"
             control={control}
             render={({ field }) => (
-              <Input.Password
-                {...field}
-                placeholder="Enter password"
-                className="rounded-lg bg-input text-foreground border-border"
-              />
+              <>
+                <Input.Password
+                  {...field}
+                  placeholder="Enter password"
+                  className="rounded-lg bg-input text-foreground border-border"
+                />
+                {/* Password Strength Component */}
+                <PasswordStrength password={field.value} className="mt-2" />
+              </>
             )}
           />
         </FormItemWrapper>
