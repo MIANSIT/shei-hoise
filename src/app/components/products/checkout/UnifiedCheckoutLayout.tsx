@@ -1,5 +1,3 @@
- 
-// app/components/products/checkout/UnifiedCheckoutLayout.tsx
 "use client";
 
 import { useState } from "react";
@@ -27,9 +25,9 @@ interface UnifiedCheckoutLayoutProps {
   taxAmount: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
-  // Removed unused props:
-  // currentCustomer?: any;
-  // isUserLoggedIn?: boolean;
+  // NEW: Add these optional props for confirm mode
+  onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
+  onRemoveItem?: (productId: string, variantId: string | null) => void;
 }
 
 export default function UnifiedCheckoutLayout({
@@ -45,6 +43,9 @@ export default function UnifiedCheckoutLayout({
   taxAmount,
   isProcessing,
   mode = "checkout",
+  // NEW: Accept the handlers
+  onQuantityChange,
+  onRemoveItem,
 }: UnifiedCheckoutLayoutProps) {
   const [activeSection, setActiveSection] = useState<"cart" | "customer">(
     "cart"
@@ -71,12 +72,18 @@ export default function UnifiedCheckoutLayout({
   ) => {
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
+    } else if (mode === "confirm" && onQuantityChange) {
+      // Use the passed handler for confirm mode
+      onQuantityChange(productId, variantId, newQuantity);
     }
   };
 
   const handleRemoveItem = (productId: string, variantId: string | null) => {
     if (mode === "checkout") {
       removeItem(productId, variantId);
+    } else if (mode === "confirm" && onRemoveItem) {
+      // Use the passed handler for confirm mode
+      onRemoveItem(productId, variantId);
     }
   };
 
@@ -86,6 +93,8 @@ export default function UnifiedCheckoutLayout({
       clearStoreCart(storeSlug);
       setTimeout(() => setIsClearing(false), 300);
     }
+    // Note: For confirm mode, we don't have a clear cart functionality
+    // because it's based on token data, not the cart store
   };
 
   if (error) {
@@ -208,15 +217,9 @@ export default function UnifiedCheckoutLayout({
                 <div className='max-h-100 lg:max-h-125 overflow-y-auto'>
                   <CartItemsList
                     items={cartItems}
-                    onQuantityChange={
-                      mode === "checkout" ? handleQuantityChange : undefined
-                    }
-                    onRemoveItem={
-                      mode === "checkout" ? handleRemoveItem : undefined
-                    }
-                    onClearCart={
-                      mode === "checkout" ? handleClearCart : undefined
-                    }
+                    onQuantityChange={handleQuantityChange}
+                    onRemoveItem={handleRemoveItem}
+                    onClearCart={mode === "checkout" ? handleClearCart : undefined}
                     isClearing={isClearing}
                     showStoreInfo={mode === "checkout"}
                     storeSlug={storeSlug}

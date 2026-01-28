@@ -416,6 +416,75 @@ export default function ConfirmOrderPage() {
     fetchProductDetails();
   }, [tokenData, storeSlug, notify]);
 
+  // NEW: Handle quantity change for confirm-order page
+  const handleQuantityChange = useCallback((
+    productId: string,
+    variantId: string | null,
+    newQuantity: number
+  ) => {
+    setCartItems(prevItems => {
+      const updatedItems = prevItems.map(item => {
+        if (item.productId === productId && item.variantId === variantId) {
+          // Update the quantity
+          const updatedItem = {
+            ...item,
+            quantity: Math.max(1, Math.min(newQuantity, 999)) // Clamp between 1 and 999
+          };
+          
+          return updatedItem;
+        }
+        return item;
+      });
+      
+      // Recalculate totals
+      const newCalculations = calculateTotals(updatedItems);
+      setCalculations(newCalculations);
+      
+      return updatedItems;
+    });
+  }, []);
+
+  // NEW: Handle remove item for confirm-order page
+  const handleRemoveItem = useCallback((productId: string, variantId: string | null) => {
+    setCartItems(prevItems => {
+      const filteredItems = prevItems.filter(item => 
+        !(item.productId === productId && item.variantId === variantId)
+      );
+      
+      // Recalculate totals
+      const newCalculations = calculateTotals(filteredItems);
+      setCalculations(newCalculations);
+      
+      return filteredItems;
+    });
+    
+    notify.info("Item removed from order");
+  }, [notify]);
+
+  // NEW: Helper function to calculate totals
+  const calculateTotals = (items: CartProductWithDetails[]) => {
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalItems = 0;
+
+    items.forEach(item => {
+      const itemSubtotal = item.displayPrice * item.quantity;
+      const itemDiscount = Math.max(0, (item.originalPrice - item.displayPrice)) * item.quantity;
+      
+      subtotal += itemSubtotal;
+      totalDiscount += itemDiscount;
+      totalItems += item.quantity;
+    });
+
+    return {
+      items,
+      subtotal,
+      totalPrice: subtotal,
+      totalItems,
+      totalDiscount,
+    };
+  };
+
   /* ---------------- SHIPPING ---------------- */
   const handleShippingChange = useCallback((method: string, fee: number) => {
     setSelectedShipping(method);
@@ -577,11 +646,9 @@ export default function ConfirmOrderPage() {
 
           if (createLinkError) {
             console.error("❌ Error creating customer link:", createLinkError);
-          } else {
           }
         }
       } else {
-        
         // For logged-in users
         let authUserId = null;
         if (session?.user?.email === values.email.toLowerCase()) {
@@ -614,7 +681,6 @@ export default function ConfirmOrderPage() {
 
         if (linkError) {
           console.error("❌ Error creating customer link:", linkError);
-        } else {
         }
       }
       const { data: existingProfile, error: profileFindError } = await supabase
@@ -642,7 +708,6 @@ export default function ConfirmOrderPage() {
 
         if (updateError) {
           console.error("❌ Error updating profile:", updateError);
-        } else {
         }
       } else {
         // Create new profile
@@ -732,6 +797,7 @@ export default function ConfirmOrderPage() {
         }
 
         if (!customerId) {
+          throw new Error("Failed to create or find customer");
         }
 
         const formDataWithShipping = {
@@ -812,6 +878,9 @@ export default function ConfirmOrderPage() {
         taxAmount={taxAmount}
         isProcessing={isProcessing || orderLoading}
         mode="confirm"
+        // NEW: Pass the handlers for confirm mode
+        onQuantityChange={handleQuantityChange}
+        onRemoveItem={handleRemoveItem}
       />
 
       <AnimatePresence>
