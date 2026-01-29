@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -10,158 +10,194 @@ import {
   TrendingUp,
   Users,
   BarChart3,
-  Shield,
+  DollarSign,
 } from "lucide-react";
 import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
-import Modal from "@/app/components//common/Modal"; // Import the modal component
+import Modal from "@/app/components/common/Modal";
 import { useState } from "react";
+
+// ✅ Motion-enabled shadcn button
+const MotionButton = motion(Button);
 
 export default function HeroSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
-
   const fadeInUp = {
-    initial: { y: 60, opacity: 0 },
+    initial: { y: 50, opacity: 0 },
     animate: { y: 0, opacity: 1 },
-    transition: { duration: 0.6 },
+    transition: { duration: 0.6, ease: "easeOut" },
   };
-  const staggerContainer = {
-    animate: { transition: { staggerChildren: 0.1 } },
+
+  const stagger = {
+    animate: { transition: { staggerChildren: 0.12 } },
   };
 
   return (
-    <section className="pt-20 md:pt-32 pb-20 px-6">
-      <div className="container mx-auto grid lg:grid-cols-2 gap-12 items-center">
-        <motion.div
-          initial="initial"
-          animate="animate"
-          variants={staggerContainer}
-        >
-          <motion.h1
-            variants={fadeInUp}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
-          >
-            Transform Your{" "}
-            <span className="text-chart-2">Store Management</span> Experience
-          </motion.h1>
-          <motion.p
-            variants={fadeInUp}
-            className="text-lg md:text-xl text-muted-foreground mt-6 mb-8 leading-relaxed"
-          >
-            Shei-Hoise empowers store owners with seamless inventory management,
-            customer orders, and real-time tracking. Start your personalized
-            store at{" "}
-            <span className="font-semibold text-foreground">
-              shei-hoise.com/your-store-name
-            </span>{" "}
-            today!
-          </motion.p>
+    <>
+      {/* HERO */}
+      <section className="pt-5 md:pt-15 pb-15 px-3">
+        <div className="container mx-auto grid lg:grid-cols-2 gap-12 items-center">
+          {/* LEFT */}
           <motion.div
-            variants={fadeInUp}
-            className="flex flex-col sm:flex-row gap-4"
+            initial="initial"
+            animate="animate"
+            variants={stagger}
+            className="space-y-8"
           >
-            <Button
-              size="lg"
-              className="bg-chart-2 hover:bg-chart-2/90 text-background px-6 md:px-8 py-3 text-base md:text-lg"
-              onClick={openModal}
+            {/* HEADLINE */}
+            <motion.h1
+              variants={fadeInUp}
+              className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
             >
-              Request Demo <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-            </Button>
-            <Modal isOpen={isModalOpen} onClose={closeModal}>
-              <ContactUSForm
-                source="demo_request"
-                title="Request for Your Free Demo"
-                subtitle="Fill out the form and one of our specialists will reach out to you shortly."
-                buttonText="Demo Request"
-              />
-            </Modal>
-            <Button
-              variant="outline"
-              size="lg"
-              className="px-6 md:px-8 py-3 text-base md:text-lg"
-              onClick={() =>
-                document
-                  .getElementById("features")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Explore Features
-            </Button>
-          </motion.div>
-          <motion.div
-            variants={fadeInUp}
-            className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mt-8 text-sm text-muted-foreground"
-          >
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-chart-2" /> No credit card
-              required
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-chart-2" /> Setup in 5
-              minutes
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-chart-2" /> Free 7-day trial
-            </div>
-          </motion.div>
-        </motion.div>
+              Run Your Store Smarter — <br />
+              <span className="text-chart-2">Cash, Orders & Inventory</span>
+              <br />
+              All in One Dashboard
+            </motion.h1>
 
-        {/* Example feature box on right */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="relative"
-        >
-          <div className="relative bg-card rounded-2xl p-6 md:p-8 shadow-2xl border">
-            <div className="absolute -inset-1 bg-linear-to-r from-chart-2 to-chart-3 rounded-2xl blur opacity-20 dark:opacity-30"></div>
-            <div className="relative bg-card rounded-xl p-4 md:p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-red-400 rounded-full"></div>
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full"></div>
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-green-400 rounded-full"></div>
+            {/* SUBTEXT */}
+            <motion.p
+              variants={fadeInUp}
+              className="text-md md:text-lg text-muted-foreground"
+            >
+              Manage products, track orders, and grow sales — no spreadsheets,
+              no hassle.
+              <br className="hidden sm:block" />
+              Try free for 7 days. Pay only if you continue.
+            </motion.p>
+
+            {/* CTA BUTTONS */}
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <MotionButton
+                size="lg"
+                className="w-full sm:w-auto bg-chart-2 hover:bg-chart-2/90 text-background px-8 py-4 text-base sm:text-lg flex items-center justify-center"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setIsModalOpen(true)}
+              >
+                Get Your Store
+                <ArrowRight className="ml-2 hidden sm:block w-5 h-5" />
+              </MotionButton>
+
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full sm:w-auto px-8 py-4 text-base sm:text-lg"
+                onClick={() =>
+                  document
+                    .getElementById("features")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Explore Features
+              </Button>
+            </motion.div>
+
+            {/* TRUST BADGES */}
+            <motion.div
+              variants={fadeInUp}
+              className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground"
+            >
+              {[
+                "7-day free trial",
+                "No credit card required",
+                "Cancel anytime",
+              ].map((text, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-chart-2" />
+                  {text}
                 </div>
-                <div className="text-xs md:text-sm font-medium">
-                  shei-hoise.com/[storeName]
-                </div>
-              </div>
-              <div className="space-y-3 md:space-y-4">
+              ))}
+            </motion.div>
+          </motion.div>
+
+          {/* RIGHT MOCKUP */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="relative bg-card rounded-2xl p-6 shadow-2xl border">
+              <div className="absolute -inset-1 bg-linear-to-r from-chart-2 to-chart-3 rounded-2xl blur opacity-20" />
+              <div className="relative bg-card rounded-xl p-6 space-y-4">
                 {[
                   {
                     icon: Package,
-                    title: "Product Management",
-                    iconRight: TrendingUp,
+                    t: "Organize Products Easily",
+                    r: TrendingUp,
                   },
-                  {
-                    icon: ShoppingCart,
-                    title: "Order Tracking",
-                    iconRight: Users,
-                  },
+                  { icon: ShoppingCart, t: "Track Orders Instantly", r: Users },
                   {
                     icon: BarChart3,
-                    title: "Stock Management",
-                    iconRight: Shield,
+                    t: "Manage Stock Effortlessly",
+                    r: Package,
                   },
-                ].map((item) => (
+                  { icon: DollarSign, t: "Control Cash Flow", r: TrendingUp },
+                ].map((i) => (
                   <div
-                    key={item.title}
-                    className="flex justify-between items-center p-3 md:p-4 bg-muted rounded-lg"
+                    key={i.t}
+                    className="flex justify-between items-center bg-muted p-4 rounded-lg hover:scale-105 transition-transform duration-200 "
                   >
-                    <div className="flex items-center space-x-2 md:space-x-3">
-                      <item.icon className="w-4 h-4 md:w-5 md:h-5 text-chart-2" />
-                      <span className="text-sm md:text-base">{item.title}</span>
+                    <div className="flex items-center gap-3">
+                      <i.icon className="w-5 h-5 text-chart-2" />
+                      <span>{i.t}</span>
                     </div>
-                    <item.iconRight className="w-4 h-4 md:w-5 md:h-5 text-chart-3" />
+                    <i.r className="w-5 h-5 text-chart-3" />
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* MODAL */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <Modal isOpen onClose={() => setIsModalOpen(false)}>
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ContactUSForm
+                source="store_setup"
+                title="Get Your Store"
+                subtitle="Use all features free for 7 days. Subscription required after trial."
+                buttonText="Start Free Trial"
+              />
+            </motion.div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 STICKY MOBILE CTA (BEST CONVERSION) */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
+        <div className="bg-background border-t p-3">
+          <MotionButton
+            className="w-full bg-chart-2 text-background py-4 text-base"
+            animate={{
+              boxShadow: [
+                "0 0 0 0 rgba(34,197,94,0.6)",
+                "0 0 0 14px rgba(34,197,94,0)",
+              ],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              ease: "easeOut",
+            }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Start 7-Day Free Trial
+          </MotionButton>
+        </div>
       </div>
-    </section>
+    </>
   );
 }
+//herosection

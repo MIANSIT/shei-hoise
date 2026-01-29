@@ -3,17 +3,16 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
+import SidebarProfile from "../components/admin/sidebar/SidebarProfile";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { Moon, PanelLeft, Sun, X, LogOut, User } from "lucide-react";
+import { Moon, PanelLeft, Sun,  } from "lucide-react";
 import {
   ConfigProvider,
   theme as antdTheme,
   App as AntdApp,
   Spin,
   Drawer,
-  Dropdown,
-  MenuProps,
 } from "antd";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
@@ -24,9 +23,10 @@ import {
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
-import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import TrialEnded from "@/app/components/admin/StoreStatus/TrialEnded";
+import AccessRestricted from "@/app/components/admin/StoreStatus/AccessRestricted";
+// import { supabase } from "@/lib/supabase";
+// import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -44,15 +44,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     storeStatus,
     storeIsActive,
     loading: userLoading,
-    user,
   } = useCurrentUser();
 
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
-  const notify = useSheiNotification();
+  // const [, setLogoutLoading] = useState(false);
+  // const notify = useSheiNotification();
 
   // Set mounted to true after component mounts on client
   useEffect(() => {
@@ -116,45 +115,45 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [mounted]);
 
   // Handle logout
-  const handleLogout = async () => {
-    try {
-      setLogoutLoading(true);
-      await supabase.auth.signOut();
-      notify.success("Logout successful!");
-      router.push("/admin-login");
-    } catch (err: unknown) {
-      console.error("Logout error:", err);
-      if (err instanceof Error) {
-        notify.error(`Logout failed: ${err.message}`);
-      } else {
-        notify.error("Logout failed. Please try again.");
-      }
-    } finally {
-      setLogoutLoading(false);
-    }
-  };
+  // const handleLogout = async () => {
+  //   try {
+  //     setLogoutLoading(true);
+  //     await supabase.auth.signOut();
+  //     notify.success("Logout successful!");
+  //     router.push("/admin-login");
+  //   } catch (err: unknown) {
+  //     console.error("Logout error:", err);
+  //     if (err instanceof Error) {
+  //       notify.error(`Logout failed: ${err.message}`);
+  //     } else {
+  //       notify.error("Logout failed. Please try again.");
+  //     }
+  //   } finally {
+  //     setLogoutLoading(false);
+  //   }
+  // };
 
   // User dropdown menu items
-  const userMenu: MenuProps = {
-    items: [
-      {
-        key: "profile",
-        icon: <User className="w-4 h-4" />,
-        label: "Profile",
-        disabled: true, // You can implement profile page later
-      },
-      {
-        type: "divider",
-      },
-      {
-        key: "logout",
-        icon: <LogOut className="w-4 h-4" />,
-        label: "Logout",
-        danger: true,
-        onClick: handleLogout,
-      },
-    ],
-  };
+  // const userMenu: MenuProps = {
+  //   items: [
+  //     {
+  //       key: "profile",
+  //       icon: <User className="w-4 h-4" />,
+  //       label: "Profile",
+  //       disabled: true, // You can implement profile page later
+  //     },
+  //     {
+  //       type: "divider",
+  //     },
+  //     {
+  //       key: "logout",
+  //       icon: <LogOut className="w-4 h-4" />,
+  //       label: "Logout",
+  //       danger: true,
+  //       onClick: handleLogout,
+  //     },
+  //   ],
+  // };
 
   // Combined loading states
   const isLoading = authLoading || userLoading || storeLoading;
@@ -175,118 +174,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Show blocked access screen
   if (shouldBlockAccess) {
     if (storeStatus === "trial") {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-green-100 px-4">
-          <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
-            {/* Icon */}
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-              <svg
-                className="h-7 w-7 text-green-700"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 8v4l3 3M12 2a10 10 0 1010 10A10 10 0 0012 2z"
-                />
-              </svg>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-xl font-semibold text-primary">
-              Your Free Trial Has Ended
-            </h1>
-
-            {/* Description */}
-            <p className="mt-3 text-sm text-primary leading-relaxed">
-              Thanks for trying our platform! Your trial period has now ended.
-            </p>
-
-            <p className="mt-2 text-sm text-primary leading-relaxed">
-              To continue managing your store, accessing orders, customers, and
-              analytics, please choose a plan and complete your payment.
-            </p>
-
-            {/* Highlight box */}
-            <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
-              Your store and data are safe — nothing has been deleted.
-            </div>
-
-            {/* Actions */}
-            <div className="mt-6 space-y-3">
-              <Link
-                href="/contact-us"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-primary hover:bg-green-800 transition"
-              >
-                Upgrade & Continue
-              </Link>
-            </div>
-
-            {/* Footer note */}
-            <p className="mt-6 text-xs text-gray-500">
-              Need help choosing a plan? Our support team is happy to help.
-            </p>
-          </div>
-        </div>
-      );
+      return <TrialEnded />;
     } else {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-green-100 px-4">
-          <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
-            {/* Icon */}
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-100">
-              <svg
-                className="h-7 w-7 text-yellow-700"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3m0 4h.01M12 2a10 10 0 1010 10A10 10 0 0012 2z"
-                />
-              </svg>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-xl font-semibold text-primary">
-              Dashboard Access Temporarily Restricted
-            </h1>
-
-            {/* Description */}
-            <p className="mt-3 text-sm text-primary leading-relaxed">
-              Your dashboard access has been temporarily restricted due to a
-              pending payment or subscription issue.
-            </p>
-
-            <p className="mt-2 text-sm text-primary leading-relaxed">
-              Your store, data, and customers are completely safe. Once the
-              payment is settled, full access will be restored automatically.
-            </p>
-
-            {/* Actions */}
-            <div className="mt-6 space-y-3">
-              <Link
-                href="/contact-us"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-primary hover:bg-green-800 transition"
-              >
-                Contact Support
-              </Link>
-            </div>
-
-            {/* Footer note */}
-            <p className="mt-6 text-xs text-primary">
-              If you believe this is a mistake, please reach out to our support
-              team.
-            </p>
-          </div>
-        </div>
-      );
+      return <AccessRestricted status={storeStatus ?? undefined} />;
     }
   }
 
@@ -330,7 +220,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="min-h-screen flex flex-col">
           {/* Header */}
           <header
-            className="flex items-center justify-between p-4 shadow-md sticky top-0 z-50"
+            className="flex items-center justify-between p-1 shadow-md sticky top-0 z-50"
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
@@ -386,21 +276,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
               </button>
 
-              {/* User dropdown with logout */}
-              <Dropdown
-                menu={userMenu}
-                trigger={["click"]}
-                placement="bottomRight"
-              >
-                <button className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-medium">
-                    {user?.first_name
-                      ? user.first_name.charAt(0).toUpperCase()
-                      : "U"}
-                  </div>
-                  {logoutLoading && <Spin size="small" />}
-                </button>
-              </Dropdown>
+              {/* User profile + logout */}
+              <SidebarProfile />
             </div>
           </header>
 
@@ -422,12 +299,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               title={
                 <div className="flex items-center justify-between">
                   <span>Menu</span>
-                  <button
-                    onClick={() => setMobileDrawerOpen(false)}
-                    className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
                 </div>
               }
               placement="left"
@@ -480,3 +351,5 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </ConfigProvider>
   );
 }
+
+//layout
