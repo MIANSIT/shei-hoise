@@ -38,7 +38,7 @@ export default function SidebarProfile() {
         key: "profile",
         icon: <User className="w-4 h-4" />,
         label: "Profile",
-        disabled: true,
+        onClick: () => router.push("/dashboard/admin-profile"), // Navigate to profile
       },
       {
         type: "divider",

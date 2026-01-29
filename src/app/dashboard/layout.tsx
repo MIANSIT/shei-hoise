@@ -6,7 +6,7 @@ import Sidebar from "../components/admin/sidebar/Sidebar";
 import SidebarProfile from "../components/admin/sidebar/SidebarProfile";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { Moon, PanelLeft, Sun,  } from "lucide-react";
+import { Moon, PanelLeft, Sun, X } from "lucide-react";
 import {
   ConfigProvider,
   theme as antdTheme,
@@ -296,15 +296,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Mobile Drawer for Sidebar - Now takes 100% width */}
             <Drawer
-              title={
-                <div className="flex items-center justify-between">
-                  <span>Menu</span>
-                </div>
-              }
-              placement="left"
+              title="Menu" // <-- just a string
+              placement="bottom"
               open={mobileDrawerOpen}
               onClose={() => setMobileDrawerOpen(false)}
               size="100%"
+              closable={true} // <-- ensures default X shows
               styles={{
                 body: { padding: 0 },
                 header: {

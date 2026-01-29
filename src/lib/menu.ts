@@ -12,7 +12,7 @@ import {
   Link2,
   Settings,
   Truck,
-  UserCircle,
+  // UserCircle,
   Store,
 } from "lucide-react";
 import React from "react";
@@ -85,11 +85,11 @@ export const sideMenu: MenuItem[] = [
     title: "Setting",
     icon: Settings,
     children: [
-      {
-        title: "Profile",
-        href: "/dashboard/admin-profile",
-        icon: UserCircle,
-      },
+      // {
+      //   title: "Profile",
+      //   href: "/dashboard/admin-profile",
+      //   icon: UserCircle,
+      // },
       {
         title: "Shipping",
         href: "/dashboard/shipping-Management",
