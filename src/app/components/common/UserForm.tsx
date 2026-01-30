@@ -7,11 +7,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-import { 
-  LoginFormSchema, 
+import {
+  LoginFormSchema,
   LoginFormType,
   signUpSchema,
-  SignUpFormValues 
+  SignUpFormValues,
 } from "../../../lib/utils/formSchema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,25 +38,27 @@ export function UserForm({
   defaultValues,
   onSubmit,
   mode = "login",
-  isAdmin = false // Default to false
+  isAdmin = false, // Default to false
 }: UserFormProps) {
   const { success, error } = useSheiNotification();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // ✅ Fix: Redirect to dashboard for admin login, otherwise use redirect param or root
-  const redirectTo = searchParams.get("redirect") || (isAdmin ? "/dashboard" : "/");
-  
+  const redirectTo =
+    searchParams.get("redirect") || (isAdmin ? "/dashboard" : "/");
+
   const emailFromParams = searchParams.get("email");
 
   const schema = mode === "signup" ? signUpSchema : LoginFormSchema;
-  
+
   const form = useForm<any>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues || (mode === "signup" 
-      ? { email: "", password: "" }
-      : { username: "", password: "" }
-    ),
+    defaultValues:
+      defaultValues ||
+      (mode === "signup"
+        ? { email: "", password: "" }
+        : { username: "", password: "" }),
     mode: "onChange",
   });
 
@@ -78,7 +80,8 @@ export function UserForm({
     }
   }, [emailFromParams, form, mode]);
 
-  const finalSubmitText = submitText || (mode === "signup" ? "Create Account" : "Login");
+  const finalSubmitText =
+    submitText || (mode === "signup" ? "Create Account" : "Login");
 
   const handleSubmitForm = async (values: any) => {
     if (onSubmit) {
@@ -97,7 +100,9 @@ export function UserForm({
           return;
         }
 
-        success("Account created successfully! Please check your email to verify your account.");
+        success(
+          "Account created successfully! Please check your email to verify your account.",
+        );
 
         setTimeout(() => {
           router.push(redirectTo);
@@ -106,10 +111,11 @@ export function UserForm({
         error("Sign up failed. Please try again.");
       }
     } else {
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email: values.username,
-        password: values.password,
-      });
+      const { data, error: loginError } =
+        await supabase.auth.signInWithPassword({
+          email: values.username,
+          password: values.password,
+        });
 
       if (loginError) {
         error(loginError.message || "Login failed. Please try again.");
@@ -131,17 +137,21 @@ export function UserForm({
   } = form;
 
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // ✅ Watch password for strength indicator (only for signup)
   const watchedPassword = watch("password");
 
   // ✅ Fix TypeScript error by safely accessing error messages
   const getErrorMessage = (error: any) => {
-    if (typeof error?.message === 'string') {
+    if (typeof error?.message === "string") {
       return error.message;
     }
-    return 'Invalid input';
+    return "Invalid input";
   };
+
+  function handleForgotPassword() {
+    router.push("/forgot-password");
+  }
 
   return (
     <form
@@ -151,7 +161,9 @@ export function UserForm({
     >
       {/* Email Field */}
       <div className="grid gap-2">
-        <Label htmlFor="email" className="font-bold">Email</Label>
+        <Label htmlFor="email" className="font-bold">
+          Email
+        </Label>
         <Input
           id="email"
           type="email"
@@ -166,16 +178,22 @@ export function UserForm({
         />
         {/* ✅ Fixed TypeScript error by safely accessing error message */}
         {errors.email && (
-          <p className="text-sm text-red-500">{getErrorMessage(errors.email)}</p>
+          <p className="text-sm text-red-500">
+            {getErrorMessage(errors.email)}
+          </p>
         )}
         {errors.username && (
-          <p className="text-sm text-red-500">{getErrorMessage(errors.username)}</p>
+          <p className="text-sm text-red-500">
+            {getErrorMessage(errors.username)}
+          </p>
         )}
       </div>
 
       {/* Password Field */}
       <div className="grid gap-2 relative">
-        <Label htmlFor="password" className="font-bold">Password</Label>
+        <Label htmlFor="password" className="font-bold">
+          Password
+        </Label>
         <div className="relative">
           <Input
             id="password"
@@ -198,12 +216,24 @@ export function UserForm({
         </div>
         {/* ✅ Fixed TypeScript error by safely accessing error message */}
         {errors.password && (
-          <p className="text-sm text-red-500">{getErrorMessage(errors.password)}</p>
+          <p className="text-sm text-red-500">
+            {getErrorMessage(errors.password)}
+          </p>
         )}
-        
+
         {/* ✅ Password Strength Indicator (only for signup) */}
-        {mode === "signup" && (
-          <PasswordStrength password={watchedPassword} />
+        {mode === "signup" && <PasswordStrength password={watchedPassword} />}
+        {mode === "login" && (
+          <div className="text-right">
+            <button
+              type="button"
+              className="text-sm text-blue-600 hover:underline"
+              onClick={handleForgotPassword}
+              disabled={isSubmitting}
+            >
+              Forgot password?
+            </button>
+          </div>
         )}
       </div>
 
@@ -212,7 +242,7 @@ export function UserForm({
         type="submit"
         className="w-full mt-2 relative overflow-hidden"
         disabled={!form.formState.isValid || isSubmitting}
-        variant='greenish'
+        variant="greenish"
       >
         {isSubmitting ? (
           <SheiLoader size="sm" loaderColor="current" />

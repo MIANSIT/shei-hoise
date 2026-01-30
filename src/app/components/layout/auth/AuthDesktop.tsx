@@ -18,10 +18,10 @@ export function DesktopLayout({
         <Image
           src={isAdmin ? "/adminBGi.png" : "/bgImage.png"}
           alt={isAdmin ? "Admin background" : "Login background"}
-          fill
-          className="object-cover" // image fits entirely, no crop
+          fill // optional; only if you want it to fill the parent
+          className="object-cover"
           priority
-          quality={100}
+          unoptimized // <-- disables Vercel optimization
         />
       </div>
 

@@ -12,7 +12,7 @@ import {
 
 // ✅ FIX: Group duplicate items and sum quantities
 const groupAndSumCartItems = (
-  items: CartProductWithDetails[]
+  items: CartProductWithDetails[],
 ): CartProductWithDetails[] => {
   const groupedMap = new Map();
 
@@ -26,7 +26,6 @@ const groupAndSumCartItems = (
         ...existingItem,
         quantity: existingItem.quantity + item.quantity,
       });
-      
     } else {
       // If item doesn't exist, add it
       groupedMap.set(key, item);
@@ -46,7 +45,7 @@ export function useCartItems(storeSlug?: string) {
     totalDiscount: 0,
     subtotal: 0,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Refs to track previous states
@@ -78,7 +77,22 @@ export function useCartItems(storeSlug?: string) {
 
     return currentKeys !== previousKeys || !hasLoadedRef.current;
   }, [targetCart]);
+  useEffect(() => {
+    if (targetCart.length === 0) {
+      setCartItems([]);
+      setCalculations({
+        items: [],
+        totalItems: 0,
+        totalPrice: 0,
+        totalDiscount: 0,
+        subtotal: 0,
+      });
 
+      setLoading(false);
+      hasLoadedRef.current = true;
+      previousCartRef.current = [];
+    }
+  }, [targetCart]);
   // Fetch product data when needed
   useEffect(() => {
     const fetchCartDetails = async () => {
@@ -121,7 +135,7 @@ export function useCartItems(storeSlug?: string) {
             if (productDataCacheRef.current.has(cacheKey)) {
               storeProductsMap.set(
                 slug,
-                productDataCacheRef.current.get(cacheKey)
+                productDataCacheRef.current.get(cacheKey),
               );
             } else {
               const storeId = await getStoreIdBySlug(slug);
@@ -166,7 +180,7 @@ export function useCartItems(storeSlug?: string) {
           if (!storeProducts) continue;
 
           const product = storeProducts.find(
-            (p: any) => p.id === cartItem.productId
+            (p: any) => p.id === cartItem.productId,
           );
           if (!product) continue;
 
@@ -174,7 +188,7 @@ export function useCartItems(storeSlug?: string) {
           let variant: CartProductWithDetails["variant"] = null;
           if (cartItem.variantId) {
             const foundVariant = product.product_variants.find(
-              (v: any) => v.id === cartItem.variantId
+              (v: any) => v.id === cartItem.variantId,
             );
             variant = foundVariant || null;
           }
@@ -188,7 +202,7 @@ export function useCartItems(storeSlug?: string) {
 
           const discountPercentage = calculateDiscountPercentage(
             originalPrice,
-            displayPrice
+            displayPrice,
           );
 
           // Handle stock calculation
@@ -256,12 +270,12 @@ export function useCartItems(storeSlug?: string) {
     if (!hasLoadedRef.current || loading) return;
 
     const currentKeys = new Set(
-      targetCart.map((item) => `${item.productId}-${item.variantId}`)
+      targetCart.map((item) => `${item.productId}-${item.variantId}`),
     );
     const previousKeys = new Set(
       previousCartRef.current.map(
-        (item) => `${item.productId}-${item.variantId}`
-      )
+        (item) => `${item.productId}-${item.variantId}`,
+      ),
     );
 
     // Check if items were removed
@@ -272,7 +286,7 @@ export function useCartItems(storeSlug?: string) {
       const currentItem = targetCart.find(
         (item) =>
           item.productId === prevItem.productId &&
-          item.variantId === prevItem.variantId
+          item.variantId === prevItem.variantId,
       );
       return currentItem && currentItem.quantity !== prevItem.quantity;
     });
@@ -286,8 +300,8 @@ export function useCartItems(storeSlug?: string) {
           targetCart.some(
             (cartItem) =>
               cartItem.productId === item.productId &&
-              cartItem.variantId === item.variantId
-          )
+              cartItem.variantId === item.variantId,
+          ),
         );
       }
 
@@ -334,7 +348,8 @@ export function useCartItems(storeSlug?: string) {
   return {
     items: cartItems,
     calculations,
-    loading: loading && !hasLoadedRef.current, // Only show loading on initial load
+    loading: loading && targetCart.length > 0,
+    // Only show loading on initial load
     error,
     refresh: () => {
       productDataCacheRef.current.clear();
@@ -347,7 +362,7 @@ export function useCartItems(storeSlug?: string) {
 // Helper function to calculate discount percentage
 function calculateDiscountPercentage(
   originalPrice: number,
-  displayPrice: number
+  displayPrice: number,
 ): number {
   if (!originalPrice || originalPrice <= displayPrice) return 0;
   return Math.round(((originalPrice - displayPrice) / originalPrice) * 100);
@@ -355,7 +370,7 @@ function calculateDiscountPercentage(
 
 // Helper function to calculate cart totals
 function calculateCartTotals(
-  items: CartProductWithDetails[]
+  items: CartProductWithDetails[],
 ): CartCalculations {
   let totalItems = 0;
   let totalPrice = 0;
