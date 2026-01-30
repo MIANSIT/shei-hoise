@@ -56,13 +56,13 @@ export default function AdminOrderDetails({
   } = useUserCurrencyIcon();
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const selectedVariant = selectedProduct?.product_variants?.find(
-    (v) => v.id === selectedVariantId
+    (v) => v.id === selectedVariantId,
   );
 
   // Get effective price (use discounted_price if available and > 0, otherwise use base_price)
   const getEffectivePrice = (
     product?: ProductWithVariants,
-    variant?: ProductVariant
+    variant?: ProductVariant,
   ) => {
     if (variant) {
       return variant.discounted_price && variant.discounted_price > 0
@@ -78,14 +78,9 @@ export default function AdminOrderDetails({
   };
 
   // Filter available variants with positive stock and active status
+  // Show all active variants, ignore stock limits
   const availableVariants =
-    selectedProduct?.product_variants?.filter((v) => {
-      if (!v.is_active) return false;
-      const availableStock =
-        v.product_inventory[0]?.quantity_available -
-          v.product_inventory[0]?.quantity_reserved || 0;
-      return availableStock > 0;
-    }) ?? [];
+    selectedProduct?.product_variants?.filter((v) => v.is_active) ?? [];
 
   // Get available quantity for a variant
   const getAvailableQuantity = (variant?: ProductVariant) => {
@@ -106,17 +101,17 @@ export default function AdminOrderDetails({
   // Get primary image for product or variant
   const getPrimaryImage = (
     product?: ProductWithVariants,
-    variant?: ProductVariant
+    variant?: ProductVariant,
   ) => {
     if (variant?.product_images && variant.product_images.length > 0) {
       const primaryVariantImage = variant.product_images.find(
-        (img) => img.is_primary
+        (img) => img.is_primary,
       );
       return primaryVariantImage || variant.product_images[0];
     }
     if (product?.product_images && product.product_images.length > 0) {
       const primaryProductImage = product.product_images.find(
-        (img) => img.is_primary
+        (img) => img.is_primary,
       );
       return primaryProductImage || product.product_images[0];
     }
@@ -166,7 +161,7 @@ export default function AdminOrderDetails({
           (p.variant_id || "no-variant") ===
             (selectedVariantId !== "no-variant"
               ? selectedVariantId
-              : "no-variant")
+              : "no-variant"),
       );
 
       if (existingIndex !== -1) {
@@ -240,18 +235,18 @@ export default function AdminOrderDetails({
               quantity: newQuantity,
               total_price: item.unit_price * newQuantity,
             }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   // Format price display with discount if applicable
   const formatPriceDisplay = (
     product?: ProductWithVariants,
-    variant?: ProductVariant
+    variant?: ProductVariant,
   ) => {
     // const effectivePrice = getEffectivePrice(product, variant);
 
@@ -316,19 +311,17 @@ export default function AdminOrderDetails({
   };
 
   // Filter products that have available stock
+  // Show all products for admin panel, ignore stock limits
   const availableProducts = products.filter((product) => {
+    // Hide only draft or inactive products
     if (
       product.status === ProductStatus.DRAFT ||
       product.status === ProductStatus.INACTIVE
     )
       return false;
 
-    const baseStockAvailable = getBaseProductAvailableQuantity(product) > 0;
-    const variantsAvailable =
-      product.product_variants?.some(
-        (v) => v.is_active && getAvailableQuantity(v) > 0
-      ) ?? false;
-    return baseStockAvailable || variantsAvailable;
+    // Show everything else for admin
+    return true;
   });
 
   const isAddButtonDisabled = !canAddProduct();
@@ -392,7 +385,7 @@ export default function AdminOrderDetails({
                               {/* Filter only active variants */}
                               {(!product.product_variants ||
                                 product.product_variants.filter(
-                                  (v) => v.is_active
+                                  (v) => v.is_active,
                                 ).length === 0) && (
                                 <> - {formatPriceDisplay(product)}</>
                               )}
@@ -400,13 +393,13 @@ export default function AdminOrderDetails({
                               {/* Show active variant count if any */}
                               {product.product_variants &&
                                 product.product_variants.filter(
-                                  (v) => v.is_active
+                                  (v) => v.is_active,
                                 ).length > 0 && (
                                   <>
                                     {" : "}(
                                     {
                                       product.product_variants.filter(
-                                        (v) => v.is_active
+                                        (v) => v.is_active,
                                       ).length
                                     }{" "}
                                     variants)
@@ -448,7 +441,7 @@ export default function AdminOrderDetails({
                     {availableVariants.map((variant) => {
                       const primaryImage = getPrimaryImage(
                         selectedProduct,
-                        variant
+                        variant,
                       );
                       return (
                         <Option key={variant.id} value={variant.id}>
@@ -516,9 +509,12 @@ export default function AdminOrderDetails({
                   <Text type="secondary" style={{ fontSize: "12px" }}>
                     Max:{" "}
                     {selectedVariantId !== "no-variant" && selectedVariant
-                      ? getAvailableQuantity(selectedVariant)
-                      : getBaseProductAvailableQuantity(selectedProduct) ||
-                        "N/A"}{" "}
+                      ? getAvailableQuantity(selectedVariant) > 0
+                        ? getAvailableQuantity(selectedVariant)
+                        : "All stock reserved / already ordered"
+                      : getBaseProductAvailableQuantity(selectedProduct) > 0
+                        ? getBaseProductAvailableQuantity(selectedProduct)
+                        : "All stock reserved / already ordered"}{" "}
                     available
                   </Text>
                 </Space>

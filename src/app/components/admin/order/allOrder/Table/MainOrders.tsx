@@ -197,7 +197,7 @@ const MainOrders: React.FC = () => {
     return (
       <div className="p-4 sm:p-6">
         <Alert
-          message="Error Loading Orders"
+          title="Error Loading Orders"
           description={error}
           type="error"
           showIcon
@@ -226,10 +226,10 @@ const MainOrders: React.FC = () => {
     <div className="p-3 sm:p-4 md:p-6">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+          <h2 className="text-xl sm:text-2xl font-bold ">
             All Orders
           </h2>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">
+          <p className="text-gray-500 mt-1 text-sm sm:text-base">
             Manage and track your store orders
           </p>
         </div>

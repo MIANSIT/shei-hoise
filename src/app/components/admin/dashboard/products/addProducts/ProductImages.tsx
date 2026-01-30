@@ -1,3 +1,4 @@
+// File: components/product/ProductImages.tsx
 "use client";
 
 import React from "react";
@@ -8,7 +9,7 @@ import { FrontendImage } from "@/lib/types/frontendImage";
 interface ProductImagesProps {
   images: FrontendImage[];
   setImages: (files: FrontendImage[]) => void;
-  error?: string; // Add error prop
+  error?: string;
 }
 
 const ProductImages: React.FC<ProductImagesProps> = ({
@@ -19,9 +20,13 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   return (
     <div className="col-span-full w-full">
       {images.length === 0 ? (
-        <ImageUploader images={images} setImages={setImages} />
+        <ImageUploader images={images} setImages={setImages} error={error} />
       ) : (
-        <PicturesWallUploader images={images} setImages={setImages} />
+        <PicturesWallUploader
+          images={images}
+          setImages={setImages}
+          error={error}
+        />
       )}
 
       {images.length > 5 && (
@@ -30,7 +35,6 @@ const ProductImages: React.FC<ProductImagesProps> = ({
         </p>
       )}
 
-      {/* Show validation error */}
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
