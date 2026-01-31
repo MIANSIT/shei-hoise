@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
@@ -27,7 +27,7 @@ export default function StorePage({ params }: StorePageProps) {
   const { addToCart } = useCartStore();
   const { store_slug } = React.use(params);
   const searchParams = useSearchParams();
-  const router = useRouter();
+  // const router = useRouter();
 
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -35,102 +35,109 @@ export default function StorePage({ params }: StorePageProps) {
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
   // State for filters - Initialize from URL
   const [activeCategory, setActiveCategory] = useState<string>(
-    searchParams.get("category") || "All Products"
+    searchParams.get("category") || "All Products",
   );
   const [searchQuery, setSearchQuery] = useState<string>(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
-  
+
   const ITEMS_PER_PAGE = 5;
   const isLoadingRef = useRef(false);
   const loadAnchorRef = useRef<HTMLDivElement>(null);
 
   // Update URL params
-  const updateURLParams = useCallback((category: string, search: string) => {
-    const params = new URLSearchParams();
-    
-    if (category !== "All Products") {
-      params.set("category", category);
-    }
-    
-    if (search.trim()) {
-      params.set("search", search.trim());
-    }
-    
-    const queryString = params.toString();
-    const newUrl = `/${store_slug}${queryString ? `?${queryString}` : ''}`;
-    window.history.replaceState({}, '', newUrl);
-  }, [store_slug]);
+  const updateURLParams = useCallback(
+    (category: string, search: string) => {
+      const params = new URLSearchParams();
+
+      if (category !== "All Products") {
+        params.set("category", category);
+      }
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      const queryString = params.toString();
+      const newUrl = `/${store_slug}${queryString ? `?${queryString}` : ""}`;
+      window.history.replaceState({}, "", newUrl);
+    },
+    [store_slug],
+  );
 
   // Load products function
-  const loadProducts = useCallback(async (
-    page: number, 
-    category: string, 
-    search: string,
-    isInitialLoad: boolean = false
-  ) => {
-    // Prevent multiple simultaneous loads
-    if (isLoadingRef.current) return;
-    isLoadingRef.current = true;
+  const loadProducts = useCallback(
+    async (
+      page: number,
+      category: string,
+      search: string,
+      isInitialLoad: boolean = false,
+    ) => {
+      // Prevent multiple simultaneous loads
+      if (isLoadingRef.current) return;
+      isLoadingRef.current = true;
 
-    try {
-      if (isInitialLoad) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
+      try {
+        if (isInitialLoad) {
+          setLoading(true);
+        } else {
+          setLoadingMore(true);
+        }
+
+        // Prepare filters
+        const categoryFilter =
+          category === "All Products" ? undefined : category;
+        const searchFilter = search.trim() || undefined;
+
+        // Load products
+        const result = await clientGetProducts(
+          store_slug,
+          page,
+          ITEMS_PER_PAGE,
+          categoryFilter,
+          searchFilter,
+        );
+
+        if (isInitialLoad) {
+          setProducts(result.products);
+        } else {
+          setProducts((prev) => [...prev, ...result.products]);
+        }
+
+        setHasMore(result.hasMore);
+        setTotalProducts(result.totalCount);
+
+        // Scroll to newly loaded products
+        if (!isInitialLoad && result.products.length > 0) {
+          setTimeout(() => {
+            loadAnchorRef.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }, 100);
+        }
+      } catch (err) {
+        console.error(err);
+        showError("Failed to load products");
+      } finally {
+        if (isInitialLoad) {
+          setLoading(false);
+        } else {
+          setLoadingMore(false);
+        }
+        isLoadingRef.current = false;
       }
-
-      // Prepare filters
-      const categoryFilter = category === "All Products" ? undefined : category;
-      const searchFilter = search.trim() || undefined;
-
-      // Load products
-      const result = await clientGetProducts(
-        store_slug,
-        page,
-        ITEMS_PER_PAGE,
-        categoryFilter,
-        searchFilter
-      );
-
-      if (isInitialLoad) {
-        setProducts(result.products);
-      } else {
-        setProducts(prev => [...prev, ...result.products]);
-      }
-
-      setHasMore(result.hasMore);
-      setTotalProducts(result.totalCount);
-      
-      // Scroll to newly loaded products
-      if (!isInitialLoad && result.products.length > 0) {
-        setTimeout(() => {
-          loadAnchorRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-        }, 100);
-      }
-    } catch (err) {
-      console.error(err);
-      showError("Failed to load products");
-    } finally {
-      if (isInitialLoad) {
-        setLoading(false);
-      } else {
-        setLoadingMore(false);
-      }
-      isLoadingRef.current = false;
-    }
-  }, [store_slug, showError]);
+    },
+    [store_slug, showError],
+  );
 
   // Initialize store and categories
   useEffect(() => {
@@ -139,6 +146,7 @@ export default function StorePage({ params }: StorePageProps) {
         const storeId = await getStoreIdBySlug(store_slug);
         if (!storeId) {
           setStoreExists(false);
+          setLoading(false);
           return;
         }
 
@@ -164,7 +172,7 @@ export default function StorePage({ params }: StorePageProps) {
       setCurrentPage(1);
       setHasMore(true);
       loadProducts(1, activeCategory, searchQuery, true);
-      
+
       // Update URL
       updateURLParams(activeCategory, searchQuery);
     }
@@ -185,11 +193,18 @@ export default function StorePage({ params }: StorePageProps) {
   // Load more products
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore || isLoadingRef.current) return;
-    
+
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
     await loadProducts(nextPage, activeCategory, searchQuery, false);
-  }, [hasMore, loadingMore, currentPage, activeCategory, searchQuery, loadProducts]);
+  }, [
+    hasMore,
+    loadingMore,
+    currentPage,
+    activeCategory,
+    searchQuery,
+    loadProducts,
+  ]);
 
   // Helper function to check if product is in stock
   const isProductInStock = useCallback((product: Product): boolean => {
@@ -245,14 +260,14 @@ export default function StorePage({ params }: StorePageProps) {
     }
   };
 
-  if (loading && products.length === 0) {
-    return <StorePageSkeleton />;
-  }
-
   if (storeExists === false) {
     return <NotFoundPage />;
   }
 
+  // 2️⃣ Still loading store/products
+  if (loading && products.length === 0) {
+    return <StorePageSkeleton />;
+  }
   return (
     <>
       <div className="px-8 py-4">
@@ -280,8 +295,8 @@ export default function StorePage({ params }: StorePageProps) {
               {searchQuery
                 ? `No products found matching "${searchQuery}".`
                 : activeCategory === "All Products"
-                ? "No products available in this store."
-                : `No products found in ${activeCategory} category.`}
+                  ? "No products available in this store."
+                  : `No products found in ${activeCategory} category.`}
             </div>
           </motion.div>
         ) : (
@@ -294,10 +309,10 @@ export default function StorePage({ params }: StorePageProps) {
               loadingProductId={loadingProductId}
               productIndexOffset={(currentPage - 1) * ITEMS_PER_PAGE}
             />
-            
+
             {/* Anchor for scrolling */}
             <div ref={loadAnchorRef} className="h-4" />
-            
+
             {/* Show More Button */}
             {hasMore && (
               <motion.div
@@ -324,7 +339,7 @@ export default function StorePage({ params }: StorePageProps) {
                 </Button>
               </motion.div>
             )}
-            
+
             {/* End message */}
             {!hasMore && products.length > 0 && (
               <motion.div
