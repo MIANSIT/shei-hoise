@@ -1,4 +1,3 @@
-// SidebarMenu component - Fix the icon issue
 "use client";
 
 import React, { useMemo } from "react";
@@ -11,18 +10,24 @@ import { LucideIcon } from "@/lib/LucideIcon";
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
   storeSlug?: string | null;
+  isMobile?: boolean;
+  onMobileMenuClick?: () => void; // Add this prop
 }
 
 type AntdMenuItem = Required<MenuProps>["items"][number];
 
 // Helper function to safely render icons
 function renderIcon(
-  IconComponent?: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  IconComponent?: React.ComponentType<React.SVGProps<SVGSVGElement>>,
 ) {
   return IconComponent ? <LucideIcon icon={IconComponent} /> : null;
 }
 
-function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
+function mapMenuItem(
+  item: MenuItem,
+  storeSlug?: string | null,
+  onMobileMenuClick?: () => void,
+): AntdMenuItem {
   const icon = renderIcon(item.icon);
 
   if (item.children?.length) {
@@ -32,11 +37,13 @@ function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
         return {
           key: `/${storeSlug}/generate-orders-link`,
           icon: renderIcon(child.icon),
-          label: "Generate Order Link", // Plain text label for both states
+          label: "Generate Order Link",
           title: "Generate Order Link",
           onClick: (e) => {
             e.domEvent.stopPropagation();
             window.open(`/${storeSlug}/generate-orders-link`, "_blank");
+            // Close drawer on mobile
+            onMobileMenuClick?.();
           },
         };
       }
@@ -65,15 +72,16 @@ function mapMenuItem(item: MenuItem, storeSlug?: string | null): AntdMenuItem {
 }
 
 export default function SidebarMenu({
-  // themeMode,
   storeSlug,
+  isMobile = false,
+  onMobileMenuClick,
 }: SidebarMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
 
   const items = useMemo(
-    () => sideMenu.map((i) => mapMenuItem(i, storeSlug)),
-    [storeSlug]
+    () => sideMenu.map((i) => mapMenuItem(i, storeSlug, onMobileMenuClick)),
+    [storeSlug, onMobileMenuClick],
   );
 
   const defaultOpenKeys = useMemo(() => {
@@ -94,7 +102,13 @@ export default function SidebarMenu({
 
     const flatten = sideMenu.flatMap((i) => i.children || [i]);
     const clicked = flatten.find((i) => i.href === e.key);
-    if (clicked?.href) router.push(clicked.href);
+    if (clicked?.href) {
+      router.push(clicked.href);
+      // Close drawer on mobile after navigation
+      if (isMobile && onMobileMenuClick) {
+        onMobileMenuClick();
+      }
+    }
   };
 
   return (

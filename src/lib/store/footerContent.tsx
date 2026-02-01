@@ -19,6 +19,13 @@ export const footerContent = {
       // { label: "Press", href: "#" },
       { label: "Contact", href: "/contact-us" },
     ],
+    // storeCompany: [
+    //   { label: "About Us", href: "/about" },
+    //   // { label: "Careers", href: "#" },
+    //   // { label: "Blog", href: "#" },
+    //   // { label: "Press", href: "#" },
+    //   { label: "Contact", href: "/contact-us" },
+    // ],
     support: [
       { label: "Help Center", href: "/help-center" },
       // { label: "Shipping & Returns", href: "#" },

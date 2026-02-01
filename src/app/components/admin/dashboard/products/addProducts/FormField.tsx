@@ -161,9 +161,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
           type={type}
           id={name}
           placeholder={placeholder}
-          className={`${commonClasses} ${
-            readOnly ? readOnlyClasses : ""
-          } ${extraClass}`}
+          className={`${commonClasses} ${readOnly ? readOnlyClasses : ""} ${extraClass}`}
           readOnly={readOnly}
           disabled={disabled}
           value={inputValue as string | number}
@@ -171,17 +169,18 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             let val: T[Path<T>];
             if (type === "number") {
               const raw = e.target.value;
-              // Remove leading zeros but keep "0"
               const stripped = raw.replace(/^0+(?=\d)/, "");
-              // If empty, fallback to 0
               const numericValue = stripped === "" ? 0 : Number(stripped);
               val = numericValue as T[Path<T>];
             } else {
               val = e.target.value as T[Path<T>];
             }
-
             field.onChange(val);
             onChange?.(val);
+          }}
+          // ✅ Auto-prevent scroll increment for numbers
+          onWheel={(e) => {
+            if (type === "number") e.currentTarget.blur();
           }}
         />
         {fieldState?.error?.message && (

@@ -485,7 +485,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   className="w-full md:max-w-lg xl:max-w-xl"
                   tooltip="Product weight in kilograms. Used for shipping and logistics calculations."
                 />
-
                 <FormField
                   label="SKU"
                   name="sku"
@@ -524,7 +523,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           {/* Featured + Status */}
           <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             {/* Featured */}
-            <div className="flex items-center space-x-3">
+            {/* <div className="flex items-center space-x-3">
               <input
                 id="featured"
                 type="checkbox"
@@ -543,7 +542,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
                 </Tooltip>
               </label>
-            </div>
+            </div> */}
 
             {/* Status */}
             <div className="flex items-center gap-2">

@@ -205,3 +205,14 @@
 .ant-steps-item:hover .ant-steps-item-icon {
   border-color: var(--ring) !important;
 }
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+  
+  .ant-menu {
+    width: 100% !important;
+  }
+}
