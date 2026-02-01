@@ -1,14 +1,13 @@
 import React from "react";
+import { notFound } from "next/navigation";
 import StoreHeader from "@/app/components/common/StoreHeader";
+import StoreFooter from "@/app/components/common/storeFooter/StoreFooter";
 import { footerContent } from "@/lib/store/footerContent";
-import { getStoreBySlugWithLogo } from "@/lib/queries/stores/getStoreBySlugWithLogo";
-import FooterBottom from "@/app/components/common/FooterBottom";
+import { getStoreBySlugFull } from "@/lib/queries/stores/getStoreBySlugFull";
 
 interface StoreLayoutProps {
   children: React.ReactNode;
-  params: Promise<{
-    store_slug: string;
-  }>;
+  params: Promise<{ store_slug: string }>;
 }
 
 export default async function StoreLayout({
@@ -19,29 +18,34 @@ export default async function StoreLayout({
 
   if (!store_slug) return null;
 
-  // Fetch store data including logo
-  const storeData = await getStoreBySlugWithLogo(store_slug);
+  const storeData = await getStoreBySlugFull(store_slug);
+  if (!storeData) notFound();
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Pass storeSlug to header */}
       <StoreHeader storeSlug={store_slug} />
-
-      {/* Main content - this will grow to push footer to bottom */}
-      <main className="grow">{children}</main>
-
-      {/* Footer section at bottom */}
-      <div className="mt-auto">
-        <FooterBottom
-          links={footerContent.bottomLinksStore(store_slug)}
-          brandName={footerContent.brand.name} // Main owner name
-          storeLogo={storeData?.logo_url} // Store logo
-          storeName={storeData?.store_name} // Store name (optional)
-          storeSlug={store_slug} // Pass storeSlug for the link
-          storeDescription={storeData?.description ?? undefined}
-          isStore={true}
-        />
-      </div>
+      <main className="grow">
+        {React.cloneElement(children as React.ReactElement<{ store: typeof storeData }>, {
+          store: storeData,
+        })}
+      </main>
+      <StoreFooter
+        storeLogo={storeData.logo_url}
+        storeName={storeData.store_name}
+        storeSlug={store_slug}
+        brandName={footerContent.brand.name}
+        bottomLinks={footerContent.bottomLinksStore(store_slug)}
+        contactEmail={storeData.contact_email ?? undefined}
+        contactPhone={storeData.contact_phone ?? undefined}
+        contactAddress={storeData.business_address ?? undefined}
+        aboutLink={`/${store_slug}/about-us`}
+        socialLinks={{
+          facebook: storeData.social?.facebook_link ?? undefined,
+          instagram: storeData.social?.instagram_link ?? undefined,
+          twitter: storeData.social?.twitter_link ?? undefined,
+          youtube: storeData.social?.youtube_link ?? undefined,
+        }}
+      />
     </div>
   );
 }

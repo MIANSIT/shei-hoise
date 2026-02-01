@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams} from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../components/products/ProductGrid";
@@ -27,7 +27,7 @@ export default function StorePage({ params }: StorePageProps) {
   const { addToCart } = useCartStore();
   const { store_slug } = React.use(params);
   const searchParams = useSearchParams();
-  const router = useRouter();
+  // const router = useRouter();
 
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,7 +49,7 @@ export default function StorePage({ params }: StorePageProps) {
   const [hasMore, setHasMore] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
   
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 10;
   const isLoadingRef = useRef(false);
   const loadAnchorRef = useRef<HTMLDivElement>(null);
 
@@ -319,7 +319,7 @@ export default function StorePage({ params }: StorePageProps) {
                       Loading...
                     </>
                   ) : (
-                    "Show 5 More Products"
+                    "Show 10 More Products"
                   )}
                 </Button>
               </motion.div>
