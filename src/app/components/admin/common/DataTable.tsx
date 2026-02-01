@@ -64,7 +64,7 @@ function DataTable<T extends object>({
 
   // Desktop table view
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full ">
       <Table<T>
         columns={columns}
         dataSource={data}
