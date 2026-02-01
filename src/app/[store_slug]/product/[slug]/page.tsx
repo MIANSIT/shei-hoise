@@ -49,6 +49,7 @@ interface ApiProduct {
     discounted_price: number | null;
     discount_amount?: number;
     color: string | null;
+    attributes?: Record<string, any>; // ADD THIS LINE
     product_inventory: Array<{
       quantity_available: number;
       quantity_reserved: number;
@@ -86,7 +87,7 @@ export default function ProductPage() {
 
   // Calculate selectedVariantData based on current state
   const selectedVariantData = product?.product_variants?.find(
-    (variant) => variant.id === selectedVariant
+    (variant) => variant.id === selectedVariant,
   );
 
   // Fixed: Robust cart quantity calculation
@@ -100,7 +101,7 @@ export default function ProductPage() {
         (item) =>
           item.productId === product.id &&
           item.variantId === selectedVariantData.id && // Must match the variant ID
-          item.storeSlug === store_slug
+          item.storeSlug === store_slug,
       );
       return cartItem?.quantity || 0;
     } else {
@@ -109,7 +110,7 @@ export default function ProductPage() {
         (item) =>
           item.productId === product.id &&
           item.variantId === null && // Important: variantId should be null for main product
-          item.storeSlug === store_slug
+          item.storeSlug === store_slug,
       );
       return cartItem?.quantity || 0;
     }
@@ -175,7 +176,7 @@ export default function ProductPage() {
               primary_image:
                 variant.product_images?.find((img: any) => img.is_primary) ||
                 null,
-            })
+            }),
           ),
         };
 
@@ -188,12 +189,13 @@ export default function ProductPage() {
           // Find the first available variant instead of just the first one
           const firstAvailableVariant = fixedProductData.product_variants.find(
             (variant) =>
-              (variant.product_inventory?.[0]?.quantity_available || 0) > 0
+              (variant.product_inventory?.[0]?.quantity_available || 0) > 0,
           );
 
           // Set to first available variant, or first variant if none are available
           setSelectedVariant(
-            firstAvailableVariant?.id || fixedProductData.product_variants[0].id
+            firstAvailableVariant?.id ||
+              fixedProductData.product_variants[0].id,
           );
         }
       } catch (error) {
@@ -233,7 +235,7 @@ export default function ProductPage() {
     stockStatus,
   ]);
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   if (loading) {
@@ -276,7 +278,7 @@ export default function ProductPage() {
   const calculateDiscountPercentage = (
     originalPrice: number,
     discountedPrice: number | null,
-    discountAmount?: number
+    discountAmount?: number,
   ): number => {
     if (discountAmount && discountAmount > 0) {
       if (discountAmount <= 100) {
@@ -288,7 +290,7 @@ export default function ProductPage() {
 
     if (discountedPrice && discountedPrice < originalPrice) {
       return Math.round(
-        ((originalPrice - discountedPrice) / originalPrice) * 100
+        ((originalPrice - discountedPrice) / originalPrice) * 100,
       );
     }
 
@@ -307,12 +309,12 @@ export default function ProductPage() {
     ? calculateDiscountPercentage(
         selectedVariantData.base_price,
         selectedVariantData.discounted_price,
-        selectedVariantData.discount_amount
+        selectedVariantData.discount_amount,
       )
     : calculateDiscountPercentage(
         product?.base_price || 0,
         product?.discounted_price || null,
-        product?.discount_amount
+        product?.discount_amount,
       );
 
   // Updated stock badge function - No numbers shown
@@ -454,7 +456,7 @@ export default function ProductPage() {
   };
 
   const handleInputKeyPress = (
-    event: React.KeyboardEvent<HTMLInputElement>
+    event: React.KeyboardEvent<HTMLInputElement>,
   ) => {
     if (event.key === "Enter") {
       event.currentTarget.blur();
@@ -513,46 +515,53 @@ export default function ProductPage() {
                   const variantDiscount = calculateDiscountPercentage(
                     variant.base_price,
                     variant.discounted_price,
-                    variant.discount_amount
+                    variant.discount_amount,
                   );
 
                   return (
-                    <button
-                      key={variant.id}
-                      onClick={() => {
-                        if (!isAvailable) {
-                          showErrorNotification("This variant is out of stock");
-                          return;
-                        }
-                        setSelectedVariant(variant.id);
-                        setQuantity(1);
-                        setInputValue("");
-                        setIsEditing(false);
-                      }}
-                      disabled={!isAvailable}
-                      className={`px-3 py-2 border rounded-md text-sm transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : isAvailable
-                          ? "border-border hover:bg-accent text-foreground"
-                          : "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
-                      } ${!isAvailable ? "opacity-50" : ""}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>{variant.variant_name}</span>
-                        {variant.color && <span>- {variant.color}</span>}
-                        {variantDiscount > 0 && (
-                          <span className="ml-1 text-xs text-green-600">
-                            (-{variantDiscount}%)
-                          </span>
-                        )}
-                        {!isAvailable && (
-                          <span className="ml-1 text-xs text-red-600">
-                            (Out of Stock)
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                    <div key={variant.id}>
+                      <button
+                        onClick={() => {
+                          if (!isAvailable) {
+                            showErrorNotification(
+                              "This variant is out of stock",
+                            );
+                            return;
+                          }
+                          setSelectedVariant(variant.id);
+                          setQuantity(1);
+                          setInputValue("");
+                          setIsEditing(false);
+                        }}
+                        disabled={!isAvailable}
+                        className={`px-3 py-2 border rounded-md text-sm transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : isAvailable
+                              ? "border-border hover:bg-accent text-foreground"
+                              : "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+                        } ${!isAvailable ? "opacity-50" : ""}`}
+                      >
+                        <div className="flex flex-col items-start gap-1">
+                          <div className="flex items-center gap-1">
+                            <span>{variant.variant_name}</span>
+                            {variant.color && <span>- {variant.color}</span>}
+                            {variantDiscount > 0 && (
+                              <span className="ml-1 text-xs text-green-600">
+                                (-{variantDiscount}%)
+                              </span>
+                            )}
+                            {!isAvailable && (
+                              <span className="ml-1 text-xs text-red-600">
+                                (Out of Stock)
+                              </span>
+                            )}
+                          </div>
+
+                          {/* NEW: Render attributes */}
+                        </div>
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -674,10 +683,40 @@ export default function ProductPage() {
                   <li>
                     <strong>Variant:</strong> {selectedVariantData.variant_name}
                   </li>
-                  {selectedVariantData.color && (
-                    <li>
-                      <strong>Color:</strong> {selectedVariantData.color}
-                    </li>
+                  {selectedVariantData.attributes && (
+                    <>
+                      {/* Show color separately if it exists */}
+                      {Object.entries(selectedVariantData.attributes).find(
+                        ([key]) =>
+                          key.toLowerCase() === "color" ||
+                          key.toLowerCase() === "colour",
+                      ) && (
+                        <li>
+                          <strong>Color:</strong>{" "}
+                          {selectedVariantData.attributes.color ||
+                            selectedVariantData.attributes.Color ||
+                            selectedVariantData.attributes.colour ||
+                            selectedVariantData.attributes.Colour}
+                        </li>
+                      )}
+
+                      {/* Show all other attributes except color/colour */}
+                      {Object.entries(selectedVariantData.attributes)
+                        .filter(([key]) => {
+                          const lowerKey = key.toLowerCase();
+                          return lowerKey !== "color" && lowerKey !== "colour";
+                        })
+                        .map(([key, value]) => (
+                          <li key={key}>
+                            <strong>
+                              {key.charAt(0).toUpperCase() +
+                                key.slice(1).replace(/_/g, " ")}
+                              :
+                            </strong>{" "}
+                            {String(value)}
+                          </li>
+                        ))}
+                    </>
                   )}
                 </>
               )}
@@ -723,7 +762,7 @@ export default function ProductPage() {
                     elements.push(
                       <p key={`p-${elements.length}`} className="mb-2">
                         {currentParagraph.join(" ")}
-                      </p>
+                      </p>,
                     );
                     currentParagraph = [];
                   }
@@ -739,7 +778,7 @@ export default function ProductPage() {
                         {currentList.map((item, i) => (
                           <li key={i}>{item}</li>
                         ))}
-                      </ul>
+                      </ul>,
                     );
                     currentList = [];
                   }
@@ -771,7 +810,7 @@ export default function ProductPage() {
                         className="mt-4 mb-2 font-semibold"
                       >
                         {trimmed}
-                      </h4>
+                      </h4>,
                     );
                     return;
                   }

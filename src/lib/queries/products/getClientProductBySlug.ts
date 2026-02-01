@@ -1,4 +1,3 @@
-// lib/queries/products/getClientProductBySlug.ts
 import { supabaseAdmin } from "@/lib/supabase";
 
 interface ProductVariant {
@@ -9,6 +8,9 @@ interface ProductVariant {
   discounted_price: number | null;
   discount_amount: number | null;
   color: string | null;
+  attributes?: Record<string, string>;
+  weight?: number;
+  tp_price?: number;
   is_active: boolean;
   product_inventory: {
     quantity_available: number;
@@ -41,7 +43,7 @@ interface Product {
 }
 
 export async function getClientProductBySlug(
-  product_slug: string
+  product_slug: string,
 ): Promise<Product | null> {
   const { data, error } = await supabaseAdmin
     .from("products")
@@ -67,11 +69,14 @@ export async function getClientProductBySlug(
         discounted_price,
         discount_amount,
         color,
+        attributes,
+        weight,
+        tp_price,
         is_active,
         product_inventory(quantity_available, quantity_reserved),
         product_images(id, image_url, is_primary)
       )
-    `
+    `,
     )
     .eq("slug", product_slug)
     .single();
@@ -83,9 +88,9 @@ export async function getClientProductBySlug(
 
   if (!data) return null;
 
-  // Filter out inactive variants with proper typing
+  // Filter out inactive variants
   data.product_variants = (data.product_variants || []).filter(
-    (variant: ProductVariant) => variant.is_active !== false
+    (variant: ProductVariant) => variant.is_active !== false,
   );
 
   return data as Product;
