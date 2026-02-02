@@ -6,13 +6,18 @@ import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { refreshCustomerData } from "@/lib/hook/useCurrentCustomer";
-import { authQueries, CustomerData } from "@/lib/queries/customerAuth/customerLogin";
+import {
+  authQueries,
+  CustomerData,
+} from "@/lib/queries/customerAuth/customerLogin";
 import { EmailStep } from "../../components/auth/Customer/EmailStep";
 import { PasswordStep } from "../../components/auth/Customer/PasswordStep";
 import { LoadingStep } from "../../components/auth/Customer/LoadingStep";
 import { SheiLoader } from "../../components/ui/SheiLoader/loader";
 import { supabase } from "@/lib/supabase";
 import { linkAuthToCustomer } from "@/lib/queries/customers/getCustomerByEmail";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { Auth } from "@supabase/auth-ui-react";
 
 type Step = "email" | "password" | "loading";
 
@@ -21,21 +26,21 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const params = useParams();
   const emailFromParams = searchParams.get("email");
-  
+
   const storeSlug = params.store_slug as string;
   const redirectParam = searchParams.get("redirect");
   const fromCheckout = searchParams.get("fromCheckout") === "true";
-  
+
   const getRedirectUrl = () => {
     if (redirectParam) return redirectParam;
     if (fromCheckout) return `/${storeSlug}/checkout`;
     return `/${storeSlug}`;
   };
-  
+
   const redirectTo = getRedirectUrl();
   const { success, error, info } = useSheiNotification();
   const { formData } = useCheckoutStore();
-  
+
   const [isStoreLoaded, setIsStoreLoaded] = useState(false);
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -79,7 +84,9 @@ export function LoginForm() {
       if (!customer) {
         info("No account found with this email");
         setTimeout(() => {
-          router.push(`/${storeSlug}/signup?email=${encodeURIComponent(email)}`);
+          router.push(
+            `/${storeSlug}/signup?email=${encodeURIComponent(email)}`
+          );
         }, 1000);
         return;
       }
@@ -92,7 +99,11 @@ export function LoginForm() {
       } else {
         info("Account found but needs setup");
         setTimeout(() => {
-          router.push(`/${storeSlug}/complete-account?email=${encodeURIComponent(email)}&customer_id=${customer.id}`);
+          router.push(
+            `/${storeSlug}/complete-account?email=${encodeURIComponent(
+              email
+            )}&customer_id=${customer.id}`
+          );
         }, 1000);
       }
     } catch (err: any) {
@@ -115,16 +126,19 @@ export function LoginForm() {
 
     try {
       // 1. Login with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase(),
-        password: password,
-      });
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password: password,
+        });
 
       if (authError) {
         if (authError.message.includes("Invalid login credentials")) {
           throw new Error("Invalid password. Please try again.");
         } else if (authError.message.includes("Email not confirmed")) {
-          throw new Error("Please verify your email address before logging in.");
+          throw new Error(
+            "Please verify your email address before logging in."
+          );
         } else {
           throw authError;
         }
@@ -136,7 +150,7 @@ export function LoginForm() {
 
       // 2. Get the auth user ID
       const authUserId = authData.user.id;
-      
+
       // 3. Check if customer already has auth_user_id linked
       if (customerData) {
         if (!customerData.auth_user_id) {
@@ -146,7 +160,7 @@ export function LoginForm() {
             console.warn("⚠️ Failed to link auth user to customer");
           }
         }
-        
+
         // Also check for any other customers with same email that need linking
         try {
           const { data: otherCustomers } = await supabase
@@ -170,7 +184,7 @@ export function LoginForm() {
 
       success("Login successful!", { duration: 1000 });
       refreshCustomerData();
-      
+
       const { clearAccountCreationFlags } = useCheckoutStore.getState();
       clearAccountCreationFlags();
 
@@ -185,7 +199,6 @@ export function LoginForm() {
         }
         router.push(finalRedirectUrl);
       }, 800);
-
     } catch (err: any) {
       console.error("Login error:", err);
       error(err.message || "Login failed. Please try again.");
@@ -203,22 +216,28 @@ export function LoginForm() {
 
   // Handle signup redirect
   const handleSignup = () => {
-    router.push(`/${storeSlug}/signup${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+    router.push(
+      `/${storeSlug}/signup${
+        email ? `?email=${encodeURIComponent(email)}` : ""
+      }`
+    );
   };
 
   if (!isStoreLoaded) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-center">
-          <SheiLoader size="lg" loaderColor="primary" />
-          <p className="mt-4 text-muted-foreground">Loading your information...</p>
+      <div className='flex justify-center items-center min-h-[400px]'>
+        <div className='text-center'>
+          <SheiLoader size='lg' loaderColor='primary' />
+          <p className='mt-4 text-muted-foreground'>
+            Loading your information...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto w-full">
+    <div className='max-w-md mx-auto w-full'>
       {step === "email" && (
         <EmailStep
           email={email}
@@ -244,9 +263,16 @@ export function LoginForm() {
       {step === "loading" && (
         <LoadingStep
           message={isCheckingEmail ? "Checking Your Account" : "Processing..."}
-          description="Please wait a moment"
+          description='Please wait a moment'
         />
       )}
+      <Auth
+        supabaseClient={supabase}
+        appearance={{ theme: ThemeSupa }}
+        providers={["google"]} // Only show Google login
+        onlyThirdPartyProviders // Hide email/password option
+        redirectTo={`${window.location.origin}/auth/callback`}
+      />
     </div>
   );
 }
