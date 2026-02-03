@@ -11,13 +11,13 @@ const fileOrUrl = z.union([
   z.string().url("Invalid URL"),
 ]);
 
-const requiredFileOrUrl = fileOrUrl.refine(
-  (val) => {
-    if (typeof val === "string") return val.trim().length > 0;
-    return !!val;
-  },
-  { message: "This field is required" },
-);
+// const requiredFileOrUrl = fileOrUrl.refine(
+//   (val) => {
+//     if (typeof val === "string") return val.trim().length > 0;
+//     return !!val;
+//   },
+//   { message: "This field is required" },
+// );
 
 /* ----------------------------------
    User Profile Schema
@@ -43,7 +43,7 @@ const storeSchema = z.object({
   store_name: z.string().nonempty("Store name is required"),
   store_slug: z.string().nonempty("Store slug is required"),
 
-  logo_url: requiredFileOrUrl,
+  logo_url: fileOrUrl.optional(), // now optional
   banner_url: fileOrUrl.optional(), // now optional
 
   description: z.string().optional(),

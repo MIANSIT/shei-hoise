@@ -8,6 +8,8 @@ import {
 import { supabase, supabaseAdmin } from "@/lib/supabase";
 import { createUserCore } from "@/lib/queries/onboarding/store/createUserCore";
 import { createStoreWithSettings } from "@/lib/queries/onboarding/store/createStoreWithSettings";
+import { DomainErrorCode } from "@/lib/errors/domainErrors";
+// ✅ Domain error codes for production
 
 export async function createUser(data: CreateUserType) {
   const payload = createUserSchema.parse(data);
@@ -37,36 +39,48 @@ export async function createUser(data: CreateUserType) {
     }
 
     return { success: true, userId, storeId };
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("createUser failed:", err);
 
     // 🔄 ROLLBACK: Delete everything in correct order
     try {
       if (storeId) {
-        // Delete social media first
         await supabase
           .from("store_social_media")
           .delete()
           .eq("store_id", storeId);
 
-        // Delete store settings
         await supabase.from("store_settings").delete().eq("store_id", storeId);
 
-        // Delete store
         await supabase.from("stores").delete().eq("id", storeId);
       }
 
       if (userId) {
-        // Delete user (cascades user_profile)
+        // delete from DB
         await supabase.from("users").delete().eq("id", userId);
 
-        // Delete Supabase auth user
-        await supabaseAdmin.auth.admin.deleteUser(userId);
+        // delete from Auth safely
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+        } catch (authErr) {
+          console.error("Failed to delete Supabase Auth user:", authErr);
+          // ✅ do not throw — we want rollback to continue
+        }
       }
     } catch (rollbackErr) {
       console.error("Rollback failed:", rollbackErr);
     }
 
-    throw err;
+    // ✅ DOMAIN ERROR NORMALIZATION
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      err.code === "email_exists"
+    ) {
+      throw new Error(DomainErrorCode.EMAIL_EXISTS);
+    }
+
+    throw new Error(DomainErrorCode.CREATE_USER_FAILED);
   }
 }
