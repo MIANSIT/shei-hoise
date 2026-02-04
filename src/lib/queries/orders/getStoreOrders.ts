@@ -20,7 +20,7 @@ export async function getStoreOrders(
   search?: string,
   page?: number,
   pageSize?: number,
-  filters?: GetStoreOrdersOptions["filters"]
+  filters?: GetStoreOrdersOptions["filters"],
 ): Promise<{
   orders: StoreOrder[];
   total: number;
@@ -36,7 +36,17 @@ export async function getStoreOrders(
       .select(
         `
         *,
-        order_items (*),
+        order_items (
+          *,
+          products (
+            id,
+            sku
+          ),
+          product_variants (
+            id,
+            sku
+          )
+        ),
         store_customers!customer_id (
           id,
           name,
@@ -44,7 +54,7 @@ export async function getStoreOrders(
           phone
         )
       `,
-        { count: "exact" }
+        { count: "exact" },
       )
       .eq("store_id", storeId)
       .order("created_at", { ascending: false });
@@ -73,6 +83,59 @@ export async function getStoreOrders(
 
     if (totalError) throw totalError;
 
+    // Transform orders for frontend
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const transformedOrders: StoreOrder[] = (orders || []).map((order: any) => {
+      const customerData = order.store_customers;
+      let customer = null;
+
+      if (customerData) {
+        const customerObj = Array.isArray(customerData)
+          ? customerData[0]
+          : customerData;
+        customer = {
+          id: customerObj.id,
+          first_name: customerObj.name || "Unknown Customer",
+          email: customerObj.email || "",
+          phone: customerObj.phone || null,
+        };
+      }
+
+      // Transform order items to include product and variant SKUs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const orderItems = (order.order_items || []).map((item: any) => {
+        // Extract product SKU (products is an array due to join)
+        const productSku = Array.isArray(item.products)
+          ? item.products[0]?.sku || ""
+          : item.products?.sku || "";
+
+        // Extract variant SKU (product_variants is an array due to join)
+        const variantSku = Array.isArray(item.product_variants)
+          ? item.product_variants[0]?.sku || ""
+          : item.product_variants?.sku || "";
+
+        return {
+          ...item,
+          product_sku: productSku,
+          variant_sku: variantSku,
+        };
+      });
+
+      return {
+        ...order,
+        customers: customer,
+        shipping_address: order.shipping_address || {
+          customer_name: "",
+          phone: "",
+          address_line_1: "",
+          city: "",
+          country: "",
+        },
+        billing_address: order.billing_address || null,
+        order_items: orderItems,
+      };
+    });
+
     // Totals by payment status
     const totalByPaymentStatus: Record<PaymentStatus, number> = {
       [PaymentStatus.PENDING]: 0,
@@ -90,9 +153,8 @@ export async function getStoreOrders(
       [OrderStatus.CANCELLED]: 0,
     };
 
-    // Count totals
-    const allOrders = orders || [];
-    allOrders.forEach((order) => {
+    // Count totals from transformed orders
+    transformedOrders.forEach((order) => {
       const paymentStatus = order.payment_status as PaymentStatus;
       const orderStatus = order.status as OrderStatus;
 
@@ -103,38 +165,6 @@ export async function getStoreOrders(
       if (orderStatus && totalByOrderStatus[orderStatus] !== undefined) {
         totalByOrderStatus[orderStatus]++;
       }
-    });
-
-    // Transform orders for frontend
-    const transformedOrders: StoreOrder[] = allOrders.map((order) => {
-      const customerData = order.store_customers;
-      let customer = null;
-
-      if (customerData) {
-        const customerObj = Array.isArray(customerData)
-          ? customerData[0]
-          : customerData;
-        customer = {
-          id: customerObj.id,
-          first_name: customerObj.name || "Unknown Customer",
-          email: customerObj.email || "",
-          phone: customerObj.phone || null,
-        };
-      }
-
-      return {
-        ...order,
-        customers: customer,
-        shipping_address: order.shipping_address || {
-          customer_name: "",
-          phone: "",
-          address_line_1: "",
-          city: "",
-          country: "",
-        },
-        billing_address: order.billing_address || null,
-        order_items: order.order_items || [],
-      };
     });
 
     return {
