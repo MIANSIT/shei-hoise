@@ -6,7 +6,7 @@ import Sidebar from "../components/admin/sidebar/Sidebar";
 import SidebarProfile from "../components/admin/sidebar/SidebarProfile";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { Moon, PanelLeft, Sun, X } from "lucide-react";
+import { Moon, PanelLeft, Sun } from "lucide-react";
 import {
   ConfigProvider,
   theme as antdTheme,
@@ -330,7 +330,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Toaster position="top-right" />
 
-              <div className="flex justify-between items-center mb-2 p-4">
+              <div className="flex justify-between items-center p-2">
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -340,7 +340,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-4">{children}</div>
+              <div className="flex-1 overflow-auto p-3 ">{children}</div>
             </main>
           </div>
         </div>

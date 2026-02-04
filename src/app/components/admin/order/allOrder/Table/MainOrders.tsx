@@ -223,7 +223,7 @@ const MainOrders: React.FC = () => {
     );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6">
+    <div className="">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold ">

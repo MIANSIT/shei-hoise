@@ -45,7 +45,6 @@ export default function CheckoutPage() {
 
   const notify = useSheiNotification();
   const {
-    clearFormData,
     setJustCreatedAccount,
     setCreatedAccountEmail,
     clearAccountCreationFlags,
@@ -73,7 +72,6 @@ export default function CheckoutPage() {
   const {
     processOrder,
     loading: orderLoading,
-    error: orderError,
   } = useOrderProcess(store_slug);
 
   const { session, loading: authLoading } = useSupabaseAuth();
@@ -139,7 +137,7 @@ export default function CheckoutPage() {
   ]);
 
   // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrency = currencyLoading ? "" : (currency ?? "");
   const displayCurrencyIconSafe = displayCurrency || "BDT"; // fallback
 
   // ✅ OPTIMIZED: Memoize shipping change handler
@@ -148,7 +146,7 @@ export default function CheckoutPage() {
       setSelectedShipping(shippingMethod);
       setShippingFee(fee);
     },
-    []
+    [],
   );
 
   // ✅ OPTIMIZED: Memoize createTempOrderData
@@ -249,13 +247,15 @@ export default function CheckoutPage() {
     },
     [
       cartItems,
-      calculations,
+      calculations.totalPrice,
+      calculations.subtotal,
       shippingFee,
       taxAmount,
       invoiceStoreData,
+      displayCurrencyIconSafe,
       store_slug,
       selectedShipping,
-    ]
+    ],
   );
 
   // ✅ FIXED: ALL HELPER FUNCTIONS IN CORRECT ORDER (NO CIRCULAR DEPENDENCIES)
@@ -275,7 +275,7 @@ export default function CheckoutPage() {
       }
       return data.id;
     },
-    []
+    [],
   );
 
   // 2. Declare createProfileAndLinks BEFORE functions that use it
@@ -283,7 +283,7 @@ export default function CheckoutPage() {
     async (
       customerId: string,
       storeId: string,
-      values: CustomerCheckoutFormValues
+      values: CustomerCheckoutFormValues,
     ) => {
       const { data: profile } = await supabase
         .from("customer_profiles")
@@ -308,17 +308,17 @@ export default function CheckoutPage() {
         .from("store_customer_links")
         .upsert(
           { customer_id: customerId, store_id: storeId },
-          { onConflict: "customer_id,store_id" }
+          { onConflict: "customer_id,store_id" },
         );
     },
-    []
+    [],
   );
 
   // 3. Now declare createGuestCustomer (uses createProfileAndLinks)
   const createGuestCustomer = useCallback(
     async (
       values: CustomerCheckoutFormValues,
-      storeSlug: string
+      storeSlug: string,
     ): Promise<string> => {
       const storeId = await getStoreId(storeSlug);
       if (!storeId) throw new Error("Store not found");
@@ -340,7 +340,7 @@ export default function CheckoutPage() {
       await createProfileAndLinks(customer.id, storeId, values);
       return customer.id;
     },
-    [getStoreId, createProfileAndLinks]
+    [getStoreId, createProfileAndLinks],
   );
 
   // 4. Other helper functions that don't have circular dependencies
@@ -358,7 +358,7 @@ export default function CheckoutPage() {
       }
       return data.user;
     },
-    []
+    [],
   );
 
   const updateCustomerProfile = useCallback(
@@ -374,7 +374,7 @@ export default function CheckoutPage() {
         })
         .eq("id", profileId);
     },
-    []
+    [],
   );
 
   const createCustomerProfile = useCallback(
@@ -393,14 +393,14 @@ export default function CheckoutPage() {
         .select("id")
         .single();
     },
-    []
+    [],
   );
 
   const createCustomerWithRetry = useCallback(
     async (
       values: CustomerCheckoutFormValues,
       storeSlug: string,
-      authUserId: string | null
+      authUserId: string | null,
     ): Promise<string> => {
       const storeId = await getStoreId(storeSlug);
       if (!storeId) throw new Error("Store not found");
@@ -440,7 +440,7 @@ export default function CheckoutPage() {
                 if (authUserId) {
                   setTimeout(
                     () => linkAuthToCustomer(guestCustomer.id, authUserId),
-                    5000
+                    5000,
                   );
                 }
                 return guestCustomer.id;
@@ -460,14 +460,14 @@ export default function CheckoutPage() {
 
       throw new Error("Failed to create customer after retries");
     },
-    [getStoreId]
+    [getStoreId],
   );
 
   // 5. Now declare createAuthAndCustomer (uses createGuestCustomer)
   const createAuthAndCustomer = useCallback(
     async (
       values: CustomerCheckoutFormValues,
-      storeSlug: string
+      storeSlug: string,
     ): Promise<{
       customerId: string;
       authUserId: string | null;
@@ -493,7 +493,7 @@ export default function CheckoutPage() {
                 role: "customer",
               },
             },
-          }
+          },
         );
 
         if (authError) {
@@ -531,7 +531,7 @@ export default function CheckoutPage() {
           authUserId = authData.user.id;
           const user = await handleLogin(
             values.email.toLowerCase(),
-            values.password!
+            values.password!,
           );
           loginSuccess = !!user;
         }
@@ -542,7 +542,7 @@ export default function CheckoutPage() {
       const customerId = await createCustomerWithRetry(
         values,
         storeSlug,
-        authUserId
+        authUserId,
       );
       await createProfileAndLinks(customerId, storeId, values);
 
@@ -559,13 +559,13 @@ export default function CheckoutPage() {
       createCustomerWithRetry,
       createProfileAndLinks,
       createGuestCustomer,
-    ]
+    ],
   );
 
   const handleAuthForExistingCustomer = useCallback(
     async (
       values: CustomerCheckoutFormValues,
-      customerId: string
+      customerId: string,
     ): Promise<{
       authUserId: string | null;
       loginSuccess: boolean;
@@ -586,7 +586,7 @@ export default function CheckoutPage() {
                 phone: values.phone,
               },
             },
-          }
+          },
         );
 
         if (authError) {
@@ -623,7 +623,7 @@ export default function CheckoutPage() {
             } else {
               loginSuccess = true;
             }
-          } catch (loginError) {
+          } catch {
             loginSuccess = false;
           }
         }
@@ -638,7 +638,7 @@ export default function CheckoutPage() {
 
       return { authUserId: null, loginSuccess: false, success: false };
     },
-    []
+    [],
   );
 
   const linkAuthToCustomer = useCallback(
@@ -661,7 +661,7 @@ export default function CheckoutPage() {
 
           retries--;
           await new Promise((resolve) => setTimeout(resolve, 2000));
-        } catch (error) {
+        } catch {
           retries--;
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
@@ -669,7 +669,7 @@ export default function CheckoutPage() {
 
       return false;
     },
-    []
+    [],
   );
 
   // ✅ OPTIMIZED: Main checkout handler
@@ -700,7 +700,7 @@ export default function CheckoutPage() {
           // For logged-in users, find or create customer with their email
           const existing = await getCustomerByEmail(
             session.user.email!,
-            store_slug
+            store_slug,
           );
 
           if (existing) {
@@ -753,7 +753,7 @@ export default function CheckoutPage() {
               try {
                 const authResult = await handleAuthForExistingCustomer(
                   values,
-                  existing.id
+                  existing.id,
                 );
                 authUserId = authResult.authUserId;
                 loginSuccess = authResult.loginSuccess;
@@ -766,13 +766,13 @@ export default function CheckoutPage() {
 
                 if (!authResult.success) {
                   notify.warning(
-                    "Order placed! Account setup will complete shortly."
+                    "Order placed! Account setup will complete shortly.",
                   );
                 }
               } catch (authError: any) {
                 console.error("Auth error:", authError);
                 notify.warning(
-                  "Account setup had issues. You can log in later."
+                  "Account setup had issues. You can log in later.",
                 );
               }
             }
@@ -780,7 +780,7 @@ export default function CheckoutPage() {
             if (values.password) {
               const authResult = await createAuthAndCustomer(
                 values,
-                store_slug
+                store_slug,
               );
               storeCustomerId = authResult.customerId;
               authUserId = authResult.authUserId;
@@ -794,7 +794,7 @@ export default function CheckoutPage() {
 
               if (!authResult.success) {
                 notify.warning(
-                  "Order placed! Account setup will complete shortly."
+                  "Order placed! Account setup will complete shortly.",
                 );
               }
             } else {
@@ -805,7 +805,7 @@ export default function CheckoutPage() {
 
         if (!storeCustomerId) {
           return notify.error(
-            "Failed to create customer record. Please try again."
+            "Failed to create customer record. Please try again.",
           );
         }
 
@@ -817,7 +817,7 @@ export default function CheckoutPage() {
           shippingFee,
           cartItems,
           calculations,
-          taxAmount
+          taxAmount,
         );
 
         if (!result.success) {
@@ -832,15 +832,15 @@ export default function CheckoutPage() {
         } else if (values.password) {
           if (authUserId && loginSuccess) {
             notify.success(
-              "Order placed successfully! Account created and logged in."
+              "Order placed successfully! Account created and logged in.",
             );
           } else if (authUserId && !loginSuccess) {
             notify.success(
-              "Order placed successfully! Account created. Please check your email to verify."
+              "Order placed successfully! Account created. Please check your email to verify.",
             );
           } else {
             notify.success(
-              "Order placed successfully! Account setup in progress."
+              "Order placed successfully! Account setup in progress.",
             );
           }
         } else {
@@ -878,7 +878,7 @@ export default function CheckoutPage() {
       calculations,
       createTempOrderData,
       clearStoreCart,
-    ]
+    ],
   );
 
   // Store loading check
