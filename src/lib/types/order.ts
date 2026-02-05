@@ -64,6 +64,8 @@ export interface OrderItem {
   products?: OrderItemProduct | null;
   product_variants?: OrderItemVariant | null;
   discounted_price?: number;
+  product_sku?: string; // Add this
+  variant_sku?: string; // Add this
 }
 
 // ===== SUPABASE DATABASE TYPES =====

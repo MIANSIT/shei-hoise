@@ -12,13 +12,10 @@ import {
   Package,
   Calendar,
   FileText,
-  // MapPin,
-  // Phone,
   User,
   BadgeCheck,
   Shield,
 } from "lucide-react";
-
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface Props {
@@ -34,16 +31,12 @@ const MobileDetailedViewFull: React.FC<Props> = ({
 }) => {
   const { message } = App.useApp();
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
   const address = order.shipping_address;
   const billingAddress = order.billing_address || address;
   const fullShippingAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
   const fullBillingAddress = `${billingAddress.address_line_1}, ${billingAddress.city}, ${billingAddress.country}`;
-  // const isCancelled = order.status === "cancelled";
   const isPaid = order.payment_status === "paid";
 
   const deliveryOption: StatusType = (order.delivery_option ||
@@ -58,13 +51,6 @@ const MobileDetailedViewFull: React.FC<Props> = ({
       setTimeout(() => setCopiedField(null), 2000);
     });
   };
-
-  // const CopyIcon = ({ fieldId }: { fieldId: string }) =>
-  //   copiedField === fieldId ? (
-  //     <Check size={14} className="text-green-500" />
-  //   ) : (
-  //     <Copy size={14} />
-  //   );
 
   // Calculate savings
   const totalSavings = order.order_items.reduce((acc, item) => {
@@ -88,12 +74,11 @@ const MobileDetailedViewFull: React.FC<Props> = ({
   };
 
   const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
   return (
     <div className="space-y-4">
-      {/* Header with Checkbox */}
+      {/* Header with Checkbox and Copy Order Number */}
       <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-lg p-3 text-white shadow-sm">
         <div className="flex flex-wrap justify-between items-start">
           <div className="flex items-start gap-2 flex-1 w-full sm:w-auto">
@@ -107,8 +92,32 @@ const MobileDetailedViewFull: React.FC<Props> = ({
               />
             )}
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm sm:text-base text-wrap">
-                Order #{order.order_number}
+              <div className="flex items-center gap-2">
+                <div className="font-bold text-sm sm:text-base text-wrap">
+                  Order #{order.order_number}
+                </div>
+                <button
+                  onClick={() =>
+                    copyToClipboard(
+                      order.order_number,
+                      "Order number",
+                      "order-number",
+                    )
+                  }
+                  className="text-blue-200 hover:text-white transition-colors cursor-pointer flex items-center gap-1 group"
+                  title="Copy order number"
+                >
+                  <Copy size={14} />
+                  <span className="text-xs group-hover:opacity-100 opacity-0 transition-opacity">
+                    Copy
+                  </span>
+                </button>
+                {copiedField === "order-number" && (
+                  <span className="text-xs text-green-300 flex items-center gap-1 animate-fadeIn">
+                    <Check size={12} />
+                    Copied!
+                  </span>
+                )}
               </div>
               <div className="text-xs flex items-center gap-1 mt-1">
                 <Calendar size={12} />{" "}
@@ -194,7 +203,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Products */}
+      {/* Products with SKUs */}
       <div className="bg-white dark:bg-blue-400 rounded-lg shadow-sm border p-2 space-y-2">
         {order.order_items.map((item) => {
           const base = item.variant_details?.base_price ?? item.unit_price;
@@ -203,29 +212,66 @@ const MobileDetailedViewFull: React.FC<Props> = ({
             item.discounted_price ??
             base;
           const hasDiscount = discounted < base;
+
+          // Get SKUs from the item
+          const productSku = item.product_sku || "";
+          const variantSku = item.variant_sku || "";
+          const displaySku = variantSku || productSku;
+
           return (
             <div
               key={item.id}
-              className="flex justify-between items-center text-xs "
+              className="flex justify-between items-start text-xs"
             >
-              <div className="flex flex-col">
-                <span>{item.product_name}</span>
-                {hasDiscount && (
-                  <span className="line-through text-gray-400 text-[10px]">
-                    {displayCurrencyIconSafe}
-                    {base.toFixed(2)}
-                  </span>
+              <div className="flex flex-col flex-1">
+                <span className="font-medium">{item.product_name}</span>
+
+                {/* Display SKU if available */}
+                {displaySku && (
+                  <div className="text-gray-600 dark:text-gray-700 mt-1">
+                    <span className="font-medium">SKU:</span>{" "}
+                    <span className="text-gray-700 dark:text-gray-800">
+                      {displaySku}
+                      {variantSku &&
+                        productSku &&
+                        variantSku !== productSku && (
+                          <span className="text-gray-500 text-[10px] ml-1">
+                            (variant)
+                          </span>
+                        )}
+                    </span>
+                  </div>
                 )}
-                <span
-                  className={`font-semibold ${
-                    hasDiscount ? "text-green-600" : ""
-                  }`}
-                >
-                  {displayCurrencyIconSafe}
-                  {discounted.toFixed(2)} × {item.quantity}
-                </span>
+
+                {/* Variant name if available */}
+                {item.variant_details?.variant_name && (
+                  <div className="text-gray-600 dark:text-gray-700 mt-1">
+                    <span className="font-medium">Variant:</span>{" "}
+                    <span className="text-gray-700 dark:text-gray-800">
+                      {item.variant_details.variant_name}
+                    </span>
+                  </div>
+                )}
+
+                {/* Price information */}
+                <div className="mt-2">
+                  {hasDiscount && (
+                    <span className="line-through text-gray-400 text-[10px]">
+                      {displayCurrencyIconSafe}
+                      {base.toFixed(2)}
+                    </span>
+                  )}
+                  <span
+                    className={`font-semibold ml-2 ${
+                      hasDiscount ? "text-green-600" : ""
+                    }`}
+                  >
+                    {displayCurrencyIconSafe}
+                    {discounted.toFixed(2)} × {item.quantity}
+                  </span>
+                </div>
               </div>
-              <div className="font-semibold">
+              <div className="font-semibold ml-2">
                 {displayCurrencyIconSafe}
                 {(discounted * item.quantity).toFixed(2)}
               </div>
