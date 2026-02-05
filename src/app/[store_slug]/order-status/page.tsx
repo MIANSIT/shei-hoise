@@ -1,8 +1,8 @@
-// app/[store_slug]/order-status/page.tsx - UPDATED WITH STORE LINKS
+// app/[store_slug]/order-status/page.tsx - UPDATED WITH PHONE SUPPORT
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import Link from "next/link"; // ADD THIS IMPORT
+import Link from "next/link";
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import { getCustomerOrders } from "@/lib/queries/orders/getCustomerOrders";
 import { StoreOrder } from "@/lib/types/order";
@@ -26,7 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Store, Package, ExternalLink } from "lucide-react"; // ADD ExternalLink
+import { Store, Package, ExternalLink, Phone } from "lucide-react";
 
 export default function StoreOrdersPage() {
   const params = useParams();
@@ -46,10 +46,18 @@ export default function StoreOrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
-  const { justCreatedAccount, createdAccountEmail, clearAccountCreationFlags } =
-    useCheckoutStore();
+  const { 
+    justCreatedAccount, 
+    createdAccountEmail, 
+    formData, // ✅ Get phone from formData
+    clearAccountCreationFlags 
+  } = useCheckoutStore();
+  
   const isFetchingOrdersRef = useRef(false);
   const mountedRef = useRef(true);
+
+  // Get phone from Zustand store
+  const savedPhoneNumber = useMemo(() => formData.phone || "", [formData.phone]);
 
   // Memoized values
   const isNewlyCreatedAccount = useMemo(
@@ -214,6 +222,7 @@ export default function StoreOrdersPage() {
       <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={customer?.email}
+        customerPhone={customer?.phone || savedPhoneNumber}
         hasAuthUserId={hasAuthUserId}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
@@ -229,6 +238,7 @@ export default function StoreOrdersPage() {
       <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={customer.email}
+        customerPhone={customer.phone || savedPhoneNumber}
         hasAuthUserId={hasAuthUserId}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
@@ -244,6 +254,7 @@ export default function StoreOrdersPage() {
       <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={customer.email}
+        customerPhone={customer.phone || savedPhoneNumber}
         hasAuthUserId={hasAuthUserId}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
@@ -259,11 +270,12 @@ export default function StoreOrdersPage() {
       <OrderAuthPrompt
         storeSlug={storeSlug}
         customerEmail={undefined}
+        customerPhone={savedPhoneNumber}
         hasAuthUserId={false}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
         title="Access Your Orders"
-        description="Sign in or create an account to view your order history"
+        description="Sign in or enter your phone number to view your order history"
       />
     );
   }
@@ -283,6 +295,12 @@ export default function StoreOrdersPage() {
                   View all your orders across all stores
                 </p>
               </div>
+              {customer.phone && (
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {customer.phone}
+                </Badge>
+              )}
             </div>
 
             {/* Group orders by store */}

@@ -12,6 +12,7 @@ import { CartProductWithDetails, CartCalculations } from "@/lib/types/cart";
 import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
+
 interface UnifiedCheckoutLayoutProps {
   storeSlug: string;
   cartItems: CartProductWithDetails[];
@@ -25,7 +26,6 @@ interface UnifiedCheckoutLayoutProps {
   taxAmount: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
-  // NEW: Add these optional props for confirm mode
   onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
   onRemoveItem?: (productId: string, variantId: string | null) => void;
 }
@@ -43,7 +43,6 @@ export default function UnifiedCheckoutLayout({
   taxAmount,
   isProcessing,
   mode = "checkout",
-  // NEW: Accept the handlers
   onQuantityChange,
   onRemoveItem,
 }: UnifiedCheckoutLayoutProps) {
@@ -52,7 +51,6 @@ export default function UnifiedCheckoutLayout({
   );
   const [isClearing, setIsClearing] = useState(false);
   const {
-    // currency,
     icon: currencyIcon,
     loading: currencyLoading,
   } = useUserCurrencyIcon();
@@ -62,8 +60,7 @@ export default function UnifiedCheckoutLayout({
     calculations.totalPrice + shippingFee + taxAmount;
 
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
   const handleQuantityChange = (
     productId: string,
@@ -73,7 +70,6 @@ export default function UnifiedCheckoutLayout({
     if (mode === "checkout") {
       updateQuantity(productId, variantId, newQuantity);
     } else if (mode === "confirm" && onQuantityChange) {
-      // Use the passed handler for confirm mode
       onQuantityChange(productId, variantId, newQuantity);
     }
   };
@@ -82,7 +78,6 @@ export default function UnifiedCheckoutLayout({
     if (mode === "checkout") {
       removeItem(productId, variantId);
     } else if (mode === "confirm" && onRemoveItem) {
-      // Use the passed handler for confirm mode
       onRemoveItem(productId, variantId);
     }
   };
@@ -93,8 +88,6 @@ export default function UnifiedCheckoutLayout({
       clearStoreCart(storeSlug);
       setTimeout(() => setIsClearing(false), 300);
     }
-    // Note: For confirm mode, we don't have a clear cart functionality
-    // because it's based on token data, not the cart store
   };
 
   if (error) {

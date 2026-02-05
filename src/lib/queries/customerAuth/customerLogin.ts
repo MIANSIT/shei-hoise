@@ -1,3 +1,4 @@
+// lib/queries/customerAuth/customerLogin.ts - FIXED
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabase";
 
@@ -33,9 +34,16 @@ export const authQueries = {
       }
 
       const customer = customers[0];
-      const storeSlugs = customer.store_customer_links?.map(
-        (link: any) => link.stores?.store_slug
-      ).filter(Boolean) || [];
+      
+      // Extract store slugs safely
+      const storeSlugs: string[] = [];
+      if (customer.store_customer_links && Array.isArray(customer.store_customer_links)) {
+        customer.store_customer_links.forEach((link: any) => {
+          if (link.stores?.store_slug) {
+            storeSlugs.push(link.stores.store_slug);
+          }
+        });
+      }
 
       return {
         id: customer.id,

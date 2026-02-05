@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/components/products/checkout/UserCheckoutForm.tsx - FIXED VERSION
+// app/components/products/checkout/UserCheckoutForm.tsx - SIMPLIFIED VERSION
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -16,17 +16,9 @@ import {
   CustomerCheckoutFormValues,
 } from "@/lib/schema/checkoutSchema";
 import { CountryFlag } from "../../common/CountryFlag";
-import { PasswordStrength } from "../../common/PasswordStrength";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import {
-  Eye,
-  EyeOff,
-  ArrowRight,
-  UserPlus,
-  ShoppingBag,
-  Plus,
-} from "lucide-react";
+import { ArrowRight, ShoppingBag } from "lucide-react";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
 import { useParams } from "next/navigation";
@@ -41,6 +33,17 @@ interface CheckoutFormProps {
   mode?: "checkout" | "confirm";
 }
 
+// ✅ Simplified schema for checkout (phone-first, no email/password required)
+const simplifiedCheckoutSchema = customerCheckoutSchema.omit({
+  email: true,
+  password: true,
+});
+
+const simplifiedCheckoutSchemaForLoggedIn = customerCheckoutSchemaForLoggedIn.omit({
+  email: true,
+  password: true,
+});
+
 const CheckoutForm = ({
   onSubmit,
   isLoading = false,
@@ -53,65 +56,66 @@ const CheckoutForm = ({
   const params = useParams();
   const storeSlug = params.store_slug as string;
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordField, setShowPasswordField] = useState(false);
-  
   const { session, loading: authLoading } = useSupabaseAuth();
   const { formData, setFormData, setStoreSlug } = useCheckoutStore();
-  
+
   const isUserLoggedIn = useMemo(() => Boolean(session), [session]);
   const isSubmitting = isLoading;
-  
-  // ✅ CRITICAL FIX: Use ref to track initialization
+
   const isInitializedRef = useRef(false);
-  
-  // ✅ Memoized user data
-  const loggedInUserEmail = useMemo(() => session?.user?.email || null, [session]);
+
+  // User data
   const loggedInUserName = useMemo(() => {
     if (!session?.user?.user_metadata) return null;
     const meta = session.user.user_metadata;
-    return meta.first_name 
-      ? `${meta.first_name} ${meta.last_name || ''}`.trim()
+    return meta.first_name
+      ? `${meta.first_name} ${meta.last_name || ""}`.trim()
       : meta.full_name || null;
   }, [session]);
-  
-  const loggedInUserPhone = useMemo(() => 
-    session?.user?.user_metadata?.phone || null, 
-  [session]);
 
-  // ✅ Memoized default values - ONLY include static initial values
+  const loggedInUserPhone = useMemo(
+    () => session?.user?.user_metadata?.phone || null,
+    [session],
+  );
+
+  // ✅ Simplified default values (no email, no password)
   const defaultValues = useMemo(() => {
-    // For logged-in users, use session data
     if (isUserLoggedIn) {
       return {
         name: loggedInUserName || "",
-        email: loggedInUserEmail || "",
         phone: loggedInUserPhone || "",
-        password: "",
         country: "Bangladesh",
         city: "Dhaka",
         postCode: "",
         shippingAddress: "",
+        email: "", // Empty for logged-in users too
+        password: "", // Always empty
       };
     }
-    
-    // For guest users, use formData but don't include password in defaults
+
     return {
       name: formData.name || "",
-      email: formData.email || "",
       phone: formData.phone || "",
-      password: "", // ALWAYS empty for guest users on initialization
       country: formData.country || "Bangladesh",
       city: formData.city || "Dhaka",
       postCode: formData.postCode || "",
       shippingAddress: formData.shippingAddress || "",
+      email: "", // Always empty for guest
+      password: "", // Always empty
     };
-  }, [isUserLoggedIn, loggedInUserName, loggedInUserEmail, loggedInUserPhone, formData]);
+  }, [
+    isUserLoggedIn,
+    loggedInUserName,
+    loggedInUserPhone,
+    formData,
+  ]);
 
-  // ✅ Schema selection
-  const formSchema = useMemo(() => 
-    isUserLoggedIn ? customerCheckoutSchemaForLoggedIn : customerCheckoutSchema,
-    [isUserLoggedIn]
+  const formSchema = useMemo(
+    () =>
+      isUserLoggedIn
+        ? simplifiedCheckoutSchemaForLoggedIn
+        : simplifiedCheckoutSchema,
+    [isUserLoggedIn],
   );
 
   const form = useForm<CustomerCheckoutFormValues>({
@@ -122,40 +126,42 @@ const CheckoutForm = ({
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Optimized save function - DON'T save password to Zustand
-  const saveFormData = useCallback((values: Partial<CustomerCheckoutFormValues>) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      // ✅ CRITICAL: Don't save password to Zustand store
-      setFormData({
-        name: values.name || "",
-        email: values.email || "",
-        phone: values.phone || "",
-        country: values.country || "Bangladesh",
-        city: values.city || "Dhaka",
-        shippingAddress: values.shippingAddress || "",
-        postCode: values.postCode || "",
-      });
-    }, 3000);
-  }, [setFormData]);
+  // ✅ Save function - only saves phone, name, and address
+  const saveFormData = useCallback(
+    (values: Partial<CustomerCheckoutFormValues>) => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
 
-  // ✅ Handle form submission
+      saveTimeoutRef.current = setTimeout(() => {
+        setFormData({
+          name: values.name || "",
+          email: "", // Don't save email
+          phone: values.phone || "",
+          country: values.country || "Bangladesh",
+          city: values.city || "Dhaka",
+          shippingAddress: values.shippingAddress || "",
+          postCode: values.postCode || "",
+        });
+      }, 1000);
+    },
+    [setFormData],
+  );
+
+  // Handle form submission
   const handleSubmit = useCallback(
     (values: CustomerCheckoutFormValues) => {
-      
+      // Always submit with empty email and password
+      const submitValues = {
+        ...values,
+        email: "", // Always empty
+        password: "", // Always empty
+      };
 
-      // For logged-in users, ensure password is empty
-      const submitValues = isUserLoggedIn 
-        ? { ...values, password: "" }
-        : { ...values, password: values.password || "" };
-
-      // Save to Zustand (without password)
+      // Save to Zustand
       setFormData({
         name: values.name,
-        email: values.email,
+        email: "", // Don't save email
         phone: values.phone,
         country: values.country,
         city: values.city,
@@ -166,10 +172,10 @@ const CheckoutForm = ({
       setStoreSlug(storeSlug);
       onSubmit(submitValues);
     },
-    [onSubmit, isUserLoggedIn, setFormData, setStoreSlug, storeSlug]
+    [onSubmit, setFormData, setStoreSlug, storeSlug],
   );
 
-  // ✅ Phone formatting
+  // Phone formatting
   const formatPhoneNumber = useCallback((value: string) => {
     const digitsOnly = value.replace(/\D/g, "");
     let cleaned = digitsOnly;
@@ -181,12 +187,11 @@ const CheckoutForm = ({
     return cleaned.slice(0, 11);
   }, []);
 
-  // ✅ Watch form changes with debounce - EXCLUDE password field
+  // Watch form changes - save data
   useEffect(() => {
     const subscription = form.watch((value) => {
-      // Create a copy without password to prevent it from being saved
-      const { password, ...valuesWithoutPassword } = value;
-      saveFormData(valuesWithoutPassword);
+      const { email, password, ...valuesToSave } = value;
+      saveFormData(valuesToSave);
     });
 
     return () => {
@@ -197,48 +202,48 @@ const CheckoutForm = ({
     };
   }, [form, saveFormData]);
 
-  // ✅ Initialize form ONCE on mount
+  // Initialize form ONCE on mount
   useEffect(() => {
     if (!isInitializedRef.current) {
       isInitializedRef.current = true;
-      
-      
-      
+
+      // Pre-fill phone from Zustand if available
+      if (formData.phone) {
+        form.setValue("phone", formData.phone);
+      }
+
       form.reset(defaultValues);
       setStoreSlug(storeSlug);
     }
-  }, []); // ✅ Empty dependency array - only run once on mount
+  }, []);
 
-  // ✅ Handle auth state changes separately
+  // Handle auth state changes
   useEffect(() => {
     if (isUserLoggedIn && isInitializedRef.current) {
       const currentValues = form.getValues();
       form.reset({
         ...currentValues,
         name: loggedInUserName || currentValues.name,
-        email: loggedInUserEmail || currentValues.email,
         phone: loggedInUserPhone || currentValues.phone,
       });
     }
-  }, [isUserLoggedIn, loggedInUserName, loggedInUserEmail, loggedInUserPhone, form]);
+  }, [
+    isUserLoggedIn,
+    loggedInUserName,
+    loggedInUserPhone,
+    form,
+  ]);
 
-  const watchedPassword = form.watch("password") || "";
-  
-  // ✅ FIXED: getButtonText is now just a string, not a function
+  const watchedPhone = form.watch("phone") || "";
+
+  // Button text
   const getButtonText = useMemo(() => {
-    if (isUserLoggedIn) return "Place Order";
-    return watchedPassword && watchedPassword.length > 0 
-      ? "Create Account & Place Order" 
-      : "Place Order";
-  }, [isUserLoggedIn, watchedPassword]);
+    return "Place Order";
+  }, []);
 
-  // ✅ FIXED: Create a separate function to get loading text
   const getLoadingText = useMemo(() => {
-    if (isUserLoggedIn) return "Placing Order...";
-    return watchedPassword && watchedPassword.length > 0 
-      ? "Creating Account & Placing Order..." 
-      : "Placing Order...";
-  }, [isUserLoggedIn, watchedPassword]);
+    return "Placing Order...";
+  }, []);
 
   if (authLoading) {
     return <CheckoutFormSkeleton />;
@@ -248,7 +253,7 @@ const CheckoutForm = ({
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
       {/* Name Field */}
       <div className="grid gap-2">
-        <Label htmlFor="name">Full Name</Label>
+        <Label htmlFor="name">Full Name *</Label>
         <Input
           {...form.register("name")}
           placeholder="John Doe"
@@ -261,25 +266,12 @@ const CheckoutForm = ({
         )}
       </div>
 
-      {/* Email + Phone fields */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            {...form.register("email")}
-            placeholder="john.doe@example.com"
-            type="email"
-            disabled={isSubmitting}
-          />
-          {form.formState.errors.email && (
-            <p className="text-sm text-red-500 mt-1">
-              {form.formState.errors.email.message}
-            </p>
-          )}
-        </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="phone">Phone Number</Label>
+      {/* Phone field - SIMPLE & PROMINENT */}
+      <div className="grid gap-2">
+        <Label htmlFor="phone" className="text-base font-semibold">
+          Phone Number *
+        </Label>
+        <div className="relative">
           <Input
             {...form.register("phone")}
             placeholder="01XXXXXXXXX"
@@ -288,107 +280,30 @@ const CheckoutForm = ({
             onChange={(e) => {
               const formattedValue = formatPhoneNumber(e.target.value);
               form.setValue("phone", formattedValue, { shouldValidate: true });
-            }}
-          />
-          {form.formState.errors.phone && (
-            <p className="text-sm text-red-500 mt-1">
-              {form.formState.errors.phone.message}
-            </p>
-          )}
-        </div>
-      </div>
 
-      {/* ✅ FIXED: Password section - Only for non-logged-in users */}
-      {!isUserLoggedIn && (
-        <div className="space-y-3">
-          {!showPasswordField ? (
-            <div className="flex justify-start">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowPasswordField(true);
-                  // Focus on password field when shown
-                  setTimeout(() => {
-                    const passwordInput = document.querySelector(
-                      'input[name="password"]'
-                    ) as HTMLInputElement;
-                    if (passwordInput) {
-                      passwordInput.focus();
-                    }
-                  }, 100);
-                }}
-                disabled={isSubmitting}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Password (Optional)
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Account Password (Optional)</Label>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto"
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    const emailValue = form.getValues().email;
-                    if (emailValue) {
-                      window.location.href = `/${storeSlug}/login?redirect=${encodeURIComponent(
-                        currentPath
-                      )}&email=${encodeURIComponent(emailValue)}`;
-                    } else {
-                      window.location.href = `/${storeSlug}/login?redirect=${encodeURIComponent(
-                        currentPath
-                      )}`;
-                    }
-                  }}
-                >
-                  Already have an account? Login
-                </Button>
-              </div>
-              <div className="relative">
-                <Input
-                  {...form.register("password")}
-                  placeholder="Enter your password (optional)"
-                  type={showPassword ? "text" : "password"}
-                  disabled={isSubmitting}
-                  className="pr-10"
-                  value={watchedPassword} // ✅ Controlled value
-                  onChange={(e) => {
-                    form.setValue("password", e.target.value, { shouldValidate: true });
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isSubmitting}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {form.formState.errors.password && (
-                <p className="text-sm text-red-500 mt-1">
-                  {form.formState.errors.password.message}
-                </p>
-              )}
-              <PasswordStrength password={watchedPassword} />
-              <p className="text-xs text-muted-foreground">
-                Creating a password will save your information for faster checkout next time.
-              </p>
-            </div>
-          )}
+              // Immediately save phone to Zustand
+              saveFormData({
+                ...form.getValues(),
+                phone: formattedValue,
+              });
+            }}
+            className="h-12 text-lg"
+          />
         </div>
-      )}
+        {form.formState.errors.phone && (
+          <p className="text-sm text-red-500 mt-1">
+            {form.formState.errors.phone.message}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          We&apos;ll use this to contact you about your order
+        </p>
+      </div>
 
       {/* Address fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="country">Country</Label>
+          <Label htmlFor="country">Country *</Label>
           <CountryFlag
             value={form.watch("country")}
             onValueChange={(value) => form.setValue("country", value)}
@@ -403,7 +318,7 @@ const CheckoutForm = ({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="city">City</Label>
+          <Label htmlFor="city">City *</Label>
           <Input
             {...form.register("city")}
             placeholder="Dhaka"
@@ -433,27 +348,31 @@ const CheckoutForm = ({
 
       {/* Shipping Address */}
       <div className="grid gap-2">
-        <Label htmlFor="shippingAddress">Shipping Address</Label>
+        <Label htmlFor="shippingAddress">Shipping Address *</Label>
         <Input
           {...form.register("shippingAddress")}
-          placeholder="123 Main St, Apt 4B"
+          placeholder="House #123, Road #456, Area Name"
           disabled={isSubmitting}
+          className="h-12"
         />
         {form.formState.errors.shippingAddress && (
           <p className="text-sm text-red-500 mt-1">
             {form.formState.errors.shippingAddress.message}
           </p>
         )}
+        <p className="text-xs text-muted-foreground">
+          Please provide detailed address for delivery
+        </p>
       </div>
 
       {/* Submit Button */}
       <Button
         type="submit"
-        className="w-full mt-6 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
+        className="w-full mt-6 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300 h-14 text-lg font-semibold"
         disabled={isSubmitting || !form.formState.isValid}
       >
         {isSubmitting ? (
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-3">
             <SheiLoader
               size="sm"
               loaderColor="white"
@@ -461,16 +380,29 @@ const CheckoutForm = ({
             />
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-2">
-            {!isUserLoggedIn && watchedPassword && watchedPassword.length > 0 && (
-              <UserPlus className="h-4 w-4" />
-            )}
-            <ShoppingBag className="h-4 w-4" />
+          <div className="flex items-center justify-center gap-3">
+            <ShoppingBag className="h-5 w-5" />
             {getButtonText}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-5 w-5" />
           </div>
         )}
       </Button>
+
+      {/* ✅ Option to create account later */}
+      <div className="text-center pt-2">
+        <p className="text-sm text-muted-foreground">
+          Want to save your details for faster checkout?{" "}
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = `/${storeSlug}/login?phone=${encodeURIComponent(watchedPhone)}`;
+            }}
+            className="text-blue-600 hover:text-blue-800 font-medium underline"
+          >
+            Create account later
+          </button>
+        </p>
+      </div>
     </form>
   );
 };

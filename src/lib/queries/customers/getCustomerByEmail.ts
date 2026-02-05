@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/queries/customers/getCustomerByEmail.ts - UPDATED
+// lib/queries/customers/getCustomerByEmail.ts - FIXED VERSION
 import { supabaseAdmin } from "@/lib/supabase";
 
 // Define types for the store customer links
@@ -112,7 +112,7 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
       console.error("❌ Error fetching store links:", linksError);
     } else if (links) {
       // Transform the data to match our StoreLink interface
-      links.forEach(link => {
+      links.forEach((link: any) => {
         // Supabase returns stores as an array, but we expect a single object
         const storeData = Array.isArray(link.stores) ? link.stores[0] : link.stores;
         
@@ -129,7 +129,7 @@ export async function getCustomerByEmail(email: string, store_slug?: string): Pr
       
       // Filter by store_slug if provided
       if (store_slug) {
-        const filteredLinks = storeLinks.filter(link => 
+        const filteredLinks = storeLinks.filter((link: StoreLink) => 
           link.stores && link.stores.store_slug === store_slug
         );
         
@@ -234,14 +234,14 @@ export async function getCustomerByAuthUserId(authUserId: string, store_slug?: s
       `)
       .eq("customer_id", customer.id);
 
-    const storeLinks: StoreLink[] = links?.map(link => ({
+    const storeLinks: StoreLink[] = (links || []).map((link: any) => ({
       store_id: link.store_id,
       stores: Array.isArray(link.stores) ? link.stores[0] : link.stores
-    })) || [];
+    }));
 
     // Filter by store_slug if provided
     const filteredLinks = store_slug 
-      ? storeLinks.filter(link => link.stores?.store_slug === store_slug)
+      ? storeLinks.filter((link: StoreLink) => link.stores?.store_slug === store_slug)
       : storeLinks;
 
     return {
@@ -252,5 +252,30 @@ export async function getCustomerByAuthUserId(authUserId: string, store_slug?: s
   } catch (error) {
     console.error("💥 Error in getCustomerByAuthUserId:", error);
     return null;
+  }
+}
+
+// NEW FUNCTION: Update customer email by phone
+export async function updateCustomerEmailByPhone(phone: string, email: string): Promise<boolean> {
+  try {
+    
+    const { error } = await supabaseAdmin
+      .from("store_customers")
+      .update({
+        email: email.toLowerCase(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("phone", phone.replace(/\D/g, ''));
+
+    if (error) {
+      console.error("❌ Failed to update customer email:", error);
+      return false;
+    }
+
+    
+    return true;
+  } catch (error) {
+    console.error("💥 Error updating customer email:", error);
+    return false;
   }
 }
