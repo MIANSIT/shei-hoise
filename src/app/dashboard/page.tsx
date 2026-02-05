@@ -1,4 +1,3 @@
-// app/components/admin/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,22 +8,19 @@ import { getProducts, Product } from "@/lib/queries/products/getProducts";
 import {
   DollarOutlined,
   ShoppingCartOutlined,
-  UserOutlined,
   LineChartOutlined,
   CheckCircleOutlined,
-  SyncOutlined,
-  CloseCircleOutlined,
   ExclamationOutlined,
+  CloseCircleOutlined,
   StarOutlined,
 } from "@ant-design/icons";
-
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import {
   useDashboardMetrics,
   TimePeriod,
 } from "@/lib/hook/useDashboardMetrics";
 
-// Define types that match the useDashboardMetrics hook
+// Product + Variant types
 interface ProductVariant {
   id: string;
   variant_name: string;
@@ -40,13 +36,9 @@ interface ProductVariant {
   is_low_stock: boolean;
 }
 
-// Use intersection type to preserve the original Product type
-type DashboardProduct = Product & {
-  variants: ProductVariant[];
-};
+type DashboardProduct = Product & { variants: ProductVariant[] };
 
 export default function DashboardPage() {
-  // 1. Fetch user and store data
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
   const {
     orders,
@@ -54,14 +46,11 @@ export default function DashboardPage() {
     error: ordersError,
   } = useStoreOrders(storeId || "");
 
-  // 2. State for products and time period
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("weekly");
   const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  // 3. Currency formatting
   const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
-
   const renderCurrency = (amount: number) => {
     if (!currency) return amount.toFixed(2);
     if (typeof CurrencyIcon === "string")
@@ -75,31 +64,26 @@ export default function DashboardPage() {
     return amount.toFixed(2);
   };
 
-  // 4. Fetch products when storeId is available
+  // Fetch products
   useEffect(() => {
-    if (storeId) {
-      const fetchProducts = async () => {
-        if (!storeId) return;
-
-        try {
-          setLoadingProducts(true);
-          const productsFetched = await getProducts(storeId);
-          // Cast to DashboardProduct - this should now work since we're using intersection type
-          setProducts(productsFetched as DashboardProduct[]);
-        } catch (err) {
-          console.error("Error fetching products:", err);
-        } finally {
-          setLoadingProducts(false);
-        }
-      };
-      fetchProducts();
-    }
+    if (!storeId) return;
+    const fetchProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const productsFetched = await getProducts(storeId);
+        setProducts(productsFetched as DashboardProduct[]);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProducts();
   }, [storeId]);
 
-  // 5. Calculate all metrics using custom hook
   const metrics = useDashboardMetrics(storeId, orders, products, timePeriod);
 
-  // 6. Loading and error states
+  // Loading and error states
   if (userLoading || ordersLoading || loadingProducts) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -111,102 +95,86 @@ export default function DashboardPage() {
     );
   }
 
-  if (userError) {
+  if (userError)
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <h2 className="text-red-800 font-semibold">Error fetching user data</h2>
         <p className="text-red-600 mt-2">{userError.message}</p>
       </div>
     );
-  }
-
-  if (ordersError) {
+  if (ordersError)
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <h2 className="text-red-800 font-semibold">Error fetching orders</h2>
-        <p className="text-red-600 mt-2">{ordersError}</p>
+        {/* <p className="text-red-600 mt-2">{ordersError.message}</p> */}
       </div>
     );
-  }
 
-  // 7. Helper functions for UI
+  // KPI cards helpers
   const getChangeType = (
-    percentage: number
+    percentage: number,
   ): "positive" | "negative" | "neutral" =>
     percentage > 0 ? "positive" : percentage < 0 ? "negative" : "neutral";
+  const getPeriodLabel = (period: TimePeriod): string =>
+    period === "weekly"
+      ? "This Week's"
+      : period === "monthly"
+        ? "This Month's"
+        : "This Year's";
+  const getComparisonText = (period: TimePeriod): string =>
+    period === "weekly"
+      ? "vs Last Week"
+      : period === "monthly"
+        ? "vs Last Month"
+        : "vs Last Year";
+  const formatChangeText = (percentage: number) =>
+    `${percentage > 0 ? "+" : ""}${percentage.toFixed(1)}%`;
 
-  // UPDATED: Based on OPTION 2 implementation (current vs previous)
-  const getPeriodLabel = (period: TimePeriod): string => {
-    switch (period) {
-     
-      case "weekly":
-        return "This Week's"; // Current: This Week (not Last Week)
-      case "monthly":
-        return "This Month's"; // Current: This Month (not Last Month)
-      case "yearly":
-        return "This Year's"; // Current: This Year (not Last Year)
-      default:
-        return "";
-    }
-  };
-
-  // UPDATED: Comparison text for OPTION 2
-  const getComparisonText = (period: TimePeriod): string => {
-    switch (period) {
-     
-      case "weekly":
-        return "vs Last Week"; // This Week vs Last Week (not Week Before Last)
-      case "monthly":
-        return "vs Last Month"; // This Month vs Last Month (not Month Before Last)
-      case "yearly":
-        return "vs Last Year"; // This Year vs Last Year (not Year Before Last)
-      default:
-        return "";
-    }
-  };
-
-  const formatChangeText = (percentage: number, period: TimePeriod) => {
-    const sign = percentage > 0 ? "+" : "";
-    return `${sign}${percentage.toFixed(1)}% ${getComparisonText(period)}`;
-  };
-
-  // 8. Stats for KPI cards - Now showing current period data
+  // KPI Cards
   const stats = [
     {
       title: `${getPeriodLabel(timePeriod)} Revenue (Paid)`,
       value: renderCurrency(metrics.revenue),
       icon: <DollarOutlined className="text-green-500" />,
-      change: formatChangeText(metrics.changePercentage.revenue, timePeriod),
+      change: `${formatChangeText(metrics.changePercentage.revenue)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.revenue),
       description: `From ${metrics.paidOrders.length} paid orders`,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Orders`,
+      title: `${getPeriodLabel(timePeriod)} Orders (All)`,
       value: metrics.orderCount.toString(),
       icon: <ShoppingCartOutlined className="text-blue-500" />,
-      change: formatChangeText(metrics.changePercentage.orders, timePeriod),
+      change: `${formatChangeText(metrics.changePercentage.orders)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.orders),
       description: `Total orders (${metrics.paidOrders.length} paid)`,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Avg Order Value (All Orders)`,
+      title: `${getPeriodLabel(timePeriod)} Avg Order Value`,
       value: renderCurrency(metrics.averageOrderValue),
       icon: <LineChartOutlined className="text-purple-500" />,
-      change: formatChangeText(metrics.changePercentage.aov, timePeriod),
+      change: `${formatChangeText(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.aov),
       description: "Revenue ÷ total orders",
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Gross Profit (Paid)`,
+      title: `${getPeriodLabel(timePeriod)} Paid AOV`,
+      value: renderCurrency(metrics.paidAverageOrderValue),
+      icon: <LineChartOutlined className="text-amber-500" />,
+      change: `${formatChangeText(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
+      changeType: getChangeType(metrics.changePercentage.aov),
+      description: "Revenue ÷ paid orders",
+    },
+    {
+      title: `${getPeriodLabel(timePeriod)} Gross Profit`,
       value: renderCurrency(metrics.grossProfit),
       icon: <DollarOutlined className="text-amber-500" />,
-      change: formatChangeText(metrics.changePercentage.profit, timePeriod),
+      change: `${formatChangeText(metrics.changePercentage.profit)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.profit),
-      description: "Based on actual product costs & margins",
+      description: "Based on product cost and selling price",
     },
   ];
 
-  // 9. Order status cards (all orders)
+  // Order status cards
   const orderStatusCards = [
     {
       title: "Pending",
@@ -218,7 +186,7 @@ export default function DashboardPage() {
     {
       title: "Confirmed",
       value: metrics.orderStatusCounts.confirmed.toString(),
-      icon: <SyncOutlined className="text-blue-500" />,
+      icon: <CheckCircleOutlined className="text-blue-500" />,
       color: "bg-blue-50",
       textColor: "text-blue-700",
     },
@@ -245,10 +213,10 @@ export default function DashboardPage() {
     },
   ];
 
-  // 10. Inventory alerts
+  // Inventory alerts
   const inventoryAlerts = [
     {
-      title: "In Stock (Items)",
+      title: "In Stock (Units)",
       value: metrics.inStockCount.toString(),
       icon: <CheckCircleOutlined className="text-green-600" />,
       color: "bg-green-100",
@@ -256,36 +224,31 @@ export default function DashboardPage() {
     },
     {
       title: "Low Stock (Products)",
-      value: metrics.lowStockCount.toString(),
+      value: metrics.lowStockProductCount.toString(), // <-- use product-level count
       icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
       actionText: "Review",
     },
     {
       title: "Out of Stock (Products)",
-      value: metrics.outOfStockCount.toString(),
+      value: metrics.outOfStockProductCount.toString(), // <-- use product-level count
       icon: <CloseCircleOutlined className="text-red-600" />,
       color: "bg-red-100",
       actionText: "Restock Now",
     },
   ];
-  // 11. Customer stats - Note: New customers now shows for current period
+
+  // Customer stats
   const customerStats = [
     {
-      title: `New Customers (${
-       timePeriod === "weekly"
-          ? "This Week"
-          : timePeriod === "monthly"
-          ? "This Month"
-          : "This Year"
-      })`,
+      title: `New Customers (${getPeriodLabel(timePeriod)})`,
       value: metrics.customerSnapshot.newCustomers.toString(),
-      icon: <UserOutlined className="text-blue-500" />,
+      icon: <StarOutlined className="text-blue-500" />,
     },
     {
       title: "Returning Rate",
       value: `${metrics.customerSnapshot.returningRate}%`,
-      icon: <UserOutlined className="text-green-500" />,
+      icon: <StarOutlined className="text-green-500" />,
     },
     {
       title: "Top Customer",
@@ -295,7 +258,7 @@ export default function DashboardPage() {
     },
   ];
 
-  // 12. Order amounts by payment status
+  // Payment amounts
   const orderAmounts = [
     {
       title: "Pending Amount",
@@ -314,27 +277,14 @@ export default function DashboardPage() {
     },
   ];
 
-  // 13. Top products - Now shows top products for current period
-  const topProductsDisplay = metrics.topProducts.map((product) => ({
-    name: product.name,
-    revenue: product.revenue,
-    quantity: product.quantity,
+  const topProductsDisplay = metrics.topProducts.map((p) => ({
+    name: p.name,
+    revenue: p.revenue,
+    quantity: p.quantity,
   }));
+  const salesTrend = metrics.salesTrend;
+  const alerts = metrics.alerts;
 
-  // 14. Sales trend data
-  const enhancedSalesTrend = metrics.salesTrend.map((day) => ({
-    date: day.date,
-    sales: day.sales,
-  }));
-
-  // 15. Alerts
-  const enhancedAlerts = metrics.alerts.map((alert) => ({
-    type: alert.type,
-    message: alert.message,
-    count: alert.count,
-  }));
-
-  // 16. Render the main dashboard
   return (
     <div className="dashboard-container">
       <MainDashboard
@@ -342,10 +292,10 @@ export default function DashboardPage() {
         orderStatusCards={orderStatusCards}
         orderAmounts={orderAmounts}
         inventoryAlerts={inventoryAlerts}
-        salesTrend={enhancedSalesTrend}
+        salesTrend={salesTrend}
         topProducts={topProductsDisplay}
         customerStats={customerStats}
-        alerts={enhancedAlerts}
+        alerts={alerts}
         timePeriod={timePeriod}
         onTimePeriodChange={setTimePeriod}
       />

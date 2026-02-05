@@ -14,12 +14,12 @@ interface ProductStockCardProps {
   onStockChange: (
     productId: string,
     variantId: string | null,
-    value: number
+    value: number,
   ) => void;
   onSingleUpdate: (
     productId: string,
     variantId: string | null,
-    quantity: number
+    quantity: number,
   ) => void;
   isSelected: boolean;
   onSelectChange: (checked: boolean) => void;
@@ -70,7 +70,11 @@ const ProductStockCard: React.FC<ProductStockCardProps> = ({
 
           {/* Product Status Badge */}
           {(product.status === "draft" || product.status === "inactive") && (
-            <div className="absolute -top-2 left-0 bg-yellow-400 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+            <div
+              className={`absolute -top-2 left-0 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md
+    ${product.status === "draft" ? "bg-yellow-400" : "bg-red-500"}
+  `}
+            >
               {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
             </div>
           )}
@@ -79,7 +83,13 @@ const ProductStockCard: React.FC<ProductStockCardProps> = ({
           {shouldHighlight && (
             <div className="absolute -bottom-2 right-0 bg-linear-to-r from-orange-500 to-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md font-bold flex items-center gap-1">
               <TrendingDown className="w-3 h-3" />
-              <span>
+              <span
+                title={
+                  product.hasLowStockVariant
+                    ? "One or more variants below threshold"
+                    : `Current stock: ${product.stock}/${product.lowStockThreshold}`
+                }
+              >
                 {product.hasLowStockVariant ? "HAS LOW STOCK" : "LOW STOCK"}
               </span>
             </div>
@@ -108,8 +118,8 @@ const ProductStockCard: React.FC<ProductStockCardProps> = ({
         {product.hasLowStockVariant
           ? "One or more variants are low on stock"
           : product.isLowStock
-          ? `Stock level critical (${product.stock}/${product.lowStockThreshold})`
-          : "Stock Management"}
+            ? `Stock level critical (${product.stock}/${product.lowStockThreshold})`
+            : "Stock Management"}
       </p>
 
       {/* Content Section */}
@@ -129,7 +139,9 @@ const ProductStockCard: React.FC<ProductStockCardProps> = ({
                 statusBadge={
                   !variant.isActive
                     ? { text: "Inactive", color: "red" }
-                    : undefined
+                    : variant.isLowStock
+                      ? { text: "Low Stock", color: "orange" }
+                      : undefined
                 }
               />
             ))}
@@ -144,7 +156,7 @@ const ProductStockCard: React.FC<ProductStockCardProps> = ({
               onSingleUpdate(
                 product.id,
                 null,
-                editedStocks[product.id] ?? product.stock
+                editedStocks[product.id] ?? product.stock,
               )
             }
             showUpdateButton={product.id in editedStocks && !bulkActive}

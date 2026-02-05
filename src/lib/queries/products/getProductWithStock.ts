@@ -81,9 +81,9 @@ export async function getProductWithStock(
   searchText?: string,
   stockFilter: StockFilter = StockFilter.ALL,
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
 ): Promise<{ data: ProductWithStock[]; total: number }> {
-  // Build Supabase query
+  // fetch all products without range (pagination will be applied after filtering)
   let query = supabaseAdmin
     .from("products")
     .select(
@@ -109,22 +109,19 @@ export async function getProductWithStock(
       ),
       stores!inner(id, store_slug)
     `,
-      { count: "exact" }
+      { count: "exact" },
     )
-    .eq("stores.store_slug", storeSlug)
-    .range((page - 1) * pageSize, page * pageSize - 1);
+    .eq("stores.store_slug", storeSlug);
 
   if (searchText) {
     const pattern = `%${searchText}%`;
     query = query.or(`name.ilike.${pattern},sku.ilike.${pattern}`);
   }
 
-  const { data, count, error } = await query;
-
+  const { data, error } = await query;
   if (error) throw new Error(`Error fetching products: ${error.message}`);
   if (!data) return { data: [], total: 0 };
 
-  // Type-safe assertion
   const products = data as unknown as DatabaseProduct[];
 
   const mapped: ProductWithStock[] = products.map((p) => {
@@ -161,43 +158,55 @@ export async function getProductWithStock(
       base_price: Number(p.base_price),
       sku: p.sku ?? null,
       primary_image: primaryProductImage,
-      stock: productInventory,
+      stock: productInventory || {
+        quantity_available: 0,
+        quantity_reserved: 0,
+        low_stock_threshold: lowStockThreshold,
+        track_inventory: true,
+      },
       variants,
       status: p.status as ProductStatus,
     };
   });
 
-  // Apply stock filter
+  // --- Stock filtering ---
   const filtered = mapped.filter((product) => {
-    const productStockAvailable = product.stock?.quantity_available ?? 0;
-    const productLowStockThreshold = product.stock?.low_stock_threshold ?? 10;
+    const productStock = product.stock?.quantity_available ?? 0;
+    const productThreshold = product.stock?.low_stock_threshold ?? 10;
 
-    const variantStockAvailable = product.variants.map(
-      (v) => v.stock.quantity_available
-    );
+    const variantLowStock = product.variants.some((v) => {
+      const qty = v.stock.quantity_available;
+      const th = v.stock.low_stock_threshold ?? productThreshold;
+      return qty > 0 && qty <= th;
+    });
 
     switch (stockFilter) {
       case StockFilter.ALL:
         return true;
       case StockFilter.LOW:
-        return (
-          productStockAvailable <= productLowStockThreshold ||
-          variantStockAvailable.some((q) => q <= productLowStockThreshold)
-        );
+        const productLow = productStock > 0 && productStock <= productThreshold;
+        return productLow || variantLowStock;
       case StockFilter.IN:
-        return (
-          productStockAvailable > productLowStockThreshold ||
-          variantStockAvailable.some((q) => q > productLowStockThreshold)
+        const productIn = productStock > (productThreshold ?? 0);
+        const variantIn = product.variants.some(
+          (v) =>
+            v.stock.quantity_available >
+            (v.stock.low_stock_threshold ?? productThreshold),
         );
+        return productIn || variantIn;
       case StockFilter.OUT:
-        return (
-          productStockAvailable === 0 ||
-          variantStockAvailable.some((q) => q === 0)
+        const productOut = productStock === 0;
+        const variantOut = product.variants.some(
+          (v) => v.stock.quantity_available === 0,
         );
+        return productOut || variantOut;
       default:
         return true;
     }
   });
 
-  return { data: filtered, total: count ?? filtered.length };
+  const total = filtered.length;
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  return { data: paginated, total };
 }

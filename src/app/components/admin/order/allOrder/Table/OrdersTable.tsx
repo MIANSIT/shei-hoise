@@ -12,6 +12,7 @@ import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
 import MobileDetailedView from "../TableData/MobileDetailedView";
+import { getValidCurrency } from "@/lib/utils/currency";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -21,7 +22,9 @@ import {
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
 import { Check } from "lucide-react";
-import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
+// import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
+import InvoiceModal from "@/app/components/invoice/invoice";
+import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import dataService from "@/lib/queries/dataService";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
@@ -72,6 +75,13 @@ const OrdersTable: React.FC<Props> = ({
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
+
+  const { icon: currencyIcon } = useUserCurrencyIcon();
+
+  const { storeData } = useInvoiceData({
+    storeId: selectedOrderForInvoice?.store_id,
+  });
+
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
   const {
@@ -734,7 +744,7 @@ const OrdersTable: React.FC<Props> = ({
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-300">
-                    Payment Status: {" "}
+                    Payment Status:{" "}
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>
@@ -821,15 +831,40 @@ const OrdersTable: React.FC<Props> = ({
       </div>
 
       {/* Invoice Modal */}
-      {showInvoice && selectedOrderForInvoice && (
-        <AnimatedInvoice
-          isOpen={showInvoice}
+      {showInvoice && selectedOrderForInvoice && storeData && (
+        <InvoiceModal
+          open={showInvoice}
           onClose={() => {
             setShowInvoice(false);
             setSelectedOrderForInvoice(null);
           }}
-          orderData={selectedOrderForInvoice}
-          showCloseButton={true}
+          store={{
+            name: storeData.store_name,
+            address: storeData.business_address,
+            phone: storeData.contact_phone,
+            email: storeData.contact_email,
+          }}
+          orderId={selectedOrderForInvoice.order_number}
+          customer={{
+            name: getCustomerName(selectedOrderForInvoice),
+            contact: getCustomerPhone(selectedOrderForInvoice),
+            address: getFullAddress(selectedOrderForInvoice),
+          }}
+          products={selectedOrderForInvoice.order_items.map((item) => ({
+            name: item.product_name,
+            qty: item.quantity,
+            price: item.unit_price,
+          }))}
+          // ✅ PRODUCTION-READY: Type-safe currency validation
+          currency={getValidCurrency(selectedOrderForInvoice.currency)}
+          subtotal={selectedOrderForInvoice.subtotal}
+          deliveryCharge={selectedOrderForInvoice.shipping_fee}
+          taxAmount={selectedOrderForInvoice.tax_amount}
+          discountAmount={selectedOrderForInvoice.discount_amount}
+          totalDue={selectedOrderForInvoice.total_amount}
+          paymentStatus={selectedOrderForInvoice.payment_status}
+          paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
+          orderStatus={selectedOrderForInvoice.status} // <-- map it here
         />
       )}
     </div>
