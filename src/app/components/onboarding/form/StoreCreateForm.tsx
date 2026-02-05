@@ -59,7 +59,13 @@ export default function StoreCreateForm({
       store_settings: {
         currency: Currency.BDT,
         tax_rate: 0,
-        shipping_fees: [{ name: "Inside Dhaka", price: 1, estimated_days: 1 }],
+        shipping_fees: [
+          {
+            name: "Inside Dhaka",
+            price: 0, // or you can use null/undefined if you adjust the schema
+            estimated_days: "",
+          },
+        ],
         min_order_amount: 0,
         processing_time_days: 1,
         return_policy_days: 7,
@@ -157,7 +163,7 @@ export default function StoreCreateForm({
     if (!currentFields || currentFields.length === 0) return;
     const isStepValid = await trigger(currentFields, { shouldFocus: true });
     if (!isStepValid) {
-      notify.error("Please fix validation errors before proceeding");
+      notify.error("Please Fill Up the required fields to proceed");
       return;
     }
     next();
@@ -171,7 +177,7 @@ export default function StoreCreateForm({
     } else {
       const isStepValid = await trigger(currentFields, { shouldFocus: true });
       if (isStepValid) goTo(stepIndex);
-      else notify.error("Please fix validation errors before proceeding");
+      else notify.error("Please Fill Up the required fields to proceed");
     }
   };
 

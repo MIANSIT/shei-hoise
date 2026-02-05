@@ -1,10 +1,10 @@
 "use client";
 
-import { Input, Divider } from "antd";
+import { Input, Divider, Tooltip } from "antd";
 import { Controller, Control, UseFormReturn } from "react-hook-form";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import { FormItemWrapper } from "./FormItemWrapper";
-import { SafetyOutlined } from "@ant-design/icons";
+import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -25,7 +25,14 @@ export default function UserInformation({ control, formState }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* First Name */}
         <FormItemWrapper
-          label={<span className="text-foreground">First Name</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              First Name
+              <Tooltip title="Enter your legal first name as it appears on official documents">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           required
           error={errors.first_name}
         >
@@ -44,7 +51,14 @@ export default function UserInformation({ control, formState }: Props) {
 
         {/* Last Name */}
         <FormItemWrapper
-          label={<span className="text-foreground">Last Name</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Last Name
+              <Tooltip title="Enter your legal last name (surname/family name)">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           required
           error={errors.last_name}
         >
@@ -63,7 +77,14 @@ export default function UserInformation({ control, formState }: Props) {
 
         {/* Email */}
         <FormItemWrapper
-          label={<span className="text-foreground">Email</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Email
+              <Tooltip title="Enter a valid email address for account Creation and notifications">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           required
           error={errors.email}
         >
@@ -83,7 +104,14 @@ export default function UserInformation({ control, formState }: Props) {
 
         {/* Phone */}
         <FormItemWrapper
-          label={<span className="text-foreground">Phone Number</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Phone Number
+              <Tooltip title="Enter your primary contact number (e.g., 018772211121)">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           required
           error={errors.phone}
         >
@@ -103,7 +131,14 @@ export default function UserInformation({ control, formState }: Props) {
 
         {/* City */}
         <FormItemWrapper
-          label={<span className="text-foreground">City</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              City
+              <Tooltip title="Enter the city where you currently reside">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           error={errors.profile?.city}
         >
           <Controller
@@ -121,7 +156,14 @@ export default function UserInformation({ control, formState }: Props) {
 
         {/* Country */}
         <FormItemWrapper
-          label={<span className="text-foreground">Country</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Country
+              <Tooltip title="Your country is auto-detected and cannot be changed">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           error={errors.profile?.country}
         >
           <Controller
