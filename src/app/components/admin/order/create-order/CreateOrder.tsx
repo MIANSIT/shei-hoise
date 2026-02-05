@@ -511,7 +511,7 @@ export default function CreateOrder() {
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
-              <Space direction="vertical">
+              <Space orientation="vertical">
                 <Text>No customers found from order history</Text>
                 <Button
                   type="primary"
