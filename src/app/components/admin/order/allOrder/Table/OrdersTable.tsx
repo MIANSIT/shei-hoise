@@ -17,6 +17,7 @@ import {
   DeleteOutlined,
   FileTextOutlined,
   ExclamationCircleOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
@@ -234,7 +235,21 @@ const OrdersTable: React.FC<Props> = ({
 
     return fullAddress || "Address not provided";
   };
-
+  const copyOrderNumber = async (orderNumber: string) => {
+    try {
+      await navigator.clipboard.writeText(orderNumber);
+      notification.success({
+        title: "Copied",
+        description: `Order #${orderNumber} copied to clipboard`,
+        duration: 1.5,
+      });
+    } catch {
+      notification.error({
+        title: "Failed",
+        description: "Could not copy order number",
+      });
+    }
+  };
   // ✅ FIXED: Get address for display in table (shorter version)
   const getDisplayAddress = (order: StoreOrder) => {
     const address = order.shipping_address;
@@ -265,9 +280,18 @@ const OrdersTable: React.FC<Props> = ({
       dataIndex: "order_number",
       key: "order_number",
       render: (orderNumber: string) => (
-        <span className="font-medium text-blue-600 text-sm">
-          #{orderNumber}
-        </span>
+        <Tooltip title="Click to copy">
+          <span
+            className="group inline-flex items-center gap-1 cursor-pointer text-blue-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              copyOrderNumber(orderNumber);
+            }}
+          >
+            #{orderNumber}
+            <CopyOutlined className="opacity-0 group-hover:opacity-100 text-xs" />
+          </span>
+        </Tooltip>
       ),
       width: 100,
       fixed: "left" as const,
@@ -434,7 +458,7 @@ const OrdersTable: React.FC<Props> = ({
       <Card
         key={order.id}
         className="mb-4 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow border relative"
-        style={{ padding: "12px" }}
+        style={{ padding: 0 }} // Add this
       >
         {/* Checkbox in top-right corner */}
         <div className="absolute top-3 right-3">
@@ -734,7 +758,7 @@ const OrdersTable: React.FC<Props> = ({
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-300">
-                    Payment Status: {" "}
+                    Payment Status:{" "}
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>

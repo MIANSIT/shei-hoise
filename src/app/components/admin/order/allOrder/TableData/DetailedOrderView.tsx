@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { App } from "antd";
 import { StoreOrder } from "@/lib/types/order";
-// import  { StatusType } from "../StatusFilter/StatusTag";
 import {
   ClipboardCheck,
   CreditCard,
@@ -27,11 +26,8 @@ interface Props {
 const DetailedOrderView: React.FC<Props> = ({ order }) => {
   const { message } = App.useApp();
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
 
   const address = order.shipping_address;
   const billingAddress = order.billing_address;
@@ -42,11 +38,6 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
   const isCancelled = order.status === "cancelled";
   const isPaid = order.payment_status === "paid";
-
-  // const deliveryOption: StatusType = (order.delivery_option ||
-  //   "courier") as StatusType;
-  // const paymentMethod: StatusType =
-  //   (order.payment_method as StatusType) || "cod";
 
   const copyToClipboard = (text: string, label: string, fieldId: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -97,22 +88,40 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
   };
 
   const calculatedSubtotal = calculateSubtotal();
-  // const totalQuantity = order.order_items.reduce(
-  //   (sum, item) => sum + item.quantity,
-  //   0
-  // );
-
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
   return (
     <div className="space-y-3 sm:space-y-4 w-full">
       {/* Premium Header */}
+      {/* Premium Header */}
       <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-xl p-4 text-white shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-bold">Order #{order.order_number}</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  copyToClipboard(
+                    order.order_number,
+                    "Order number",
+                    "order-number",
+                  )
+                }
+                className="flex items-center gap-2 hover:bg-blue-700/30 px-2 py-1 rounded transition-colors cursor-pointer group"
+              >
+                <h1 className="text-lg font-bold">
+                  Order #{order.order_number}
+                </h1>
+                {copiedField === "order-number" ? (
+                  <Check size={16} className="text-green-300" />
+                ) : (
+                  <Copy
+                    size={16}
+                    className="text-blue-200 group-hover:text-white"
+                  />
+                )}
+              </button>
+            </div>
             <p className="text-blue-100 text-xs flex items-center gap-1 mt-1">
               <Calendar size={12} />
               Placed on {new Date(order.created_at).toLocaleDateString()}
@@ -157,7 +166,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               <div className="text-sm font-bold text-gray-900 dark:text-white">
                 {order.order_items.reduce(
                   (sum, item) => sum + item.quantity,
-                  0
+                  0,
                 )}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -193,7 +202,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 {order.shipping_fee === 0
                   ? "Free Shipping"
                   : ` ${displayCurrencyIconSafe}${order.shipping_fee.toFixed(
-                      2
+                      2,
                     )}`}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -302,6 +311,11 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             const total = discountedPrice * item.quantity;
             const hasDiscount = discountedPrice < basePrice;
 
+            // Get SKUs from the item - using optional chaining since these are optional properties
+            const productSku = item.product_sku || "";
+            const variantSku = item.variant_sku || "";
+            const displaySku = variantSku || productSku;
+
             return (
               <div
                 key={item.id}
@@ -309,14 +323,36 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               >
                 <div className="flex items-start gap-3 flex-1">
                   <div className="flex-1">
-                    <div className="font-medium text-gray-800 dark:text-gray-100 text-sm">
-                      {item.product_name}
+                    {/* Product Name and SKU */}
+                    <div className="flex flex-col gap-1">
+                      <div className="font-medium text-gray-800 dark:text-gray-100 text-sm">
+                        {item.product_name}
+                      </div>
+
+                      {/* Display SKU if available */}
+                      {displaySku && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          SKU:{" "}
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            {displaySku}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
+                    {/* Variant Information */}
                     {variant && (
                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         <span className="font-medium text-gray-700 dark:text-gray-300">
                           {variant.variant_name}
+                          {/* Show variant SKU if it's different from product SKU */}
+                          {variantSku &&
+                            productSku &&
+                            variantSku !== productSku && (
+                              <span className="ml-2 text-gray-500">
+                                ({variantSku})
+                              </span>
+                            )}
                         </span>
                       </div>
                     )}
@@ -377,7 +413,6 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Financial Summary */}
-      {/* Pricing Breakdown */}
       <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
         <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
           <FileText className="w-4 h-4 text-blue-500" />
@@ -390,7 +425,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               item.variant_details?.base_price ?? item.unit_price;
             const discountedPrice = item.unit_price;
             const hasDiscount = discountedPrice < basePrice;
-            // const subtotal = discountedPrice * item.quantity;
+            // Get SKU for display in financial summary
+            const productSku = item.product_sku || "";
+            const variantSku = item.variant_sku || "";
+            const displaySku = variantSku || productSku;
 
             return (
               <div
@@ -398,9 +436,16 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 className="p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-white/50 dark:bg-gray-800/30"
               >
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {item.product_name}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {item.product_name}
+                    </span>
+                    {displaySku && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        SKU: {displaySku}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
                     x{item.quantity}
                   </span>
@@ -420,81 +465,81 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               </div>
             );
           })}
+        </div>
+      </div>
 
-          {/* Financial Summary */}
-          <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" />
-              Financial Summary
-            </h3>
+      {/* Financial Summary Details */}
+      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-blue-500" />
+          Order Summary
+        </h3>
 
-            <div className="space-y-2">
-              {/* Subtotal */}
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Subtotal
-                </span>
-                <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
-                  {displayCurrencyIconSafe}
-                  {order.subtotal.toFixed(2)}
-                </span>
-              </div>
+        <div className="space-y-2">
+          {/* Subtotal */}
+          <div className="flex justify-between items-center py-1">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Subtotal
+            </span>
+            <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+              {displayCurrencyIconSafe}
+              {order.subtotal.toFixed(2)}
+            </span>
+          </div>
 
-              {/* Discount */}
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Discount
-                </span>
-                <span className="font-semibold text-sm text-green-600 dark:text-green-400">
-                  -{displayCurrencyIconSafe}
-                  {(order.discount_amount || 0).toFixed(2)}
-                </span>
-              </div>
+          {/* Discount */}
+          <div className="flex justify-between items-center py-1">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Discount
+            </span>
+            <span className="font-semibold text-sm text-green-600 dark:text-green-400">
+              -{displayCurrencyIconSafe}
+              {(order.discount_amount || 0).toFixed(2)}
+            </span>
+          </div>
 
-              {/* Shipping Fee */}
-              <div className="flex justify-between items-center py-1">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Shipping Fee
-                </span>
-                <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
-                  {displayCurrencyIconSafe}
-                  {(order.shipping_fee || 0).toFixed(2)}
-                </span>
-              </div>
+          {/* Shipping Fee */}
+          <div className="flex justify-between items-center py-1">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Shipping Fee
+            </span>
+            <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+              {displayCurrencyIconSafe}
+              {(order.shipping_fee || 0).toFixed(2)}
+            </span>
+          </div>
 
-              {/* Tax */}
-              {(order.tax_amount ?? 0) > 0 && (
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Tax
-                  </span>
-                  <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
-                    {displayCurrencyIconSafe}
-                    {(order.tax_amount || 0).toFixed(2)}
-                  </span>
-                </div>
-              )}
-              {(order.additional_charges ?? 0) > 0 && (
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Additional Charges
-                  </span>
-                  <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
-                    {displayCurrencyIconSafe}
-                    {(order.additional_charges ?? 0).toFixed(2)}
-                  </span>
-                </div>
-              )}
-
-              {/* Total Amount */}
-              <div className="flex justify-between items-center pt-2 font-semibold border-t border-gray-200 dark:border-gray-600">
-                <span className="text-sm">Total Amount</span>
-                <span className="text-blue-600 dark:text-blue-400 text-sm">
-                  {displayCurrencyIconSafe}
-                  {order.total_amount.toFixed(2)}
-                </span>
-              </div>
+          {/* Tax */}
+          {(order.tax_amount ?? 0) > 0 && (
+            <div className="flex justify-between items-center py-1">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Tax
+              </span>
+              <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                {displayCurrencyIconSafe}
+                {(order.tax_amount || 0).toFixed(2)}
+              </span>
             </div>
+          )}
+          {(order.additional_charges ?? 0) > 0 && (
+            <div className="flex justify-between items-center py-1">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Additional Charges
+              </span>
+              <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                {displayCurrencyIconSafe}
+                {(order.additional_charges ?? 0).toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          {/* Total Amount */}
+          <div className="flex justify-between items-center pt-2 font-semibold border-t border-gray-200 dark:border-gray-600">
+            <span className="text-sm">Total Amount</span>
+            <span className="text-blue-600 dark:text-blue-400 text-sm">
+              {displayCurrencyIconSafe}
+              {order.total_amount.toFixed(2)}
+            </span>
           </div>
         </div>
       </div>
@@ -525,7 +570,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                       copyToClipboard(
                         address.customer_name,
                         "Customer name",
-                        "customer-name"
+                        "customer-name",
                       )
                     }
                     className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
@@ -546,7 +591,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                       copyToClipboard(
                         address.phone,
                         "Phone number",
-                        "customer-phone"
+                        "customer-phone",
                       )
                     }
                     className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
@@ -568,7 +613,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                   copyToClipboard(
                     fullShippingAddress,
                     "Shipping address",
-                    "shipping-address"
+                    "shipping-address",
                   )
                 }
                 className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors cursor-pointer mt-1"
@@ -604,7 +649,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                         copyToClipboard(
                           billingAddress.customer_name,
                           "Billing name",
-                          "billing-name"
+                          "billing-name",
                         )
                       }
                       className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
@@ -625,7 +670,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                         copyToClipboard(
                           billingAddress.phone,
                           "Billing phone",
-                          "billing-phone"
+                          "billing-phone",
                         )
                       }
                       className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
@@ -647,7 +692,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                     copyToClipboard(
                       fullBillingAddress,
                       "Billing address",
-                      "billing-address"
+                      "billing-address",
                     )
                   }
                   className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors cursor-pointer mt-1"
