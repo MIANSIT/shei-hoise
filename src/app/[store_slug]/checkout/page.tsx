@@ -64,7 +64,6 @@ export default function CheckoutPage() {
   const {
     processOrder,
     loading: orderLoading,
-    error: orderError,
   } = useOrderProcess(store_slug);
 
   const { session, loading: authLoading } = useSupabaseAuth();
@@ -246,10 +245,12 @@ export default function CheckoutPage() {
     },
     [
       cartItems,
-      calculations,
+      calculations.totalPrice,
+      calculations.subtotal,
       shippingFee,
       taxAmount,
       invoiceStoreData,
+      displayCurrencyIconSafe,
       store_slug,
       selectedShipping,
     ],
