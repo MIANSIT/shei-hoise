@@ -77,7 +77,7 @@ const OrdersTable: React.FC<Props> = ({
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
 
-  const { icon: currencyIcon } = useUserCurrencyIcon();
+  // const { icon: currencyIcon } = useUserCurrencyIcon();
 
   const { storeData } = useInvoiceData({
     storeId: selectedOrderForInvoice?.store_id,
@@ -327,9 +327,7 @@ const OrdersTable: React.FC<Props> = ({
             <div className="font-medium text-sm truncate max-w-25 lg:max-w-30">
               {getCustomerName(order)}
             </div>
-            <div className="text-xs text-gray-500 truncate max-w-25 lg:max-w-30">
-              {getCustomerEmail(order)}
-            </div>
+           
           </div>
         </Space>
       ),
@@ -536,9 +534,7 @@ const OrdersTable: React.FC<Props> = ({
             <div className="font-semibold text-sm truncate">
               {getCustomerName(order)}
             </div>
-            <div className="text-xs text-gray-600 truncate">
-              {getCustomerEmail(order)}
-            </div>
+
             <div className="text-xs text-gray-600 truncate">
               {getCustomerPhone(order)}
             </div>
@@ -889,6 +885,7 @@ const OrdersTable: React.FC<Props> = ({
           paymentStatus={selectedOrderForInvoice.payment_status}
           paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
           orderStatus={selectedOrderForInvoice.status} // <-- map it here
+          showPOSButton={false} // Hide POS button
         />
       )}
     </div>

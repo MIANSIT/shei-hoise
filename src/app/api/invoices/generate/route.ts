@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Currency, CURRENCY_NAMES, CURRENCY_ICONS } from "@/lib/types/enums";
+import { Currency, CURRENCY_NAMES } from "@/lib/types/enums";
 
 interface Product {
   name: string;
@@ -211,7 +211,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     { header: "Total", dataKey: "total", width: 35 },
   ];
 
-  const tableData = products.map((product, index) => ({
+  const tableData = products.map((product) => ({
     item: product.name,
     qty: product.qty.toString(),
     price: product.price.toFixed(2),
@@ -257,7 +257,6 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   const finalY = (pdf as any).lastAutoTable.finalY + 10;
 
   // ==================== SUMMARY SECTION ====================
-  const CURRENCY_ICON = CURRENCY_ICONS[currency as Currency] || "৳";
 
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(11);
@@ -329,7 +328,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   const footerY = pageWidth > 200 ? 280 : 190; // Adjust based on page size
 
-  pdf.text("Thank you for your business!", pageWidth / 2, footerY, {
+  pdf.text(`Thank you from ${store.name}`, pageWidth / 2, footerY, {
     align: "center",
   });
 
@@ -362,7 +361,6 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     orderId,
     customer,
     products,
-    currency,
     subtotal,
     deliveryCharge,
     taxAmount,
@@ -392,7 +390,6 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   const pageWidth = 80;
   const margin = 3;
   let y = margin;
-  const lineHeight = 4;
   const smallLineHeight = 3.5;
 
   // Use monospaced font for better alignment

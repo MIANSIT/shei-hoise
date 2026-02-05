@@ -3,10 +3,7 @@
 import React from "react";
 import { InputNumber, Tag, Tooltip, Checkbox } from "antd";
 import Image from "next/image";
-import {
-  ProductRow,
-  VariantRow,
-} from "@/lib/hook/products/stock/mapProductsForTable";
+import { ProductRow } from "@/lib/hook/products/stock/mapProductsForTable";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { ProductStatus } from "@/lib/types/enums";
 
@@ -75,13 +72,20 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
               <div className="flex flex-col flex-1">
                 <span className="font-semibold text-sm">{product.title}</span>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {(product.isLowStock || product.hasLowStockVariant) && (
-                    <Tag color="red" className="text-xs">
-                      {product.hasLowStockVariant
-                        ? "Has Low Stock"
-                        : "Low Stock"}
+                  {product.isOutOfStock ? (
+                    <Tag color="volcano" className="text-xs">
+                      Out of Stock
                     </Tag>
-                  )}
+                  ) : product.hasLowStockVariant ? (
+                    <Tag color="red" className="text-xs">
+                      Has Low Stock
+                    </Tag>
+                  ) : product.isLowStock ? (
+                    <Tag color="red" className="text-xs">
+                      Low Stock
+                    </Tag>
+                  ) : null}
+
                   {product.isInactiveProduct && (
                     <Tag
                       color={
@@ -108,13 +112,25 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                     onStockChange(product.id, null, Number(value ?? 0))
                   }
                   className={`w-20 text-center font-bold ${
-                    product.isLowStock
-                      ? "bg-red-50 border-red-300 text-red-700"
-                      : ""
+                    product.isOutOfStock
+                      ? "bg-gray-100 border-gray-300 text-gray-500"
+                      : product.isLowStock
+                        ? "bg-red-50 border-red-300 text-red-700"
+                        : ""
                   }`}
-                  status={product.isLowStock ? "warning" : undefined}
+                  status={
+                    product.isOutOfStock
+                      ? undefined
+                      : product.isLowStock
+                        ? "warning"
+                        : undefined
+                  }
                 />
-                {product.isLowStock && (
+                {product.isOutOfStock ? (
+                  <Tag color="volcano" className="text-xs">
+                    Out
+                  </Tag>
+                ) : product.isLowStock ? (
                   <Tooltip
                     title={`Below threshold (${product.lowStockThreshold})`}
                   >
@@ -122,7 +138,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                       Low
                     </span>
                   </Tooltip>
-                )}
+                ) : null}
                 {product.id in editedStocks && !bulkActive && (
                   <SheiButton
                     size="small"
@@ -152,11 +168,15 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                             Inactive
                           </Tag>
                         )}
-                        {variant.isLowStock && (
+                        {variant.isOutOfStock ? (
+                          <Tag color="volcano" className="text-xs">
+                            Out of Stock
+                          </Tag>
+                        ) : variant.isLowStock ? (
                           <Tag color="red" className="text-xs">
                             Low Stock
                           </Tag>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -171,11 +191,19 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           )
                         }
                         className={`w-20 text-center font-bold ${
-                          variant.isLowStock
-                            ? "bg-red-50 border-red-300 text-red-700"
-                            : ""
+                          variant.isOutOfStock
+                            ? "bg-gray-100 border-gray-300 text-gray-500"
+                            : variant.isLowStock
+                              ? "bg-red-50 border-red-300 text-red-700"
+                              : ""
                         }`}
-                        status={variant.isLowStock ? "warning" : undefined}
+                        status={
+                          variant.isOutOfStock
+                            ? undefined
+                            : variant.isLowStock
+                              ? "warning"
+                              : undefined
+                        }
                       />
                       {variant.id in editedStocks && !bulkActive && (
                         <SheiButton

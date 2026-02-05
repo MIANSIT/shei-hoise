@@ -54,8 +54,9 @@ const StockTable: React.FC<StockTableProps> = ({
         const imageUrl = record.imageUrl ?? null;
         const isProductRow = "variants" in record;
         const shouldHighlight = isProductRow
-          ? record.isLowStock || record.hasLowStockVariant
-          : record.isLowStock;
+          ? !record.isOutOfStock &&
+            (record.isLowStock || record.hasLowStockVariant)
+          : !record.isOutOfStock && record.isLowStock;
 
         return (
           <div className="relative">
@@ -73,9 +74,11 @@ const StockTable: React.FC<StockTableProps> = ({
             {shouldHighlight && (
               <Tooltip
                 title={
-                  isProductRow && record.hasLowStockVariant
-                    ? "Has low stock variants"
-                    : `Low stock! Threshold: ${record.lowStockThreshold}`
+                  record.isOutOfStock
+                    ? "Out of stock"
+                    : isProductRow && record.hasLowStockVariant
+                      ? "Has low stock variants"
+                      : `Low stock! Threshold: ${record.lowStockThreshold}`
                 }
               >
                 <div className="absolute -top-1 -right-1">
@@ -96,31 +99,41 @@ const StockTable: React.FC<StockTableProps> = ({
       className: "font-semibold text-primary",
       render: (title: string, record) => {
         const isProductRow = "variants" in record;
-        const shouldHighlight = isProductRow
-          ? record.isLowStock || record.hasLowStockVariant
-          : record.isLowStock;
 
-        const tooltipTitle =
-          isProductRow && record.hasLowStockVariant
-            ? "One or more variants are low on stock"
-            : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
+        const isOutOfStock = record.isOutOfStock;
+        const isLowStock = record.isLowStock;
+        const hasLowStockVariant = isProductRow && record.hasLowStockVariant;
 
         const isInactiveProduct = isProductRow && record.isInactiveProduct;
-        const isInactiveVariant = !isProductRow && !(record as VariantRow).isActive;
+        const isInactiveVariant =
+          !isProductRow && !(record as VariantRow).isActive;
+
+        // ✅ PRIORITY TOOLTIP
+        const tooltipTitle = isOutOfStock
+          ? "Out of stock"
+          : hasLowStockVariant
+            ? "One or more variants are low on stock"
+            : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
 
         return (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <span>{title}</span>
-              {shouldHighlight && (
+
+              {/* ✅ PRIORITY TAG RENDERING */}
+              {isOutOfStock ? (
+                <Tag color="volcano" className="text-xs">
+                  Out of Stock
+                </Tag>
+              ) : isLowStock || hasLowStockVariant ? (
                 <Tooltip title={tooltipTitle}>
                   <Tag color="red" className="text-xs">
-                    {isProductRow && record.hasLowStockVariant
-                      ? "Has Low Stock"
-                      : "Low Stock"}
+                    {hasLowStockVariant ? "Has Low Stock" : "Low Stock"}
                   </Tag>
                 </Tooltip>
-              )}
+              ) : null}
+
+              {/* Inactive / Draft */}
               {(isInactiveProduct || isInactiveVariant) && (
                 <Tag
                   color={
@@ -187,7 +200,9 @@ const StockTable: React.FC<StockTableProps> = ({
       key: "stock",
       render: (_value, record) => {
         const isProductRow = "variants" in record;
-        const parentId = isProductRow ? record.id : (record as VariantRow).productId;
+        const parentId = isProductRow
+          ? record.id
+          : (record as VariantRow).productId;
         const variantId = isProductRow ? null : record.id;
 
         if (isProductRow && record.variants?.length) {
@@ -213,20 +228,27 @@ const StockTable: React.FC<StockTableProps> = ({
               onChange={(value) =>
                 onStockChange(parentId, variantId, Number(value ?? 0))
               }
-              className={`w-20! text-center font-bold [&>input]:text-center [&>input]:font-bold ${
-                record.isLowStock
-                  ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
-                  : ""
-              }`}
+              className={`w-20! text-center font-bold
+  ${
+    record.isOutOfStock
+      ? "[&>input]:bg-gray-100 [&>input]:border-gray-300 [&>input]:text-gray-500"
+      : record.isLowStock
+        ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
+        : ""
+  }`}
               status={record.isLowStock ? "warning" : undefined}
             />
-            {record.isLowStock && (
+            {record.isOutOfStock ? (
+              <Tag color="volcano" className="text-xs">
+                Out of Stock
+              </Tag>
+            ) : record.isLowStock ? (
               <Tooltip title={`Below threshold (${record.lowStockThreshold})`}>
-                <span className="text-xs text-red-500 font-medium px-2 py-1 bg-red-50 rounded">
-                  Low
-                </span>
+                <Tag color="red" className="text-xs">
+                  Low Stock
+                </Tag>
               </Tooltip>
-            )}
+            ) : null}
             {showUpdateButton && (
               <SheiButton
                 size="small"
@@ -253,11 +275,16 @@ const StockTable: React.FC<StockTableProps> = ({
       pagination={false}
       loading={loading}
       rowClassName={(record) => {
-        const shouldHighlight =
+        if (record.isOutOfStock) {
+          return "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/40";
+        }
+
+        const shouldLowHighlight =
           "variants" in record
             ? record.isLowStock || record.hasLowStockVariant
             : record.isLowStock;
-        return shouldHighlight
+
+        return shouldLowHighlight
           ? "bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-800/20"
           : "";
       }}
@@ -281,15 +308,13 @@ const StockTable: React.FC<StockTableProps> = ({
               rowKey="id"
               pagination={false}
               rowClassName={(variantRecord) => {
-                const isVariantInactive =
-                  !("variants" in variantRecord) &&
-                  "isActive" in variantRecord &&
-                  !variantRecord.isActive;
-                return isVariantInactive
-                  ? "bg-gray-100 hover:bg-gray-200"
-                  : variantRecord.isLowStock
-                    ? "bg-red-50 hover:bg-red-100"
-                    : "";
+                if (variantRecord.isOutOfStock) {
+                  return "bg-gray-100 hover:bg-gray-200";
+                }
+
+                return variantRecord.isLowStock
+                  ? "bg-red-50 hover:bg-red-100"
+                  : "";
               }}
             />
           ) : null,

@@ -239,15 +239,17 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
             onUpdate={handleBulkUpdate}
             loading={bulkActive}
           />
-          <StockTableMobile
-            products={products}
-            editedStocks={editedStocks}
-            onStockChange={handleStockChange}
-            onSingleUpdate={handleSingleUpdate}
-            selectedRowKeys={selectedRowKeys}
-            onSelectChange={setSelectedRowKeys}
-            bulkActive={bulkActive}
-          />
+          <div className="block md:hidden">
+            <StockTableMobile
+              products={products}
+              editedStocks={editedStocks}
+              onStockChange={handleStockChange}
+              onSingleUpdate={handleSingleUpdate}
+              selectedRowKeys={selectedRowKeys}
+              onSelectChange={setSelectedRowKeys}
+              bulkActive={bulkActive}
+            />
+          </div>
           <div className="hidden md:block">
             <StockTable
               products={products}
