@@ -18,6 +18,7 @@ import {
   OrderStatus,
 } from "@/lib/types/enums";
 import html2canvas from "html2canvas";
+import { notification } from "antd";
 
 interface Product {
   name: string;
@@ -585,19 +586,20 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
   };
 
-  // ==================== POS PNG DOWNLOAD ====================
+  // ==================== THERMAL PRINTER OPTIMIZED POS RECEIPT ====================
+  // This version adds proper spacing and uses monospace alignment for better printing
   const downloadPOSImage = async () => {
     try {
       setIsGeneratingPDF(true);
 
-      // Create an iframe
+      // Create iframe with proper 80mm POS printer width
       const iframe = document.createElement("iframe");
       iframe.style.cssText = `
       position: fixed;
       top: -9999px;
       left: -9999px;
-      width: 384px;
-      height: 2000px;
+      width: 302px;
+      height: 3000px;
       border: none;
       visibility: hidden;
     `;
@@ -606,7 +608,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       const doc = iframe.contentDocument;
       if (!doc) throw new Error("Could not create iframe document");
 
-      // Create compact HTML
+      // Create HTML with proper monospace formatting for thermal printers
       doc.open();
       doc.write(`
       <!DOCTYPE html>
@@ -618,358 +620,387 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               margin: 0;
               padding: 0;
               border: 0;
-              font-size: 100%;
-              font: inherit;
-              vertical-align: baseline;
               box-sizing: border-box;
             }
             
             body {
               font-family: 'Courier New', Courier, monospace !important;
-              font-size: 24px !important;
-              line-height: 1 !important;
+              font-size: 13px !important;
+              line-height: 1.4 !important;
               color: #000000 !important;
               background-color: #ffffff !important;
-              padding: 15px;
-              width: 384px;
+              padding: 10px;
+              width: 302px;
+              margin: 0 auto;
+              letter-spacing: 0 !important;
+            }
+            
+            /* Container */
+            .receipt-container {
+              width: 100%;
+              max-width: 282px;
               margin: 0 auto;
             }
             
-            /* Title size */
+            /* Store title */
             .store-title {
-              font-size: 36px !important;
+              font-size: 18px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
-              margin-bottom: 5px !important;
-              line-height: 1.1 !important;
+              margin: 0 0 3px 0 !important;
+              line-height: 1.3 !important;
+              display: block !important;
+              width: 100% !important;
+              letter-spacing: 1px !important;
             }
             
-            /* Headers */
-            .section-header {
-              font-size: 28px !important;
-              font-weight: bold !important;
+            /* Center text */
+            .text-center {
               text-align: center !important;
-              margin: 8px 0 !important;
+              display: block !important;
+              width: 100% !important;
+              margin: 0 auto !important;
             }
             
-            /* Compact table */
+            /* Regular row */
+            .row {
+              margin-bottom: 3px !important;
+              line-height: 1.4 !important;
+              clear: both !important;
+            }
+            
+            /* Small text */
+            .small {
+              font-size: 12px !important;
+            }
+            
+            /* Bold text */
+            .bold {
+              font-weight: bold !important;
+            }
+            
+            /* Divider lines */
+            .divider {
+              border-top: 1px solid #000 !important;
+              margin: 5px 0 !important;
+              height: 0 !important;
+              width: 100% !important;
+            }
+            
+            .divider-thick {
+              border-top: 2px solid #000 !important;
+              margin: 5px 0 !important;
+              height: 0 !important;
+              width: 100% !important;
+            }
+            
+            .divider-dashed {
+              border-top: 1px dashed #000 !important;
+              margin: 5px 0 !important;
+              height: 0 !important;
+              width: 100% !important;
+            }
+            
+            /* Section header */
+            .section-header {
+              font-size: 15px !important;
+              font-weight: bold !important;
+              text-transform: uppercase !important;
+              text-align: center !important;
+              margin: 6px 0 5px 0 !important;
+              display: block !important;
+              width: 100% !important;
+            }
+            
+            /* Table for items */
             .items-table {
               width: 100% !important;
               border-collapse: collapse !important;
               margin: 5px 0 !important;
-              font-size: 24px !important;
+              table-layout: fixed !important;
             }
             
-            .items-table th {
+            .items-table thead th {
               font-weight: bold !important;
-              text-align: left !important;
               padding: 3px 2px !important;
               border-bottom: 1px solid #000 !important;
+              font-size: 12px !important;
+              text-align: left !important;
             }
             
-            .items-table td {
-              padding: 3px 2px !important;
-              vertical-align: top !important;
-            }
-            
-            /* Product name wrapping */
-            .product-name {
-              word-break: break-word !important;
-              overflow-wrap: break-word !important;
-              hyphens: auto !important;
-              white-space: normal !important;
-              max-width: 220px !important;
-            }
-            
-            /* Alignments */
-            .text-left { text-align: left !important; }
-            .text-center { text-align: center !important; }
-            .text-right { text-align: right !important; }
-            
-            /* Compact spacing */
-            .compact-row {
-              margin-bottom: 3px !important;
-            }
-            
-            .mb-1 { margin-bottom: 4px !important; }
-            .mb-2 { margin-bottom: 8px !important; }
-            .mt-1 { margin-top: 4px !important; }
-            .mt-2 { margin-top: 8px !important; }
-            
-            /* Divider line */
-            .divider {
-              display: block !important;
-              height: 1px !important;
-              background-color: #000 !important;
-              margin: 5px 0 !important;
-            }
-            
-            .divider-thick {
-              display: block !important;
-              height: 2px !important;
-              background-color: #000 !important;
-              margin: 5px 0 !important;
-            }
-            
-            /* Totals section - compact */
-            .totals-section {
-              margin-top: 8px !important;
-            }
-            
-            .total-row {
-              display: flex !important;
-              justify-content: space-between !important;
-              margin-bottom: 2px !important;
-              font-size: 26px !important;
-            }
-            
-            .grand-total {
-              font-size: 32px !important;
-              font-weight: bold !important;
-              margin-top: 5px !important;
-            }
-            
-            /* Payment info - compact */
-            .payment-info {
-              margin-top: 8px !important;
-              font-size: 24px !important;
+            .items-table thead th:nth-child(2) {
               text-align: center !important;
             }
             
-            /* Footer - compact */
+            .items-table thead th:nth-child(3) {
+              text-align: right !important;
+            }
+            
+            .items-table tbody td {
+              padding: 3px 2px !important;
+              vertical-align: top !important;
+              font-size: 12px !important;
+            }
+            
+            .items-table tbody td:nth-child(1) {
+              width: 50% !important;
+              text-align: left !important;
+              word-break: break-word !important;
+              white-space: normal !important;
+            }
+            
+            .items-table tbody td:nth-child(2) {
+              width: 15% !important;
+              text-align: center !important;
+            }
+            
+            .items-table tbody td:nth-child(3) {
+              width: 35% !important;
+              text-align: right !important;
+            }
+            
+            /* Price breakdown */
+            .price-small {
+              font-size: 10px !important;
+              color: #555 !important;
+              margin-top: 1px !important;
+            }
+            
+            /* Summary rows */
+            .summary {
+              margin: 8px 0 !important;
+            }
+            
+            .summary-row {
+              display: flex !important;
+              justify-content: space-between !important;
+              margin-bottom: 3px !important;
+              font-size: 13px !important;
+              line-height: 1.4 !important;
+            }
+            
+            .summary-row.grand-total {
+              font-size: 16px !important;
+              font-weight: bold !important;
+              margin-top: 5px !important;
+              padding-top: 3px !important;
+            }
+            
+            /* Payment info */
+            .payment-section {
+              margin: 8px 0 !important;
+              text-align: center !important;
+            }
+            
+            .payment-section .row {
+              text-align: center !important;
+            }
+            
+            /* Footer */
             .footer {
               margin-top: 10px !important;
               text-align: center !important;
-              font-size: 20px !important;
+              font-size: 11px !important;
+            }
+            
+            /* Ensure no overflow */
+            * {
+              max-width: 100% !important;
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
             }
           </style>
         </head>
         <body>
-          <!-- Store Info -->
-          <div class="text-center mb-1">
+          <div class="receipt-container">
+            
+            <!-- Store Header -->
             <div class="store-title">${store.name}</div>
-            ${store.address ? `<div class="compact-row">${store.address}</div>` : ""}
-            ${store.phone ? `<div class="compact-row">Tel: ${store.phone}</div>` : ""}
-          </div>
-          
-          <div class="divider"></div>
-          
-          <!-- Invoice Info -->
-          <div class="text-center mb-1">
-            <div class="compact-row"><strong>INVOICE:</strong> #${orderId}</div>
-            <div class="compact-row"><strong>DATE:</strong> ${new Date().toLocaleDateString("en-GB")}</div>
-            <div class="compact-row"><strong>TIME:</strong> ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
-          </div>
-          
-          <div class="divider"></div>
-          
-          <!-- Customer Info -->
-          <div class="mb-1">
-            <div class="compact-row"><strong>CUSTOMER:</strong> ${customer.name}</div>
-            ${customer.contact ? `<div class="compact-row"><strong>CONTACT:</strong> ${customer.contact}</div>` : ""}
-            ${customer.address ? `<div class="compact-row"><strong>ADDRESS:</strong> ${customer.address}</div>` : ""}
-          </div>
-          
-          <div class="divider-thick"></div>
-          
-          <!-- Items Header -->
-          <div class="section-header">ITEMS</div>
-          
-          <!-- Compact Items Table -->
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th class="text-left" style="width: 50%;">Item</th>
-                <th class="text-center" style="width: 15%;">Qty</th>
-                <th class="text-right" style="width: 35%;">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${products
-                .map((p) => {
-                  return `
-                  <tr>
-                    <td class="text-left product-name">${p.name}</td>
-                    <td class="text-center">${p.qty}</td>
-                    <td class="text-right">
-                      ${currencyIcon}${(p.qty * p.price).toFixed(2)}
-                      <div style="font-size: 20px; color: #666;">
-                        (${p.qty} × ${currencyIcon}${p.price.toFixed(2)})
-                      </div>
-                    </td>
-                  </tr>
-                `;
-                })
-                .join("")}
-            </tbody>
-          </table>
-          
-          <div class="divider-thick"></div>
-          
-          <!-- Compact Totals -->
-          <div class="totals-section">
-            <div class="total-row">
-              <span>Subtotal:</span>
-              <span>${currencyIcon}${subtotal.toFixed(2)}</span>
-            </div>
-            ${
-              discountAmount > 0
-                ? `
-              <div class="total-row">
-                <span>Discount:</span>
-                <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              deliveryCharge > 0
-                ? `
-              <div class="total-row">
-                <span>Delivery:</span>
-                <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              taxAmount > 0
-                ? `
-              <div class="total-row">
-                <span>Tax:</span>
-                <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
-              </div>
-            `
-                : ""
-            }
+            ${store.address ? `<div class="row text-center small">${store.address}</div>` : ""}
+            ${store.phone ? `<div class="row text-center small">Tel: ${store.phone}</div>` : ""}
             
             <div class="divider"></div>
             
-            <div class="total-row grand-total">
-              <span>TOTAL :</span>
-              <span>${currencyIcon}${totalDue.toFixed(2)}</span>
+            <!-- Invoice Info -->
+            <div class="row text-center bold">INVOICE: #${orderId}</div>
+            <div class="row text-center small">DATE: ${new Date().toLocaleDateString("en-GB")}</div>
+            <div class="row text-center small">TIME: ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+            
+            <div class="divider"></div>
+            
+            <!-- Customer Info -->
+            <div class="row"><span class="bold">CUSTOMER:</span> ${customer.name}</div>
+            ${customer.contact ? `<div class="row small">CONTACT: ${customer.contact}</div>` : ""}
+            ${customer.address ? `<div class="row small">ADDRESS: ${customer.address}</div>` : ""}
+            
+            <div class="divider-thick"></div>
+            
+            <!-- Items Header -->
+            <div class="section-header">ITEMS</div>
+            
+            <!-- Items Table -->
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${products
+                  .map((p) => {
+                    const itemTotal = (p.qty * p.price).toFixed(2);
+                    const unitPrice = p.price.toFixed(2);
+
+                    return `
+                    <tr>
+                      <td>${p.name}</td>
+                      <td style="text-align: center;">${p.qty}</td>
+                      <td style="text-align: right;">
+                        ${currencyIcon}${itemTotal}
+                        <div class="price-small">${p.qty} × ${currencyIcon}${unitPrice}</div>
+                      </td>
+                    </tr>
+                  `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+            
+            <div class="divider-thick"></div>
+            
+            <!-- Summary -->
+            <div class="summary">
+              <div class="summary-row">
+                <span>Subtotal:</span>
+                <span>${currencyIcon}${subtotal.toFixed(2)}</span>
+              </div>
+              ${
+                discountAmount > 0
+                  ? `
+                <div class="summary-row">
+                  <span>Discount:</span>
+                  <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
+                </div>
+              `
+                  : ""
+              }
+              ${
+                deliveryCharge > 0
+                  ? `
+                <div class="summary-row">
+                  <span>Delivery:</span>
+                  <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
+                </div>
+              `
+                  : ""
+              }
+              ${
+                taxAmount > 0
+                  ? `
+                <div class="summary-row">
+                  <span>Tax:</span>
+                  <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
+                </div>
+              `
+                  : ""
+              }
+              
+              <div class="divider-dashed"></div>
+              
+              <div class="summary-row grand-total">
+                <span>TOTAL:</span>
+                <span>${currencyIcon}${totalDue.toFixed(2)}</span>
+              </div>
             </div>
-          </div>
-          
-          <div class="divider-thick"></div>
-          
-          <!-- Payment Info -->
-          <div class="payment-info">
-            <div class="compact-row">
-              <strong>PAYMENT:</strong> ${paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}
+            
+            <div class="divider-thick"></div>
+            
+            <!-- Payment Info -->
+            <div class="payment-section">
+              <div class="row bold">PAYMENT: ${paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}</div>
+              <div class="row">STATUS: ${paymentStatus.toUpperCase()}</div>
+              ${notes ? `<div class="row small" style="margin-top: 5px;">NOTE: ${notes}</div>` : ""}
             </div>
-            <div class="compact-row">
-              <strong>STATUS:</strong> ${paymentStatus}
+            
+            <div class="divider"></div>
+            
+            <!-- Footer -->
+            <div class="footer">
+              <div class="row">Thank you for your business!</div>
+              <div class="row">Keep this receipt for your records</div>
+              <div class="row small" style="margin-top: 3px;">Computer Generated Receipt</div>
             </div>
-            ${notes ? `<div class="compact-row mt-1"><strong>NOTES:</strong> ${notes}</div>` : ""}
-          </div>
-          
-          <div class="divider"></div>
-          
-          <!-- Footer -->
-          <div class="footer">
-            <div class="compact-row">Thank you for your business!</div>
-            <div class="compact-row">Keep this receipt for returns</div>
-            <div style="font-size: 18px; margin-top: 3px;">Computer Generated Receipt</div>
+            
           </div>
         </body>
       </html>
     `);
       doc.close();
 
-      // Wait for iframe to load
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Wait for content to render
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       const body = doc.body;
       if (!body) throw new Error("No body element found");
 
-      // Calculate dynamic height
+      // Calculate height
       const contentHeight = body.scrollHeight;
-      iframe.style.height = `${contentHeight + 50}px`;
+      iframe.style.height = `${contentHeight + 40}px`;
 
+      // Wait a bit more for final rendering
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Generate high-quality image
       const canvas = await html2canvas(body, {
-        scale: 2,
+        scale: 3, // Higher quality for better printing
         backgroundColor: "#ffffff",
         logging: false,
-        useCORS: false,
+        useCORS: true,
         allowTaint: false,
-        foreignObjectRendering: true,
-        imageTimeout: 5000,
-        removeContainer: true,
-        width: body.scrollWidth,
+        width: 302,
         height: contentHeight,
-        windowWidth: body.scrollWidth,
+        windowWidth: 302,
         windowHeight: contentHeight,
         onclone: (clonedDoc) => {
-          // Force all text to be black and visible
+          // Force proper rendering
           const allElements = clonedDoc.querySelectorAll("*");
           allElements.forEach((el) => {
             if (el instanceof HTMLElement) {
-              el.style.color = "#000000 !important";
-              el.style.backgroundColor = "#ffffff !important";
-              el.style.visibility = "visible !important";
-              el.style.opacity = "1 !important";
+              el.style.color = "#000000";
+              el.style.backgroundColor = "#ffffff";
             }
           });
 
-          // Force table layout
-          const tables = clonedDoc.querySelectorAll("table");
-          tables.forEach((table) => {
-            if (table instanceof HTMLElement) {
-              table.style.borderCollapse = "collapse !important";
-              table.style.width = "100% !important";
-              table.style.display = "table !important";
-            }
-          });
-
-          // Add extra style injection
+          // Add extra style enforcement
           const style = clonedDoc.createElement("style");
           style.textContent = `
           * {
             color: #000000 !important;
             background-color: #ffffff !important;
             font-family: 'Courier New', Courier, monospace !important;
-            font-size: 24px !important;
-            line-height: 1 !important;
           }
           
-          body {
-            padding: 15px !important;
-            width: 384px !important;
-          }
-          
-          .store-title {
-            font-size: 36px !important;
-            font-weight: bold !important;
-          }
-          
-          table {
-            border-collapse: collapse !important;
+          .store-title, .section-header, .text-center, .payment-section, .footer {
+            text-align: center !important;
+            display: block !important;
             width: 100% !important;
           }
           
-          th, td {
-            padding: 3px 2px !important;
-            border: none !important;
-          }
-          
-          .product-name {
-            white-space: normal !important;
-            word-break: break-word !important;
-          }
-          
-          .total-row {
+          .summary-row {
             display: flex !important;
             justify-content: space-between !important;
+            width: 100% !important;
           }
         `;
           clonedDoc.head.appendChild(style);
         },
       });
 
-      // Download the image
-      const imageUrl = canvas.toDataURL("image/png");
+      // Download
+      const imageUrl = canvas.toDataURL("image/png", 1.0); // Maximum quality
       const link = document.createElement("a");
       link.href = imageUrl;
       link.download = `pos_receipt_${orderId}.png`;
@@ -979,230 +1010,47 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
       // Cleanup
       document.body.removeChild(iframe);
+
+      notification.success({
+        message: "POS Receipt Downloaded",
+        description: "High-quality receipt optimized for thermal printers",
+      });
     } catch (error) {
-      console.error("Error generating POS image:", error);
-
-      // Fallback: Create simple canvas with compact layout
-      try {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) throw new Error("Could not get canvas context");
-
-        // Use compact dimensions
-        canvas.width = 600;
-        canvas.height = 1500;
-
-        // Fill with white background
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Set text properties
-        ctx.fillStyle = "#000000";
-        ctx.textBaseline = "top";
-
-        let y = 30;
-        const margin = 25;
-        const maxWidth = canvas.width - margin * 2;
-
-        // Helper functions
-        const drawCentered = (
-          text: string,
-          fontSize: number,
-          isBold = false,
-        ) => {
-          ctx.font = `${isBold ? "bold" : "normal"} ${fontSize}px "Courier New", monospace`;
-          const textWidth = ctx.measureText(text).width;
-          const x = (canvas.width - textWidth) / 2;
-          ctx.fillText(text, x, y);
-          y += fontSize + (fontSize > 30 ? 10 : 5);
-        };
-
-        const drawLeft = (text: string, fontSize: number) => {
-          ctx.font = `${fontSize}px "Courier New", monospace`;
-          ctx.fillText(text, margin, y);
-          y += fontSize + 3;
-        };
-
-        const drawJustified = (
-          leftText: string,
-          rightText: string,
-          fontSize: number,
-        ) => {
-          ctx.font = `${fontSize}px "Courier New", monospace`;
-          ctx.fillText(leftText, margin, y);
-          const rightTextWidth = ctx.measureText(rightText).width;
-          ctx.fillText(rightText, canvas.width - margin - rightTextWidth, y);
-          y += fontSize + 3;
-        };
-
-        const drawLine = () => {
-          ctx.fillRect(margin, y, maxWidth, 1);
-          y += 8;
-        };
-
-        const drawThickLine = () => {
-          ctx.fillRect(margin, y, maxWidth, 2);
-          y += 10;
-        };
-
-        // Draw compact receipt
-        drawCentered(store.name.toUpperCase(), 36, true);
-        if (store.address) drawCentered(store.address, 24);
-        if (store.phone) drawCentered(`Tel: ${store.phone}`, 24);
-
-        drawLine();
-
-        drawCentered(`INVOICE: #${orderId}`, 28, true);
-        drawCentered(`DATE: ${new Date().toLocaleDateString("en-GB")}`, 24);
-        drawCentered(
-          `TIME: ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
-          24,
-        );
-
-        drawLine();
-
-        drawLeft(`CUSTOMER: ${customer.name}`, 26);
-        if (customer.contact) drawLeft(`CONTACT: ${customer.contact}`, 24);
-        if (customer.address) drawLeft(`ADDRESS: ${customer.address}`, 24);
-
-        drawThickLine();
-
-        drawCentered("ITEMS", 30, true);
-
-        // Draw items table
-        y += 5;
-        const col1 = margin;
-        const col3 = margin + 350; // Qty column width
-
-        // Table headers
-        ctx.font = `bold 26px "Courier New", monospace`;
-        ctx.fillText("Item", col1, y);
-        ctx.fillText("Qty", col3, y);
-        ctx.fillText("Price", canvas.width - margin - 100, y);
-        y += 30;
-
-        // Draw divider under headers
-        ctx.fillRect(margin, y - 5, maxWidth, 1);
-
-        // Products
-        ctx.font = `24px "Courier New", monospace`;
-        products.forEach((p) => {
-          const productTotal = (p.qty * p.price).toFixed(2);
-
-          // Draw product name (with wrapping if needed)
-          const nameLines = wrapText(ctx, p.name, 240, 24);
-          nameLines.forEach((line, idx) => {
-            ctx.fillText(line, col1, y);
-            if (idx === 0) {
-              // Qty and price on first line
-              ctx.fillText(`${p.qty}`, col3, y);
-              ctx.fillText(
-                `${currencyIcon}${productTotal}`,
-                canvas.width - margin - 100,
-                y,
-              );
-            }
-            y += 25;
-          });
-
-          // Small price breakdown on next line
-          ctx.font = `20px "Courier New", monospace`;
-          ctx.fillText(
-            `(${p.qty} × ${currencyIcon}${p.price.toFixed(2)})`,
-            col1 + 10,
-            y,
-          );
-          y += 22;
-          ctx.font = `24px "Courier New", monospace`;
-        });
-
-        drawThickLine();
-
-        // Totals - compact
-        drawJustified("Subtotal:", `${currencyIcon}${subtotal.toFixed(2)}`, 26);
-        if (discountAmount > 0)
-          drawJustified(
-            "Discount:",
-            `-${currencyIcon}${discountAmount.toFixed(2)}`,
-            26,
-          );
-        if (deliveryCharge > 0)
-          drawJustified(
-            "Delivery:",
-            `${currencyIcon}${deliveryCharge.toFixed(2)}`,
-            26,
-          );
-        if (taxAmount > 0)
-          drawJustified("Tax:", `${currencyIcon}${taxAmount.toFixed(2)}`, 26);
-
-        drawLine();
-
-        // Grand total
-        ctx.font = `bold 32px "Courier New", monospace`;
-        drawJustified("TOTAL :", `${currencyIcon}${totalDue.toFixed(2)}`, 32);
-        ctx.font = `24px "Courier New", monospace`;
-
-        drawThickLine();
-
-        // Payment info
-        drawCentered(
-          `PAYMENT: ${paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}`,
-          26,
-          true,
-        );
-        drawCentered(`STATUS: ${paymentStatus}`, 24);
-        if (notes) drawCentered(`NOTES: ${notes}`, 22);
-
-        drawLine();
-
-        // Footer
-        drawCentered("Thank you for your business!", 24);
-        drawCentered("Keep this receipt for returns", 22);
-        drawCentered("Computer Generated Receipt", 20);
-
-        // Download
-        const imageUrl = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = imageUrl;
-        link.download = `pos_receipt_${orderId}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch (fallbackError) {
-        console.error("Canvas fallback also failed:", fallbackError);
-        alert("Failed to generate POS receipt. Please try again.");
-      }
+      console.error("Error generating POS receipt:", error);
+      notification.error({
+        message: "Download Failed",
+        description: "Could not generate POS receipt. Please try again.",
+      });
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
   // Keep the wrapText helper function
-  const wrapText = (
-    context: CanvasRenderingContext2D,
-    text: string,
-    maxWidth: number,
-    fontSize: number,
-  ): string[] => {
-    context.font = `${fontSize}px "Courier New", monospace`;
-    const words = text.split(" ");
-    const lines = [];
-    let currentLine = words[0];
+  // const wrapText = (
+  //   context: CanvasRenderingContext2D,
+  //   text: string,
+  //   maxWidth: number,
+  //   fontSize: number,
+  // ): string[] => {
+  //   context.font = `${fontSize}px "Courier New", monospace`;
+  //   const words = text.split(" ");
+  //   const lines = [];
+  //   let currentLine = words[0];
 
-    for (let i = 1; i < words.length; i++) {
-      const word = words[i];
-      const width = context.measureText(currentLine + " " + word).width;
-      if (width < maxWidth) {
-        currentLine += " " + word;
-      } else {
-        lines.push(currentLine);
-        currentLine = word;
-      }
-    }
-    lines.push(currentLine);
-    return lines;
-  };
+  //   for (let i = 1; i < words.length; i++) {
+  //     const word = words[i];
+  //     const width = context.measureText(currentLine + " " + word).width;
+  //     if (width < maxWidth) {
+  //       currentLine += " " + word;
+  //     } else {
+  //       lines.push(currentLine);
+  //       currentLine = word;
+  //     }
+  //   }
+  //   lines.push(currentLine);
+  //   return lines;
+  // };
 
   if (!open) return null;
 
@@ -1215,87 +1063,87 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-background rounded-xl shadow-2xl flex flex-col w-full max-w-5xl max-h-[90vh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+        <div className="bg-background rounded-xl shadow-2xl flex flex-col w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh]">
           {/* Header */}
-          <div className="border-b p-6 flex items-center justify-between no-print">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600" />
+          <div className="border-b p-3 sm:p-6 flex items-start sm:items-center justify-between no-print">
+            <div className="flex items-start sm:items-center gap-2 sm:gap-4 flex-1 min-w-0">
+              <div className="p-2 sm:p-3 bg-blue-50 rounded-lg flex-shrink-0">
+                <FileText className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
               </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                     Invoice #{orderId}
                   </h2>
                   <button
                     onClick={copyInvoiceId}
-                    className="p-1 hover:bg-gray-100  rounded transition-colors"
+                    className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
                     title="Copy invoice number"
                   >
                     {copied ? (
-                      <Check className="w-4 h-4 text-green-600" />
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                     ) : (
-                      <Copy className="w-4 h-4 text-gray-500" />
+                      <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                     )}
                   </button>
                 </div>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   <span>Payment: {paymentStatus}</span>
                   <span>Order: {orderStatus}</span>
-                  <span>Currency: {currency}</span>
+                  <span className="hidden sm:inline">Currency: {currency}</span>
                 </div>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-red-500 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-red-500 rounded-lg transition-colors flex-shrink-0 ml-2"
               aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
           {/* Preview Content */}
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 overflow-auto p-2 sm:p-6">
             <div
               ref={invoiceRef}
-              className="bg-background p-8 rounded-lg border max-w-4xl mx-auto"
+              className="bg-background p-4 sm:p-8 rounded-lg border max-w-4xl mx-auto"
               style={{
                 boxSizing: "border-box",
                 maxWidth: "100%",
               }}
             >
-              {/* Header with proper alignment */}
-              <div className="flex justify-between items-start mb-8 invoice-header">
-                {/* Store Info - LEFT ALIGNED */}
+              {/* Header - Responsive Stack */}
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 sm:gap-0 mb-6 sm:mb-8 invoice-header">
+                {/* Store Info */}
                 <div className="store-info">
-                  <h1 className="text-3xl font-bold text-blue-600 mb-2">
+                  <h1 className="text-xl sm:text-3xl font-bold text-blue-600 mb-2">
                     {store.name}
                   </h1>
                   {store.address && (
-                    <p className="text-gray-600 dark:text-gray-400 wrap-break-word mb-1">
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 wrap-break-word mb-1">
                       📍 {store.address}
                     </p>
                   )}
                   {store.phone && (
-                    <p className="text-gray-600 dark:text-gray-400 wrap-break-word mb-1">
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 wrap-break-word mb-1">
                       📞 {store.phone}
                     </p>
                   )}
                   {store.email && (
-                    <p className="text-gray-600 dark:text-gray-400 wrap-break-word">
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 wrap-break-word">
                       ✉️ {store.email}
                     </p>
                   )}
                 </div>
 
-                {/* Invoice Info - RIGHT ALIGNED */}
-                <div className="text-right invoice-info">
-                  <h2 className="text-2xl font-bold text-blue-600 mb-2">
+                {/* Invoice Info */}
+                <div className="sm:text-right invoice-info">
+                  <h2 className="text-xl sm:text-2xl font-bold text-blue-600 mb-2">
                     INVOICE
                   </h2>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-xs sm:text-sm">
                     <p>
                       <span className="font-semibold">Invoice #:</span>{" "}
                       {orderId}
@@ -1324,30 +1172,30 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 </div>
               </div>
 
-              {/* Customer Info */}
-              <div className="mb-8 p-4 bg-blue-50 rounded-lg no-break">
-                <h3 className="font-bold text-lg mb-2 text-blue-700">
+              {/* Customer Info - Responsive Grid */}
+              <div className="mb-6 sm:mb-8 p-3 sm:p-4 bg-blue-50 rounded-lg no-break">
+                <h3 className="font-bold text-base sm:text-lg mb-2 text-blue-700">
                   Bill To:
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <p className="font-semibold text-white dark:text-black">
+                    <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-black">
                       {customer.name}
                     </p>
                     {customer.address && (
-                      <p className="text-white dark:text-black wrap-break-word">
+                      <p className="text-sm sm:text-base text-gray-700 dark:text-black wrap-break-word">
                         {customer.address}
                       </p>
                     )}
                   </div>
                   <div>
                     {customer.contact && (
-                      <p className="text-white dark:text-black wrap-break-word">
+                      <p className="text-sm sm:text-base text-gray-700 dark:text-black wrap-break-word">
                         📞 {customer.contact}
                       </p>
                     )}
                     {customer.email && (
-                      <p className="text-gray-600 dark:text-gray-400 wrap-break-word">
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 wrap-break-word">
                         ✉️ {customer.email}
                       </p>
                     )}
@@ -1355,35 +1203,42 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 </div>
               </div>
 
-              {/* Products Table with fixed width */}
-              <div className="mb-8 no-break">
-                <table className="w-full" style={{ tableLayout: "fixed" }}>
+              {/* Products Table - Responsive */}
+              <div className="mb-6 sm:mb-8 no-break overflow-x-auto">
+                <table
+                  className="w-full min-w-125"
+                  style={{ tableLayout: "fixed" }}
+                >
                   <thead>
                     <tr className="bg-blue-600 text-white">
-                      <th className="text-left p-3 font-semibold col-item">
+                      <th className="text-left p-2 sm:p-3 font-semibold text-xs sm:text-sm col-item">
                         Item
                       </th>
-                      <th className="text-center p-3 font-semibold col-qty">
-                        Quantity
+                      <th className="text-center p-2 sm:p-3 font-semibold text-xs sm:text-sm col-qty">
+                        Qty
                       </th>
-                      <th className="text-right p-3 font-semibold col-price">
-                        Unit Price
+                      <th className="text-right p-2 sm:p-3 font-semibold text-xs sm:text-sm col-price">
+                        Price
                       </th>
-                      <th className="text-right p-3 font-semibold col-total">
+                      <th className="text-right p-2 sm:p-3 font-semibold text-xs sm:text-sm col-total">
                         Total
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {products.map((product, index) => (
-                      <tr key={index} className="border-b ">
-                        <td className="p-3 wrap-break-word">{product.name}</td>
-                        <td className="p-3 text-center">{product.qty}</td>
-                        <td className="p-3 text-right">
+                      <tr key={index} className="border-b">
+                        <td className="p-2 sm:p-3 text-xs sm:text-sm wrap-break-word">
+                          {product.name}
+                        </td>
+                        <td className="p-2 sm:p-3 text-xs sm:text-sm text-center">
+                          {product.qty}
+                        </td>
+                        <td className="p-2 sm:p-3 text-xs sm:text-sm text-right">
                           {currencyIcon}
                           {product.price.toFixed(2)}
                         </td>
-                        <td className="p-3 text-right font-semibold">
+                        <td className="p-2 sm:p-3 text-xs sm:text-sm text-right font-semibold">
                           {currencyIcon}
                           {(product.qty * product.price).toFixed(2)}
                         </td>
@@ -1393,9 +1248,9 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 </table>
               </div>
 
-              {/* Summary - Right aligned */}
-              <div className="ml-auto max-w-sm no-break summary">
-                <div className="space-y-2">
+              {/* Summary - Responsive */}
+              <div className="sm:ml-auto max-w-full sm:max-w-sm no-break summary">
+                <div className="space-y-2 text-sm sm:text-base">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
                     <span className="font-semibold">
@@ -1431,7 +1286,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                     </div>
                   )}
                   <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between text-lg font-bold text-blue-600 grand-total">
+                    <div className="flex justify-between text-base sm:text-lg font-bold text-blue-600 grand-total">
                       <span>GRAND TOTAL:</span>
                       <span>
                         {currencyIcon}
@@ -1442,13 +1297,15 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 </div>
               </div>
 
-              {/* Payment Method & Notes */}
+              {/* Payment Method & Notes - Responsive Grid */}
               {(paymentMethod || notes) && (
-                <div className="mt-8 grid grid-cols-2 gap-8 no-break">
+                <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 no-break">
                   {paymentMethod && paymentMethod !== "N/A" && (
                     <div>
-                      <h4 className="font-bold mb-2">Payment Method:</h4>
-                      <p className="text-gray-700 dark:text-gray-300 wrap-break-word">
+                      <h4 className="font-bold mb-2 text-sm sm:text-base">
+                        Payment Method:
+                      </h4>
+                      <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 wrap-break-word">
                         {paymentMethod === "cod"
                           ? "Cash on Delivery"
                           : paymentMethod.toUpperCase()}
@@ -1457,31 +1314,36 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   )}
                   {notes && (
                     <div>
-                      <h4 className="font-bold mb-2">Notes:</h4>
-                      <p className="text-gray-700 dark:text-gray-300 wrap-break-word">{notes}</p>
+                      <h4 className="font-bold mb-2 text-sm sm:text-base">
+                        Notes:
+                      </h4>
+                      <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 wrap-break-word">
+                        {notes}
+                      </p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Footer for print */}
-              <div className="mt-12 pt-4 border-t text-center text-sm text-gray-500 no-break">
+              {/* Footer */}
+              <div className="mt-8 sm:mt-12 pt-4 border-t text-center text-xs sm:text-sm text-gray-500 no-break">
                 <p>Thank you • Computer generated invoice • {store.name}</p>
               </div>
             </div>
           </div>
 
-          {/* Actions - Hidden when printing */}
-          <div className="border-t p-6 flex flex-wrap gap-3 justify-between items-center no-print">
-            <div className="text-sm text-gray-500">
+          {/* Actions - Responsive */}
+          <div className="border-t p-3 sm:p-6 flex flex-col sm:flex-row flex-wrap gap-3 justify-between items-stretch sm:items-center no-print">
+            <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left order-2 sm:order-1">
               Last updated: {invoiceDate} {invoiceTime}
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 order-1 sm:order-2">
               {showPrintButton && (
                 <Button
                   variant="outline"
                   onClick={printInvoice}
                   disabled={isPrinting}
+                  className="w-full sm:w-auto text-sm"
                 >
                   {isPrinting ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1497,6 +1359,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   variant="outline"
                   onClick={downloadPOSImage}
                   disabled={isGeneratingPDF}
+                  className="w-full sm:w-auto text-sm"
                 >
                   {isGeneratingPDF ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1511,7 +1374,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 <Button
                   onClick={() => generatePDF("A4")}
                   disabled={isGeneratingPDF}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm"
                 >
                   {isGeneratingPDF ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
