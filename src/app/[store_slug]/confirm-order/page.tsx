@@ -8,7 +8,6 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useOrderProcess } from "@/lib/hook/useOrderProcess";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
-import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
 import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
@@ -18,6 +17,8 @@ import { CartProductWithDetails } from "@/lib/types/cart";
 import { StoreLoadingSkeleton } from "../../components/skeletons/StoreLoadingSkeleton";
 import { supabase } from "@/lib/supabase";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 // Memoized API call function
 const getConfirmOrderToken = async (token: string) => {
@@ -120,7 +121,7 @@ export default function ConfirmOrderPage() {
   const [loadingToken, setLoadingToken] = useState(true);
   const [selectedShipping, setSelectedShipping] = useState("");
   const [shippingFee, setShippingFee] = useState(0);
-  const [taxAmount] = useState(0);
+  const [taxAmount, setTaxAmount] = useState(0);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -132,12 +133,12 @@ export default function ConfirmOrderPage() {
     totalDiscount: 0,
     items: [] as CartProductWithDetails[],
   });
-  const [currency, setCurrency] = useState("");
+  const { currency, loading: currencyLoading } = useUserCurrencyIcon();
+  const displayCurrency = currencyLoading ? "" : (currency ?? "BDT");
 
   const { processOrder, loading: orderLoading } = useOrderProcess(storeSlug);
   const { storeData, loading: storeLoading } = useInvoiceData({ storeSlug });
   const { session } = useSupabaseAuth();
-  const { customer } = useCurrentCustomer(storeSlug);
 
   // Use refs to prevent re-fetching
   const hasFetchedTokenRef = useRef(false);
@@ -171,25 +172,13 @@ export default function ConfirmOrderPage() {
 
     const fetchProductDetails = async () => {
       try {
-        const { data: storeSettings, error: settingsError } = await supabase
-          .from("store_settings")
-          .select("currency")
-          .eq("store_id", tokenData.store_id)
-          .single();
-
-        if (settingsError) {
-          console.error("❌ Error fetching store settings:", settingsError);
-        }
-
-        setCurrency(storeSettings?.currency || "BDT");
-
-        // Fetch products with variants - SIMPLIFIED APPROACH
+        // Fetch products with variants
         const productIds = tokenData.products.map((p: any) => p.product_id);
         if (productIds.length === 0) {
           throw new Error("No product IDs found in token data");
         }
 
-        // Fetch products with ALL FIELDS - simplified query
+        // Fetch products
         const { data: products, error: productsError } = await supabase
           .from("products")
           .select("*")
@@ -204,7 +193,7 @@ export default function ConfirmOrderPage() {
           throw new Error("No products found for the given IDs");
         }
 
-        // Fetch product images separately
+        // Fetch product images
         const { data: productImages, error: imagesError } = await supabase
           .from("product_images")
           .select("*")
@@ -214,7 +203,7 @@ export default function ConfirmOrderPage() {
           console.error("❌ Error fetching product images:", imagesError);
         }
 
-        // Fetch product inventory separately
+        // Fetch product inventory
         const { data: productInventory, error: inventoryError } = await supabase
           .from("product_inventory")
           .select("*")
@@ -224,7 +213,7 @@ export default function ConfirmOrderPage() {
           console.error("❌ Error fetching product inventory:", inventoryError);
         }
 
-        // Get all variant IDs from token data
+        // Get all variant IDs
         const variantIds = tokenData.products
           .filter((p: any) => p.variant_id)
           .map((p: any) => p.variant_id);
@@ -239,15 +228,7 @@ export default function ConfirmOrderPage() {
             .select("*")
             .in("id", variantIds);
 
-          if (variantsError) {
-            console.error("❌ Error fetching variants - details:", {
-              error: variantsError,
-              message: variantsError.message,
-              code: variantsError.code,
-              details: variantsError.details,
-              hint: variantsError.hint
-            });
-          } else {
+          if (!variantsError) {
             variants = variantsData || [];
           }
 
@@ -257,9 +238,7 @@ export default function ConfirmOrderPage() {
             .select("*")
             .in("variant_id", variantIds);
 
-          if (vImagesError) {
-            console.error("❌ Error fetching variant images:", vImagesError);
-          } else {
+          if (!vImagesError) {
             variantImages = vImages || [];
           }
 
@@ -269,9 +248,7 @@ export default function ConfirmOrderPage() {
             .select("*")
             .in("variant_id", variantIds);
 
-          if (vInventoryError) {
-            console.error("❌ Error fetching variant inventory:", vInventoryError);
-          } else {
+          if (!vInventoryError) {
             variantInventory = vInventory || [];
           }
         }
@@ -301,9 +278,7 @@ export default function ConfirmOrderPage() {
 
           let variant: any = null;
           if (tokenItem.variant_id) {
-            variant = variants.find(
-              (v: any) => v.id === tokenItem.variant_id
-            );
+            variant = variants.find((v: any) => v.id === tokenItem.variant_id);
 
             if (variant) {
               // Get variant images
@@ -315,12 +290,10 @@ export default function ConfirmOrderPage() {
               variant.product_inventory = (variantInventory || []).filter(
                 (inv: any) => inv.variant_id === variant.id
               );
-            } else {
-              console.warn(`⚠️ Variant not found: ${tokenItem.variant_id} for product ${product.id}`);
             }
           }
 
-          // Calculate prices - handle null/undefined safely
+          // Calculate prices
           const variantPrice = variant?.discounted_price || variant?.base_price;
           const productPrice = product.discounted_price || product.base_price;
           const displayPrice = (variantPrice !== undefined ? variantPrice : productPrice !== undefined ? productPrice : 0) || 0;
@@ -331,7 +304,7 @@ export default function ConfirmOrderPage() {
             ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
             : 0;
 
-          // Get stock - handle null/undefined safely
+          // Get stock
           const variantStock = variant?.product_inventory?.[0]?.quantity_available;
           const productStock = prodInventory?.[0]?.quantity_available;
           const stock = (variantStock !== undefined ? variantStock : productStock !== undefined ? productStock : 0) || 0;
@@ -356,7 +329,7 @@ export default function ConfirmOrderPage() {
           totalDiscount += itemDiscount;
           totalItems += tokenItem.quantity;
 
-          // Prepare product object with images
+          // Prepare product object
           const productWithImages = {
             ...product,
             product_images: prodImages.map((img: any) => ({
@@ -366,7 +339,7 @@ export default function ConfirmOrderPage() {
             })),
           };
 
-          // Prepare variant object with all required properties
+          // Prepare variant object
           const variantWithData = variant ? {
             ...variant,
             product_images: variant.product_images || [],
@@ -405,10 +378,6 @@ export default function ConfirmOrderPage() {
         hasFetchedProductsRef.current = true;
       } catch (error) {
         console.error("❌ Error fetching product details:", error);
-        console.error("Error details:", {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
-        });
         notify.error("Failed to load order details. Please try again.");
       }
     };
@@ -416,7 +385,7 @@ export default function ConfirmOrderPage() {
     fetchProductDetails();
   }, [tokenData, storeSlug, notify]);
 
-  // NEW: Handle quantity change for confirm-order page
+  // Handle quantity change
   const handleQuantityChange = useCallback((
     productId: string,
     variantId: string | null,
@@ -425,18 +394,14 @@ export default function ConfirmOrderPage() {
     setCartItems(prevItems => {
       const updatedItems = prevItems.map(item => {
         if (item.productId === productId && item.variantId === variantId) {
-          // Update the quantity
-          const updatedItem = {
+          return {
             ...item,
-            quantity: Math.max(1, Math.min(newQuantity, 999)) // Clamp between 1 and 999
+            quantity: Math.max(1, Math.min(newQuantity, 999))
           };
-          
-          return updatedItem;
         }
         return item;
       });
       
-      // Recalculate totals
       const newCalculations = calculateTotals(updatedItems);
       setCalculations(newCalculations);
       
@@ -444,14 +409,13 @@ export default function ConfirmOrderPage() {
     });
   }, []);
 
-  // NEW: Handle remove item for confirm-order page
+  // Handle remove item
   const handleRemoveItem = useCallback((productId: string, variantId: string | null) => {
     setCartItems(prevItems => {
       const filteredItems = prevItems.filter(item => 
         !(item.productId === productId && item.variantId === variantId)
       );
       
-      // Recalculate totals
       const newCalculations = calculateTotals(filteredItems);
       setCalculations(newCalculations);
       
@@ -461,7 +425,7 @@ export default function ConfirmOrderPage() {
     notify.info("Item removed from order");
   }, [notify]);
 
-  // NEW: Helper function to calculate totals
+  // Helper function to calculate totals
   const calculateTotals = (items: CartProductWithDetails[]) => {
     let subtotal = 0;
     let totalDiscount = 0;
@@ -485,13 +449,13 @@ export default function ConfirmOrderPage() {
     };
   };
 
-  /* ---------------- SHIPPING ---------------- */
+  // Shipping change handler
   const handleShippingChange = useCallback((method: string, fee: number) => {
     setSelectedShipping(method);
     setShippingFee(fee);
   }, []);
 
-  /* ---------------- CREATE TEMP INVOICE ---------------- */
+  // Create temp invoice data
   const buildInvoiceData = useCallback(
     (
       values: CustomerCheckoutFormValues,
@@ -531,20 +495,19 @@ export default function ConfirmOrderPage() {
       }));
 
       const orderId = result.orderId || `order-${Date.now()}`;
-      const orderNumber =
-        result.orderNumber || `ORD-${Date.now().toString().slice(-6)}`;
+      const orderNumber = result.orderNumber || `ORD-${Date.now().toString().slice(-6)}`;
 
       return {
         id: orderId,
         order_number: orderNumber,
-        customer_id: customerId || null, // ✅ Allow null for guest orders
+        customer_id: customerId || "temp-customer",
         store_id: storeData!.id,
         status: OrderStatus.PENDING,
         subtotal: calculations.subtotal,
         tax_amount: taxAmount,
         shipping_fee: shippingFee,
         total_amount: calculations.subtotal + shippingFee + taxAmount,
-        currency: currency,
+        currency: displayCurrency,
         payment_status: PaymentStatus.PENDING,
         payment_method: "cod",
         shipping_address: {
@@ -564,12 +527,12 @@ export default function ConfirmOrderPage() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         order_items: orderItems,
-        customers: customerId ? {
-          id: customerId,
+        customers: {
+          id: customerId || "temp-customer",
           first_name: values.name.split(" ")[0] || values.name,
-          email: values.email,
+          email: "", // Empty email for guest
           phone: values.phone,
-        } : null, // ✅ Allow null for guest orders
+        },
         stores: storeData
           ? {
               id: storeData.id,
@@ -594,246 +557,282 @@ export default function ConfirmOrderPage() {
         notes: null,
       };
     },
-    [cartItems, calculations, storeData, storeSlug, taxAmount, shippingFee, selectedShipping, currency]
+    [cartItems, calculations, storeData, storeSlug, taxAmount, shippingFee, selectedShipping, displayCurrency]
   );
 
-  /* ---------------- FIND OR CREATE CUSTOMER WITH LINKS ---------------- */
-  const findOrCreateCustomerWithLinks = useCallback(async (
-    values: CustomerCheckoutFormValues
-  ): Promise<string | null> => {
-    try {
-      const storeId = await getStoreIdBySlug(storeSlug);
-      if (!storeId) {
-        console.error("❌ Store not found for slug:", storeSlug);
+  // Helper to get store ID
+  const getStoreId = useCallback(
+    async (storeSlug: string): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("store_slug", storeSlug)
+        .single();
+
+      if (error) {
+        console.error("Error getting store ID:", error);
         return null;
       }
+      return data.id;
+    },
+    [],
+  );
 
-      // Check if customer exists by email (global search, not store-specific)
-      const { data: existingCustomers, error: findError } = await supabase
-        .from("store_customers")
-        .select("id, email, auth_user_id")
-        .eq("email", values.email.toLowerCase())
-        .maybeSingle();
-
-      if (findError && findError.code !== 'PGRST116') {
-        console.error("❌ Error finding customer:", findError);
-      }
-
-      let customerId: string;
-
-      if (existingCustomers) {
-        // Customer exists globally
-        customerId = existingCustomers.id;
-        const { data: existingLink, error: linkError } = await supabase
-          .from("store_customer_links")
-          .select("id")
-          .eq("customer_id", customerId)
-          .eq("store_id", storeId)
-          .maybeSingle();
-
-        if (linkError) {
-          console.error("❌ Error checking customer link:", linkError);
-        }
-
-        // Create link if it doesn't exist
-        if (!existingLink) {
-          const { error: createLinkError } = await supabase
-            .from("store_customer_links")
-            .insert({
-              customer_id: customerId,
-              store_id: storeId,
-            });
-
-          if (createLinkError) {
-            console.error("❌ Error creating customer link:", createLinkError);
-          }
-        }
-      } else {
-        // For logged-in users
-        let authUserId = null;
-        if (session?.user?.email === values.email.toLowerCase()) {
-          authUserId = session.user.id;
-        }
-
-        const { data: newCustomer, error: createError } = await supabase
-          .from("store_customers")
-          .insert({
-            name: values.name,
-            email: values.email.toLowerCase(),
-            phone: values.phone,
-            auth_user_id: authUserId,
-          })
-          .select("id")
-          .single();
-
-        if (createError) {
-          console.error("❌ Error creating customer:", createError);
-          return null;
-        }
-
-        customerId = newCustomer.id;
-        const { error: linkError } = await supabase
-          .from("store_customer_links")
-          .insert({
-            customer_id: customerId,
-            store_id: storeId,
-          });
-
-        if (linkError) {
-          console.error("❌ Error creating customer link:", linkError);
-        }
-      }
-      const { data: existingProfile, error: profileFindError } = await supabase
+  // Create customer profile and links
+  const createProfileAndLinks = useCallback(
+    async (
+      customerId: string,
+      storeId: string,
+      values: CustomerCheckoutFormValues,
+    ) => {
+      const { data: profile } = await supabase
         .from("customer_profiles")
+        .insert({
+          store_customer_id: customerId,
+          address: values.shippingAddress,
+          city: values.city,
+          postal_code: values.postCode || "",
+          country: values.country,
+        })
         .select("id")
-        .eq("store_customer_id", customerId)
-        .maybeSingle();
+        .single();
 
-      if (profileFindError) {
-        console.error("❌ Error finding profile:", profileFindError);
+      if (profile) {
+        await supabase
+          .from("store_customers")
+          .update({ profile_id: profile.id })
+          .eq("id", customerId);
       }
 
-      if (existingProfile) {
-        // Update existing profile
-        const { error: updateError } = await supabase
-          .from("customer_profiles")
-          .update({
-            address: values.shippingAddress,
-            city: values.city,
-            postal_code: values.postCode,
-            country: values.country,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingProfile.id);
+      await supabase
+        .from("store_customer_links")
+        .upsert(
+          { customer_id: customerId, store_id: storeId },
+          { onConflict: "customer_id,store_id" },
+        );
+    },
+    [],
+  );
 
-        if (updateError) {
-          console.error("❌ Error updating profile:", updateError);
-        }
-      } else {
-        // Create new profile
-        const { data: newProfile, error: createProfileError } = await supabase
-          .from("customer_profiles")
-          .insert({
-            store_customer_id: customerId,
-            address: values.shippingAddress,
-            city: values.city,
-            postal_code: values.postCode,
-            country: values.country,
-          })
-          .select("id")
-          .single();
+  // Create guest customer (no email, no auth)
+  const createGuestCustomer = useCallback(
+    async (
+      values: CustomerCheckoutFormValues,
+      storeSlug: string,
+    ): Promise<string> => {
+      const storeId = await getStoreId(storeSlug);
+      if (!storeId) throw new Error("Store not found");
 
-        if (createProfileError) {
-          console.error("❌ Error creating profile:", createProfileError);
-        } else if (newProfile) {
-          // Update customer with profile ID
-          await supabase
-            .from("store_customers")
-            .update({ profile_id: newProfile.id })
-            .eq("id", customerId);
-        }
-      }
+      // Email is always empty for guest customers
+      const { data: customer, error } = await supabase
+        .from("store_customers")
+        .insert({
+          name: values.name,
+          email: "", // Empty email for guest
+          phone: values.phone,
+          auth_user_id: null,
+        })
+        .select("id")
+        .single();
 
-      // Handle auth creation for guest users with password
-      if (values.password && values.password.trim() !== "" && values.password !== "empty" && !session?.user) {
-        try {
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: values.email.toLowerCase(),
-            password: values.password,
-            options: {
-              data: {
-                first_name: values.name.split(" ")[0] || values.name,
-                last_name: values.name.split(" ").slice(1).join(" ") || "",
-                phone: values.phone,
-                role: "customer",
-              },
-            },
-          });
+      if (error)
+        throw new Error(`Failed to create guest customer: ${error.message}`);
 
-          if (authError) {
-            console.error("❌ Error creating auth account:", authError);
-            // Continue anyway - customer exists even if auth fails
-          } else if (authData?.user?.id) {
-            // Update customer with auth user ID
-            await supabase
-              .from("store_customers")
-              .update({ auth_user_id: authData.user.id })
-              .eq("id", customerId);
-          }
-        } catch (authError) {
-          console.error("❌ Auth creation error:", authError);
-        }
-      }
+      await createProfileAndLinks(customer.id, storeId, values);
+      return customer.id;
+    },
+    [getStoreId, createProfileAndLinks],
+  );
 
-      return customerId;
-    } catch (error) {
-      console.error("❌ Error in findOrCreateCustomerWithLinks:", error);
-      return null;
-    }
-  }, [storeSlug, session]);
+  // Update customer profile
+  const updateCustomerProfile = useCallback(
+    async (profileId: string, values: CustomerCheckoutFormValues) => {
+      return supabase
+        .from("customer_profiles")
+        .update({
+          address: values.shippingAddress,
+          city: values.city,
+          postal_code: values.postCode || "",
+          country: values.country,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", profileId);
+    },
+    [],
+  );
 
-  /* ---------------- SUBMIT ---------------- */
+  // Create customer profile
+  const createCustomerProfile = useCallback(
+    async (storeCustomerId: string, values: CustomerCheckoutFormValues) => {
+      const profileData = {
+        store_customer_id: storeCustomerId,
+        address: values.shippingAddress,
+        city: values.city,
+        postal_code: values.postCode || "",
+        country: values.country,
+      };
+
+      return supabase
+        .from("customer_profiles")
+        .insert([profileData])
+        .select("id")
+        .single();
+    },
+    [],
+  );
+
+  // Find customer by phone only
+  const findCustomerByPhone = useCallback(
+    async (phone: string, storeSlug: string) => {
+      return await getCustomerByPhone(phone, storeSlug);
+    },
+    [],
+  );
+
+  // ✅ SIMPLIFIED: Main checkout handler - PHONE-ONLY, NO ACCOUNT CREATION
   const handleCheckoutSubmit = useCallback(
     async (values: CustomerCheckoutFormValues) => {
-      if (!selectedShipping) {
-        notify.error("Please select a shipping method");
-        return;
-      }
+      if (cartItems.length === 0) return notify.error("Your cart is empty");
+      if (!selectedShipping) return notify.error("Please select a shipping method");
 
       setIsProcessing(true);
 
       try {
-        // Get or create customer with links
-        let customerId: string | null = null;
-        
-        // First, try to use the current customer if logged in
-        if (session?.user && customer?.id) {
-          customerId = customer.id;
-        }
-        
-        // If no customer found, create/get one
-        if (!customerId) {
-          customerId = await findOrCreateCustomerWithLinks(values);
-        }
-
-        if (!customerId) {
-          throw new Error("Failed to create or find customer");
-        }
-
+        // Always use empty email for simple checkout
         const formDataWithShipping = {
           ...values,
+          email: "", // Always empty for simple checkout
+          password: "", // Always empty for simple checkout
           shippingMethod: selectedShipping,
           shippingFee,
           taxAmount,
         };
 
+        let storeCustomerId: string = "";
+        const isUserLoggedIn = Boolean(session?.user);
+
+        // 🔐 LOGGED IN USER FLOW
+        if (isUserLoggedIn && session?.user) {
+          // For logged-in users, try to find by phone
+          const existing = await findCustomerByPhone(values.phone, storeSlug);
+
+          if (existing) {
+            storeCustomerId = existing.id;
+
+            if (existing.profile_id) {
+              await updateCustomerProfile(existing.profile_id, values);
+            } else {
+              await createCustomerProfile(existing.id, values);
+            }
+          } else {
+            // Create new customer for logged-in user
+            const storeId = await getStoreId(storeSlug);
+            if (!storeId) throw new Error("Store not found");
+
+            const { data: newCustomer, error } = await supabase
+              .from("store_customers")
+              .insert({
+                name: values.name,
+                email: session.user.email || "", // Use session email if available
+                phone: values.phone,
+                auth_user_id: session.user.id,
+              })
+              .select("id")
+              .single();
+
+            if (error)
+              throw new Error(`Failed to create customer: ${error.message}`);
+
+            storeCustomerId = newCustomer.id;
+            await createProfileAndLinks(storeCustomerId, storeId, values);
+          }
+        } else {
+          // 🧑‍🧾 GUEST / NON-LOGGED USER (SIMPLE PHONE-ONLY CHECKOUT)
+          const existing = await findCustomerByPhone(values.phone, storeSlug);
+
+          if (existing) {
+            storeCustomerId = existing.id;
+
+            if (existing.profile_id) {
+              await updateCustomerProfile(existing.profile_id, values);
+            } else {
+              await createCustomerProfile(existing.id, values);
+            }
+
+            // Simple notification
+            notify.info(
+              "Order placed! Use your phone number to track order status.",
+            );
+          } else {
+            // Guest checkout without account
+            storeCustomerId = await createGuestCustomer(values, storeSlug);
+          }
+        }
+
+        if (!storeCustomerId) {
+          return notify.error(
+            "Failed to create customer record. Please try again.",
+          );
+        }
+
         const result = await processOrder(
           formDataWithShipping,
-          customerId || undefined, // Pass undefined if no customer ID
+          storeCustomerId,
           "cod",
           selectedShipping,
           shippingFee,
           cartItems,
           calculations,
-          taxAmount
+          taxAmount,
         );
 
         if (!result.success) {
-          throw new Error(result.error);
+          return notify.error(result.error || "Failed to place order");
         }
 
-        const invoice = buildInvoiceData(values, customerId || "guest", result);
+        const invoice = buildInvoiceData(values, storeCustomerId, result);
         setInvoiceData(invoice);
         setShowInvoice(true);
-        notify.success("Order placed successfully!");
-      } catch (err: any) {
-        console.error("Order placement error:", err);
-        notify.error(err.message || "Failed to place order");
+
+        // Success messages
+        if (isUserLoggedIn) {
+          notify.success("Order placed successfully!");
+        } else {
+          notify.success("Order placed successfully!");
+
+          // Show tracking information
+          setTimeout(() => {
+            notify.info(
+              `📱 Use phone number ${values.phone} to track your order status`,
+              { duration: 5000 },
+            );
+          }, 1000);
+        }
+      } catch (error: any) {
+        console.error("❌ Checkout error:", error);
+        notify.error(error.message || "Unexpected error. Please try again.");
       } finally {
         setIsProcessing(false);
       }
     },
-    [selectedShipping, session, customer, findOrCreateCustomerWithLinks, shippingFee, taxAmount, processOrder, cartItems, calculations, buildInvoiceData, notify]
+    [
+      cartItems,
+      selectedShipping,
+      shippingFee,
+      taxAmount,
+      notify,
+      session,
+      storeSlug,
+      getStoreId,
+      updateCustomerProfile,
+      createCustomerProfile,
+      createProfileAndLinks,
+      createGuestCustomer,
+      processOrder,
+      calculations,
+      buildInvoiceData,
+      findCustomerByPhone,
+    ],
   );
 
   // Memoized loading state
@@ -841,7 +840,7 @@ export default function ConfirmOrderPage() {
     return loadingToken || storeLoading || !tokenData || cartItems.length === 0;
   }, [loadingToken, storeLoading, tokenData, cartItems]);
 
-  /* ---------------- UI ---------------- */
+  // UI
   if (loadingToken) {
     return <StoreLoadingSkeleton />;
   }
@@ -878,7 +877,6 @@ export default function ConfirmOrderPage() {
         taxAmount={taxAmount}
         isProcessing={isProcessing || orderLoading}
         mode="confirm"
-        // NEW: Pass the handlers for confirm mode
         onQuantityChange={handleQuantityChange}
         onRemoveItem={handleRemoveItem}
       />
