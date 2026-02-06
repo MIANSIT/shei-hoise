@@ -10,6 +10,7 @@ export interface StoreInvoiceData {
   store_slug: string;
   business_address: string | null;
   contact_phone: string | null;
+  logo_url: string | null; // ✅ ADD THIS
   contact_email: string | null;
   tax_rate: number;
 }
@@ -58,6 +59,7 @@ export function useInvoiceData({ storeSlug, storeId }: UseInvoiceDataProps) {
             business_address: store.business_address ?? null,
             contact_phone: store.contact_phone || "",
             contact_email: store.contact_email || "",
+            logo_url: store.logo_url ?? null, // ✅ MAP FROM stores TABLE
             tax_rate: settings?.tax_rate || 0,
           });
         } else {
