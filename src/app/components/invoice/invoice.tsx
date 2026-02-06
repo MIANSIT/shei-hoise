@@ -704,21 +704,22 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
   };
 
-  // ==================== THERMAL PRINTER OPTIMIZED POS RECEIPT ====================
-  // ==================== IMPROVED THERMAL PRINTER OPTIMIZED POS RECEIPT ====================
-  // Replace your existing downloadPOSImage function with this one
+  // ==================== FIXED AUTO-ADAPTIVE POS RECEIPT (NO CUTOFF) ====================
+  // This version fixes the bottom cutoff issue and handles currency symbols properly
 
   const downloadPOSImage = async () => {
     try {
       setIsGeneratingPDF(true);
+
+      const universalWidth = 220; // 58mm - universal compatibility
 
       const iframe = document.createElement("iframe");
       iframe.style.cssText = `
       position: fixed;
       top: -9999px;
       left: -9999px;
-      width: 302px;
-      height: 3000px;
+      width: ${universalWidth}px;
+      height: 4000px;
       border: none;
       visibility: hidden;
     `;
@@ -726,6 +727,9 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
       const doc = iframe.contentDocument;
       if (!doc) throw new Error("Could not create iframe document");
+
+      // Get currency symbol - handle Bengali Taka properly
+      const displayCurrency = currencyIcon === "৳" ? "Tk" : currencyIcon;
 
       doc.open();
       doc.write(`
@@ -743,31 +747,32 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             
             body {
               font-family: 'Courier New', Courier, monospace !important;
-              font-size: 13px !important;
+              font-size: 12px !important;
               line-height: 1.4 !important;
               color: #000000 !important;
               background-color: #ffffff !important;
-              padding: 15px 10px;
-              width: 302px;
+              padding: 15px 8px 25px 8px;
+              width: ${universalWidth}px;
               margin: 0 auto;
               letter-spacing: 0 !important;
               -webkit-font-smoothing: none !important;
               -moz-osx-font-smoothing: grayscale !important;
+              overflow: visible !important;
             }
             
             .receipt-container {
               width: 100%;
-              max-width: 282px;
               margin: 0 auto;
+              padding-bottom: 20px;
             }
             
             .store-title {
-              font-size: 20px !important;
+              font-size: 18px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
               margin: 0 0 5px 0 !important;
-              line-height: 1.2 !important;
+              line-height: 1.3 !important;
               display: block !important;
               width: 100% !important;
               letter-spacing: 2px !important;
@@ -790,7 +795,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .small {
-              font-size: 11px !important;
+              font-size: 10px !important;
               color: #000000 !important;
             }
             
@@ -802,7 +807,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .divider {
               border: none !important;
               border-top: 2px solid #000000 !important;
-              margin: 8px 0 !important;
+              margin: 7px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
@@ -810,7 +815,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .divider-thick {
               border: none !important;
               border-top: 3px solid #000000 !important;
-              margin: 10px 0 !important;
+              margin: 9px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
@@ -818,13 +823,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .divider-dashed {
               border: none !important;
               border-top: 2px dashed #000000 !important;
-              margin: 8px 0 !important;
+              margin: 7px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
             
             .section-header {
-              font-size: 16px !important;
+              font-size: 15px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
@@ -832,13 +837,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               display: block !important;
               width: 100% !important;
               color: #000000 !important;
-              letter-spacing: 1px !important;
+              letter-spacing: 2px !important;
             }
             
             .items-table {
               width: 100% !important;
               border-collapse: collapse !important;
-              margin: 8px 0 !important;
+              margin: 7px 0 !important;
               table-layout: fixed !important;
             }
             
@@ -846,7 +851,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               font-weight: bold !important;
               padding: 5px 2px !important;
               border-bottom: 2px solid #000000 !important;
-              font-size: 12px !important;
+              font-size: 11px !important;
               text-align: left !important;
               color: #000000 !important;
               background-color: #ffffff !important;
@@ -863,18 +868,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .items-table tbody td {
               padding: 4px 2px !important;
               vertical-align: top !important;
-              font-size: 12px !important;
+              font-size: 11px !important;
               color: #000000 !important;
               background-color: #ffffff !important;
-              border-bottom: 1px solid #cccccc !important;
-            }
-            
-            .items-table tbody tr:last-child td {
-              border-bottom: none !important;
             }
             
             .items-table tbody td:nth-child(1) {
-              width: 50% !important;
+              width: 48% !important;
               text-align: left !important;
               word-break: break-word !important;
               white-space: normal !important;
@@ -882,19 +882,19 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .items-table tbody td:nth-child(2) {
-              width: 15% !important;
+              width: 18% !important;
               text-align: center !important;
               font-weight: bold !important;
             }
             
             .items-table tbody td:nth-child(3) {
-              width: 35% !important;
+              width: 34% !important;
               text-align: right !important;
               font-weight: bold !important;
             }
             
             .price-small {
-              font-size: 10px !important;
+              font-size: 9px !important;
               color: #333333 !important;
               margin-top: 2px !important;
               font-weight: normal !important;
@@ -902,13 +902,14 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             
             .summary {
               margin: 10px 0 !important;
+              padding-bottom: 5px !important;
             }
             
             .summary-row {
               display: flex !important;
               justify-content: space-between !important;
               margin-bottom: 4px !important;
-              font-size: 13px !important;
+              font-size: 12px !important;
               line-height: 1.4 !important;
               color: #000000 !important;
             }
@@ -918,11 +919,11 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .summary-row.grand-total {
-              font-size: 18px !important;
+              font-size: 17px !important;
               font-weight: bold !important;
-              margin-top: 8px !important;
-              padding-top: 8px !important;
-              border-top: 2px solid #000000 !important;
+              margin-top: 7px !important;
+              padding-top: 7px !important;
+              border-top: 3px solid #000000 !important;
             }
             
             .summary-row.grand-total span {
@@ -933,20 +934,28 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .payment-section {
               margin: 10px 0 !important;
               text-align: center !important;
+              padding: 5px 0 !important;
             }
             
             .payment-section .row {
               text-align: center !important;
               font-weight: bold !important;
-              font-size: 14px !important;
+              font-size: 13px !important;
               color: #000000 !important;
+              margin-bottom: 4px !important;
             }
             
             .footer {
               margin-top: 12px !important;
+              padding-top: 8px !important;
               text-align: center !important;
-              font-size: 11px !important;
+              font-size: 10px !important;
               color: #000000 !important;
+              padding-bottom: 10px !important;
+            }
+            
+            .footer .row {
+              margin-bottom: 3px !important;
             }
             
             /* Force black text everywhere */
@@ -1008,8 +1017,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       <td>${p.name}</td>
                       <td style="text-align: center;">${p.qty}</td>
                       <td style="text-align: right;">
-                        ${currencyIcon}${itemTotal}
-                        <div class="price-small">${p.qty} × ${currencyIcon}${unitPrice}</div>
+                        ${displayCurrency}${itemTotal}
+                        <div class="price-small">${p.qty} x ${displayCurrency}${unitPrice}</div>
                       </td>
                     </tr>
                   `;
@@ -1023,14 +1032,14 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             <div class="summary">
               <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>${currencyIcon}${subtotal.toFixed(2)}</span>
+                <span>${displayCurrency}${subtotal.toFixed(2)}</span>
               </div>
               ${
                 discountAmount > 0
                   ? `
                 <div class="summary-row">
                   <span>Discount:</span>
-                  <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
+                  <span>-${displayCurrency}${discountAmount.toFixed(2)}</span>
                 </div>
               `
                   : ""
@@ -1040,7 +1049,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   ? `
                 <div class="summary-row">
                   <span>Delivery:</span>
-                  <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
+                  <span>${displayCurrency}${deliveryCharge.toFixed(2)}</span>
                 </div>
               `
                   : ""
@@ -1050,7 +1059,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   ? `
                 <div class="summary-row">
                   <span>Tax:</span>
-                  <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
+                  <span>${displayCurrency}${taxAmount.toFixed(2)}</span>
                 </div>
               `
                   : ""
@@ -1058,7 +1067,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               
               <div class="summary-row grand-total">
                 <span>TOTAL:</span>
-                <span>${currencyIcon}${totalDue.toFixed(2)}</span>
+                <span>${displayCurrency}${totalDue.toFixed(2)}</span>
               </div>
             </div>
             
@@ -1083,41 +1092,42 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     `);
       doc.close();
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Wait longer for content to fully render
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const body = doc.body;
       if (!body) throw new Error("No body element found");
 
-      const contentHeight = body.scrollHeight;
-      iframe.style.height = `${contentHeight + 40}px`;
+      // Get actual content height with extra padding
+      const contentHeight = Math.max(body.scrollHeight, body.offsetHeight) + 50;
+      iframe.style.height = `${contentHeight}px`;
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Wait for layout to stabilize
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
-      // IMPROVED: Use higher scale and force black/white rendering
       const canvas = await html2canvas(body, {
-        scale: 4, // Increased from 3 to 4 for even sharper quality
+        scale: 5,
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
         allowTaint: false,
-        width: 302,
+        width: universalWidth,
         height: contentHeight,
-        windowWidth: 302,
+        windowWidth: universalWidth,
         windowHeight: contentHeight,
         imageTimeout: 0,
         removeContainer: true,
+        scrollY: 0,
+        scrollX: 0,
         onclone: (clonedDoc) => {
-          // Force all text to pure black
+          // Force pure black text
           const allElements = clonedDoc.querySelectorAll("*");
           allElements.forEach((el) => {
             if (el instanceof HTMLElement) {
               el.style.color = "#000000";
               el.style.backgroundColor = "#ffffff";
-              // Type assertion to bypass TypeScript checks for vendor-specific properties
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (el.style as any).webkitFontSmoothing = "none";
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (el.style as any).fontSmooth = "never";
+              el.style.setProperty("-webkit-font-smoothing", "none");
+              el.style.setProperty("font-smooth", "never");
             }
           });
 
@@ -1131,6 +1141,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
           });
 
+          // Ensure footer is visible
+          const footer = clonedDoc.querySelector(".footer");
+          if (footer instanceof HTMLElement) {
+            footer.style.paddingBottom = "20px";
+            footer.style.marginBottom = "20px";
+          }
+
           const style = clonedDoc.createElement("style");
           style.textContent = `
           * {
@@ -1140,6 +1157,11 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             -webkit-font-smoothing: none !important;
             -moz-osx-font-smoothing: grayscale !important;
             text-rendering: optimizeSpeed !important;
+          }
+          
+          body {
+            overflow: visible !important;
+            min-height: 100% !important;
           }
           
           .store-title, .section-header, .text-center, .payment-section, .footer {
@@ -1165,29 +1187,30 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           .divider-dashed {
             border-top: 2px dashed #000000 !important;
           }
+          
+          .footer {
+            padding-bottom: 20px !important;
+            margin-bottom: 20px !important;
+          }
         `;
           clonedDoc.head.appendChild(style);
         },
       });
 
-      // POST-PROCESSING: Increase contrast further
+      // POST-PROCESSING: Aggressive contrast enhancement
       const ctx = canvas.getContext("2d");
       if (ctx) {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // Increase contrast - make blacks blacker and whites whiter
         for (let i = 0; i < data.length; i += 4) {
           const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-
-          // Aggressive thresholding for thermal printer
           const threshold = 180;
           const newValue = avg < threshold ? 0 : 255;
 
-          data[i] = newValue; // Red
-          data[i + 1] = newValue; // Green
-          data[i + 2] = newValue; // Blue
-          // Alpha stays the same (data[i + 3])
+          data[i] = newValue;
+          data[i + 1] = newValue;
+          data[i + 2] = newValue;
         }
 
         ctx.putImageData(imageData, 0, 0);
@@ -1205,7 +1228,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
       notification.success({
         title: "POS Receipt Downloaded",
-        description: "High-contrast receipt optimized for thermal printers",
+        description: "Receipt compatible with all thermal printers",
       });
     } catch (error) {
       console.error("Error generating POS receipt:", error);
