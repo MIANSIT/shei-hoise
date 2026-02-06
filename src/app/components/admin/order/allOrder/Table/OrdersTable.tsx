@@ -360,14 +360,14 @@ const OrdersTable: React.FC<Props> = ({
       key: "total",
       render: (_, order: StoreOrder) => (
         <div className="text-right">
-          <div className="font-semibold text-gray-900 text-sm">
+          <div className="font-semibold text-gray-900 dark:text-gray-300 text-sm">
             {formatCurrency(order.total_amount, order.currency)}
           </div>
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-gray-600 dark:text-gray-400">
             Ship: {formatCurrency(order.shipping_fee, order.currency)}
           </div>
-          {order.tax_amount && order.tax_amount > 0 && (
-            <div className="text-xs text-gray-600">
+          {order.tax_amount != null && order.tax_amount > 0 && (
+            <div className="text-xs text-gray-600 dark:text-gray-400">
               Tax: {formatCurrency(order.tax_amount, order.currency)}
             </div>
           )}
