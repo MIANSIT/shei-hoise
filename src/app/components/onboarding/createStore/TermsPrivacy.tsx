@@ -4,8 +4,8 @@ import { Controller, Control } from "react-hook-form";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { RichTextController } from "./RichTextController";
-import { Form } from "antd";
-import { SafetyOutlined } from "@ant-design/icons";
+import { Form, Tooltip } from "antd";
+import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -18,7 +18,14 @@ export default function TermsPrivacy({ control }: Props) {
         {/* Option 1: Use vertical layout form */}
         <Form layout="vertical">
           <FormItemWrapper
-            label="Terms & Conditions"
+            label={
+              <span className="text-foreground flex items-center gap-1">
+                Terms & Conditions
+                <Tooltip title="Define the rules, guidelines, and legal agreements that govern the use of your store and services">
+                  <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                </Tooltip>
+              </span>
+            }
             labelCol={{ span: 24 }}
             wrapperCol={{ span: 24 }}
           >
@@ -35,7 +42,14 @@ export default function TermsPrivacy({ control }: Props) {
           </FormItemWrapper>
 
           <FormItemWrapper
-            label="Privacy Policy"
+            label={
+              <span className="text-foreground flex items-center gap-1">
+                Privacy Policy
+                <Tooltip title="Describe how you collect, use, store, and protect customer data in compliance with privacy regulations">
+                  <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                </Tooltip>
+              </span>
+            }
             labelCol={{ span: 24 }}
             wrapperCol={{ span: 24 }}
           >

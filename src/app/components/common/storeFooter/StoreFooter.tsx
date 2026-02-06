@@ -70,7 +70,7 @@ export default function StoreFooter({
   aboutLink,
   socialLinks,
   bottomLinks,
-//   newsletterCTA,
+  //   newsletterCTA,
 }: StoreFooterProps) {
   const renderSocialIcons = () => (
     <div className="flex gap-3">
@@ -158,8 +158,8 @@ export default function StoreFooter({
           {/* Column 1: Brand */}
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              {storeLogo && (
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm dark:bg-gray-900">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 flex items-center justify-center shadow-sm">
+                {storeLogo ? (
                   <Image
                     src={storeLogo}
                     alt={
@@ -169,8 +169,12 @@ export default function StoreFooter({
                     fill
                     className="object-contain p-2"
                   />
-                </div>
-              )}
+                ) : (
+                  <span className="text-gray-700 dark:text-gray-300 font-bold text-lg">
+                    {storeName?.[0]?.toUpperCase() || "S"}
+                  </span>
+                )}
+              </div>
               <div>
                 {storeName && (
                   <Link
@@ -182,6 +186,7 @@ export default function StoreFooter({
                 )}
               </div>
             </div>
+
             {storeDescription && (
               <p className="text-gray-600 leading-relaxed text-sm dark:text-gray-300">
                 {linkify(storeDescription)}
