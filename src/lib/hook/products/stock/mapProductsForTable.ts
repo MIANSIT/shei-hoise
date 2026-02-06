@@ -10,8 +10,9 @@ export interface VariantRow {
   stock: number;
   imageUrl: string | null;
   isLowStock: boolean;
+  isOutOfStock: boolean; // ✅ NEW
   lowStockThreshold: number;
-  isActive: boolean; // ← add this
+  isActive: boolean;
 }
 
 export interface ProductRow {
@@ -23,23 +24,28 @@ export interface ProductRow {
   imageUrl: string | null;
   variants?: VariantRow[];
   isLowStock: boolean;
+  isOutOfStock: boolean; // ✅ NEW
   lowStockThreshold: number;
   hasLowStockVariant: boolean;
-  status: ProductStatus; // ← add this
-  isInactiveProduct: boolean; // ← add this
+  status: ProductStatus;
+  isInactiveProduct: boolean;
 }
 
 export function mapProductsForModernTable(
-  products: ProductWithStock[]
+  products: ProductWithStock[],
 ): ProductRow[] {
   return products.map((p) => {
-    const hasVariants = p.variants && p.variants.length > 0;
+    const hasVariants = !!p.variants?.length;
 
-    const productLowStockThreshold = p.stock?.low_stock_threshold || 10;
     const productStock = p.stock?.quantity_available ?? 0;
+    const productLowStockThreshold = p.stock?.low_stock_threshold || 10;
 
+    // ✅ FIXED LOGIC
+    const isProductOutOfStock = !hasVariants && productStock === 0;
     const isProductLowStock =
-      !hasVariants && productStock <= productLowStockThreshold;
+      !hasVariants &&
+      productStock > 0 &&
+      productStock <= productLowStockThreshold;
 
     const processedVariants = hasVariants
       ? p.variants.map((v) => {
@@ -47,13 +53,16 @@ export function mapProductsForModernTable(
           const variantLowStockThreshold =
             v.stock?.low_stock_threshold || productLowStockThreshold;
 
-          const isVariantLowStock = variantStock <= variantLowStockThreshold;
+          // ✅ FIXED LOGIC
+          const isVariantOutOfStock = variantStock === 0;
+          const isVariantLowStock =
+            variantStock > 0 && variantStock <= variantLowStockThreshold;
 
           return {
             id: v.id,
             productId: v.product_id,
-            sku: v.sku ?? null,
             title: v.variant_name,
+            sku: v.sku ?? null,
             currentPrice:
               v.discounted_price && v.discounted_price > 0
                 ? v.discounted_price
@@ -61,16 +70,16 @@ export function mapProductsForModernTable(
             stock: variantStock,
             imageUrl:
               v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
+            isOutOfStock: isVariantOutOfStock,
             isLowStock: isVariantLowStock,
             lowStockThreshold: variantLowStockThreshold,
-            isActive: v.is_active, // ← use new field
+            isActive: v.is_active,
           };
         })
       : undefined;
 
-    const hasLowStockVariant = processedVariants
-      ? processedVariants.some((variant) => variant.isLowStock)
-      : false;
+    const hasLowStockVariant =
+      processedVariants?.some((v) => v.isLowStock) ?? false;
 
     return {
       id: p.id,
@@ -79,14 +88,17 @@ export function mapProductsForModernTable(
       currentPrice: hasVariants ? null : p.base_price,
       stock: productStock,
       imageUrl: p.primary_image?.image_url ?? null,
+
+      isOutOfStock: isProductOutOfStock,
       isLowStock: isProductLowStock,
+
       lowStockThreshold: productLowStockThreshold,
       hasLowStockVariant,
       variants: processedVariants,
-      status: p.status, // ← add this
+
+      status: p.status,
       isInactiveProduct:
-        p.status === ProductStatus.DRAFT || p.status === ProductStatus.INACTIVE, // ← add this
+        p.status === ProductStatus.DRAFT || p.status === ProductStatus.INACTIVE,
     };
   });
 }
-

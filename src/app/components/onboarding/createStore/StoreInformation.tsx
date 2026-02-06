@@ -1,11 +1,11 @@
 "use client";
 
-import { Divider, Input } from "antd";
+import { Divider, Input, Tooltip } from "antd";
 import { Controller, Control } from "react-hook-form";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import UploadImage from "../uploads/UploadImage";
 import { FormItemWrapper } from "./FormItemWrapper";
-import { SafetyOutlined } from "@ant-design/icons";
+import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -26,7 +26,14 @@ export default function StoreInformation({ control }: Props) {
           control={control}
           render={({ field, fieldState }) => (
             <FormItemWrapper
-              label={<span className="text-foreground">Store Name</span>}
+              label={
+                <span className="text-foreground flex items-center gap-1">
+                  Store Name
+                  <Tooltip title="Enter your business or brand name as you want customers to see it">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
+              }
               required
               error={fieldState.error?.message}
             >
@@ -45,7 +52,14 @@ export default function StoreInformation({ control }: Props) {
           control={control}
           render={({ field, fieldState }) => (
             <FormItemWrapper
-              label={<span className="text-foreground">Store Slug</span>}
+              label={
+                <span className="text-foreground flex items-center gap-1">
+                  Store Slug
+                  <Tooltip title="A unique URL-friendly identifier for your store (e.g., 'my-awesome-store')">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
+              }
               required
               error={fieldState.error?.message}
             >
@@ -64,7 +78,14 @@ export default function StoreInformation({ control }: Props) {
           control={control}
           render={({ field, fieldState }) => (
             <FormItemWrapper
-              label={<span className="text-foreground">Store Description</span>}
+              label={
+                <span className="text-foreground flex items-center gap-1">
+                  Store Description
+                  <Tooltip title="Write a brief description of your store, products, and what makes your business unique">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
+              }
               error={fieldState.error?.message}
               className="md:col-span-2"
             >
@@ -84,7 +105,14 @@ export default function StoreInformation({ control }: Props) {
           control={control}
           render={({ field, fieldState }) => (
             <FormItemWrapper
-              label={<span className="text-foreground">Store Logo</span>}
+              label={
+                <span className="text-foreground flex items-center gap-1">
+                  Store Logo
+                  <Tooltip title="Upload your store's logo. Recommended: square image, minimum 200x200px, PNG or JPG format">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
+              }
               required
               error={fieldState.error?.message}
             >
@@ -103,7 +131,12 @@ export default function StoreInformation({ control }: Props) {
           render={({ field, fieldState }) => (
             <FormItemWrapper
               label={
-                <span className="text-foreground">Store Banner (Optional)</span>
+                <span className="text-foreground flex items-center gap-1">
+                  Store Banner (Optional)
+                  <Tooltip title="Upload a banner image for your store page. Recommended: 1200x400px or wider, PNG or JPG format">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
               }
               error={fieldState.error?.message}
             >
@@ -122,7 +155,12 @@ export default function StoreInformation({ control }: Props) {
           render={({ field, fieldState }) => (
             <FormItemWrapper
               label={
-                <span className="text-foreground">Store Contact Email</span>
+                <span className="text-foreground flex items-center gap-1">
+                  Store Contact Email
+                  <Tooltip title="Primary email address where customers can reach your business for inquiries and support">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
               }
               required
               error={fieldState.error?.message}
@@ -144,7 +182,12 @@ export default function StoreInformation({ control }: Props) {
           render={({ field, fieldState }) => (
             <FormItemWrapper
               label={
-                <span className="text-foreground">Store Contact Number</span>
+                <span className="text-foreground flex items-center gap-1">
+                  Store Contact Number
+                  <Tooltip title="Primary phone number for customer service and business inquiries. Include country code if applicable">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
               }
               required
               error={fieldState.error?.message}
@@ -165,7 +208,14 @@ export default function StoreInformation({ control }: Props) {
           control={control}
           render={({ field, fieldState }) => (
             <FormItemWrapper
-              label={<span className="text-foreground">Business Address</span>}
+              label={
+                <span className="text-foreground flex items-center gap-1">
+                  Business Address
+                  <Tooltip title="Enter your complete business address including street, city, postal code, and country">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
+                </span>
+              }
               required
               error={fieldState.error?.message}
               className="md:col-span-2"
@@ -187,8 +237,11 @@ export default function StoreInformation({ control }: Props) {
           render={({ field }) => (
             <FormItemWrapper
               label={
-                <span className="text-foreground">
+                <span className="text-foreground flex items-center gap-1">
                   Business License (Optional)
+                  <Tooltip title="Enter your business license number or registration number if applicable">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
                 </span>
               }
             >
@@ -208,8 +261,11 @@ export default function StoreInformation({ control }: Props) {
           render={({ field, fieldState }) => (
             <FormItemWrapper
               label={
-                <span className="text-foreground">
+                <span className="text-foreground flex items-center gap-1">
                   Business Tax ID (Optional)
+                  <Tooltip title="Enter your business tax identification number (TIN, VAT number, or equivalent) if applicable">
+                    <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                  </Tooltip>
                 </span>
               }
               error={fieldState.error?.message}

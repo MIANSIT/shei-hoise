@@ -1,9 +1,8 @@
 // app/hooks/useDashboardMetrics.ts
 import { useCallback, useEffect, useState } from "react";
-import { StoreOrder } from "@/lib/types/order";
+import { StoreOrder, OrderItem } from "@/lib/types/order";
 import { Product } from "@/lib/queries/products/getProducts";
 
-// export type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
 export type TimePeriod = "weekly" | "monthly" | "yearly";
 export type OrderStatus =
   | "pending"
@@ -14,24 +13,16 @@ export type OrderStatus =
 export type PaymentStatus = "paid" | "pending" | "refunded";
 export type AlertType = "stock" | "order" | "payment";
 
-interface OrderItem {
-  id: string;
-  product_name: string;
-  product_id: string;
-  variant_id?: string;
-  unit_price: number;
-  discounted_amount?: number;
-  quantity: number;
-}
-
 interface ProductVariant {
   id: string;
   variant_name: string;
   base_price: number;
   sale_price?: number;
+  tp_price?: number;
   stock: {
     quantity_available: number;
     low_stock_threshold?: number;
+    track_inventory?: boolean;
     is_low_stock: boolean;
   };
   is_low_stock: boolean;
@@ -42,11 +33,8 @@ type DashboardProduct = Product & { variants: ProductVariant[] };
 interface DashboardMetrics {
   revenue: number;
   orderCount: number;
-
-  // AOVs
-  averageOrderValue: number; // AOV (All Orders)
-  paidAverageOrderValue: number; // AOV (Paid Orders) – calculated but not required in UI
-
+  averageOrderValue: number;
+  paidAverageOrderValue: number;
   grossProfit: number;
   changePercentage: {
     revenue: number;
@@ -69,9 +57,11 @@ interface DashboardMetrics {
     profit: number;
     profitMargin: number;
   }[];
-  lowStockCount: number;
-  outOfStockCount: number;
-  inStockCount: number;
+  inStockCount: number; // total units in stock
+  lowStockCount: number; // total units low in stock
+  outOfStockCount: number; // total variants/products out of stock
+  lowStockProductCount: number; // products with at least 1 low stock variant
+  outOfStockProductCount: number; // products fully out of stock
   paymentAmounts: Record<PaymentStatus, number>;
   alerts: { type: AlertType; message: string; count: number }[];
   filteredOrders: StoreOrder[];
@@ -105,9 +95,11 @@ export const useDashboardMetrics = (
       topCustomer: { name: "", totalSpent: 0 },
     },
     topProducts: [],
+    inStockCount: 0,
     lowStockCount: 0,
     outOfStockCount: 0,
-    inStockCount: 0,
+    lowStockProductCount: 0,
+    outOfStockProductCount: 0,
     paymentAmounts: { paid: 0, pending: 0, refunded: 0 },
     alerts: [],
     filteredOrders: [],
@@ -124,16 +116,22 @@ export const useDashboardMetrics = (
     [],
   );
 
-  const ESTIMATED_COST_PERCENTAGE = 0.6;
-
-  const getItemEstimatedCost = useCallback(
-    (item: OrderItem) => getItemSellingPrice(item) * ESTIMATED_COST_PERCENTAGE,
-    [getItemSellingPrice],
+  const getItemCost = useCallback(
+    (item: OrderItem) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (!product) return 0;
+      if (item.variant_id != null) {
+        const variant = product.variants?.find((v) => v.id === item.variant_id);
+        if (variant?.tp_price != null) return variant.tp_price;
+      }
+      return product.tp_price ?? 0;
+    },
+    [products],
   );
 
   const calculateItemProfit = useCallback(
-    (item: OrderItem) => getItemSellingPrice(item) - getItemEstimatedCost(item),
-    [getItemSellingPrice, getItemEstimatedCost],
+    (item: OrderItem) => getItemSellingPrice(item) - getItemCost(item),
+    [getItemSellingPrice, getItemCost],
   );
 
   const getCurrentPeriodDates = useCallback((period: TimePeriod) => {
@@ -142,10 +140,6 @@ export const useDashboardMetrics = (
     const endDate = new Date();
 
     switch (period) {
-      // case "daily":
-      //   startDate.setHours(0, 0, 0, 0);
-      //   endDate.setHours(23, 59, 59, 999);
-      //   break;
       case "weekly": {
         const day = now.getDay();
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
@@ -178,10 +172,6 @@ export const useDashboardMetrics = (
       const prevEnd = new Date(current.end);
 
       switch (period) {
-        // case "daily":
-        //   prevStart.setDate(prevStart.getDate() - 1);
-        //   prevEnd.setDate(prevEnd.getDate() - 1);
-        //   break;
         case "weekly":
           prevStart.setDate(prevStart.getDate() - 7);
           prevEnd.setDate(prevEnd.getDate() - 7);
@@ -206,15 +196,15 @@ export const useDashboardMetrics = (
     const currentPeriod = getCurrentPeriodDates(timePeriod);
     const prevPeriod = getPreviousPeriodDates(timePeriod);
 
-    let revenue = 0;
-    let grossProfit = 0;
-    let orderCount = 0;
-    let paidOrderCount = 0;
-    let totalOrderValue = 0; // ALL orders
+    let revenue = 0,
+      grossProfit = 0,
+      orderCount = 0,
+      paidOrderCount = 0,
+      totalOrderValue = 0;
 
-    let prevRevenue = 0;
-    let prevOrderCount = 0;
-    let prevProfit = 0;
+    let prevRevenue = 0,
+      prevOrderCount = 0,
+      prevProfit = 0;
 
     const orderStatusCounts: Record<OrderStatus, number> = {
       pending: 0,
@@ -223,13 +213,11 @@ export const useDashboardMetrics = (
       delivered: 0,
       cancelled: 0,
     };
-
     const paymentAmounts: Record<PaymentStatus, number> = {
       paid: 0,
       pending: 0,
       refunded: 0,
     };
-
     const salesTrendMap = new Map<string, number>();
     const topProductsMap = new Map<
       string,
@@ -247,6 +235,7 @@ export const useDashboardMetrics = (
     const filteredOrders: StoreOrder[] = [];
     const paidOrders: StoreOrder[] = [];
 
+    // Initialize sales trend for last 30 days
     const today = new Date();
     for (let i = 0; i < 30; i++) {
       const d = new Date();
@@ -255,21 +244,21 @@ export const useDashboardMetrics = (
       salesTrendMap.set(d.toDateString(), 0);
     }
 
-    // Process orders - ALL metrics from PAID orders only
+    // Orders processing
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
       const subtotal = Number(order.subtotal) || 0;
       const total = Number(order.total_amount) || 0;
       const isPaid = isOrderPaid(order);
 
-      // Filter orders for current period (all orders)
+      // Filter current period orders
       if (orderDate >= currentPeriod.start && orderDate <= currentPeriod.end) {
         filteredOrders.push(order);
         orderCount++;
-        totalOrderValue += subtotal; // 👈 all orders for AOV calculation
+        totalOrderValue += subtotal;
       }
 
-      // Calculate metrics for CURRENT PERIOD (PAID orders only)
+      // Metrics for paid orders (current period)
       if (
         orderDate >= currentPeriod.start &&
         orderDate <= currentPeriod.end &&
@@ -280,7 +269,7 @@ export const useDashboardMetrics = (
         paidOrderCount++;
       }
 
-      // Calculate metrics for PREVIOUS PERIOD (PAID orders only)
+      // Metrics for previous period (paid)
       if (
         orderDate >= prevPeriod.start &&
         orderDate <= prevPeriod.end &&
@@ -294,17 +283,17 @@ export const useDashboardMetrics = (
         );
       }
 
-      // Count order statuses (all orders)
+      // Order status counts
       const statusKey = (order.status?.toLowerCase() ||
         "pending") as OrderStatus;
       orderStatusCounts[statusKey]++;
 
-      // Count payment amounts (all orders)
+      // Payment amounts
       const paymentKey = (order.payment_status?.toLowerCase() ||
         "pending") as PaymentStatus;
       paymentAmounts[paymentKey] += total;
 
-      // Sales trend (PAID orders only)
+      // Sales trend (paid only)
       if (isPaid) {
         const dayKey = new Date(order.created_at).toDateString();
         if (salesTrendMap.has(dayKey)) {
@@ -315,7 +304,7 @@ export const useDashboardMetrics = (
         }
       }
 
-      // Customer data (all orders for counting, but paid for spending)
+      // Customers
       if (!order.customers?.id) return;
       const customerId = order.customers.id;
       const firstName = order.customers.first_name || "Unknown";
@@ -336,7 +325,6 @@ export const useDashboardMetrics = (
         });
       }
 
-      // Top customer (PAID orders only)
       if (isPaid) {
         const paidCustomer = paidCustomerMap.get(customerId);
         if (!paidCustomer)
@@ -351,7 +339,7 @@ export const useDashboardMetrics = (
           });
       }
 
-      // Top products (PAID orders only)
+      // Top products (paid)
       if (isPaid) {
         (order.order_items as OrderItem[]).forEach((item) => {
           const current = topProductsMap.get(item.product_name) || {
@@ -361,9 +349,11 @@ export const useDashboardMetrics = (
             profit: 0,
           };
           const qty = item.quantity || 1;
-          const itemRevenue = getItemSellingPrice(item) * qty;
-          const itemCost = getItemEstimatedCost(item) * qty;
-          const itemProfit = itemRevenue - itemCost;
+          const sell = getItemSellingPrice(item);
+          const cost = getItemCost(item);
+          const itemRevenue = sell * qty;
+          const itemCost = cost * qty;
+          const itemProfit = (sell - cost) * qty;
 
           topProductsMap.set(item.product_name, {
             revenue: current.revenue + itemRevenue,
@@ -375,86 +365,70 @@ export const useDashboardMetrics = (
       }
     });
 
-    // Calculate gross profit (PAID orders only)
+    // Gross profit (paid orders)
     grossProfit = filteredOrders.reduce((sum, order) => {
       if (!isOrderPaid(order)) return sum;
       return (
         sum +
-        (order.order_items as OrderItem[]).reduce(
+        order.order_items.reduce(
           (s, item) => s + calculateItemProfit(item) * (item.quantity || 1),
           0,
         )
       );
     }, 0);
 
-    // Calculate inventory counts from products
-    let lowStockCount = 0;
-    let outOfStockCount = 0;
-    let inStockCount = 0;
+    // Inventory metrics (full)
+    // ------------------------
+    // Inventory metrics (refactored)
+    // ------------------------
+    let inStockCount = 0; // total units in stock
+    let lowStockCount = 0; // total units low in stock
+    let outOfStockCount = 0; // total variants/products out of stock (units = 0)
+    let lowStockProductCount = 0; // products with at least 1 low stock variant
+    let outOfStockProductCount = 0; // products fully out of stock
 
-    // Process products to get stock information
     products.forEach((product) => {
-      // VARIANT PRODUCTS
-      if (product.variants && product.variants.length > 0) {
-        let hasStock = false;
-        let hasLowStock = false;
+      let productHasStock = false; // does this product have any stock?
+      let productHasLowStock = false; // does this product have low stock?
 
-        product.variants.forEach((variant) => {
-          const stock = variant.stock;
+      const variants =
+        product.variants?.length > 0 ? product.variants : [product];
 
-          if (!stock || !stock.track_inventory) return;
-
-          const qty = stock.quantity_available ?? 0;
-          const threshold = stock.low_stock_threshold ?? 0;
-
-          if (qty > 0) {
-            hasStock = true;
-            inStockCount += qty;
-          }
-
-          if (qty > 0 && qty <= threshold) {
-            hasLowStock = true;
-          }
-        });
-
-        if (!hasStock) {
-          outOfStockCount++; // ✅ product-level
-        } else if (hasLowStock) {
-          lowStockCount++; // ✅ product-level
-        }
-      }
-
-      // SIMPLE PRODUCTS
-      else {
-        const stock = product.stock;
+      variants.forEach((variant) => {
+        const stock = variant.stock;
         if (!stock || !stock.track_inventory) return;
 
         const qty = stock.quantity_available ?? 0;
         const threshold = stock.low_stock_threshold ?? 0;
 
-        if (qty <= 0) {
-          outOfStockCount++;
-        } else {
-          inStockCount += qty;
+        if (qty > 0) {
+          inStockCount += qty; // total units in stock
+          productHasStock = true;
+
           if (qty <= threshold) {
-            lowStockCount++;
+            lowStockCount += qty; // total low-stock units
+            productHasLowStock = true; // mark product as low stock
           }
+        } else {
+          outOfStockCount++; // count out-of-stock variants
         }
-      }
+      });
+
+      // Product-level counts
+      if (!productHasStock) outOfStockProductCount++;
+      else if (productHasLowStock) lowStockProductCount++;
     });
 
-    // Calculate customer metrics
+    // Customer snapshot
     let topCustomer = { name: "No customers", totalSpent: 0 };
     paidCustomerMap.forEach((c) => {
-      if (c.totalSpent > topCustomer.totalSpent) topCustomer = { ...c };
+      if (c.totalSpent > topCustomer.totalSpent) topCustomer = c;
     });
-
     const newCustomers = Array.from(customerMap.values()).filter(
       (c) =>
         c.firstOrderDate >= currentPeriod.start &&
         c.firstOrderDate <= currentPeriod.end,
     ).length;
-
     const totalCustomers = customerMap.size;
     const returningCustomers = Array.from(customerMap.values()).filter(
       (c) => c.orders > 1,
@@ -462,7 +436,7 @@ export const useDashboardMetrics = (
     const returningRate =
       totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
 
-    // Prepare top products (from PAID orders only)
+    // Prepare top products
     const topProducts = Array.from(topProductsMap.entries())
       .sort((a, b) => b[1].quantity - a[1].quantity)
       .slice(0, 3)
@@ -472,7 +446,7 @@ export const useDashboardMetrics = (
         profitMargin: data.revenue > 0 ? (data.profit / data.revenue) * 100 : 0,
       }));
 
-    // Prepare sales trend data (from PAID orders only)
+    // Sales trend
     const salesTrend = Array.from(salesTrendMap.entries())
       .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
       .map(([date, sales]) => ({
@@ -483,44 +457,33 @@ export const useDashboardMetrics = (
         sales,
       }));
 
-    // Calculate alerts
+    // Alerts
     const alerts: { type: AlertType; message: string; count: number }[] = [];
-
-    if (lowStockCount > 0) {
+    if (lowStockProductCount > 0)
       alerts.push({
         type: "stock",
-        message: `Low stock items need attention`,
-        count: lowStockCount,
+        message: `Low stock products need attention`,
+        count: lowStockProductCount,
       });
-    }
-
-    if (outOfStockCount > 0) {
+    if (outOfStockProductCount > 0)
       alerts.push({
         type: "stock",
-        message: `Out of stock items detected`,
-        count: outOfStockCount,
+        message: `Out of stock products detected`,
+        count: outOfStockProductCount,
       });
-    }
-
-    // Add order alerts if there are pending orders
-    if (orderStatusCounts.pending > 0) {
+    if (orderStatusCounts.pending > 0)
       alerts.push({
         type: "order",
         message: `Pending orders require action`,
         count: orderStatusCounts.pending,
       });
-    }
-
-    // Add payment alerts if there are pending payments
-    if (paymentAmounts.pending > 0) {
+    if (paymentAmounts.pending > 0)
       alerts.push({
         type: "payment",
         message: `Pending payments awaiting confirmation`,
-        count: 1, // Count as 1 alert instance, not number of orders
+        count: 1,
       });
-    }
 
-    // Calculate change percentages
     const calculateChange = (current: number, previous: number) =>
       previous === 0
         ? current > 0
@@ -528,7 +491,7 @@ export const useDashboardMetrics = (
           : 0
         : ((current - previous) / previous) * 100;
 
-    // Set all metrics
+    // Set final metrics
     setMetrics({
       revenue,
       orderCount,
@@ -552,9 +515,11 @@ export const useDashboardMetrics = (
         topCustomer,
       },
       topProducts,
+      inStockCount,
       lowStockCount,
       outOfStockCount,
-      inStockCount,
+      lowStockProductCount,
+      outOfStockProductCount,
       paymentAmounts,
       alerts,
       filteredOrders,
@@ -570,7 +535,7 @@ export const useDashboardMetrics = (
     isOrderPaid,
     calculateItemProfit,
     getItemSellingPrice,
-    getItemEstimatedCost,
+    getItemCost,
   ]);
 
   useEffect(() => {

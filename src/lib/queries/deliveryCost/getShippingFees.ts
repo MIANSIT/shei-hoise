@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export interface ShippingOption {
   name: string;
   price: number;
-  estimated_days?: number; // new optional field
+  estimated_days?: string; // Changed to string to allow ranges like "2-3"
 }
 
 export interface StoreShippingConfig {
@@ -16,7 +16,7 @@ export interface StoreShippingConfig {
 }
 
 export async function getShippingFees(
-  storeSlug: string
+  storeSlug: string,
 ): Promise<StoreShippingConfig | null> {
   try {
     const { data: storeData, error: storeError } = await supabase
@@ -30,7 +30,7 @@ export async function getShippingFees(
           processing_time_days,
           shipping_fees
         )
-      `
+      `,
       )
       .eq("store_slug", storeSlug)
       .eq("is_active", true)

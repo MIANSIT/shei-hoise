@@ -9,7 +9,7 @@ interface ShippingOptionItemProps {
   onUpdate: (
     index: number,
     field: keyof ShippingOption,
-    value: string | number | undefined
+    value: string | number | undefined,
   ) => void;
   onRemove: (index: number) => void;
 }
@@ -69,18 +69,17 @@ export function ShippingOptionItem({
                   Estimated Days
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={option.estimated_days ?? ""}
                   onChange={(e) =>
                     onUpdate(
                       index,
                       "estimated_days",
-                      e.target.value ? Number(e.target.value) : undefined
+                      e.target.value || undefined,
                     )
                   }
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  min="0"
-                  placeholder="Optional"
+                  placeholder="e.g., 2-3"
                 />
               </div>
 
@@ -88,7 +87,7 @@ export function ShippingOptionItem({
               <div className="lg:col-span-1 flex items-center justify-center lg:justify-end pt-2">
                 <button
                   onClick={() => onRemove(index)}
-                  className="w-12 h-12 flex items-center justify-center border border-red-200 !text-red-500 rounded-xl hover:border-red-300 hover:text-red-600 transition-all duration-200"
+                  className="w-12 h-12 flex items-center justify-center border border-red-200 text-red-500! rounded-xl hover:border-red-300 hover:text-red-600 transition-all duration-200"
                   type="button"
                 >
                   <Trash2 className="h-5 w-5" />
@@ -126,9 +125,14 @@ export function ShippingOptionItem({
             </p>
             <p className="text-gray-400  text-sm mt-1">
               Estimated Days:{" "}
-              {option.estimated_days !== undefined
+              {option.estimated_days
                 ? `${option.estimated_days} day${
-                    option.estimated_days > 1 ? "s" : ""
+                    !option.estimated_days.toString().includes("-") &&
+                    option.estimated_days !== "1"
+                      ? "s"
+                      : option.estimated_days.toString().includes("-")
+                        ? "s"
+                        : ""
                   }`
                 : "None"}
             </p>

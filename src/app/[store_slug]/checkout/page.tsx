@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/[store_slug]/checkout/page.tsx - COMPLETELY FIXED VERSION
+// app/[store_slug]/checkout/page.tsx - SIMPLIFIED PHONE-ONLY CHECKOUT
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -14,7 +14,7 @@ import useCartStore from "@/lib/store/cartStore";
 import { useOrderProcess } from "@/lib/hook/useOrderProcess";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
-import { getCustomerByEmail } from "@/lib/queries/customers/getCustomerByEmail";
+import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
 import { AnimatePresence } from "framer-motion";
 import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
@@ -23,8 +23,8 @@ import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
-import { AuthResponse, User } from "@supabase/supabase-js";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,21 +34,13 @@ export default function CheckoutPage() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [taxLoaded, setTaxLoaded] = useState(false);
-  const {
-    currency,
-    // icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { currency, loading: currencyLoading } = useUserCurrencyIcon();
   const params = useParams();
   const router = useRouter();
   const store_slug = params.store_slug as string;
 
   const notify = useSheiNotification();
-  const {
-    setJustCreatedAccount,
-    setCreatedAccountEmail,
-    clearAccountCreationFlags,
-  } = useCheckoutStore();
+  const { clearFormData, clearAccountCreationFlags } = useCheckoutStore();
   const { clearStoreCart } = useCartStore();
 
   const {
@@ -76,7 +68,7 @@ export default function CheckoutPage() {
 
   const { session, loading: authLoading } = useSupabaseAuth();
 
-  // ✅ OPTIMIZED: Memoize user login state
+  // Memoize user login state
   const isUserLoggedIn = useMemo(() => {
     return Boolean(session?.user);
   }, [session]);
@@ -86,14 +78,14 @@ export default function CheckoutPage() {
     return cartLoading || authLoading || storeLoading || taxLoaded === false;
   }, [cartLoading, authLoading, storeLoading, taxLoaded]);
 
-  // ✅ OPTIMIZED: Fetch tax amount once
+  // Fetch tax amount once
   useEffect(() => {
     const fetchTaxAmount = async () => {
       try {
         const storeId = await getStoreIdBySlug(store_slug);
         if (storeId) {
           const storeSettings = await getStoreSettings(storeId);
-          setTaxAmount(storeSettings?.tax_rate ?? 0); // fallback 0
+          setTaxAmount(storeSettings?.tax_rate ?? 0);
         } else {
           setTaxAmount(0);
         }
@@ -101,7 +93,7 @@ export default function CheckoutPage() {
         console.error("❌ Error fetching tax amount:", error);
         setTaxAmount(0);
       } finally {
-        setTaxLoaded(true); // ALWAYS mark as loaded
+        setTaxLoaded(true);
       }
     };
 
@@ -136,11 +128,10 @@ export default function CheckoutPage() {
     showInvoice,
   ]);
 
-  // const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   const displayCurrency = currencyLoading ? "" : (currency ?? "");
-  const displayCurrencyIconSafe = displayCurrency || "BDT"; // fallback
+  const displayCurrencyIconSafe = displayCurrency || "BDT";
 
-  // ✅ OPTIMIZED: Memoize shipping change handler
+  // Shipping change handler
   const handleShippingChange = useCallback(
     (shippingMethod: string, fee: number) => {
       setSelectedShipping(shippingMethod);
@@ -149,9 +140,13 @@ export default function CheckoutPage() {
     [],
   );
 
-  // ✅ OPTIMIZED: Memoize createTempOrderData
+  // Create temp order data for invoice
   const createTempOrderData = useCallback(
-    (values: any, customerId: string | undefined, result: any): StoreOrder => {
+    (
+      values: CustomerCheckoutFormValues,
+      customerId: string | undefined,
+      result: any,
+    ): StoreOrder => {
       const orderItems: OrderItem[] = cartItems.map((item) => ({
         id: `temp-item-${Date.now()}-${item.productId}`,
         product_id: item.productId,
@@ -200,6 +195,9 @@ export default function CheckoutPage() {
 
       const totalWithTax = calculations.totalPrice + shippingFee + taxAmount;
 
+      // Email is always empty for guest checkout
+      const customerEmail = "";
+
       return {
         id: orderId,
         order_number: orderNumber,
@@ -222,7 +220,7 @@ export default function CheckoutPage() {
         customers: {
           id: customerId || "temp-customer",
           first_name: values.name.split(" ")[0] || values.name,
-          email: values.email,
+          email: customerEmail,
           phone: values.phone,
         },
         stores: invoiceStoreData
@@ -258,9 +256,7 @@ export default function CheckoutPage() {
     ],
   );
 
-  // ✅ FIXED: ALL HELPER FUNCTIONS IN CORRECT ORDER (NO CIRCULAR DEPENDENCIES)
-
-  // 1. First, declare getStoreId (used by many other functions)
+  // Helper function to get store ID
   const getStoreId = useCallback(
     async (storeSlug: string): Promise<string | null> => {
       const { data, error } = await supabase
@@ -278,7 +274,7 @@ export default function CheckoutPage() {
     [],
   );
 
-  // 2. Declare createProfileAndLinks BEFORE functions that use it
+  // Create customer profile and store links
   const createProfileAndLinks = useCallback(
     async (
       customerId: string,
@@ -291,7 +287,7 @@ export default function CheckoutPage() {
           store_customer_id: customerId,
           address: values.shippingAddress,
           city: values.city,
-          postal_code: values.postCode,
+          postal_code: values.postCode || "",
           country: values.country,
         })
         .select("id")
@@ -314,7 +310,7 @@ export default function CheckoutPage() {
     [],
   );
 
-  // 3. Now declare createGuestCustomer (uses createProfileAndLinks)
+  // Create guest customer (no email, no auth)
   const createGuestCustomer = useCallback(
     async (
       values: CustomerCheckoutFormValues,
@@ -323,11 +319,12 @@ export default function CheckoutPage() {
       const storeId = await getStoreId(storeSlug);
       if (!storeId) throw new Error("Store not found");
 
+      // Email is always empty for guest customers
       const { data: customer, error } = await supabase
         .from("store_customers")
         .insert({
           name: values.name,
-          email: values.email.toLowerCase(),
+          email: "", // Empty email for guest
           phone: values.phone,
           auth_user_id: null,
         })
@@ -343,24 +340,7 @@ export default function CheckoutPage() {
     [getStoreId, createProfileAndLinks],
   );
 
-  // 4. Other helper functions that don't have circular dependencies
-  const handleLogin = useCallback(
-    async (email: string, password: string): Promise<User | null> => {
-      const { data, error }: AuthResponse =
-        await supabase.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
-
-      if (error) {
-        console.error("Login failed:", error.message);
-        return null;
-      }
-      return data.user;
-    },
-    [],
-  );
-
+  // Update customer profile
   const updateCustomerProfile = useCallback(
     async (profileId: string, values: CustomerCheckoutFormValues) => {
       return supabase
@@ -368,7 +348,7 @@ export default function CheckoutPage() {
         .update({
           address: values.shippingAddress,
           city: values.city,
-          postal_code: values.postCode,
+          postal_code: values.postCode || "",
           country: values.country,
           updated_at: new Date().toISOString(),
         })
@@ -377,13 +357,14 @@ export default function CheckoutPage() {
     [],
   );
 
+  // Create customer profile
   const createCustomerProfile = useCallback(
     async (storeCustomerId: string, values: CustomerCheckoutFormValues) => {
       const profileData = {
         store_customer_id: storeCustomerId,
         address: values.shippingAddress,
         city: values.city,
-        postal_code: values.postCode,
+        postal_code: values.postCode || "",
         country: values.country,
       };
 
@@ -396,283 +377,15 @@ export default function CheckoutPage() {
     [],
   );
 
-  const createCustomerWithRetry = useCallback(
-    async (
-      values: CustomerCheckoutFormValues,
-      storeSlug: string,
-      authUserId: string | null,
-    ): Promise<string> => {
-      const storeId = await getStoreId(storeSlug);
-      if (!storeId) throw new Error("Store not found");
-
-      let retries = 3;
-
-      while (retries > 0) {
-        try {
-          const { data: customer, error } = await supabase
-            .from("store_customers")
-            .insert({
-              name: values.name,
-              email: values.email.toLowerCase(),
-              phone: values.phone,
-              auth_user_id: authUserId,
-            })
-            .select("id")
-            .single();
-
-          if (!error) return customer.id;
-
-          if (error.code === "23503") {
-            retries--;
-            if (retries === 0) {
-              const { data: guestCustomer } = await supabase
-                .from("store_customers")
-                .insert({
-                  name: values.name,
-                  email: values.email.toLowerCase(),
-                  phone: values.phone,
-                  auth_user_id: null,
-                })
-                .select("id")
-                .single();
-
-              if (guestCustomer) {
-                if (authUserId) {
-                  setTimeout(
-                    () => linkAuthToCustomer(guestCustomer.id, authUserId),
-                    5000,
-                  );
-                }
-                return guestCustomer.id;
-              }
-            } else {
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-          } else {
-            throw new Error(error.message);
-          }
-        } catch (error: any) {
-          if (retries === 0) throw error;
-          retries--;
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
-
-      throw new Error("Failed to create customer after retries");
-    },
-    [getStoreId],
-  );
-
-  // 5. Now declare createAuthAndCustomer (uses createGuestCustomer)
-  const createAuthAndCustomer = useCallback(
-    async (
-      values: CustomerCheckoutFormValues,
-      storeSlug: string,
-    ): Promise<{
-      customerId: string;
-      authUserId: string | null;
-      loginSuccess: boolean;
-      success: boolean;
-    }> => {
-      const storeId = await getStoreId(storeSlug);
-      if (!storeId) throw new Error("Store not found");
-
-      let authUserId: string | null = null;
-      let loginSuccess = false;
-
-      try {
-        const { data: authData, error: authError } = await supabase.auth.signUp(
-          {
-            email: values.email.toLowerCase(),
-            password: values.password!,
-            options: {
-              data: {
-                first_name: values.name.split(" ")[0] || values.name,
-                last_name: values.name.split(" ").slice(1).join(" ") || "",
-                phone: values.phone,
-                role: "customer",
-              },
-            },
-          },
-        );
-
-        if (authError) {
-          if (authError.message.includes("already registered")) {
-            const { data: signInData, error: signInError } =
-              await supabase.auth.signInWithPassword({
-                email: values.email.toLowerCase(),
-                password: values.password!,
-              });
-
-            if (signInError) {
-              const customerId = await createGuestCustomer(values, storeSlug);
-              return {
-                customerId,
-                authUserId: null,
-                loginSuccess: false,
-                success: false,
-              };
-            }
-
-            if (signInData.user) {
-              authUserId = signInData.user.id;
-              loginSuccess = true;
-            }
-          } else {
-            const customerId = await createGuestCustomer(values, storeSlug);
-            return {
-              customerId,
-              authUserId: null,
-              loginSuccess: false,
-              success: false,
-            };
-          }
-        } else if (authData?.user) {
-          authUserId = authData.user.id;
-          const user = await handleLogin(
-            values.email.toLowerCase(),
-            values.password!,
-          );
-          loginSuccess = !!user;
-        }
-      } catch (authError) {
-        console.error("❌ Auth creation error:", authError);
-      }
-
-      const customerId = await createCustomerWithRetry(
-        values,
-        storeSlug,
-        authUserId,
-      );
-      await createProfileAndLinks(customerId, storeId, values);
-
-      return {
-        customerId,
-        authUserId,
-        loginSuccess,
-        success: !!authUserId,
-      };
-    },
-    [
-      getStoreId,
-      handleLogin,
-      createCustomerWithRetry,
-      createProfileAndLinks,
-      createGuestCustomer,
-    ],
-  );
-
-  const handleAuthForExistingCustomer = useCallback(
-    async (
-      values: CustomerCheckoutFormValues,
-      customerId: string,
-    ): Promise<{
-      authUserId: string | null;
-      loginSuccess: boolean;
-      success: boolean;
-    }> => {
-      let authUserId: string | null = null;
-      let loginSuccess = false;
-
-      try {
-        const { data: authData, error: authError } = await supabase.auth.signUp(
-          {
-            email: values.email.toLowerCase(),
-            password: values.password!,
-            options: {
-              data: {
-                first_name: values.name.split(" ")[0] || values.name,
-                last_name: values.name.split(" ").slice(1).join(" ") || "",
-                phone: values.phone,
-              },
-            },
-          },
-        );
-
-        if (authError) {
-          if (authError.message.includes("already registered")) {
-            const { data: signInData, error: signInError } =
-              await supabase.auth.signInWithPassword({
-                email: values.email.toLowerCase(),
-                password: values.password!,
-              });
-
-            if (signInError) {
-              return { authUserId: null, loginSuccess: false, success: false };
-            }
-
-            if (signInData.user) {
-              authUserId = signInData.user.id;
-              loginSuccess = true;
-            }
-          } else {
-            return { authUserId: null, loginSuccess: false, success: false };
-          }
-        } else if (authData?.user) {
-          authUserId = authData.user.id;
-
-          try {
-            const { error: signInError } =
-              await supabase.auth.signInWithPassword({
-                email: values.email.toLowerCase(),
-                password: values.password!,
-              });
-
-            if (signInError) {
-              loginSuccess = false;
-            } else {
-              loginSuccess = true;
-            }
-          } catch {
-            loginSuccess = false;
-          }
-        }
-
-        if (authUserId) {
-          await linkAuthToCustomer(customerId, authUserId);
-          return { authUserId, loginSuccess, success: true };
-        }
-      } catch (error) {
-        console.error("❌ Auth setup error:", error);
-      }
-
-      return { authUserId: null, loginSuccess: false, success: false };
+  // Find customer by phone only
+  const findCustomerByPhone = useCallback(
+    async (phone: string, storeSlug: string) => {
+      return await getCustomerByPhone(phone, storeSlug);
     },
     [],
   );
 
-  const linkAuthToCustomer = useCallback(
-    async (customerId: string, authUserId: string) => {
-      let retries = 5;
-
-      while (retries > 0) {
-        try {
-          const { error } = await supabase
-            .from("store_customers")
-            .update({
-              auth_user_id: authUserId,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", customerId);
-
-          if (!error) {
-            return true;
-          }
-
-          retries--;
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        } catch {
-          retries--;
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-      }
-
-      return false;
-    },
-    [],
-  );
-
-  // ✅ OPTIMIZED: Main checkout handler
+  // ✅ SIMPLIFIED: Main checkout handler - PHONE-ONLY, NO ACCOUNT CREATION
   const handleCheckoutSubmit = useCallback(
     async (values: CustomerCheckoutFormValues) => {
       if (cartItems.length === 0) return notify.error("Your cart is empty");
@@ -685,27 +398,22 @@ export default function CheckoutPage() {
       try {
         const formDataWithShipping = {
           ...values,
+          email: "", // Always empty for simple checkout
+          password: "", // Always empty for simple checkout
           shippingMethod: selectedShipping,
           shippingFee,
           taxAmount,
         };
 
         let storeCustomerId: string = "";
-        let authUserId: string | null = null;
-        let accountCreatedDuringCheckout = false;
-        let loginSuccess = false;
 
-        // 🔐 LOGGED IN USER FLOW
+        // 🔐 LOGGED IN USER FLOW (still supports logged-in users)
         if (isUserLoggedIn && session?.user) {
-          // For logged-in users, find or create customer with their email
-          const existing = await getCustomerByEmail(
-            session.user.email!,
-            store_slug,
-          );
+          // For logged-in users, try to find by phone
+          const existing = await findCustomerByPhone(values.phone, store_slug);
 
           if (existing) {
             storeCustomerId = existing.id;
-            authUserId = existing.auth_user_id || session.user.id;
 
             if (existing.profile_id) {
               await updateCustomerProfile(existing.profile_id, values);
@@ -721,7 +429,7 @@ export default function CheckoutPage() {
               .from("store_customers")
               .insert({
                 name: values.name,
-                email: session.user.email!,
+                email: session.user.email || "", // Use session email if available
                 phone: values.phone,
                 auth_user_id: session.user.id,
               })
@@ -732,13 +440,12 @@ export default function CheckoutPage() {
               throw new Error(`Failed to create customer: ${error.message}`);
 
             storeCustomerId = newCustomer.id;
-            authUserId = session.user.id;
 
             await createProfileAndLinks(storeCustomerId, storeId, values);
           }
         } else {
-          // 🧑‍🧾 GUEST / NON-LOGGED USER
-          const existing = await getCustomerByEmail(values.email, store_slug);
+          // 🧑‍🧾 GUEST / NON-LOGGED USER (SIMPLE PHONE-ONLY CHECKOUT)
+          const existing = await findCustomerByPhone(values.phone, store_slug);
 
           if (existing) {
             storeCustomerId = existing.id;
@@ -749,57 +456,13 @@ export default function CheckoutPage() {
               await createCustomerProfile(existing.id, values);
             }
 
-            if (!existing.auth_user_id && values.password) {
-              try {
-                const authResult = await handleAuthForExistingCustomer(
-                  values,
-                  existing.id,
-                );
-                authUserId = authResult.authUserId;
-                loginSuccess = authResult.loginSuccess;
-                accountCreatedDuringCheckout = true;
-
-                if (authUserId) {
-                  setJustCreatedAccount(true);
-                  setCreatedAccountEmail(values.email);
-                }
-
-                if (!authResult.success) {
-                  notify.warning(
-                    "Order placed! Account setup will complete shortly.",
-                  );
-                }
-              } catch (authError: any) {
-                console.error("Auth error:", authError);
-                notify.warning(
-                  "Account setup had issues. You can log in later.",
-                );
-              }
-            }
+            // Simple notification - no account creation
+            notify.info(
+              "Order placed! Use your phone number to track order status.",
+            );
           } else {
-            if (values.password) {
-              const authResult = await createAuthAndCustomer(
-                values,
-                store_slug,
-              );
-              storeCustomerId = authResult.customerId;
-              authUserId = authResult.authUserId;
-              loginSuccess = authResult.loginSuccess;
-              accountCreatedDuringCheckout = true;
-
-              if (authUserId) {
-                setJustCreatedAccount(true);
-                setCreatedAccountEmail(values.email);
-              }
-
-              if (!authResult.success) {
-                notify.warning(
-                  "Order placed! Account setup will complete shortly.",
-                );
-              }
-            } else {
-              storeCustomerId = await createGuestCustomer(values, store_slug);
-            }
+            // Guest checkout without account
+            storeCustomerId = await createGuestCustomer(values, store_slug);
           }
         }
 
@@ -827,26 +490,22 @@ export default function CheckoutPage() {
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);
 
+        // Success messages
         if (isUserLoggedIn) {
           notify.success("Order placed successfully!");
-        } else if (values.password) {
-          if (authUserId && loginSuccess) {
-            notify.success(
-              "Order placed successfully! Account created and logged in.",
-            );
-          } else if (authUserId && !loginSuccess) {
-            notify.success(
-              "Order placed successfully! Account created. Please check your email to verify.",
-            );
-          } else {
-            notify.success(
-              "Order placed successfully! Account setup in progress.",
-            );
-          }
         } else {
           notify.success("Order placed successfully!");
+
+          // Show tracking information
+          setTimeout(() => {
+            notify.info(
+              `📱 Use phone number ${values.phone} to track your order status`,
+              { duration: 5000 },
+            );
+          }, 1000);
         }
 
+        // Clear cart after successful order
         setTimeout(() => clearStoreCart(store_slug), 3000);
       } catch (error: any) {
         console.error("❌ Checkout error:", error);
@@ -869,15 +528,12 @@ export default function CheckoutPage() {
       updateCustomerProfile,
       createCustomerProfile,
       createProfileAndLinks,
-      handleAuthForExistingCustomer,
-      setJustCreatedAccount,
-      setCreatedAccountEmail,
-      createAuthAndCustomer,
       createGuestCustomer,
       processOrder,
       calculations,
       createTempOrderData,
       clearStoreCart,
+      findCustomerByPhone,
     ],
   );
 
@@ -928,6 +584,7 @@ export default function CheckoutPage() {
               setShowInvoice(false);
               setTimeout(() => {
                 clearAccountCreationFlags();
+                clearFormData();
               }, 1000);
               router.push(`/${store_slug}/order-status`);
             }}

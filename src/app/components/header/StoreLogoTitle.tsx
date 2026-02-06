@@ -14,6 +14,9 @@ export default function StoreLogoTitle({
   logoUrl,
   showTitle = true,
 }: StoreLogoTitleProps) {
+  // Get first letter of store name or fallback to "S"
+  const firstLetter = storeName?.[0]?.toUpperCase() || "S";
+
   return (
     <Link
       href={`/${storeSlug}`}
@@ -25,16 +28,17 @@ export default function StoreLogoTitle({
           alt={storeName || "Store Logo"}
           width={32}
           height={32}
+          className="rounded-full"
           priority
         />
       ) : (
-        <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
-          <span className="text-xs font-bold">
-            {storeName?.[0]?.toUpperCase() || "S"}
-          </span>
+        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+          <span className="text-xs font-bold text-gray-700">{firstLetter}</span>
         </div>
       )}
-      {showTitle && <span className="text-xl font-bold">{storeName}</span>}
+      {showTitle && storeName && (
+        <span className="text-xl font-bold text-foreground">{storeName}</span>
+      )}
     </Link>
   );
 }

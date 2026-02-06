@@ -1,7 +1,30 @@
-// lib/schema/checkoutSchema.ts - FIXED VERSION
+// lib/schema/checkoutSchema.ts - UPDATED FOR SIMPLE CHECKOUT
 import { z } from "zod";
 
-// Strong password validation (optional for guest checkout)
+// ✅ UPDATED: Bangladesh phone number validation without +88
+const bangladeshPhoneValidation = z
+  .string()
+  .regex(/^01[3-9]\d{8}$/, "Phone number must be in format: 01XXXXXXXXX")
+  .min(11, "Phone number must be 11 digits")
+  .max(11, "Phone number must be 11 digits");
+
+// ✅ UPDATED: Email is now completely optional
+const emailValidation = z
+  .string()
+  .email("Invalid email address")
+  .optional()
+  .or(z.literal(''))
+  .refine((email) => {
+    // If email is provided and not empty, validate format
+    if (email && email.trim().length > 0) {
+      return email.includes("@") && email.includes(".");
+    }
+    return true; // Email is optional, so empty is valid
+  }, {
+    message: "Email must contain @ and .com domain",
+  });
+
+// ✅ UPDATED: Password validation (optional)
 const passwordValidation = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -15,45 +38,40 @@ const passwordValidation = z
   .optional()
   .or(z.literal(''));
 
-// ✅ FIXED: For logged-in users, make password truly optional
+// ✅ UPDATED: For logged-in users, make password truly optional
 const loggedInPasswordValidation = z.string().optional().or(z.literal(''));
 
-// ✅ UPDATED: Bangladesh phone number validation without +88
-const bangladeshPhoneValidation = z
-  .string()
-  .regex(/^01[3-9]\d{8}$/, "Phone number must be in format: 01XXXXXXXXX")
-  .min(11, "Phone number must be 11 digits")
-  .max(11, "Phone number must be 11 digits");
-
-// Email validation
-const emailValidation = z
-  .string()
-  .email("Invalid email address")
-  .refine((email) => email.includes("@") && email.includes("."), {
-    message: "Email must contain @ and .com domain",
-  });
-
-// Schema for non-logged-in users (password optional)
+// ✅ UPDATED: Schema for non-logged-in users (email & password optional)
 export const customerCheckoutSchema = z.object({
   name: z.string().min(1, "Full name is required"),
-  email: emailValidation,
   phone: bangladeshPhoneValidation,
-  password: passwordValidation,
+  email: emailValidation, // ✅ Now truly optional
+  password: passwordValidation, // ✅ Optional
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
-  postCode: z.string().min(1, "Postal code is required"),
+  postCode: z.string().optional(), // ✅ Made optional for simplicity
   shippingAddress: z.string().min(1, "Shipping address is required"),
 });
 
-// ✅ FIXED: Schema for logged-in users (password truly optional)
+// ✅ UPDATED: Schema for logged-in users
 export const customerCheckoutSchemaForLoggedIn = z.object({
   name: z.string().min(1, "Full name is required"),
-  email: emailValidation,
   phone: bangladeshPhoneValidation,
-  password: loggedInPasswordValidation, // ✅ Now truly optional
+  email: emailValidation, // ✅ Optional
+  password: loggedInPasswordValidation, // ✅ Truly optional
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
-  postCode: z.string().min(1, "Postal code is required"),
+  postCode: z.string().optional(), // ✅ Made optional
+  shippingAddress: z.string().min(1, "Shipping address is required"),
+});
+
+// ✅ UPDATED: Create simplified schema for display purposes
+export const simplifiedCheckoutSchema = z.object({
+  name: z.string().min(1, "Full name is required"),
+  phone: bangladeshPhoneValidation,
+  country: z.string().min(1, "Country is required"),
+  city: z.string().min(1, "City is required"),
+  postCode: z.string().optional(),
   shippingAddress: z.string().min(1, "Shipping address is required"),
 });
 
@@ -64,15 +82,15 @@ export const addToCartSchema = z.object({
   storeSlug: z.string().min(1, "Store slug is required"),
 });
 
-// ✅ FIXED: Make password optional in the type
+// ✅ UPDATED: Make email and password optional in the type
 export type CustomerCheckoutFormValues = {
   name: string;
-  email: string;
   phone: string;
-  password?: string; // ✅ Make password optional
+  email?: string; // ✅ Optional
+  password?: string; // ✅ Optional
   country: string;
   city: string;
-  postCode: string;
+  postCode?: string; // ✅ Optional
   shippingAddress: string;
 };
 

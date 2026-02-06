@@ -40,6 +40,7 @@ export interface ProductVariant {
   stock: ProductStock;
   images: ProductImage[];
   is_low_stock?: boolean;
+  tp_price?: number | null; // ✅ ADD
 }
 
 export interface Product {
@@ -78,6 +79,7 @@ interface DbVariant {
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
   color?: string | null;
+  tp_price?: number | null; // ✅ ADD
   is_active?: boolean;
   product_inventory: ProductStock[] | null;
 }
@@ -132,6 +134,7 @@ function mapVariant(v: DbVariant, allImages: ProductImage[]): ProductVariant {
     discount_amount: v.discount_amount ?? null,
     attributes: v.attributes || {},
     weight: v.weight ?? null,
+    tp_price: v.tp_price ?? null, // ✅ MAP
     color: v.color ?? null,
     is_active: v.is_active ?? true,
     stock,
@@ -175,12 +178,13 @@ export async function getProducts(storeId: string): Promise<Product[]> {
         discounted_price,
         discount_amount,
         attributes,
+        tp_price,         
         weight,
         color,
         is_active,
         product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory)
       )
-    `
+    `,
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
@@ -191,7 +195,7 @@ export async function getProducts(storeId: string): Promise<Product[]> {
 
   return products.map((p): Product => {
     const productImages = (p.product_images ?? []).filter(
-      (img) => img.variant_id === null
+      (img) => img.variant_id === null,
     );
 
     const category =
@@ -207,7 +211,7 @@ export async function getProducts(storeId: string): Promise<Product[]> {
     };
 
     const variants = (p.product_variants ?? []).map((v) =>
-      mapVariant(v, p.product_images ?? [])
+      mapVariant(v, p.product_images ?? []),
     );
 
     return {

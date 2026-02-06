@@ -11,13 +11,13 @@ const fileOrUrl = z.union([
   z.string().url("Invalid URL"),
 ]);
 
-const requiredFileOrUrl = fileOrUrl.refine(
-  (val) => {
-    if (typeof val === "string") return val.trim().length > 0;
-    return !!val;
-  },
-  { message: "This field is required" },
-);
+// const requiredFileOrUrl = fileOrUrl.refine(
+//   (val) => {
+//     if (typeof val === "string") return val.trim().length > 0;
+//     return !!val;
+//   },
+//   { message: "This field is required" },
+// );
 
 /* ----------------------------------
    User Profile Schema
@@ -43,7 +43,7 @@ const storeSchema = z.object({
   store_name: z.string().nonempty("Store name is required"),
   store_slug: z.string().nonempty("Store slug is required"),
 
-  logo_url: requiredFileOrUrl,
+  logo_url: fileOrUrl.optional(), // now optional
   banner_url: fileOrUrl.optional(), // now optional
 
   description: z.string().optional(),
@@ -83,17 +83,18 @@ const storeSettingsSchema = z.object({
   shipping_fees: z
     .array(
       z.object({
-        name: z.string().nonempty("Shipping method is required"),
+        name: z.string().nonempty("Shipping method name is required"),
 
-        price: z.number().min(1, "Shipping fee must be greater than 0"),
+        price: z.number().min(0, "Shipping fee cannot be negative"), // Changed from min(1) to allow 0
 
         estimated_days: z
-          .number()
-          .int()
-          .min(1, "Estimated days must be greater than 0"),
+          .string()
+          .nonempty("Estimated days is required")
+          .regex(/^\d+(-\d+)?$/, "Must be a number or range (e.g., 2-3)"),
       }),
     )
     .min(1, { message: "At least one shipping method is required" }),
+
   free_shipping_threshold: z.number().min(0).optional(),
   min_order_amount: z.number().min(0),
 

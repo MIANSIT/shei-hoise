@@ -54,7 +54,14 @@ export default function StoreSettings({ control, errors }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Currency */}
         <FormItemWrapper
-          label={<span className="text-foreground">Currency</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Currency
+              <Tooltip title="Select the default currency for all transactions in your store">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
         >
           <Controller
             name="store_settings.currency"
@@ -78,10 +85,10 @@ export default function StoreSettings({ control, errors }: Props) {
         {/* Tax Rate */}
         <FormItemWrapper
           label={
-            <span className="text-foreground flex items-center gap-2">
-              Tax Rate (%)
-              <Tooltip title="This tax is applied to every order.">
-                <InfoCircleOutlined className="text-muted-foreground" />
+            <span className="text-foreground flex items-center gap-1">
+              Tax Rate (Tk)
+              <Tooltip title="Enter the tax amount to be applied to every order (e.g., 50 for 50 Tk tax)">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
           }
@@ -91,11 +98,7 @@ export default function StoreSettings({ control, errors }: Props) {
             name="store_settings.tax_rate"
             control={control}
             render={({ field }) => (
-              <InputNumber
-                {...field}
-                min={0}
-                style={{ width: "150px" }} // increased width
-              />
+              <InputNumber {...field} min={0} style={{ width: "150px" }} />
             )}
           />
         </FormItemWrapper>
@@ -103,7 +106,12 @@ export default function StoreSettings({ control, errors }: Props) {
         {/* Processing Time */}
         <FormItemWrapper
           label={
-            <span className="text-foreground">Processing Time (days)</span>
+            <span className="text-foreground flex items-center gap-1">
+              Processing Time (days)
+              <Tooltip title="Number of business days needed to prepare and package orders before shipping">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
           }
           error={errors?.store_settings?.processing_time_days}
         >
@@ -118,7 +126,14 @@ export default function StoreSettings({ control, errors }: Props) {
 
         {/* Return Policy */}
         <FormItemWrapper
-          label={<span className="text-foreground">Return Policy Days</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Return Policy Days
+              <Tooltip title="Number of days customers have to return products after delivery (0 = no returns accepted)">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           error={errors?.store_settings?.return_policy_days}
         >
           <Controller
@@ -134,9 +149,13 @@ export default function StoreSettings({ control, errors }: Props) {
       <Divider className="border-border" />
 
       {/* Shipping Fees */}
-      {/* Shipping Fees */}
       <div className="space-y-4">
-        <h4 className="text-xl font-semibold">Shipping Fees</h4>
+        <div className="flex items-center gap-1">
+          <h4 className="text-xl font-semibold">Shipping Fees</h4>
+          <Tooltip title="Configure shipping methods, delivery fees, and estimated delivery times for different locations">
+            <InfoCircleOutlined className="text-muted-foreground text-sm cursor-help" />
+          </Tooltip>
+        </div>
 
         {fields.map((field, index) => {
           const isDropdown = index < 2;
@@ -218,26 +237,24 @@ export default function StoreSettings({ control, errors }: Props) {
                   </Space.Compact>
                 </div>
 
-                {/* Estimated Days */}
+                {/* Estimated Days Range */}
                 <div>
-                  <Space.Compact className="w-full">
-                    <Controller
-                      name={`store_settings.shipping_fees.${index}.estimated_days`}
-                      control={control}
-                      render={({ field }) => (
-                        <InputNumber
-                          {...field}
-                          min={1}
-                          className="w-full"
-                          placeholder="Delivery days"
-                          onChange={(value) => field.onChange(value ?? 0)}
-                        />
-                      )}
-                    />
-                    <span className="px-3 text-muted-foreground text-sm">
-                      days
-                    </span>
-                  </Space.Compact>
+                  <Controller
+                    name={`store_settings.shipping_fees.${index}.estimated_days`}
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder="e.g., 2-3"
+                        suffix={
+                          <span className="text-muted-foreground text-sm">
+                            days
+                          </span>
+                        }
+                        className="w-full"
+                      />
+                    )}
+                  />
                 </div>
               </div>
             </div>
@@ -253,7 +270,7 @@ export default function StoreSettings({ control, errors }: Props) {
             append({
               name: "",
               price: 1,
-              estimated_days: 1,
+              estimated_days: "",
             })
           }
         >
@@ -263,9 +280,14 @@ export default function StoreSettings({ control, errors }: Props) {
 
         {/* Social Media Links */}
         <div className="space-y-4">
-          <h4 className="text-xl font-semibold">Social Media Links</h4>
+          <div className="flex items-center gap-1">
+            <h4 className="text-xl font-semibold">Social Media Links</h4>
+            <Tooltip title="Add links to your store's social media profiles to connect with customers">
+              <InfoCircleOutlined className="text-muted-foreground text-sm cursor-help" />
+            </Tooltip>
+          </div>
           <p className="text-sm text-muted-foreground">
-            Optional links to your store’s social media profiles.
+            Optional links to your store&apos;s social media profiles.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -275,7 +297,14 @@ export default function StoreSettings({ control, errors }: Props) {
               control={control}
               render={({ field, fieldState }) => (
                 <FormItemWrapper
-                  label={<span className="text-foreground">Facebook Page</span>}
+                  label={
+                    <span className="text-foreground flex items-center gap-1">
+                      Facebook Page
+                      <Tooltip title="Enter the full URL of your Facebook business page">
+                        <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                      </Tooltip>
+                    </span>
+                  }
                   error={fieldState.error?.message}
                 >
                   <Input
@@ -294,7 +323,12 @@ export default function StoreSettings({ control, errors }: Props) {
               render={({ field, fieldState }) => (
                 <FormItemWrapper
                   label={
-                    <span className="text-foreground">Instagram Profile</span>
+                    <span className="text-foreground flex items-center gap-1">
+                      Instagram Profile
+                      <Tooltip title="Enter the full URL of your Instagram business profile">
+                        <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                      </Tooltip>
+                    </span>
                   }
                   error={fieldState.error?.message}
                 >
@@ -307,13 +341,20 @@ export default function StoreSettings({ control, errors }: Props) {
               )}
             />
 
-            {/* Twitter / X */}
+            {/* Youtube */}
             <Controller
               name="store_settings.store_social_media.youtube_link"
               control={control}
               render={({ field, fieldState }) => (
                 <FormItemWrapper
-                  label={<span className="text-foreground">Youtube</span>}
+                  label={
+                    <span className="text-foreground flex items-center gap-1">
+                      Youtube
+                      <Tooltip title="Enter the full URL of your Youtube channel">
+                        <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                      </Tooltip>
+                    </span>
+                  }
                   error={fieldState.error?.message}
                 >
                   <Input
@@ -324,12 +365,21 @@ export default function StoreSettings({ control, errors }: Props) {
                 </FormItemWrapper>
               )}
             />
+
+            {/* Twitter / X */}
             <Controller
               name="store_settings.store_social_media.twitter_link"
               control={control}
               render={({ field, fieldState }) => (
                 <FormItemWrapper
-                  label={<span className="text-foreground">Twitter / X</span>}
+                  label={
+                    <span className="text-foreground flex items-center gap-1">
+                      Twitter / X
+                      <Tooltip title="Enter the full URL of your Twitter/X profile">
+                        <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+                      </Tooltip>
+                    </span>
+                  }
                   error={fieldState.error?.message}
                 >
                   <Input

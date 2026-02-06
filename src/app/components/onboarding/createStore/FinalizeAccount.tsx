@@ -1,12 +1,12 @@
 "use client";
 
-import { Input, Checkbox } from "antd";
+import { Input, Checkbox, Tooltip } from "antd";
 import { Controller, Control, UseFormReturn } from "react-hook-form";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SafetyOutlined } from "@ant-design/icons";
+import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { PasswordStrength } from "../../common/PasswordStrength";
 
 interface Props {
@@ -81,7 +81,14 @@ export default function FinalizeAccount({
       <div className="grid grid-cols-1 gap-4">
         {/* Email (editable now) */}
         <FormItemWrapper
-          label={<span className="text-foreground">Email</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Email
+              <Tooltip title="This email will be used for login and account recovery. Make sure it's an email you have access to">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           error={errors.email?.message}
         >
           <Controller
@@ -99,8 +106,17 @@ export default function FinalizeAccount({
         </FormItemWrapper>
 
         {/* Password */}
-        {/* ...inside your FinalizeAccount component, after the Password Input */}
-        <FormItemWrapper label="" error={errors.password?.message}>
+        <FormItemWrapper
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Password
+              <Tooltip title="Create a strong password with at least 8 characters, including uppercase, lowercase, numbers, and special characters">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
+          error={errors.password?.message}
+        >
           <Controller
             name="password"
             control={control}
@@ -120,7 +136,14 @@ export default function FinalizeAccount({
 
         {/* Confirm Password (UI-only) */}
         <FormItemWrapper
-          label={<span className="text-foreground">Confirm Password</span>}
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Confirm Password
+              <Tooltip title="Re-enter your password to ensure it matches and avoid typos">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
           error={confirmError}
         >
           <Input.Password
@@ -133,29 +156,34 @@ export default function FinalizeAccount({
 
         {/* Terms & Privacy (UI-only) */}
         <FormItemWrapper label="" error={termsError}>
-          <Checkbox
-            checked={acceptTerms}
-            onChange={(e) => handleTermsChange(e.target.checked)}
-          >
-            <span className="text-foreground">
-              {" "}
-              I have read and agree to the{" "}
-            </span>
-            <Link
-              href="/terms-and-conditions"
-              className="underline text-badge hover:text-ring"
+          <div className="flex items-start gap-2">
+            <Checkbox
+              checked={acceptTerms}
+              onChange={(e) => handleTermsChange(e.target.checked)}
+              className="mt-0.5"
             >
-              Terms & Conditions
-            </Link>{" "}
-            <span className="text-foreground">and </span>
-            <Link
-              href="/privacy-policy"
-              className="underline text-badge hover:text-ring"
-            >
-              Privacy Policy
-            </Link>
-            .
-          </Checkbox>
+              <span className="text-foreground">
+                I have read and agree to the{" "}
+              </span>
+              <Link
+                href="/terms-and-conditions"
+                className="underline text-badge hover:text-ring"
+              >
+                Terms & Conditions
+              </Link>{" "}
+              <span className="text-foreground">and </span>
+              <Link
+                href="/privacy-policy"
+                className="underline text-badge hover:text-ring"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </Checkbox>
+            <Tooltip title="You must accept our Terms & Conditions and Privacy Policy to create an account">
+              <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help mt-1" />
+            </Tooltip>
+          </div>
         </FormItemWrapper>
       </div>
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">

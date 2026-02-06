@@ -1,4 +1,4 @@
-// components/auth/OrderAuthPrompt.tsx - FIXED VERSION
+// components/auth/OrderAuthPrompt.tsx - UPDATED VERSION WITH PHONE SUPPORT
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -16,11 +16,17 @@ import {
   Key,
   AlertCircle,
   Shield,
+  Phone,
+  UserCheck,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 interface OrderAuthPromptProps {
   storeSlug: string;
   customerEmail?: string;
+  customerPhone?: string;
   hasAuthUserId?: boolean;
   isLoggedIn?: boolean;
   authEmail?: string | null;
@@ -31,16 +37,44 @@ interface OrderAuthPromptProps {
 export function OrderAuthPrompt({
   storeSlug,
   customerEmail,
+  customerPhone = "",
   hasAuthUserId = false,
   isLoggedIn = false,
   authEmail = null,
   title = "Access Your Orders",
-  description = "Sign in or complete your account to view your order history",
+  description = "Enter your phone number to access your order history",
 }: OrderAuthPromptProps) {
   const router = useRouter();
+  const [phoneNumber, setPhoneNumber] = useState(customerPhone || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // DEBUG LOGS - Enhanced
-  
+  const formatPhoneNumber = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "");
+    let cleaned = digitsOnly;
+    if (digitsOnly.startsWith("88")) {
+      cleaned = digitsOnly.substring(2);
+    } else if (digitsOnly.startsWith("+88")) {
+      cleaned = digitsOnly.substring(3);
+    }
+    return cleaned.slice(0, 11);
+  };
+
+  const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatPhoneNumber(e.target.value);
+    setPhoneNumber(formattedValue);
+  };
+
+  const handleLoginWithPhone = () => {
+    setIsSubmitting(true);
+    if (phoneNumber && phoneNumber.length === 11) {
+      router.push(
+        `/${storeSlug}/login?redirect=/${storeSlug}/order-status&phone=${encodeURIComponent(phoneNumber)}`
+      );
+    } else {
+      // Handle invalid phone number
+      setIsSubmitting(false);
+    }
+  };
 
   const handleLogin = () => {
     if (customerEmail) {
@@ -58,18 +92,6 @@ export function OrderAuthPrompt({
     router.push(
       `/${storeSlug}/complete-account?email=${encodeURIComponent(customerEmail || '')}`
     );
-  };
-
-  const handleSignUp = () => {
-    if (customerEmail) {
-      router.push(
-        `/${storeSlug}/signup?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(
-          customerEmail
-        )}`
-      );
-    } else {
-      router.push(`/${storeSlug}/signup?redirect=/${storeSlug}/order-status`);
-    }
   };
 
   // SCENARIO 1: User is logged in with different email than order email
@@ -127,7 +149,6 @@ export function OrderAuthPrompt({
   }
 
   // SCENARIO 2: User is NOT logged in, customer exists WITHOUT auth_user_id (guest checkout)
-  // THIS IS THE ONE THAT SHOULD SHOW FOR GUEST CHECKOUT
   if (!isLoggedIn && customerEmail && !hasAuthUserId) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
@@ -192,7 +213,7 @@ export function OrderAuthPrompt({
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
               <LogIn className="h-8 w-8 text-chart-2" />
             </div>
-            <CardTitle className="text-2xl font-bold">Sign In to View Orders</CardTitle>
+            <CardTitle className="text-2xl font-bold">Sign In Required</CardTitle>
             <CardDescription className="text-base text-muted-foreground">
               An account already exists for <strong className="text-foreground">{customerEmail}</strong>
             </CardDescription>
@@ -218,81 +239,93 @@ export function OrderAuthPrompt({
               className="w-full h-12"
               variant="greenish"
             >
-              Sign In
+              Sign In with Email
             </Button>
 
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Not your email?{" "}
+            {customerPhone && (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Or sign in with phone number:
+                </p>
                 <Button
-                  variant="link"
-                  onClick={() => router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status`)}
-                  className="text-sm p-0"
+                  onClick={() => router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status&phone=${encodeURIComponent(customerPhone)}`)}
+                  variant="outline"
+                  className="w-full h-12"
                 >
-                  Use another account
+                  <Phone className="h-4 w-4 mr-2" />
+                  Sign In with {customerPhone}
                 </Button>
-              </p>
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // SCENARIO 4: No customer found (completely new)
+  // SCENARIO 4: No customer found (completely new) - THIS IS THE MAIN SCENARIO FOR PHONE
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
-            <Shield className="h-8 w-8 text-chart-2" />
+            <UserCheck className="h-8 w-8 text-chart-2" />
           </div>
-          <CardTitle className="text-2xl font-bold">{title}</CardTitle>
-          <CardDescription className="text-base text-muted-foreground">{description}</CardDescription>
+          <CardTitle className="text-2xl font-bold">Verify Your Identity</CardTitle>
+          <CardDescription className="text-base text-muted-foreground">
+            Enter your phone number to access your order history
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div className="space-y-3">
-            {/* New User Section */}
+          <div className="space-y-4">
             <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                New Customer?
-              </h3>
-              <Button 
-                onClick={handleSignUp} 
-                className="w-full h-12"
-                variant="greenish"
-              >
-                Create Account
-              </Button>
+              <Label htmlFor="phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone Number
+              </Label>
+              <Input
+                id="phone"
+                placeholder="01XXXXXXXXX"
+                type="tel"
+                value={phoneNumber}
+                onChange={handlePhoneInputChange}
+                disabled={isSubmitting}
+                className="h-12 text-center text-lg"
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                Enter the phone number used during checkout
+              </p>
             </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or
-                </span>
-              </div>
-            </div>
+            <Button 
+              onClick={handleLoginWithPhone}
+              className="w-full h-12"
+              variant="greenish"
+              disabled={isSubmitting || phoneNumber.length !== 11}
+            >
+              {isSubmitting ? (
+                "Verifying..."
+              ) : (
+                <>
+                  <Phone className="h-4 w-4 mr-2" />
+                  {customerPhone ? "Sign In with existing phone number" : "Access My Orders"}
+                </>
+              )}
+            </Button>
+          </div>
 
-            {/* Existing User Section */}
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                <LogIn className="h-4 w-4" />
-                Existing Customer?
-              </h3>
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Don&apos;t have orders with this phone number?{" "}
               <Button
-                onClick={handleLogin}
-                variant="outline"
-                className="w-full h-12"
+                variant="link"
+                onClick={() => router.push(`/${storeSlug}`)}
+                className="text-sm p-0"
               >
-                Sign In
+                Start Shopping
               </Button>
-            </div>
+            </p>
           </div>
         </CardContent>
       </Card>

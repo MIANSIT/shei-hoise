@@ -63,12 +63,21 @@ export enum Currency {
   // GBP = "GBP",
   // INR = "INR",
 }
+
 export const CURRENCY_ICONS: Record<Currency, string> = {
-  [Currency.BDT]: "(৳)",
-  // [Currency.USD]: "($)",
-  // [Currency.EUR]: "(€)",
-  // [Currency.GBP]: "(£)",
-  // [Currency.INR]: "(₹)",
+  [Currency.BDT]: "৳",  // Bengali Taka symbol
+  // [Currency.USD]: "$",   // US Dollar
+  // [Currency.EUR]: "€",   // Euro
+  // [Currency.GBP]: "£",   // British Pound
+  // [Currency.INR]: "₹",   // Indian Rupee
+};
+
+export const CURRENCY_NAMES: Record<Currency, string> = {
+  [Currency.BDT]: "Taka",
+  // [Currency.USD]: "US Dollar",
+  // [Currency.EUR]: "Euro",
+  // [Currency.GBP]: "British Pound",
+  // [Currency.INR]: "Indian Rupee",
 };
 export const USER_TYPES = {
   //   SUPER_ADMIN: "super_admin",

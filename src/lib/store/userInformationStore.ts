@@ -1,4 +1,4 @@
-// lib/store/userInformationStore.ts
+// lib/store/userInformationStore.ts - PRODUCTION READY
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -18,13 +18,10 @@ interface CheckoutStore {
   clearFormData: () => void;
   storeSlug: string | null;
   setStoreSlug: (slug: string) => void;
-  // NEW: Track if user just created password during checkout
   justCreatedAccount: boolean;
   setJustCreatedAccount: (value: boolean) => void;
-  // NEW: Track created account email
   createdAccountEmail: string | null;
   setCreatedAccountEmail: (email: string | null) => void;
-  // NEW: Clear account creation flags
   clearAccountCreationFlags: () => void;
 }
 
@@ -57,11 +54,11 @@ export const useCheckoutStore = create<CheckoutStore>()(
         createdAccountEmail: null,
       }),
       
-      setStoreSlug: (slug) => set({ storeSlug: slug }),
+      setStoreSlug: (slug: string) => set({ storeSlug: slug }),
       
-      setJustCreatedAccount: (value) => set({ justCreatedAccount: value }),
+      setJustCreatedAccount: (value: boolean) => set({ justCreatedAccount: value }),
       
-      setCreatedAccountEmail: (email) => set({ createdAccountEmail: email }),
+      setCreatedAccountEmail: (email: string | null) => set({ createdAccountEmail: email }),
       
       clearAccountCreationFlags: () => set({ 
         justCreatedAccount: false,
@@ -70,6 +67,8 @@ export const useCheckoutStore = create<CheckoutStore>()(
     }),
     {
       name: 'user-information-storage',
+      // Add version for future migrations
+      version: 1,
     }
   )
 );

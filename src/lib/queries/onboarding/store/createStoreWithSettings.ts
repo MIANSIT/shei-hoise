@@ -13,6 +13,11 @@ type CreateStoreArgs = {
   settings?: StoreSettingsType;
 };
 
+/**
+ * Production-safe store creation.
+ * Rollback is handled in the calling action (createUser),
+ * so this function only throws on errors.
+ */
 export async function createStoreWithSettings({
   ownerId,
   store,
@@ -22,7 +27,7 @@ export async function createStoreWithSettings({
   const uploadedFiles: { bucket: string; path: string }[] = [];
 
   try {
-    // 1️⃣ Create store
+    // 1️⃣ Insert store
     const { data, error } = await supabase
       .from("stores")
       .insert({
@@ -41,7 +46,7 @@ export async function createStoreWithSettings({
     const uploads: Partial<Pick<StoreType, "logo_url" | "banner_url">> = {};
     const uniqueId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-    // 2️⃣ Upload logo if file
+    // 2️⃣ Upload logo if it's a file
     if (store.logo_url instanceof File) {
       const path = `store/${storeId}/logo-${uniqueId}.png`;
       await supabaseAdmin.storage
@@ -53,7 +58,7 @@ export async function createStoreWithSettings({
         .getPublicUrl(path).data.publicUrl;
     }
 
-    // 3️⃣ Upload banner if file
+    // 3️⃣ Upload banner if it's a file
     if (store.banner_url instanceof File) {
       const path = `store/${storeId}/banner-${uniqueId}.png`;
       await supabaseAdmin.storage
@@ -74,43 +79,26 @@ export async function createStoreWithSettings({
     if (settings) {
       const { store_social_media, ...restSettings } = settings;
 
-      // Insert settings
       const { error: settingsError } = await supabase
         .from("store_settings")
-        .insert({
-          store_id: storeId,
-          ...restSettings,
-        });
+        .insert({ store_id: storeId, ...restSettings });
       if (settingsError) throw settingsError;
 
-      // Insert social media if provided
       if (store_social_media) {
         const { error: socialError } = await supabase
           .from("store_social_media")
-          .insert({
-            store_id: storeId,
-            ...store_social_media,
-          });
+          .insert({ store_id: storeId, ...store_social_media });
         if (socialError) throw socialError;
       }
     }
 
     return storeId;
-  } catch (err) {
-    // 🔄 ROLLBACK DB
-    if (storeId) {
-      await supabase
-        .from("store_social_media")
-        .delete()
-        .eq("store_id", storeId);
-      await supabase.from("store_settings").delete().eq("store_id", storeId);
-      await supabase.from("stores").delete().eq("id", storeId);
-    }
+  } catch (err: unknown) {
+    // ❌ REMOVE ROLLBACK: Handled in createUser
+    // ❌ Just remove storage cleanup too
 
-    // 🔄 ROLLBACK storage files
-    for (const file of uploadedFiles) {
-      await supabaseAdmin.storage.from(file.bucket).remove([file.path]);
-    }
+    // Optionally log the error
+    console.error("createStoreWithSettings failed:", err);
 
     throw err;
   }

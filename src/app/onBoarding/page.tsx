@@ -11,6 +11,7 @@ import { createUser } from "@/lib/queries/onboarding/createUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Header from "@/app/components/common/Header";
 import Footer from "@/app/components/common/Footer";
+import { DomainErrorCode } from "@/lib/errors/domainErrors";
 
 export default function StoreCreatePage() {
   const [loading, setLoading] = useState(false);
@@ -29,10 +30,16 @@ export default function StoreCreatePage() {
       resetForm();
       router.push("/admin-login");
     } catch (err: unknown) {
-      if (err instanceof Error) notify.error(err.message);
-      else notify.error("Failed to create store owner");
-    } finally {
-      setLoading(false);
+      console.error(err);
+
+      if (
+        err instanceof Error &&
+        err.message === DomainErrorCode.EMAIL_EXISTS
+      ) {
+        notify.error("Email already registered");
+      } else {
+        notify.error("Failed to create store owner");
+      }
     }
   };
 

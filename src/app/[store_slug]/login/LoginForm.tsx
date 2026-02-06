@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// app/[store_slug]/login/LoginForm.tsx - PRODUCTION READY PHONE-FIRST
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,43 +7,56 @@ import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { refreshCustomerData } from "@/lib/hook/useCurrentCustomer";
-import { authQueries, CustomerData } from "@/lib/queries/customerAuth/customerLogin";
-import { EmailStep } from "../../components/auth/Customer/EmailStep";
-import { PasswordStep } from "../../components/auth/Customer/PasswordStep";
-import { LoadingStep } from "../../components/auth/Customer/LoadingStep";
-import { SheiLoader } from "../../components/ui/SheiLoader/loader";
 import { supabase } from "@/lib/supabase";
+import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
+import { getCustomerByEmail, updateCustomerEmailByPhone } from "@/lib/queries/customers/getCustomerByEmail";
 import { linkAuthToCustomer } from "@/lib/queries/customers/getCustomerByEmail";
+import { 
+  EmailOrPhoneStep, 
+  PasswordStep, 
+  EmailInputStep,
+  LoadingStep 
+} from "../../components/auth/Customer/LoginSteps";
+import { SheiLoader } from "../../components/ui/SheiLoader/loader";
 
-type Step = "email" | "password" | "loading";
+type LoginStep = "emailOrPhone" | "emailInput" | "password" | "loading";
+
+interface CustomerData {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  auth_user_id: string | null;
+  profile_id: string | null;
+}
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const emailFromParams = searchParams.get("email");
   
   const storeSlug = params.store_slug as string;
   const redirectParam = searchParams.get("redirect");
-  const fromCheckout = searchParams.get("fromCheckout") === "true";
+  const phoneFromParams = searchParams.get("phone");
+  const emailFromParams = searchParams.get("email");
   
   const getRedirectUrl = () => {
     if (redirectParam) return redirectParam;
-    if (fromCheckout) return `/${storeSlug}/checkout`;
     return `/${storeSlug}`;
   };
   
   const redirectTo = getRedirectUrl();
   const { success, error, info } = useSheiNotification();
-  const { formData } = useCheckoutStore();
+  const { formData, clearAccountCreationFlags } = useCheckoutStore();
   
-  const [isStoreLoaded, setIsStoreLoaded] = useState(false);
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<LoginStep>("emailOrPhone");
+  const [inputValue, setInputValue] = useState("");
+  const [inputType, setInputType] = useState<"email" | "phone">("phone"); // Default to phone
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   // Store current page as previous page
   useEffect(() => {
@@ -51,127 +65,271 @@ export function LoginForm() {
     }
   }, []);
 
-  // Pre-fill email
+  // Pre-fill from params or Zustand
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsStoreLoaded(true);
-      const storedEmail = emailFromParams || formData.email || "";
-      if (storedEmail) {
-        setEmail(storedEmail);
+      if (phoneFromParams) {
+        const cleanedPhone = phoneFromParams.replace(/\D/g, '');
+        setInputValue(phoneFromParams);
+        setPhoneNumber(cleanedPhone);
+        setInputType("phone");
+      } else if (emailFromParams) {
+        setInputValue(emailFromParams);
+        setInputType("email");
+      } else if (formData.phone) {
+        const cleanedPhone = formData.phone.replace(/\D/g, '');
+        setInputValue(formData.phone);
+        setPhoneNumber(cleanedPhone);
+        setInputType("phone");
+      } else if (formData.email) {
+        setInputValue(formData.email);
+        setInputType("email");
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [formData, emailFromParams]);
+  }, [formData, phoneFromParams, emailFromParams]);
 
-  // Check email function
-  const checkEmail = async () => {
-    if (!email || !email.includes("@")) {
+  // Function to detect if input is phone or email
+  const detectInputType = (value: string): "email" | "phone" => {
+    const phoneRegex = /^[0-9]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    // Remove spaces and special characters for phone check
+    const cleanedValue = value.replace(/\D/g, '');
+    
+    if (phoneRegex.test(cleanedValue) && cleanedValue.length >= 10) {
+      return "phone";
+    } else if (emailRegex.test(value)) {
+      return "email";
+    }
+    
+    // Default to phone for Bangladesh
+    return "phone";
+  };
+
+  // Clean phone number
+  const cleanPhoneNumber = (phone: string): string => {
+    return phone.replace(/\D/g, '').slice(0, 11);
+  };
+
+  // Handle email/phone submission
+  const handleInputSubmit = async () => {
+    if (!inputValue.trim()) {
+      error("Please enter phone number or email");
+      return;
+    }
+
+    setIsProcessing(true);
+    setStep("loading");
+
+    try {
+      const detectedType = detectInputType(inputValue);
+      
+      if (detectedType === "phone") {
+        // Handle phone number
+        const cleanedPhone = cleanPhoneNumber(inputValue);
+        setPhoneNumber(cleanedPhone);
+        
+        if (cleanedPhone.length !== 11) {
+          error("Please enter a valid 11-digit phone number");
+          setStep("emailOrPhone");
+          setIsProcessing(false);
+          return;
+        }
+
+        // Check if phone exists in database
+        const customerByPhone = await getCustomerByPhone(cleanedPhone, storeSlug);
+        
+        if (customerByPhone) {
+          // Phone found in database
+          setCustomerData(customerByPhone);
+          
+          if (customerByPhone.email && customerByPhone.email.trim() !== "") {
+            // Phone has email associated
+            setEmail(customerByPhone.email);
+            
+            if (customerByPhone.auth_user_id) {
+              // Account exists and has auth, go to password
+              success("Account found! Please enter your password");
+              setStep("password");
+            } else {
+              // Phone+email but no auth account
+              info("Account needs setup. Please create a password.");
+              setStep("password");
+            }
+          } else {
+            // Phone found but no email - need to ask for email
+            info("Please enter an email address for your account");
+            setStep("emailInput");
+          }
+        } else {
+          // Phone not found - treat as new user
+          info("No account found with this phone number");
+          setTimeout(() => {
+            router.push(`/${storeSlug}/signup?phone=${encodeURIComponent(cleanedPhone)}`);
+          }, 1000);
+        }
+      } else {
+        // Handle email
+        const customerByEmail = await getCustomerByEmail(inputValue, storeSlug);
+        
+        if (customerByEmail) {
+          setCustomerData(customerByEmail);
+          setEmail(customerByEmail.email);
+          
+          if (customerByEmail.auth_user_id) {
+            success("Account found! Please enter your password");
+            setStep("password");
+          } else {
+            info("Account found but needs setup");
+            setStep("password");
+          }
+        } else {
+          info("No account found with this email");
+          setTimeout(() => {
+            router.push(`/${storeSlug}/signup?email=${encodeURIComponent(inputValue)}`);
+          }, 1000);
+        }
+      }
+    } catch (err: any) {
+      console.error("Error checking input:", err);
+      error("Failed to check account. Please try again.");
+      setStep("emailOrPhone");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle email input (for phone without email)
+  const handleEmailSubmit = async () => {
+    if (!email.trim() || !email.includes("@")) {
       error("Please enter a valid email address");
       return;
     }
 
-    setIsCheckingEmail(true);
+    setIsProcessing(true);
     setStep("loading");
 
     try {
-      const customer = await authQueries.checkEmail(email);
-
-      if (!customer) {
-        info("No account found with this email");
-        setTimeout(() => {
-          router.push(`/${storeSlug}/signup?email=${encodeURIComponent(email)}`);
-        }, 1000);
-        return;
-      }
-
-      setCustomerData(customer);
-
-      if (customer.auth_user_id) {
-        success("Account found! Please enter your password");
-        setStep("password");
+      // Check if email already exists in another account
+      const existingCustomer = await getCustomerByEmail(email, storeSlug);
+      
+      if (existingCustomer) {
+        // Email exists - check if it's the same customer
+        if (customerData && existingCustomer.id === customerData.id) {
+          // Same customer, just update email
+          await updateCustomerEmailByPhone(phoneNumber, email);
+          setCustomerData({ ...customerData, email });
+          
+          if (existingCustomer.auth_user_id) {
+            success("Email updated! Please enter your password");
+            setStep("password");
+          } else {
+            setStep("password");
+          }
+        } else {
+          // Email belongs to different customer - ask what to do
+          error("This email is already registered with another account");
+          setStep("emailInput");
+        }
       } else {
-        info("Account found but needs setup");
-        setTimeout(() => {
-          router.push(`/${storeSlug}/complete-account?email=${encodeURIComponent(email)}&customer_id=${customer.id}`);
-        }, 1000);
+        // New email - update the phone record with this email
+        if (customerData) {
+          const updated = await updateCustomerEmailByPhone(phoneNumber, email);
+          if (updated) {
+            setCustomerData({ ...customerData, email });
+            success("Email added to your account!");
+            setStep("password");
+          } else {
+            throw new Error("Failed to update email");
+          }
+        }
       }
     } catch (err: any) {
-      console.error("Error checking email:", err);
-      error("Failed to check email. Please try again.");
-      setStep("email");
+      console.error("Error processing email:", err);
+      error(err.message || "Failed to process email. Please try again.");
+      setStep("emailInput");
     } finally {
-      setIsCheckingEmail(false);
+      setIsProcessing(false);
     }
   };
 
-  // Handle login function - UPDATED TO LINK AUTH_USER_ID
+  // Handle login/password submission
   const handleLogin = async () => {
     if (!password || password.length < 6) {
       error("Please enter your password (minimum 6 characters)");
       return;
     }
 
-    setIsLoggingIn(true);
+    setIsProcessing(true);
 
     try {
-      // 1. Login with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase(),
-        password: password,
-      });
+      const customerId = customerData?.id;
 
-      if (authError) {
-        if (authError.message.includes("Invalid login credentials")) {
-          throw new Error("Invalid password. Please try again.");
-        } else if (authError.message.includes("Email not confirmed")) {
-          throw new Error("Please verify your email address before logging in.");
-        } else {
-          throw authError;
-        }
-      }
+      // Check if auth account already exists
+      if (customerData?.auth_user_id) {
+        // Account exists - login
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password: password,
+        });
 
-      if (!authData.user) {
-        throw new Error("Login failed. Please try again.");
-      }
-
-      // 2. Get the auth user ID
-      const authUserId = authData.user.id;
-      
-      // 3. Check if customer already has auth_user_id linked
-      if (customerData) {
-        if (!customerData.auth_user_id) {
-          const linked = await linkAuthToCustomer(customerData.id, authUserId);
-          if (linked) {
+        if (authError) {
+          if (authError.message.includes("Invalid login credentials")) {
+            throw new Error("Invalid password. Please try again.");
+          } else if (authError.message.includes("Email not confirmed")) {
+            throw new Error("Please verify your email address before logging in.");
           } else {
-            console.warn("⚠️ Failed to link auth user to customer");
+            throw authError;
           }
         }
-        
-        // Also check for any other customers with same email that need linking
-        try {
-          const { data: otherCustomers } = await supabase
-            .from("store_customers")
-            .select("id, auth_user_id")
-            .eq("email", email.toLowerCase())
-            .neq("id", customerData.id);
 
-          if (otherCustomers && otherCustomers.length > 0) {
-            // Link auth_user_id to all customers with this email
-            for (const customer of otherCustomers) {
-              if (!customer.auth_user_id) {
-                await linkAuthToCustomer(customer.id, authUserId);
-              }
-            }
+        success("Login successful!", { duration: 1000 });
+        
+      } else {
+        // No auth account - sign up
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email.toLowerCase(),
+          password: password,
+          options: {
+            data: {
+              phone: phoneNumber || customerData?.phone,
+              role: "customer",
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        if (authError) {
+          if (authError.message.includes("already registered")) {
+            // Try to login instead
+            const { error: loginError } = await supabase.auth.signInWithPassword({
+              email: email.toLowerCase(),
+              password: password,
+            });
+            
+            if (loginError) throw loginError;
+          } else {
+            throw authError;
           }
-        } catch (linkError) {
-          console.error("Error linking other customers:", linkError);
+        }
+
+        if (authData.user) {
+          // Link auth user to customer record
+          if (customerId) {
+            await linkAuthToCustomer(customerId, authData.user.id);
+          }
+          
+          if (authData.user.identities && authData.user.identities.length === 0) {
+            // User already existed in auth but wasn't linked
+            success("Account linked successfully!", { duration: 1000 });
+          } else {
+            success("Account created and logged in!", { duration: 1000 });
+          }
         }
       }
 
-      success("Login successful!", { duration: 1000 });
       refreshCustomerData();
-      
-      const { clearAccountCreationFlags } = useCheckoutStore.getState();
       clearAccountCreationFlags();
 
       // Redirect
@@ -190,60 +348,75 @@ export function LoginForm() {
       console.error("Login error:", err);
       error(err.message || "Login failed. Please try again.");
     } finally {
-      setIsLoggingIn(false);
+      setIsProcessing(false);
     }
-  };
-
-  // Reset to email step
-  const resetToEmail = () => {
-    setStep("email");
-    setPassword("");
-    setCustomerData(null);
   };
 
   // Handle signup redirect
   const handleSignup = () => {
-    router.push(`/${storeSlug}/signup${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+    const queryParams = new URLSearchParams();
+    if (inputType === "phone" && phoneNumber) {
+      queryParams.set("phone", phoneNumber);
+    } else if (inputType === "email" && inputValue) {
+      queryParams.set("email", inputValue);
+    }
+    
+    router.push(`/${storeSlug}/signup?${queryParams.toString()}`);
   };
 
-  if (!isStoreLoaded) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-center">
-          <SheiLoader size="lg" loaderColor="primary" />
-          <p className="mt-4 text-muted-foreground">Loading your information...</p>
-        </div>
-      </div>
-    );
-  }
+  // Reset to initial step
+  const resetToInitial = () => {
+    setStep("emailOrPhone");
+    setPassword("");
+    setCustomerData(null);
+  };
+
+  // Back to email input step
+  const backToEmailInput = () => {
+    setStep("emailInput");
+  };
 
   return (
     <div className="max-w-md mx-auto w-full">
-      {step === "email" && (
-        <EmailStep
-          email={email}
-          setEmail={setEmail}
-          onNext={checkEmail}
+      {step === "emailOrPhone" && (
+        <EmailOrPhoneStep
+          inputValue={inputValue}
+          setInputValue={setInputValue}
+          inputType={inputType}
+          setInputType={setInputType}
+          onNext={handleInputSubmit}
           onSignup={handleSignup}
-          isCheckingEmail={isCheckingEmail}
+          isProcessing={isProcessing}
           storeSlug={storeSlug}
         />
       )}
 
-      {step === "password" && customerData && (
+      {step === "emailInput" && (
+        <EmailInputStep
+          phoneNumber={phoneNumber}
+          email={email}
+          setEmail={setEmail}
+          onNext={handleEmailSubmit}
+          onBack={resetToInitial}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {step === "password" && (
         <PasswordStep
-          customerData={customerData}
+          email={email}
+          phone={customerData?.phone || phoneNumber}
           password={password}
           setPassword={setPassword}
           onLogin={handleLogin}
-          onBack={resetToEmail}
-          isLoggingIn={isLoggingIn}
+          onBack={customerData?.phone && (!customerData.email || customerData.email.trim() === "") ? backToEmailInput : resetToInitial}
+          isLoggingIn={isProcessing}
         />
       )}
 
       {step === "loading" && (
         <LoadingStep
-          message={isCheckingEmail ? "Checking Your Account" : "Processing..."}
+          message={isProcessing ? "Checking Your Account" : "Processing..."}
           description="Please wait a moment"
         />
       )}

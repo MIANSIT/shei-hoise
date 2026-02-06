@@ -54,9 +54,9 @@ const StockTable: React.FC<StockTableProps> = ({
         const imageUrl = record.imageUrl ?? null;
         const isProductRow = "variants" in record;
         const shouldHighlight = isProductRow
-          ? (record as ProductRow).isLowStock ||
-            (record as ProductRow).hasLowStockVariant
-          : (record as VariantRow).isLowStock;
+          ? !record.isOutOfStock &&
+            (record.isLowStock || record.hasLowStockVariant)
+          : !record.isOutOfStock && record.isLowStock;
 
         return (
           <div className="relative">
@@ -74,9 +74,11 @@ const StockTable: React.FC<StockTableProps> = ({
             {shouldHighlight && (
               <Tooltip
                 title={
-                  isProductRow && (record as ProductRow).hasLowStockVariant
-                    ? "Has low stock variants"
-                    : `Low stock! Threshold: ${record.lowStockThreshold}`
+                  record.isOutOfStock
+                    ? "Out of stock"
+                    : isProductRow && record.hasLowStockVariant
+                      ? "Has low stock variants"
+                      : `Low stock! Threshold: ${record.lowStockThreshold}`
                 }
               >
                 <div className="absolute -top-1 -right-1">
@@ -95,45 +97,51 @@ const StockTable: React.FC<StockTableProps> = ({
       dataIndex: "title",
       key: "title",
       className: "font-semibold text-primary",
-      render: (title: string, record: ProductRow | VariantRow) => {
+      render: (title: string, record) => {
         const isProductRow = "variants" in record;
-        const shouldHighlight = isProductRow
-          ? (record as ProductRow).isLowStock ||
-            (record as ProductRow).hasLowStockVariant
-          : (record as VariantRow).isLowStock;
 
-        const tooltipTitle =
-          isProductRow && (record as ProductRow).hasLowStockVariant
-            ? "One or more variants are low on stock"
-            : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
+        const isOutOfStock = record.isOutOfStock;
+        const isLowStock = record.isLowStock;
+        const hasLowStockVariant = isProductRow && record.hasLowStockVariant;
 
-        const isInactiveProduct =
-          isProductRow && (record as ProductRow).isInactiveProduct;
+        const isInactiveProduct = isProductRow && record.isInactiveProduct;
         const isInactiveVariant =
           !isProductRow && !(record as VariantRow).isActive;
+
+        // ✅ PRIORITY TOOLTIP
+        const tooltipTitle = isOutOfStock
+          ? "Out of stock"
+          : hasLowStockVariant
+            ? "One or more variants are low on stock"
+            : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
 
         return (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <span>{title}</span>
-              {shouldHighlight && (
+
+              {/* ✅ PRIORITY TAG RENDERING */}
+              {isOutOfStock ? (
+                <Tag color="volcano" className="text-xs">
+                  Out of Stock
+                </Tag>
+              ) : isLowStock || hasLowStockVariant ? (
                 <Tooltip title={tooltipTitle}>
                   <Tag color="red" className="text-xs">
-                    {isProductRow && (record as ProductRow).hasLowStockVariant
-                      ? "Has Low Stock"
-                      : "Low Stock"}
+                    {hasLowStockVariant ? "Has Low Stock" : "Low Stock"}
                   </Tag>
                 </Tooltip>
-              )}
+              ) : null}
 
+              {/* Inactive / Draft */}
               {(isInactiveProduct || isInactiveVariant) && (
                 <Tag
                   color={
                     isInactiveProduct
                       ? record.status === ProductStatus.DRAFT
-                        ? "gold" // yellow for draft
-                        : "red" // red for inactive
-                      : "red" // inactive variant
+                        ? "gold"
+                        : "red"
+                      : "red"
                   }
                   className="text-xs"
                 >
@@ -153,7 +161,7 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "SKU",
       dataIndex: "sku",
       key: "sku",
-      render: (_sku, record: ProductRow | VariantRow) => {
+      render: (_sku, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="italic text-muted-foreground">
@@ -170,7 +178,7 @@ const StockTable: React.FC<StockTableProps> = ({
       title: "Price",
       dataIndex: "currentPrice",
       key: "currentPrice",
-      render: (_price: number | null, record: ProductRow | VariantRow) => {
+      render: (_price, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="italic text-muted-foreground">
@@ -178,8 +186,7 @@ const StockTable: React.FC<StockTableProps> = ({
             </span>
           );
         }
-        const price =
-          typeof record.currentPrice === "number" ? record.currentPrice : 0;
+        const price = record.currentPrice ?? 0;
         return (
           <span>
             {displayCurrencyIconSafe}
@@ -196,11 +203,7 @@ const StockTable: React.FC<StockTableProps> = ({
         const parentId = isProductRow
           ? record.id
           : (record as VariantRow).productId;
-        const variantId = isProductRow ? null : (record as VariantRow).id;
-        // const isInactiveProduct =
-        //   isProductRow && (record as ProductRow).isInactiveProduct;
-        // const isInactiveVariant =
-        //   !isProductRow && !(record as VariantRow).isActive;
+        const variantId = isProductRow ? null : record.id;
 
         if (isProductRow && record.variants?.length) {
           return (
@@ -213,50 +216,46 @@ const StockTable: React.FC<StockTableProps> = ({
         const key = record.id;
         const editedValue = editedStocks[key] ?? record.stock;
         const showUpdateButton = key in editedStocks && !bulkActive;
-        const isLowStock = record.isLowStock;
 
         return (
           <div
             className="flex items-center gap-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <Tooltip
-              title={
-                isLowStock
-                  ? `Current: ${record.stock} / Threshold: ${record.lowStockThreshold}`
-                  : `Current stock: ${record.stock}`
+            <InputNumber
+              min={0}
+              value={editedValue}
+              onChange={(value) =>
+                onStockChange(parentId, variantId, Number(value ?? 0))
               }
-            >
-              <InputNumber
-                min={0}
-                value={editedValue}
-                onChange={(value) =>
-                  onStockChange(parentId, variantId, Number(value ?? 0))
-                }
-                className={`w-20! text-center font-bold [&>input]:text-center [&>input]:font-bold ${
-                  isLowStock
-                    ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
-                    : ""
-                }`}
-                status={isLowStock ? "warning" : undefined}
-              />
-            </Tooltip>
-
-            {isLowStock && (
+              className={`w-20! text-center font-bold
+  ${
+    record.isOutOfStock
+      ? "[&>input]:bg-gray-100 [&>input]:border-gray-300 [&>input]:text-gray-500"
+      : record.isLowStock
+        ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
+        : ""
+  }`}
+              status={record.isLowStock ? "warning" : undefined}
+            />
+            {record.isOutOfStock ? (
+              <Tag color="volcano" className="text-xs">
+                Out of Stock
+              </Tag>
+            ) : record.isLowStock ? (
               <Tooltip title={`Below threshold (${record.lowStockThreshold})`}>
-                <span className="text-xs text-red-500 font-medium px-2 py-1 bg-red-50 rounded">
-                  Low
-                </span>
+                <Tag color="red" className="text-xs">
+                  Low Stock
+                </Tag>
               </Tooltip>
-            )}
-
+            ) : null}
             {showUpdateButton && (
               <SheiButton
-                onClick={async (e) => {
+                size="small"
+                onClick={(e) => {
                   e.stopPropagation();
                   onSingleUpdate(parentId, variantId, editedValue);
                 }}
-                size="small"
               >
                 Update
               </SheiButton>
@@ -276,15 +275,16 @@ const StockTable: React.FC<StockTableProps> = ({
       pagination={false}
       loading={loading}
       rowClassName={(record) => {
-        const isProductRow = "variants" in record;
-        const shouldHighlight = isProductRow
-          ? (record as ProductRow).isLowStock ||
-            (record as ProductRow).hasLowStockVariant
-          : (record as VariantRow).isLowStock;
+        if (record.isOutOfStock) {
+          return "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/40";
+        }
 
-        // Light: bg-red-50 / hover:bg-red-100
-        // Dark: bg-red-900/10 (very light red on dark) / hover:bg-red-800/20
-        return shouldHighlight
+        const shouldLowHighlight =
+          "variants" in record
+            ? record.isLowStock || record.hasLowStockVariant
+            : record.isLowStock;
+
+        return shouldLowHighlight
           ? "bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-800/20"
           : "";
       }}
@@ -299,13 +299,7 @@ const StockTable: React.FC<StockTableProps> = ({
                     ? 50
                     : col.key === "title"
                       ? 150
-                      : col.key === "sku"
-                        ? 100
-                        : col.key === "currentPrice"
-                          ? 80
-                          : col.key === "stock"
-                            ? 80
-                            : col.width,
+                      : col.width,
               }))}
               data={record.variants.map((v) => ({
                 ...v,
@@ -313,13 +307,15 @@ const StockTable: React.FC<StockTableProps> = ({
               }))}
               rowKey="id"
               pagination={false}
-              rowClassName={(variantRecord) =>
-                !(variantRecord as VariantRow).isActive
-                  ? "bg-gray-100 hover:bg-gray-200"
-                  : (variantRecord as VariantRow).isLowStock
-                    ? "bg-red-50 hover:bg-red-100"
-                    : ""
-              }
+              rowClassName={(variantRecord) => {
+                if (variantRecord.isOutOfStock) {
+                  return "bg-gray-100 hover:bg-gray-200";
+                }
+
+                return variantRecord.isLowStock
+                  ? "bg-red-50 hover:bg-red-100"
+                  : "";
+              }}
             />
           ) : null,
         rowExpandable: (record) =>
