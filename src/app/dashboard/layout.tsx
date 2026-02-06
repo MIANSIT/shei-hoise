@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import SidebarProfile from "../components/admin/sidebar/SidebarProfile";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
 import { Toaster } from "@/app/components/ui/sheiSonner/sonner";
-import { Moon, PanelLeft, Sun } from "lucide-react";
+import { Moon, PanelLeft, Sun, ArrowUp } from "lucide-react";
 import {
   ConfigProvider,
   theme as antdTheme,
@@ -36,6 +36,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
   const { session, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
   const {
@@ -113,6 +116,96 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       document.documentElement.classList.toggle("dark", savedTheme === "dark");
     }
   }, [mounted]);
+
+  // Handle scroll to show/hide back to top button
+  useEffect(() => {
+    if (!mounted) return;
+
+    let scrollElement: HTMLElement | null = null;
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const scrollTop =
+        target.scrollTop ||
+        window.scrollY ||
+        document.documentElement.scrollTop;
+
+      // Show button when scrolled down more than 200px
+      if (scrollTop > 200) {
+        setShowBackToTop(true);
+      } else {
+        setShowBackToTop(false);
+      }
+    };
+
+    // Try to find the scrolling element
+    const mainContent = mainContentRef.current;
+
+    if (mainContent) {
+      // Check if this element scrolls
+      const hasScroll = mainContent.scrollHeight > mainContent.clientHeight;
+
+      if (hasScroll) {
+        scrollElement = mainContent;
+      }
+    }
+
+    // If mainContent doesn't scroll, try parent elements
+    if (!scrollElement && mainContent) {
+      let parent = mainContent.parentElement;
+      let level = 0;
+      while (parent && level < 5) {
+        const hasScroll = parent.scrollHeight > parent.clientHeight;
+        if (hasScroll) {
+          scrollElement = parent;
+          break;
+        }
+        parent = parent.parentElement;
+        level++;
+      }
+    }
+
+    // Add event listener to the scrolling element
+    if (scrollElement) {
+      scrollElement.addEventListener("scroll", handleScroll, { passive: true });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      handleScroll({ target: scrollElement } as any);
+    } else {
+      // Fallback to window scroll
+      window.addEventListener("scroll", handleScroll, { passive: true });
+    }
+
+    return () => {
+      if (scrollElement) {
+        scrollElement.removeEventListener("scroll", handleScroll);
+      } else {
+        window.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [mounted]);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    // Try scrolling the ref element first
+    if (mainContentRef.current) {
+      const hasScroll =
+        mainContentRef.current.scrollHeight >
+        mainContentRef.current.clientHeight;
+      if (hasScroll && mainContentRef.current.scrollTop > 0) {
+        mainContentRef.current.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+        return;
+      }
+    }
+
+    // Otherwise scroll the window
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   // Handle logout
   // const handleLogout = async () => {
@@ -322,7 +415,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Main content */}
             <main
-              className="flex-1 flex flex-col overflow-auto min-h-[calc(100vh-73px)]"
+              className="flex-1 flex flex-col overflow-auto min-h-[calc(100vh-73px)] relative"
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
@@ -340,9 +433,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-3 ">{children}</div>
+              <div className="flex-1 overflow-auto p-3 " ref={mainContentRef}>
+                {children}
+              </div>
             </main>
           </div>
+
+          {/* Back to Top Button - Only visible after scrolling down */}
+          {showBackToTop && (
+            <button
+              onClick={scrollToTop}
+              className="fixed bottom-4 right-2 p-4 rounded-full shadow-2xl hover:shadow-xl transition-all duration-300 hover:scale-110"
+              style={{
+                background: "#3b82f6",
+                color: "#ffffff",
+                zIndex: 9999,
+              }}
+              aria-label="Back to top"
+            >
+              <ArrowUp className="w-6 h-6" />
+            </button>
+          )}
         </div>
       </AntdApp>
     </ConfigProvider>
