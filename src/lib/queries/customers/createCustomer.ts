@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabase";
 
 export interface CreateCustomerData {
   store_id: string;
-  email: string;
+  email?: string; // Made optional
   first_name: string;
   phone?: string;
   address_line_1?: string;
@@ -14,30 +14,31 @@ export interface CreateCustomerData {
 
 export async function createCustomer(customerData: CreateCustomerData) {
   try {
+    // Check if a customer with this email already exists (only if email is provided)
+    if (customerData.email) {
+      const { data: existingCustomer, error: checkError } = await supabaseAdmin
+        .from("store_customers")
+        .select("*")
+        .eq("email", customerData.email)
+        .single();
 
-    // Check if a customer with this email already exists
-    const { data: existingCustomer, error: checkError } = await supabaseAdmin
-      .from("store_customers")
-      .select("*")
-      .eq("email", customerData.email)
-      .single();
+      // PGRST116 = no rows found
+      if (checkError && checkError.code !== "PGRST116") {
+        console.error("Error checking existing customer:", checkError);
+        throw new Error("Failed to verify existing customer");
+      }
 
-    // PGRST116 = no rows found
-    if (checkError && checkError.code !== "PGRST116") {
-      console.error("Error checking existing customer:", checkError);
-      throw new Error("Failed to verify existing customer");
-    }
-
-    if (existingCustomer) {
-      throw new Error(
-        `A customer with email ${customerData.email} already exists`
-      );
+      if (existingCustomer) {
+        throw new Error(
+          `A customer with email ${customerData.email} already exists`,
+        );
+      }
     }
 
     // Insert customer
     const customerInsertData = {
       name: customerData.first_name,
-      email: customerData.email,
+      email: customerData.email || null, // Allow null email
       phone: customerData.phone || null,
     };
 
@@ -52,7 +53,6 @@ export async function createCustomer(customerData: CreateCustomerData) {
       console.error("Error creating customer:", customerError);
       throw new Error(customerError.message);
     }
-
 
     // Optional: create customer profile if address info is provided
     let profileData = null;
@@ -88,15 +88,14 @@ export async function createCustomer(customerData: CreateCustomerData) {
           if (updateError) {
             console.error(
               "Error updating store_customer with profile_id:",
-              updateError
+              updateError,
             );
-          } else {
           }
         }
       } catch (profileError: any) {
         console.error(
           "Unexpected error during profile creation:",
-          profileError
+          profileError,
         );
       }
     }
@@ -112,7 +111,6 @@ export async function createCustomer(customerData: CreateCustomerData) {
 
       if (linkError) {
         console.error("Store customer link creation error:", linkError);
-      } else {
       }
     } catch (linkError: any) {
       console.error("Unexpected error during store linking:", linkError);

@@ -64,8 +64,8 @@ export interface OrderItem {
   products?: OrderItemProduct | null;
   product_variants?: OrderItemVariant | null;
   discounted_price?: number;
-  product_sku?: string; // Add this
-  variant_sku?: string; // Add this
+  product_sku?: string;
+  variant_sku?: string;
 }
 
 // ===== SUPABASE DATABASE TYPES =====
@@ -75,7 +75,7 @@ export interface StoreOrder {
   order_number: string;
   customer_id: string | null;
   store_id: string;
-  status: OrderStatus; // ✅ Using enum
+  status: OrderStatus;
   subtotal: number;
   tax_amount: number;
   discount_amount?: number;
@@ -83,7 +83,7 @@ export interface StoreOrder {
   shipping_fee: number;
   total_amount: number;
   currency: string;
-  payment_status: PaymentStatus; // ✅ Using enum
+  payment_status: PaymentStatus;
   payment_method: string | null;
   shipping_address: {
     customer_name: string;
@@ -117,7 +117,7 @@ export interface CustomerInfo {
   name: string;
   phone: string;
   address: string;
-  deliveryMethod: string;
+  deliveryMethod?: string; // Made optional
   deliveryOption: string;
   city: string;
   email: string;
@@ -138,8 +138,8 @@ export interface CreateOrderData {
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: OrderStatus; // ✅ Using enum
-  paymentStatus: PaymentStatus; // ✅ Using enum
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   paymentMethod: string;
   currency?: string;
   deliveryOption: string;
@@ -165,8 +165,8 @@ export interface CustomerOrderData {
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
-  status: OrderStatus; // ✅ Using enum
-  paymentStatus: PaymentStatus; // ✅ Using enum
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   paymentMethod: string;
   currency?: string;
   deliveryOption: string;
