@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation"; // ⬅️ added useRouter
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AddProductForm from "@/app/components/admin/dashboard/products/addProducts/AddProductForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { getProductBySlug } from "@/lib/queries/products/getProductBySlug";
@@ -15,13 +15,17 @@ import {
 
 const EditProductPage = () => {
   const params = useParams();
-  const router = useRouter(); // ⬅️ initialize router
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { slug } = params;
   const { success, error } = useSheiNotification();
   const { user, loading: userLoading } = useCurrentUser();
 
   const [product, setProduct] = useState<ProductType | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Get the returnUrl from query params (passed from products list page)
+  const returnUrl = searchParams.get("returnUrl");
 
   useEffect(() => {
     if (!slug || !user?.store_id) return;
@@ -76,7 +80,12 @@ const EditProductPage = () => {
       );
 
       setTimeout(() => {
-        router.push("/dashboard/products");
+        // Navigate back to the page they came from, or default to products list
+        if (returnUrl) {
+          router.push(returnUrl);
+        } else {
+          router.push("/dashboard/products");
+        }
       }, 1000);
     } catch (err: unknown) {
       console.error("Update failed:", err);

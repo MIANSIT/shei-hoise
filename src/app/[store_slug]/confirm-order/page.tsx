@@ -16,7 +16,7 @@ import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { CartProductWithDetails } from "@/lib/types/cart";
 import { StoreLoadingSkeleton } from "../../components/skeletons/StoreLoadingSkeleton";
 import { supabase } from "@/lib/supabase";
-import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+// import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
