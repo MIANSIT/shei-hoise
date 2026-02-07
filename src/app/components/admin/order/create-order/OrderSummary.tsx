@@ -151,7 +151,7 @@ export default function OrderSummary({
         name: "Custom Shipping Fee",
         price: deliveryCost,
         description: "Manually adjusted shipping fee",
-        estimated_days: selectedShippingFee?.estimated_days || "3-5",
+        estimated_days: selectedShippingFee?.estimated_days || undefined,
       }
     : selectedShippingFee;
 
@@ -190,7 +190,15 @@ export default function OrderSummary({
                     {displayShippingFee.description}
                   </Text>
                 )}
-
+                {displayShippingFee.estimated_days && (
+                  <Text
+                    className="text-ring"
+                    style={{ fontSize: "12px", display: "block" }}
+                  >
+                    📦 Estimated Delivery: {displayShippingFee.estimated_days}{" "}
+                    {displayShippingFee.estimated_days === 1 ? "day" : "days"}
+                  </Text>
+                )}
                 {isManualDeliveryCost && (
                   <Text type="warning" style={{ fontSize: "12px" }}>
                     Manual delivery cost override in effect

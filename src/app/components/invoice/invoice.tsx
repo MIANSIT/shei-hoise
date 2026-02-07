@@ -18,7 +18,42 @@ import {
   OrderStatus,
 } from "@/lib/types/enums";
 import html2canvas from "html2canvas";
-import { notification } from "antd";
+import { App } from "antd";
+
+// Helper function to format status text
+const formatStatus = (status: string): string => {
+  if (!status) return "N/A";
+
+  // Handle common status values
+  const statusMap: Record<string, string> = {
+    PENDING: "Pending",
+    PAID: "Paid",
+    UNPAID: "Unpaid",
+    PARTIALLY_PAID: "Partially Paid",
+    REFUNDED: "Refunded",
+    FAILED: "Failed",
+    PROCESSING: "Processing",
+    CONFIRMED: "Confirmed",
+    SHIPPED: "Shipped",
+    DELIVERED: "Delivered",
+    CANCELLED: "Cancelled",
+    RETURNED: "Returned",
+    ON_HOLD: "On Hold",
+  };
+
+  // Check if status exists in map
+  const upperStatus = status.toUpperCase();
+  if (statusMap[upperStatus]) {
+    return statusMap[upperStatus];
+  }
+
+  // Otherwise, capitalize first letter of each word
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 interface Product {
   name: string;
@@ -86,6 +121,9 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     showPDFButton = true,
   } = props;
 
+  // Use App context for notifications
+  const { notification } = App.useApp();
+
   const invoiceRef = useRef<HTMLDivElement>(null);
   const posRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +138,18 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  // Helper function to format status text (capitalize properly)
+  const formatStatus = (status: string): string => {
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
+
+  // Formatted status values
+  const formattedPaymentStatus = formatStatus(paymentStatus);
+  const formattedOrderStatus = formatStatus(orderStatus);
 
   // Reset copied state
   useEffect(() => {
@@ -132,150 +182,119 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     setCopied(true);
   };
 
-  // ==================== PRINT A4 ====================
+  // ==================== PRINT A4 (iOS COMPATIBLE) ====================
   const printInvoice = async () => {
     setIsPrinting(true);
     try {
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      iframe.style.visibility = "hidden";
-      document.body.appendChild(iframe);
+      // Detect iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-      const doc = iframe.contentDocument;
-      const win = iframe.contentWindow;
-      if (!doc || !win) return;
+      if (isIOS) {
+        // iOS-specific print handling
+        await printForIOS();
+      } else {
+        // Desktop/Android print handling
+        await printForDesktop();
+      }
+    } catch (err) {
+      console.error("Print error:", err);
+      notification.error({
+        title: "Print Failed",
+        description:
+          "Could not print invoice. Please try downloading PDF instead.",
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
-      // Get only necessary styles for printing
-      const printStyles = `
-        <style>
-          /* PRINT STYLES */
-          @media print {
-            @page { 
-              size: A4; 
-              margin: 15mm;
-            }
-            
-            body {
-              margin: 0;
-              padding: 20px;
-              font-family: Arial, sans-serif;
-              font-size: 12px;
-              line-height: 1.4;
-              color: #000;
-              background: #fff;
-              width: 100%;
-              max-width: 100%;
-              overflow: visible !important;
-            }
-            
-            .print-container {
-              width: 100%;
-              max-width: 100%;
-              margin: 0 auto;
-              padding: 0;
-            }
-            
-            /* Header alignment fix */
-            .invoice-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 30px;
-              width: 100%;
-            }
-            
-            .store-info {
-              flex: 1;
-              text-align: left;
-            }
-            
-            .invoice-info {
-              flex: 1;
-              text-align: right;
-            }
-            
-            /* Table fixes */
-            table {
-              width: 100% !important;
-              table-layout: fixed;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            
-            th, td {
-              padding: 8px 5px;
-              border: 1px solid #ddd;
-              word-break: break-word;
-              vertical-align: top;
-            }
-            
-            th {
-              background: #f0f0f0;
-              font-weight: bold;
-              text-align: left;
-            }
-            
-            /* Column widths */
-            .col-item { width: 45%; }
-            .col-qty { width: 15%; text-align: center; }
-            .col-price { width: 20%; text-align: right; }
-            .col-total { width: 20%; text-align: right; }
-            
-            /* Prevent page breaks */
-            .no-break {
-              page-break-inside: avoid;
-            }
-            
-            /* Hide non-print elements */
-            .no-print, button, .print-button, .modal-header {
-              display: none !important;
-            }
-            
-            /* Ensure everything fits */
-            * {
-              max-width: 100% !important;
-              box-sizing: border-box;
-            }
-            
-            .summary {
-              margin-left: auto;
-              width: 300px;
-              margin-top: 30px;
-            }
-            
-            .summary-row {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 5px;
-            }
-            
-            .grand-total {
-              font-size: 14px;
-              font-weight: bold;
-              border-top: 2px solid #000;
-              padding-top: 10px;
-              margin-top: 10px;
-            }
+  // iOS Print - Use a simpler approach with window.print()
+  const printForIOS = async () => {
+    // Create a new style element for print-specific styles
+    const printStyles = document.createElement("style");
+    printStyles.id = "invoice-print-styles";
+    printStyles.textContent = `
+      @media print {
+        @page { 
+          size: A4; 
+          margin: 15mm;
+        }
+        
+        body * {
+          visibility: hidden;
+        }
+        
+        #invoice-print-content,
+        #invoice-print-content * {
+          visibility: visible;
+        }
+        
+        #invoice-print-content {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+        
+        .no-print {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(printStyles);
+
+    // Trigger print
+    window.print();
+
+    // Clean up
+    setTimeout(() => {
+      const styleElement = document.getElementById("invoice-print-styles");
+      if (styleElement) {
+        styleElement.remove();
+      }
+    }, 1000);
+  };
+
+  // Desktop/Android Print - Use iframe method
+  const printForDesktop = async () => {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow;
+    if (!doc || !win) return;
+
+    const printStyles = `
+      <style>
+        @media print {
+          @page { 
+            size: A4; 
+            margin: 15mm;
           }
           
-          /* Screen styles for iframe preview */
           body {
+            margin: 0;
+            padding: 20px;
             font-family: Arial, sans-serif;
             font-size: 12px;
             line-height: 1.4;
             color: #000;
             background: #fff;
-            padding: 20px;
-            margin: 0;
+            width: 100%;
+            max-width: 100%;
+            overflow: visible !important;
           }
           
           .print-container {
             width: 100%;
-            max-width: 210mm;
+            max-width: 100%;
             margin: 0 auto;
+            padding: 0;
           }
           
           .invoice-header {
@@ -283,10 +302,12 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 30px;
+            width: 100%;
           }
           
           .store-info {
             flex: 1;
+            text-align: left;
           }
           
           .invoice-info {
@@ -295,7 +316,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           }
           
           table {
-            width: 100%;
+            width: 100% !important;
+            table-layout: fixed;
             border-collapse: collapse;
             margin: 20px 0;
           }
@@ -303,17 +325,33 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           th, td {
             padding: 8px 5px;
             border: 1px solid #ddd;
+            word-break: break-word;
+            vertical-align: top;
           }
           
           th {
             background: #f0f0f0;
             font-weight: bold;
+            text-align: left;
           }
           
           .col-item { width: 45%; }
           .col-qty { width: 15%; text-align: center; }
           .col-price { width: 20%; text-align: right; }
           .col-total { width: 20%; text-align: right; }
+          
+          .no-break {
+            page-break-inside: avoid;
+          }
+          
+          .no-print, button, .print-button, .modal-header {
+            display: none !important;
+          }
+          
+          * {
+            max-width: 100% !important;
+            box-sizing: border-box;
+          }
           
           .summary {
             margin-left: auto;
@@ -334,212 +372,284 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             padding-top: 10px;
             margin-top: 10px;
           }
-          
-          .customer-info {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-          }
-          
-          h1 {
-            font-size: 24px;
-            margin: 0 0 10px 0;
-            color: #2563eb;
-          }
-          
-          h2 {
-            font-size: 20px;
-            margin: 0 0 15px 0;
-            color: #2563eb;
-          }
-          
-          h3 {
-            font-size: 16px;
-            margin: 0 0 10px 0;
-            color: #1e40af;
-          }
-        </style>
-      `;
+        }
+        
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 12px;
+          line-height: 1.4;
+          color: #000;
+          background: #fff;
+          padding: 20px;
+          margin: 0;
+        }
+        
+        .print-container {
+          width: 100%;
+          max-width: 210mm;
+          margin: 0 auto;
+        }
+        
+        .invoice-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+        }
+        
+        .store-info {
+          flex: 1;
+        }
+        
+        .invoice-info {
+          flex: 1;
+          text-align: right;
+        }
+        
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        
+        th, td {
+          padding: 8px 5px;
+          border: 1px solid #ddd;
+        }
+        
+        th {
+          background: #f0f0f0;
+          font-weight: bold;
+        }
+        
+        .col-item { width: 45%; }
+        .col-qty { width: 15%; text-align: center; }
+        .col-price { width: 20%; text-align: right; }
+        .col-total { width: 20%; text-align: right; }
+        
+        .summary {
+          margin-left: auto;
+          width: 300px;
+          margin-top: 30px;
+        }
+        
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 5px;
+        }
+        
+        .grand-total {
+          font-size: 14px;
+          font-weight: bold;
+          border-top: 2px solid #000;
+          padding-top: 10px;
+          margin-top: 10px;
+        }
+        
+        .customer-info {
+          background: #f9f9f9;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 20px;
+        }
+        
+        h1 {
+          font-size: 24px;
+          margin: 0 0 10px 0;
+          color: #2563eb;
+        }
+        
+        h2 {
+          font-size: 20px;
+          margin: 0 0 15px 0;
+          color: #2563eb;
+        }
+        
+        h3 {
+          font-size: 16px;
+          margin: 0 0 10px 0;
+          color: #1e40af;
+        }
+      </style>
+    `;
 
-      // Create clean HTML for printing
-      const printHTML = `
-        <div class="print-container">
-          <div class="invoice-header">
-            <div class="store-info">
-              <h1>${store.name}</h1>
-              ${store.address ? `<p><strong>Address:</strong> ${store.address}</p>` : ""}
-              ${store.phone ? `<p><strong>Phone:</strong> ${store.phone}</p>` : ""}
-              ${store.email ? `<p><strong>Email:</strong> ${store.email}</p>` : ""}
-            </div>
-            
-            <div class="invoice-info">
-              <h2>INVOICE</h2>
-              <p><strong>Invoice #:</strong> ${orderId}</p>
-              <p><strong>Date:</strong> ${invoiceDate}</p>
-              <p><strong>Time:</strong> ${invoiceTime}</p>
-              <p><strong>Payment Status:</strong> ${paymentStatus}</p>
-              <p><strong>Order Status:</strong> ${orderStatus}</p>
-            </div>
+    const printHTML = `
+      <div class="print-container">
+        <div class="invoice-header">
+          <div class="store-info">
+            <h1>${store.name}</h1>
+            ${store.address ? `<p><strong>Address:</strong> ${store.address}</p>` : ""}
+            ${store.phone ? `<p><strong>Phone:</strong> ${store.phone}</p>` : ""}
+            ${store.email ? `<p><strong>Email:</strong> ${store.email}</p>` : ""}
           </div>
           
-          <div class="customer-info no-break">
-            <h3>Bill To:</h3>
-            <div style="display: flex; justify-content: space-between;">
-              <div>
-                <p><strong>${customer.name}</strong></p>
-                ${customer.address ? `<p>${customer.address}</p>` : ""}
-              </div>
-              <div>
-                ${customer.contact ? `<p><strong>Contact:</strong> ${customer.contact}</p>` : ""}
-                ${customer.email ? `<p><strong>Email:</strong> ${customer.email}</p>` : ""}
-              </div>
+          <div class="invoice-info">
+            <h2>INVOICE</h2>
+            <p><strong>Invoice #:</strong> ${orderId}</p>
+            <p><strong>Payment Status:</strong> ${formattedPaymentStatus}</p>
+            <p><strong>Order Status:</strong> ${formattedOrderStatus}</p>
+          </div>
+        </div>
+        
+        <div class="customer-info no-break">
+          <h3>Bill To:</h3>
+          <div style="display: flex; justify-content: space-between;">
+            <div>
+              <p><strong>${customer.name}</strong></p>
+              ${customer.address ? `<p>${customer.address}</p>` : ""}
+            </div>
+            <div>
+              ${customer.contact ? `<p><strong>Contact:</strong> ${customer.contact}</p>` : ""}
+              ${customer.email ? `<p><strong>Email:</strong> ${customer.email}</p>` : ""}
             </div>
           </div>
-          
-          <table class="no-break">
-            <thead>
+        </div>
+        
+        <table class="no-break">
+          <thead>
+            <tr>
+              <th class="col-item">Item</th>
+              <th class="col-qty">Quantity</th>
+              <th class="col-price">Unit Price</th>
+              <th class="col-total">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${products
+              .map(
+                (product) => `
               <tr>
-                <th class="col-item">Item</th>
-                <th class="col-qty">Quantity</th>
-                <th class="col-price">Unit Price</th>
-                <th class="col-total">Total</th>
+                <td class="col-item">${product.name}</td>
+                <td class="col-qty">${product.qty}</td>
+                <td class="col-price">${currencyIcon}${product.price.toFixed(2)}</td>
+                <td class="col-total">${currencyIcon}${(product.qty * product.price).toFixed(2)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${products
-                .map(
-                  (product, index) => `
-                <tr key="${index}">
-                  <td class="col-item">${product.name}</td>
-                  <td class="col-qty">${product.qty}</td>
-                  <td class="col-price">${currencyIcon}${product.price.toFixed(2)}</td>
-                  <td class="col-total">${currencyIcon}${(product.qty * product.price).toFixed(2)}</td>
-                </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-          
-          <div class="summary no-break">
-            <div class="summary-row">
-              <span>Subtotal:</span>
-              <span>${currencyIcon}${subtotal.toFixed(2)}</span>
-            </div>
-            ${
-              discountAmount > 0
-                ? `
-              <div class="summary-row">
-                <span>Discount:</span>
-                <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              deliveryCharge > 0
-                ? `
-              <div class="summary-row">
-                <span>Delivery Charge:</span>
-                <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              taxAmount > 0
-                ? `
-              <div class="summary-row">
-                <span>Tax:</span>
-                <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
-              </div>
-            `
-                : ""
-            }
-            <div class="summary-row grand-total">
-              <span>GRAND TOTAL:</span>
-              <span>${currencyIcon}${totalDue.toFixed(2)}</span>
-            </div>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+        
+        <div class="summary no-break">
+          <div class="summary-row">
+            <span>Subtotal:</span>
+            <span>${currencyIcon}${subtotal.toFixed(2)}</span>
           </div>
-          
           ${
-            paymentMethod || notes
+            discountAmount > 0
               ? `
-            <div class="no-break" style="margin-top: 40px; display: flex; gap: 40px;">
-              ${
-                paymentMethod && paymentMethod !== "N/A"
-                  ? `
-                <div style="flex: 1;">
-                  <h3>Payment Method:</h3>
-                  <p>${paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod.toUpperCase()}</p>
-                </div>
-              `
-                  : ""
-              }
-              ${
-                notes
-                  ? `
-                <div style="flex: 1;">
-                  <h3>Notes:</h3>
-                  <p>${notes}</p>
-                </div>
-              `
-                  : ""
-              }
+            <div class="summary-row">
+              <span>Discount:</span>
+              <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
             </div>
           `
               : ""
           }
-          
-          <div style="margin-top: 50px; text-align: center; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
-            <p>Thank you • Computer generated invoice • ${store.name}</p>
+          ${
+            deliveryCharge > 0
+              ? `
+            <div class="summary-row">
+              <span>Delivery Charge:</span>
+              <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
+            </div>
+          `
+              : ""
+          }
+          ${
+            taxAmount > 0
+              ? `
+            <div class="summary-row">
+              <span>Tax:</span>
+              <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
+            </div>
+          `
+              : ""
+          }
+          <div class="summary-row grand-total">
+            <span>GRAND TOTAL:</span>
+            <span>${currencyIcon}${totalDue.toFixed(2)}</span>
           </div>
         </div>
-      `;
+        
+        ${
+          paymentMethod || notes
+            ? `
+          <div class="no-break" style="margin-top: 40px; display: flex; gap: 40px;">
+            ${
+              paymentMethod && paymentMethod !== "N/A"
+                ? `
+              <div style="flex: 1;">
+                <h3>Payment Method:</h3>
+                <p>${paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod.toUpperCase()}</p>
+              </div>
+            `
+                : ""
+            }
+            ${
+              notes
+                ? `
+              <div style="flex: 1;">
+                <h3>Notes:</h3>
+                <p>${notes}</p>
+              </div>
+            `
+                : ""
+            }
+          </div>
+        `
+            : ""
+        }
+        
+        <div style="margin-top: 50px; padding-top: 15px; border-top: 1px solid #ddd;">
+          <div style="text-align: left; font-size: 11px; color: #555;">
+            <p style="margin: 0 0 5px 0; font-weight: bold;">Invoice Generated:</p>
+            <p style="margin: 0 0 3px 0;">Date: ${new Date().toLocaleDateString("en-GB")}</p>
+            <p style="margin: 0;">Time: ${new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}</p>
+          </div>
+        </div>
+        
+        <div style="margin-top: 15px; text-align: center; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+          <p>Thank you for choosing ${store.name}</p>
+        </div>
+      </div>
+    `;
 
-      doc.open();
-      doc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Invoice #${orderId}</title>
-            <meta charset="UTF-8">
-            ${printStyles}
-          </head>
-          <body>
-            ${printHTML}
-            <script>
-              window.onload = function() {
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice #${orderId}</title>
+          <meta charset="UTF-8">
+          ${printStyles}
+        </head>
+        <body>
+          ${printHTML}
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
                 setTimeout(function() {
-                  window.print();
-                  setTimeout(function() {
-                    if (document.body.contains(iframe)) {
-                      document.body.removeChild(iframe);
-                    }
-                  }, 500);
-                }, 300);
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      doc.close();
+                  if (document.body.contains(parent.document.querySelector('iframe'))) {
+                    parent.document.body.removeChild(parent.document.querySelector('iframe'));
+                  }
+                }, 500);
+              }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    doc.close();
 
-      // Clean up iframe if print dialog is cancelled
-      win.addEventListener("afterprint", () => {
-        setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-          setIsPrinting(false);
-        }, 100);
-      });
-    } catch (err) {
-      console.error("Print error:", err);
-      setIsPrinting(false);
-      alert("Failed to print invoice. Please try again.");
-    }
+    win.addEventListener("afterprint", () => {
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 100);
+    });
   };
 
   // ==================== PDF GENERATION ====================
@@ -578,28 +688,38 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       a.download = `invoice_${orderId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+
+      notification.success({
+        title: "PDF Downloaded",
+        description: "Invoice PDF has been downloaded successfully.",
+      });
     } catch (error) {
       console.error(error);
-      alert("Failed to generate PDF");
+      notification.error({
+        title: "PDF Generation Failed",
+        description: "Could not generate PDF. Please try again.",
+      });
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
-  // ==================== THERMAL PRINTER OPTIMIZED POS RECEIPT ====================
-  // This version adds proper spacing and uses monospace alignment for better printing
+  // ==================== FIXED AUTO-ADAPTIVE POS RECEIPT (NO CUTOFF) ====================
+  // This version fixes the bottom cutoff issue and handles currency symbols properly
+
   const downloadPOSImage = async () => {
     try {
       setIsGeneratingPDF(true);
 
-      // Create iframe with proper 80mm POS printer width
+      const universalWidth = 220; // 58mm - universal compatibility
+
       const iframe = document.createElement("iframe");
       iframe.style.cssText = `
       position: fixed;
       top: -9999px;
       left: -9999px;
-      width: 302px;
-      height: 3000px;
+      width: ${universalWidth}px;
+      height: 4000px;
       border: none;
       visibility: hidden;
     `;
@@ -608,7 +728,9 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       const doc = iframe.contentDocument;
       if (!doc) throw new Error("Could not create iframe document");
 
-      // Create HTML with proper monospace formatting for thermal printers
+      // Get currency symbol - handle Bengali Taka properly
+      const displayCurrency = currencyIcon === "৳" ? "Tk" : currencyIcon;
+
       doc.open();
       doc.write(`
       <!DOCTYPE html>
@@ -625,108 +747,114 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             
             body {
               font-family: 'Courier New', Courier, monospace !important;
-              font-size: 13px !important;
+              font-size: 12px !important;
               line-height: 1.4 !important;
               color: #000000 !important;
               background-color: #ffffff !important;
-              padding: 10px;
-              width: 302px;
+              padding: 15px 8px 25px 8px;
+              width: ${universalWidth}px;
               margin: 0 auto;
               letter-spacing: 0 !important;
+              -webkit-font-smoothing: none !important;
+              -moz-osx-font-smoothing: grayscale !important;
+              overflow: visible !important;
             }
             
-            /* Container */
             .receipt-container {
               width: 100%;
-              max-width: 282px;
               margin: 0 auto;
+              padding-bottom: 20px;
             }
             
-            /* Store title */
             .store-title {
               font-size: 18px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
-              margin: 0 0 3px 0 !important;
+              margin: 0 0 5px 0 !important;
               line-height: 1.3 !important;
               display: block !important;
               width: 100% !important;
-              letter-spacing: 1px !important;
+              letter-spacing: 2px !important;
+              color: #000000 !important;
             }
             
-            /* Center text */
             .text-center {
               text-align: center !important;
               display: block !important;
               width: 100% !important;
               margin: 0 auto !important;
+              color: #000000 !important;
             }
             
-            /* Regular row */
             .row {
-              margin-bottom: 3px !important;
+              margin-bottom: 4px !important;
               line-height: 1.4 !important;
               clear: both !important;
+              color: #000000 !important;
             }
             
-            /* Small text */
             .small {
-              font-size: 12px !important;
+              font-size: 10px !important;
+              color: #000000 !important;
             }
             
-            /* Bold text */
             .bold {
               font-weight: bold !important;
+              color: #000000 !important;
             }
             
-            /* Divider lines */
             .divider {
-              border-top: 1px solid #000 !important;
-              margin: 5px 0 !important;
+              border: none !important;
+              border-top: 2px solid #000000 !important;
+              margin: 7px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
             
             .divider-thick {
-              border-top: 2px solid #000 !important;
-              margin: 5px 0 !important;
+              border: none !important;
+              border-top: 3px solid #000000 !important;
+              margin: 9px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
             
             .divider-dashed {
-              border-top: 1px dashed #000 !important;
-              margin: 5px 0 !important;
+              border: none !important;
+              border-top: 2px dashed #000000 !important;
+              margin: 7px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
             
-            /* Section header */
             .section-header {
               font-size: 15px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
-              margin: 6px 0 5px 0 !important;
+              margin: 8px 0 6px 0 !important;
               display: block !important;
               width: 100% !important;
+              color: #000000 !important;
+              letter-spacing: 2px !important;
             }
             
-            /* Table for items */
             .items-table {
               width: 100% !important;
               border-collapse: collapse !important;
-              margin: 5px 0 !important;
+              margin: 7px 0 !important;
               table-layout: fixed !important;
             }
             
             .items-table thead th {
               font-weight: bold !important;
-              padding: 3px 2px !important;
-              border-bottom: 1px solid #000 !important;
-              font-size: 12px !important;
+              padding: 5px 2px !important;
+              border-bottom: 2px solid #000000 !important;
+              font-size: 11px !important;
               text-align: left !important;
+              color: #000000 !important;
+              background-color: #ffffff !important;
             }
             
             .items-table thead th:nth-child(2) {
@@ -738,108 +866,138 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .items-table tbody td {
-              padding: 3px 2px !important;
+              padding: 4px 2px !important;
               vertical-align: top !important;
-              font-size: 12px !important;
+              font-size: 11px !important;
+              color: #000000 !important;
+              background-color: #ffffff !important;
             }
             
             .items-table tbody td:nth-child(1) {
-              width: 50% !important;
+              width: 48% !important;
               text-align: left !important;
               word-break: break-word !important;
               white-space: normal !important;
+              font-weight: 600 !important;
             }
             
             .items-table tbody td:nth-child(2) {
-              width: 15% !important;
+              width: 18% !important;
               text-align: center !important;
+              font-weight: bold !important;
             }
             
             .items-table tbody td:nth-child(3) {
-              width: 35% !important;
+              width: 34% !important;
               text-align: right !important;
+              font-weight: bold !important;
             }
             
-            /* Price breakdown */
             .price-small {
-              font-size: 10px !important;
-              color: #555 !important;
-              margin-top: 1px !important;
+              font-size: 9px !important;
+              color: #333333 !important;
+              margin-top: 2px !important;
+              font-weight: normal !important;
             }
             
-            /* Summary rows */
             .summary {
-              margin: 8px 0 !important;
+              margin: 10px 0 !important;
+              padding-bottom: 5px !important;
             }
             
             .summary-row {
               display: flex !important;
               justify-content: space-between !important;
-              margin-bottom: 3px !important;
-              font-size: 13px !important;
+              margin-bottom: 4px !important;
+              font-size: 12px !important;
               line-height: 1.4 !important;
+              color: #000000 !important;
+            }
+            
+            .summary-row span {
+              color: #000000 !important;
             }
             
             .summary-row.grand-total {
-              font-size: 16px !important;
+              font-size: 17px !important;
               font-weight: bold !important;
-              margin-top: 5px !important;
-              padding-top: 3px !important;
+              margin-top: 7px !important;
+              padding-top: 7px !important;
+              border-top: 3px solid #000000 !important;
             }
             
-            /* Payment info */
+            .summary-row.grand-total span {
+              color: #000000 !important;
+              font-weight: bold !important;
+            }
+            
             .payment-section {
-              margin: 8px 0 !important;
+              margin: 10px 0 !important;
               text-align: center !important;
+              padding: 5px 0 !important;
             }
             
             .payment-section .row {
               text-align: center !important;
+              font-weight: bold !important;
+              font-size: 13px !important;
+              color: #000000 !important;
+              margin-bottom: 4px !important;
             }
             
-            /* Footer */
             .footer {
-              margin-top: 10px !important;
+              margin-top: 12px !important;
+              padding-top: 8px !important;
               text-align: center !important;
-              font-size: 11px !important;
+              font-size: 10px !important;
+              color: #000000 !important;
+              padding-bottom: 10px !important;
             }
             
-            /* Ensure no overflow */
+            .footer .row {
+              margin-bottom: 3px !important;
+            }
+            
+            /* Force black text everywhere */
             * {
               max-width: 100% !important;
               word-wrap: break-word !important;
               overflow-wrap: break-word !important;
+              color: #000000 !important;
+            }
+            
+            /* Ensure crisp rendering */
+            @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
             }
           </style>
         </head>
         <body>
           <div class="receipt-container">
             
-            <!-- Store Header -->
             <div class="store-title">${store.name}</div>
             ${store.address ? `<div class="row text-center small">${store.address}</div>` : ""}
             ${store.phone ? `<div class="row text-center small">Tel: ${store.phone}</div>` : ""}
             
             <div class="divider"></div>
             
-            <!-- Invoice Info -->
-            <div class="row text-center bold">INVOICE: #${orderId}</div>
+            <div class="row text-center bold" style="font-size: 14px;">INVOICE: #${orderId}</div>
             <div class="row text-center small">DATE: ${new Date().toLocaleDateString("en-GB")}</div>
             <div class="row text-center small">TIME: ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
             
             <div class="divider"></div>
             
-            <!-- Customer Info -->
             <div class="row"><span class="bold">CUSTOMER:</span> ${customer.name}</div>
             ${customer.contact ? `<div class="row small">CONTACT: ${customer.contact}</div>` : ""}
             ${customer.address ? `<div class="row small">ADDRESS: ${customer.address}</div>` : ""}
             
             <div class="divider-thick"></div>
             
-            <!-- Items Header -->
             <div class="section-header">ITEMS</div>
             
-            <!-- Items Table -->
             <table class="items-table">
               <thead>
                 <tr>
@@ -859,8 +1017,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       <td>${p.name}</td>
                       <td style="text-align: center;">${p.qty}</td>
                       <td style="text-align: right;">
-                        ${currencyIcon}${itemTotal}
-                        <div class="price-small">${p.qty} × ${currencyIcon}${unitPrice}</div>
+                        ${displayCurrency}${itemTotal}
+                        <div class="price-small">${p.qty} x ${displayCurrency}${unitPrice}</div>
                       </td>
                     </tr>
                   `;
@@ -871,18 +1029,17 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             
             <div class="divider-thick"></div>
             
-            <!-- Summary -->
             <div class="summary">
               <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>${currencyIcon}${subtotal.toFixed(2)}</span>
+                <span>${displayCurrency}${subtotal.toFixed(2)}</span>
               </div>
               ${
                 discountAmount > 0
                   ? `
                 <div class="summary-row">
                   <span>Discount:</span>
-                  <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
+                  <span>-${displayCurrency}${discountAmount.toFixed(2)}</span>
                 </div>
               `
                   : ""
@@ -892,7 +1049,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   ? `
                 <div class="summary-row">
                   <span>Delivery:</span>
-                  <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
+                  <span>${displayCurrency}${deliveryCharge.toFixed(2)}</span>
                 </div>
               `
                   : ""
@@ -902,36 +1059,31 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   ? `
                 <div class="summary-row">
                   <span>Tax:</span>
-                  <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
+                  <span>${displayCurrency}${taxAmount.toFixed(2)}</span>
                 </div>
               `
                   : ""
               }
               
-              <div class="divider-dashed"></div>
-              
               <div class="summary-row grand-total">
                 <span>TOTAL:</span>
-                <span>${currencyIcon}${totalDue.toFixed(2)}</span>
+                <span>${displayCurrency}${totalDue.toFixed(2)}</span>
               </div>
             </div>
             
             <div class="divider-thick"></div>
             
-            <!-- Payment Info -->
             <div class="payment-section">
-              <div class="row bold">PAYMENT: ${paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}</div>
-              <div class="row">STATUS: ${paymentStatus.toUpperCase()}</div>
-              ${notes ? `<div class="row small" style="margin-top: 5px;">NOTE: ${notes}</div>` : ""}
+              <div class="row">PAYMENT: ${paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}</div>
+              <div class="row">STATUS: ${formattedPaymentStatus.toUpperCase()}</div>
+              ${notes ? `<div class="row small" style="margin-top: 6px; font-weight: normal;">NOTE: ${notes}</div>` : ""}
             </div>
             
             <div class="divider"></div>
             
-            <!-- Footer -->
             <div class="footer">
-              <div class="row">Thank you for your business!</div>
-              <div class="row">Keep this receipt for your records</div>
-              <div class="row small" style="margin-top: 3px;">Computer Generated Receipt</div>
+              <div class="row">Thank you for choosing ${store.name}</div>
+              <div class="row">Please retain this receipt</div>
             </div>
             
           </div>
@@ -940,47 +1092,76 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     `);
       doc.close();
 
-      // Wait for content to render
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      // Wait longer for content to fully render
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const body = doc.body;
       if (!body) throw new Error("No body element found");
 
-      // Calculate height
-      const contentHeight = body.scrollHeight;
-      iframe.style.height = `${contentHeight + 40}px`;
+      // Get actual content height with extra padding
+      const contentHeight = Math.max(body.scrollHeight, body.offsetHeight) + 50;
+      iframe.style.height = `${contentHeight}px`;
 
-      // Wait a bit more for final rendering
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // Wait for layout to stabilize
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
-      // Generate high-quality image
       const canvas = await html2canvas(body, {
-        scale: 3, // Higher quality for better printing
+        scale: 5,
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
         allowTaint: false,
-        width: 302,
+        width: universalWidth,
         height: contentHeight,
-        windowWidth: 302,
+        windowWidth: universalWidth,
         windowHeight: contentHeight,
+        imageTimeout: 0,
+        removeContainer: true,
+        scrollY: 0,
+        scrollX: 0,
         onclone: (clonedDoc) => {
-          // Force proper rendering
+          // Force pure black text
           const allElements = clonedDoc.querySelectorAll("*");
           allElements.forEach((el) => {
             if (el instanceof HTMLElement) {
               el.style.color = "#000000";
               el.style.backgroundColor = "#ffffff";
+              el.style.setProperty("-webkit-font-smoothing", "none");
+              el.style.setProperty("font-smooth", "never");
             }
           });
 
-          // Add extra style enforcement
+          // Ensure borders are pure black
+          const borders = clonedDoc.querySelectorAll(
+            ".divider, .divider-thick, .divider-dashed",
+          );
+          borders.forEach((border) => {
+            if (border instanceof HTMLElement) {
+              border.style.borderColor = "#000000";
+            }
+          });
+
+          // Ensure footer is visible
+          const footer = clonedDoc.querySelector(".footer");
+          if (footer instanceof HTMLElement) {
+            footer.style.paddingBottom = "20px";
+            footer.style.marginBottom = "20px";
+          }
+
           const style = clonedDoc.createElement("style");
           style.textContent = `
           * {
             color: #000000 !important;
             background-color: #ffffff !important;
             font-family: 'Courier New', Courier, monospace !important;
+            -webkit-font-smoothing: none !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            text-rendering: optimizeSpeed !important;
+          }
+          
+          body {
+            overflow: visible !important;
+            min-height: 100% !important;
           }
           
           .store-title, .section-header, .text-center, .payment-section, .footer {
@@ -994,13 +1175,48 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             justify-content: space-between !important;
             width: 100% !important;
           }
+          
+          .divider {
+            border-top: 2px solid #000000 !important;
+          }
+          
+          .divider-thick {
+            border-top: 3px solid #000000 !important;
+          }
+          
+          .divider-dashed {
+            border-top: 2px dashed #000000 !important;
+          }
+          
+          .footer {
+            padding-bottom: 20px !important;
+            margin-bottom: 20px !important;
+          }
         `;
           clonedDoc.head.appendChild(style);
         },
       });
 
-      // Download
-      const imageUrl = canvas.toDataURL("image/png", 1.0); // Maximum quality
+      // POST-PROCESSING: Aggressive contrast enhancement
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          const threshold = 180;
+          const newValue = avg < threshold ? 0 : 255;
+
+          data[i] = newValue;
+          data[i + 1] = newValue;
+          data[i + 2] = newValue;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+      }
+
+      const imageUrl = canvas.toDataURL("image/png", 1.0);
       const link = document.createElement("a");
       link.href = imageUrl;
       link.download = `pos_receipt_${orderId}.png`;
@@ -1008,49 +1224,22 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       link.click();
       document.body.removeChild(link);
 
-      // Cleanup
       document.body.removeChild(iframe);
 
       notification.success({
-        message: "POS Receipt Downloaded",
-        description: "High-quality receipt optimized for thermal printers",
+        title: "POS Receipt Downloaded",
+        description: "Receipt compatible with all thermal printers",
       });
     } catch (error) {
       console.error("Error generating POS receipt:", error);
       notification.error({
-        message: "Download Failed",
+        title: "Download Failed",
         description: "Could not generate POS receipt. Please try again.",
       });
     } finally {
       setIsGeneratingPDF(false);
     }
   };
-
-  // Keep the wrapText helper function
-  // const wrapText = (
-  //   context: CanvasRenderingContext2D,
-  //   text: string,
-  //   maxWidth: number,
-  //   fontSize: number,
-  // ): string[] => {
-  //   context.font = `${fontSize}px "Courier New", monospace`;
-  //   const words = text.split(" ");
-  //   const lines = [];
-  //   let currentLine = words[0];
-
-  //   for (let i = 1; i < words.length; i++) {
-  //     const word = words[i];
-  //     const width = context.measureText(currentLine + " " + word).width;
-  //     if (width < maxWidth) {
-  //       currentLine += " " + word;
-  //     } else {
-  //       lines.push(currentLine);
-  //       currentLine = word;
-  //     }
-  //   }
-  //   lines.push(currentLine);
-  //   return lines;
-  // };
 
   if (!open) return null;
 
@@ -1089,8 +1278,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                  <span>Payment: {paymentStatus}</span>
-                  <span>Order: {orderStatus}</span>
+                  <span>Payment: {formattedPaymentStatus}</span>
+                  <span>Order: {formattedOrderStatus}</span>
                   <span className="hidden sm:inline">Currency: {currency}</span>
                 </div>
               </div>
@@ -1107,6 +1296,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           {/* Preview Content */}
           <div className="flex-1 overflow-auto p-2 sm:p-6">
             <div
+              id="invoice-print-content"
               ref={invoiceRef}
               className="bg-background p-4 sm:p-8 rounded-lg border max-w-4xl mx-auto"
               style={{
@@ -1149,23 +1339,17 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       {orderId}
                     </p>
                     <p>
-                      <span className="font-semibold">Date:</span> {invoiceDate}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Time:</span> {invoiceTime}
-                    </p>
-                    <p>
                       <span className="font-semibold">Payment Status:</span>{" "}
                       <span className="inline-flex items-center gap-1">
                         <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                        {paymentStatus}
+                        {formattedPaymentStatus}
                       </span>
                     </p>
                     <p>
                       <span className="font-semibold">Order Status:</span>{" "}
                       <span className="inline-flex items-center gap-1">
                         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        {orderStatus}
+                        {formattedOrderStatus}
                       </span>
                     </p>
                   </div>
@@ -1325,9 +1509,16 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 </div>
               )}
 
+              {/* Invoice Date & Time - Bottom Left */}
+              <div className="mt-8 sm:mt-12 pt-4 border-t text-left text-xs sm:text-sm text-gray-600 dark:text-gray-400 no-break">
+                <p className="font-semibold mb-1">Invoice Generated:</p>
+                <p>Date: {invoiceDate}</p>
+                <p>Time: {invoiceTime}</p>
+              </div>
+
               {/* Footer */}
-              <div className="mt-8 sm:mt-12 pt-4 border-t text-center text-xs sm:text-sm text-gray-500 no-break">
-                <p>Thank you • Computer generated invoice • {store.name}</p>
+              <div className="mt-4 pt-4 border-t text-center text-xs sm:text-sm text-gray-500 no-break">
+                <p>Thank you for choosing {store.name}</p>
               </div>
             </div>
           </div>
@@ -1335,7 +1526,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           {/* Actions - Responsive */}
           <div className="border-t p-3 sm:p-6 flex flex-col sm:flex-row flex-wrap gap-3 justify-between items-stretch sm:items-center no-print">
             <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left order-2 sm:order-1">
-              Last updated: {invoiceDate} {invoiceTime}
+              Generated: {invoiceDate} at {invoiceTime}
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 order-1 sm:order-2">
               {showPrintButton && (
@@ -1387,150 +1578,6 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Hidden POS layout for html2canvas */}
-      <div
-        ref={posRef}
-        style={{
-          position: "fixed",
-          left: "-9999px",
-          top: "0",
-          width: "300px",
-          display: "block",
-          backgroundColor: "#fff",
-          color: "#000",
-          fontFamily: "sans-serif",
-          fontSize: "12px",
-        }}
-      >
-        {/* Store Header */}
-        <h3
-          style={{
-            textAlign: "center",
-            margin: "0 0 4px 0",
-            fontWeight: "bold",
-          }}
-        >
-          {store.name}
-        </h3>
-        {store.address && (
-          <p style={{ textAlign: "center", margin: "0 0 2px 0" }}>
-            {store.address}
-          </p>
-        )}
-        {store.phone && (
-          <p style={{ textAlign: "center", margin: "0 0 4px 0" }}>
-            Tel: {store.phone}
-          </p>
-        )}
-
-        <hr style={{ border: "0.5px solid #000", margin: "4px 0" }} />
-
-        {/* Invoice Info */}
-        <p style={{ textAlign: "center", margin: "2px 0" }}>
-          Invoice #{orderId}
-        </p>
-        <p style={{ textAlign: "center", margin: "2px 0" }}>
-          {new Date().toLocaleDateString("en-GB")}{" "}
-          {new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
-
-        <hr style={{ border: "0.5px solid #000", margin: "4px 0" }} />
-
-        {/* Customer Info */}
-        <p style={{ margin: "2px 0" }}>Customer: {customer.name}</p>
-        {customer.contact && (
-          <p style={{ margin: "2px 0" }}>Tel: {customer.contact}</p>
-        )}
-        {customer.address && (
-          <p style={{ margin: "2px 0" }}>{customer.address}</p>
-        )}
-
-        <hr style={{ border: "0.5px solid #000", margin: "4px 0" }} />
-
-        {/* Products Table */}
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginBottom: "4px",
-            color: "#000",
-          }}
-        >
-          <thead>
-            <tr>
-              <th
-                style={{ textAlign: "left", borderBottom: "0.5px solid #000" }}
-              >
-                Item
-              </th>
-              <th
-                style={{
-                  textAlign: "center",
-                  borderBottom: "0.5px solid #000",
-                }}
-              >
-                Qty
-              </th>
-              <th
-                style={{ textAlign: "right", borderBottom: "0.5px solid #000" }}
-              >
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p, i) => (
-              <tr key={i}>
-                <td style={{ padding: "2px 0" }}>{p.name}</td>
-                <td style={{ textAlign: "center" }}>{p.qty}</td>
-                <td style={{ textAlign: "right" }}>
-                  {(p.qty * p.price).toFixed(2)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <hr style={{ border: "0.5px solid #000", margin: "4px 0" }} />
-
-        {/* Totals */}
-        <p style={{ textAlign: "right", fontWeight: "bold", margin: "2px 0" }}>
-          Total: {totalDue.toFixed(2)}
-        </p>
-
-        {/* Payment & Notes */}
-        {paymentMethod && (
-          <p style={{ textAlign: "center", margin: "2px 0" }}>
-            Payment:{" "}
-            {paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}
-          </p>
-        )}
-        {notes && (
-          <p
-            style={{
-              textAlign: "center",
-              fontStyle: "italic",
-              margin: "2px 0",
-            }}
-          >
-            Notes: {notes}
-          </p>
-        )}
-
-        <hr style={{ border: "0.5px solid #000", margin: "4px 0" }} />
-
-        {/* Footer */}
-        <p style={{ textAlign: "center", margin: "2px 0" }}>
-          Thank you for your business!
-        </p>
-        <p style={{ textAlign: "center", margin: "2px 0", fontSize: "10px" }}>
-          Computer generated receipt
-        </p>
       </div>
     </>
   );

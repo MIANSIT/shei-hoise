@@ -42,6 +42,14 @@ interface InvoiceRequest {
   type?: "A4" | "POS";
 }
 
+// Helper function to format status text (capitalize properly)
+function formatStatus(status: string): string {
+  return status
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: InvoiceRequest = await req.json();
@@ -95,23 +103,75 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     );
   }
 
-  // Create PDF
+  const pageWidth = 210; // A4 width in mm (standard)
+  const margin = 15;
+  const lineHeight = 5;
+
+  // ==================== CALCULATE DYNAMIC HEIGHT ====================
+  let estimatedHeight = margin; // Top margin
+
+  // Header section
+  estimatedHeight += 8; // Store name
+  const contactLines = [store.address, store.phone, store.email].filter(
+    Boolean,
+  ).length;
+  estimatedHeight += contactLines * lineHeight + 8; // Contact info + spacing
+
+  // Customer section
+  estimatedHeight += 10; // Separator + "Bill To:"
+  const customerLines = [
+    customer.name,
+    customer.address,
+    customer.contact,
+    customer.email,
+  ].filter(Boolean).length;
+  estimatedHeight += customerLines * lineHeight + 8;
+
+  // Products table (approximate)
+  estimatedHeight += 15; // Table header
+  estimatedHeight += products.length * 8; // 8mm per product row
+  estimatedHeight += 8; // Table bottom margin
+
+  // Summary section
+  let summaryLines = 1; // Subtotal
+  if (discountAmount > 0) summaryLines++;
+  if (deliveryCharge > 0) summaryLines++;
+  if (taxAmount > 0) summaryLines++;
+  estimatedHeight += summaryLines * 5; // Each summary line
+  estimatedHeight += 8; // Grand total with spacing
+
+  // Payment method
+  if (paymentMethod && paymentMethod !== "N/A") {
+    estimatedHeight += 8;
+  }
+
+  // Notes (if present)
+  if (notes && notes.length > 0) {
+    const estimatedNoteLines = Math.ceil(notes.length / 90);
+    estimatedHeight += estimatedNoteLines * 5 + 8;
+  }
+
+  // Footer
+  estimatedHeight += 40; // Date/time + separator + thank you
+  estimatedHeight += margin; // Bottom margin
+
+  // Round up to nearest 10mm and ensure minimum height
+  const dynamicHeight = Math.max(Math.ceil(estimatedHeight / 10) * 10, 160);
+
+  // Create PDF with custom size
   const pdf = new jsPDF({
     unit: "mm",
-    format: "a4",
+    format: [pageWidth, dynamicHeight],
     compress: true,
   });
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const margin = 15;
-  const lineHeight = 5;
   let y = margin;
 
   // Set font globally
   pdf.setFont("helvetica");
 
   // ==================== HEADER SECTION ====================
-  // Store Name with Logo (if provided)
+  // Store Name
   pdf.setFontSize(24);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(29, 78, 216); // Blue-600
@@ -148,21 +208,12 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   const invoiceDetails = [
     { label: "Invoice #", value: orderId },
-    { label: "Date", value: new Date().toLocaleDateString("en-GB") },
-    {
-      label: "Time",
-      value: new Date().toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
     {
       label: "Currency",
       value: CURRENCY_NAMES[currency as Currency] || "Taka",
     },
-    { label: "Payment Status", value: paymentStatus },
-    { label: "Order Status", value: orderStatus },
+    { label: "Payment Status", value: formatStatus(paymentStatus) },
+    { label: "Order Status", value: formatStatus(orderStatus) },
   ];
 
   let rightY = margin + 10;
@@ -174,7 +225,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   });
 
   // Separator line
-  y = Math.max(y, rightY) + 10;
+  y = Math.max(y, rightY) + 8;
   pdf.setDrawColor(200, 200, 200);
   pdf.line(margin, y, pageWidth - margin, y);
   y += 5;
@@ -184,7 +235,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   pdf.setFontSize(12);
   pdf.text("Bill To:", margin, y);
 
-  y += 6;
+  y += 5;
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
 
@@ -201,7 +252,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     }
   });
 
-  y += customerInfo.length * lineHeight + 10;
+  y += customerInfo.length * lineHeight + 8;
 
   // ==================== PRODUCTS TABLE ====================
   const tableColumns = [
@@ -217,14 +268,6 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     price: product.price.toFixed(2),
     total: (product.qty * product.price).toFixed(2),
   }));
-
-  // Add summary row
-  tableData.push({
-    item: "",
-    qty: "",
-    price: "",
-    total: "",
-  });
 
   autoTable(pdf, {
     startY: y,
@@ -254,10 +297,9 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   // Get Y position after table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const finalY = (pdf as any).lastAutoTable.finalY + 10;
+  const finalY = (pdf as any).lastAutoTable.finalY + 8;
 
   // ==================== SUMMARY SECTION ====================
-
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(11);
 
@@ -277,12 +319,12 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
       pdf.text(`${item.value.toFixed(2)}`, pageWidth - margin, summaryY, {
         align: "right",
       });
-      summaryY += 6;
+      summaryY += 5;
     }
   });
 
   // Grand Total
-  summaryY += 2;
+  summaryY += 1;
   pdf.setFontSize(14);
   pdf.setTextColor(29, 78, 216);
   pdf.text("GRAND TOTAL", summaryX, summaryY);
@@ -291,7 +333,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   });
 
   pdf.setTextColor(0, 0, 0);
-  summaryY += 8;
+  summaryY += 6;
 
   // ==================== PAYMENT METHOD ====================
   if (paymentMethod && paymentMethod !== "N/A") {
@@ -305,7 +347,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
         ? "Cash on Delivery"
         : paymentMethod.toUpperCase();
     pdf.text(methodText, margin + 40, summaryY);
-    summaryY += 10;
+    summaryY += 8;
   }
 
   // ==================== NOTES ====================
@@ -319,30 +361,53 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     notesLines.forEach((line: string, index: number) => {
       pdf.text(line, margin, summaryY + 5 + index * 5);
     });
-    summaryY += notesLines.length * 5 + 10;
+    summaryY += notesLines.length * 5 + 8;
   }
 
-  // ==================== FOOTER ====================
+  // ==================== FOOTER (DYNAMIC POSITION) ====================
+  // Add some spacing before footer
+  summaryY += 10;
+
+  // Draw separator line
+  pdf.setDrawColor(220, 220, 220);
+  pdf.line(margin, summaryY, pageWidth - margin, summaryY);
+  summaryY += 8;
+
+  // Date & Time - Bottom Left
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(80, 80, 80);
+  pdf.text("Invoice Generated:", margin, summaryY);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 100, 100);
+  pdf.text(
+    `Date: ${new Date().toLocaleDateString("en-GB")}`,
+    margin,
+    summaryY + 4,
+  );
+  pdf.text(
+    `Time: ${new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}`,
+    margin,
+    summaryY + 8,
+  );
+
+  // Thank you message - Center (below date/time)
+  summaryY += 20;
+  pdf.setDrawColor(220, 220, 220);
+  pdf.line(margin, summaryY, pageWidth - margin, summaryY);
+  summaryY += 6;
+
   pdf.setFontSize(9);
   pdf.setTextColor(128, 128, 128);
-
-  const footerY = pageWidth > 200 ? 280 : 190; // Adjust based on page size
-
-  pdf.text(`Thank you from ${store.name}`, pageWidth / 2, footerY, {
+  pdf.text(`Thank you for choosing ${store.name}`, pageWidth / 2, summaryY, {
     align: "center",
   });
-
-  pdf.text(
-    `Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
-    pageWidth / 2,
-    footerY + 5,
-    { align: "center" },
-  );
 
   // ==================== OUTPUT ====================
   const pdfBuffer = Buffer.from(pdf.output("arraybuffer"));
 
-  // Return PDF as response
   return new NextResponse(pdfBuffer, {
     headers: {
       "Content-Type": "application/pdf",
@@ -353,7 +418,6 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   });
 }
 
-// ==================== POS PDF GENERATION ====================
 // ==================== POS PDF GENERATION ====================
 async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   const {
@@ -380,10 +444,10 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     );
   }
 
-  // Create PDF with POS size (80mm width)
+  // Create PDF with POS size (80mm width) - thermal printer standard
   const pdf = new jsPDF({
     unit: "mm",
-    format: [80, 297], // POS receipt size: 80mm width, long paper
+    format: [80, 297], // 80mm width for POS thermal printers
     compress: true,
   });
 
@@ -392,7 +456,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   let y = margin;
   const smallLineHeight = 3.5;
 
-  // Use monospaced font for better alignment
+  // Use monospaced font
   pdf.setFont("courier", "normal");
 
   // ==================== STORE HEADER ====================
@@ -452,8 +516,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   );
   y += 4;
 
-  // Separator line
-  pdf.setDrawColor(0, 0, 0);
+  // Separator
   pdf.line(margin, y, pageWidth - margin, y);
   y += 4;
 
@@ -488,31 +551,22 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     });
   }
 
-  // Separator line
+  // Separator
   y += 1;
-  pdf.setDrawColor(0, 0, 0);
   pdf.line(margin, y, pageWidth - margin, y);
   y += 4;
 
   // ==================== PRODUCTS TABLE ====================
-  // Table header
- 
-
-  // Products
-  // ==================== PRODUCTS TABLE ====================
-  // Table header
   pdf.setFont("courier", "bold");
   pdf.setFontSize(8);
 
-  // Define fixed column widths (in mm)
   const colWidths = {
-    item: 30, // Item name column width
-    qty: 10, // Quantity column width
-    price: 12, // Price column width
-    total: 12, // Total column width
+    item: 30,
+    qty: 10,
+    price: 12,
+    total: 12,
   };
 
-  // Draw table headers
   pdf.text("ITEM", margin, y);
   pdf.text("QTY", margin + colWidths.item, y);
   pdf.text("PRICE", margin + colWidths.item + colWidths.qty, y);
@@ -521,50 +575,41 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   });
 
   y += 3;
-
-  // Header underline
   pdf.line(margin, y, pageWidth - margin, y);
   y += 3;
 
   // Products
   pdf.setFont("courier", "normal");
   products.forEach((product) => {
-    // Format values
     const qtyText = product.qty.toString();
     const priceText = product.price.toFixed(2);
     const totalText = (product.qty * product.price).toFixed(2);
 
-    // Split item name to fit in column
-    const maxChars = Math.floor(colWidths.item / 1.5); // Approximate chars per mm
+    const maxChars = Math.floor(colWidths.item / 1.5);
     let itemName = product.name;
     if (itemName.length > maxChars) {
       itemName = itemName.substring(0, maxChars - 3) + "...";
     }
 
-    // Draw item name
     pdf.text(itemName, margin, y);
 
-    // Draw quantity (centered in its column)
     const qtyX = margin + colWidths.item + colWidths.qty / 2;
     pdf.text(qtyText, qtyX, y, { align: "center" });
 
-    // Draw price (right aligned in its column)
     const priceX = margin + colWidths.item + colWidths.qty + colWidths.price;
     pdf.text(priceText, priceX, y, { align: "right" });
 
-    // Draw total (right aligned)
     pdf.text(totalText, pageWidth - margin, y, { align: "right" });
 
     y += smallLineHeight;
   });
 
-  // Separator line after products
+  // Separator
   y += 2;
-  pdf.setDrawColor(0, 0, 0);
   pdf.line(margin, y, pageWidth - margin, y);
   y += 4;
 
-  // ==================== SUMMARY SECTION ====================
+  // ==================== SUMMARY ====================
   pdf.setFont("courier", "normal");
   pdf.setFontSize(9);
 
@@ -573,10 +618,9 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     { label: "Discount:", value: -Math.abs(discountAmount), bold: false },
     { label: "Delivery:", value: deliveryCharge, bold: false },
     { label: "Tax:", value: taxAmount, bold: false },
-    { label: "TOTAL:", value: totalDue, bold: true }, // Removed currency symbol
+    { label: "TOTAL:", value: totalDue, bold: true },
   ];
 
-  // Calculate positions for summary
   const summaryLabelX = margin;
   const summaryValueX = pageWidth - margin;
 
@@ -591,7 +635,6 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
       pdf.setFontSize(9);
     }
 
-    // Format value WITHOUT currency symbol for POS
     const valueText =
       item.value >= 0
         ? `${item.value.toFixed(2)}`
@@ -602,9 +645,8 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     y += 4;
   });
 
-  // Separator line
+  // Separator
   y += 2;
-  pdf.setDrawColor(0, 0, 0);
   pdf.line(margin, y, pageWidth - margin, y);
   y += 4;
 
@@ -621,10 +663,14 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   y += 3.5;
 
   pdf.setFont("courier", "normal");
-  pdf.text(`Status: ${paymentStatus}`, pageWidth / 2, y, { align: "center" });
+  pdf.text(`Status: ${formatStatus(paymentStatus)}`, pageWidth / 2, y, {
+    align: "center",
+  });
   y += 3.5;
 
-  pdf.text(`Order: ${orderStatus}`, pageWidth / 2, y, { align: "center" });
+  pdf.text(`Order: ${formatStatus(orderStatus)}`, pageWidth / 2, y, {
+    align: "center",
+  });
 
   // ==================== NOTES ====================
   if (notes) {
@@ -646,18 +692,15 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   y += 8;
   pdf.setFontSize(8);
   pdf.setFont("courier", "normal");
-  pdf.text("Thank you for your business!", pageWidth / 2, y, {
+  pdf.text(`Thank you for choosing ${store.name}`, pageWidth / 2, y, {
     align: "center",
   });
   y += 3;
-  pdf.text("Computer generated receipt", pageWidth / 2, y, { align: "center" });
-  y += 3;
-  pdf.text("No signature required", pageWidth / 2, y, { align: "center" });
+  pdf.text("Please retain this receipt", pageWidth / 2, y, { align: "center" });
 
   // ==================== OUTPUT ====================
   const pdfBuffer = Buffer.from(pdf.output("arraybuffer"));
 
-  // Return PDF as response
   return new NextResponse(pdfBuffer, {
     headers: {
       "Content-Type": "application/pdf",
@@ -668,7 +711,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   });
 }
 
-// Add OPTIONS method for CORS if needed
+// OPTIONS method for CORS
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
