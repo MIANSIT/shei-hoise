@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
@@ -10,7 +10,7 @@ import { Modal, Tag } from "antd";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Image from "next/image";
-import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout"; // adjust path if needed
+import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
 import type { TablePaginationConfig } from "antd/es/table";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
@@ -44,21 +44,26 @@ const ProductTable: React.FC<ProductTableProps> = ({
   products,
   loading,
   onDeleteSuccess,
-  pagination,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const sheiNotif = useSheiNotification();
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
 
-  const handleEdit = (slug: string) =>
-    router.push(`/dashboard/products/edit-product/${slug}`);
+  const handleEdit = (slug: string) => {
+    // Build returnUrl with all current query params
+    const params = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${params.toString()}`;
+
+    router.push(
+      `/dashboard/products/edit-product/${slug}?returnUrl=${encodeURIComponent(returnUrl)}`,
+    );
+  };
 
   const showDeleteModal = (id: string) => {
     setDeletingId(id);
@@ -83,8 +88,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
   // AntD columns for desktop
   const columns: ColumnsType<ProductWithVariants> = [
@@ -394,7 +398,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   </div>
                 }
-                // Remove the actions prop since buttons are now in content
               />
             );
           })}
@@ -406,7 +409,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             columns={columns}
             data={products}
             rowKey="id"
-            pagination={pagination}
+            pagination={false}
             loading={loading}
             size="middle"
             bordered={false}

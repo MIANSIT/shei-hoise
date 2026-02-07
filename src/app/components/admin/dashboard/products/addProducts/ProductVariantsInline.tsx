@@ -215,49 +215,109 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 Variant Info
               </h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  label="Variant Name"
-                  placeholder="Size, Color"
-                  name={`variants.${idx}.variant_name`}
-                  required
-                />
-                <FormField
-                  control={form.control}
-                  label="SKU"
-                  placeholder="Unique variant code"
-                  name={`variants.${idx}.sku`}
-                  required
-                />
-                <FormField
-                  control={form.control}
-                  label="Color"
-                  name={`variants.${idx}.color`}
-                />
-                <FormField
-                  control={form.control}
-                  label="Weight (Kg)"
-                  placeholder="0.75"
-                  name={`variants.${idx}.weight`}
-                  type="number"
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Variant Name <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip
+                      title="Give this variant a descriptive name. Examples: 'Small', 'Medium', 'Large' for T-shirts; 'Red', 'Blue' for colors; '128GB', '256GB' for storage options."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    placeholder="e.g., Small, Medium, Red, 128GB"
+                    name={`variants.${idx}.variant_name`}
+                    required
+                    
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      SKU <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip
+                      title="Stock Keeping Unit - a unique code to identify this specific variant. Example: If product SKU is 'TSHIRT-001', variant SKU could be 'TSHIRT-001-S' for Small size."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    placeholder="e.g., TSHIRT-001-S"
+                    name={`variants.${idx}.sku`}
+                    required
+                    
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">Color</label>
+                    <Tooltip
+                      title="Specify the color of this variant. Examples: 'Black', 'White', 'Navy Blue', 'Red'. Leave blank if color is not applicable."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    placeholder="e.g., Black, Navy Blue"
+                    name={`variants.${idx}.color`}
+                    
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Weight (Kg)
+                    </label>
+                    <Tooltip
+                      title="Product weight in kilograms. Used for shipping calculations. Example: 0.5 for 500 grams, 1.2 for 1.2 kg."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    placeholder="e.g., 0.5, 1.2"
+                    name={`variants.${idx}.weight`}
+                    type="number"
+                    
+                  />
+                </div>
               </div>
             </div>
 
             {/* Attributes */}
             <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="block font-medium text-sm">Attributes</label>
+                <Tooltip
+                  title="Add custom attributes for this variant. Format: Key-Value pairs separated by commas. Example: 'Size-M, Material-Cotton, Fit-Slim' or 'Storage-256GB, RAM-8GB'."
+                  placement="top"
+                >
+                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                </Tooltip>
+              </div>
               <Controller
                 control={form.control}
                 name={`variants.${idx}.attributes`}
                 defaultValue={variant.attributes ?? null}
                 render={({ field, fieldState }) => (
                   <div>
-                    <label className="block mb-1 font-medium">
-                      Attributes (Input Like: Size-M, Color-Red)
-                    </label>
                     <textarea
                       className="w-full border rounded-md p-2"
-                      placeholder="Input Like: Size-M, Color-Red"
+                      placeholder="e.g., Size-M, Material-Cotton, Fit-Slim"
                       value={attrTexts[idx] || ""}
                       onChange={(e) => {
                         const newAttrTexts = [...attrTexts];
@@ -296,23 +356,47 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 Pricing Info
               </h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  label={`TP Price (${displayCurrency})`}
-                  name={`variants.${idx}.tp_price`}
-                  type="number"
-                  onChange={() => {
-                    const val = variantPricing[idx]?.priceValue ?? 0;
-                    const mode = variantPricing[idx]?.priceMode ?? "percentage";
-                    const tp = form.getValues(`variants.${idx}.tp_price`) ?? 0;
-                    if (tp && val !== "" && mode)
-                      updateVariantMRP(idx, tp, val, mode);
-                  }}
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      TP Price ({displayCurrency})
+                    </label>
+                    <Tooltip
+                      title="Trade Price - the wholesale or cost price of this variant. This is used as the base for calculating MRP using the markup percentage or multiplier."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`variants.${idx}.tp_price`}
+                    type="number"
+                    
+                    onChange={() => {
+                      const val = variantPricing[idx]?.priceValue ?? 0;
+                      const mode =
+                        variantPricing[idx]?.priceMode ?? "percentage";
+                      const tp =
+                        form.getValues(`variants.${idx}.tp_price`) ?? 0;
+                      if (tp && val !== "" && mode)
+                        updateVariantMRP(idx, tp, val, mode);
+                    }}
+                  />
+                </div>
+
                 <div className="w-full md:max-w-lg xl:max-w-xl">
-                  <label className="mb-1 block text-sm font-medium">
-                    Price Markup
-                  </label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="block text-sm font-medium">
+                      Price Markup
+                    </label>
+                    <Tooltip
+                      title="Add a markup to TP Price to calculate MRP. Use Percentage (e.g., 20% means MRP = TP × 1.20) or Multiplier (e.g., 1.5 means MRP = TP × 1.5)."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                     <select
                       className="w-full md:w-fit rounded-md border px-3 py-2"
@@ -349,38 +433,90 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  label={`MRP Price (${displayCurrency})`}
-                  name={`variants.${idx}.base_price`}
-                  type="number"
-                  onChange={() => updateVariantDiscountedPrice(idx)}
-                />
-                <FormField
-                  control={form.control}
-                  label={`Discount Amount (${displayCurrency})`}
-                  name={`variants.${idx}.discount_amount`}
-                  type="number"
-                  onChange={() => updateVariantDiscountedPrice(idx)}
-                />
-                <FormField
-                  control={form.control}
-                  label={`Discounted Price (${displayCurrency})`}
-                  name={`variants.${idx}.discounted_price`}
-                  type="number"
-                  readOnly
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      MRP Price ({displayCurrency})
+                    </label>
+                    <Tooltip
+                      title="Maximum Retail Price - the regular selling price before any discounts. This is calculated automatically from TP Price and markup, or can be entered manually."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`variants.${idx}.base_price`}
+                    type="number"
+                    
+                    onChange={() => updateVariantDiscountedPrice(idx)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Discount Amount ({displayCurrency})
+                    </label>
+                    <Tooltip
+                      title="The amount to subtract from MRP Price. Example: If MRP is 100 and discount is 20, the final price will be 80."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`variants.${idx}.discount_amount`}
+                    type="number"
+                    
+                    onChange={() => updateVariantDiscountedPrice(idx)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Discounted Price ({displayCurrency})
+                    </label>
+                    <Tooltip
+                      title="Final selling price after discount. This is calculated automatically as MRP Price minus Discount Amount."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`variants.${idx}.discounted_price`}
+                    type="number"
+                    
+                    readOnly
+                  />
+                </div>
               </div>
             </div>
 
             {/* Stock */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                label="Stock"
-                name={`variants.${idx}.stock`}
-                type="number"
-              />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <label className="block font-medium text-sm">Stock</label>
+                  <Tooltip
+                    title="Available inventory quantity for this variant. This number will decrease as orders are placed and increase when stock is replenished."
+                    placement="top"
+                  >
+                    <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                  </Tooltip>
+                </div>
+                <FormField
+                  control={form.control}
+                  name={`variants.${idx}.stock`}
+                  type="number"
+                  
+                />
+              </div>
             </div>
           </div>
         );

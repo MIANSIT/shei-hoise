@@ -428,7 +428,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     customerInfo.name &&
     customerInfo.phone &&
     customerInfo.address &&
-    customerInfo.postal_code &&
     customerInfo.city &&
     customerInfo.deliveryMethod &&
     customerInfo.deliveryOption &&

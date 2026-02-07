@@ -54,7 +54,7 @@ export default function CustomerInfo({
         fee.name &&
         typeof fee.name === "string" &&
         fee.name.trim() !== "" &&
-        typeof fee.price === "number"
+        typeof fee.price === "number",
     );
   }, [shippingFees]);
 
@@ -103,7 +103,7 @@ export default function CustomerInfo({
                 name="email"
                 label="Customer Email"
                 placeholder="customer@example.com"
-                tooltip="Enter a valid email address. Used for order confirmation and communication. Ensure it's unique unless linking to an existing customer."
+                tooltip="Enter a valid email address. Used for order confirmation and communication. Optional field."
                 value={customerInfo.email}
                 onChange={(val) => handleFieldChange("email", val)}
               />
@@ -172,18 +172,12 @@ export default function CustomerInfo({
             <Col xs={24} md={12}>
               <FormField
                 name="postal_code"
-                tooltip="Provide the postal or ZIP code for the delivery address to assist with accurate shipping."
+                tooltip="Provide the postal or ZIP code for the delivery address to assist with accurate shipping. Optional field."
                 label="Postal Code"
                 placeholder="Enter postal code (e.g., 1200, 1216)"
-                required
                 value={customerInfo.postal_code || ""}
                 onChange={(val) => handleFieldChange("postal_code", val)}
               />
-              {touchedFields.postal_code && !customerInfo.postal_code && (
-                <Text type="danger" style={{ fontSize: 12 }}>
-                  Postal code is required
-                </Text>
-              )}
             </Col>
             <Col xs={24} md={12}>
               <FormField

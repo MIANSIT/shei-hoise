@@ -46,6 +46,7 @@ export interface ProductWithVariants {
   id: string;
   name: string;
   slug: string;
+  sku: string | null;
   base_price: number | null;
   discounted_price: number | null;
   category_id: string | null;
@@ -85,6 +86,7 @@ export async function getProductsWithVariants({
       id,
       name,
       slug,
+      sku,
       base_price,
       status,
       discounted_price,
@@ -127,7 +129,7 @@ export async function getProductsWithVariants({
         quantity_reserved
       )
       `,
-      { count: "exact" }
+      { count: "exact" },
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
@@ -148,6 +150,7 @@ export async function getProductsWithVariants({
     id: p.id,
     name: p.name,
     slug: p.slug,
+    sku: p.sku,
     base_price: p.base_price,
     status: p.status ?? ProductStatus.INACTIVE,
     discounted_price: p.discounted_price,

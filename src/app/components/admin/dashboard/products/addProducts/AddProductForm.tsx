@@ -19,7 +19,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { ProductStatus } from "@/lib/types/enums";
 import { Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import ConfirmModal from "@/app/components/admin/common/ConfirmModal"; // Add this import
+import ConfirmModal from "@/app/components/admin/common/ConfirmModal";
 
 interface AddProductFormProps {
   product?: ProductType;
@@ -45,7 +45,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const [statusOpen, setStatusOpen] = useState(false);
     const toggleStatusOpen = () => setStatusOpen((prev) => !prev);
 
-    // Add these state variables for pricing validation modal
     const [showWarningModal, setShowWarningModal] = useState(false);
     const [pendingSubmit, setPendingSubmit] = useState<(() => void) | null>(
       null,
@@ -110,14 +109,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       discountAmount,
     });
 
-    // Update discounted price whenever base_price or discount_amount changes
     useEffect(() => {
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
 
     const displayCurrency = currencyLoading ? "" : (currency ?? "");
 
-    // TP → MRP calculation
     useEffect(() => {
       if (!tpPrice || priceValue === "" || !priceValueTouched) return;
 
@@ -135,7 +132,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       setPriceValueTouched(false);
     }, [tpPrice, priceValue, priceMode, priceValueTouched, setValue]);
 
-    // MRP → PriceValue calculation
     useEffect(() => {
       if (!tpPrice || !mrpPrice || !mrpTouched) return;
 
@@ -151,19 +147,17 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       setMrpTouched(false);
     }, [mrpPrice, tpPrice, priceMode, mrpTouched]);
 
-    // Variants → Status control
     useEffect(() => {
       if (variants.length === 0) {
         setShowInactiveWarning(false);
       } else if (!hasActiveVariant) {
-        setValue("status", ProductStatus.DRAFT); // only force Draft if all inactive
+        setValue("status", ProductStatus.DRAFT);
         setShowInactiveWarning(true);
       } else {
-        setShowInactiveWarning(false); // don't override ACTIVE
+        setShowInactiveWarning(false);
       }
     }, [hasActiveVariant, variants.length, setValue]);
 
-    // Fetch categories
     useEffect(() => {
       getCategoriesQuery(storeId).then(({ data }) => {
         if (data) setCategories(data);
@@ -198,11 +192,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       }
     };
 
-    // Validation function to check TP > MRP
     const validatePricing = (data: ProductType): string[] => {
       const errors: string[] = [];
 
-      // Check main product pricing
       if (data.tp_price && data.base_price) {
         const tp = Number(data.tp_price);
         const mrp = Number(data.base_price);
@@ -213,7 +205,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         }
       }
 
-      // Check variant pricing
       if (data.variants && data.variants.length > 0) {
         data.variants.forEach((variant, index) => {
           if (variant.tp_price && variant.base_price) {
@@ -233,7 +224,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       return errors;
     };
 
-    // Modified form submission handler with pricing validation
     const handleFormSubmit = (data: ProductType) => {
       const pricingErrors = validatePricing(data);
 
@@ -250,7 +240,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         return;
       }
 
-      // No pricing issues, submit directly
       onSubmit(data, {
         reset: () => form.reset(initialValues),
         formValues: () => form.getValues(),
@@ -272,9 +261,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       setValidationErrors([]);
     };
 
+    const activeCategories = categories.filter((c) => c.is_active);
+    const hasCategories = activeCategories.length > 0;
+
     return (
       <div>
-        {/* Pricing Warning Modal */}
         <ConfirmModal
           isOpen={showWarningModal}
           onClose={handleCancelSubmit}
@@ -323,7 +314,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           onSubmit={handleSubmit(handleFormSubmit, scrollToFirstError)}
           className="space-y-10 max-w-6xl mx-auto p-2 lg:p-12 xl:p-16"
         >
-          {/* Product Info */}
           <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-6 max-w-full border">
             <h2 className="text-2xl lg:text-3xl font-semibold text-foreground border-b pb-2">
               Product Information
@@ -337,7 +327,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 placeholder="Premium Cotton T-Shirt"
                 onChange={handleNameChange}
                 className="w-full md:max-w-lg xl:max-w-xl"
-                tooltip="Enter the official product name as it should appear in your catalog."
+                tooltip="Enter the official product name as it will appear in your store catalog. Example: 'Premium Cotton T-Shirt' or 'Wireless Bluetooth Headphones'."
               />
               <FormField
                 label="Slug"
@@ -345,22 +335,66 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 placeholder="auto-generated-from-product-name"
                 control={control}
                 readOnly
-                tooltip="URL-friendly version of the product name. Auto-generated from the product name."
+                tooltip="URL-friendly version of the product name, automatically generated. Example: 'premium-cotton-t-shirt'. This is used in product URLs."
                 className="w-full md:max-w-lg xl:max-w-xl"
               />
-              <FormField
-                label="Category"
-                name="category_id"
-                as="select"
-                placeholder="Choose a product category"
-                options={categories
-                  .filter((c) => c.is_active)
-                  .map((c) => ({ value: c.id, label: c.name }))}
-                control={control}
-                required
-                className="w-full md:max-w-lg xl:max-w-xl"
-                tooltip="Select the most appropriate category for this product."
-              />
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <label className="block font-medium text-sm">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <Tooltip
+                    title="Select the most appropriate category for this product. Categories help customers find products more easily. Example: 'Clothing', 'Electronics', 'Home & Garden'."
+                    placement="top"
+                  >
+                    <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                  </Tooltip>
+                </div>
+                <FormField
+                  name="category_id"
+                  as="select"
+                  placeholder={
+                    hasCategories
+                      ? "Choose a product category"
+                      : "No categories available - Create one first"
+                  }
+                  options={
+                    hasCategories
+                      ? [
+                          ...activeCategories.map((c) => ({
+                            value: c.id,
+                            label: c.name,
+                          })),
+                          {
+                            value: "create_new",
+                            label: "➕ Create New Category",
+                          },
+                        ]
+                      : [
+                          {
+                            value: "create_new",
+                            label: "➕ Create New Category",
+                          },
+                        ]
+                  }
+                  control={control}
+                  required
+                  onChange={(value) => {
+                    if (value === "create_new") {
+                      window.location.href = "/dashboard/products/category";
+                    }
+                  }}
+                  className="w-full md:max-w-lg xl:max-w-xl"
+                />
+                {!hasCategories && (
+                  <p className="text-xs text-red-500 mt-1">
+                    No categories available. Please create a category first to
+                    continue.
+                  </p>
+                )}
+              </div>
+
               <FormField
                 label="Short Description"
                 name="short_description"
@@ -368,7 +402,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 placeholder="One-line summary shown in listings"
                 control={control}
                 className="w-full md:max-w-lg xl:max-w-xl h-12 rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none transition"
-                tooltip="Concise summary of the product (1–2 sentences)."
+                tooltip="Brief 1-2 sentence summary that appears in product listings and search results. Example: 'Soft, breathable cotton t-shirt perfect for everyday wear'."
               />
             </div>
             <FormField
@@ -379,42 +413,55 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               control={control}
               required
               className="w-full rounded-lg border border-muted-foreground px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none transition h-32"
-              tooltip="Detailed product description covering features, materials, usage, and benefits."
+              tooltip="Detailed product description covering features, materials, specifications, usage instructions, care instructions, and any warranty information. This appears on the product detail page."
             />
           </section>
 
-          {/* Pricing */}
+          {/* Pricing section - rest of the code remains the same */}
           {variants.length === 0 && (
             <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 space-y-6 border">
               <h2 className="text-2xl lg:text-3xl font-semibold text-foreground border-b pb-2">
                 Pricing
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:gap-8">
-                <FormField
-                  label={`TP Price (${displayCurrency})`}
-                  name="tp_price"
-                  type="number"
-                  placeholder="Cost price (what you pay)"
-                  control={control}
-                  required
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Trade price for this product."
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      TP Price ({displayCurrency}){" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip
+                      title="Trade Price - the wholesale or cost price you pay for this product. This is your base cost and is used to calculate profit margins. Example: If you buy a t-shirt for 10Tk from supplier, enter 10."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="tp_price"
+                    type="number"
+                    placeholder="e.g., 10, 25, 100"
+                    control={control}
+                    required
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
 
                 <div className="w-full md:max-w-lg xl:max-w-xl">
-                  <label className="mb-1 block text-sm font-medium">
-                    Price Markup{" "}
-                    <span className="text-xs text-gray-500">
-                      (Auto-calculates MRP)
-                    </span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="block text-sm font-medium">
+                      Price Markup{" "}
+                      <span className="text-xs text-gray-500">
+                        (Auto-calculates MRP)
+                      </span>
+                    </label>
                     <Tooltip
-                      title={
-                        "Controls how MRP is calculated from TP price. Choose Percentage to add a margin (%) or Multiplier to multiply the TP price directly."
-                      }
+                      title="Add a markup to TP Price to calculate MRP. Percentage example: 20% means if TP is 10, MRP = 10 × 1.20 = 12. Multiplier example: 1.5 means if TP is 10, MRP = 10 × 1.5 = 15."
+                      placement="top"
                     >
-                      <InfoCircleOutlined className="ml-1 text-gray-400 cursor-pointer" />
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
                     </Tooltip>
-                  </label>
+                  </div>
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
                     <select
                       className="w-full md:w-fit rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
@@ -444,75 +491,152 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   </div>
                 </div>
 
-                <FormField
-                  label={`MRP Price (${displayCurrency})`}
-                  name="base_price"
-                  type="number"
-                  placeholder="Selling price before discount"
-                  control={control}
-                  required
-                  onChange={() => setMrpTouched(true)}
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Maximum retail price (MRP)."
-                />
-                <FormField
-                  label={`Discount Amount (${displayCurrency})`}
-                  name="discount_amount"
-                  type="number"
-                  placeholder="Amount to reduce from MRP (Optional)"
-                  control={control}
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Enter the discount amount to subtract from the MRP. This value is deducted directly."
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      MRP Price ({displayCurrency}){" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip
+                      title="Maximum Retail Price - the regular selling price before any discounts. This is calculated automatically from TP Price and markup, or can be entered manually. Example: If TP is 10Tk with 20% markup, MRP = 12Tk."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="base_price"
+                    type="number"
+                    placeholder="e.g., 15, 30, 150"
+                    control={control}
+                    required
+                    onChange={() => setMrpTouched(true)}
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
 
-                <FormField
-                  label={`Discounted Price (${displayCurrency})`}
-                  name="discounted_price"
-                  type="number"
-                  control={control}
-                  placeholder="Final price after discount (auto)"
-                  readOnly
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Final selling price after applying the discount. This is auto-calculated."
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Discount Amount ({displayCurrency})
+                    </label>
+                    <Tooltip
+                      title="Optional discount amount to subtract from MRP. Example: If MRP is 100Tk and you want to offer 20Tk off, enter 20. The final price will be 80Tk. Leave blank for no discount."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="discount_amount"
+                    type="number"
+                    placeholder="e.g., 5, 10, 20 (optional)"
+                    control={control}
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
 
-                <FormField
-                  label="Weight (kg)"
-                  name="weight"
-                  placeholder="0.75kg"
-                  type="number"
-                  control={control}
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Product weight in kilograms. Used for shipping and logistics calculations."
-                />
-                <FormField
-                  label="SKU"
-                  name="sku"
-                  placeholder="Unique product code (e.g. TS-RED-M)"
-                  control={control}
-                  required
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Unique Stock Keeping Unit used to identify this product in inventory."
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Discounted Price ({displayCurrency})
+                    </label>
+                    <Tooltip
+                      title="Final selling price after discount, automatically calculated as MRP minus Discount Amount. This is the price customers will pay. Example: MRP 100Tk - Discount 20Tk = Final Price 80Tk."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="discounted_price"
+                    type="number"
+                    control={control}
+                    placeholder="Auto-calculated"
+                    readOnly
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
 
-                <FormField
-                  label="Stock"
-                  name="stock"
-                  type="number"
-                  placeholder="Total available quantity"
-                  control={control}
-                  required
-                  className="w-full md:max-w-lg xl:max-w-xl"
-                  tooltip="Total available quantity for this product. Used to track inventory levels."
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Weight (kg)
+                    </label>
+                    <Tooltip
+                      title="Product weight in kilograms, used for shipping cost calculations and logistics. Example: 0.5 for 500 grams, 1.2 for 1.2 kg, 0.05 for 50 grams."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="weight"
+                    placeholder="e.g., 0.5, 1.2, 2.5"
+                    type="number"
+                    control={control}
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      SKU <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip
+                      title="Stock Keeping Unit - a unique code to identify this product in your inventory system. Should be unique across all products. Example: 'TSHIRT-BLK-001', 'PHONE-128GB-WHT', 'BOOK-ISBN-12345'."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="sku"
+                    placeholder="e.g., TSHIRT-001, PROD-12345"
+                    control={control}
+                    required
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block font-medium text-sm">
+                      Stock <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip
+                      title="Total available inventory quantity. This number decreases when orders are placed and increases when you restock. Example: If you have 50 units available, enter 50. Set to 0 if out of stock."
+                      placement="top"
+                    >
+                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+                    </Tooltip>
+                  </div>
+                  <FormField
+                    name="stock"
+                    type="number"
+                    placeholder="e.g., 50, 100, 500"
+                    control={control}
+                    required
+                    className="w-full md:max-w-lg xl:max-w-xl"
+                  />
+                </div>
               </div>
             </section>
           )}
 
-          {/* Variants & Images */}
           <ProductVariantsInline form={form} addIsActive={true} />
+
           <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Upload Images</h3>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-semibold">Upload Images</h3>
+              <Tooltip
+                title="Upload high-quality product images. The first image will be the primary image shown in listings. You can upload multiple images to showcase different angles and details. Recommended size: at least 800x800 pixels."
+                placement="top"
+              >
+                <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
+              </Tooltip>
+            </div>
 
             <ProductImages
               images={images}
@@ -520,31 +644,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               error={form.formState.errors.images?.message as string}
             />
           </div>
-          {/* Featured + Status */}
-          <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            {/* Featured */}
-            {/* <div className="flex items-center space-x-3">
-              <input
-                id="featured"
-                type="checkbox"
-                {...form.register("featured")}
-                className="w-5 h-5 rounded border-primary accent-green-500"
-              />
-              <label
-                htmlFor="featured"
-                className="text-sm font-medium flex items-center gap-1"
-              >
-                Featured Product
-                <Tooltip
-                  title="Check this option to highlight the product on your store's homepage or promotional listings."
-                  placement="top"
-                >
-                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
-                </Tooltip>
-              </label>
-            </div> */}
 
-            {/* Status */}
+          <section className="shadow-md rounded-2xl p-6 lg:p-8 xl:p-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="flex items-center gap-2">
               <label htmlFor="status" className="text-sm font-medium">
                 Status:
@@ -587,7 +688,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
               {!showInactiveWarning ? (
                 <Tooltip
-                  title="Set the current status of the product: Active (available), Draft (hidden), or Inactive (unavailable)."
+                  title="Set product availability status: Active (visible and purchasable in store), Draft (hidden, work in progress), or Inactive (hidden and not purchasable). If all variants are inactive, status is automatically set to Draft."
                   placement="top"
                 >
                   <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
@@ -605,7 +706,6 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             </div>
           </section>
 
-          {/* Submit Button */}
           <div className="flex justify-end">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
