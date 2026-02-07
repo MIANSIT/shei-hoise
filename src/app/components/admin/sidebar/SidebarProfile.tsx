@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Dropdown, MenuProps, Spin } from "antd";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, Store } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -77,6 +77,13 @@ export default function SidebarProfile() {
         icon: <User className="w-4 h-4" />,
         label: <span className="text-sm font-medium">Profile</span>,
         onClick: () => router.push("/dashboard/admin-profile"),
+        className: "!py-2",
+      },
+      {
+        key: "store-management",
+        icon: <Store className="w-4 h-4" />,
+        label: <span className="text-sm font-medium">Store Management</span>,
+        onClick: () => router.push("/dashboard/store-management"),
         className: "!py-2",
       },
       {
