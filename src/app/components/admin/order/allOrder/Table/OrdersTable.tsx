@@ -885,7 +885,7 @@ const OrdersTable: React.FC<Props> = ({
           paymentStatus={selectedOrderForInvoice.payment_status}
           paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
           orderStatus={selectedOrderForInvoice.status} // <-- map it here
-          showPOSButton={false} // Hide POS button
+          // showPOSButton={false} // Hide POS button
         />
       )}
     </div>
