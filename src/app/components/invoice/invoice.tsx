@@ -125,7 +125,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
   const { notification } = App.useApp();
 
   const invoiceRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef<HTMLDivElement>(null);
+  // const posRef = useRef<HTMLDivElement>(null);
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -138,14 +138,6 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     hour: "2-digit",
     minute: "2-digit",
   });
-
-  // Helper function to format status text (capitalize properly)
-  const formatStatus = (status: string): string => {
-    return status
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  };
 
   // Formatted status values
   const formattedPaymentStatus = formatStatus(paymentStatus);
@@ -182,18 +174,20 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     setCopied(true);
   };
 
-  // ==================== PRINT A4 (iOS COMPATIBLE) ====================
+  // ==================== FIXED PRINT A4 (iOS & ANDROID COMPATIBLE) ====================
   const printInvoice = async () => {
     setIsPrinting(true);
     try {
-      // Detect iOS
+      // Detect device type
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const isMobile = isIOS || isAndroid;
 
-      if (isIOS) {
-        // iOS-specific print handling
-        await printForIOS();
+      if (isMobile) {
+        // Mobile: Use clean new window approach
+        await printForMobileClean();
       } else {
-        // Desktop/Android print handling
+        // Desktop: Use iframe method
         await printForDesktop();
       }
     } catch (err) {
@@ -208,51 +202,368 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
   };
 
-  // iOS Print - Use a simpler approach with window.print()
-  const printForIOS = async () => {
-    // Create a new style element for print-specific styles
-    const printStyles = document.createElement("style");
-    printStyles.id = "invoice-print-styles";
-    printStyles.textContent = `
-      @media print {
-        @page { 
-          size: A4; 
-          margin: 15mm;
-        }
-        
-        body * {
-          visibility: hidden;
-        }
-        
-        #invoice-print-content,
-        #invoice-print-content * {
-          visibility: visible;
-        }
-        
-        #invoice-print-content {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-        }
-        
-        .no-print {
-          display: none !important;
-        }
-      }
+  // ==================== NEW CLEAN MOBILE PRINT ====================
+  const printForMobileClean = async () => {
+    // Open new window for printing
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+      throw new Error("Could not open print window. Please allow popups.");
+    }
+
+    // Build complete standalone HTML
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invoice #${orderId}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+
+            @page {
+              size: A4 portrait;
+              margin: 15mm;
+            }
+
+            html, body {
+              width: 100%;
+              height: 100%;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+              font-size: 12px;
+              line-height: 1.4;
+              color: #000;
+              background: #fff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            body {
+              padding: 20px;
+            }
+
+            .invoice-container {
+              max-width: 800px;
+              margin: 0 auto;
+            }
+
+            h1, h2, h3 {
+              margin: 0 0 10px 0;
+              color: #2563eb;
+            }
+
+            h1 { font-size: 24px; }
+            h2 { font-size: 20px; }
+            h3 { font-size: 16px; }
+
+            .invoice-header {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 30px;
+              gap: 20px;
+            }
+
+            .store-info, .invoice-info {
+              flex: 1;
+            }
+
+            .invoice-info {
+              text-align: right;
+            }
+
+            .store-info p, .invoice-info p {
+              margin: 5px 0;
+              font-size: 11px;
+            }
+
+            .customer-section {
+              background: #f0f7ff;
+              padding: 15px;
+              border-radius: 5px;
+              margin-bottom: 25px;
+            }
+
+            .customer-section h3 {
+              color: #1e40af;
+            }
+
+            .customer-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              margin-top: 10px;
+            }
+
+            .customer-grid p {
+              margin: 3px 0;
+              font-size: 11px;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+
+            thead {
+              background: #2563eb;
+              color: white;
+            }
+
+            th {
+              padding: 10px 8px;
+              text-align: left;
+              font-weight: bold;
+              font-size: 11px;
+            }
+
+            td {
+              padding: 8px;
+              border-bottom: 1px solid #e5e7eb;
+              font-size: 11px;
+            }
+
+            tbody tr:last-child td {
+              border-bottom: none;
+            }
+
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+
+            .summary {
+              margin-left: auto;
+              width: 300px;
+              margin-top: 30px;
+            }
+
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 8px;
+              font-size: 12px;
+            }
+
+            .summary-row.total {
+              font-size: 16px;
+              font-weight: bold;
+              color: #2563eb;
+              border-top: 2px solid #2563eb;
+              padding-top: 10px;
+              margin-top: 10px;
+            }
+
+            .summary-row.discount {
+              color: #dc2626;
+            }
+
+            .payment-notes {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 30px;
+              margin-top: 30px;
+            }
+
+            .payment-notes h4 {
+              font-size: 13px;
+              margin-bottom: 8px;
+            }
+
+            .payment-notes p {
+              font-size: 11px;
+              color: #4b5563;
+            }
+
+            .invoice-footer {
+              margin-top: 40px;
+              padding-top: 15px;
+              border-top: 1px solid #e5e7eb;
+            }
+
+            .invoice-meta {
+              font-size: 10px;
+              color: #6b7280;
+              margin-bottom: 15px;
+            }
+
+            .invoice-meta p {
+              margin: 2px 0;
+            }
+
+            .thank-you {
+              text-align: center;
+              font-size: 11px;
+              color: #9ca3af;
+              padding-top: 10px;
+              border-top: 1px solid #f3f4f6;
+            }
+
+            @media print {
+              body { padding: 0; }
+              .invoice-container { max-width: 100%; }
+              .customer-section, table, .summary, .payment-notes {
+                page-break-inside: avoid;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-container">
+            <div class="invoice-header">
+              <div class="store-info">
+                <h1>${store.name}</h1>
+                ${store.address ? `<p>📍 ${store.address}</p>` : ""}
+                ${store.phone ? `<p>📞 ${store.phone}</p>` : ""}
+                ${store.email ? `<p>✉️ ${store.email}</p>` : ""}
+              </div>
+              <div class="invoice-info">
+                <h2>INVOICE</h2>
+                <p><strong>Invoice #:</strong> ${orderId}</p>
+                <p><strong>Payment:</strong> ${formattedPaymentStatus}</p>
+                <p><strong>Order:</strong> ${formattedOrderStatus}</p>
+              </div>
+            </div>
+
+            <div class="customer-section">
+              <h3>Bill To:</h3>
+              <div class="customer-grid">
+                <div>
+                  <p><strong>${customer.name}</strong></p>
+                  ${customer.address ? `<p>${customer.address}</p>` : ""}
+                </div>
+                <div>
+                  ${customer.contact ? `<p>📞 ${customer.contact}</p>` : ""}
+                  ${customer.email ? `<p>✉️ ${customer.email}</p>` : ""}
+                </div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 45%;">Item</th>
+                  <th class="text-center" style="width: 15%;">Qty</th>
+                  <th class="text-right" style="width: 20%;">Price</th>
+                  <th class="text-right" style="width: 20%;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${products
+                  .map(
+                    (product) => `
+                  <tr>
+                    <td>${product.name}</td>
+                    <td class="text-center">${product.qty}</td>
+                    <td class="text-right">${currencyIcon}${product.price.toFixed(2)}</td>
+                    <td class="text-right"><strong>${currencyIcon}${(product.qty * product.price).toFixed(2)}</strong></td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+
+            <div class="summary">
+              <div class="summary-row">
+                <span>Subtotal:</span>
+                <span>${currencyIcon}${subtotal.toFixed(2)}</span>
+              </div>
+              ${
+                discountAmount > 0
+                  ? `
+                <div class="summary-row discount">
+                  <span>Discount:</span>
+                  <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
+                </div>
+              `
+                  : ""
+              }
+              ${
+                deliveryCharge > 0
+                  ? `
+                <div class="summary-row">
+                  <span>Delivery:</span>
+                  <span>${currencyIcon}${deliveryCharge.toFixed(2)}</span>
+                </div>
+              `
+                  : ""
+              }
+              ${
+                taxAmount > 0
+                  ? `
+                <div class="summary-row">
+                  <span>Tax:</span>
+                  <span>${currencyIcon}${taxAmount.toFixed(2)}</span>
+                </div>
+              `
+                  : ""
+              }
+              <div class="summary-row total">
+                <span>GRAND TOTAL:</span>
+                <span>${currencyIcon}${totalDue.toFixed(2)}</span>
+              </div>
+            </div>
+
+            ${
+              (paymentMethod && paymentMethod !== "N/A") || notes
+                ? `
+              <div class="payment-notes">
+                ${
+                  paymentMethod && paymentMethod !== "N/A"
+                    ? `
+                  <div>
+                    <h4>Payment Method:</h4>
+                    <p>${paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod.toUpperCase()}</p>
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  notes
+                    ? `
+                  <div>
+                    <h4>Notes:</h4>
+                    <p>${notes}</p>
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            `
+                : ""
+            }
+
+            <div class="invoice-footer">
+              <div class="invoice-meta">
+                <p><strong>Invoice Generated:</strong></p>
+                <p>Date: ${new Date().toLocaleDateString("en-GB")}</p>
+                <p>Time: ${new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
+              <div class="thank-you">
+                <p>Thank you for choosing ${store.name}</p>
+              </div>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
     `;
-    document.head.appendChild(printStyles);
 
-    // Trigger print
-    window.print();
-
-    // Clean up
-    setTimeout(() => {
-      const styleElement = document.getElementById("invoice-print-styles");
-      if (styleElement) {
-        styleElement.remove();
-      }
-    }, 1000);
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
   };
 
   // Desktop/Android Print - Use iframe method
@@ -705,8 +1016,6 @@ export default function InvoiceModal(props: InvoiceModalProps) {
   };
 
   // ==================== FIXED AUTO-ADAPTIVE POS RECEIPT (NO CUTOFF) ====================
-  // This version fixes the bottom cutoff issue and handles currency symbols properly
-
   const downloadPOSImage = async () => {
     try {
       setIsGeneratingPDF(true);
@@ -1257,7 +1566,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           {/* Header */}
           <div className="border-b p-3 sm:p-6 flex items-start sm:items-center justify-between no-print">
             <div className="flex items-start sm:items-center gap-2 sm:gap-4 flex-1 min-w-0">
-              <div className="p-2 sm:p-3 bg-blue-50 rounded-lg flex-shrink-0">
+              <div className="p-2 sm:p-3 bg-blue-50 rounded-lg shrink-0">
                 <FileText className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
@@ -1267,7 +1576,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   </h2>
                   <button
                     onClick={copyInvoiceId}
-                    className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                    className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
                     title="Copy invoice number"
                   >
                     {copied ? (
@@ -1286,7 +1595,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 sm:p-2 hover:bg-red-500 rounded-lg transition-colors flex-shrink-0 ml-2"
+              className="p-1.5 sm:p-2 hover:bg-red-500 rounded-lg transition-colors shrink-0 ml-2"
               aria-label="Close"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
