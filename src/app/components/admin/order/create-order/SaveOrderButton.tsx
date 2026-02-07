@@ -50,7 +50,7 @@ export default function SaveOrderButton({
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-   const {
+  const {
     currency,
     icon: currencyIcon,
     loading: currencyLoading,
@@ -72,13 +72,33 @@ export default function SaveOrderButton({
           <Text>Are you sure you want to create this order?</Text>
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
-          <Text type="secondary">Email: {customerInfo.email}</Text>
-          <Text type="secondary">Subtotal:  {displayCurrencyIconSafe}{subtotal.toFixed(2)}</Text>
-          <Text type="secondary">Discount:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
-          <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
-          <Text type="secondary">Delivery:  {displayCurrencyIconSafe}{deliveryCost.toFixed(2)}</Text>
-          <Text type="secondary">Tax:  {displayCurrencyIconSafe}{taxAmount.toFixed(2)}</Text>
-          <Text strong>Total Amount:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
+          {customerInfo.email && (
+            <Text type="secondary">Email: {customerInfo.email}</Text>
+          )}
+          <Text type="secondary">
+            Subtotal: {displayCurrencyIconSafe}
+            {subtotal.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Discount: {displayCurrencyIconSafe}
+            {discount.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Additional Charges: {displayCurrencyIconSafe}
+            {additionalCharges.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Delivery: {displayCurrencyIconSafe}
+            {deliveryCost.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Tax: {displayCurrencyIconSafe}
+            {taxAmount.toFixed(2)}
+          </Text>
+          <Text strong>
+            Total Amount: {displayCurrencyIconSafe}
+            {totalAmount.toFixed(2)}
+          </Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
               A new customer record will be created in the system.
@@ -92,9 +112,8 @@ export default function SaveOrderButton({
     });
   };
 
-
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
+  const displayCurrency = currencyLoading ? "" : (currency ?? "");
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   const displayCurrencySafe = displayCurrency || "BDT"; // fallback
 
@@ -108,19 +127,15 @@ export default function SaveOrderButton({
 
       if (!customerInfo.customer_id && !emailError) {
         try {
-          if (
-            !customerInfo.name ||
-            !customerInfo.phone ||
-            !customerInfo.email
-          ) {
+          if (!customerInfo.name || !customerInfo.phone) {
             throw new Error(
-              "Customer name, phone, and email are required to create a customer record"
+              "Customer name and phone are required to create a customer record",
             );
           }
 
           const newCustomer = await dataService.createCustomer({
             store_id: storeId,
-            email: customerInfo.email,
+            email: customerInfo.email || undefined,
             first_name: customerInfo.name,
             phone: customerInfo.phone,
             address_line_1: customerInfo.address,
@@ -131,7 +146,7 @@ export default function SaveOrderButton({
 
           if (!newCustomer || !newCustomer.id) {
             throw new Error(
-              "Customer creation failed - no customer ID returned"
+              "Customer creation failed - no customer ID returned",
             );
           }
 
@@ -144,7 +159,8 @@ export default function SaveOrderButton({
 
           notification.success({
             title: "Customer Created",
-            description: "New customer record created successfully in store_customers.",
+            description:
+              "New customer record created successfully in store_customers.",
           });
         } catch (customerError: any) {
           console.error("Error creating customer:", customerError);
@@ -158,10 +174,12 @@ export default function SaveOrderButton({
                     Failed to create customer record: {customerError.message}
                   </Text>
                   <Text type="warning">
-                    Do you want to create the order without linking it to a customer record?
+                    Do you want to create the order without linking it to a
+                    customer record?
                   </Text>
                   <Text type="secondary">
-                    The order will be created but no customer record will be created.
+                    The order will be created but no customer record will be
+                    created.
                   </Text>
                 </Space>
               ),
@@ -194,16 +212,16 @@ export default function SaveOrderButton({
         paymentStatus,
         paymentMethod,
         currency: displayCurrencySafe,
-        deliveryOption: finalCustomerInfo.deliveryMethod,
+        deliveryOption: finalCustomerInfo.deliveryOption,
       };
-
 
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
         let successMessage = `Order ${orderId} has been created successfully.`;
         if (customerCreated) {
-          successMessage += " A new customer record was also created in store_customers.";
+          successMessage +=
+            " A new customer record was also created in store_customers.";
         } else if (!customerInfo.customer_id) {
           successMessage += " Note: No customer record was created.";
         }
@@ -214,10 +232,23 @@ export default function SaveOrderButton({
             <Space orientation="vertical">
               <Text>{successMessage}</Text>
               <Text type="secondary">Order ID: {result.orderId}</Text>
-              <Text type="secondary">Customer Email: {customerInfo.email}</Text>
-              <Text type="secondary">Discount Applied:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
-              <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
-              <Text strong>Total:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
+              {customerInfo.email && (
+                <Text type="secondary">
+                  Customer Email: {customerInfo.email}
+                </Text>
+              )}
+              <Text type="secondary">
+                Discount Applied: {displayCurrencyIconSafe}
+                {discount.toFixed(2)}
+              </Text>
+              <Text type="secondary">
+                Additional Charges: {displayCurrencyIconSafe}
+                {additionalCharges.toFixed(2)}
+              </Text>
+              <Text strong>
+                Total: {displayCurrencyIconSafe}
+                {totalAmount.toFixed(2)}
+              </Text>
             </Space>
           ),
           onOk: () => {

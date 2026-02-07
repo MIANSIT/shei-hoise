@@ -62,8 +62,7 @@ export default function CustomerInfo({
     touchedFields.phone &&
     (!customerInfo.phone || !validatePhone(customerInfo.phone));
 
-  const showEmailError =
-    touchedFields.email && (!customerInfo.email || emailError);
+  const showEmailError = touchedFields.email && emailError;
 
   return (
     <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
@@ -104,14 +103,13 @@ export default function CustomerInfo({
                 name="email"
                 label="Customer Email"
                 placeholder="customer@example.com"
-                required
-                tooltip="Enter a valid email address. Used for order confirmation and communication. Ensure it’s unique unless linking to an existing customer."
+                tooltip="Enter a valid email address. Used for order confirmation and communication. Ensure it's unique unless linking to an existing customer."
                 value={customerInfo.email}
                 onChange={(val) => handleFieldChange("email", val)}
               />
               {showEmailError && (
                 <Text type="danger" style={{ fontSize: 12 }}>
-                  {emailError || "Email is required"}
+                  {emailError}
                 </Text>
               )}
             </Col>
@@ -136,6 +134,22 @@ export default function CustomerInfo({
                 </Text>
               )}
             </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                name="city"
+                label="City"
+                placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
+                required
+                tooltip="Enter the city where the order will be delivered, e.g., Dhaka, Chittagong."
+                value={customerInfo.city}
+                onChange={(val) => handleFieldChange("city", val)}
+              />
+              {touchedFields.city && !customerInfo.city && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                  City is required
+                </Text>
+              )}
+            </Col>
           </Row>
 
           <FormField
@@ -157,22 +171,6 @@ export default function CustomerInfo({
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <FormField
-                name="city"
-                label="City"
-                placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
-                required
-                tooltip="Enter the city where the order will be delivered, e.g., Dhaka, Chittagong."
-                value={customerInfo.city}
-                onChange={(val) => handleFieldChange("city", val)}
-              />
-              {touchedFields.city && !customerInfo.city && (
-                <Text type="danger" style={{ fontSize: 12 }}>
-                  City is required
-                </Text>
-              )}
-            </Col>
-            <Col xs={24} md={12}>
-              <FormField
                 name="postal_code"
                 tooltip="Provide the postal or ZIP code for the delivery address to assist with accurate shipping."
                 label="Postal Code"
@@ -187,9 +185,6 @@ export default function CustomerInfo({
                 </Text>
               )}
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col xs={24} md={12}>
               <FormField
                 name="deliveryOption"
@@ -209,29 +204,6 @@ export default function CustomerInfo({
               {touchedFields.deliveryOption && !customerInfo.deliveryOption && (
                 <Text type="danger" style={{ fontSize: 12 }}>
                   Delivery option is required
-                </Text>
-              )}
-            </Col>
-            <Col xs={24} md={12}>
-              <FormField
-                name="deliveryMethod"
-                label="Delivery Method"
-                tooltip="Select the preferred delivery method, e.g., Courier, Pathao, RedX, Steadfast. This affects delivery time and cost."
-                as="select"
-                required
-                placeholder="Select delivery method"
-                options={[
-                  { label: "Courier", value: "courier" },
-                  { label: "Pathao", value: "pathao" },
-                  { label: "RedX", value: "redx" },
-                  { label: "Steadfast", value: "steadfast" },
-                ]}
-                value={customerInfo.deliveryMethod}
-                onChange={(val) => handleFieldChange("deliveryMethod", val)}
-              />
-              {touchedFields.deliveryMethod && !customerInfo.deliveryMethod && (
-                <Text type="danger" style={{ fontSize: 12 }}>
-                  Delivery method is required
                 </Text>
               )}
             </Col>

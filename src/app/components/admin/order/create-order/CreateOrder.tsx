@@ -69,7 +69,6 @@ export default function CreateOrder() {
     name: "",
     phone: "",
     address: "",
-    deliveryMethod: "",
     deliveryOption: "",
     city: "",
     email: "",
@@ -105,10 +104,14 @@ export default function CreateOrder() {
   // Email validation state
   const [emailError, setEmailError] = useState<string>("");
 
-  // Validate email uniqueness
+  // Validate email uniqueness - only validate if email is provided
   const validateEmailUniqueness = useCallback(
     (email: string): boolean => {
-      if (!email) return true;
+      // If email is empty, no validation needed
+      if (!email || email.trim() === "") {
+        setEmailError("");
+        return true;
+      }
 
       const normalizedEmail = email.toLowerCase().trim();
       const existingCustomer = customers.find(
@@ -232,8 +235,8 @@ export default function CreateOrder() {
       setCustomers(customerArray);
       setFilteredCustomers(customerArray);
 
-      // Re-validate email after fetching customers
-      if (customerInfo.email) {
+      // Re-validate email after fetching customers - only if email exists
+      if (customerInfo.email && customerInfo.email.trim() !== "") {
         validateEmailUniqueness(customerInfo.email);
       }
     } catch (err: any) {
@@ -419,7 +422,6 @@ export default function CreateOrder() {
       phone: "",
       address: "",
       deliveryOption: "",
-      deliveryMethod: "",
       city: "",
       email: "",
       notes: "",
@@ -460,16 +462,16 @@ export default function CreateOrder() {
     },
   ];
 
+  // Updated form validation - email is now optional, deliveryMethod removed
   const isFormValid =
     customerInfo.name &&
     customerInfo.phone &&
     customerInfo.address &&
     customerInfo.postal_code &&
     customerInfo.city &&
-    customerInfo.deliveryMethod &&
     customerInfo.deliveryOption &&
     orderProducts.length > 0 &&
-    !emailError;
+    !emailError; // Only block if there's an email error (duplicate), not if email is empty
 
   // Render customer content based on type
   const renderCustomerContent = () => {
