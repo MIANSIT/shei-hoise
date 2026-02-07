@@ -46,7 +46,7 @@ export function ShippingFeesCard({
             {fees.map((fee, index) => (
               <div
                 key={index}
-                className="flex flex-col justify-between p-4 rounded-xl border hover:shadow-lg transition-shadow duration-200 bg-background"
+                className="flex flex-col justify-between p-4 rounded-xl border hover:shadow-lg transition-shadow duration-200 "
               >
                 {/* Top row: Name + Description */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
@@ -60,7 +60,7 @@ export function ShippingFeesCard({
                       </p>
                     )}
                   </div>
-                  <span className="text-muted-foreground text-sm sm:text-base mt-1 sm:mt-0">
+                  <span className=" text-sm sm:text-base mt-1 sm:mt-0">
                     {fee.estimated_days !== undefined
                       ? `${fee.estimated_days} day${
                           fee.estimated_days > 1 ? "s" : ""

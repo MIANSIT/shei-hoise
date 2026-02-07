@@ -21,39 +21,39 @@ import html2canvas from "html2canvas";
 import { App } from "antd";
 
 // Helper function to format status text
-const formatStatus = (status: string): string => {
-  if (!status) return "N/A";
+// const formatStatus = (status: string): string => {
+//   if (!status) return "N/A";
 
-  // Handle common status values
-  const statusMap: Record<string, string> = {
-    PENDING: "Pending",
-    PAID: "Paid",
-    UNPAID: "Unpaid",
-    PARTIALLY_PAID: "Partially Paid",
-    REFUNDED: "Refunded",
-    FAILED: "Failed",
-    PROCESSING: "Processing",
-    CONFIRMED: "Confirmed",
-    SHIPPED: "Shipped",
-    DELIVERED: "Delivered",
-    CANCELLED: "Cancelled",
-    RETURNED: "Returned",
-    ON_HOLD: "On Hold",
-  };
+//   // Handle common status values
+//   const statusMap: Record<string, string> = {
+//     PENDING: "Pending",
+//     PAID: "Paid",
+//     UNPAID: "Unpaid",
+//     PARTIALLY_PAID: "Partially Paid",
+//     REFUNDED: "Refunded",
+//     FAILED: "Failed",
+//     PROCESSING: "Processing",
+//     CONFIRMED: "Confirmed",
+//     SHIPPED: "Shipped",
+//     DELIVERED: "Delivered",
+//     CANCELLED: "Cancelled",
+//     RETURNED: "Returned",
+//     ON_HOLD: "On Hold",
+//   };
 
-  // Check if status exists in map
-  const upperStatus = status.toUpperCase();
-  if (statusMap[upperStatus]) {
-    return statusMap[upperStatus];
-  }
+//   // Check if status exists in map
+//   const upperStatus = status.toUpperCase();
+//   if (statusMap[upperStatus]) {
+//     return statusMap[upperStatus];
+//   }
 
-  // Otherwise, capitalize first letter of each word
-  return status
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
+//   // Otherwise, capitalize first letter of each word
+//   return status
+//     .toLowerCase()
+//     .split("_")
+//     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+//     .join(" ");
+// };
 
 interface Product {
   name: string;
@@ -125,7 +125,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
   const { notification } = App.useApp();
 
   const invoiceRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef<HTMLDivElement>(null);
+  // const posRef = useRef<HTMLDivElement>(null);
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -1257,7 +1257,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           {/* Header */}
           <div className="border-b p-3 sm:p-6 flex items-start sm:items-center justify-between no-print">
             <div className="flex items-start sm:items-center gap-2 sm:gap-4 flex-1 min-w-0">
-              <div className="p-2 sm:p-3 bg-blue-50 rounded-lg flex-shrink-0">
+              <div className="p-2 sm:p-3 bg-blue-50 rounded-lg shrink-0">
                 <FileText className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
@@ -1267,7 +1267,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   </h2>
                   <button
                     onClick={copyInvoiceId}
-                    className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                    className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
                     title="Copy invoice number"
                   >
                     {copied ? (
@@ -1286,7 +1286,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 sm:p-2 hover:bg-red-500 rounded-lg transition-colors flex-shrink-0 ml-2"
+              className="p-1.5 sm:p-2 hover:bg-red-500 rounded-lg transition-colors shrink-0 ml-2"
               aria-label="Close"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />

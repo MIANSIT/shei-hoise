@@ -31,7 +31,7 @@ export function ShippingOptionItem({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
               {/* Shipping Method */}
               <div className="lg:col-span-6 space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Shipping Method <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -46,7 +46,7 @@ export function ShippingOptionItem({
 
               {/* Cost */}
               <div className="lg:col-span-3 space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Cost ({currency}) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -65,7 +65,7 @@ export function ShippingOptionItem({
 
               {/* Estimated Days */}
               <div className="lg:col-span-2 space-y-3">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Estimated Days
                 </label>
                 <input
@@ -120,10 +120,10 @@ export function ShippingOptionItem({
             <h4 className="font-semibold text-gray-900 dark:text-gray-300 text-lg">
               {option.name}
             </h4>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
               {option.price === 0 ? "Free delivery" : "Standard delivery"}
             </p>
-            <p className="text-gray-400  text-sm mt-1">
+            <p className="text-gray-400 dark:text-gray-300 text-sm mt-1">
               Estimated Days:{" "}
               {option.estimated_days
                 ? `${option.estimated_days} day${
