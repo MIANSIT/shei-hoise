@@ -83,10 +83,10 @@ export default function CreateOrder() {
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
 
-  const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING); // ✅ Using enum
+  const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     PaymentStatus.PENDING,
-  ); // ✅ Using enum
+  );
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
@@ -115,7 +115,7 @@ export default function CreateOrder() {
 
       const normalizedEmail = email.toLowerCase().trim();
       const existingCustomer = customers.find(
-        (customer) => customer.email.toLowerCase().trim() === normalizedEmail,
+        (customer) => customer.email?.toLowerCase().trim() === normalizedEmail,
       );
 
       if (existingCustomer && customerType === "new") {
@@ -213,7 +213,6 @@ export default function CreateOrder() {
   }, [user?.store_id, loading, notification]);
 
   // Fetch customers from orders
-  // Fetch customers from orders
   const fetchCustomers = useCallback(async () => {
     if (!user?.store_id || customerLoading) return;
 
@@ -269,10 +268,10 @@ export default function CreateOrder() {
       const fetchAll = async () => {
         try {
           await Promise.allSettled([
-            fetchStoreName(), // fetch store prefix
-            fetchProducts(), // fetch products
-            fetchCustomers(), // fetch customers
-            fetchStoreSettings(), // fetch shipping fees & tax
+            fetchStoreName(),
+            fetchProducts(),
+            fetchCustomers(),
+            fetchStoreSettings(),
           ]);
         } catch (error) {
           console.error("Error fetching initial data:", error);
@@ -318,7 +317,9 @@ export default function CreateOrder() {
           (customer.name?.toLowerCase() || "").includes(
             searchTerm.toLowerCase(),
           ) ||
-          customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (customer.email?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase(),
+          ) ||
           (customer.phone?.toLowerCase() || "").includes(
             searchTerm.toLowerCase(),
           ),
@@ -393,7 +394,7 @@ export default function CreateOrder() {
           postal_code: customer.profile_details?.postal_code || "",
         }));
         setCustomerProfile({
-          store_customer_id: customer.id, // or customer.profile_details.store_customer_id if it exists
+          store_customer_id: customer.id,
           id: customer.id,
           address:
             customer.profile_details.address ||
@@ -462,12 +463,11 @@ export default function CreateOrder() {
     },
   ];
 
-  // Updated form validation - email is now optional, deliveryMethod removed
+  // Updated form validation - email and postal_code are now optional
   const isFormValid =
     customerInfo.name &&
     customerInfo.phone &&
     customerInfo.address &&
-    customerInfo.postal_code &&
     customerInfo.city &&
     customerInfo.deliveryOption &&
     orderProducts.length > 0 &&
@@ -640,7 +640,7 @@ export default function CreateOrder() {
                   ) : (
                     <Alert
                       title="Address Required"
-                      description="Please enter the delivery address, city, and postal code for this order."
+                      description="Please enter the delivery address and city for this order."
                       type="info"
                       showIcon
                       style={{ marginTop: "16px" }}

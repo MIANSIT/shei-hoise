@@ -14,7 +14,7 @@ import {
   Empty,
   InputNumber,
   Image,
-  notification, // Add this import
+  notification,
   Alert,
 } from "antd";
 import {
@@ -48,12 +48,10 @@ export default function AdminOrderDetails({
   const [selectedVariantId, setSelectedVariantId] =
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
-  const [api, contextHolder] = notification.useNotification(); // Add this
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const [api, contextHolder] = notification.useNotification();
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
+
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const selectedVariant = selectedProduct?.product_variants?.find(
     (v) => v.id === selectedVariantId,
@@ -78,7 +76,6 @@ export default function AdminOrderDetails({
   };
 
   // Filter available variants with positive stock and active status
-  // Show all active variants, ignore stock limits
   const availableVariants =
     selectedProduct?.product_variants?.filter((v) => v.is_active) ?? [];
 
@@ -241,15 +238,13 @@ export default function AdminOrderDetails({
   };
 
   const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
+
   // Format price display with discount if applicable
   const formatPriceDisplay = (
     product?: ProductWithVariants,
     variant?: ProductVariant,
   ) => {
-    // const effectivePrice = getEffectivePrice(product, variant);
-
     if (variant) {
       if (
         variant.discounted_price &&
@@ -263,7 +258,6 @@ export default function AdminOrderDetails({
               {variant.base_price}
             </Text>
             <Text strong>
-              {" "}
               {displayCurrencyIconSafe}
               {variant.discounted_price}
             </Text>
@@ -272,7 +266,6 @@ export default function AdminOrderDetails({
       }
       return (
         <Text>
-          {" "}
           {displayCurrencyIconSafe}
           {variant.base_price}
         </Text>
@@ -291,7 +284,6 @@ export default function AdminOrderDetails({
               {displayCurrencyIconSafe} {product.base_price}
             </Text>
             <Text strong>
-              {" "}
               {displayCurrencyIconSafe}
               {product.discounted_price}
             </Text>
@@ -300,18 +292,16 @@ export default function AdminOrderDetails({
       }
       return (
         <Text>
-          {" "}
           {displayCurrencyIconSafe}
           {product.base_price}
         </Text>
       );
     }
 
-    return <Text> {displayCurrencyIconSafe} 0</Text>;
+    return <Text>{displayCurrencyIconSafe} 0</Text>;
   };
 
   // Filter products that have available stock
-  // Show all products for admin panel, ignore stock limits
   const availableProducts = products.filter((product) => {
     // Hide only draft or inactive products
     if (
@@ -320,7 +310,6 @@ export default function AdminOrderDetails({
     )
       return false;
 
-    // Show everything else for admin
     return true;
   });
 
@@ -363,9 +352,26 @@ export default function AdminOrderDetails({
                     }}
                     style={{ width: "100%" }}
                     size="large"
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) => {
+                      const product = availableProducts.find(
+                        (p) => p.id === option?.value,
+                      );
+                      return (
+                        product?.name
+                          ?.toLowerCase()
+                          .includes(input.toLowerCase()) ?? false
+                      );
+                    }}
                   >
                     {availableProducts.map((product) => {
                       const primaryImage = getPrimaryImage(product);
+                      const hasActiveVariants =
+                        product.product_variants &&
+                        product.product_variants.filter((v) => v.is_active)
+                          .length > 0;
+
                       return (
                         <Option key={product.id} value={product.id}>
                           <Space>
@@ -382,29 +388,36 @@ export default function AdminOrderDetails({
                             <span>
                               {product.name}
 
+                              {/* Show SKU if product has one */}
+                              {product.sku && (
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "12px",
+                                    marginLeft: "4px",
+                                  }}
+                                >
+                                  (SKU: {product.sku})
+                                </Text>
+                              )}
+
                               {/* Filter only active variants */}
-                              {(!product.product_variants ||
-                                product.product_variants.filter(
-                                  (v) => v.is_active,
-                                ).length === 0) && (
+                              {!hasActiveVariants && (
                                 <> - {formatPriceDisplay(product)}</>
                               )}
 
                               {/* Show active variant count if any */}
-                              {product.product_variants &&
-                                product.product_variants.filter(
-                                  (v) => v.is_active,
-                                ).length > 0 && (
-                                  <>
-                                    {" : "}(
-                                    {
-                                      product.product_variants.filter(
-                                        (v) => v.is_active,
-                                      ).length
-                                    }{" "}
-                                    variants)
-                                  </>
-                                )}
+                              {hasActiveVariants && (
+                                <>
+                                  {" : "}(
+                                  {
+                                    product.product_variants.filter(
+                                      (v) => v.is_active,
+                                    ).length
+                                  }{" "}
+                                  variants)
+                                </>
+                              )}
                             </span>
                           </Space>
                         </Option>
@@ -436,6 +449,19 @@ export default function AdminOrderDetails({
                     disabled={
                       !selectedProductId || availableVariants.length === 0
                     }
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) => {
+                      if (option?.value === "no-variant") return true;
+                      const variant = availableVariants.find(
+                        (v) => v.id === option?.value,
+                      );
+                      return (
+                        variant?.variant_name
+                          ?.toLowerCase()
+                          .includes(input.toLowerCase()) ?? false
+                      );
+                    }}
                   >
                     <Option value="no-variant">Base Product</Option>
                     {availableVariants.map((variant) => {
@@ -457,7 +483,19 @@ export default function AdminOrderDetails({
                               />
                             )}
                             <span>
-                              {variant.variant_name} -{" "}
+                              {variant.variant_name}
+                              {variant.sku && (
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "12px",
+                                    marginLeft: "4px",
+                                  }}
+                                >
+                                  (SKU: {variant.sku})
+                                </Text>
+                              )}
+                              {" - "}
                               {formatPriceDisplay(selectedProduct, variant)}
                             </span>
                           </Space>
@@ -581,6 +619,27 @@ export default function AdminOrderDetails({
                               </Tag>
                             )}
                           </Space>
+                          {/* Show SKU if available */}
+                          {(() => {
+                            const product = products.find(
+                              (p) => p.id === item.product_id,
+                            );
+                            const variant = product?.product_variants?.find(
+                              (v) => v.id === item.variant_id,
+                            );
+                            const sku = variant?.sku || product?.sku;
+
+                            return sku ? (
+                              <div>
+                                <Text
+                                  type="secondary"
+                                  style={{ fontSize: "12px" }}
+                                >
+                                  SKU: {sku}
+                                </Text>
+                              </div>
+                            ) : null;
+                          })()}
                           <div>
                             <Text>
                               {displayCurrencyIconSafe}

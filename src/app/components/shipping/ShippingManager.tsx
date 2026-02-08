@@ -156,7 +156,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   }
 
   return (
-    <div className="rounded-3xl border   backdrop-blur-sm shadow-2xl shadow-gray-200/30 p-6 sm:p-8 lg:p-10">
+    <div className="rounded-3xl border   backdrop-blur-sm shadow-2xl shadow-gray-200/30 p-6  lg:p-10">
       {/* Stats Overview - Better mobile layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-100">
