@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import SidebarProfile from "../components/admin/sidebar/SidebarProfile";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
@@ -319,20 +319,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               color: "var(--card-foreground)",
             }}
           >
-            <div className="flex items-center gap-2">
-              {store?.logo_url ? (
-                <Image
-                  src={store.logo_url}
-                  alt={store.store_name || "Store Logo"}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                />
-              ) : (
-                <Image src="/logo.png" alt="Logo" width={40} height={40} />
-              )}
+            <div className="flex items-center gap-2 px-2 ">
               <h1 className="text-lg font-bold">
-                {store?.store_name || "Dashboard"}
+                {store?.store_name
+                  ? `${store.store_name} Dashboard`
+                  : "Dashboard"}
               </h1>
 
               <button

@@ -95,11 +95,11 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/shipping-Management",
         icon: Truck,
       },
-      {
-        title: "Store Management",
-        href: "/dashboard/store-management",
-        icon: Store,
-      },
+      // {
+      //   title: "Store Management",
+      //   href: "/dashboard/store-management",
+      //   icon: Store,
+      // },
     ],
   },
   // {
