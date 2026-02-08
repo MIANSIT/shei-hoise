@@ -21,39 +21,39 @@ import html2canvas from "html2canvas";
 import { App } from "antd";
 
 // Helper function to format status text
-// const formatStatus = (status: string): string => {
-//   if (!status) return "N/A";
+const formatStatus = (status: string): string => {
+  if (!status) return "N/A";
 
-//   // Handle common status values
-//   const statusMap: Record<string, string> = {
-//     PENDING: "Pending",
-//     PAID: "Paid",
-//     UNPAID: "Unpaid",
-//     PARTIALLY_PAID: "Partially Paid",
-//     REFUNDED: "Refunded",
-//     FAILED: "Failed",
-//     PROCESSING: "Processing",
-//     CONFIRMED: "Confirmed",
-//     SHIPPED: "Shipped",
-//     DELIVERED: "Delivered",
-//     CANCELLED: "Cancelled",
-//     RETURNED: "Returned",
-//     ON_HOLD: "On Hold",
-//   };
+  // Handle common status values
+  const statusMap: Record<string, string> = {
+    PENDING: "Pending",
+    PAID: "Paid",
+    UNPAID: "Unpaid",
+    PARTIALLY_PAID: "Partially Paid",
+    REFUNDED: "Refunded",
+    FAILED: "Failed",
+    PROCESSING: "Processing",
+    CONFIRMED: "Confirmed",
+    SHIPPED: "Shipped",
+    DELIVERED: "Delivered",
+    CANCELLED: "Cancelled",
+    RETURNED: "Returned",
+    ON_HOLD: "On Hold",
+  };
 
-//   // Check if status exists in map
-//   const upperStatus = status.toUpperCase();
-//   if (statusMap[upperStatus]) {
-//     return statusMap[upperStatus];
-//   }
+  // Check if status exists in map
+  const upperStatus = status.toUpperCase();
+  if (statusMap[upperStatus]) {
+    return statusMap[upperStatus];
+  }
 
-//   // Otherwise, capitalize first letter of each word
-//   return status
-//     .toLowerCase()
-//     .split("_")
-//     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-//     .join(" ");
-// };
+  // Otherwise, capitalize first letter of each word
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 interface Product {
   name: string;
