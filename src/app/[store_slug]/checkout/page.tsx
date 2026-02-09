@@ -61,10 +61,7 @@ export default function CheckoutPage() {
     storeSlug: store_slug,
   });
 
-  const {
-    processOrder,
-    loading: orderLoading,
-  } = useOrderProcess(store_slug);
+  const { processOrder, loading: orderLoading } = useOrderProcess(store_slug);
 
   const { session, loading: authLoading } = useSupabaseAuth();
 
@@ -324,7 +321,7 @@ export default function CheckoutPage() {
         .from("store_customers")
         .insert({
           name: values.name,
-          email: "", // Empty email for guest
+          email: null, // ✅ IMPORTANT
           phone: values.phone,
           auth_user_id: null,
         })
@@ -429,7 +426,7 @@ export default function CheckoutPage() {
               .from("store_customers")
               .insert({
                 name: values.name,
-                email: session.user.email || "", // Use session email if available
+                email: session.user.email ?? null, // Use auth email if available
                 phone: values.phone,
                 auth_user_id: session.user.id,
               })
