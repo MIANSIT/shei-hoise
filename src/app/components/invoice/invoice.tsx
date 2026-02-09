@@ -1015,29 +1015,30 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
   };
 
-  // ==================== FIXED AUTO-ADAPTIVE POS RECEIPT (NO CUTOFF) ====================
   const downloadPOSImage = async () => {
     try {
       setIsGeneratingPDF(true);
 
-      const universalWidth = 220; // 58mm - universal compatibility
+      // ✅ CRITICAL: 360px is Sunmi's ACTUAL printable width for 58mm paper
+      // Standard 384px causes right-side cutoff on Sunmi devices
+      const thermalWidth = 360;
 
       const iframe = document.createElement("iframe");
       iframe.style.cssText = `
       position: fixed;
       top: -9999px;
       left: -9999px;
-      width: ${universalWidth}px;
+      width: ${thermalWidth}px;
       height: 4000px;
       border: none;
       visibility: hidden;
+      overflow: hidden;
     `;
       document.body.appendChild(iframe);
 
       const doc = iframe.contentDocument;
       if (!doc) throw new Error("Could not create iframe document");
 
-      // Get currency symbol - handle Bengali Taka properly
       const displayCurrency = currencyIcon === "৳" ? "Tk" : currencyIcon;
 
       doc.open();
@@ -1046,6 +1047,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       <html>
         <head>
           <meta charset="UTF-8">
+          <meta name="viewport" content="width=${thermalWidth}, initial-scale=1.0">
           <style>
             * {
               margin: 0;
@@ -1054,45 +1056,50 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               box-sizing: border-box;
             }
             
+            html, body {
+              width: ${thermalWidth}px !important;
+              max-width: ${thermalWidth}px !important;
+              min-width: ${thermalWidth}px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow-x: hidden !important;
+            }
+            
             body {
               font-family: 'Courier New', Courier, monospace !important;
-              font-size: 12px !important;
+              font-size: 13px !important;
               line-height: 1.4 !important;
               color: #000000 !important;
               background-color: #ffffff !important;
-              padding: 15px 8px 25px 8px;
-              width: ${universalWidth}px;
-              margin: 0 auto;
-              letter-spacing: 0 !important;
-              -webkit-font-smoothing: none !important;
-              -moz-osx-font-smoothing: grayscale !important;
-              overflow: visible !important;
+              padding: 18px 0 25px 0 !important;
             }
             
             .receipt-container {
-              width: 100%;
-              margin: 0 auto;
-              padding-bottom: 20px;
+              width: ${thermalWidth}px !important;
+              max-width: ${thermalWidth}px !important;
+              margin: 0 !important;
+              padding: 0 12px !important;
+              box-sizing: border-box !important;
             }
             
             .store-title {
-              font-size: 18px !important;
+              font-size: 20px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
-              margin: 0 0 5px 0 !important;
+              margin: 0 0 6px 0 !important;
               line-height: 1.3 !important;
               display: block !important;
               width: 100% !important;
               letter-spacing: 2px !important;
               color: #000000 !important;
+              word-wrap: break-word !important;
             }
             
             .text-center {
               text-align: center !important;
               display: block !important;
               width: 100% !important;
-              margin: 0 auto !important;
               color: #000000 !important;
             }
             
@@ -1101,10 +1108,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               line-height: 1.4 !important;
               clear: both !important;
               color: #000000 !important;
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
+              width: 100% !important;
             }
             
             .small {
-              font-size: 10px !important;
+              font-size: 11px !important;
               color: #000000 !important;
             }
             
@@ -1116,7 +1126,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .divider {
               border: none !important;
               border-top: 2px solid #000000 !important;
-              margin: 7px 0 !important;
+              margin: 8px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
@@ -1124,7 +1134,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .divider-thick {
               border: none !important;
               border-top: 3px solid #000000 !important;
-              margin: 9px 0 !important;
+              margin: 10px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
@@ -1132,17 +1142,17 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .divider-dashed {
               border: none !important;
               border-top: 2px dashed #000000 !important;
-              margin: 7px 0 !important;
+              margin: 8px 0 !important;
               height: 0 !important;
               width: 100% !important;
             }
             
             .section-header {
-              font-size: 15px !important;
+              font-size: 16px !important;
               font-weight: bold !important;
               text-transform: uppercase !important;
               text-align: center !important;
-              margin: 8px 0 6px 0 !important;
+              margin: 10px 0 6px 0 !important;
               display: block !important;
               width: 100% !important;
               color: #000000 !important;
@@ -1152,15 +1162,15 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .items-table {
               width: 100% !important;
               border-collapse: collapse !important;
-              margin: 7px 0 !important;
+              margin: 8px 0 !important;
               table-layout: fixed !important;
             }
             
             .items-table thead th {
               font-weight: bold !important;
-              padding: 5px 2px !important;
+              padding: 6px 3px !important;
               border-bottom: 2px solid #000000 !important;
-              font-size: 11px !important;
+              font-size: 12px !important;
               text-align: left !important;
               color: #000000 !important;
               background-color: #ffffff !important;
@@ -1175,15 +1185,15 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .items-table tbody td {
-              padding: 4px 2px !important;
+              padding: 5px 3px !important;
               vertical-align: top !important;
-              font-size: 11px !important;
+              font-size: 12px !important;
               color: #000000 !important;
               background-color: #ffffff !important;
             }
             
             .items-table tbody td:nth-child(1) {
-              width: 48% !important;
+              width: 42% !important;
               text-align: left !important;
               word-break: break-word !important;
               white-space: normal !important;
@@ -1197,13 +1207,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .items-table tbody td:nth-child(3) {
-              width: 34% !important;
+              width: 40% !important;
               text-align: right !important;
               font-weight: bold !important;
             }
             
             .price-small {
-              font-size: 9px !important;
+              font-size: 10px !important;
               color: #333333 !important;
               margin-top: 2px !important;
               font-weight: normal !important;
@@ -1211,16 +1221,18 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             
             .summary {
               margin: 10px 0 !important;
-              padding-bottom: 5px !important;
+              padding-bottom: 6px !important;
+              width: 100% !important;
             }
             
             .summary-row {
               display: flex !important;
               justify-content: space-between !important;
-              margin-bottom: 4px !important;
-              font-size: 12px !important;
+              margin-bottom: 5px !important;
+              font-size: 13px !important;
               line-height: 1.4 !important;
               color: #000000 !important;
+              width: 100% !important;
             }
             
             .summary-row span {
@@ -1228,10 +1240,10 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
             
             .summary-row.grand-total {
-              font-size: 17px !important;
+              font-size: 18px !important;
               font-weight: bold !important;
-              margin-top: 7px !important;
-              padding-top: 7px !important;
+              margin-top: 8px !important;
+              padding-top: 8px !important;
               border-top: 3px solid #000000 !important;
             }
             
@@ -1243,31 +1255,32 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             .payment-section {
               margin: 10px 0 !important;
               text-align: center !important;
-              padding: 5px 0 !important;
+              padding: 6px 0 !important;
+              width: 100% !important;
             }
             
             .payment-section .row {
               text-align: center !important;
               font-weight: bold !important;
-              font-size: 13px !important;
+              font-size: 14px !important;
               color: #000000 !important;
               margin-bottom: 4px !important;
             }
             
             .footer {
               margin-top: 12px !important;
-              padding-top: 8px !important;
+              padding-top: 10px !important;
               text-align: center !important;
-              font-size: 10px !important;
+              font-size: 11px !important;
               color: #000000 !important;
-              padding-bottom: 10px !important;
+              padding-bottom: 12px !important;
+              width: 100% !important;
             }
             
             .footer .row {
               margin-bottom: 3px !important;
             }
             
-            /* Force black text everywhere */
             * {
               max-width: 100% !important;
               word-wrap: break-word !important;
@@ -1275,7 +1288,10 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               color: #000000 !important;
             }
             
-            /* Ensure crisp rendering */
+            html {
+              overflow-x: hidden !important;
+            }
+            
             @media print {
               * {
                 -webkit-print-color-adjust: exact !important;
@@ -1293,7 +1309,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             
             <div class="divider"></div>
             
-            <div class="row text-center bold" style="font-size: 14px;">INVOICE: #${orderId}</div>
+            <div class="row text-center bold" style="font-size: 15px;">INVOICE: #${orderId}</div>
             <div class="row text-center small">DATE: ${new Date().toLocaleDateString("en-GB")}</div>
             <div class="row text-center small">TIME: ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
             
@@ -1320,7 +1336,6 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   .map((p) => {
                     const itemTotal = (p.qty * p.price).toFixed(2);
                     const unitPrice = p.price.toFixed(2);
-
                     return `
                     <tr>
                       <td>${p.name}</td>
@@ -1401,35 +1416,33 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     `);
       doc.close();
 
-      // Wait longer for content to fully render
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const body = doc.body;
       if (!body) throw new Error("No body element found");
 
-      // Get actual content height with extra padding
       const contentHeight = Math.max(body.scrollHeight, body.offsetHeight) + 50;
       iframe.style.height = `${contentHeight}px`;
 
-      // Wait for layout to stabilize
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       const canvas = await html2canvas(body, {
-        scale: 5,
+        scale: 3,
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
         allowTaint: false,
-        width: universalWidth,
+        width: thermalWidth,
         height: contentHeight,
-        windowWidth: universalWidth,
+        windowWidth: thermalWidth,
         windowHeight: contentHeight,
         imageTimeout: 0,
         removeContainer: true,
         scrollY: 0,
         scrollX: 0,
+        x: 0,
+        y: 0,
         onclone: (clonedDoc) => {
-          // Force pure black text
           const allElements = clonedDoc.querySelectorAll("*");
           allElements.forEach((el) => {
             if (el instanceof HTMLElement) {
@@ -1440,7 +1453,6 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
           });
 
-          // Ensure borders are pure black
           const borders = clonedDoc.querySelectorAll(
             ".divider, .divider-thick, .divider-dashed",
           );
@@ -1450,11 +1462,18 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             }
           });
 
-          // Ensure footer is visible
           const footer = clonedDoc.querySelector(".footer");
           if (footer instanceof HTMLElement) {
             footer.style.paddingBottom = "20px";
             footer.style.marginBottom = "20px";
+          }
+
+          const clonedBody = clonedDoc.body;
+          if (clonedBody) {
+            clonedBody.style.width = `${thermalWidth}px`;
+            clonedBody.style.maxWidth = `${thermalWidth}px`;
+            clonedBody.style.margin = "0";
+            clonedBody.style.padding = "18px 0 25px 0";
           }
 
           const style = clonedDoc.createElement("style");
@@ -1463,50 +1482,25 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             color: #000000 !important;
             background-color: #ffffff !important;
             font-family: 'Courier New', Courier, monospace !important;
-            -webkit-font-smoothing: none !important;
-            -moz-osx-font-smoothing: grayscale !important;
-            text-rendering: optimizeSpeed !important;
           }
           
-          body {
-            overflow: visible !important;
-            min-height: 100% !important;
+          html, body {
+            width: ${thermalWidth}px !important;
+            max-width: ${thermalWidth}px !important;
+            overflow-x: hidden !important;
+            margin: 0 !important;
           }
           
-          .store-title, .section-header, .text-center, .payment-section, .footer {
-            text-align: center !important;
-            display: block !important;
-            width: 100% !important;
-          }
-          
-          .summary-row {
-            display: flex !important;
-            justify-content: space-between !important;
-            width: 100% !important;
-          }
-          
-          .divider {
-            border-top: 2px solid #000000 !important;
-          }
-          
-          .divider-thick {
-            border-top: 3px solid #000000 !important;
-          }
-          
-          .divider-dashed {
-            border-top: 2px dashed #000000 !important;
-          }
-          
-          .footer {
-            padding-bottom: 20px !important;
-            margin-bottom: 20px !important;
+          .receipt-container {
+            width: ${thermalWidth}px !important;
+            padding: 0 12px !important;
+            box-sizing: border-box !important;
           }
         `;
           clonedDoc.head.appendChild(style);
         },
       });
 
-      // POST-PROCESSING: Aggressive contrast enhancement
       const ctx = canvas.getContext("2d");
       if (ctx) {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1537,7 +1531,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
       notification.success({
         title: "POS Receipt Downloaded",
-        description: "Receipt compatible with all thermal printers",
+        description: "Receipt optimized for Sunmi 58mm printer",
       });
     } catch (error) {
       console.error("Error generating POS receipt:", error);
