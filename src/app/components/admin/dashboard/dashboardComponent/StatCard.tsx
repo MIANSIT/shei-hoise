@@ -9,6 +9,7 @@ interface StatCardProps {
   icon: React.ReactNode;
   change: string;
   changeType: "positive" | "negative" | "neutral";
+  description?: string;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -17,6 +18,7 @@ const StatCard: React.FC<StatCardProps> = ({
   icon,
   change,
   changeType,
+  description,
 }) => {
   const getChangeColor = () => {
     switch (changeType) {
@@ -36,15 +38,24 @@ const StatCard: React.FC<StatCardProps> = ({
         <div className="text-5xl sm:text-4xl text-blue-500">{icon}</div>
       </div>
 
-      {/* Value + Title + Badge */}
+      {/* Value + Title + Badge + Description */}
       <div className="flex flex-col items-center sm:items-start gap-2 text-center sm:text-left">
-        <div className="text-2xl sm:text-3xl font-bold text-foreground">{value}</div>
-        <div className="text-sm sm:text-base text-muted-foreground">{title}</div>
+        <div className="text-2xl sm:text-3xl font-bold text-foreground">
+          {value}
+        </div>
+        <div className="text-sm sm:text-base text-muted-foreground">
+          {title}
+        </div>
         <div
           className={`text-xs sm:text-sm px-3 py-1 rounded-full inline-block ${getChangeColor()}`}
         >
           {change}
         </div>
+        {description && (
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {description}
+          </div>
+        )}
       </div>
     </Card>
   );

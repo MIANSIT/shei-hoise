@@ -13,6 +13,7 @@ import {
   ExclamationOutlined,
   CloseCircleOutlined,
   StarOutlined,
+  DatabaseOutlined,
 } from "@ant-design/icons";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import {
@@ -157,14 +158,6 @@ export default function DashboardPage() {
       description: "Revenue ÷ total orders",
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Paid AOV`,
-      value: renderCurrency(metrics.paidAverageOrderValue),
-      icon: <LineChartOutlined className="text-amber-500" />,
-      change: `${formatChangeText(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(metrics.changePercentage.aov),
-      description: "Revenue ÷ paid orders",
-    },
-    {
       title: `${getPeriodLabel(timePeriod)} Gross Profit`,
       value: renderCurrency(metrics.grossProfit),
       icon: <DollarOutlined className="text-amber-500" />,
@@ -172,6 +165,14 @@ export default function DashboardPage() {
       changeType: getChangeType(metrics.changePercentage.profit),
       description: "Based on product cost and selling price",
     },
+    // {
+    //   title: "Total Inventory Value",
+    //   value: renderCurrency(metrics.totalInventoryValue),
+    //   icon: <DatabaseOutlined className="text-indigo-500" />,
+    //   change: "Current inventory worth",
+    //   changeType: "neutral" as const,
+    //   description: `${metrics.inStockCount} units at cost price`,
+    // },
   ];
 
   // Order status cards
@@ -224,17 +225,24 @@ export default function DashboardPage() {
     },
     {
       title: "Low Stock (Products)",
-      value: metrics.lowStockProductCount.toString(), // <-- use product-level count
+      value: metrics.lowStockProductCount.toString(),
       icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
       actionText: "Review",
     },
     {
       title: "Out of Stock (Products)",
-      value: metrics.outOfStockProductCount.toString(), // <-- use product-level count
+      value: metrics.outOfStockProductCount.toString(),
       icon: <CloseCircleOutlined className="text-red-600" />,
       color: "bg-red-100",
       actionText: "Restock Now",
+    },
+    {
+      title: "Inventory Value",
+      value: renderCurrency(metrics.totalInventoryValue),
+      icon: <DatabaseOutlined className="text-indigo-600" />,
+      color: "bg-indigo-100",
+      actionText: "View Details",
     },
   ];
 

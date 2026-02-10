@@ -14,8 +14,7 @@ import AlertsSection from "./AlertsSection";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// type TimePeriod = "daily" | "weekly" | "monthly" | "yearly"; // <- include daily
-type TimePeriod = "weekly" | "monthly" | "yearly"; // <- include daily
+type TimePeriod = "weekly" | "monthly" | "yearly";
 
 interface MainDashboardProps {
   stats: {
@@ -24,6 +23,7 @@ interface MainDashboardProps {
     icon: React.ReactNode;
     change: string;
     changeType: "positive" | "negative" | "neutral";
+    description?: string; // Added for compatibility
   }[];
   orderStatusCards: {
     title: string;
@@ -40,7 +40,7 @@ interface MainDashboardProps {
   }[];
   inventoryAlerts: {
     title: string;
-    value: string;
+    value: string | React.ReactNode; // Updated to accept ReactNode
     icon: React.ReactNode;
     color: string;
     actionText: string;
@@ -184,7 +184,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         </div>
         <Row gutter={[16, 16]}>
           {inventoryAlerts.map((alert, idx) => (
-            <Col key={idx} xs={24} sm={12} md={8}>
+            <Col key={idx} xs={24} sm={12} md={6}>
               <InventoryAlertCard {...alert} />
             </Col>
           ))}

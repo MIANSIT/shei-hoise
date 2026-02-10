@@ -62,6 +62,7 @@ interface DashboardMetrics {
   outOfStockCount: number; // total variants/products out of stock
   lowStockProductCount: number; // products with at least 1 low stock variant
   outOfStockProductCount: number; // products fully out of stock
+  totalInventoryValue: number; // total value of all inventory (tp_price * quantity)
   paymentAmounts: Record<PaymentStatus, number>;
   alerts: { type: AlertType; message: string; count: number }[];
   filteredOrders: StoreOrder[];
@@ -100,6 +101,7 @@ export const useDashboardMetrics = (
     outOfStockCount: 0,
     lowStockProductCount: 0,
     outOfStockProductCount: 0,
+    totalInventoryValue: 0,
     paymentAmounts: { paid: 0, pending: 0, refunded: 0 },
     alerts: [],
     filteredOrders: [],
@@ -377,15 +379,15 @@ export const useDashboardMetrics = (
       );
     }, 0);
 
-    // Inventory metrics (full)
-    // ------------------------
-    // Inventory metrics (refactored)
-    // ------------------------
+    // ========================
+    // Inventory metrics
+    // ========================
     let inStockCount = 0; // total units in stock
     let lowStockCount = 0; // total units low in stock
     let outOfStockCount = 0; // total variants/products out of stock (units = 0)
     let lowStockProductCount = 0; // products with at least 1 low stock variant
     let outOfStockProductCount = 0; // products fully out of stock
+    let totalInventoryValue = 0; // NEW: total inventory value
 
     products.forEach((product) => {
       let productHasStock = false; // does this product have any stock?
@@ -400,10 +402,14 @@ export const useDashboardMetrics = (
 
         const qty = stock.quantity_available ?? 0;
         const threshold = stock.low_stock_threshold ?? 0;
+        const tpPrice = variant.tp_price ?? 0;
 
         if (qty > 0) {
           inStockCount += qty; // total units in stock
           productHasStock = true;
+
+          // Calculate inventory value: quantity × tp_price
+          totalInventoryValue += qty * tpPrice;
 
           if (qty <= threshold) {
             lowStockCount += qty; // total low-stock units
@@ -520,6 +526,7 @@ export const useDashboardMetrics = (
       outOfStockCount,
       lowStockProductCount,
       outOfStockProductCount,
+      totalInventoryValue, // NEW: total inventory value
       paymentAmounts,
       alerts,
       filteredOrders,
