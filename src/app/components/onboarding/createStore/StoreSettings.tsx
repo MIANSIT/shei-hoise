@@ -103,6 +103,26 @@ export default function StoreSettings({ control, errors }: Props) {
           />
         </FormItemWrapper>
 
+        <FormItemWrapper
+          label={
+            <span className="text-foreground flex items-center gap-1">
+              Minimum Order Value (Tk)
+              <Tooltip title="Enter the minimum order value for customers to place an order (e.g., 50 for 50 Tk minimum)">
+                <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
+              </Tooltip>
+            </span>
+          }
+          error={errors?.store_settings?.min_order_amount}
+        >
+          <Controller
+            name="store_settings.min_order_amount"
+            control={control}
+            render={({ field }) => (
+              <InputNumber {...field} min={0} style={{ width: "150px" }} />
+            )}
+          />
+        </FormItemWrapper>
+
         {/* Processing Time */}
         <FormItemWrapper
           label={
@@ -266,6 +286,7 @@ export default function StoreSettings({ control, errors }: Props) {
           type="dashed"
           block
           icon={<PlusOutlined />}
+          className="bg-green-500! text-white! border-green-500!"
           onClick={() =>
             append({
               name: "",
