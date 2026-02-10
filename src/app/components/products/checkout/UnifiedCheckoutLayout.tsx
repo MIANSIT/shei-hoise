@@ -251,27 +251,6 @@ export default function UnifiedCheckoutLayout({
                     </span>
                   </div>
 
-                  {/* Minimum Order Amount Warning */}
-                  {minOrderAmount > 0 && !meetsMinOrderAmount && (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="text-yellow-800 font-medium">
-                          Minimum Order:
-                        </span>
-                        <span className="text-yellow-800 font-bold">
-                          {displayCurrencyIconSafe}{minOrderAmount.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-yellow-600 text-sm">
-                          Shortfall:
-                        </span>
-                        <span className="text-yellow-600 text-sm font-medium">
-                          {displayCurrencyIconSafe}{shortfallAmount.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
 
                   <div className='border-t border-border pt-3'>
                     <ShippingMethod
