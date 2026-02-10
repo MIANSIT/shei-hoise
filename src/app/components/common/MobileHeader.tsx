@@ -34,7 +34,7 @@ export default function MobileHeader() {
     //   : []),
     { name: "Request Demo", path: "/#request-demo" },
 
-    { name: "All Stores", path: "/stores" },
+    // { name: "All Stores", path: "/stores" },
   ];
 
   return (

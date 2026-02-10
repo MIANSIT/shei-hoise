@@ -7,7 +7,7 @@ import HowItWorksSection from "@/app/components/landing/HowItWorksSection";
 import CTASection from "@/app/components/landing/CTASection";
 import Header from "@/app/components/common/Header";
 import Footer from "@/app/components/common/Footer";
-import StoresSection from "@/app/components/landing/StoresSection"
+// import StoresSection from "@/app/components/landing/StoresSection"
 
 export default function LandingPage() {
   return (
@@ -18,7 +18,7 @@ export default function LandingPage() {
         <FeaturesSection />
         <HowItWorksSection />
         {/* <PricingSection /> */}
-        <StoresSection />
+        {/* <StoresSection /> */}
         <CTASection />
       </main>
       <Footer />
