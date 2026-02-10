@@ -31,6 +31,7 @@ export default function CheckoutPage() {
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
   const [taxAmount, setTaxAmount] = useState<number>(0);
+  const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [taxLoaded, setTaxLoaded] = useState(false);
@@ -75,29 +76,52 @@ export default function CheckoutPage() {
     return cartLoading || authLoading || storeLoading || taxLoaded === false;
   }, [cartLoading, authLoading, storeLoading, taxLoaded]);
 
-  // Fetch tax amount once
+  // Fetch store settings (tax and min order amount)
   useEffect(() => {
-    const fetchTaxAmount = async () => {
+    const fetchStoreSettings = async () => {
       try {
         const storeId = await getStoreIdBySlug(store_slug);
         if (storeId) {
           const storeSettings = await getStoreSettings(storeId);
-          setTaxAmount(storeSettings?.tax_rate ?? 0);
+          if (storeSettings) {
+            // Set tax amount if > 0, otherwise set to 0
+            const taxRate = storeSettings.tax_rate ?? 0;
+            setTaxAmount(taxRate > 0 ? taxRate : 0);
+            
+            // Set min order amount
+            const minAmount = storeSettings.min_order_amount ?? 0;
+            setMinOrderAmount(minAmount);
+          } else {
+            setTaxAmount(0);
+            setMinOrderAmount(0);
+          }
         } else {
           setTaxAmount(0);
+          setMinOrderAmount(0);
         }
       } catch (error) {
-        console.error("❌ Error fetching tax amount:", error);
+        console.error("❌ Error fetching store settings:", error);
         setTaxAmount(0);
+        setMinOrderAmount(0);
       } finally {
         setTaxLoaded(true);
       }
     };
 
     if (store_slug && !taxLoaded) {
-      fetchTaxAmount();
+      fetchStoreSettings();
     }
   }, [store_slug, taxLoaded]);
+
+  // Check minimum order amount
+  useEffect(() => {
+    if (isMounted && minOrderAmount > 0 && calculations.subtotal < minOrderAmount && !isLoadingOverall) {
+      const shortfall = minOrderAmount - calculations.subtotal;
+      notify.error(
+        `Minimum order amount is ${currency || "৳"}${minOrderAmount.toFixed(2)}. Add ${currency || "৳"}${shortfall.toFixed(2)} more to proceed.`
+      );
+    }
+  }, [isMounted, minOrderAmount, calculations.subtotal, isLoadingOverall, notify, currency]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -202,7 +226,7 @@ export default function CheckoutPage() {
         store_id: invoiceStoreData?.id || "temp-store-id",
         status: OrderStatus.PENDING,
         subtotal: calculations.subtotal,
-        tax_amount: taxAmount,
+        tax_amount: taxAmount > 0 ? taxAmount : 0,
         shipping_fee: shippingFee,
         total_amount: totalWithTax,
         currency: displayCurrencyIconSafe,
@@ -389,6 +413,14 @@ export default function CheckoutPage() {
       if (!selectedShipping)
         return notify.error("Please select a shipping method");
 
+      // Check minimum order amount
+      if (minOrderAmount > 0 && calculations.subtotal < minOrderAmount) {
+        const shortfall = minOrderAmount - calculations.subtotal;
+        return notify.error(
+          `Minimum order amount is ${currency || "৳"}${minOrderAmount.toFixed(2)}. Add ${currency || "৳"}${shortfall.toFixed(2)} more to proceed.`
+        );
+      }
+
       setIsProcessing(true);
       clearAccountCreationFlags();
 
@@ -516,6 +548,9 @@ export default function CheckoutPage() {
       selectedShipping,
       shippingFee,
       taxAmount,
+      minOrderAmount,
+      calculations.subtotal,
+      currency,
       notify,
       clearAccountCreationFlags,
       isUserLoggedIn,
@@ -569,6 +604,7 @@ export default function CheckoutPage() {
         selectedShipping={selectedShipping}
         shippingFee={shippingFee}
         taxAmount={taxAmount}
+        minOrderAmount={minOrderAmount}
         isProcessing={isSubmitting}
         mode="checkout"
       />
