@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+// import Image from "next/image";
 import Sidebar from "../components/admin/sidebar/Sidebar";
 import SidebarProfile from "../components/admin/sidebar/SidebarProfile";
 import Breadcrumb from "@/app/components/admin/common/Breadcrumb";
@@ -24,6 +25,8 @@ import {
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 import TrialEnded from "@/app/components/admin/StoreStatus/TrialEnded";
 import AccessRestricted from "@/app/components/admin/StoreStatus/AccessRestricted";
+// import { supabase } from "@/lib/supabase";
+// import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -50,6 +53,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [storeLoading, setStoreLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  // const [, setLogoutLoading] = useState(false);
+  // const notify = useSheiNotification();
 
   // Set mounted to true after component mounts on client
   useEffect(() => {
@@ -202,6 +207,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     });
   };
 
+  // Handle logout
+  // const handleLogout = async () => {
+  //   try {
+  //     setLogoutLoading(true);
+  //     await supabase.auth.signOut();
+  //     notify.success("Logout successful!");
+  //     router.push("/admin-login");
+  //   } catch (err: unknown) {
+  //     console.error("Logout error:", err);
+  //     if (err instanceof Error) {
+  //       notify.error(`Logout failed: ${err.message}`);
+  //     } else {
+  //       notify.error("Logout failed. Please try again.");
+  //     }
+  //   } finally {
+  //     setLogoutLoading(false);
+  //   }
+  // };
+
+  // User dropdown menu items
+  // const userMenu: MenuProps = {
+  //   items: [
+  //     {
+  //       key: "profile",
+  //       icon: <User className="w-4 h-4" />,
+  //       label: "Profile",
+  //       disabled: true, // You can implement profile page later
+  //     },
+  //     {
+  //       type: "divider",
+  //     },
+  //     {
+  //       key: "logout",
+  //       icon: <LogOut className="w-4 h-4" />,
+  //       label: "Logout",
+  //       danger: true,
+  //       onClick: handleLogout,
+  //     },
+  //   ],
+  // };
+
   // Combined loading states
   const isLoading = authLoading || userLoading || storeLoading;
 
@@ -265,36 +311,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     >
       <AntdApp>
         <div className="min-h-screen flex flex-col">
-          {/* Header - Mobile Responsive */}
+          {/* Header */}
           <header
-            className="flex items-center justify-between p-2 sm:p-3 shadow-md sticky top-0 z-50"
+            className="flex items-center justify-between p-1 shadow-md sticky top-0 z-50"
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
             }}
           >
-            <div className="flex items-center gap-1 sm:gap-2 px-1 sm:px-2 min-w-0 flex-1">
+            <div className="flex items-center gap-2 px-2 ">
+              <h1 className="text-lg font-bold">
+                {store?.store_name ? `${store.store_name} ` : "Dashboard"}
+              </h1>
+
               <button
                 onClick={handleSidebarToggle}
-                className="p-1.5 sm:p-2 rounded hover:opacity-70 transition-transform duration-300 shrink-0"
+                className="p-2 rounded hover:opacity-70 transition-transform duration-300"
                 style={{ background: "var(--muted)" }}
-                aria-label="Toggle sidebar"
               >
                 <PanelLeft
-                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 ${
+                  className={`w-5 h-5 transition-transform duration-300 ${
                     isMobile || !isSidebarOpen ? "rotate-0" : "rotate-180"
                   }`}
                 />
               </button>
-
-              <h1 className="text-sm sm:text-base md:text-lg font-bold truncate">
-                {store?.store_name
-                  ? `${store.store_name} Dashboard`
-                  : "Dashboard"}
-              </h1>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-4">
               {/* Theme toggle button */}
               <button
                 onClick={() => {
@@ -306,13 +349,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     newTheme === "dark",
                   );
                 }}
-                className="p-1.5 sm:p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                aria-label="Toggle theme"
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
               >
                 {theme === "light" ? (
-                  <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Moon className="w-5 h-5" />
                 ) : (
-                  <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Sun className="w-5 h-5" />
                 )}
               </button>
 
@@ -334,18 +376,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             )}
 
-            {/* Mobile Drawer for Sidebar */}
+            {/* Mobile Drawer for Sidebar - Now takes 100% width */}
             <Drawer
-              title="Menu"
+              title="Menu" // <-- just a string
               placement="bottom"
               open={mobileDrawerOpen}
               onClose={() => setMobileDrawerOpen(false)}
               size="100%"
-              closable={true}
+              closable={true} // <-- ensures default X shows
               styles={{
                 body: { padding: 0 },
                 header: {
-                  padding: "12px 16px",
+                  padding: "16px 20px",
                   borderBottom: "1px solid var(--border)",
                 },
               }}
@@ -362,7 +404,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Main content */}
             <main
-              className="flex-1 flex flex-col overflow-auto min-h-[calc(100vh-57px)] sm:min-h-[calc(100vh-73px)] relative"
+              className="flex-1 flex flex-col overflow-auto min-h-[calc(100vh-73px)] relative"
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",
@@ -370,7 +412,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Toaster position="top-right" />
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 gap-2">
+              <div className="flex justify-between items-center p-2">
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -380,17 +422,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-2 sm:p-3" ref={mainContentRef}>
+              <div className="flex-1 overflow-auto p-3 " ref={mainContentRef}>
                 {children}
               </div>
             </main>
           </div>
 
-          {/* Back to Top Button - Mobile Responsive */}
+          {/* Back to Top Button - Only visible after scrolling down */}
           {showBackToTop && (
             <button
               onClick={scrollToTop}
-              className="fixed bottom-3 right-2 sm:bottom-4 sm:right-4 p-2.5 sm:p-4 rounded-full shadow-2xl hover:shadow-xl transition-all duration-300 hover:scale-110"
+              className="fixed bottom-4 right-2 p-4 rounded-full shadow-2xl hover:shadow-xl transition-all duration-300 hover:scale-110"
               style={{
                 background: "#3b82f6",
                 color: "#ffffff",
@@ -398,7 +440,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               }}
               aria-label="Back to top"
             >
-              <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ArrowUp className="w-6 h-6" />
             </button>
           )}
         </div>
@@ -406,3 +448,5 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </ConfigProvider>
   );
 }
+
+//layout
