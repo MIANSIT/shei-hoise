@@ -10,9 +10,10 @@ import {
 
 interface InventoryAlertCardProps {
   title: string;
-  value: string;
+  value: string | React.ReactNode; // Accept both string and ReactNode
   icon?: React.ReactNode;
   color: string;
+  actionText?: string; // Keep this for compatibility but it's not used
 }
 
 const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({

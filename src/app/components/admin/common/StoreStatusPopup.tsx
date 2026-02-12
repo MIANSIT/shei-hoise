@@ -210,7 +210,7 @@ export function StoreStatusPopup({
         <Link
           href="/contact-us"
           target="_blank"
-          className="w-full inline-block text-white! border-2 border-red-600 bg-red-600 hover:bg-red-700 text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg transition text-center"
+          className="w-full inline-block text-red-500! border-2 border-red-600 bg-red-600 hover:bg-red-700 text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg transition text-center"
         >
           Upgrade Now
         </Link>
