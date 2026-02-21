@@ -321,9 +321,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <div className="flex items-center gap-2 px-2 ">
               <h1 className="text-lg font-bold">
-                {store?.store_name
-                  ? `${store.store_name} Dashboard`
-                  : "Dashboard"}
+                {store?.store_name ? `${store.store_name} ` : "Dashboard"}
               </h1>
 
               <button

@@ -24,6 +24,7 @@ interface UnifiedCheckoutLayoutProps {
   selectedShipping: string;
   shippingFee: number;
   taxAmount: number;
+  minOrderAmount?: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
   onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
@@ -41,6 +42,7 @@ export default function UnifiedCheckoutLayout({
   selectedShipping,
   shippingFee,
   taxAmount,
+  minOrderAmount = 0,
   isProcessing,
   mode = "checkout",
   onQuantityChange,
@@ -57,7 +59,7 @@ export default function UnifiedCheckoutLayout({
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
 
   const totalWithShippingAndTax =
-    calculations.totalPrice + shippingFee + taxAmount;
+    calculations.totalPrice + shippingFee + (taxAmount > 0 ? taxAmount : 0);
 
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
@@ -89,6 +91,12 @@ export default function UnifiedCheckoutLayout({
       setTimeout(() => setIsClearing(false), 300);
     }
   };
+
+  // Check if order meets minimum amount
+  const meetsMinOrderAmount = minOrderAmount <= 0 || calculations.subtotal >= minOrderAmount;
+  
+  // Calculate shortfall if any
+  const shortfallAmount = minOrderAmount > 0 ? minOrderAmount - calculations.subtotal : 0;
 
   if (error) {
     return (
@@ -137,6 +145,18 @@ export default function UnifiedCheckoutLayout({
             ? "Review your items and enter your details"
             : "Complete your purchase"}
         </p>
+        
+        {/* Minimum Order Amount Warning */}
+        {minOrderAmount > 0 && !meetsMinOrderAmount && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800 font-medium">
+              Minimum order amount is {displayCurrencyIconSafe}{minOrderAmount.toFixed(2)}
+            </p>
+            <p className="text-yellow-600 text-sm mt-1">
+              Add {displayCurrencyIconSafe}{shortfallAmount.toFixed(2)} more to proceed
+            </p>
+          </div>
+        )}
       </div>
 
       <div className='lg:hidden mb-6'>
@@ -231,6 +251,7 @@ export default function UnifiedCheckoutLayout({
                     </span>
                   </div>
 
+
                   <div className='border-t border-border pt-3'>
                     <ShippingMethod
                       storeSlug={storeSlug}
@@ -256,9 +277,16 @@ export default function UnifiedCheckoutLayout({
                   <Button
                     className='w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4'
                     onClick={() => setActiveSection("customer")}
+                    disabled={!meetsMinOrderAmount}
                   >
-                    Continue to Details
-                    <ChevronRight className='h-4 w-4 ml-2' />
+                    {meetsMinOrderAmount ? (
+                      <>
+                        Continue to Details
+                        <ChevronRight className='h-4 w-4 ml-2' />
+                      </>
+                    ) : (
+                      `Add ${displayCurrencyIconSafe}${shortfallAmount.toFixed(2)} More`
+                    )}
                   </Button>
                 </div>
               )}
@@ -292,10 +320,10 @@ export default function UnifiedCheckoutLayout({
               <CardContent>
                 <CheckoutForm
                   onSubmit={onCheckout}
-                  isLoading={isProcessing}
+                  isLoading={isProcessing || !meetsMinOrderAmount}
                   shippingMethod={selectedShipping}
                   shippingFee={shippingFee}
-                  taxAmount={taxAmount}
+                  taxAmount={taxAmount > 0 ? taxAmount : undefined}
                   totalAmount={totalWithShippingAndTax}
                   mode={mode}
                 />

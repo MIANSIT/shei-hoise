@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import MainDashboard from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStoreOrders } from "@/lib/hook/useStoreOrders";
@@ -13,6 +13,7 @@ import {
   ExclamationOutlined,
   CloseCircleOutlined,
   StarOutlined,
+  DatabaseOutlined,
 } from "@ant-design/icons";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import {
@@ -28,9 +29,11 @@ interface ProductVariant {
   sale_price?: number;
   cost_price?: number;
   profit_margin?: number;
+  tp_price?: number;
   stock: {
     quantity_available: number;
     low_stock_threshold?: number;
+    track_inventory?: boolean;
     is_low_stock: boolean;
   };
   is_low_stock: boolean;
@@ -47,10 +50,11 @@ export default function DashboardPage() {
   } = useStoreOrders(storeId || "");
 
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("weekly");
-  const [products, setProducts] = useState<DashboardProduct[]>([]);
+  const [rawProducts, setRawProducts] = useState<DashboardProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
   const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
+
   const renderCurrency = (amount: number) => {
     if (!currency) return amount.toFixed(2);
     if (typeof CurrencyIcon === "string")
@@ -71,7 +75,7 @@ export default function DashboardPage() {
       try {
         setLoadingProducts(true);
         const productsFetched = await getProducts(storeId);
-        setProducts(productsFetched as DashboardProduct[]);
+        setRawProducts(productsFetched as DashboardProduct[]);
       } catch (err) {
         console.error("Error fetching products:", err);
       } finally {
@@ -81,7 +85,27 @@ export default function DashboardPage() {
     fetchProducts();
   }, [storeId]);
 
-  const metrics = useDashboardMetrics(storeId, orders, products, timePeriod);
+  // ─────────────────────────────────────────────────────────────────────────
+  // FIX: Memoize orders and products before passing to useDashboardMetrics.
+  //
+  // Why this matters:
+  //   useStoreOrders returns a new array reference on every render even if
+  //   the data hasn't changed. Same for rawProducts state updates.
+  //   Without useMemo, useDashboardMetrics would recalculate on every parent
+  //   render, causing an unnecessary re-render loop.
+  //
+  //   useMemo with referential equality means the hook only recalculates when
+  //   the actual contents of orders/products change.
+  // ─────────────────────────────────────────────────────────────────────────
+  const memoizedOrders = useMemo(() => orders, [orders]);
+  const memoizedProducts = useMemo(() => rawProducts, [rawProducts]);
+
+  const metrics = useDashboardMetrics(
+    storeId,
+    memoizedOrders,
+    memoizedProducts,
+    timePeriod,
+  );
 
   // Loading and error states
   if (userLoading || ordersLoading || loadingProducts) {
@@ -102,35 +126,42 @@ export default function DashboardPage() {
         <p className="text-red-600 mt-2">{userError.message}</p>
       </div>
     );
+
   if (ordersError)
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <h2 className="text-red-800 font-semibold">Error fetching orders</h2>
-        {/* <p className="text-red-600 mt-2">{ordersError.message}</p> */}
       </div>
     );
 
-  // KPI cards helpers
+  // ─────────────────────────────────────────────────────────────────────────
+  // KPI card helpers
+  // ─────────────────────────────────────────────────────────────────────────
   const getChangeType = (
     percentage: number,
   ): "positive" | "negative" | "neutral" =>
     percentage > 0 ? "positive" : percentage < 0 ? "negative" : "neutral";
+
   const getPeriodLabel = (period: TimePeriod): string =>
     period === "weekly"
       ? "This Week's"
       : period === "monthly"
         ? "This Month's"
         : "This Year's";
+
   const getComparisonText = (period: TimePeriod): string =>
     period === "weekly"
       ? "vs Last Week"
       : period === "monthly"
         ? "vs Last Month"
         : "vs Last Year";
+
   const formatChangeText = (percentage: number) =>
     `${percentage > 0 ? "+" : ""}${percentage.toFixed(1)}%`;
 
+  // ─────────────────────────────────────────────────────────────────────────
   // KPI Cards
+  // ─────────────────────────────────────────────────────────────────────────
   const stats = [
     {
       title: `${getPeriodLabel(timePeriod)} Revenue (Paid)`,
@@ -154,15 +185,8 @@ export default function DashboardPage() {
       icon: <LineChartOutlined className="text-purple-500" />,
       change: `${formatChangeText(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.aov),
-      description: "Revenue ÷ total orders",
-    },
-    {
-      title: `${getPeriodLabel(timePeriod)} Paid AOV`,
-      value: renderCurrency(metrics.paidAverageOrderValue),
-      icon: <LineChartOutlined className="text-amber-500" />,
-      change: `${formatChangeText(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(metrics.changePercentage.aov),
-      description: "Revenue ÷ paid orders",
+      // FIX: label updated to match the corrected AOV calculation (all orders, not paid only)
+      description: "Subtotal ÷ all orders",
     },
     {
       title: `${getPeriodLabel(timePeriod)} Gross Profit`,
@@ -174,7 +198,9 @@ export default function DashboardPage() {
     },
   ];
 
+  // ─────────────────────────────────────────────────────────────────────────
   // Order status cards
+  // ─────────────────────────────────────────────────────────────────────────
   const orderStatusCards = [
     {
       title: "Pending",
@@ -213,7 +239,9 @@ export default function DashboardPage() {
     },
   ];
 
+  // ─────────────────────────────────────────────────────────────────────────
   // Inventory alerts
+  // ─────────────────────────────────────────────────────────────────────────
   const inventoryAlerts = [
     {
       title: "In Stock (Units)",
@@ -224,21 +252,30 @@ export default function DashboardPage() {
     },
     {
       title: "Low Stock (Products)",
-      value: metrics.lowStockProductCount.toString(), // <-- use product-level count
+      value: metrics.lowStockProductCount.toString(),
       icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
       actionText: "Review",
     },
     {
       title: "Out of Stock (Products)",
-      value: metrics.outOfStockProductCount.toString(), // <-- use product-level count
+      value: metrics.outOfStockProductCount.toString(),
       icon: <CloseCircleOutlined className="text-red-600" />,
       color: "bg-red-100",
       actionText: "Restock Now",
     },
+    {
+      title: "Inventory Value",
+      value: renderCurrency(metrics.totalInventoryValue),
+      icon: <DatabaseOutlined className="text-indigo-600" />,
+      color: "bg-indigo-100",
+      actionText: "View Details",
+    },
   ];
 
+  // ─────────────────────────────────────────────────────────────────────────
   // Customer stats
+  // ─────────────────────────────────────────────────────────────────────────
   const customerStats = [
     {
       title: `New Customers (${getPeriodLabel(timePeriod)})`,
@@ -258,7 +295,9 @@ export default function DashboardPage() {
     },
   ];
 
+  // ─────────────────────────────────────────────────────────────────────────
   // Payment amounts
+  // ─────────────────────────────────────────────────────────────────────────
   const orderAmounts = [
     {
       title: "Pending Amount",
@@ -282,8 +321,6 @@ export default function DashboardPage() {
     revenue: p.revenue,
     quantity: p.quantity,
   }));
-  const salesTrend = metrics.salesTrend;
-  const alerts = metrics.alerts;
 
   return (
     <div className="dashboard-container">
@@ -292,10 +329,10 @@ export default function DashboardPage() {
         orderStatusCards={orderStatusCards}
         orderAmounts={orderAmounts}
         inventoryAlerts={inventoryAlerts}
-        salesTrend={salesTrend}
+        salesTrend={metrics.salesTrend}
         topProducts={topProductsDisplay}
         customerStats={customerStats}
-        alerts={alerts}
+        alerts={metrics.alerts}
         timePeriod={timePeriod}
         onTimePeriodChange={setTimePeriod}
       />
