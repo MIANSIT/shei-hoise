@@ -1,4 +1,5 @@
-// types.ts
+// /lib/types/expense/types.ts
+
 export interface ExpenseCategory {
   id: string;
   store_id: string;
@@ -6,7 +7,7 @@ export interface ExpenseCategory {
   description?: string;
   icon?: string;
   color?: string;
-  is_default: boolean;
+  is_default: boolean; // keeps track of default category
   created_at: string;
   updated_at: string;
 }
@@ -25,5 +26,25 @@ export interface Expense {
   notes?: string;
   created_at: string;
   updated_at: string;
-  category?: ExpenseCategory; // optional, for join
+  category?: ExpenseCategory;
+}
+
+// New interface for updating a category
+export interface UpdateCategoryInput {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  is_default?: boolean; // <-- added so toggle can update DB
+}
+
+// Optional: interface for creating a new category
+export interface CreateCategoryInput {
+  store_id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  is_default?: boolean; // can default to true or false
 }
