@@ -113,7 +113,6 @@ export default function StoreInformation({ control }: Props) {
                   </Tooltip>
                 </span>
               }
-              required
               error={fieldState.error?.message}
             >
               <UploadImage

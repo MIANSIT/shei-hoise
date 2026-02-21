@@ -2,7 +2,7 @@
 // app/[store_slug]/checkout/page.tsx - SIMPLIFIED PHONE-ONLY CHECKOUT
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { StoreLoadingSkeleton } from "../../components/skeletons/StoreLoadingSkeleton";
 import { OrderCompleteSkeleton } from "../../components/skeletons/OrderCompleteSkeleton";
@@ -31,6 +31,7 @@ export default function CheckoutPage() {
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [shippingFee, setShippingFee] = useState<number>(0);
   const [taxAmount, setTaxAmount] = useState<number>(0);
+  const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [taxLoaded, setTaxLoaded] = useState(false);
@@ -75,29 +76,56 @@ export default function CheckoutPage() {
     return cartLoading || authLoading || storeLoading || taxLoaded === false;
   }, [cartLoading, authLoading, storeLoading, taxLoaded]);
 
-  // Fetch tax amount once
+  // Use refs to track notification state
+  const hasShownMinOrderNotification = useRef(false);
+  const minOrderCheckComplete = useRef(false);
+
+  // Fetch store settings (tax and min order amount)
   useEffect(() => {
-    const fetchTaxAmount = async () => {
+    const fetchStoreSettings = async () => {
       try {
         const storeId = await getStoreIdBySlug(store_slug);
         if (storeId) {
           const storeSettings = await getStoreSettings(storeId);
-          setTaxAmount(storeSettings?.tax_rate ?? 0);
+          if (storeSettings) {
+            // Set tax amount if > 0, otherwise set to 0
+            const taxRate = storeSettings.tax_rate ?? 0;
+            setTaxAmount(taxRate > 0 ? taxRate : 0);
+            
+            // Set min order amount
+            const minAmount = storeSettings.min_order_amount ?? 0;
+            setMinOrderAmount(minAmount);
+          } else {
+            setTaxAmount(0);
+            setMinOrderAmount(0);
+          }
         } else {
           setTaxAmount(0);
+          setMinOrderAmount(0);
         }
       } catch (error) {
-        console.error("❌ Error fetching tax amount:", error);
+        console.error("❌ Error fetching store settings:", error);
         setTaxAmount(0);
+        setMinOrderAmount(0);
       } finally {
         setTaxLoaded(true);
       }
     };
 
     if (store_slug && !taxLoaded) {
-      fetchTaxAmount();
+      fetchStoreSettings();
     }
   }, [store_slug, taxLoaded]);
+
+  // Check minimum order amount - WITHOUT NOTIFICATION
+  useEffect(() => {
+    if (isMounted && minOrderAmount > 0 && calculations.subtotal < minOrderAmount && !isLoadingOverall) {
+      // Only set the flag to true, no notification
+      minOrderCheckComplete.current = true;
+    } else if (isMounted && calculations.subtotal >= minOrderAmount && !isLoadingOverall) {
+      minOrderCheckComplete.current = true;
+    }
+  }, [isMounted, minOrderAmount, calculations.subtotal, isLoadingOverall]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -202,7 +230,7 @@ export default function CheckoutPage() {
         store_id: invoiceStoreData?.id || "temp-store-id",
         status: OrderStatus.PENDING,
         subtotal: calculations.subtotal,
-        tax_amount: taxAmount,
+        tax_amount: taxAmount > 0 ? taxAmount : 0,
         shipping_fee: shippingFee,
         total_amount: totalWithTax,
         currency: displayCurrencyIconSafe,
@@ -389,6 +417,14 @@ export default function CheckoutPage() {
       if (!selectedShipping)
         return notify.error("Please select a shipping method");
 
+      // Check minimum order amount WITHOUT NOTIFICATION - just validation
+      if (minOrderAmount > 0 && calculations.subtotal < minOrderAmount) {
+        const shortfall = minOrderAmount - calculations.subtotal;
+        return notify.error(
+          `Minimum order amount is ${currency || "৳"}${minOrderAmount.toFixed(2)}. Add ${currency || "৳"}${shortfall.toFixed(2)} more to proceed.`
+        );
+      }
+
       setIsProcessing(true);
       clearAccountCreationFlags();
 
@@ -453,10 +489,8 @@ export default function CheckoutPage() {
               await createCustomerProfile(existing.id, values);
             }
 
-            // Simple notification - no account creation
-            notify.info(
-              "Order placed! Use your phone number to track order status.",
-            );
+            // DO NOT show notification about account creation
+            // User will see order success message instead
           } else {
             // Guest checkout without account
             storeCustomerId = await createGuestCustomer(values, store_slug);
@@ -487,13 +521,13 @@ export default function CheckoutPage() {
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);
 
-        // Success messages
+        // Success message - show only once
         if (isUserLoggedIn) {
           notify.success("Order placed successfully!");
         } else {
           notify.success("Order placed successfully!");
 
-          // Show tracking information
+          // Show tracking information - only once
           setTimeout(() => {
             notify.info(
               `📱 Use phone number ${values.phone} to track your order status`,
@@ -516,6 +550,9 @@ export default function CheckoutPage() {
       selectedShipping,
       shippingFee,
       taxAmount,
+      minOrderAmount,
+      calculations.subtotal,
+      currency,
       notify,
       clearAccountCreationFlags,
       isUserLoggedIn,
@@ -569,6 +606,7 @@ export default function CheckoutPage() {
         selectedShipping={selectedShipping}
         shippingFee={shippingFee}
         taxAmount={taxAmount}
+        minOrderAmount={minOrderAmount}
         isProcessing={isSubmitting}
         mode="checkout"
       />
