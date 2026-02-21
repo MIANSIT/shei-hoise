@@ -310,7 +310,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col ">
           {/* Header */}
           <header
             className="flex items-center justify-between p-1 shadow-md sticky top-0 z-50"
@@ -412,7 +412,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Toaster position="top-right" />
 
-              <div className="flex justify-between items-center p-2">
+              <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -422,7 +422,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-3 " ref={mainContentRef}>
+
+              <div
+                className="flex-1 overflow-auto p-3 bg-gray-50 dark:bg-gray-950"
+                ref={mainContentRef}
+              >
                 {children}
               </div>
             </main>
