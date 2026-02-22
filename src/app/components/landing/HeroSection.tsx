@@ -12,8 +12,6 @@ import {
   BarChart3,
   DollarSign,
 } from "lucide-react";
-import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
-import Modal from "@/app/components/common/Modal";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -21,7 +19,6 @@ import { useRouter } from "next/navigation";
 const MotionButton = motion(Button);
 
 export default function HeroSection() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
 
   const fadeInUp = {
@@ -155,27 +152,6 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* MODAL */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <Modal isOpen onClose={() => setIsModalOpen(false)}>
-            <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 30, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
-            >
-              <ContactUSForm
-                source='store_setup'
-                title='Get Your Store'
-                subtitle='Use all features free for 7 days. Subscription required after trial.'
-                buttonText='Start Free Trial'
-              />
-            </motion.div>
-          </Modal>
-        )}
-      </AnimatePresence>
-
       {/* 🔥 STICKY MOBILE CTA (BEST CONVERSION) */}
       <div className='fixed bottom-0 left-0 right-0 z-50 sm:hidden'>
         <div className='bg-background border-t p-3'>
@@ -193,7 +169,7 @@ export default function HeroSection() {
               ease: "easeOut",
             }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => router.push("/onboarding")}
           >
             Start 7-Day Free Trial
           </MotionButton>
