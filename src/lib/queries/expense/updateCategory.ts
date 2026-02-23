@@ -1,10 +1,11 @@
-// /lib/queries/expense/updateCategory.ts
-
 import { supabase } from "@/lib/supabase";
-import { ExpenseCategory, UpdateCategoryInput } from "@/lib/types/expense/expense";
+import {
+  ExpenseCategory,
+  UpdateCategoryInput,
+} from "@/lib/types/expense/expense";
 
 export async function updateCategory(
-  payload: UpdateCategoryInput
+  payload: UpdateCategoryInput,
 ): Promise<ExpenseCategory> {
   const { data, error } = await supabase
     .from("expense_categories")
@@ -13,7 +14,7 @@ export async function updateCategory(
       description: payload.description,
       icon: payload.icon,
       color: payload.color,
-      is_default: payload.is_default, // <-- update is_default in DB
+      is_active: payload.is_active, // ✅ only update active status
       updated_at: new Date().toISOString(),
     })
     .eq("id", payload.id)

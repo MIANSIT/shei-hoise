@@ -1,5 +1,3 @@
-// /lib/queries/expense/getCategories.ts
-
 import { supabase } from "@/lib/supabase";
 import { ExpenseCategory } from "@/lib/types/expense/expense";
 
@@ -11,7 +9,8 @@ export async function getCategories(
   const { data, error } = await supabase
     .from("expense_categories")
     .select("*")
-    .eq("store_id", storeId)
+    .or(`store_id.eq.${storeId},is_default.eq.true`) // ✅ store match OR default
+    .order("is_default", { ascending: false })      // default first
     .order("name", { ascending: true });
 
   if (error) {
@@ -19,5 +18,5 @@ export async function getCategories(
     throw new Error(error.message);
   }
 
-  return data as ExpenseCategory[];
+  return (data || []) as ExpenseCategory[];
 }

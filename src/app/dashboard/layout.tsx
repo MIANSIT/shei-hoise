@@ -309,7 +309,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
       }}
     >
-      <AntdApp>
+      <AntdApp
+        message={{
+          top: 24,
+          duration: 2,
+          maxCount: 3,
+          rtl: false,
+          prefixCls: "ant-message",
+          getContainer: () => document.body,
+        }}
+      >
         <div className="min-h-screen flex flex-col ">
           {/* Header */}
           <header
