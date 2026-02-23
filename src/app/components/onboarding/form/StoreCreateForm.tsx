@@ -190,11 +190,11 @@ export default function StoreCreateForm({
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6 flex flex-col md:flex-col">
+    <div className='max-w-5xl mx-auto p-4 md:p-6 flex flex-col md:flex-col'>
       {/* Desktop: Top Horizontal Steps with Names */}
-      <div className="hidden md:flex mb-6 justify-between items-center">
+      <div className='hidden md:flex mb-6 justify-between items-center'>
         {steps.map((step, idx) => (
-          <div key={idx} className="flex-1 flex items-center">
+          <div key={idx} className='flex-1 flex items-center'>
             {/* Circle */}
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
@@ -202,8 +202,8 @@ export default function StoreCreateForm({
               currentStep === idx
                 ? "bg-blue-500 text-white"
                 : idx < currentStep
-                  ? "bg-blue-200 text-blue-600"
-                  : "bg-gray-200 text-gray-500"
+                ? "bg-blue-200 text-blue-600"
+                : "bg-gray-200 text-gray-500"
             }
           `}
             >
@@ -216,8 +216,8 @@ export default function StoreCreateForm({
             currentStep === idx
               ? "text-blue-500"
               : idx < currentStep
-                ? "text-blue-600"
-                : "text-gray-500"
+              ? "text-blue-600"
+              : "text-gray-500"
           }
         `}
             >
@@ -236,11 +236,12 @@ export default function StoreCreateForm({
         ))}
       </div>
 
-      <div className="flex flex-1">
+      <div className='flex flex-1 items-center'>
         {/* Mobile: Vertical Sidebar with line & numbers */}
-        <div className="flex md:hidden flex-col items-center mr-4 sticky top-4">
+        <div className='flex md:hidden flex-col items-center mr-4 top-4 h-screen'>
+          {" "}
           {steps.map((step, idx) => (
-            <div key={idx} className="flex flex-col items-center mb-4">
+            <div key={idx} className='flex flex-col items-center mb-4'>
               {/* Circle */}
               <button
                 onClick={() => handleStepClick(idx)}
@@ -249,8 +250,8 @@ export default function StoreCreateForm({
                 currentStep === idx
                   ? "bg-blue-500 text-white"
                   : idx < currentStep
-                    ? "bg-blue-200 text-blue-600"
-                    : "bg-gray-200 text-gray-500"
+                  ? "bg-blue-200 text-blue-600"
+                  : "bg-gray-200 text-gray-500"
               }
             `}
               >
@@ -270,29 +271,29 @@ export default function StoreCreateForm({
         </div>
 
         {/* Form Content */}
-        <div className="flex-1 bg-card shadow-lg rounded-xl p-6">
+        <div className='flex-1 bg-card shadow-lg rounded-xl p-6'>
           {currentContent}
 
           {/* Navigation Buttons */}
-          <div className="mt-6 flex justify-between items-center">
+          <div className='mt-6 flex justify-between items-center'>
             {!isFirst && (
-              <Button onClick={prev} type="default">
+              <Button onClick={prev} type='default'>
                 Previous
               </Button>
             )}
 
-            <div className="flex-1 flex justify-end">
+            <div className='flex-1 flex justify-end'>
               {!isLast ? (
-                <Button type="primary" onClick={handleNext} htmlType="button">
+                <Button type='primary' onClick={handleNext} htmlType='button'>
                   Next
                 </Button>
               ) : (
                 <Button
-                  type="primary"
+                  type='primary'
                   onClick={handleSubmit(onSubmitForm)}
                   loading={loading}
                   disabled={!isFinalStepValid}
-                  className="rounded-lg px-6 py-2 font-semibold transition-colors duration-200"
+                  className='rounded-lg px-6 py-2 font-semibold transition-colors duration-200'
                   style={{ backgroundColor: "var(--chart-2)", border: "none" }}
                   onMouseEnter={(e) => {
                     (

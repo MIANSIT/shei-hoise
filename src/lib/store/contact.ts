@@ -1,6 +1,6 @@
 export const CONTACT_INFO = {
-  phone: "+880 1343462556",
-  phoneHref: "tel:+8801343462556",
+  phone: "+880 1349005099",
+  phoneHref: "tel:+8801349005099",
 
   email: "sheihoise.bd@gmail.com",
   emailHref: "mailto:sheihoise.bd@gmail.com",
