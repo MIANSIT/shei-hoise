@@ -4,7 +4,7 @@ import { FC, SVGProps } from "react";
 import { Button, Tooltip, Tag } from "antd";
 import { EditOutlined, DeleteOutlined, FolderOutlined } from "@ant-design/icons";
 import * as LucideIcons from "lucide-react";
-import { ExpenseCategory } from "@/lib/types/expense/expense";
+import { ExpenseCategory } from "@/lib/types/expense/type";
 
 const toPascalCase = (str: string) =>
   str.replace(/(^\w|-\w)/g, (m) => m.replace("-", "").toUpperCase());
@@ -72,11 +72,11 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
 
         {/* Name + Description */}
         <div className="flex-1">
-          <h3 className="font-bold text-ring text-base leading-snug mb-1">
+          <h3 className="font-bold text-primary text-base leading-snug mb-1">
             {cat.name}
           </h3>
           {cat.description && (
-            <p className="text-sm text-primary leading-snug line-clamp-2">
+            <p className="text-sm text-ring leading-snug line-clamp-2">
               {cat.description}
             </p>
           )}

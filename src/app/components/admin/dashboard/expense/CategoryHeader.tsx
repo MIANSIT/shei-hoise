@@ -1,7 +1,11 @@
 "use client";
 
 import { Input, Button } from "antd";
-import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  CloseCircleFilled,
+} from "@ant-design/icons";
 
 interface CategoryHeaderProps {
   search: string;
@@ -18,7 +22,7 @@ export function CategoryHeader({
     <div className="mb-10">
       {/* Title */}
       <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ring  mb-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ring mb-1">
           Expense Management
         </p>
         <h1 className="text-4xl font-black text-primary tracking-tight leading-none">
@@ -31,6 +35,14 @@ export function CategoryHeader({
         <div className="relative flex-1 max-w-sm">
           <Input
             prefix={<SearchOutlined className="text-ring" />}
+            suffix={
+              search ? (
+                <CloseCircleFilled
+                  onClick={() => onSearchChange("")}
+                  className="text-ring cursor-pointer hover:text-primary transition-colors"
+                />
+              ) : null
+            }
             placeholder="Search categories..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}

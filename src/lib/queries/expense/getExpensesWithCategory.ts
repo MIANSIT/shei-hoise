@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { Expense } from "@/lib/types/expense/expense";
+import { Expense } from "@/lib/types/expense/type";
 
 export async function getExpensesWithCategory(
   storeId: string

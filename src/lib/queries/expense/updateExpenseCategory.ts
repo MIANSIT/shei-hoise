@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import {
   ExpenseCategory,
   UpdateCategoryInput,
-} from "@/lib/types/expense/expense";
+} from "@/lib/types/expense/type";
 
 export async function updateCategory(
   payload: UpdateCategoryInput,

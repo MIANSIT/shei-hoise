@@ -9,7 +9,7 @@ import {
   Select,
   DatePicker,
   Space,
-  Statistic,
+  // Statistic,
   Empty,
   Tooltip,
   Dropdown,
@@ -34,7 +34,7 @@ import {
 } from "@ant-design/icons";
 import { getExpensesWithCategory } from "@/lib/queries/expense/getExpensesWithCategory";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import { Expense } from "@/lib/types/expense/expense";
+import { Expense } from "@/lib/types/expense/type";
 import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 
@@ -236,7 +236,7 @@ export default function ExpensesPage() {
       render: (notes) =>
         notes ? (
           <Tooltip title={notes}>
-            <span className="text-gray-500 text-xs truncate max-w-[120px] block cursor-pointer hover:text-indigo-600 transition-colors">
+            <span className="text-gray-500 text-xs truncate max-w-30 block cursor-pointer hover:text-indigo-600 transition-colors">
               {notes}
             </span>
           </Tooltip>

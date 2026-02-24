@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { Modal, Form, Input, Switch } from "antd";
-import { ExpenseCategory } from "@/lib/types/expense/expense";
+import { ExpenseCategory } from "@/lib/types/expense/type";
 
 interface FormValues {
   name: string;

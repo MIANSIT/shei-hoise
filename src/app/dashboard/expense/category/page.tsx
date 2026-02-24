@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Spin } from "antd";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Spin, Pagination } from "antd";
 
-import { ExpenseCategory } from "@/lib/types/expense/expense";
-import { getCategories } from "@/lib/queries/expense/getCategories";
-import { createCategory } from "@/lib/queries/expense/createCategory";
-import { updateCategory } from "@/lib/queries/expense/updateCategory";
-import { deleteCategory } from "@/lib/queries/expense/deleteCategory";
+import { ExpenseCategory } from "@/lib/types/expense/type";
+import { getExpenseCategories } from "@/lib/queries/expense/getExpenseCategories";
+import { createCategory } from "@/lib/queries/expense/createExpenseCategory";
+import { updateCategory } from "@/lib/queries/expense/updateExpenseCategory";
+import { deleteCategory } from "@/lib/queries/expense/deleteExpenseCategory";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
@@ -22,8 +22,18 @@ export default function CategoriesPage() {
 
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paginationLoading, setPaginationLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Use a "committed" search value that only updates after debounce
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] =
@@ -34,20 +44,104 @@ export default function CategoriesPage() {
   );
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  // ─── API Calls ────────────────────────────────────────────────────────────
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const isFetchingRef = useRef(false);
 
-  const fetchCategories = useCallback(async () => {
-    if (!storeId) return;
-    try {
-      setLoading(true);
-      const data = await getCategories(storeId);
-      setCategories(data || []);
-    } catch (err) {
-      error(err instanceof Error ? err.message : "Failed to fetch categories");
-    } finally {
-      setLoading(false);
+  // ─── Core fetch: depends on committed state values ────────────────────────
+
+  const fetchCategories = useCallback(
+    async (opts?: { page?: number; size?: number; query?: string }) => {
+      if (!storeId) return;
+      if (isFetchingRef.current) return;
+
+      const page = opts?.page ?? currentPage;
+      const size = opts?.size ?? pageSize;
+      const query = opts?.query ?? search;
+
+      try {
+        isFetchingRef.current = true;
+
+        if (page === 1 && !query) {
+          setLoading(true);
+        } else {
+          setPaginationLoading(true);
+        }
+
+        const response = await getExpenseCategories({
+          storeId,
+          page,
+          pageSize: size,
+          search: query || undefined,
+        });
+
+        setCategories(response.data || []);
+        setTotalItems(response.total);
+        setTotalPages(response.totalPages);
+      } catch (err) {
+        error(
+          err instanceof Error ? err.message : "Failed to fetch categories",
+        );
+      } finally {
+        setLoading(false);
+        setPaginationLoading(false);
+        isFetchingRef.current = false;
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [storeId], // intentionally minimal — we pass overrides explicitly
+  );
+
+  // Initial fetch
+  useEffect(() => {
+    if (storeId) {
+      fetchCategories({ page: 1, size: pageSize, query: "" });
     }
-  }, [storeId, error]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId]);
+
+  // ─── Search: debounce input → commit to `search` → fetch ─────────────────
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      // Commit the search value, then reset page
+      setSearch(value);
+      setCurrentPage(1);
+    }, 300);
+  }, []);
+
+  // Whenever committed `search` or `currentPage` or `pageSize` changes, re-fetch
+  useEffect(() => {
+    if (!storeId) return;
+    fetchCategories({ page: currentPage, size: pageSize, query: search });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, currentPage, pageSize, storeId]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
+
+  // ─── Pagination ───────────────────────────────────────────────────────────
+
+  const handlePageChange = (page: number, newPageSize?: number) => {
+    if (newPageSize && newPageSize !== pageSize) {
+      setPageSize(newPageSize);
+      setCurrentPage(1);
+    } else {
+      setCurrentPage(page);
+    }
+    // The useEffect above will trigger the fetch automatically
+  };
+
+  // ─── CRUD Handlers ────────────────────────────────────────────────────────
 
   const handleCreate = async (values: {
     name: string;
@@ -55,6 +149,7 @@ export default function CategoriesPage() {
     is_active?: boolean;
   }) => {
     if (!storeId) return error("Store ID not found.");
+
     try {
       setSaving(true);
       await createCategory({
@@ -65,9 +160,11 @@ export default function CategoriesPage() {
         color: undefined,
         is_active: values.is_active ?? true,
       });
+
       success("Category created successfully");
       setIsFormModalOpen(false);
-      await fetchCategories();
+      setCurrentPage(1);
+      await fetchCategories({ page: 1, size: pageSize, query: search });
     } catch (err) {
       error(err instanceof Error ? err.message : "Failed to create category");
     } finally {
@@ -81,6 +178,7 @@ export default function CategoriesPage() {
     is_active?: boolean;
   }) => {
     if (!storeId || !editingCategory) return;
+
     try {
       setSaving(true);
       await updateCategory({
@@ -91,9 +189,14 @@ export default function CategoriesPage() {
         color: undefined,
         is_active: values.is_active ?? true,
       });
+
       success("Category updated successfully");
       setIsFormModalOpen(false);
-      await fetchCategories();
+      await fetchCategories({
+        page: currentPage,
+        size: pageSize,
+        query: search,
+      });
     } catch (err) {
       error(err instanceof Error ? err.message : "Failed to update category");
     } finally {
@@ -103,10 +206,18 @@ export default function CategoriesPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+
     try {
       await deleteCategory(deleteTarget.id);
-      setCategories((prev) => prev.filter((c) => c.id !== deleteTarget.id));
       success("Category deleted");
+
+      const nextPage =
+        categories.length === 1 && currentPage > 1
+          ? currentPage - 1
+          : currentPage;
+
+      setCurrentPage(nextPage);
+      await fetchCategories({ page: nextPage, size: pageSize, query: search });
     } catch (err) {
       error(err instanceof Error ? err.message : "Failed to delete category");
     } finally {
@@ -114,12 +225,6 @@ export default function CategoriesPage() {
       setDeleteTarget(null);
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
-
-  // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const openCreate = () => {
     setEditingCategory(null);
@@ -148,49 +253,71 @@ export default function CategoriesPage() {
     }
   };
 
-  // ─── Filtered List ────────────────────────────────────────────────────────
+  const handleModalClose = () => {
+    setIsFormModalOpen(false);
+    setEditingCategory(null);
+  };
 
-  const filtered = categories.filter(
-    (c) =>
-      !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.description?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const handleDeleteModalClose = () => {
+    setDeleteModalOpen(false);
+    setDeleteTarget(null);
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  const showLoading = loading || userLoading;
 
   return (
     <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <CategoryHeader
-        search={search}
-        onSearchChange={setSearch}
+        search={searchInput} // ← display value (immediate)
+        onSearchChange={handleSearchChange}
         onNewCategory={openCreate}
       />
 
-      {loading || userLoading ? (
+      {showLoading ? (
         <div className="flex justify-center mt-32">
           <Spin size="large" />
         </div>
       ) : (
-        <CategoryGrid
-          categories={filtered}
-          onEdit={openEdit}
-          onDelete={openDelete}
-        />
+        <>
+          <CategoryGrid
+            categories={categories}
+            search={search} // ← committed search for empty-state message
+            onEdit={openEdit}
+            onDelete={openDelete}
+          />
+
+          {categories.length > 0 && totalPages > 0 && (
+            <div className="mt-8 flex justify-center">
+              <Pagination
+                current={currentPage}
+                total={totalItems}
+                pageSize={pageSize}
+                onChange={handlePageChange}
+                showSizeChanger
+                showQuickJumper
+                showTotal={(total) => `Total ${total} categories`}
+                pageSizeOptions={["8", "12", "24", "48"]}
+                disabled={paginationLoading}
+              />
+            </div>
+          )}
+        </>
       )}
 
       <CategoryFormModal
         open={isFormModalOpen}
         saving={saving}
         editingCategory={editingCategory}
-        onClose={() => setIsFormModalOpen(false)}
+        onClose={handleModalClose}
         onSubmit={handleFormSubmit}
       />
 
       <DeleteConfirmModal
         open={deleteModalOpen}
         target={deleteTarget}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={handleDeleteModalClose}
         onConfirm={handleDelete}
       />
     </div>

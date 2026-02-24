@@ -2,7 +2,7 @@
 
 import { Modal } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
-import { ExpenseCategory } from "@/lib/types/expense/expense";
+import { ExpenseCategory } from "@/lib/types/expense/type";
 
 interface DeleteConfirmModalProps {
   open: boolean;
