@@ -146,6 +146,8 @@ export default function CategoriesPage() {
   const handleCreate = async (values: {
     name: string;
     description?: string;
+    icon?: string;
+    color?: string;
     is_active?: boolean;
   }) => {
     if (!storeId) return error("Store ID not found.");
@@ -156,8 +158,8 @@ export default function CategoriesPage() {
         store_id: storeId,
         name: values.name.trim(),
         description: values.description?.trim(),
-        icon: undefined,
-        color: undefined,
+        icon: values.icon,
+        color: values.color,
         is_active: values.is_active ?? true,
       });
 
@@ -175,6 +177,8 @@ export default function CategoriesPage() {
   const handleUpdate = async (values: {
     name: string;
     description?: string;
+    icon?: string;
+    color?: string;
     is_active?: boolean;
   }) => {
     if (!storeId || !editingCategory) return;
@@ -185,8 +189,8 @@ export default function CategoriesPage() {
         id: editingCategory.id,
         name: values.name.trim(),
         description: values.description?.trim(),
-        icon: undefined,
-        color: undefined,
+        icon: values.icon,
+        color: values.color,
         is_active: values.is_active ?? true,
       });
 
@@ -244,6 +248,8 @@ export default function CategoriesPage() {
   const handleFormSubmit = (values: {
     name: string;
     description?: string;
+    icon?: string;
+    color?: string;
     is_active?: boolean;
   }) => {
     if (editingCategory) {

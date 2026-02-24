@@ -2,7 +2,11 @@
 
 import { FC, SVGProps } from "react";
 import { Button, Tooltip, Tag } from "antd";
-import { EditOutlined, DeleteOutlined, FolderOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  FolderOutlined,
+} from "@ant-design/icons";
 import * as LucideIcons from "lucide-react";
 import { ExpenseCategory } from "@/lib/types/expense/type";
 
@@ -19,8 +23,12 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
   const iconName = cat.icon ? toPascalCase(cat.icon) : "";
   const DynamicIcon =
     iconName &&
-    (LucideIcons as unknown as Record<string, FC<SVGProps<SVGSVGElement>>>)[iconName]
-      ? (LucideIcons as unknown as Record<string, FC<SVGProps<SVGSVGElement>>>)[iconName]
+    (LucideIcons as unknown as Record<string, FC<SVGProps<SVGSVGElement>>>)[
+      iconName
+    ]
+      ? (LucideIcons as unknown as Record<string, FC<SVGProps<SVGSVGElement>>>)[
+          iconName
+        ]
       : null;
 
   const accentColor = cat.color || "#1a1a1a";
@@ -84,7 +92,7 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
 
         {/* Actions */}
         {!cat.is_default && (
-          <div className="mt-4 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="mt-4 flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
             <Tooltip title="Edit">
               <Button
                 size="small"

@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Form, Input, Switch } from "antd";
 import { ExpenseCategory } from "@/lib/types/expense/type";
+import { ColorPicker, DEFAULT_COLOR } from "@/app/components/admin/dashboard/expense/iconForm/ColorPicker";
+import { IconPicker } from "@/app/components/admin/dashboard/expense/iconForm/IconPicker";
+import { CategoryPreview } from "@/app/components/admin/dashboard/expense/iconForm/CategoryPreview";
 
 interface FormValues {
   name: string;
   description?: string;
   is_active?: boolean;
+  icon?: string;
+  color?: string;
 }
 
 interface CategoryFormModalProps {
@@ -26,31 +31,32 @@ export function CategoryFormModal({
   onSubmit,
 }: CategoryFormModalProps) {
   const [form] = Form.useForm<FormValues>();
+  const [preview, setPreview] = useState<FormValues>({
+    name: "",
+    is_active: true,
+    color: DEFAULT_COLOR,
+  });
 
   useEffect(() => {
-    if (open) {
-      if (editingCategory) {
-        form.setFieldsValue({
-          name: editingCategory.name,
-          description: editingCategory.description,
-          is_active: editingCategory.is_active,
-        });
-      } else {
-        form.resetFields();
-        form.setFieldsValue({ is_active: true });
-      }
+    if (!open) return;
+    if (editingCategory) {
+      const vals: FormValues = {
+        name: editingCategory.name,
+        description: editingCategory.description,
+        is_active: editingCategory.is_active,
+        icon: editingCategory.icon ?? undefined,
+        color: editingCategory.color ?? DEFAULT_COLOR,
+      };
+      form.setFieldsValue(vals);
+      setPreview(vals);
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ is_active: true, color: DEFAULT_COLOR });
+      setPreview({ name: "", is_active: true, color: DEFAULT_COLOR });
     }
   }, [open, editingCategory, form]);
 
-  const handleOk = async () => {
-    const values = await form.validateFields();
-    onSubmit(values);
-  };
-
-  const handleClose = () => {
-    form.resetFields();
-    onClose();
-  };
+  const accentColor = preview.color || DEFAULT_COLOR;
 
   return (
     <Modal
@@ -60,14 +66,36 @@ export function CategoryFormModal({
         </span>
       }
       open={open}
-      onCancel={handleClose}
-      onOk={handleOk}
+      onCancel={() => {
+        form.resetFields();
+        onClose();
+      }}
+      onOk={async () => {
+        const v = await form.validateFields();
+        onSubmit(v);
+      }}
       confirmLoading={saving}
       okText={editingCategory ? "Save Changes" : "Create"}
       centered
       className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-7 [&_.ant-modal-header]:border-b [&_.ant-modal-header]:border-ring [&_.ant-modal-header]:pb-3 [&_.ant-modal-header]:mb-5 [&_.ant-modal-footer]:border-t [&_.ant-modal-footer]:border-ring [&_.ant-modal-footer]:pt-4 [&_.ant-modal-footer]:mt-2"
     >
-      <Form form={form} layout="vertical" style={{ fontFamily: "inherit" }}>
+      <Form
+        form={form}
+        layout="vertical"
+        style={{ fontFamily: "inherit" }}
+        onValuesChange={(_, all) => setPreview(all)}
+      >
+        {/* Live Preview */}
+        <div className="mb-5">
+          <CategoryPreview
+            name={preview.name ?? ""}
+            description={preview.description}
+            icon={preview.icon}
+            isActive={preview.is_active ?? true}
+            color={accentColor}
+          />
+        </div>
+
         <Form.Item
           name="name"
           label={
@@ -78,9 +106,9 @@ export function CategoryFormModal({
           rules={[{ required: true, message: "Category name is required" }]}
         >
           <Input
-            placeholder="e.g. Marketing, Operations..."
+            placeholder="e.g. Marketing, Operations…"
             className="rounded-xl"
-            style={{ height: "40px" }}
+            style={{ height: 44 }}
           />
         </Form.Item>
 
@@ -93,11 +121,29 @@ export function CategoryFormModal({
           }
         >
           <Input.TextArea
-            rows={3}
+            rows={2}
             placeholder="Optional — describe what expenses belong here"
             className="rounded-xl"
             style={{ resize: "none" }}
           />
+        </Form.Item>
+
+        <Form.Item
+          name="color"
+          label={
+            <span className="text-sm font-semibold text-primary">Color</span>
+          }
+        >
+          <ColorPicker />
+        </Form.Item>
+
+        <Form.Item
+          name="icon"
+          label={
+            <span className="text-sm font-semibold text-primary">Icon</span>
+          }
+        >
+          <IconPicker accentColor={accentColor} />
         </Form.Item>
 
         <Form.Item
@@ -106,6 +152,7 @@ export function CategoryFormModal({
             <span className="text-sm font-semibold text-primary">Active</span>
           }
           valuePropName="checked"
+          style={{ marginBottom: 0 }}
         >
           <Switch />
         </Form.Item>
