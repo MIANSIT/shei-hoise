@@ -4,17 +4,17 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Spin, Pagination } from "antd";
 
 import { ExpenseCategory } from "@/lib/types/expense/type";
-import { getExpenseCategories } from "@/lib/queries/expense/getExpenseCategories";
-import { createCategory } from "@/lib/queries/expense/createExpenseCategory";
-import { updateCategory } from "@/lib/queries/expense/updateExpenseCategory";
-import { deleteCategory } from "@/lib/queries/expense/deleteExpenseCategory";
+import { getExpenseCategories } from "@/lib/queries/expense/category/getExpenseCategories";
+import { createCategory } from "@/lib/queries/expense/category/createExpenseCategory";
+import { updateCategory } from "@/lib/queries/expense/category/updateExpenseCategory";
+import { deleteCategory } from "@/lib/queries/expense/category/deleteExpenseCategory";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
-import { CategoryHeader } from "@/app/components/admin/dashboard/expense/CategoryHeader";
-import { CategoryGrid } from "@/app/components/admin/dashboard/expense/CategoryGrid";
-import { CategoryFormModal } from "@/app/components/admin/dashboard/expense/CategoryFormModal";
-import { DeleteConfirmModal } from "@/app/components/admin/dashboard/expense/DeleteConfirmModal";
+import { CategoryHeader } from "@/app/components/admin/dashboard/expense/category/CategoryHeader";
+import { CategoryGrid } from "@/app/components/admin/dashboard/expense/category/CategoryGrid";
+import { CategoryFormModal } from "@/app/components/admin/dashboard/expense/category/CategoryFormModal";
+import { DeleteConfirmModal } from "@/app/components/admin/dashboard/expense/category/DeleteConfirmModal";
 
 export default function CategoriesPage() {
   const { success, error } = useSheiNotification();

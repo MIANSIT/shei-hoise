@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Modal, Form, Input, Switch } from "antd";
 import { ExpenseCategory } from "@/lib/types/expense/type";
-import { ColorPicker, DEFAULT_COLOR } from "@/app/components/admin/dashboard/expense/iconForm/ColorPicker";
-import { IconPicker } from "@/app/components/admin/dashboard/expense/iconForm/IconPicker";
-import { CategoryPreview } from "@/app/components/admin/dashboard/expense/iconForm/CategoryPreview";
+import { ColorPicker, DEFAULT_COLOR } from "@/app/components/admin/dashboard/expense/category/iconForm/ColorPicker";
+import { IconPicker } from "@/app/components/admin/dashboard/expense/category/iconForm/IconPicker";
+import { CategoryPreview } from "@/app/components/admin/dashboard/expense/category/iconForm/CategoryPreview";
 
 interface FormValues {
   name: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { ExpenseCategory } from "@/lib/types/expense/type";
-import { CategoryCard } from "./CategoryCard";
+import { CategoryCard } from "@/app/components/admin/dashboard/expense/category/CategoryCard";
 
 interface CategoryGridProps {
   categories: ExpenseCategory[];
