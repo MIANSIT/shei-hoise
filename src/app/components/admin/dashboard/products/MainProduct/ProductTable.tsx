@@ -156,7 +156,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               color="blue"
               className="rounded-lg px-2 py-0.5 text-xs font-medium"
             >
-              {vars[0].variant_name ?? "Unnamed"}: $
+              {vars[0].variant_name ?? "Unnamed"}: {displayCurrencyIconSafe}
               {vars[0].base_price ?? "N/A"}
             </Tag>
             {vars.length > 1 && (
@@ -320,7 +320,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
                             color="blue"
                             className="rounded-lg px-2 py-0.5 text-xs font-medium"
                           >
-                            {variants[0].variant_name ?? "Unnamed"}: $
+                            {variants[0].variant_name ?? "Unnamed"}:{" "}
+                            {displayCurrencyIconSafe}
                             {variants[0].base_price ?? "N/A"}
                           </Tag>
                           {variants.length > 1 && (
