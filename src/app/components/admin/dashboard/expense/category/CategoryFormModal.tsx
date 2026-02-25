@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal, Form, Input, Switch } from "antd";
+import { Modal, Form, Input, Switch, Button } from "antd";
+import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { ExpenseCategory } from "@/lib/types/expense/type";
-import { ColorPicker, DEFAULT_COLOR } from "@/app/components/admin/dashboard/expense/category/iconForm/ColorPicker";
+import {
+  ColorPicker,
+  DEFAULT_COLOR,
+} from "@/app/components/admin/dashboard/expense/category/iconForm/ColorPicker";
 import { IconPicker } from "@/app/components/admin/dashboard/expense/category/iconForm/IconPicker";
 import { CategoryPreview } from "@/app/components/admin/dashboard/expense/category/iconForm/CategoryPreview";
 
@@ -58,105 +62,152 @@ export function CategoryFormModal({
 
   const accentColor = preview.color || DEFAULT_COLOR;
 
+  const handleCancel = () => {
+    form.resetFields();
+    onClose();
+  };
+
+  const handleOk = async () => {
+    const v = await form.validateFields();
+    onSubmit(v);
+  };
+
   return (
     <Modal
-      title={
-        <span className="text-base font-bold text-ring">
-          {editingCategory ? "Edit Category" : "New Category"}
-        </span>
-      }
       open={open}
-      onCancel={() => {
-        form.resetFields();
-        onClose();
-      }}
-      onOk={async () => {
-        const v = await form.validateFields();
-        onSubmit(v);
-      }}
-      confirmLoading={saving}
-      okText={editingCategory ? "Save Changes" : "Create"}
-      centered
-      className="[&_.ant-modal-content]:rounded-2xl [&_.ant-modal-content]:p-7 [&_.ant-modal-header]:border-b [&_.ant-modal-header]:border-ring [&_.ant-modal-header]:pb-3 [&_.ant-modal-header]:mb-5 [&_.ant-modal-footer]:border-t [&_.ant-modal-footer]:border-ring [&_.ant-modal-footer]:pt-4 [&_.ant-modal-footer]:mt-2"
-    >
-      <Form
-        form={form}
-        layout="vertical"
-        style={{ fontFamily: "inherit" }}
-        onValuesChange={(_, all) => setPreview(all)}
-      >
-        {/* Live Preview */}
-        <div className="mb-5">
-          <CategoryPreview
-            name={preview.name ?? ""}
-            description={preview.description}
-            icon={preview.icon}
-            isActive={preview.is_active ?? true}
-            color={accentColor}
-          />
+      onCancel={handleCancel}
+      width={520}
+      maskClosable={!saving}
+      closable={!saving}
+      styles={{ body: { padding: 0 } }}
+      className="expense-modal"
+      style={{ borderRadius: 20, overflow: "hidden" }}
+      title={
+        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-700">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}
+          >
+            {editingCategory ? (
+              <EditOutlined style={{ color: "white", fontSize: 14 }} />
+            ) : (
+              <PlusOutlined style={{ color: "white", fontSize: 14 }} />
+            )}
+          </div>
+          <span className="text-base font-bold text-gray-900 dark:text-white">
+            {editingCategory ? "Edit Category" : "New Category"}
+          </span>
         </div>
-
-        <Form.Item
-          name="name"
-          label={
-            <span className="text-sm font-semibold text-primary">
-              Category Name
-            </span>
-          }
-          rules={[{ required: true, message: "Category name is required" }]}
+      }
+      footer={
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+          <Button
+            className="rounded-xl h-9 font-medium"
+            onClick={handleCancel}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            loading={saving}
+            onClick={handleOk}
+            className="rounded-xl h-9 font-semibold border-none"
+            style={{
+              background: "linear-gradient(135deg, #667eea, #764ba2)",
+              boxShadow: "0 4px 14px rgba(102,126,234,0.4)",
+            }}
+          >
+            {editingCategory ? "Save Changes" : "Create"}
+          </Button>
+        </div>
+      }
+    >
+      <div className="px-6 py-4">
+        <Form
+          form={form}
+          layout="vertical"
+          onValuesChange={(_, all) => setPreview(all)}
         >
-          <Input
-            placeholder="e.g. Marketing, Operations…"
-            className="rounded-xl"
-            style={{ height: 44 }}
-          />
-        </Form.Item>
+          {/* Live Preview */}
+          <div className="mb-5">
+            <CategoryPreview
+              name={preview.name ?? ""}
+              description={preview.description}
+              icon={preview.icon}
+              isActive={preview.is_active ?? true}
+              color={accentColor}
+            />
+          </div>
 
-        <Form.Item
-          name="description"
-          label={
-            <span className="text-sm font-semibold text-primary">
-              Description
-            </span>
-          }
-        >
-          <Input.TextArea
-            rows={2}
-            placeholder="Optional — describe what expenses belong here"
-            className="rounded-xl"
-            style={{ resize: "none" }}
-          />
-        </Form.Item>
+          <Form.Item
+            name="name"
+            label={
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Category Name
+              </span>
+            }
+            rules={[{ required: true, message: "Category name is required" }]}
+          >
+            <Input
+              placeholder="e.g. Marketing, Operations…"
+              className="rounded-xl"
+              style={{ height: 44 }}
+            />
+          </Form.Item>
 
-        <Form.Item
-          name="color"
-          label={
-            <span className="text-sm font-semibold text-primary">Color</span>
-          }
-        >
-          <ColorPicker />
-        </Form.Item>
+          <Form.Item
+            name="description"
+            label={
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Description
+              </span>
+            }
+          >
+            <Input.TextArea
+              rows={2}
+              placeholder="Optional — describe what expenses belong here"
+              className="rounded-xl"
+              style={{ resize: "none" }}
+            />
+          </Form.Item>
 
-        <Form.Item
-          name="icon"
-          label={
-            <span className="text-sm font-semibold text-primary">Icon</span>
-          }
-        >
-          <IconPicker accentColor={accentColor} />
-        </Form.Item>
+          <Form.Item
+            name="color"
+            label={
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Color
+              </span>
+            }
+          >
+            <ColorPicker />
+          </Form.Item>
 
-        <Form.Item
-          name="is_active"
-          label={
-            <span className="text-sm font-semibold text-primary">Active</span>
-          }
-          valuePropName="checked"
-          style={{ marginBottom: 0 }}
-        >
-          <Switch />
-        </Form.Item>
-      </Form>
+          <Form.Item
+            name="icon"
+            label={
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Icon
+              </span>
+            }
+          >
+            <IconPicker accentColor={accentColor} />
+          </Form.Item>
+
+          <Form.Item
+            name="is_active"
+            label={
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Active
+              </span>
+            }
+            valuePropName="checked"
+            style={{ marginBottom: 0 }}
+          >
+            <Switch />
+          </Form.Item>
+        </Form>
+      </div>
     </Modal>
   );
 }

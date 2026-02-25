@@ -19,6 +19,13 @@ interface CategoryCardProps {
   onDelete: (cat: ExpenseCategory) => void;
 }
 
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+    : "102, 126, 234";
+}
+
 export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
   const iconName = cat.icon ? toPascalCase(cat.icon) : "";
   const DynamicIcon =
@@ -31,13 +38,18 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
         ]
       : null;
 
-  const accentColor = cat.color || "#1a1a1a";
+  const accentColor = cat.color || "#667eea";
+  const rgb = hexToRgb(accentColor);
 
   return (
     <div
-      className={`group relative bg-background rounded-2xl border border-ring shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col ${
+      className={`group relative rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col ${
         !cat.is_active ? "opacity-60" : ""
       }`}
+      style={{
+        background: `linear-gradient(145deg, rgba(${rgb}, 0.08) 0%, rgba(${rgb}, 0.03) 100%)`,
+        border: `1.5px solid rgba(${rgb}, 0.25)`,
+      }}
     >
       {/* Top accent bar */}
       <div className="h-1 w-full" style={{ background: accentColor }} />
@@ -46,13 +58,16 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
         {/* Icon + Status */}
         <div className="flex items-start justify-between mb-4">
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-primary text-lg shadow-sm"
-            style={{ background: accentColor }}
+            className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm"
+            style={{
+              background: `linear-gradient(135deg, rgba(${rgb}, 0.2), rgba(${rgb}, 0.35))`,
+              border: `1.5px solid rgba(${rgb}, 0.3)`,
+            }}
           >
             {DynamicIcon ? (
-              <DynamicIcon className="w-5 h-5" style={{ color: "white" }} />
+              <DynamicIcon className="w-5 h-5" style={{ color: accentColor }} />
             ) : (
-              <FolderOutlined style={{ color: "white" }} />
+              <FolderOutlined style={{ color: accentColor, fontSize: 18 }} />
             )}
           </div>
 
@@ -80,11 +95,11 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
 
         {/* Name + Description */}
         <div className="flex-1">
-          <h3 className="font-bold text-primary text-base leading-snug mb-1">
+          <h3 className="font-bold text-gray-900 dark:text-white text-base leading-snug mb-1">
             {cat.name}
           </h3>
           {cat.description && (
-            <p className="text-sm text-ring leading-snug line-clamp-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">
               {cat.description}
             </p>
           )}
@@ -98,7 +113,11 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
                 size="small"
                 icon={<EditOutlined />}
                 onClick={() => onEdit(cat)}
-                className="rounded-lg border-ring text-ring hover:text-primary"
+                className="rounded-lg"
+                style={{
+                  borderColor: `rgba(${rgb}, 0.4)`,
+                  color: accentColor,
+                }}
               />
             </Tooltip>
             <Tooltip title="Delete">
