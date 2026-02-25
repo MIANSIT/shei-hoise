@@ -1,9 +1,22 @@
 import type { Expense } from "@/lib/types/expense/type";
 import dayjs from "dayjs";
+import { CURRENCY_ICONS } from "@/lib/types/enums";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ExportFormat = "csv" | "xlsx" | "pdf";
+
+// ─── PDF currency fallback ────────────────────────────────────────────────────
+// jsPDF's built-in helvetica font doesn't support Unicode symbols like ৳, ¥, €
+// Invert CURRENCY_ICONS to map symbol → code: { "৳": "BDT", ... }
+
+const SYMBOL_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(CURRENCY_ICONS).map(([code, symbol]) => [symbol, code]),
+);
+
+function toPdfCurrency(symbol: string): string {
+  return SYMBOL_TO_CODE[symbol] ?? symbol;
+}
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -29,26 +42,33 @@ function getRows(expenses: Expense[]): string[][] {
   ]);
 }
 
-const HEADERS = [
-  "Title",
-  "Category",
-  "Amount ($)",
-  "Date",
-  "Payment Method",
-  "Vendor",
-  "Platform",
-  "Description",
-  "Notes",
-];
+function getHeaders(currencySymbol: string): string[] {
+  return [
+    "Title",
+    "Category",
+    `Amount (${currencySymbol})`,
+    "Date",
+    "Payment Method",
+    "Vendor",
+    "Platform",
+    "Description",
+    "Notes",
+  ];
+}
 
 // ─── CSV ──────────────────────────────────────────────────────────────────────
 
-export function exportCSV(expenses: Expense[], filename = "expenses"): void {
+export function exportCSV(
+  expenses: Expense[],
+  filename = "expenses",
+  currencySymbol = "৳",
+): void {
   const escape = (v: string) =>
     `"${v.replace(/"/g, '""').replace(/\n/g, " ")}"`;
 
+  const headers = getHeaders(currencySymbol);
   const lines = [
-    HEADERS.map(escape).join(","),
+    headers.map(escape).join(","),
     ...getRows(expenses).map((row) => row.map(escape).join(",")),
   ];
 
@@ -63,35 +83,33 @@ export function exportCSV(expenses: Expense[], filename = "expenses"): void {
 export async function exportXLSX(
   expenses: Expense[],
   filename = "expenses",
+  currencySymbol = "৳",
 ): Promise<void> {
-  // Dynamically import SheetJS so it doesn't bloat the initial bundle
   const XLSX = await import("xlsx");
 
+  const headers = getHeaders(currencySymbol);
   const rows = getRows(expenses);
-
-  // Summary totals row
   const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const wsData = [
-    HEADERS,
+    headers,
     ...rows,
-    [], // blank separator
-    ["", "", `Total: $${total.toFixed(2)}`],
+    [],
+    ["", "", `Total: ${currencySymbol} ${total.toFixed(2)}`],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // Column widths
   ws["!cols"] = [
-    { wch: 28 }, // Title
-    { wch: 18 }, // Category
-    { wch: 14 }, // Amount
-    { wch: 14 }, // Date
-    { wch: 16 }, // Payment
-    { wch: 22 }, // Vendor
-    { wch: 16 }, // Platform
-    { wch: 30 }, // Description
-    { wch: 30 }, // Notes
+    { wch: 28 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 22 },
+    { wch: 16 },
+    { wch: 30 },
+    { wch: 30 },
   ];
 
   const wb = XLSX.utils.book_new();
@@ -105,14 +123,17 @@ export async function exportXLSX(
 export async function exportPDF(
   expenses: Expense[],
   filename = "expenses",
+  currencySymbol = "৳",
 ): Promise<void> {
-  // Dynamically import jsPDF + autoTable
   const { default: jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
 
+  // Convert Unicode symbol → ASCII code for PDF font compatibility
+  // e.g. "৳" → "BDT"
+  const pdfCurrency = toPdfCurrency(currencySymbol);
+
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-  // Header bar
   doc.setFillColor(102, 126, 234);
   doc.rect(0, 0, 297, 18, "F");
   doc.setTextColor(255, 255, 255);
@@ -120,21 +141,31 @@ export async function exportPDF(
   doc.setFont("helvetica", "bold");
   doc.text("Expense Report", 14, 12);
 
-  // Sub-header: date range
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   const subtitle = `Exported ${dayjs().format("MMM D, YYYY")}  ·  ${expenses.length} record${expenses.length !== 1 ? "s" : ""}`;
   doc.text(subtitle, 14, 17.5);
 
+  const headers = getHeaders(pdfCurrency); // "Amount (BDT)"
   const rows = getRows(expenses);
   const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   autoTable(doc, {
     startY: 22,
-    head: [HEADERS],
+    head: [headers],
     body: [
       ...rows,
-      ["", "", `$${total.toFixed(2)}`, "", "", "", "", "TOTAL", ""],
+      [
+        "",
+        "",
+        `${pdfCurrency} ${total.toFixed(2)}`, // "BDT 47.00"
+        "",
+        "",
+        "",
+        "",
+        "TOTAL",
+        "",
+      ],
     ],
     styles: {
       font: "helvetica",
@@ -150,9 +181,8 @@ export async function exportPDF(
     },
     alternateRowStyles: { fillColor: [248, 249, 252] },
     columnStyles: {
-      2: { halign: "right" }, // Amount
+      2: { halign: "right" },
     },
-    // Highlight total row
     didParseCell(data) {
       if (data.row.index === rows.length) {
         data.cell.styles.fontStyle = "bold";
@@ -172,11 +202,10 @@ export async function exportExpenses(
   format: ExportFormat,
   expenses: Expense[],
   storeSlug?: string,
+  currencySymbol = "৳",
 ): Promise<void> {
   const stamp = dayjs().format("YYYY-MM-DD");
 
-  // Sanitize slug from useCurrentUser (stores.store_slug)
-  // Produces: "my-store-expenses-2025-02-26" or "expenses-2025-02-26"
   const safeSlug = storeSlug
     ? storeSlug
         .toLowerCase()
@@ -189,13 +218,13 @@ export async function exportExpenses(
 
   switch (format) {
     case "csv":
-      exportCSV(expenses, name);
+      exportCSV(expenses, name, currencySymbol);
       break;
     case "xlsx":
-      await exportXLSX(expenses, name);
+      await exportXLSX(expenses, name, currencySymbol);
       break;
     case "pdf":
-      await exportPDF(expenses, name);
+      await exportPDF(expenses, name, currencySymbol);
       break;
   }
 }
@@ -211,6 +240,5 @@ function triggerDownload(blob: Blob, filename: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  // Revoke after a short delay to ensure download starts
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

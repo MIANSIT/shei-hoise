@@ -11,6 +11,7 @@ import {
   type ExportFormat,
 } from "@/lib/types/expense/exportExpenses";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface ExpenseExportButtonProps {
   expenses: Expense[];
@@ -55,6 +56,20 @@ function ExpenseExportButton({
   const { success, error, info } = useSheiNotification();
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
+  const { currency } = useUserCurrencyIcon();
+  // For file exports we need a plain string, not a ReactNode.
+  // Fall back to "$" while loading or if currency is unmapped.
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    BDT: "৳",
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    JPY: "¥",
+  };
+  const currencySymbol = currency
+    ? (CURRENCY_SYMBOLS[currency.toUpperCase()] ?? currency)
+    : "$";
+
   const handleExport = async (format: ExportFormat) => {
     if (!expenses.length) {
       info("No expenses to export. Try adjusting your filters.");
@@ -62,7 +77,7 @@ function ExpenseExportButton({
     }
     setExporting(format);
     try {
-      await exportExpenses(format, expenses, storeSlug);
+      await exportExpenses(format, expenses, storeSlug, currencySymbol);
       success(
         `${expenses.length} expense${expenses.length !== 1 ? "s" : ""} exported as ${FORMAT_META[format].label}.`,
       );
@@ -85,7 +100,6 @@ function ExpenseExportButton({
     onClick: () => handleExport(format),
     label: (
       <div className="flex items-center gap-2.5 py-1" style={{ minWidth: 220 }}>
-        {/* Icon */}
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
           style={{
@@ -101,7 +115,6 @@ function ExpenseExportButton({
           )}
         </div>
 
-        {/* Text */}
         <div className="flex-1 min-w-0">
           <p className="m-0 text-[13px] font-semibold text-gray-800 dark:text-gray-100 leading-tight flex items-center gap-1.5">
             {meta.label}

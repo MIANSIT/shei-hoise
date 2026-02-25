@@ -13,7 +13,7 @@ import {
   Settings,
   Truck,
   // UserCircle,
-  Store,
+  // Store,
   DollarSign,
   CreditCard,
   BarChart2,

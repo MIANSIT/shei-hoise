@@ -5,10 +5,11 @@ import { Wallet, TrendingUp, LayoutGrid } from "lucide-react";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Expense, ExpenseCategory } from "@/lib/types/expense/type";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface StatItem {
   title: string;
-  value: string;
+  value: React.ReactNode;
   icon: React.ReactNode;
   iconBg: string;
   iconBgDark: string;
@@ -22,15 +23,24 @@ interface ExpenseStatsProps {
   categories: ExpenseCategory[];
 }
 
-function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-}
-
 function sumAmounts(list: Expense[]): number {
   return list.reduce((sum, e) => sum + Number(e.amount || 0), 0);
 }
 
 function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
+  const { icon: currencyIcon } = useUserCurrencyIcon();
+
+  function formatCurrency(amount: number): React.ReactNode {
+    return (
+      <span className="flex items-center gap-0.5">
+        <span>{currencyIcon}</span>
+        <span>
+          {amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+        </span>
+      </span>
+    );
+  }
+
   const stats = useMemo<StatItem[]>(() => {
     const now = dayjs();
     const lastMonth = now.subtract(1, "month");
@@ -77,7 +87,8 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
         sub: "available",
       },
     ];
-  }, [filtered, expenses, categories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, expenses, categories, currencyIcon]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -93,7 +104,6 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
             transition-shadow duration-200
           "
         >
-          {/* Icon */}
           <div
             className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center"
             style={{ background: stat.iconBg }}
@@ -101,7 +111,6 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
             {stat.icon}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-widest m-0">
               {stat.title}
