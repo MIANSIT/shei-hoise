@@ -23,7 +23,9 @@ import { PAYMENT_METHOD_CONFIG } from "@/lib/types/expense/expense-constants";
 import {
   buildCategoryOptions,
   renderCategoryOption,
+  type CategoryOption,
 } from "./CategorySelectOptions";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 type ModalMode = "create" | "edit";
 
@@ -63,7 +65,7 @@ function ExpenseFormModal({
   onCancel,
 }: ExpenseFormModalProps) {
   const [form] = Form.useForm<ExpenseFormValues>();
-
+  const { icon: currencyIcon } = useUserCurrencyIcon();
   const categoryOptions = useMemo(
     () => buildCategoryOptions(categories),
     [categories],
@@ -109,7 +111,7 @@ function ExpenseFormModal({
       maskClosable={!submitting}
       closable={!submitting}
       className="expense-modal"
-      styles={{ body: { borderRadius: 20, padding: 0, overflow: "hidden" } }}
+      styles={{ body: { borderRadius: 20, padding: 0 } }}
       title={
         <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-700">
           <div className="w-8 h-8 rounded-xl bg-linear-to-br from-indigo-400 to-purple-600 flex items-center justify-center shrink-0">
@@ -148,7 +150,7 @@ function ExpenseFormModal({
         </div>
       }
     >
-      <div className="">
+      <div className="px-6 pt-5 pb-2">
         <Form form={form} layout="vertical">
           <Form.Item
             name="title"
@@ -179,7 +181,7 @@ function ExpenseFormModal({
               ]}
             >
               <InputNumber
-                prefix="$"
+                prefix={currencyIcon ?? "$"}
                 min={0}
                 precision={2}
                 className="rounded-lg w-full h-9.5"
@@ -206,6 +208,12 @@ function ExpenseFormModal({
               <Select
                 placeholder="Select category"
                 allowClear
+                showSearch={{
+                  filterOption: (input, option) =>
+                    (option as CategoryOption)?.label
+                      ?.toLowerCase()
+                      .includes(input.toLowerCase()) ?? false,
+                }}
                 options={categoryOptions}
                 optionRender={renderCategoryOption}
                 className="rounded-lg"

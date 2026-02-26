@@ -54,7 +54,9 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
       lastMonthTotal > 0
         ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100
         : 0;
-
+    const usedCategoryCount = new Set(
+      filtered.map((e) => e.category_id).filter(Boolean),
+    ).size;
     return [
       {
         title: "Filtered Total",
@@ -79,7 +81,7 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
       },
       {
         title: "Categories",
-        value: String(categories.length),
+        value: String(usedCategoryCount),
         icon: <LayoutGrid size={20} color="#8b5cf6" strokeWidth={1.8} />,
         iconBg: "linear-gradient(135deg, #f5f3ff, #ede9fe)",
         iconBgDark: "linear-gradient(135deg, #1e1b4b, #2e1065)",

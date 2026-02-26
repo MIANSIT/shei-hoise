@@ -4,15 +4,11 @@ import type { ExpenseCategory } from "@/lib/types/expense/type";
 import DynamicLucideIcon from "./DynamicLucideIcon";
 import { getCategoryColor, hexToRgba } from "@/lib/types/expense/expense-utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface CategoryOption {
   value: string;
-  label: string; // plain text — used by Select as the selected tag/display label
+  label: string;
   category: ExpenseCategory;
 }
-
-// ─── Option renderer (passed to Select's optionRender prop) ──────────────────
 
 export function renderCategoryOption(option: { data: CategoryOption }) {
   const c = option.data.category;
@@ -41,10 +37,10 @@ export function renderCategoryOption(option: { data: CategoryOption }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
+            className="text-gray-900 dark:text-gray-100"
             style={{
               fontSize: 13,
               fontWeight: 500,
-              color: "#111827",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -54,15 +50,14 @@ export function renderCategoryOption(option: { data: CategoryOption }) {
           </span>
           {c.is_default && (
             <span
+              className="bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500"
               style={{
                 fontSize: 9,
                 fontWeight: 700,
                 letterSpacing: "0.05em",
-                color: "#9ca3af",
-                background: "#f3f4f6",
                 padding: "1px 5px",
                 borderRadius: 4,
-                textTransform: "uppercase",
+                textTransform: "uppercase" as const,
                 flexShrink: 0,
               }}
             >
@@ -86,8 +81,6 @@ export function renderCategoryOption(option: { data: CategoryOption }) {
     </div>
   );
 }
-
-// ─── Helper: convert ExpenseCategory[] → options array for Select ─────────────
 
 export function buildCategoryOptions(
   categories: ExpenseCategory[],

@@ -68,7 +68,9 @@ export default function ExpensesPage() {
       setExpenses(expenseData || []);
       setCategories(
         (categoryData.data || []).filter(
-          (c) => c.is_default === true || c.store_id === storeId,
+          (c) =>
+            (c.is_default === true || c.store_id === storeId) &&
+            c.is_active === true,
         ),
       );
     } catch (err) {

@@ -14,6 +14,7 @@ import { PAYMENT_METHOD_CONFIG } from "@/lib/types/expense/expense-constants";
 import {
   buildCategoryOptions,
   renderCategoryOption,
+  type CategoryOption,
 } from "./CategorySelectOptions";
 
 const { RangePicker } = DatePicker;
@@ -39,7 +40,6 @@ const PAYMENT_OPTIONS = Object.entries(PAYMENT_METHOD_CONFIG).map(
   }),
 );
 
-// Shared filter controls — reused in both inline and drawer layouts
 function FilterControls({
   search,
   categoryFilter,
@@ -53,7 +53,12 @@ function FilterControls({
   onClear,
   activeCount,
   vertical = false,
-}: ExpenseFiltersProps & { activeCount: number; vertical?: boolean }) {
+  onCalendarOpenChange,
+}: ExpenseFiltersProps & {
+  activeCount: number;
+  vertical?: boolean;
+  onCalendarOpenChange?: (open: boolean) => void;
+}) {
   const categoryOptions = useMemo(
     () => buildCategoryOptions(categories),
     [categories],
@@ -68,7 +73,6 @@ function FilterControls({
         placeholder="Search title, vendor..."
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        className={vertical ? "w-full" : ""}
         style={{ width: vertical ? "100%" : 220, borderRadius: 10, height: 36 }}
         allowClear
       />
@@ -81,6 +85,12 @@ function FilterControls({
           </span>
         }
         allowClear
+        showSearch={{
+          filterOption: (input, option) =>
+            (option as CategoryOption)?.label
+              ?.toLowerCase()
+              .includes(input.toLowerCase()) ?? false,
+        }}
         value={categoryFilter ?? undefined}
         onChange={(v) => onCategoryChange(v ?? null)}
         style={{ width: vertical ? "100%" : 190, minWidth: 0 }}
@@ -113,15 +123,21 @@ function FilterControls({
         )}
       />
 
-      <RangePicker
-        value={dateRange}
-        onChange={(v) => onDateRangeChange(v as [Dayjs, Dayjs] | null)}
-        style={{
-          borderRadius: 10,
-          height: 36,
-          width: vertical ? "100%" : undefined,
-        }}
-      />
+      <div style={{ width: vertical ? "100%" : "auto" }}>
+        <RangePicker
+          value={dateRange}
+          onChange={(v) => onDateRangeChange(v as [Dayjs, Dayjs] | null)}
+          onOpenChange={onCalendarOpenChange}
+          // Render into body so it's not clipped by drawer overflow
+          getPopupContainer={vertical ? () => document.body : undefined}
+          styles={vertical ? { popup: { root: { zIndex: 1100 } } } : undefined}
+          style={{
+            borderRadius: 10,
+            height: 36,
+            width: "100%",
+          }}
+        />
+      </div>
 
       {activeCount > 0 && (
         <Button
@@ -141,6 +157,7 @@ function FilterControls({
 function ExpenseFilters(props: ExpenseFiltersProps) {
   const { search, categoryFilter, paymentFilter, dateRange } = props;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const activeCount = [search, categoryFilter, paymentFilter, dateRange].filter(
     Boolean,
@@ -194,16 +211,30 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
           </span>
         }
         placement="bottom"
-        size="auto"
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setCalendarOpen(false);
+        }}
+        // Expand to full height when calendar is open so popup has room
+        size={calendarOpen ? "100%" : "auto"}
         styles={{
-          body: { paddingBottom: 32 },
+          body: {
+            paddingBottom: 32,
+          },
           header: { borderBottom: "1px solid #f0f0f5" },
+          wrapper: {
+            transition: "height 0.25s ease",
+          },
         }}
         className="dark:bg-gray-800"
       >
-        <FilterControls {...props} activeCount={activeCount} vertical />
+        <FilterControls
+          {...props}
+          activeCount={activeCount}
+          vertical
+          onCalendarOpenChange={(open) => setCalendarOpen(open)}
+        />
         <Button
           type="primary"
           block

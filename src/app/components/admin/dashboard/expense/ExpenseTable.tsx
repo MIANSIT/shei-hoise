@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 import { Table, Dropdown, Button, Popconfirm, Spin } from "antd";
 import { EditOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { ReceiptText } from "lucide-react";
@@ -16,9 +16,8 @@ import {
   AmountCell,
   DateCell,
   PaymentCell,
-  PlatformCell,
-  NotesCell,
 } from "./ExpenseTableCells";
+import { ExpenseDetailDrawer } from "./ExpenseDetailDrawer";
 
 interface ExpenseTableProps {
   data: Expense[];
@@ -43,11 +42,13 @@ const TABLE_STYLES = `
     padding: 14px 16px !important; border-bottom: 1px solid #f9fafb !important;
   }
   .dark .expense-table .ant-table-tbody > tr > td { border-bottom-color: #374151 !important; }
-  .expense-table .ant-table-tbody > tr:hover > td { background: #fafbff !important; }
+  .expense-table .ant-table-tbody > tr:hover > td { background: #fafbff !important; } 
   .dark .expense-table .ant-table-tbody > tr:hover > td { background: #1e293b !important; }
   .expense-table .ant-table-tbody > tr:last-child > td { border-bottom: none !important; }
   .expense-table .ant-table-column-sorter-up.active .anticon,
   .expense-table .ant-table-column-sorter-down.active .anticon { color: #6366f1 !important; }
+  .dark .ant-drawer-content { background-color: #1f2937 !important; }
+  .dark .ant-drawer-body { background-color: #1f2937 !important; }
 `;
 
 const emptyState = (
@@ -72,14 +73,41 @@ function ExpenseTable({
   onDelete,
 }: ExpenseTableProps) {
   const { icon: currencyIcon } = useUserCurrencyIcon();
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const openDrawer = useCallback((record: Expense) => {
+    setSelectedExpense(record);
+    setDrawerOpen(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   const getRowMenuItems = useCallback(
     (record: Expense): MenuProps["items"] => [
       {
+        key: "view",
+        icon: <ReceiptText size={14} color="#6366f1" />,
+        label: (
+          <span className="text-gray-700 dark:text-gray-300 text-sm">
+            View Details
+          </span>
+        ),
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          openDrawer(record);
+        },
+      },
+      {
         key: "edit",
         icon: <EditOutlined style={{ color: "#6366f1" }} />,
-        label: <span className="text-gray-700 text-sm">Edit</span>,
-        onClick: () => onEdit(record),
+        label: (
+          <span className="text-gray-700 dark:text-gray-300 text-sm">Edit</span>
+        ),
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          onEdit(record);
+        },
       },
       { type: "divider" },
       {
@@ -91,17 +119,22 @@ function ExpenseTable({
           <Popconfirm
             title="Delete expense?"
             description="This action cannot be undone."
-            onConfirm={() => onDelete(record.id)}
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              onDelete(record.id);
+            }}
+            onCancel={(e) => e?.stopPropagation()}
             okText="Delete"
             cancelText="Cancel"
             okButtonProps={{ danger: true }}
           >
-            <span>Delete</span>
+            <span onClick={(e) => e.stopPropagation()}>Delete</span>
           </Popconfirm>
         ),
+        onClick: ({ domEvent }) => domEvent.stopPropagation(),
       },
     ],
-    [deletingId, onEdit, onDelete],
+    [deletingId, onEdit, onDelete, openDrawer],
   );
 
   const columns: ColumnsType<Expense> = [
@@ -113,7 +146,7 @@ function ExpenseTable({
     {
       title: "Category",
       key: "category",
-      width: 180,
+      width: 160,
       render: (_, record) => <CategoryCell record={record} />,
     },
     {
@@ -121,7 +154,7 @@ function ExpenseTable({
       dataIndex: "amount",
       key: "amount",
       sorter: (a, b) => Number(a.amount) - Number(b.amount),
-      width: 130,
+      width: 120,
       render: (amount: number) => (
         <AmountCell amount={Number(amount)} currencyIcon={currencyIcon} />
       ),
@@ -133,28 +166,16 @@ function ExpenseTable({
       sorter: (a, b) =>
         dayjs(a.expense_date).unix() - dayjs(b.expense_date).unix(),
       defaultSortOrder: "descend",
-      width: 140,
+      width: 130,
       render: (date: string) => <DateCell date={date} />,
     },
     {
       title: "Payment",
       dataIndex: "payment_method",
       key: "payment_method",
-      width: 150,
+      width: 140,
+      responsive: ["lg"],
       render: (method: string) => <PaymentCell method={method} />,
-    },
-    {
-      title: "Platform",
-      dataIndex: "platform",
-      key: "platform",
-      width: 110,
-      render: (platform: string) => <PlatformCell platform={platform} />,
-    },
-    {
-      title: "Notes",
-      dataIndex: "notes",
-      key: "notes",
-      render: (notes: string) => <NotesCell notes={notes} />,
     },
     {
       title: "",
@@ -170,7 +191,8 @@ function ExpenseTable({
             type="text"
             icon={<MoreOutlined />}
             size="small"
-            className="text-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-600"
+            onClick={(e) => e.stopPropagation()}
+            className="text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
           />
         </Dropdown>
       ),
@@ -187,6 +209,7 @@ function ExpenseTable({
           loading={loading}
           rowKey="id"
           className="expense-table"
+          // onRow={(record) => ({ onClick: () => openDrawer(record) })}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
@@ -221,6 +244,16 @@ function ExpenseTable({
           ))
         )}
       </div>
+
+      <ExpenseDetailDrawer
+        expense={selectedExpense}
+        open={drawerOpen}
+        currencyIcon={currencyIcon}
+        onClose={closeDrawer}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        deletingId={deletingId}
+      />
     </>
   );
 }
