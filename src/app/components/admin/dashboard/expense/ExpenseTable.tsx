@@ -42,7 +42,7 @@ const TABLE_STYLES = `
     padding: 14px 16px !important; border-bottom: 1px solid #f9fafb !important;
   }
   .dark .expense-table .ant-table-tbody > tr > td { border-bottom-color: #374151 !important; }
-  .expense-table .ant-table-tbody > tr:hover > td { background: #fafbff !important; } 
+  .expense-table .ant-table-tbody > tr:hover > td { background: #fafbff !important; }
   .dark .expense-table .ant-table-tbody > tr:hover > td { background: #1e293b !important; }
   .expense-table .ant-table-tbody > tr:last-child > td { border-bottom: none !important; }
   .expense-table .ant-table-column-sorter-up.active .anticon,
@@ -201,6 +201,7 @@ function ExpenseTable({
 
   return (
     <>
+      {/* Desktop table */}
       <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
         <style>{TABLE_STYLES}</style>
         <Table
@@ -209,21 +210,12 @@ function ExpenseTable({
           loading={loading}
           rowKey="id"
           className="expense-table"
-          // onRow={(record) => ({ onClick: () => openDrawer(record) })}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => (
-              <span className="text-gray-400 text-sm">
-                {total} expense{total !== 1 ? "s" : ""}
-              </span>
-            ),
-            style: { padding: "12px 20px", borderTop: "1px solid #f0f0f5" },
-          }}
           locale={{ emptyText: emptyState }}
+          pagination={false}
         />
       </div>
 
+      {/* Mobile cards */}
       <div className="flex md:hidden flex-col gap-3">
         {loading ? (
           <div className="flex justify-center py-16">
