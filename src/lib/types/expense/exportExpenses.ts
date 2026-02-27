@@ -157,13 +157,13 @@ export async function exportPDF(
       ...rows,
       [
         "",
-        "",
+        "TOTAL",
         `${pdfCurrency} ${total.toFixed(2)}`, // "BDT 47.00"
         "",
         "",
         "",
         "",
-        "TOTAL",
+        "",
         "",
       ],
     ],
