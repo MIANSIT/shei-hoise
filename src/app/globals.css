@@ -216,3 +216,13 @@
     width: 100% !important;
   }
 }
+
+/* Move antd message to top-left */
+.ant-message {
+  left: 24px !important;
+  transform: none !important;
+}
+
+.ant-message-notice-wrapper {
+  text-align: left;
+}
