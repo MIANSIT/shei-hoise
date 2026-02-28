@@ -114,14 +114,12 @@ const SectionHeader: React.FC<{
     <div>
       <h3
         className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em]
-        text-gray-500 dark:text-gray-400"
+        text-primary "
       >
         {title}
       </h3>
       {sub && (
-        <p className="text-[9px] sm:text-[10px] mt-0.5 text-gray-400 dark:text-gray-500">
-          {sub}
-        </p>
+        <p className="text-[9px] sm:text-[10px] mt-0.5 text-primary ">{sub}</p>
       )}
     </div>
   </div>
@@ -400,7 +398,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
               </p>
               <p
                 className="text-[9px] sm:text-[10px] mt-0.5 hidden sm:block
-                text-gray-400 dark:text-gray-500"
+                text-black dark:text-white"
               >
                 {dateStr}
               </p>
