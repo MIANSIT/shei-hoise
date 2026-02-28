@@ -1,4 +1,3 @@
-// File: app/components/common/ProductCardLayout.tsx
 "use client";
 
 import React, { ReactNode } from "react";
@@ -24,7 +23,14 @@ const ProductCardLayout: React.FC<MobileCardProps> = ({
       <div className="flex justify-between items-center flex-wrap">
         <div className="flex gap-4 flex-1 items-center">
           {image && (
-            <div className="w-20 h-20 rounded-xl overflow-hidden">{image}</div>
+            <div
+              className="w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0"
+              style={{
+                background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+              }}
+            >
+              {image}
+            </div>
           )}
           <div className="flex flex-col justify-center">
             {title && <h3 className="font-semibold">{title}</h3>}
