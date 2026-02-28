@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
 import { Product } from "@/lib/queries/products/getProducts";
+import type { Expense } from "@/lib/types/expense/type";
 
 export type TimePeriod = "weekly" | "monthly" | "yearly";
 export type OrderStatus =
@@ -11,7 +12,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 export type PaymentStatus = "paid" | "pending" | "refunded";
-export type AlertType = "stock" | "order" | "payment";
+export type AlertType = "stock" | "order" | "payment" | "expense";
 
 interface ProductVariant {
   id: string;
@@ -29,6 +30,45 @@ interface ProductVariant {
 }
 
 type DashboardProduct = Product & { variants: ProductVariant[] };
+
+// ─────────────────────────────────────────────
+// Expense Metrics Types
+// ─────────────────────────────────────────────
+export interface ExpenseMetrics {
+  /** Sum of all expense amounts within the selected time period */
+  totalExpenses: number;
+
+  /** Gross profit minus total expenses = actual bottom-line profit */
+  netProfit: number;
+
+  /** (totalExpenses / revenue) * 100 — how much of revenue is consumed by expenses */
+  expenseToRevenueRatio: number;
+
+  /** The expense category with the highest total spend in the period */
+  topExpenseCategory: { name: string; amount: number };
+
+  /** Top 5 expense categories ranked by amount, for chart/breakdown display */
+  expenseCategoryBreakdown: {
+    name: string;
+    amount: number;
+    percentage: number;
+  }[];
+
+  /** Period-over-period % change for expenses and net profit */
+  changePercentage: {
+    expenses: number;
+    netProfit: number;
+  };
+
+  /** Average expense amount per expense record in the period */
+  averageExpenseAmount: number;
+
+  /** Total number of expense records in the period */
+  expenseCount: number;
+
+  /** Breakdown by payment method */
+  expenseByPaymentMethod: { method: string; amount: number }[];
+}
 
 interface DashboardMetrics {
   revenue: number;
@@ -67,6 +107,9 @@ interface DashboardMetrics {
   alerts: { type: AlertType; message: string; count: number }[];
   filteredOrders: StoreOrder[];
   paidOrders: StoreOrder[];
+
+  // ── NEW ──
+  expenseMetrics: ExpenseMetrics;
 }
 
 // ─────────────────────────────────────────────
@@ -75,10 +118,26 @@ interface DashboardMetrics {
 // ─────────────────────────────────────────────
 const toDateKey = (d: Date): string => d.toISOString().slice(0, 10);
 
+// ─────────────────────────────────────────────
+// Default / empty expense metrics
+// ─────────────────────────────────────────────
+const defaultExpenseMetrics: ExpenseMetrics = {
+  totalExpenses: 0,
+  netProfit: 0,
+  expenseToRevenueRatio: 0,
+  topExpenseCategory: { name: "None", amount: 0 },
+  expenseCategoryBreakdown: [],
+  changePercentage: { expenses: 0, netProfit: 0 },
+  averageExpenseAmount: 0,
+  expenseCount: 0,
+  expenseByPaymentMethod: [],
+};
+
 export const useDashboardMetrics = (
   storeId: string | null,
   orders: StoreOrder[],
   products: DashboardProduct[],
+  expenses: Expense[], // ← NEW parameter
   timePeriod: TimePeriod,
 ) => {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
@@ -112,6 +171,7 @@ export const useDashboardMetrics = (
     alerts: [],
     filteredOrders: [],
     paidOrders: [],
+    expenseMetrics: defaultExpenseMetrics,
   });
 
   // ─────────────────────────────────────────────
@@ -127,78 +187,89 @@ export const useDashboardMetrics = (
   // ─────────────────────────────────────────────
   const getCurrentPeriodDates = useCallback((period: TimePeriod) => {
     const now = new Date();
-    const startDate = new Date();
-    const endDate = new Date();
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
 
     switch (period) {
       case "weekly": {
-        const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-        startDate.setDate(diff);
+        // Rolling last 7 days: today + 6 days back
+        // e.g. today Mar 1 -> Feb 23 to Mar 1
+        // Always has data as long as orders exist in last 7 days
+        const startDate = new Date(now);
+        startDate.setDate(now.getDate() - 6);
         startDate.setHours(0, 0, 0, 0);
-        endDate.setDate(diff + 6);
-        endDate.setHours(23, 59, 59, 999);
-        break;
+        return { start: startDate, end: endDate };
       }
-      case "monthly":
-        startDate.setDate(1);
+
+      case "monthly": {
+        // Rolling last 30 days
+        // e.g. today Mar 1 -> Feb 1 to Mar 1
+        // Avoids "Mar 1 = empty March" calendar month problem
+        const startDate = new Date(now);
+        startDate.setDate(now.getDate() - 29);
         startDate.setHours(0, 0, 0, 0);
-        endDate.setMonth(endDate.getMonth() + 1, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case "yearly":
-        startDate.setMonth(0, 1);
+        return { start: startDate, end: endDate };
+      }
+
+      case "yearly": {
+        // Rolling last 365 days
+        const startDate = new Date(now);
+        startDate.setDate(now.getDate() - 364);
         startDate.setHours(0, 0, 0, 0);
-        endDate.setMonth(11, 31);
-        endDate.setHours(23, 59, 59, 999);
-        break;
+        return { start: startDate, end: endDate };
+      }
     }
-    return { start: startDate, end: endDate };
   }, []);
 
-  const getPreviousPeriodDates = useCallback(
-    (period: TimePeriod) => {
-      const current = getCurrentPeriodDates(period);
-      const prevStart = new Date(current.start);
-      const prevEnd = new Date(current.end);
+  const getPreviousPeriodDates = useCallback((period: TimePeriod) => {
+    // Previous period = same window length, shifted back by one window
+    const now = new Date();
 
-      switch (period) {
-        case "weekly":
-          prevStart.setDate(prevStart.getDate() - 7);
-          prevEnd.setDate(prevEnd.getDate() - 7);
-          break;
-        case "monthly":
-          prevStart.setMonth(prevStart.getMonth() - 1);
-          prevEnd.setMonth(prevEnd.getMonth() - 1, 0);
-          break;
-        case "yearly":
-          prevStart.setFullYear(prevStart.getFullYear() - 1);
-          prevEnd.setFullYear(prevEnd.getFullYear() - 1);
-          break;
+    switch (period) {
+      case "weekly": {
+        const prevEnd = new Date(now);
+        prevEnd.setDate(now.getDate() - 7);
+        prevEnd.setHours(23, 59, 59, 999);
+        const prevStart = new Date(prevEnd);
+        prevStart.setDate(prevEnd.getDate() - 6);
+        prevStart.setHours(0, 0, 0, 0);
+        return { start: prevStart, end: prevEnd };
       }
-      return { start: prevStart, end: prevEnd };
-    },
-    [getCurrentPeriodDates],
-  );
 
-  // ─────────────────────────────────────────────
-  // Main calculation
-  // ─────────────────────────────────────────────
+      case "monthly": {
+        const prevEnd = new Date(now);
+        prevEnd.setDate(now.getDate() - 30);
+        prevEnd.setHours(23, 59, 59, 999);
+        const prevStart = new Date(prevEnd);
+        prevStart.setDate(prevEnd.getDate() - 29);
+        prevStart.setHours(0, 0, 0, 0);
+        return { start: prevStart, end: prevEnd };
+      }
+
+      case "yearly": {
+        const prevEnd = new Date(now);
+        prevEnd.setDate(now.getDate() - 365);
+        prevEnd.setHours(23, 59, 59, 999);
+        const prevStart = new Date(prevEnd);
+        prevStart.setDate(prevEnd.getDate() - 364);
+        prevStart.setHours(0, 0, 0, 0);
+        return { start: prevStart, end: prevEnd };
+      }
+    }
+  }, []);
+
   const calculateAllMetrics = useCallback(() => {
     if (!storeId) return;
 
     const currentPeriod = getCurrentPeriodDates(timePeriod);
     const prevPeriod = getPreviousPeriodDates(timePeriod);
 
-    // ─── FIX 1: Build O(1) lookup maps ONCE before the order loop ───
-    // Previously: products.find() was called inside every order item = O(n²)
-    // Now: one Map lookup per item = O(1)
+    // ─── Build O(1) lookup maps for products/variants ───
     const productMap = new Map(products.map((p) => [p.id, p]));
     const variantMap = new Map(
       products.flatMap((p) => (p.variants ?? []).map((v) => [v.id, v])),
     );
 
-    // Inline helpers that use the maps (no useCallback needed inside calculateAllMetrics)
     const getItemSellingPrice = (item: OrderItem): number =>
       item.discounted_amount ?? item.unit_price;
 
@@ -213,19 +284,16 @@ export const useDashboardMetrics = (
     const calculateItemProfit = (item: OrderItem): number =>
       getItemSellingPrice(item) - getItemCost(item);
 
-    // ─── Accumulators ───
+    // ─── Order accumulators ───
     let revenue = 0,
       grossProfit = 0,
       orderCount = 0,
       paidOrderCount = 0,
       totalOrderValue = 0;
 
-    // ─── FIX 2: Separate previous-period counters for ALL orders vs PAID orders ───
-    // Previously: prevOrderCount only incremented for paid orders,
-    // but current orderCount counts ALL orders → wrong % change
     let prevRevenue = 0,
-      prevOrderCount = 0, // all orders in prev period
-      prevTotalOrderValue = 0, // all order subtotals in prev period
+      prevOrderCount = 0,
+      prevTotalOrderValue = 0,
       prevProfit = 0;
 
     const orderStatusCounts: Record<OrderStatus, number> = {
@@ -241,7 +309,7 @@ export const useDashboardMetrics = (
       refunded: 0,
     };
 
-    // Sales trend: last 30 days, keyed by ISO date string (FIX 3: was toDateString() = locale bug)
+    // Sales trend: last 30 days
     const salesTrendMap = new Map<string, number>();
     const today = new Date();
     for (let i = 0; i < 30; i++) {
@@ -279,7 +347,6 @@ export const useDashboardMetrics = (
       const total = Number(order.total_amount) || 0;
       const isPaid = isOrderPaid(order);
 
-      // ── Current period ──
       const inCurrentPeriod =
         orderDate >= currentPeriod.start && orderDate <= currentPeriod.end;
 
@@ -293,9 +360,6 @@ export const useDashboardMetrics = (
           paidOrders.push(order);
           paidOrderCount++;
 
-          // ─── FIX 4: Gross profit accumulated HERE in the same loop ───
-          // Previously: there was a second .reduce() loop over filteredOrders after
-          // this forEach — redundant double iteration. Now calculated inline.
           grossProfit += (order.order_items ?? []).reduce(
             (s, item) => s + calculateItemProfit(item) * (item.quantity || 1),
             0,
@@ -303,12 +367,10 @@ export const useDashboardMetrics = (
         }
       }
 
-      // ── Previous period ──
       const inPrevPeriod =
         orderDate >= prevPeriod.start && orderDate <= prevPeriod.end;
 
       if (inPrevPeriod) {
-        // FIX 2 continued: count ALL prev-period orders (not just paid)
         prevOrderCount++;
         prevTotalOrderValue += subtotal;
 
@@ -322,23 +384,19 @@ export const useDashboardMetrics = (
         }
       }
 
-      // ── Order status counts (ALL orders, all time) ──
+      // Order status counts (ALL orders, all time)
       const statusKey = (order.status?.toLowerCase() ||
         "pending") as OrderStatus;
-      if (statusKey in orderStatusCounts) {
-        orderStatusCounts[statusKey]++;
-      }
+      if (statusKey in orderStatusCounts) orderStatusCounts[statusKey]++;
 
-      // ── Payment amounts (ALL orders, all time) ──
+      // Payment amounts (ALL orders, all time)
       const paymentKey = (order.payment_status?.toLowerCase() ||
         "pending") as PaymentStatus;
-      if (paymentKey in paymentAmounts) {
-        paymentAmounts[paymentKey] += total;
-      }
+      if (paymentKey in paymentAmounts) paymentAmounts[paymentKey] += total;
 
-      // ── Sales trend (paid only, last 30 days) ──
+      // Sales trend (paid only, last 30 days)
       if (isPaid) {
-        const dayKey = toDateKey(new Date(order.created_at)); // FIX 3: stable key
+        const dayKey = toDateKey(new Date(order.created_at));
         if (salesTrendMap.has(dayKey)) {
           salesTrendMap.set(
             dayKey,
@@ -347,7 +405,7 @@ export const useDashboardMetrics = (
         }
       }
 
-      // ── Customer tracking ──
+      // Customer tracking
       if (!order.customers?.id) return;
       const customerId = order.customers.id;
       const firstName = order.customers.first_name || "Unknown";
@@ -383,7 +441,7 @@ export const useDashboardMetrics = (
         }
       }
 
-      // ── Top products (paid only) ──
+      // Top products (paid only)
       if (isPaid) {
         (order.order_items ?? []).forEach((item) => {
           const current = topProductsMap.get(item.product_name) || {
@@ -405,6 +463,94 @@ export const useDashboardMetrics = (
         });
       }
     });
+
+    // ─────────────────────────────────────────────
+    // EXPENSE METRICS — single pass over expenses
+    // ─────────────────────────────────────────────
+    let totalExpenses = 0;
+    let prevTotalExpenses = 0;
+    let expenseCount = 0;
+
+    // Category totals for current period
+    const categoryTotalsMap = new Map<string, number>();
+
+    // Payment method totals for current period
+    const paymentMethodMap = new Map<string, number>();
+
+    expenses.forEach((expense) => {
+      // expense_date is a date string like "2025-02-11"
+      // Parse at noon to avoid timezone boundary issues
+      const expenseDate = new Date(`${expense.expense_date}T12:00:00`);
+      const amount = Number(expense.amount) || 0;
+
+      const inCurrentPeriod =
+        expenseDate >= currentPeriod.start && expenseDate <= currentPeriod.end;
+      const inPrevPeriod =
+        expenseDate >= prevPeriod.start && expenseDate <= prevPeriod.end;
+
+      if (inCurrentPeriod) {
+        totalExpenses += amount;
+        expenseCount++;
+
+        // Category breakdown
+        const catName = expense.category?.name ?? "Uncategorized";
+        categoryTotalsMap.set(
+          catName,
+          (categoryTotalsMap.get(catName) ?? 0) + amount,
+        );
+
+        // Payment method breakdown
+        const method = expense.payment_method ?? "Unknown";
+        paymentMethodMap.set(
+          method,
+          (paymentMethodMap.get(method) ?? 0) + amount,
+        );
+      }
+
+      if (inPrevPeriod) {
+        prevTotalExpenses += amount;
+      }
+    });
+
+    // Net profit (current and previous period)
+    const netProfit = grossProfit - totalExpenses;
+    const prevNetProfit = prevProfit - prevTotalExpenses;
+
+    // Expense to revenue ratio
+    const expenseToRevenueRatio =
+      revenue > 0
+        ? parseFloat(((totalExpenses / revenue) * 100).toFixed(1))
+        : 0;
+
+    // Average expense amount
+    const averageExpenseAmount =
+      expenseCount > 0 ? totalExpenses / expenseCount : 0;
+
+    // Top expense category
+    let topExpenseCategory = { name: "None", amount: 0 };
+    categoryTotalsMap.forEach((amount, name) => {
+      if (amount > topExpenseCategory.amount) {
+        topExpenseCategory = { name, amount };
+      }
+    });
+
+    // Category breakdown sorted by amount desc, with percentage
+    const expenseCategoryBreakdown = Array.from(categoryTotalsMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        percentage:
+          totalExpenses > 0
+            ? parseFloat(((amount / totalExpenses) * 100).toFixed(1))
+            : 0,
+      }));
+
+    // Payment method breakdown sorted by amount desc
+    const expenseByPaymentMethod = Array.from(paymentMethodMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([method, amount]) => ({ method, amount }));
 
     // ─────────────────────────────────────────────
     // Inventory metrics
@@ -431,12 +577,12 @@ export const useDashboardMetrics = (
 
         const qty = stock.quantity_available ?? 0;
         const threshold = stock.low_stock_threshold ?? 0;
-        const tpPrice = variant.tp_price ?? 0;
+        const sellingPrice = variant.sale_price ?? variant.base_price ?? 0;
 
         if (qty > 0) {
           inStockCount += qty;
           productHasStock = true;
-          totalInventoryValue += qty * tpPrice;
+          totalInventoryValue += qty * sellingPrice;
 
           if (qty <= threshold) {
             lowStockCount += qty;
@@ -498,6 +644,20 @@ export const useDashboardMetrics = (
       }));
 
     // ─────────────────────────────────────────────
+    // % change helper
+    // ─────────────────────────────────────────────
+    const calculateChange = (current: number, previous: number): number =>
+      previous === 0
+        ? current > 0
+          ? 100
+          : 0
+        : ((current - previous) / previous) * 100;
+
+    const currentAOV = orderCount > 0 ? totalOrderValue / orderCount : 0;
+    const prevAOV =
+      prevOrderCount > 0 ? prevTotalOrderValue / prevOrderCount : 0;
+
+    // ─────────────────────────────────────────────
     // Alerts
     // ─────────────────────────────────────────────
     const alerts: { type: AlertType; message: string; count: number }[] = [];
@@ -523,7 +683,6 @@ export const useDashboardMetrics = (
         count: orderStatusCounts.pending,
       });
 
-    // ─── FIX 5: Count actual pending-payment orders instead of hardcoding 1 ───
     const pendingPaymentOrderCount = filteredOrders.filter(
       (o) => o.payment_status?.toLowerCase() === "pending",
     ).length;
@@ -531,25 +690,27 @@ export const useDashboardMetrics = (
       alerts.push({
         type: "payment",
         message: "Pending payments awaiting confirmation",
-        count: pendingPaymentOrderCount, // was hardcoded to 1 before
+        count: pendingPaymentOrderCount,
       });
 
-    // ─────────────────────────────────────────────
-    // % change helper
-    // ─────────────────────────────────────────────
-    const calculateChange = (current: number, previous: number): number =>
-      previous === 0
-        ? current > 0
-          ? 100
-          : 0
-        : ((current - previous) / previous) * 100;
+    // ── NEW: Expense alerts ──
+    // Alert if expenses exceed 80% of revenue (high burn rate)
+    if (revenue > 0 && expenseToRevenueRatio >= 80) {
+      alerts.push({
+        type: "expense",
+        message: `Expenses are ${expenseToRevenueRatio}% of revenue — review costs`,
+        count: expenseCount,
+      });
+    }
 
-    // ─── FIX 3 (AOV): compare like-for-like ───
-    // Previously: current AOV used totalOrderValue (all orders),
-    // but prev AOV used prevRevenue (paid only) → apples vs oranges
-    const currentAOV = orderCount > 0 ? totalOrderValue / orderCount : 0;
-    const prevAOV =
-      prevOrderCount > 0 ? prevTotalOrderValue / prevOrderCount : 0;
+    // Alert if net profit is negative
+    if (netProfit < 0) {
+      alerts.push({
+        type: "expense",
+        message: "Net profit is negative this period",
+        count: 1,
+      });
+    }
 
     // ─────────────────────────────────────────────
     // Commit to state
@@ -584,18 +745,33 @@ export const useDashboardMetrics = (
       alerts,
       filteredOrders,
       paidOrders,
+
+      // ── NEW: Expense metrics ──
+      expenseMetrics: {
+        totalExpenses,
+        netProfit,
+        expenseToRevenueRatio,
+        topExpenseCategory,
+        expenseCategoryBreakdown,
+        changePercentage: {
+          expenses: calculateChange(totalExpenses, prevTotalExpenses),
+          netProfit: calculateChange(netProfit, prevNetProfit),
+        },
+        averageExpenseAmount,
+        expenseCount,
+        expenseByPaymentMethod,
+      },
     });
   }, [
     storeId,
     orders,
     products,
+    expenses, // ← added to deps
     timePeriod,
     getCurrentPeriodDates,
     getPreviousPeriodDates,
     isOrderPaid,
   ]);
-  // NOTE: getItemCost / getItemSellingPrice / calculateItemProfit are now defined
-  // inside calculateAllMetrics (not useCallback), so they don't need to be in deps.
 
   useEffect(() => {
     calculateAllMetrics();
