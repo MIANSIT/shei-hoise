@@ -434,7 +434,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         {/* P&L HERO */}
         <div>
           <SectionHeader
-            title="P&L Snapshot"
+            title="Profit & Loss Snapshot"
             sub={`${periodLabel} · Revenue vs Expenses vs Net Profit`}
             accentClass="bg-emerald-500"
           />
