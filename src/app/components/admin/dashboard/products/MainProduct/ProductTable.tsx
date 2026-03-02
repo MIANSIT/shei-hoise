@@ -113,7 +113,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
         return (
           <div className="flex justify-center items-center">
-            <div className="relative w-14 h-14 rounded-xl overflow-hidden border shadow-sm">
+            <div
+              className="relative w-14 h-14 rounded-xl overflow-hidden border border-gray-100 shadow-sm"
+              style={{
+                background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+              }}
+            >
               <Image
                 src={imageUrl}
                 alt={record.name}

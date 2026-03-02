@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+// import React, { useEffect, useRef } from "react";
 import ProductCard from "./shop/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/types/product";
