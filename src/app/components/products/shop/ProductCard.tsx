@@ -36,7 +36,7 @@ ProductCardProps) {
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
       ? variant?.discounted_price
-      : variant?.base_price ?? product.discounted_price ?? product.base_price;
+      : (variant?.base_price ?? product.discounted_price ?? product.base_price);
 
   const displayImage =
     variant?.primary_image?.image_url ||
@@ -48,7 +48,7 @@ ProductCardProps) {
   const calculatedDiscount =
     product.base_price > displayPrice
       ? Math.round(
-          ((product.base_price - displayPrice) / product.base_price) * 100
+          ((product.base_price - displayPrice) / product.base_price) * 100,
         )
       : 0;
 
@@ -111,25 +111,22 @@ ProductCardProps) {
   // Get current cart quantity for this product - FIXED: Sum all variants in cart
   const getTotalCartQuantity = (): number => {
     if (hasVariants) {
-      // For products with variants, sum quantities of all variants in cart
       return cart
         .filter(
           (item) =>
-            item.productId === product.id && item.storeSlug === store_slug
+            item.productId === product.id && item.storeSlug === store_slug,
         )
         .reduce((total, item) => total + item.quantity, 0);
     } else {
-      // For products without variants, use the original logic
       const cartItem = cart.find((item) => {
         const productMatch = item.productId === product.id;
         const storeMatch = item.storeSlug === store_slug;
 
-        // Handle variant matching: both null/undefined or same ID
         let variantMatch = false;
         if (item.variantId === null && !variant?.id) {
-          variantMatch = true; // Both are null/undefined
+          variantMatch = true;
         } else if (item.variantId === variant?.id) {
-          variantMatch = true; // Both have same ID
+          variantMatch = true;
         }
 
         return productMatch && storeMatch && variantMatch;
@@ -141,15 +138,8 @@ ProductCardProps) {
 
   const totalAvailableStock = getTotalAvailableStock();
   const totalCartQuantity = getTotalCartQuantity();
-  // const remainingStock = totalAvailableStock - totalCartQuantity;
-  // const isOutOfStock = remainingStock <= 0;
 
-  // Only show "Max in Cart" for products WITHOUT variants
-  // For products WITH variants, we can't determine max per variant from the card view
   const isMaxInCart = !hasVariants && totalCartQuantity >= totalAvailableStock;
-
-  // Debug logs
-  
 
   const handleAddToCart = async () => {
     if (adding || !isInStock() || isMaxInCart) return;
@@ -174,9 +164,8 @@ ProductCardProps) {
     return words.join(" ");
   };
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
+  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
   return (
     <Card
@@ -186,16 +175,28 @@ ProductCardProps) {
         href={`${store_slug}/product/${product.slug}`}
         className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
       >
-        <div className="relative w-full h-80 overflow-hidden group">
+        {/* Image container with modern bg for transparent images */}
+        <div className="relative w-full h-80 overflow-hidden group bg-[radial-gradient(ellipse_at_center,#f8f8f8_0%,#ececec_100%)]">
+          {/* Subtle grid texture */}
+          <div
+            className="absolute inset-0 opacity-[0.03] pointer-events-none z-10"
+            style={{
+              backgroundImage:
+                "linear-gradient(#888 1px, transparent 1px), linear-gradient(90deg, #888 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+
           <Image
             src={displayImage}
             alt={product.name}
             fill
-            className={`object-cover transition-transform duration-500 ease-in-out `}
+            className={`object-contain transition-transform duration-500 ease-in-out group-hover:scale-105 relative z-20`}
           />
-          <div className="absolute inset-0 flex justify-between items-start p-4">
+
+          <div className="absolute inset-0 flex justify-between items-start p-4 z-30">
             {/* Category Badge */}
-            <span className="text-card-foreground text-xs  uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
               {product.category?.name || "Uncategorized"}
             </span>
 
@@ -240,12 +241,13 @@ ProductCardProps) {
                 productInStock ? "text-foreground" : "text-muted-foreground"
               }`}
             >
-               {displayCurrencyIconSafe}{displayPrice.toFixed(2)}
+              {displayCurrencyIconSafe}
+              {displayPrice.toFixed(2)}
             </span>
 
             {calculatedDiscount > 0 && productInStock && (
               <span className="text-sm sm:text-base text-chart-5 line-through relative">
-                 {displayCurrencyIconSafe} {product.base_price.toFixed(2)}
+                {displayCurrencyIconSafe} {product.base_price.toFixed(2)}
               </span>
             )}
           </div>
