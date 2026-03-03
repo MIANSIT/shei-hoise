@@ -5,17 +5,38 @@ import { UseFormReturn, Controller } from "react-hook-form";
 import { ProductType } from "@/lib/schema/productSchema";
 import { ProductVariantType } from "@/lib/schema/varientSchema";
 import FormField from "./FormField";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Layers, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calculateDiscountedPrice } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { Tooltip } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface ProductVariantsInlineProps {
   form: UseFormReturn<ProductType>;
   addIsActive?: boolean;
 }
+
+const FieldLabel = ({
+  label,
+  required,
+  tooltip,
+}: {
+  label: string;
+  required?: boolean;
+  tooltip?: string;
+}) => (
+  <div className="mb-1.5 flex items-center gap-1.5">
+    <label className="text-sm font-medium text-foreground">
+      {label}
+      {required && <span className="ml-0.5 text-rose-500">*</span>}
+    </label>
+    {tooltip && (
+      <Tooltip title={tooltip} placement="top">
+        <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
+      </Tooltip>
+    )}
+  </div>
+);
 
 const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   form,
@@ -26,17 +47,12 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
   const { currency, loading: currencyLoading } = useUserCurrencyIcon();
   const displayCurrency = currencyLoading ? "" : (currency ?? "");
 
-  // --- Variant pricing state ---
+  const [collapsedVariants, setCollapsedVariants] = useState<boolean[]>([]);
+
   const [variantPricing, setVariantPricing] = useState<
     { priceMode: "percentage" | "multiplier"; priceValue: number | "" }[]
-  >(() =>
-    variants.map(() => ({
-      priceMode: "percentage",
-      priceValue: "",
-    })),
-  );
+  >(() => variants.map(() => ({ priceMode: "percentage", priceValue: "" })));
 
-  // --- Attribute text state (per variant) ---
   const [attrTexts, setAttrTexts] = useState<string[]>(
     variants.map((v) =>
       v.attributes
@@ -47,7 +63,6 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
     ),
   );
 
-  // --- Sync variantPricing & attrTexts when variants added/removed ---
   useEffect(() => {
     setVariantPricing((prev) =>
       variants.map(
@@ -65,9 +80,11 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             : ""),
       ),
     );
+    setCollapsedVariants((prev) =>
+      variants.map((_, idx) => prev[idx] ?? false),
+    );
   }, [variants.length]);
 
-  // --- Add / Remove variant ---
   const handleAddVariant = () => {
     form.setValue("variants", [
       ...variants,
@@ -94,7 +111,12 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
     );
   };
 
-  // --- Pricing calculations ---
+  const toggleCollapse = (idx: number) => {
+    setCollapsedVariants((prev) =>
+      prev.map((val, i) => (i === idx ? !val : val)),
+    );
+  };
+
   const updateVariantMRP = (
     idx: number,
     tp: number,
@@ -106,10 +128,11 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
       shouldDirty: true,
       shouldValidate: true,
     });
-
     const discount = variants[idx]?.discount_amount ?? 0;
-    const discounted = calculateDiscountedPrice(mrp, discount);
-    setValue(`variants.${idx}.discounted_price`, discounted);
+    setValue(
+      `variants.${idx}.discounted_price`,
+      calculateDiscountedPrice(mrp, discount),
+    );
   };
 
   const handleVariantPriceModeChange = (
@@ -119,7 +142,6 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
     setVariantPricing((prev) =>
       prev.map((v, i) => (i === idx ? { ...v, priceMode: mode } : v)),
     );
-
     const tp = variants[idx]?.tp_price ?? 0;
     const val = variantPricing[idx]?.priceValue ?? 0;
     if (tp && val !== "") updateVariantMRP(idx, tp, val, mode);
@@ -129,22 +151,22 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
     setVariantPricing((prev) =>
       prev.map((v, i) => (i === idx ? { ...v, priceValue: val } : v)),
     );
-
     const tp = variants[idx]?.tp_price ?? 0;
     const mode = variantPricing[idx]?.priceMode ?? "percentage";
-    if (tp && val !== "" && mode) updateVariantMRP(idx, tp, val, mode);
+    if (tp && val !== "") updateVariantMRP(idx, tp, val, mode);
   };
 
   const updateVariantDiscountedPrice = (idx: number) => {
     const variant = variants[idx];
-    const discounted = calculateDiscountedPrice(
-      Number(variant.base_price || 0),
-      Number(variant.discount_amount || 0),
+    setValue(
+      `variants.${idx}.discounted_price`,
+      calculateDiscountedPrice(
+        Number(variant.base_price || 0),
+        Number(variant.discount_amount || 0),
+      ),
     );
-    setValue(`variants.${idx}.discounted_price`, discounted);
   };
 
-  // --- Errors ---
   const variantErrors = form.formState.errors.variants as
     | (
         | Partial<Record<keyof ProductVariantType, { message?: string }>>
@@ -152,379 +174,379 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
       )[]
     | undefined;
 
+  if (variants.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-6 lg:p-8">
+        <div className="flex flex-col items-center gap-4 py-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+            <Layers className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">No variants yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add variants for different sizes, colors, or configurations.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={handleAddVariant}
+            className="rounded-xl border border-emerald-600 bg-transparent px-5 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white"
+          >
+            + Add First Variant
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="col-span-1 md:col-span-2 space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <Layers className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              Variants
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {variants.length} variant{variants.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          onClick={handleAddVariant}
+          className="rounded-xl border border-emerald-600 bg-transparent px-4 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white"
+        >
+          + Add Variant
+        </Button>
+      </div>
+
       {variants.map((variant, idx) => {
         const error = variantErrors?.[idx] || {};
         const isActive = form.watch(`variants.${idx}.is_active`) ?? true;
+        const isCollapsed = collapsedVariants[idx] ?? false;
+        const variantLabel =
+          form.watch(`variants.${idx}.variant_name`) || `Variant ${idx + 1}`;
 
         return (
           <div
             key={idx}
-            className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4"
+            className={`rounded-2xl border bg-card transition-shadow ${isActive ? "border-border" : "border-border opacity-70"}`}
           >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-semibold text-lg">Variant {idx + 1}</h4>
-              <Button
-                type="button"
-                variant="destructive"
-                className="p-2"
-                onClick={() => handleRemoveVariant(idx)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Active Toggle */}
-            {addIsActive && (
-              <div className="flex items-center space-x-3 mt-2">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    {...form.register(`variants.${idx}.is_active`)}
-                    defaultChecked={variant.is_active ?? true}
-                    className="sr-only peer"
-                  />
-                  <div
-                    className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-500
-                      after:content-[''] after:absolute after:top-0.5 after:left-0.5
-                      after:bg-white after:border after:border-gray-300 after:rounded-full
-                      after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"
-                  ></div>
-                </label>
+            {/* Variant header */}
+            <div
+              className="flex cursor-pointer items-center justify-between p-5"
+              onClick={() => toggleCollapse(idx)}
+            >
+              <div className="flex items-center gap-3">
                 <span
-                  className={`text-sm font-medium ${
-                    isActive ? "text-green-600" : "text-red-600"
-                  }`}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${isActive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
                 >
-                  {isActive ? "Active" : "Inactive"}
+                  {idx + 1}
                 </span>
-                <Tooltip
-                  title="Toggle to activate or deactivate this variant. Inactive variants will not be available for purchase."
-                  placement="top"
-                >
-                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                </Tooltip>
+                <span className="font-medium text-foreground">
+                  {variantLabel}
+                </span>
+                {!isActive && (
+                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                    Inactive
+                  </span>
+                )}
               </div>
-            )}
-
-            {/* Variant Info */}
-            <div className="space-y-2">
-              <h5 className="font-medium text-gray-700 dark:text-gray-400">
-                Variant Info
-              </h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      Variant Name <span className="text-red-500">*</span>
-                    </label>
-                    <Tooltip
-                      title="Give this variant a descriptive name. Examples: 'Small', 'Medium', 'Large' for T-shirts; 'Red', 'Blue' for colors; '128GB', '256GB' for storage options."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    placeholder="e.g., Small, Medium, Red, 128GB"
-                    name={`variants.${idx}.variant_name`}
-                    required
-                    
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      SKU <span className="text-red-500">*</span>
-                    </label>
-                    <Tooltip
-                      title="Stock Keeping Unit - a unique code to identify this specific variant. Example: If product SKU is 'TSHIRT-001', variant SKU could be 'TSHIRT-001-S' for Small size."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    placeholder="e.g., TSHIRT-001-S"
-                    name={`variants.${idx}.sku`}
-                    required
-                    
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">Color</label>
-                    <Tooltip
-                      title="Specify the color of this variant. Examples: 'Black', 'White', 'Navy Blue', 'Red'. Leave blank if color is not applicable."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    placeholder="e.g., Black, Navy Blue"
-                    name={`variants.${idx}.color`}
-                    
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      Weight (Kg)
-                    </label>
-                    <Tooltip
-                      title="Product weight in kilograms. Used for shipping calculations. Example: 0.5 for 500 grams, 1.2 for 1.2 kg."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    placeholder="e.g., 0.5, 1.2"
-                    name={`variants.${idx}.weight`}
-                    type="number"
-                    
-                  />
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveVariant(idx);
+                  }}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-500 transition-colors dark:hover:bg-rose-950/30"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                {isCollapsed ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                )}
               </div>
             </div>
 
-            {/* Attributes */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <label className="block font-medium text-sm">Attributes</label>
-                <Tooltip
-                  title="Add custom attributes for this variant. Format: Key-Value pairs separated by commas. Example: 'Size-M, Material-Cotton, Fit-Slim' or 'Storage-256GB, RAM-8GB'."
-                  placement="top"
-                >
-                  <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                </Tooltip>
-              </div>
-              <Controller
-                control={form.control}
-                name={`variants.${idx}.attributes`}
-                defaultValue={variant.attributes ?? null}
-                render={({ field, fieldState }) => (
-                  <div>
-                    <textarea
-                      className="w-full border rounded-md p-2"
-                      placeholder="e.g., Size-M, Material-Cotton, Fit-Slim"
-                      value={attrTexts[idx] || ""}
-                      onChange={(e) => {
-                        const newAttrTexts = [...attrTexts];
-                        newAttrTexts[idx] = e.target.value;
-                        setAttrTexts(newAttrTexts);
-                      }}
-                      onBlur={() => {
-                        const val = (attrTexts[idx] || "").trim();
-                        if (!val) return field.onChange(null);
-
-                        const obj: Record<string, string> = {};
-                        val.split(",").forEach((pair) => {
-                          const [key, value] = pair
-                            .split("-")
-                            .map((s) => s.trim());
-                          if (key && value !== undefined) obj[key] = value;
-                        });
-
-                        field.onChange(Object.keys(obj).length ? obj : null);
-                      }}
-                    />
-                    {(fieldState.error?.message ||
-                      error.attributes?.message) && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {fieldState.error?.message || error.attributes?.message}
-                      </p>
-                    )}
+            {!isCollapsed && (
+              <div className="space-y-6 border-t border-border px-5 pb-6 pt-5">
+                {/* Active toggle */}
+                {addIsActive && (
+                  <div className="flex items-center gap-3">
+                    <label className="relative inline-flex cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        {...form.register(`variants.${idx}.is_active`)}
+                        defaultChecked={variant.is_active ?? true}
+                        className="peer sr-only"
+                      />
+                      <div className="h-5 w-9 rounded-full bg-gray-200 transition-colors peer-checked:bg-emerald-500 dark:bg-gray-700 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-4" />
+                    </label>
+                    <span
+                      className={`text-sm font-medium ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}
+                    >
+                      {isActive ? "Active" : "Inactive"}
+                    </span>
                   </div>
                 )}
-              />
-            </div>
 
-            {/* Pricing */}
-            <div className="space-y-2">
-              <h5 className="font-medium text-gray-700 dark:text-gray-400">
-                Pricing Info
-              </h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      TP Price ({displayCurrency})
-                    </label>
-                    <Tooltip
-                      title="Trade Price - the wholesale or cost price of this variant. This is used as the base for calculating MRP using the markup percentage or multiplier."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
+                {/* Basic info */}
+                <div>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Basic Info
+                  </p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <FieldLabel
+                        label="Variant Name"
+                        required
+                        tooltip="E.g. Small, Medium, Red, 128GB"
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.variant_name`}
+                        required
+                        placeholder="e.g. Small, Red, 128GB"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel
+                        label="SKU"
+                        required
+                        tooltip="Unique code. E.g. TSHIRT-001-S"
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.sku`}
+                        required
+                        placeholder="e.g. PROD-001-S"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel
+                        label="Color"
+                        tooltip="E.g. Black, Navy Blue"
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.color`}
+                        placeholder="e.g. Black"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel
+                        label="Weight (kg)"
+                        tooltip="Used for shipping. E.g. 0.5, 1.2"
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.weight`}
+                        type="number"
+                        placeholder="e.g. 0.5"
+                      />
+                    </div>
                   </div>
-                  <FormField
+                </div>
+
+                {/* Attributes */}
+                <div>
+                  <FieldLabel
+                    label="Attributes"
+                    tooltip="Key-Value pairs. E.g. Size-M, Material-Cotton, Fit-Slim"
+                  />
+                  <Controller
                     control={form.control}
-                    name={`variants.${idx}.tp_price`}
-                    type="number"
-                    
-                    onChange={() => {
-                      const val = variantPricing[idx]?.priceValue ?? 0;
-                      const mode =
-                        variantPricing[idx]?.priceMode ?? "percentage";
-                      const tp =
-                        form.getValues(`variants.${idx}.tp_price`) ?? 0;
-                      if (tp && val !== "" && mode)
-                        updateVariantMRP(idx, tp, val, mode);
-                    }}
+                    name={`variants.${idx}.attributes`}
+                    defaultValue={variant.attributes ?? null}
+                    render={({ field, fieldState }) => (
+                      <div>
+                        <textarea
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                          placeholder="e.g. Size-M, Material-Cotton, Fit-Slim"
+                          rows={2}
+                          value={attrTexts[idx] || ""}
+                          onChange={(e) => {
+                            const newAttrTexts = [...attrTexts];
+                            newAttrTexts[idx] = e.target.value;
+                            setAttrTexts(newAttrTexts);
+                          }}
+                          onBlur={() => {
+                            const val = (attrTexts[idx] || "").trim();
+                            if (!val) return field.onChange(null);
+                            const obj: Record<string, string> = {};
+                            val.split(",").forEach((pair) => {
+                              const [key, value] = pair
+                                .split("-")
+                                .map((s) => s.trim());
+                              if (key && value !== undefined) obj[key] = value;
+                            });
+                            field.onChange(
+                              Object.keys(obj).length ? obj : null,
+                            );
+                          }}
+                        />
+                        {(fieldState.error?.message ||
+                          error.attributes?.message) && (
+                          <p className="mt-1 text-xs text-rose-500">
+                            {fieldState.error?.message ||
+                              error.attributes?.message}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   />
                 </div>
 
-                <div className="w-full md:max-w-lg xl:max-w-xl">
-                  <div className="flex items-center gap-2 mb-1">
-                    <label className="block text-sm font-medium">
-                      Price Markup
-                    </label>
-                    <Tooltip
-                      title="Add a markup to TP Price to calculate MRP. Use Percentage (e.g., 20% means MRP = TP × 1.20) or Multiplier (e.g., 1.5 means MRP = TP × 1.5)."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-                    <select
-                      className="w-full md:w-fit rounded-md border px-3 py-2"
-                      value={variantPricing[idx]?.priceMode ?? "percentage"}
-                      onChange={(e) =>
-                        handleVariantPriceModeChange(
-                          idx,
-                          e.target.value as "percentage" | "multiplier",
-                        )
-                      }
-                    >
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="multiplier">Multiplier (×)</option>
-                    </select>
+                {/* Pricing */}
+                <div>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Pricing
+                  </p>
 
-                    <input
-                      type="number"
-                      className="w-full md:w-fit min-w-20 rounded-md border px-3 py-2"
-                      placeholder={
-                        variantPricing[idx]?.priceMode === "percentage"
-                          ? "20"
-                          : "1.2"
-                      }
-                      value={variantPricing[idx]?.priceValue ?? ""}
-                      onChange={(e) =>
-                        handleVariantPriceValueChange(
-                          idx,
-                          e.target.value === "" ? "" : Number(e.target.value),
-                        )
-                      }
-                    />
+                  {/* TP + Markup */}
+                  <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-border bg-muted/30 p-3">
+                      <FieldLabel
+                        label={`TP Price (${displayCurrency})`}
+                        tooltip="Wholesale cost price for this variant."
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.tp_price`}
+                        type="number"
+                        placeholder="e.g. 100"
+                        onChange={() => {
+                          const val = variantPricing[idx]?.priceValue ?? 0;
+                          const mode =
+                            variantPricing[idx]?.priceMode ?? "percentage";
+                          const tp =
+                            form.getValues(`variants.${idx}.tp_price`) ?? 0;
+                          if (tp && val !== "")
+                            updateVariantMRP(idx, tp, val, mode);
+                        }}
+                      />
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-muted/30 p-3">
+                      <FieldLabel
+                        label="Price Markup (Auto-calculates MRP)"
+                        tooltip="Add a markup to TP Price to calculate MRP. Percentage: 20% on TP 100 → MRP 120. Multiplier: 1.5× on TP 100 → MRP 150."
+                      />
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted sm:w-auto"
+                          value={variantPricing[idx]?.priceMode ?? "percentage"}
+                          onChange={(e) =>
+                            handleVariantPriceModeChange(
+                              idx,
+                              e.target.value as "percentage" | "multiplier",
+                            )
+                          }
+                        >
+                          <option value="percentage">Percentage (%)</option>
+                          <option value="multiplier">Multiplier (×)</option>
+                        </select>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                          placeholder={
+                            variantPricing[idx]?.priceMode === "percentage"
+                              ? "e.g. 20"
+                              : "e.g. 1.5"
+                          }
+                          value={variantPricing[idx]?.priceValue ?? ""}
+                          onChange={(e) =>
+                            handleVariantPriceValueChange(
+                              idx,
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value),
+                            )
+                          }
+                        />
+                      </div>
+                      {/* Live calculation hint */}
+                      {variantPricing[idx]?.priceValue !== "" &&
+                      variantPricing[idx]?.priceValue !== undefined &&
+                      form.watch(`variants.${idx}.tp_price`) ? (
+                        <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+                          {variantPricing[idx]?.priceMode === "percentage"
+                            ? `${displayCurrency}${form.watch(`variants.${idx}.tp_price`)} + ${variantPricing[idx]?.priceValue}% = MRP ${displayCurrency}${(Number(form.watch(`variants.${idx}.tp_price`)) * (1 + Number(variantPricing[idx]?.priceValue) / 100)).toFixed(2)}`
+                            : `${displayCurrency}${form.watch(`variants.${idx}.tp_price`)} × ${variantPricing[idx]?.priceValue} = MRP ${displayCurrency}${(Number(form.watch(`variants.${idx}.tp_price`)) * Number(variantPricing[idx]?.priceValue)).toFixed(2)}`}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
+
+                  {/* MRP / Discount / Final */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="rounded-xl border border-border bg-muted/30 p-3">
+                      <FieldLabel
+                        label={`MRP (${displayCurrency})`}
+                        tooltip="Regular selling price."
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.base_price`}
+                        type="number"
+                        placeholder="e.g. 120"
+                        onChange={() => updateVariantDiscountedPrice(idx)}
+                      />
+                    </div>
+                    <div className="rounded-xl border border-border bg-muted/30 p-3">
+                      <FieldLabel
+                        label={`Discount (${displayCurrency})`}
+                        tooltip="Amount off MRP."
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.discount_amount`}
+                        type="number"
+                        placeholder="e.g. 10"
+                        onChange={() => updateVariantDiscountedPrice(idx)}
+                      />
+                    </div>
+                    <div className="rounded-xl border border-border bg-emerald-500/5 p-3">
+                      <FieldLabel
+                        label={`Final Price (${displayCurrency})`}
+                        tooltip="Auto-calculated: MRP − Discount."
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`variants.${idx}.discounted_price`}
+                        type="number"
+                        placeholder="Auto"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stock */}
+                <div className="max-w-xs">
+                  <FieldLabel
+                    label="Stock"
+                    tooltip="Available inventory for this variant."
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`variants.${idx}.stock`}
+                    type="number"
+                    placeholder="e.g. 50"
+                  />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      MRP Price ({displayCurrency})
-                    </label>
-                    <Tooltip
-                      title="Maximum Retail Price - the regular selling price before any discounts. This is calculated automatically from TP Price and markup, or can be entered manually."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name={`variants.${idx}.base_price`}
-                    type="number"
-                    
-                    onChange={() => updateVariantDiscountedPrice(idx)}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      Discount Amount ({displayCurrency})
-                    </label>
-                    <Tooltip
-                      title="The amount to subtract from MRP Price. Example: If MRP is 100 and discount is 20, the final price will be 80."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name={`variants.${idx}.discount_amount`}
-                    type="number"
-                    
-                    onChange={() => updateVariantDiscountedPrice(idx)}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className="block font-medium text-sm">
-                      Discounted Price ({displayCurrency})
-                    </label>
-                    <Tooltip
-                      title="Final selling price after discount. This is calculated automatically as MRP Price minus Discount Amount."
-                      placement="top"
-                    >
-                      <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                    </Tooltip>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name={`variants.${idx}.discounted_price`}
-                    type="number"
-                    
-                    readOnly
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Stock */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <label className="block font-medium text-sm">Stock</label>
-                  <Tooltip
-                    title="Available inventory quantity for this variant. This number will decrease as orders are placed and increase when stock is replenished."
-                    placement="top"
-                  >
-                    <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer" />
-                  </Tooltip>
-                </div>
-                <FormField
-                  control={form.control}
-                  name={`variants.${idx}.stock`}
-                  type="number"
-                  
-                />
-              </div>
-            </div>
+            )}
           </div>
         );
       })}
-
-      <Button type="button" variant="greenish" onClick={handleAddVariant}>
-        + Add Variant
-      </Button>
     </div>
   );
 };
