@@ -51,19 +51,30 @@ export function ShippingFeesCard({
                 {/* Top row: Name + Description */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
                   <div>
-                    <h4 className="font-semibold text-primary text-base sm:text-lg">
-                      {fee.name}
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-primary text-base sm:text-lg">
+                        {fee.name}
+                      </h4>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
+                          fee.customer_view === false
+                            ? "bg-red-50 text-red-600 border-red-200"
+                            : "bg-green-50 text-green-700 border-green-200"
+                        }`}
+                      >
+                        {fee.customer_view === false ? "Hidden" : "Visible"}
+                      </span>
+                    </div>
                     {fee.description && (
                       <p className="text-ring text-sm mt-1 sm:mt-0.5">
                         {fee.description}
                       </p>
                     )}
                   </div>
-                  <span className=" text-sm sm:text-base mt-1 sm:mt-0">
+                  <span className="text-sm sm:text-base mt-1 sm:mt-0">
                     {fee.estimated_days !== undefined
                       ? `${fee.estimated_days} day${
-                          fee.estimated_days > 1 ? "s" : ""
+                          Number(fee.estimated_days) > 1 ? "s" : ""
                         }`
                       : "No estimate"}
                   </span>

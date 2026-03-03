@@ -34,7 +34,7 @@ export function ExpenseDetailDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      width={380}
+      size={380}
       placement="right"
       closable={false}
       styles={{

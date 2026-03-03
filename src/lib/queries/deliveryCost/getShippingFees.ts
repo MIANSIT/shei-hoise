@@ -4,7 +4,8 @@ import { supabase } from "@/lib/supabase";
 export interface ShippingOption {
   name: string;
   price: number;
-  estimated_days?: string; // Changed to string to allow ranges like "2-3"
+  estimated_days?: string;
+  customer_view?: boolean; // Controls visibility on customer-facing storefront
 }
 
 export interface StoreShippingConfig {

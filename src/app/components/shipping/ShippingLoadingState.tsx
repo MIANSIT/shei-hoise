@@ -1,19 +1,18 @@
+// ShippingLoadingState.tsx
 export function ShippingLoadingState() {
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50/80 rounded-2xl border border-gray-100 shadow-2xl shadow-gray-200/50 p-12 backdrop-blur-sm">
-      <div className="flex flex-col items-center justify-center space-y-6">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-blue-200 rounded-full"></div>
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-        </div>
-        <div className="text-center">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-400 mb-2">
-            Loading Shipping Configuration
-          </h3>
-          <p className="text-gray-600">
-            Preparing your shipping management dashboard...
-          </p>
-        </div>
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-12 sm:p-16 flex flex-col items-center justify-center gap-5">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-700" />
+        <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 animate-spin" />
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          Loading configuration
+        </p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          Preparing your shipping settings…
+        </p>
       </div>
     </div>
   );

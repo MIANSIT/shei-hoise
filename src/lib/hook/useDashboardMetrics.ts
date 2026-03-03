@@ -35,38 +35,21 @@ type DashboardProduct = Product & { variants: ProductVariant[] };
 // Expense Metrics Types
 // ─────────────────────────────────────────────
 export interface ExpenseMetrics {
-  /** Sum of all expense amounts within the selected time period */
   totalExpenses: number;
-
-  /** Gross profit minus total expenses = actual bottom-line profit */
   netProfit: number;
-
-  /** (totalExpenses / revenue) * 100 — how much of revenue is consumed by expenses */
   expenseToRevenueRatio: number;
-
-  /** The expense category with the highest total spend in the period */
   topExpenseCategory: { name: string; amount: number };
-
-  /** Top 5 expense categories ranked by amount, for chart/breakdown display */
   expenseCategoryBreakdown: {
     name: string;
     amount: number;
     percentage: number;
   }[];
-
-  /** Period-over-period % change for expenses and net profit */
   changePercentage: {
     expenses: number;
     netProfit: number;
   };
-
-  /** Average expense amount per expense record in the period */
   averageExpenseAmount: number;
-
-  /** Total number of expense records in the period */
   expenseCount: number;
-
-  /** Breakdown by payment method */
   expenseByPaymentMethod: { method: string; amount: number }[];
 }
 
@@ -107,16 +90,46 @@ interface DashboardMetrics {
   alerts: { type: AlertType; message: string; count: number }[];
   filteredOrders: StoreOrder[];
   paidOrders: StoreOrder[];
-
-  // ── NEW ──
   expenseMetrics: ExpenseMetrics;
 }
 
 // ─────────────────────────────────────────────
-// Helper: stable ISO date key (no locale issues)
-// "2025-02-11" instead of locale-dependent toDateString()
+// Helper: stable ISO date key
 // ─────────────────────────────────────────────
 const toDateKey = (d: Date): string => d.toISOString().slice(0, 10);
+
+// ─────────────────────────────────────────────
+// Helper: product-only revenue (shipping excluded)
+//
+// shipping_fee is paid to the courier — NOT store revenue.
+// revenue = total_amount - shipping_fee
+//
+// Example: total=220, shipping=100 → revenue=120 ✅
+// ─────────────────────────────────────────────
+const getOrderRevenue = (order: StoreOrder): number => {
+  const total = Number(order.total_amount) || 0;
+  const shipping = Number(order.shipping_fee) || 0;
+  return total - shipping;
+};
+
+// ─────────────────────────────────────────────
+// Helper: adjustment ratio (shipping excluded)
+//
+// Distributes order-level discounts/surcharges across items proportionally.
+// Must exclude shipping from both sides so product profit is never diluted by shipping.
+//
+// ratio = (total_amount - shipping_fee) / subtotal
+//
+// Example: total=220, shipping=100, subtotal=120 → ratio=1.0 (no product discount)
+// Example: total=108, shipping=0,   subtotal=120 → ratio=0.9 (10% discount applied)
+// ─────────────────────────────────────────────
+const getOrderAdjustmentRatio = (order: StoreOrder): number => {
+  const subtotal = Number(order.subtotal) || 0;
+  const total = Number(order.total_amount) || 0;
+  const shipping = Number(order.shipping_fee) || 0;
+  if (subtotal === 0) return 1;
+  return (total - shipping) / subtotal;
+};
 
 // ─────────────────────────────────────────────
 // Default / empty expense metrics
@@ -137,7 +150,7 @@ export const useDashboardMetrics = (
   storeId: string | null,
   orders: StoreOrder[],
   products: DashboardProduct[],
-  expenses: Expense[], // ← NEW parameter
+  expenses: Expense[],
   timePeriod: TimePeriod,
 ) => {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
@@ -174,9 +187,6 @@ export const useDashboardMetrics = (
     expenseMetrics: defaultExpenseMetrics,
   });
 
-  // ─────────────────────────────────────────────
-  // isOrderPaid
-  // ─────────────────────────────────────────────
   const isOrderPaid = useCallback(
     (order: StoreOrder) => order.payment_status?.toLowerCase() === "paid",
     [],
@@ -192,27 +202,18 @@ export const useDashboardMetrics = (
 
     switch (period) {
       case "weekly": {
-        // Rolling last 7 days: today + 6 days back
-        // e.g. today Mar 1 -> Feb 23 to Mar 1
-        // Always has data as long as orders exist in last 7 days
         const startDate = new Date(now);
         startDate.setDate(now.getDate() - 6);
         startDate.setHours(0, 0, 0, 0);
         return { start: startDate, end: endDate };
       }
-
       case "monthly": {
-        // Rolling last 30 days
-        // e.g. today Mar 1 -> Feb 1 to Mar 1
-        // Avoids "Mar 1 = empty March" calendar month problem
         const startDate = new Date(now);
         startDate.setDate(now.getDate() - 29);
         startDate.setHours(0, 0, 0, 0);
         return { start: startDate, end: endDate };
       }
-
       case "yearly": {
-        // Rolling last 365 days
         const startDate = new Date(now);
         startDate.setDate(now.getDate() - 364);
         startDate.setHours(0, 0, 0, 0);
@@ -222,7 +223,6 @@ export const useDashboardMetrics = (
   }, []);
 
   const getPreviousPeriodDates = useCallback((period: TimePeriod) => {
-    // Previous period = same window length, shifted back by one window
     const now = new Date();
 
     switch (period) {
@@ -235,7 +235,6 @@ export const useDashboardMetrics = (
         prevStart.setHours(0, 0, 0, 0);
         return { start: prevStart, end: prevEnd };
       }
-
       case "monthly": {
         const prevEnd = new Date(now);
         prevEnd.setDate(now.getDate() - 30);
@@ -245,7 +244,6 @@ export const useDashboardMetrics = (
         prevStart.setHours(0, 0, 0, 0);
         return { start: prevStart, end: prevEnd };
       }
-
       case "yearly": {
         const prevEnd = new Date(now);
         prevEnd.setDate(now.getDate() - 365);
@@ -280,9 +278,6 @@ export const useDashboardMetrics = (
       }
       return productMap.get(item.product_id)?.tp_price ?? 0;
     };
-
-    const calculateItemProfit = (item: OrderItem): number =>
-      getItemSellingPrice(item) - getItemCost(item);
 
     // ─── Order accumulators ───
     let revenue = 0,
@@ -343,9 +338,14 @@ export const useDashboardMetrics = (
     // ─── Single pass over all orders ───
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      const subtotal = Number(order.subtotal) || 0;
-      const total = Number(order.total_amount) || 0;
       const isPaid = isOrderPaid(order);
+
+      // Revenue = total_amount - shipping_fee (shipping is NOT store revenue)
+      const trueOrderRevenue = getOrderRevenue(order);
+
+      // Ratio = (total_amount - shipping_fee) / subtotal
+      // Correctly distributes discounts/surcharges across items without shipping interference
+      const adjustmentRatio = getOrderAdjustmentRatio(order);
 
       const inCurrentPeriod =
         orderDate >= currentPeriod.start && orderDate <= currentPeriod.end;
@@ -353,17 +353,19 @@ export const useDashboardMetrics = (
       if (inCurrentPeriod) {
         filteredOrders.push(order);
         orderCount++;
-        totalOrderValue += subtotal;
+        totalOrderValue += trueOrderRevenue; // AOV = product value only
 
         if (isPaid) {
-          revenue += subtotal;
+          revenue += trueOrderRevenue;
           paidOrders.push(order);
           paidOrderCount++;
 
-          grossProfit += (order.order_items ?? []).reduce(
-            (s, item) => s + calculateItemProfit(item) * (item.quantity || 1),
-            0,
-          );
+          grossProfit += (order.order_items ?? []).reduce((s, item) => {
+            const qty = item.quantity || 1;
+            const adjustedSell = getItemSellingPrice(item) * adjustmentRatio;
+            const cost = getItemCost(item);
+            return s + (adjustedSell - cost) * qty;
+          }, 0);
         }
       }
 
@@ -372,15 +374,16 @@ export const useDashboardMetrics = (
 
       if (inPrevPeriod) {
         prevOrderCount++;
-        prevTotalOrderValue += subtotal;
+        prevTotalOrderValue += trueOrderRevenue;
 
         if (isPaid) {
-          prevRevenue += subtotal;
-          prevProfit += (order.order_items ?? []).reduce(
-            (sum, item) =>
-              sum + calculateItemProfit(item) * (item.quantity || 1),
-            0,
-          );
+          prevRevenue += trueOrderRevenue;
+          prevProfit += (order.order_items ?? []).reduce((sum, item) => {
+            const qty = item.quantity || 1;
+            const adjustedSell = getItemSellingPrice(item) * adjustmentRatio;
+            const cost = getItemCost(item);
+            return sum + (adjustedSell - cost) * qty;
+          }, 0);
         }
       }
 
@@ -389,23 +392,24 @@ export const useDashboardMetrics = (
         "pending") as OrderStatus;
       if (statusKey in orderStatusCounts) orderStatusCounts[statusKey]++;
 
-      // Payment amounts (ALL orders, all time)
+      // Payment amounts — product revenue only (shipping excluded)
       const paymentKey = (order.payment_status?.toLowerCase() ||
         "pending") as PaymentStatus;
-      if (paymentKey in paymentAmounts) paymentAmounts[paymentKey] += total;
+      if (paymentKey in paymentAmounts)
+        paymentAmounts[paymentKey] += trueOrderRevenue;
 
-      // Sales trend (paid only, last 30 days)
+      // Sales trend (paid only, last 30 days) — shipping excluded
       if (isPaid) {
         const dayKey = toDateKey(new Date(order.created_at));
         if (salesTrendMap.has(dayKey)) {
           salesTrendMap.set(
             dayKey,
-            (salesTrendMap.get(dayKey) || 0) + subtotal,
+            (salesTrendMap.get(dayKey) || 0) + trueOrderRevenue,
           );
         }
       }
 
-      // Customer tracking
+      // Customer spend — shipping excluded
       if (!order.customers?.id) return;
       const customerId = order.customers.id;
       const firstName = order.customers.first_name || "Unknown";
@@ -414,14 +418,14 @@ export const useDashboardMetrics = (
       if (!existing) {
         customerMap.set(customerId, {
           name: firstName,
-          totalSpent: subtotal,
+          totalSpent: trueOrderRevenue,
           orders: 1,
           firstOrderDate: orderDate,
         });
       } else {
         customerMap.set(customerId, {
           ...existing,
-          totalSpent: existing.totalSpent + subtotal,
+          totalSpent: existing.totalSpent + trueOrderRevenue,
           orders: existing.orders + 1,
         });
       }
@@ -431,17 +435,17 @@ export const useDashboardMetrics = (
         if (!paidExisting) {
           paidCustomerMap.set(customerId, {
             name: firstName,
-            totalSpent: subtotal,
+            totalSpent: trueOrderRevenue,
           });
         } else {
           paidCustomerMap.set(customerId, {
             name: paidExisting.name,
-            totalSpent: paidExisting.totalSpent + subtotal,
+            totalSpent: paidExisting.totalSpent + trueOrderRevenue,
           });
         }
       }
 
-      // Top products (paid only)
+      // Top products (paid only) — shipping-excluded ratio
       if (isPaid) {
         (order.order_items ?? []).forEach((item) => {
           const current = topProductsMap.get(item.product_name) || {
@@ -451,35 +455,30 @@ export const useDashboardMetrics = (
             profit: 0,
           };
           const qty = item.quantity || 1;
-          const sell = getItemSellingPrice(item);
+          const adjustedSell = getItemSellingPrice(item) * adjustmentRatio;
           const cost = getItemCost(item);
 
           topProductsMap.set(item.product_name, {
-            revenue: current.revenue + sell * qty,
+            revenue: current.revenue + adjustedSell * qty,
             quantity: current.quantity + qty,
             cost: current.cost + cost * qty,
-            profit: current.profit + (sell - cost) * qty,
+            profit: current.profit + (adjustedSell - cost) * qty,
           });
         });
       }
     });
 
     // ─────────────────────────────────────────────
-    // EXPENSE METRICS — single pass over expenses
+    // EXPENSE METRICS
     // ─────────────────────────────────────────────
     let totalExpenses = 0;
     let prevTotalExpenses = 0;
     let expenseCount = 0;
 
-    // Category totals for current period
     const categoryTotalsMap = new Map<string, number>();
-
-    // Payment method totals for current period
     const paymentMethodMap = new Map<string, number>();
 
     expenses.forEach((expense) => {
-      // expense_date is a date string like "2025-02-11"
-      // Parse at noon to avoid timezone boundary issues
       const expenseDate = new Date(`${expense.expense_date}T12:00:00`);
       const amount = Number(expense.amount) || 0;
 
@@ -492,14 +491,12 @@ export const useDashboardMetrics = (
         totalExpenses += amount;
         expenseCount++;
 
-        // Category breakdown
         const catName = expense.category?.name ?? "Uncategorized";
         categoryTotalsMap.set(
           catName,
           (categoryTotalsMap.get(catName) ?? 0) + amount,
         );
 
-        // Payment method breakdown
         const method = expense.payment_method ?? "Unknown";
         paymentMethodMap.set(
           method,
@@ -512,21 +509,17 @@ export const useDashboardMetrics = (
       }
     });
 
-    // Net profit (current and previous period)
     const netProfit = grossProfit - totalExpenses;
     const prevNetProfit = prevProfit - prevTotalExpenses;
 
-    // Expense to revenue ratio
     const expenseToRevenueRatio =
       revenue > 0
         ? parseFloat(((totalExpenses / revenue) * 100).toFixed(1))
         : 0;
 
-    // Average expense amount
     const averageExpenseAmount =
       expenseCount > 0 ? totalExpenses / expenseCount : 0;
 
-    // Top expense category
     let topExpenseCategory = { name: "None", amount: 0 };
     categoryTotalsMap.forEach((amount, name) => {
       if (amount > topExpenseCategory.amount) {
@@ -534,7 +527,6 @@ export const useDashboardMetrics = (
       }
     });
 
-    // Category breakdown sorted by amount desc, with percentage
     const expenseCategoryBreakdown = Array.from(categoryTotalsMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -547,7 +539,6 @@ export const useDashboardMetrics = (
             : 0,
       }));
 
-    // Payment method breakdown sorted by amount desc
     const expenseByPaymentMethod = Array.from(paymentMethodMap.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([method, amount]) => ({ method, amount }));
@@ -566,32 +557,57 @@ export const useDashboardMetrics = (
       let productHasStock = false;
       let productHasLowStock = false;
 
-      const variants =
-        product.variants?.length > 0
-          ? product.variants
-          : [product as unknown as ProductVariant];
+      if (product.variants?.length > 0) {
+        product.variants.forEach((variant) => {
+          const stock = variant.stock;
+          if (!stock || !stock.track_inventory) return;
 
-      variants.forEach((variant) => {
-        const stock = variant.stock;
-        if (!stock || !stock.track_inventory) return;
+          const qty = stock.quantity_available ?? 0;
+          const threshold = stock.low_stock_threshold ?? 0;
 
-        const qty = stock.quantity_available ?? 0;
-        const threshold = stock.low_stock_threshold ?? 0;
-        const sellingPrice = variant.sale_price ?? variant.base_price ?? 0;
+          const variantPrice =
+            variant.discounted_price && variant.discounted_price > 0
+              ? variant.discounted_price
+              : variant.price;
 
-        if (qty > 0) {
-          inStockCount += qty;
-          productHasStock = true;
-          totalInventoryValue += qty * sellingPrice;
+          if (qty > 0) {
+            inStockCount += qty;
+            productHasStock = true;
+            totalInventoryValue += qty * variantPrice;
 
-          if (qty <= threshold) {
-            lowStockCount += qty;
-            productHasLowStock = true;
+            if (qty <= threshold) {
+              lowStockCount += qty;
+              productHasLowStock = true;
+            }
+          } else {
+            outOfStockCount++;
           }
-        } else {
-          outOfStockCount++;
+        });
+      } else {
+        const stock = product.stock;
+        if (stock && stock.track_inventory) {
+          const qty = stock.quantity_available ?? 0;
+          const threshold = stock.low_stock_threshold ?? 0;
+
+          const sellingPrice =
+            product.discounted_price && product.discounted_price > 0
+              ? product.discounted_price
+              : (product.base_price ?? 0);
+
+          if (qty > 0) {
+            inStockCount += qty;
+            productHasStock = true;
+            totalInventoryValue += qty * sellingPrice;
+
+            if (qty <= threshold) {
+              lowStockCount += qty;
+              productHasLowStock = true;
+            }
+          } else {
+            outOfStockCount++;
+          }
         }
-      });
+      }
 
       if (!productHasStock) outOfStockProductCount++;
       else if (productHasLowStock) lowStockProductCount++;
@@ -619,7 +635,7 @@ export const useDashboardMetrics = (
       totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
 
     // ─────────────────────────────────────────────
-    // Top products (sorted by quantity sold)
+    // Top products
     // ─────────────────────────────────────────────
     const topProducts = Array.from(topProductsMap.entries())
       .sort((a, b) => b[1].quantity - a[1].quantity)
@@ -631,7 +647,7 @@ export const useDashboardMetrics = (
       }));
 
     // ─────────────────────────────────────────────
-    // Sales trend (sorted chronologically)
+    // Sales trend
     // ─────────────────────────────────────────────
     const salesTrend = Array.from(salesTrendMap.entries())
       .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
@@ -693,8 +709,6 @@ export const useDashboardMetrics = (
         count: pendingPaymentOrderCount,
       });
 
-    // ── NEW: Expense alerts ──
-    // Alert if expenses exceed 80% of revenue (high burn rate)
     if (revenue > 0 && expenseToRevenueRatio >= 80) {
       alerts.push({
         type: "expense",
@@ -703,7 +717,6 @@ export const useDashboardMetrics = (
       });
     }
 
-    // Alert if net profit is negative
     if (netProfit < 0) {
       alerts.push({
         type: "expense",
@@ -745,8 +758,6 @@ export const useDashboardMetrics = (
       alerts,
       filteredOrders,
       paidOrders,
-
-      // ── NEW: Expense metrics ──
       expenseMetrics: {
         totalExpenses,
         netProfit,
@@ -766,7 +777,7 @@ export const useDashboardMetrics = (
     storeId,
     orders,
     products,
-    expenses, // ← added to deps
+    expenses,
     timePeriod,
     getCurrentPeriodDates,
     getPreviousPeriodDates,

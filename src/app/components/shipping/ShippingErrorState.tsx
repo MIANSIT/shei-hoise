@@ -1,3 +1,6 @@
+// ShippingErrorState.tsx
+import { AlertCircle, RefreshCw } from "lucide-react";
+
 interface ShippingErrorStateProps {
   error: string;
   onRetry: () => void;
@@ -8,44 +11,24 @@ export function ShippingErrorState({
   onRetry,
 }: ShippingErrorStateProps) {
   return (
-    <div className="bg-linear-to-br from-white to-red-50/30 rounded-2xl border border-red-100 shadow-2xl shadow-red-200/30 p-8 backdrop-blur-sm">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
-        <div className="w-16 h-16 bg-linear-to-r from-red-100 to-pink-100 rounded-2xl flex items-center justify-center shrink-0">
-          <svg
-            className="w-8 h-8 text-red-500"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-              clipRule="evenodd"
-            />
-          </svg>
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-red-100 dark:border-red-900/40 shadow-sm p-6 sm:p-8">
+      <div className="flex flex-col sm:flex-row items-start gap-4">
+        <div className="w-11 h-11 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center shrink-0">
+          <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />
         </div>
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-red-900 mb-2">
-            Unable to Load Shipping Data
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">
+            Failed to load shipping data
           </h3>
-          <p className="text-red-700 mb-4">{error}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+            {error}
+          </p>
           <button
             onClick={onRetry}
-            className="inline-flex items-center space-x-2 bg-linear-to-r from-red-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg shadow-red-500/25 font-medium"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-sm shadow-red-500/20"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <span>Try Again</span>
+            <RefreshCw className="w-4 h-4" />
+            Try Again
           </button>
         </div>
       </div>
