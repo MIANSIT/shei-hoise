@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Upload, Modal } from "antd";
 import type { UploadFile, UploadProps } from "antd/es/upload";
 import { FrontendImage } from "@/lib/types/frontendImage";
+import { Eye, Trash2 } from "lucide-react";
 
 import {
   DndContext,
@@ -48,7 +49,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
     transform: CSS.Transform.toString(transform),
     transition,
     cursor: "grab",
-    touchAction: "pan-y", // important for mobile scroll + drag
+    touchAction: "pan-y",
   };
 
   return (
@@ -56,15 +57,18 @@ const SortableItem: React.FC<SortableItemProps> = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners} // attach listeners here for full item drag
-      className="relative w-24 h-24 flex items-center justify-center border rounded"
+      {...listeners}
+      className="relative w-24 h-24 flex items-center justify-center border border-gray-200 rounded-xl overflow-hidden shadow-sm"
     >
-      <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs font-bold px-1 rounded-br">
+      <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs font-bold px-1 rounded-br z-10">
         {index + 1}
       </span>
 
       <div
         className="w-full h-full cursor-pointer"
+        style={{
+          background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+        }}
         onClick={() => onPreview(file)}
       >
         {file.url || file.thumbUrl ? (
@@ -73,10 +77,10 @@ const SortableItem: React.FC<SortableItemProps> = ({
             alt={file.name || ""}
             width={96}
             height={96}
-            className="object-cover w-full h-full"
+            className="object-contain w-full h-full"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
             No Preview
           </div>
         )}
@@ -136,14 +140,61 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
     setImages(newImages);
   };
 
-  // ✅ Mobile-compatible sensors
+  // Custom item renderer — full control over thumbnail appearance
+  const itemRender: UploadProps["itemRender"] = (
+    _originNode,
+    file,
+    _fileList,
+    actions,
+  ) => {
+    const src = file.url || file.thumbUrl || "";
+
+    return (
+      <div
+        className="relative w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-sm group"
+        style={{
+          background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+        }}
+      >
+        {src ? (
+          <Image
+            src={src}
+            height={50}
+            width={50}
+            alt={file.name}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+            Uploading...
+          </div>
+        )}
+
+        {/* Hover overlay with preview + delete */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => handlePreview(file)}
+            className="p-1.5 bg-white/90 rounded-full hover:bg-white transition"
+          >
+            <Eye className="w-3.5 h-3.5 text-gray-700" />
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.remove()}
+            className="p-1.5 bg-white/90 rounded-full hover:bg-white transition"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 150,
-        tolerance: 5,
-      },
+      activationConstraint: { delay: 150, tolerance: 5 },
     }),
   );
 
@@ -183,6 +234,7 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
             onPreview={handlePreview}
             onChange={handleChange}
             beforeUpload={handleBeforeUpload}
+            itemRender={itemRender}
           >
             {fileList.length >= 5 ? null : <div>Upload</div>}
           </Upload>
@@ -203,6 +255,7 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
         </SortableContext>
       </DndContext>
 
+      {/* Preview modal */}
       <Modal
         open={previewOpen}
         title={previewTitle}
@@ -210,7 +263,10 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
         onCancel={() => setPreviewOpen(false)}
       >
         {previewImage && (
-          <div className="relative w-full h-96">
+          <div
+            className="relative w-full h-96 rounded-lg border bg-white border-gray-200 overflow-hidden"
+           
+          >
             <Image
               src={previewImage}
               alt={previewTitle}
