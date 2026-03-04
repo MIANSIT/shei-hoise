@@ -5,7 +5,7 @@ import type { ColumnsType } from "antd/es/table";
 import type { TableRowSelection } from "antd/es/table/interface";
 import DataTable from "@/app/components/admin/common/DataTable";
 import Image from "next/image";
-import { InputNumber, Tag, Tooltip } from "antd";
+import { InputNumber, Tooltip } from "antd";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
   ProductRow,
@@ -32,6 +32,31 @@ interface StockTableProps {
   bulkActive?: boolean;
 }
 
+/* ── Shared badge component ── */
+const Badge = ({
+  children,
+  tone,
+}: {
+  children: React.ReactNode;
+  tone: "out" | "low" | "draft" | "inactive";
+}) => {
+  const tones = {
+    out: "bg-red-50    dark:bg-red-950/40    text-red-500    dark:text-red-400    ring-red-200    dark:ring-red-800/50",
+    low: "bg-amber-50  dark:bg-amber-950/40  text-amber-600  dark:text-amber-400  ring-amber-200  dark:ring-amber-800/50",
+    draft:
+      "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-600 dark:text-yellow-400 ring-yellow-200 dark:ring-yellow-800/50",
+    inactive:
+      "bg-gray-100  dark:bg-gray-800      text-gray-500   dark:text-gray-400   ring-gray-200   dark:ring-gray-700",
+  };
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium ring-1 ring-inset ${tones[tone]}`}
+    >
+      {children}
+    </span>
+  );
+};
+
 const StockTable: React.FC<StockTableProps> = ({
   products,
   editedStocks,
@@ -43,48 +68,85 @@ const StockTable: React.FC<StockTableProps> = ({
 }) => {
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
-  const displayCurrencyIconSafe = currencyLoading ? "৳" : (currencyIcon ?? "৳");
+  const symbol = currencyLoading ? "৳" : (currencyIcon ?? "৳");
+
+  // Helper: toggle a single variant key inside the shared rowSelection
+  // const toggleVariantKey = (variantId: string) => {
+  //   if (!rowSelection?.onChange || !rowSelection?.selectedRowKeys) return;
+  //   const current = rowSelection.selectedRowKeys as string[];
+  //   const next = current.includes(variantId)
+  //     ? current.filter((k) => k !== variantId)
+  //     : [...current, variantId];
+  //   rowSelection.onChange(next, [], { type: "single" as const });
+  // };
+
+  // Helper: toggle ALL active variants for a product
+  const toggleAllVariants = (product: ProductRow) => {
+    if (!rowSelection?.onChange || !rowSelection?.selectedRowKeys) return;
+    const current = rowSelection.selectedRowKeys as string[];
+    const activeIds = (product.variants ?? [])
+      .filter((v) => v.isActive)
+      .map((v) => v.id);
+    const allSelected = activeIds.every((id) => current.includes(id));
+    const withoutThese = current.filter((k) => !activeIds.includes(k));
+    const next = allSelected ? withoutThese : [...withoutThese, ...activeIds];
+    rowSelection.onChange(next, [], { type: "single" as const });
+  };
 
   const columns: ColumnsType<ProductRow | VariantRow> = [
+    /* ── Image ── */
     {
-      title: "Image",
+      title: "",
       key: "image",
-      width: 80,
-      render: (_value, record) => {
-        const imageUrl = record.imageUrl ?? null;
-        const isProductRow = "variants" in record;
-        const shouldHighlight = isProductRow
+      width: 64,
+      render: (_v, record) => {
+        const isProduct = "variants" in record;
+        const hasIssue = isProduct
           ? !record.isOutOfStock &&
             (record.isLowStock || record.hasLowStockVariant)
           : !record.isOutOfStock && record.isLowStock;
 
         return (
-          <div className="relative">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={record.title}
-                width={50}
-                height={50}
-                className="rounded-md object-cover"
-              />
-            ) : (
-              <div className="w-12 h-12 bg-card rounded-md" />
-            )}
-            {shouldHighlight && (
+          <div className="relative w-10 h-10">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+              {record.imageUrl ? (
+                <Image
+                  src={record.imageUrl}
+                  alt={record.title}
+                  width={40}
+                  height={40}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-gray-300 dark:text-gray-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+            {hasIssue && (
               <Tooltip
                 title={
-                  record.isOutOfStock
-                    ? "Out of stock"
-                    : isProductRow && record.hasLowStockVariant
-                      ? "Has low stock variants"
-                      : `Low stock! Threshold: ${record.lowStockThreshold}`
+                  isProduct && (record as ProductRow).hasLowStockVariant
+                    ? "Has low stock variants"
+                    : `Threshold: ${record.lowStockThreshold}`
                 }
               >
-                <div className="absolute -top-1 -right-1">
-                  <div className="bg-red-500 text-foreground text-xs px-1 py-0.5 rounded-full">
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 dark:bg-amber-400 rounded-full flex items-center justify-center">
+                  <span className="text-white text-[9px] font-bold leading-none">
                     !
-                  </div>
+                  </span>
                 </div>
               </Tooltip>
             )}
@@ -92,71 +154,52 @@ const StockTable: React.FC<StockTableProps> = ({
         );
       },
     },
+
+    /* ── Name ── */
     {
-      title: "Product / Variant",
+      title: "Product",
       dataIndex: "title",
       key: "title",
-      className: "font-semibold text-primary",
       render: (title: string, record) => {
-        const isProductRow = "variants" in record;
-
-        const isOutOfStock = record.isOutOfStock;
-        const isLowStock = record.isLowStock;
-        const hasLowStockVariant = isProductRow && record.hasLowStockVariant;
-
-        const isInactiveProduct = isProductRow && record.isInactiveProduct;
-        const isInactiveVariant =
-          !isProductRow && !(record as VariantRow).isActive;
-
-        // ✅ PRIORITY TOOLTIP
-        const tooltipTitle = isOutOfStock
-          ? "Out of stock"
-          : hasLowStockVariant
-            ? "One or more variants are low on stock"
-            : `Stock: ${record.stock} / Threshold: ${record.lowStockThreshold}`;
+        const isProduct = "variants" in record;
+        const isInactive = isProduct
+          ? record.isInactiveProduct
+          : !(record as VariantRow).isActive;
 
         return (
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span>{title}</span>
-
-              {/* ✅ PRIORITY TAG RENDERING */}
-              {isOutOfStock ? (
-                <Tag color="volcano" className="text-xs">
-                  Out of Stock
-                </Tag>
-              ) : isLowStock || hasLowStockVariant ? (
-                <Tooltip title={tooltipTitle}>
-                  <Tag color="red" className="text-xs">
-                    {hasLowStockVariant ? "Has Low Stock" : "Low Stock"}
-                  </Tag>
-                </Tooltip>
-              ) : null}
-
-              {/* Inactive / Draft */}
-              {(isInactiveProduct || isInactiveVariant) && (
-                <Tag
-                  color={
-                    isInactiveProduct
-                      ? record.status === ProductStatus.DRAFT
-                        ? "gold"
-                        : "red"
-                      : "red"
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {title}
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {record.isOutOfStock && <Badge tone="out">Out of stock</Badge>}
+              {!record.isOutOfStock && record.isLowStock && (
+                <Badge tone="low">Low stock</Badge>
+              )}
+              {!record.isOutOfStock &&
+                isProduct &&
+                (record as ProductRow).hasLowStockVariant &&
+                !record.isLowStock && <Badge tone="low">Has low stock</Badge>}
+              {isInactive && (
+                <Badge
+                  tone={
+                    isProduct && record.status === ProductStatus.DRAFT
+                      ? "draft"
+                      : "inactive"
                   }
-                  className="text-xs"
                 >
-                  {isInactiveProduct
-                    ? record.status === ProductStatus.DRAFT
-                      ? "Draft"
-                      : "Inactive"
+                  {isProduct && record.status === ProductStatus.DRAFT
+                    ? "Draft"
                     : "Inactive"}
-                </Tag>
+                </Badge>
               )}
             </div>
           </div>
         );
       },
     },
+
+    /* ── SKU ── */
     {
       title: "SKU",
       dataIndex: "sku",
@@ -164,16 +207,20 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_sku, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="italic text-muted-foreground">
-              SKU depends on variants
+            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+              varies
             </span>
           );
         }
         return (
-          <span className="text-muted-foreground">{record.sku ?? "—"}</span>
+          <span className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+            {record.sku ?? "—"}
+          </span>
         );
       },
     },
+
+    /* ── Price ── */
     {
       title: "Price",
       dataIndex: "currentPrice",
@@ -181,41 +228,45 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_price, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="italic text-muted-foreground">
-              Price depends on variants
+            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+              varies
             </span>
           );
         }
         const price = record.currentPrice ?? 0;
         return (
-          <span>
-            {displayCurrencyIconSafe}
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-gray-400 dark:text-gray-500 text-xs mr-0.5">
+              {symbol}
+            </span>
             {price.toFixed(2)}
           </span>
         );
       },
     },
+
+    /* ── Stock ── */
     {
       title: "Stock",
       key: "stock",
-      render: (_value, record) => {
-        const isProductRow = "variants" in record;
-        const parentId = isProductRow
+      render: (_v, record) => {
+        const isProduct = "variants" in record;
+        const parentId = isProduct
           ? record.id
           : (record as VariantRow).productId;
-        const variantId = isProductRow ? null : record.id;
+        const variantId = isProduct ? null : record.id;
 
-        if (isProductRow && record.variants?.length) {
+        if (isProduct && record.variants?.length) {
           return (
-            <span className="italic text-muted-foreground">
-              Stock managed in variants
+            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+              managed in variants
             </span>
           );
         }
 
         const key = record.id;
         const editedValue = editedStocks[key] ?? record.stock;
-        const showUpdateButton = key in editedStocks && !bulkActive;
+        const showSave = key in editedStocks && !bulkActive;
 
         return (
           <div
@@ -225,31 +276,24 @@ const StockTable: React.FC<StockTableProps> = ({
             <InputNumber
               min={0}
               value={editedValue}
+              controls={false}
               onChange={(value) =>
                 onStockChange(parentId, variantId, Number(value ?? 0))
               }
-              className={`w-20! text-center font-bold
-  ${
-    record.isOutOfStock
-      ? "[&>input]:bg-gray-100 [&>input]:border-gray-300 [&>input]:text-gray-500"
-      : record.isLowStock
-        ? "[&>input]:bg-red-50 [&>input]:border-red-300 [&>input]:text-red-700"
-        : ""
-  }`}
-              status={record.isLowStock ? "warning" : undefined}
+              className={`
+                w-20! rounded-lg!
+                [&_input]:text-center! [&_input]:font-semibold! [&_input]:text-sm!
+                ${
+                  record.isOutOfStock
+                    ? "bg-gray-50! dark:bg-gray-800/60! [&_input]:text-gray-400!"
+                    : record.isLowStock
+                      ? "bg-amber-50! dark:bg-amber-950/30! border-amber-300! dark:border-amber-700/50! [&_input]:text-amber-700! dark:[&_input]:text-amber-400!"
+                      : "dark:[&_input]:text-gray-200!"
+                }
+              `}
             />
-            {record.isOutOfStock ? (
-              <Tag color="volcano" className="text-xs">
-                Out of Stock
-              </Tag>
-            ) : record.isLowStock ? (
-              <Tooltip title={`Below threshold (${record.lowStockThreshold})`}>
-                <Tag color="red" className="text-xs">
-                  Low Stock
-                </Tag>
-              </Tooltip>
-            ) : null}
-            {showUpdateButton && (
+
+            {showSave && (
               <SheiButton
                 size="small"
                 onClick={(e) => {
@@ -257,7 +301,7 @@ const StockTable: React.FC<StockTableProps> = ({
                   onSingleUpdate(parentId, variantId, editedValue);
                 }}
               >
-                Update
+                Save
               </SheiButton>
             )}
           </div>
@@ -276,48 +320,102 @@ const StockTable: React.FC<StockTableProps> = ({
       loading={loading}
       rowClassName={(record) => {
         if (record.isOutOfStock) {
-          return "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/40";
+          return "opacity-60 dark:opacity-50";
         }
-
-        const shouldLowHighlight =
+        const isLow =
           "variants" in record
             ? record.isLowStock || record.hasLowStockVariant
             : record.isLowStock;
-
-        return shouldLowHighlight
-          ? "bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-800/20"
+        return isLow
+          ? "bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20"
           : "";
       }}
       expandable={{
-        expandedRowRender: (record) =>
-          "variants" in record && record.variants?.length ? (
-            <DataTable
-              columns={columns.map((col) => ({
-                ...col,
-                width:
-                  col.key === "image"
-                    ? 50
-                    : col.key === "title"
-                      ? 150
-                      : col.width,
-              }))}
-              data={record.variants.map((v) => ({
-                ...v,
-                productId: record.id,
-              }))}
-              rowKey="id"
-              pagination={false}
-              rowClassName={(variantRecord) => {
-                if (variantRecord.isOutOfStock) {
-                  return "bg-gray-100 hover:bg-gray-200";
-                }
+        expandedRowRender: (record) => {
+          if (!("variants" in record) || !record.variants?.length) return null;
 
-                return variantRecord.isLowStock
-                  ? "bg-red-50 hover:bg-red-100"
-                  : "";
-              }}
-            />
-          ) : null,
+          const selectedKeys = (rowSelection?.selectedRowKeys ??
+            []) as string[];
+          const activeVariantIds = record.variants
+            .filter((v) => v.isActive)
+            .map((v) => v.id);
+          const allSelected =
+            activeVariantIds.length > 0 &&
+            activeVariantIds.every((id) => selectedKeys.includes(id));
+          const someSelected = activeVariantIds.some((id) =>
+            selectedKeys.includes(id),
+          );
+
+          // Per-variant row selection wired into the shared selectedRowKeys
+          const variantRowSelection: TableRowSelection<
+            ProductRow | VariantRow
+          > = {
+            selectedRowKeys: selectedKeys,
+            columnWidth: 48,
+            onChange: (keys, _rows, info) => {
+              if (!rowSelection?.onChange) return;
+              // Merge: keep keys from other products, replace keys for this product's variants
+              const variantIds = record.variants!.map((v) => v.id);
+              const otherKeys = selectedKeys.filter(
+                (k) => !variantIds.includes(k),
+              );
+              rowSelection.onChange(
+                [...otherKeys, ...(keys as string[])],
+                [],
+                info,
+              );
+            },
+            getCheckboxProps: (variant) => ({
+              disabled:
+                !("isActive" in variant) || !(variant as VariantRow).isActive,
+            }),
+            // Custom title renders a "select all variants" header checkbox
+            columnTitle: (
+              <Tooltip
+                title={
+                  allSelected
+                    ? "Deselect all variants"
+                    : "Select all active variants"
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected && !allSelected;
+                  }}
+                  onChange={() => toggleAllVariants(record)}
+                  className="cursor-pointer accent-blue-500"
+                />
+              </Tooltip>
+            ),
+          };
+
+          return (
+            <div className="pl-14 pr-4 py-2">
+              <DataTable
+                columns={columns}
+                data={record.variants.map((v) => ({
+                  ...v,
+                  productId: record.id,
+                }))}
+                rowKey="id"
+                rowSelection={variantRowSelection}
+                pagination={false}
+                rowClassName={(v) => {
+                  const isSelected = selectedKeys.includes(
+                    (v as VariantRow).id,
+                  );
+                  if (isSelected) return "bg-blue-50/40 dark:bg-blue-950/10";
+                  if (v.isOutOfStock) return "opacity-55";
+                  if (v.isLowStock)
+                    return "bg-amber-50/40 dark:bg-amber-950/10";
+                  return "";
+                }}
+              />
+            </div>
+          );
+        },
         rowExpandable: (record) =>
           "variants" in record && !!record.variants?.length,
       }}

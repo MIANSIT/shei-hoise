@@ -21,11 +21,12 @@ export default function CategoryFormPanel({
   if (!showForm) return null;
 
   return (
-    <div className="">
+    // animate-in requires tailwindcss-animate plugin (ships with shadcn/ui)
+    <div className="w-full animate-in slide-in-from-right-4 fade-in duration-200">
       <AddCategoryCardForm
         onSubmit={onSubmit}
         editingCategory={editingCategory}
-        key={editingCategory?.id || "new-category"}
+        key={editingCategory?.id ?? "new-category"}
         allCategories={allCategories}
       />
     </div>

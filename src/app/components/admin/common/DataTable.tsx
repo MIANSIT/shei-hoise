@@ -22,6 +22,7 @@ interface DataTableProps<T> {
   scroll?: TableProps<T>["scroll"];
   responsive?: boolean;
   renderCard?: (record: T) => React.ReactNode;
+  className?: string;
 }
 
 function DataTable<T extends object>({
@@ -37,6 +38,7 @@ function DataTable<T extends object>({
   rowClassName,
   scroll,
   renderCard,
+  className,
 }: DataTableProps<T>) {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -49,7 +51,10 @@ function DataTable<T extends object>({
     return (
       <div className="w-full space-y-4">
         {data.map((record, index) => (
-          <div key={getRowKey(record)} className="bg-white rounded-lg border shadow-sm">
+          <div
+            key={getRowKey(record)}
+            className="bg-white rounded-lg border shadow-sm"
+          >
             {renderCard(record)}
           </div>
         ))}
@@ -64,7 +69,7 @@ function DataTable<T extends object>({
 
   // Desktop table view
   return (
-    <div className="w-full ">
+    <div className={`w-full ${className ?? ""}`}>
       <Table<T>
         columns={columns}
         dataSource={data}

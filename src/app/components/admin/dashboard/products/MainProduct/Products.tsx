@@ -2,12 +2,9 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Input, Space, Pagination } from "antd";
-// import { Plus, Filter as FilterIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SearchOutlined } from "@ant-design/icons";
-
+import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import ProductTable from "./ProductTable";
-import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
   getProductsWithVariants,
   ProductWithVariants,
@@ -15,32 +12,32 @@ import {
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import { ProductStatus } from "@/lib/types/enums";
-import MobileFilter from "@/app/components/admin/common/MobileFilter"; // adjust path if needed
-import { Plus } from "lucide-react";
+import MobileFilter from "@/app/components/admin/common/MobileFilter";
+
+const statusConfig = [
+  { key: "ALL", label: "All Products" },
+  { key: ProductStatus.ACTIVE, label: "Active" },
+  { key: ProductStatus.INACTIVE, label: "Inactive" },
+  { key: ProductStatus.DRAFT, label: "Draft" },
+];
 
 const Products: React.FC = () => {
   const router = useRouter();
   const { user } = useCurrentUser();
 
-  // =========================
-  // URL-synced state
-  // =========================
   const [search, setSearch] = useUrlSync<string>("search", "", (v) => v ?? "");
   const [page, setPage] = useUrlSync<number>("page", 1, parseInteger);
   const [pageSize, setPageSize] = useUrlSync<number>(
     "pageSize",
     10,
-    parseInteger
+    parseInteger,
   );
   const [status, setStatus] = useUrlSync<ProductStatus | "ALL">(
     "status",
     "ALL",
-    (v) => v as ProductStatus | "ALL"
+    (v) => v as ProductStatus | "ALL",
   );
 
-  // =========================
-  // Local state
-  // =========================
   const [localSearch, setLocalSearch] = useState(search);
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [total, setTotal] = useState(0);
@@ -52,12 +49,8 @@ const Products: React.FC = () => {
     ALL: 0,
   });
 
-  // =========================
-  // Fetch products + counts
-  // =========================
   const fetchProducts = useCallback(async () => {
     if (!user?.store_id) return;
-
     setLoading(true);
     try {
       const res = await getProductsWithVariants({
@@ -67,7 +60,6 @@ const Products: React.FC = () => {
         pageSize,
         status: status === "ALL" ? undefined : status,
       });
-
       setProducts(res.data);
       setTotal(res.total);
       setCounts(res.counts);
@@ -82,47 +74,56 @@ const Products: React.FC = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // =========================
-  // Debounced search & URL sync
-  // =========================
   useEffect(() => {
     const handler = setTimeout(() => {
       if (localSearch !== search) {
         setSearch(localSearch);
-        setPage(1); // Reset to first page on new search
+        setPage(1);
       }
     }, 100);
-
     return () => clearTimeout(handler);
   }, [localSearch, search, setSearch, setPage]);
 
-  // =========================
-  // Actions
-  // =========================
-  const handleAddProduct = () => {
-    router.push("/dashboard/products/add-product");
-  };
-
-  const statusLabels: Record<string, string> = {
-    ALL: "All",
-    active: "Active",
-    inactive: "Inactive",
-    draft: "Draft",
-  };
+  const handleAddProduct = () => router.push("/dashboard/products/add-product");
 
   return (
-    <div className="space-y-4">
-      {/* Top bar: Search + Add Product */}
-      <div className="space-y-3">
-        {/* Row 1: Search bar */}
-        <div className="w-full md:w-1/2">
+    <div className="space-y-5">
+      {/* ── Page Header ── */}
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-1">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100 leading-tight">
+            Products
+          </h1>
+          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+            Manage your catalogue · {counts.ALL} total items
+          </p>
+        </div>
+
+        {/* Add Product — desktop */}
+        <button
+          onClick={handleAddProduct}
+          className="hidden md:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white text-sm font-semibold shadow-lg shadow-indigo-500/30 transition-all duration-150 cursor-pointer"
+        >
+          <PlusOutlined className="text-base" />
+          Add Product
+        </button>
+      </div>
+
+      {/* ── Toolbar ── */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        {/* Search */}
+        <div className="w-full md:max-w-sm">
           <Space.Compact className="w-full">
             <Input
-              placeholder="Search products by Name"
+              placeholder="Search products…"
               allowClear
               size="large"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
+              onPressEnter={() => {
+                setSearch(localSearch);
+                setPage(1);
+              }}
             />
             <Button
               size="large"
@@ -135,11 +136,43 @@ const Products: React.FC = () => {
             />
           </Space.Compact>
         </div>
-        {/* Row 2: Status filter left + Add Product right */}
 
-        {/* Row 2: Status filter left + Add Product right */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-          {/* Left: MobileFilter or desktop buttons */}
+        {/* Status pills — desktop */}
+        <div className="hidden md:flex items-center gap-1.5 flex-wrap">
+          {statusConfig.map(({ key, label }) => {
+            const isActive = status === key;
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  setStatus(key as ProductStatus | "ALL");
+                  setPage(1);
+                }}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
+                  ${
+                    isActive
+                      ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/25"
+                      : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                  }`}
+              >
+                {label}
+                <span
+                  className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
+                  ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
+                  }`}
+                >
+                  {counts[key as ProductStatus | "ALL"] ?? 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Status — mobile dropdown */}
+        <div className="md:hidden">
           <MobileFilter<ProductStatus | "ALL">
             value={status}
             defaultValue="ALL"
@@ -149,84 +182,62 @@ const Products: React.FC = () => {
               ProductStatus.INACTIVE,
               ProductStatus.DRAFT,
             ]}
-            onChange={setStatus}
+            onChange={(v) => {
+              setStatus(v);
+              setPage(1);
+            }}
             getLabel={(s) =>
-              `${statusLabels[s]} (${counts[s as ProductStatus | "ALL"] ?? 0})`
+              `${statusConfig.find((c) => c.key === s)?.label ?? s} (${counts[s as ProductStatus | "ALL"] ?? 0})`
             }
           />
-
-          {/* Desktop: normal buttons */}
-          <div className="hidden md:flex gap-2 flex-wrap">
-            {[
-              "ALL",
-              ProductStatus.ACTIVE,
-              ProductStatus.INACTIVE,
-              ProductStatus.DRAFT,
-            ].map((s) => (
-              <Button
-                key={s}
-                type={status === s ? "primary" : "default"}
-                onClick={() => setStatus(s as ProductStatus | "ALL")}
-              >
-                {statusLabels[s]} ({counts[s as ProductStatus | "ALL"] ?? 0})
-              </Button>
-            ))}
-          </div>
-
-          {/* Right: Add Product */}
-          <SheiButton
-            onClick={handleAddProduct}
-            title="Add Product"
-            type="primary"
-            className="flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg transition-transform transform hover:scale-105 w-full md:w-auto"
-          >
-            Add Product <Plus className="w-5 h-5 ml-2" />
-          </SheiButton>
         </div>
       </div>
 
-      {/* Product Table */}
-      <ProductTable
-        products={products}
-        loading={loading}
-        pagination={undefined} // Disable table pagination; global pagination is used
-        onDeleteSuccess={fetchProducts}
-      />
+      {/* ── Table Card ── */}
+      <div className="rounded-2xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+        <ProductTable
+          products={products}
+          loading={loading}
+          pagination={undefined}
+          onDeleteSuccess={fetchProducts}
+        />
+      </div>
 
-      {/* Mobile pagination */}
-      <div className="md:hidden flex flex-col items-center gap-2 mt-4">
-        <div className="text-sm text-gray-600">
+      {/* ── Mobile Pagination ── */}
+      <div className="md:hidden flex flex-col items-center gap-2 pt-1">
+        <p className="text-xs text-gray-500 dark:text-slate-400">
           {total > 0
-            ? `Showing ${(page - 1) * pageSize + 1}-${Math.min(
-                page * pageSize,
-                total
-              )} of ${total} items`
+            ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total} items`
             : "No items"}
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            size="small"
+        </p>
+        <div className="flex items-center gap-2">
+          <button
             disabled={page === 1}
             onClick={() => setPage(page - 1)}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
-            Previous
-          </Button>
-          <span className="flex items-center text-sm">
-            Page {page} of {Math.ceil(total / pageSize) || 1}
+            ← Prev
+          </button>
+          <span className="text-xs font-semibold text-gray-700 dark:text-slate-300 px-1">
+            {page} / {Math.ceil(total / pageSize) || 1}
           </span>
-          <Button
-            size="small"
+          <button
             disabled={page >= Math.ceil(total / pageSize)}
             onClick={() => setPage(page + 1)}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
-            Next
-          </Button>
+            Next →
+          </button>
         </div>
       </div>
 
-      {/* Desktop pagination */}
-      <div className="hidden md:flex justify-end mt-4">
+      {/* ── Desktop Pagination ── */}
+      <div className="hidden md:flex items-center justify-between pt-1">
+        <p className="text-xs text-gray-500 dark:text-slate-400">
+          {total > 0
+            ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total} products`
+            : "No products found"}
+        </p>
         <Pagination
           current={page}
           pageSize={pageSize}
@@ -239,11 +250,17 @@ const Products: React.FC = () => {
               setPage(1);
             }
           }}
-          showTotal={(total, range) =>
-            `${range[0]}-${range[1]} of ${total} items`
-          }
         />
       </div>
+
+      {/* ── FAB — mobile ── */}
+      <button
+        onClick={handleAddProduct}
+        aria-label="Add Product"
+        className="md:hidden fixed bottom-6 right-5 z-50 w-14 h-14 rounded-full bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white text-xl shadow-xl shadow-indigo-500/40 flex items-center justify-center transition-all duration-150 cursor-pointer"
+      >
+        <PlusOutlined />
+      </button>
     </div>
   );
 };
