@@ -3,142 +3,192 @@
 import React, { useState, useMemo } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
 } from "recharts";
-import { Card, Button } from "antd";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface SalesTrendChartProps {
   data: { date: string; sales: number }[];
 }
 
-const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
-  const [selectedDays, setSelectedDays] = useState(7);
-
-  const {
-    currency,
-    icon,
-    loading: currencyLoading,
-    error: currencyError,
-  } = useUserCurrencyIcon();
-
-  // Filter current and previous period
-  const filteredData = useMemo(
-    () => data.slice(-selectedDays),
-    [data, selectedDays],
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  sym,
+}: {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+  sym: string;
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="rounded-xl px-3 py-2 shadow-xl
+      bg-white dark:bg-gray-900
+      border border-gray-200 dark:border-gray-700"
+    >
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1 text-gray-400 dark:text-gray-500">
+        {label}
+      </div>
+      <div className="text-base font-black tabular-nums text-indigo-600 dark:text-indigo-400">
+        {sym}{" "}
+        {payload[0].value.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+        })}
+      </div>
+    </div>
   );
+};
 
-  const previousPeriodData = useMemo(() => {
-    const prev = data.slice(-(selectedDays * 2), -selectedDays);
-    return prev.length === selectedDays ? prev : [];
-  }, [data, selectedDays]);
+const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
+  const [days, setDays] = useState(14);
+  const { icon, loading } = useUserCurrencyIcon();
+  const sym = loading ? "৳" : typeof icon === "string" ? icon : "৳";
 
-  const chartData = filteredData.map((d, i) => ({
+  const sliced = useMemo(() => data.slice(-days), [data, days]);
+  const prevSlice = useMemo(() => {
+    const p = data.slice(-(days * 2), -days);
+    return p.length === days ? p : [];
+  }, [data, days]);
+
+  const chartData = sliced.map((d, i) => ({
     date: d.date,
     Sales: d.sales,
-    "Previous Period": previousPeriodData[i]?.sales ?? null,
+    "Prev Period": prevSlice[i]?.sales ?? null,
   }));
 
-  const formatTooltip = (value: number | null) => {
-    if (value == null) return "";
-    if (typeof icon === "string") return `${icon} ${value.toFixed(2)}`;
-    return `${currency ?? ""} ${value.toFixed(2)}`;
-  };
-
-  if (currencyLoading) return <div>Loading chart...</div>;
-  if (currencyError) return <div>Error loading currency</div>;
+  const total = sliced.reduce((s, d) => s + d.sales, 0);
 
   return (
-    <Card className="shadow-sm bg-white dark:bg-gray-800">
-      {/* Time filter buttons */}
-      <div className="flex flex-wrap gap-2 mb-4 justify-center sm:justify-end">
-        {[7, 14, 30].map((d) => (
-          <Button
-            key={d}
-            type={selectedDays === d ? "primary" : "default"}
-            size="small"
-            className="min-w-22.5"
-            onClick={() => setSelectedDays(d)}
-          >
-            Last {d} Days
-          </Button>
-        ))}
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Period Total
+          </div>
+          <div className="text-xl sm:text-2xl font-black tabular-nums text-gray-900 dark:text-white">
+            {sym}{" "}
+            {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        {/* Day picker */}
+        <div
+          className="flex gap-1 rounded-xl p-1
+          bg-gray-100 dark:bg-gray-800
+          border border-gray-200 dark:border-gray-700"
+        >
+          {[7, 14, 30].map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] font-black tracking-wider transition-all duration-150
+                ${
+                  days === d
+                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                }`}
+            >
+              {d}D
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Chart container */}
-      <div className="w-full h-85 sm:h-90 md:h-105">
+      {/* Chart */}
+      <div className="h-44 sm:h-52">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <AreaChart
             data={chartData}
-            margin={{ top: 20, right: 20, left: 0, bottom: 50 }}
+            margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
           >
-            {/* Grid */}
+            <defs>
+              <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="prevGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid
-              stroke="#f0f0f0"
               strokeDasharray="3 3"
-              className="dark:stroke-gray-700"
+              stroke="currentColor"
+              className="text-gray-200 dark:text-gray-700/60"
+              vertical={false}
             />
-
-            {/* X-Axis */}
             <XAxis
               dataKey="date"
+              tick={{ fontSize: 9, fill: "currentColor" }}
+              className="text-gray-400 dark:text-gray-500"
+              axisLine={false}
+              tickLine={false}
               interval="preserveStartEnd"
-              angle={window.innerWidth < 640 ? -20 : -30}
-              textAnchor="end"
-              tick={{ fontSize: 11, fill: "currentColor" }}
             />
-
-            {/* Y-Axis */}
-            <YAxis tick={{ fontSize: 11, fill: "currentColor" }} />
-
-            {/* Tooltip */}
-            <Tooltip
-              formatter={(value) => formatTooltip(value as number)}
-              contentStyle={{
-                fontSize: "12px",
-                backgroundColor: "var(--ant-background-color)",
-                color: "var(--ant-text-color)",
-              }}
+            <YAxis
+              tick={{ fontSize: 9, fill: "currentColor" }}
+              className="text-gray-400 dark:text-gray-500"
+              axisLine={false}
+              tickLine={false}
+              width={36}
             />
-
-            {/* Legend */}
-            <Legend
-              verticalAlign="top"
-              height={36}
-              wrapperStyle={{ color: "currentColor" }}
-            />
-
-            {/* Current period */}
-            <Line
-              type="monotone"
-              dataKey="Sales"
-              stroke="#4f46e5"
-              strokeWidth={3}
-              dot={false}
-            />
-
-            {/* Previous period, hidden on mobile */}
-            {previousPeriodData.length > 0 && (
-              <Line
+            <Tooltip content={<CustomTooltip sym={sym} />} />
+            {prevSlice.length > 0 && (
+              <Area
                 type="monotone"
-                dataKey="Previous Period"
-                stroke="#a3bffa"
-                strokeWidth={2}
+                dataKey="Prev Period"
+                stroke="#94a3b8"
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                fill="url(#prevGrad)"
                 dot={false}
-                strokeDasharray="5 5"
-                className="hidden sm:block"
               />
             )}
-          </LineChart>
+            <Area
+              type="monotone"
+              dataKey="Sales"
+              stroke="#6366f1"
+              strokeWidth={2.5}
+              fill="url(#salesGrad)"
+              dot={false}
+              activeDot={{
+                r: 4,
+                fill: "#6366f1",
+                stroke: "#fff",
+                strokeWidth: 2,
+              }}
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
-    </Card>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-0.5 rounded bg-indigo-500" />
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">
+            Current period
+          </span>
+        </div>
+        {prevSlice.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 rounded bg-gray-300 dark:bg-gray-600" />
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">
+              Previous period
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

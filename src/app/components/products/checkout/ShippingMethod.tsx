@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Truck, Receipt, AlertCircle } from "lucide-react";
+import { Truck, Receipt } from "lucide-react";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import type { ShippingFee } from "@/lib/types/store/store";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
@@ -15,7 +15,7 @@ interface ShippingMethodProps {
   subtotal: number;
   selectedShipping: string;
   onShippingChange: (shippingMethod: string, shippingFee: number) => void;
-  minOrderAmount?: number; // Add this prop
+  minOrderAmount?: number;
 }
 
 export default function ShippingMethod({
@@ -23,39 +23,41 @@ export default function ShippingMethod({
   subtotal,
   selectedShipping,
   onShippingChange,
-  minOrderAmount = 0, // Default to 0
+  minOrderAmount = 0,
 }: ShippingMethodProps) {
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<
+    number | null
+  >(null);
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [storeMinOrderAmount, setStoreMinOrderAmount] = useState<number>(0);
-  const {
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
 
-  // Filter out "custom" shipping options
+  // Filter out "custom" shipping options AND options hidden from customers (customer_view: false)
   const filteredShippingOptions = useMemo(() => {
     return shippingOptions.filter(
-      (option) => option.name.toLowerCase() !== "custom"
+      (option) =>
+        option.name.toLowerCase() !== "custom" &&
+        option.customer_view !== false,
     );
   }, [shippingOptions]);
 
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
 
-  // Check if order meets minimum amount
   const meetsMinOrderAmount = useMemo(() => {
     const effectiveMinAmount = minOrderAmount || storeMinOrderAmount;
     return effectiveMinAmount <= 0 || subtotal >= effectiveMinAmount;
   }, [minOrderAmount, storeMinOrderAmount, subtotal]);
 
-  const shortfallAmount = useMemo(() => {
-    const effectiveMinAmount = minOrderAmount || storeMinOrderAmount;
-    return effectiveMinAmount > 0 ? Math.max(0, effectiveMinAmount - subtotal) : 0;
-  }, [minOrderAmount, storeMinOrderAmount, subtotal]);
+  // const shortfallAmount = useMemo(() => {
+  //   const effectiveMinAmount = minOrderAmount || storeMinOrderAmount;
+  //   return effectiveMinAmount > 0
+  //     ? Math.max(0, effectiveMinAmount - subtotal)
+  //     : 0;
+  // }, [minOrderAmount, storeMinOrderAmount, subtotal]);
 
-  // Fetch shipping options and store settings
   useEffect(() => {
     const fetchShippingOptions = async () => {
       try {
@@ -68,19 +70,20 @@ export default function ShippingMethod({
             setShippingOptions(storeSettings.shipping_fees || []);
             setFreeShippingThreshold(storeSettings.free_shipping_threshold);
             setTaxAmount(storeSettings.tax_rate || 0);
-            
-            // Set store's min order amount if not provided via props
+
             if (!minOrderAmount) {
               setStoreMinOrderAmount(storeSettings.min_order_amount || 0);
             }
 
-            // Set default shipping method only if nothing is selected
-            const filteredOptions = storeSettings.shipping_fees?.filter(
-              (option) => option.name.toLowerCase() !== "custom"
-            ) || [];
+            // Set default — only from customer-visible options
+            const visibleOptions = (storeSettings.shipping_fees || []).filter(
+              (option) =>
+                option.name.toLowerCase() !== "custom" &&
+                option.customer_view !== false,
+            );
 
-            if (filteredOptions.length > 0 && !selectedShipping) {
-              const defaultShipping = filteredOptions[0];
+            if (visibleOptions.length > 0 && !selectedShipping) {
+              const defaultShipping = visibleOptions[0];
               onShippingChange(defaultShipping.name, defaultShipping.price);
             }
           }
@@ -95,11 +98,10 @@ export default function ShippingMethod({
 
   const handleShippingChange = useCallback(
     (value: string) => {
-      // Don't allow shipping change if min order not met
       if (!meetsMinOrderAmount) return;
-      
+
       const selectedOption = filteredShippingOptions.find(
-        (option) => option.name === value
+        (option) => option.name === value,
       );
       if (selectedOption) {
         const shippingFee =
@@ -109,13 +111,18 @@ export default function ShippingMethod({
         onShippingChange(value, shippingFee);
       }
     },
-    [filteredShippingOptions, freeShippingThreshold, subtotal, onShippingChange, meetsMinOrderAmount]
+    [
+      filteredShippingOptions,
+      freeShippingThreshold,
+      subtotal,
+      onShippingChange,
+      meetsMinOrderAmount,
+    ],
   );
 
   const isFreeShipping =
     freeShippingThreshold && subtotal >= freeShippingThreshold;
 
-  // If no shipping options available, don't show anything
   if (filteredShippingOptions.length === 0) {
     return null;
   }
@@ -129,8 +136,6 @@ export default function ShippingMethod({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-
-        {/* Shipping Options */}
         <RadioGroup
           value={selectedShipping}
           onValueChange={handleShippingChange}
@@ -182,7 +187,6 @@ export default function ShippingMethod({
           ))}
         </RadioGroup>
 
-        {/* Tax Display - Only show if tax amount > 0 */}
         {taxAmount > 0 && (
           <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
             <div className="flex items-center gap-2 mb-2">
@@ -206,16 +210,13 @@ export default function ShippingMethod({
           </div>
         )}
 
-        {/* Free Shipping Progress - Only show if free_shipping_threshold exists */}
         {freeShippingThreshold && meetsMinOrderAmount && (
           <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-blue-700">
                 {isFreeShipping
                   ? "🎉 You've unlocked free shipping!"
-                  : `Add ${displayCurrencyIconSafe}${(
-                      freeShippingThreshold - subtotal
-                    ).toFixed(2)} for free shipping`}
+                  : `Add ${displayCurrencyIconSafe}${(freeShippingThreshold - subtotal).toFixed(2)} for free shipping`}
               </span>
               <span className="text-blue-700 font-medium">
                 {displayCurrencyIconSafe}
@@ -227,12 +228,9 @@ export default function ShippingMethod({
               <div
                 className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                 style={{
-                  width: `${Math.min(
-                    (subtotal / freeShippingThreshold) * 100,
-                    100
-                  )}%`,
+                  width: `${Math.min((subtotal / freeShippingThreshold) * 100, 100)}%`,
                 }}
-              ></div>
+              />
             </div>
           </div>
         )}

@@ -33,7 +33,8 @@ export interface ShippingFee {
   description?: string;
   min_order_amount?: number;
   max_order_amount?: number;
-  estimated_days?: number;
+  estimated_days?: number | string;
+  customer_view?: boolean; // Controls visibility on checkout — false = hidden from customers
 }
 
 export type ShippingFees = ShippingFee[];
