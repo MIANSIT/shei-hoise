@@ -39,6 +39,8 @@ export interface ProductWithStock {
   id: string;
   name: string;
   base_price: number;
+  discounted_price?: number | null;
+  tp_price?: number | null;
   primary_image: ProductImage | null;
   stock: ProductStock | null;
   variants: ProductVariant[];
@@ -47,6 +49,7 @@ export interface ProductWithStock {
 // Database types
 type DatabaseProductImage = ProductImage;
 type DatabaseProductStock = ProductStock;
+
 interface DatabaseProductVariant {
   id: string;
   product_id: string;
@@ -66,6 +69,8 @@ interface DatabaseProduct {
   id: string;
   name: string;
   base_price: number;
+  discounted_price: number | null; // ✅ added
+  tp_price: number | null; // ✅ added
   sku: string | null;
   product_images: DatabaseProductImage[];
   product_inventory: DatabaseProductStock[];
@@ -73,9 +78,6 @@ interface DatabaseProduct {
   stores: Array<{ id: string; store_slug: string }>;
 }
 
-/**
- * Fetch products with optional search, stock filter, and pagination
- */
 export async function getProductWithStock(
   storeSlug: string,
   searchText?: string,
@@ -83,7 +85,6 @@ export async function getProductWithStock(
   page: number = 1,
   pageSize: number = 10,
 ): Promise<{ data: ProductWithStock[]; total: number }> {
-  // fetch all products without range (pagination will be applied after filtering)
   let query = supabaseAdmin
     .from("products")
     .select(
@@ -91,7 +92,9 @@ export async function getProductWithStock(
       id,
       name,
       base_price,
-      status, 
+      discounted_price,
+      tp_price,
+      status,
       sku,
       product_images(id, product_id, variant_id, image_url, alt_text, is_primary),
       product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
@@ -99,9 +102,9 @@ export async function getProductWithStock(
         id,
         variant_name,
         base_price,
-        sku,
         discounted_price,
         tp_price,
+        sku,
         color,
         is_active,
         product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
@@ -137,8 +140,8 @@ export async function getProductWithStock(
         product_id: p.id,
         variant_name: v.variant_name,
         base_price: v.base_price,
-        discounted_price: v.discounted_price,
-        tp_price: v.tp_price,
+        discounted_price: v.discounted_price ?? null, // ✅
+        tp_price: v.tp_price ?? null,
         color: v.color || null,
         sku: v.sku ?? null,
         is_active: v.is_active,
@@ -156,6 +159,8 @@ export async function getProductWithStock(
       id: p.id,
       name: p.name,
       base_price: Number(p.base_price),
+      discounted_price: p.discounted_price ?? null, // ✅
+      tp_price: p.tp_price ?? null, // ✅
       sku: p.sku ?? null,
       primary_image: primaryProductImage,
       stock: productInventory || {

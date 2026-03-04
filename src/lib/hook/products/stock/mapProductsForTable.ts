@@ -10,7 +10,7 @@ export interface VariantRow {
   stock: number;
   imageUrl: string | null;
   isLowStock: boolean;
-  isOutOfStock: boolean; // ✅ NEW
+  isOutOfStock: boolean;
   lowStockThreshold: number;
   isActive: boolean;
 }
@@ -24,7 +24,7 @@ export interface ProductRow {
   imageUrl: string | null;
   variants?: VariantRow[];
   isLowStock: boolean;
-  isOutOfStock: boolean; // ✅ NEW
+  isOutOfStock: boolean;
   lowStockThreshold: number;
   hasLowStockVariant: boolean;
   status: ProductStatus;
@@ -40,20 +40,18 @@ export function mapProductsForModernTable(
     const productStock = p.stock?.quantity_available ?? 0;
     const productLowStockThreshold = p.stock?.low_stock_threshold || 10;
 
-    // ✅ FIXED LOGIC
     const isProductOutOfStock = !hasVariants && productStock === 0;
     const isProductLowStock =
       !hasVariants &&
       productStock > 0 &&
       productStock <= productLowStockThreshold;
 
-    const processedVariants = hasVariants
+    const processedVariants: VariantRow[] | undefined = hasVariants
       ? p.variants.map((v) => {
           const variantStock = v.stock?.quantity_available ?? 0;
           const variantLowStockThreshold =
             v.stock?.low_stock_threshold || productLowStockThreshold;
 
-          // ✅ FIXED LOGIC
           const isVariantOutOfStock = variantStock === 0;
           const isVariantLowStock =
             variantStock > 0 && variantStock <= variantLowStockThreshold;
@@ -64,7 +62,7 @@ export function mapProductsForModernTable(
             title: v.variant_name,
             sku: v.sku ?? null,
             currentPrice:
-              v.discounted_price && v.discounted_price > 0
+              v.discounted_price != null && v.discounted_price > 0
                 ? v.discounted_price
                 : v.base_price,
             stock: variantStock,
@@ -85,17 +83,18 @@ export function mapProductsForModernTable(
       id: p.id,
       title: p.name,
       sku: p.sku ?? null,
-      currentPrice: hasVariants ? null : p.base_price,
+      currentPrice: hasVariants
+        ? null
+        : p.discounted_price != null && p.discounted_price > 0
+          ? p.discounted_price
+          : p.base_price,
       stock: productStock,
       imageUrl: p.primary_image?.image_url ?? null,
-
       isOutOfStock: isProductOutOfStock,
       isLowStock: isProductLowStock,
-
       lowStockThreshold: productLowStockThreshold,
       hasLowStockVariant,
       variants: processedVariants,
-
       status: p.status,
       isInactiveProduct:
         p.status === ProductStatus.DRAFT || p.status === ProductStatus.INACTIVE,
