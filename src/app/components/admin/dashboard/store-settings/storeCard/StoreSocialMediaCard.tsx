@@ -1,13 +1,11 @@
+// File: app/components/admin/dashboard/store-settings/storeCard/StoreSocialMediaCard.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Pencil, Check, X, Copy, ExternalLink, Link2 } from "lucide-react";
 import {
-  EditOutlined,
-  CheckOutlined,
-  CloseOutlined,
-  CopyOutlined,
   FacebookOutlined,
   InstagramOutlined,
   TwitterOutlined,
@@ -29,25 +27,41 @@ const PLATFORMS = [
     key: "facebook" as const,
     label: "Facebook",
     Icon: FacebookOutlined,
-    color: "text-blue-600",
+    color: "#1877F2",
+    bgClass: "bg-[#1877F2]/10",
+    iconColor: "text-[#1877F2]",
+    borderActive: "ring-[#1877F2]/20",
+    placeholder: "https://facebook.com/your-page",
   },
   {
     key: "instagram" as const,
     label: "Instagram",
     Icon: InstagramOutlined,
-    color: "text-pink-600",
+    color: "#E1306C",
+    bgClass: "bg-[#E1306C]/10",
+    iconColor: "text-[#E1306C]",
+    borderActive: "ring-[#E1306C]/20",
+    placeholder: "https://instagram.com/your-handle",
   },
   {
     key: "twitter" as const,
-    label: "Twitter",
+    label: "X / Twitter",
     Icon: TwitterOutlined,
-    color: "text-sky-500",
+    color: "#1DA1F2",
+    bgClass: "bg-[#1DA1F2]/10",
+    iconColor: "text-[#1DA1F2]",
+    borderActive: "ring-[#1DA1F2]/20",
+    placeholder: "https://x.com/your-handle",
   },
   {
     key: "youtube" as const,
     label: "YouTube",
     Icon: YoutubeOutlined,
-    color: "text-red-600",
+    color: "#FF0000",
+    bgClass: "bg-[#FF0000]/10",
+    iconColor: "text-[#FF0000]",
+    borderActive: "ring-[#FF0000]/20",
+    placeholder: "https://youtube.com/@your-channel",
   },
 ] as const;
 
@@ -72,11 +86,10 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
     });
   }, [socialMedia]);
 
-  const handleChange = (field: keyof typeof formData, value: string) => {
+  const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Normalize: empty string → null
   const normalizeFormData = (): UpdatedStoreSocialMedia => ({
     facebook_link: formData.facebook_link.trim() || null,
     instagram_link: formData.instagram_link.trim() || null,
@@ -84,9 +97,8 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
     youtube_link: formData.youtube_link.trim() || null,
   });
 
-  // Only validate non-empty URLs
   const isValidUrl = (url: string) => {
-    if (!url) return true; // empty allowed
+    if (!url) return true;
     try {
       new URL(url);
       return true;
@@ -98,7 +110,6 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Validate each non-empty link
       for (const [key, value] of Object.entries(formData)) {
         if (!isValidUrl(value)) {
           notify.error(`Invalid URL for ${key.replace("_link", "")}`);
@@ -106,10 +117,9 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
           return;
         }
       }
-
       await onUpdate(normalizeFormData());
       setEditing(false);
-      notify.success("Social media links updated successfully!");
+      notify.success("Social media links updated!");
     } catch (err) {
       console.error(err);
       notify.error("Failed to update social media links.");
@@ -128,185 +138,172 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
     setEditing(false);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => notify.success("Copied to clipboard!"));
-  };
-
-  const openLink = (url: string) =>
-    window.open(url, "_blank", "noopener,noreferrer");
+  const connectedCount = PLATFORMS.filter(
+    (p) => !!formData[`${p.key}_link`]?.trim(),
+  ).length;
 
   return (
-    <Card className="w-full max-w-4xl mx-auto border shadow-sm">
-      <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 sm:p-6 border-b">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gray-100 rounded-lg">
-            <svg
-              className="w-6 h-6 text-gray-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-              />
-            </svg>
+    <Card className="border-0 shadow-sm bg-card ring-1 ring-border/60 overflow-hidden">
+      <CardHeader className="px-5 py-4 border-b border-border bg-muted/20">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center">
+              <Link2 className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold text-foreground">
+                Social Media
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {connectedCount > 0
+                  ? `${connectedCount} of ${PLATFORMS.length} connected`
+                  : "No profiles connected yet"}
+              </p>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-xl font-bold text-black dark:text-white">
-              Social Media Links
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-1 dark:text-gray-300">
-              Manage your store&apos;s social media profiles
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-2 w-full sm:w-auto">
-          {editing ? (
-            <>
-              <Button
-                size="sm"
-                className="flex items-center gap-2 px-4 py-2 text-sm"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                <CheckOutlined className="h-4 w-4" />
-                <span className="hidden sm:inline">Save Changes</span>
-                <span className="inline sm:hidden">Save</span>
-              </Button>
+          <div className="flex items-center gap-2">
+            {editing ? (
+              <>
+                <Button
+                  size="sm"
+                  className="h-8 px-3 text-xs font-semibold gap-1.5"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  {loading ? "Saving..." : "Save"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 text-xs font-medium gap-1.5"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
               <Button
                 size="sm"
                 variant="outline"
-                className="flex items-center gap-2 px-4 py-2 text-sm"
-                onClick={handleCancel}
-                disabled={loading}
+                className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted/50"
+                onClick={() => setEditing(true)}
               >
-                <CloseOutlined className="h-4 w-4" />
-                <span className="hidden sm:inline">Cancel</span>
-                <span className="inline sm:hidden">Cancel</span>
+                <Pencil className="h-3 w-3" />
+                Edit
               </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              className="flex items-center gap-2 px-4 py-2 text-sm"
-              onClick={() => setEditing(true)}
-            >
-              <EditOutlined className="h-4 w-4" />
-              <span className="hidden sm:inline">Edit Links</span>
-              <span className="inline sm:hidden">Edit</span>
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {PLATFORMS.map(({ key, label, Icon, color }) => {
-            const link = formData[`${key}_link`];
-            const isLinkValid = !!link?.trim();
+      <CardContent className="p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {PLATFORMS.map(
+            ({
+              key,
+              label,
+              Icon,
+              bgClass,
+              iconColor,
+              borderActive,
+              placeholder,
+            }) => {
+              const link = formData[`${key}_link`];
+              const hasLink = !!link?.trim();
 
-            return (
-              <div
-                key={key}
-                className="border rounded-lg p-4 hover:shadow-sm transition-shadow duration-200"
-              >
-                <div className="flex items-center gap-1 mb-3">
-                  <div className={`p-2 rounded-lg ${color} bg-opacity-10`}>
-                    <Icon className="h-5" />
-                  </div>
-                  <span className="font-semibold text-primary">{label}</span>
-                </div>
-
-                {editing ? (
-                  <div className="space-y-2">
-                    <label className="text-sm text-gray-600 dark:text-gray-300 block">
-                      {label} URL
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={`https://${key}.com/your-profile`}
-                      value={link}
-                      onChange={(e) =>
-                        handleChange(`${key}_link`, e.target.value)
-                      }
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Leave empty to remove the link
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        {isLinkValid ? (
-                          <button
-                            onClick={() => openLink(link!)}
-                            className="text-blue-600 hover:text-blue-800 hover:underline break-all text-left text-sm sm:text-base"
-                          >
-                            {link!.length > 40
-                              ? `${link!.substring(0, 40)}...`
-                              : link}
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">
-                            No link added
-                          </span>
-                        )}
+              return (
+                <div
+                  key={key}
+                  className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                    hasLink
+                      ? `ring-1 ${borderActive} border-border/40 bg-muted/10`
+                      : "border-border/50 bg-muted/5 hover:bg-muted/15"
+                  }`}
+                >
+                  <div className="p-3.5">
+                    {/* Platform header */}
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div
+                        className={`h-8 w-8 rounded-lg ${bgClass} flex items-center justify-center shrink-0`}
+                      >
+                        <Icon
+                          className={iconColor}
+                          style={{ fontSize: "15px" }}
+                        />
                       </div>
-
-                      {isLinkValid && (
-                        <div className="flex gap-1 ml-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => copyToClipboard(link!)}
-                            title="Copy to clipboard"
-                          >
-                            <CopyOutlined className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <span className="text-sm font-semibold text-foreground flex-1">
+                        {label}
+                      </span>
+                      {hasLink && !editing && (
+                        <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Live
+                        </span>
                       )}
                     </div>
 
-                    {!isLinkValid && (
-                      <p className="text-sm text-gray-500">
-                        Add your {label} profile link to connect with customers
+                    {editing ? (
+                      <div>
+                        <input
+                          type="url"
+                          placeholder={placeholder}
+                          value={link}
+                          onChange={(e) =>
+                            handleChange(`${key}_link`, e.target.value)
+                          }
+                          className="w-full bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 px-3 py-2 rounded-lg text-xs outline-none text-foreground placeholder:text-muted-foreground transition-all"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          Leave empty to disconnect
+                        </p>
+                      </div>
+                    ) : hasLink ? (
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-muted-foreground truncate flex-1 font-mono">
+                          {link!.length > 38
+                            ? `${link!.substring(0, 38)}…`
+                            : link}
+                        </p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(link!);
+                              notify.success("Copied!");
+                            }}
+                            className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                            title="Copy"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              window.open(
+                                link!,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            }
+                            className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                            title="Open"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Not connected
                       </p>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            },
+          )}
         </div>
-
-        {editing && (
-          <div className="flex flex-col sm:hidden gap-2 mt-6 pt-6 border-t">
-            <Button
-              className="w-full py-3"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              <CheckOutlined className="h-4 w-4 mr-2" /> Save All Changes
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full py-3"
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              <CloseOutlined className="h-4 w-4 mr-2" /> Discard Changes
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

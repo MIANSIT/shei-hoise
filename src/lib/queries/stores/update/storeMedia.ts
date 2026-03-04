@@ -19,7 +19,7 @@ export async function uploadStoreMedia(
     // 2️⃣ Remove previous files of this type
     if (existingFiles?.length) {
       const filesToRemove = existingFiles
-        .filter((f) => f.name.startsWith(type)) // only remove logos or banners
+        .filter((f) => f.name.startsWith(type))
         .map((f) => `${folderPath}${f.name}`);
 
       if (filesToRemove.length) {
@@ -52,5 +52,31 @@ export async function uploadStoreMedia(
   } catch (err) {
     console.error(`Error in uploadStoreMedia for ${type}:`, err);
     return null;
+  }
+}
+
+export async function deleteStoreMedia(
+  storeId: string,
+  type: MediaType,
+): Promise<void> {
+  const bucket = type === "logo" ? "store_logo" : "store-banner";
+  const folderPath = `store/${storeId}/`;
+
+  try {
+    const { data: existingFiles } = await supabaseAdmin.storage
+      .from(bucket)
+      .list(folderPath);
+
+    if (existingFiles?.length) {
+      const filesToRemove = existingFiles
+        .filter((f) => f.name.startsWith(type))
+        .map((f) => `${folderPath}${f.name}`);
+
+      if (filesToRemove.length) {
+        await supabaseAdmin.storage.from(bucket).remove(filesToRemove);
+      }
+    }
+  } catch (err) {
+    console.error(`Error deleting ${type} from storage:`, err);
   }
 }
