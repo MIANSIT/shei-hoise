@@ -80,6 +80,24 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     onTotalChange,
   ]);
 
+  const refreshProducts = async () => {
+    if (!storeSlug) return;
+    try {
+      const result = await getProductWithStock(
+        storeSlug,
+        searchText,
+        stockFilter,
+        currentPage,
+        pageSize,
+      );
+      setProducts(mapProductsForModernTable(result.data));
+      if (onTotalChange) onTotalChange(result.total);
+    } catch (err) {
+      console.error(err);
+      notify.error("Failed to fetch products");
+    }
+  };
+
   // --- Stock editing ---
   const handleStockChange = (
     productId: string,
@@ -112,16 +130,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       });
 
       notify.success("Stock updated successfully");
-      // Refetch after update
-      const result = await getProductWithStock(
-        storeSlug!,
-        searchText,
-        stockFilter,
-        currentPage,
-        pageSize,
-      );
-      setProducts(mapProductsForModernTable(result.data));
-      if (onTotalChange) onTotalChange(result.total);
+      await refreshProducts();
     } catch (err) {
       console.error(err);
       notify.error("Failed to update stock");
@@ -129,54 +138,86 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   };
 
   // --- Bulk update ---
+  // selectedRowKeys can be:
+  //   - product IDs (desktop: top-level products without variants, or products with variants)
+  //   - variant IDs (mobile: individually selected variants)
   const bulkUpdate = async (value: number) => {
     setBulkActive(true);
 
-    for (const key of selectedRowKeys) {
-      const product = products.find((p) => p.id === key);
-      if (!product) continue;
+    // Build a flat list of { productId, variantId | null, currentStock } to update
+    type UpdateTarget = {
+      productId: string;
+      variantId: string | null;
+      currentStock: number;
+    };
 
-      try {
+    const targets: UpdateTarget[] = [];
+
+    for (const key of selectedRowKeys) {
+      const keyStr = key as string;
+
+      // Check if key is a product ID
+      const product = products.find((p) => p.id === keyStr);
+      if (product) {
         if (product.variants?.length) {
+          // Desktop path: product with variants → update all active variants
           for (const v of product.variants.filter((v) => v.isActive)) {
-            await updateInventory({
-              product_id: product.id,
-              variant_id: v.id,
-              quantity_available: value === 0 ? 0 : v.stock + value,
+            targets.push({
+              productId: product.id,
+              variantId: v.id,
+              currentStock: v.stock,
             });
           }
         } else if (!product.isInactiveProduct) {
-          await updateInventory({
-            product_id: product.id,
-            quantity_available: value === 0 ? 0 : product.stock + value,
+          // Simple product without variants
+          targets.push({
+            productId: product.id,
+            variantId: null,
+            currentStock: product.stock,
           });
         }
+        continue;
+      }
+
+      // Key is a variant ID (mobile per-variant selection)
+      for (const p of products) {
+        const variant = p.variants?.find((v) => v.id === keyStr);
+        if (variant && variant.isActive) {
+          targets.push({
+            productId: p.id,
+            variantId: variant.id,
+            currentStock: variant.stock,
+          });
+          break;
+        }
+      }
+    }
+
+    // Deduplicate (in case same variant ends up twice)
+    const seen = new Set<string>();
+    const uniqueTargets = targets.filter((t) => {
+      const k = `${t.productId}:${t.variantId ?? ""}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    for (const { productId, variantId, currentStock } of uniqueTargets) {
+      try {
+        await updateInventory({
+          product_id: productId,
+          ...(variantId ? { variant_id: variantId } : {}),
+          quantity_available: value === 0 ? 0 : currentStock + value,
+        });
       } catch (err) {
-        console.error(`Failed to update ${product.title}:`, err);
+        console.error(`Failed to update ${productId}/${variantId}:`, err);
       }
     }
 
     setEditedStocks({});
     setSelectedRowKeys([]);
     setBulkActive(false);
-
-    // Refetch after bulk update
-    if (storeSlug) {
-      try {
-        const result = await getProductWithStock(
-          storeSlug,
-          searchText,
-          stockFilter,
-          currentPage,
-          pageSize,
-        );
-        setProducts(mapProductsForModernTable(result.data));
-        if (onTotalChange) onTotalChange(result.total);
-      } catch (err) {
-        console.error(err);
-        notify.error("Failed to fetch products after bulk update");
-      }
-    }
+    await refreshProducts();
   };
 
   const handleBulkUpdate = async (value: number) => {
@@ -186,7 +227,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       return new Promise<void>((resolve) => {
         modal.confirm({
           title: "Set quantity to 0?",
-          content: `Are you sure you want to set the quantity of ${selectedRowKeys.length} selected product(s) to 0?`,
+          content: `Are you sure you want to set the quantity of ${selectedRowKeys.length} selected item(s) to 0?`,
           okText: "Yes, Set to 0",
           cancelText: "Cancel",
           okType: "danger",
@@ -202,20 +243,23 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     await bulkUpdate(value);
   };
 
-  // --- Row selection ---
+  // --- Row selection (desktop table only) ---
   const rowSelection: TableRowSelection<ProductRow | VariantRow> = {
     selectedRowKeys,
     onChange: (keys) => {
       setSelectedRowKeys(keys);
     },
-    getCheckboxProps: (record) => ({
-      // Only allow selecting top-level products with variants
-      disabled: !(
-        "variants" in record &&
-        record.variants &&
-        record.variants.length > 0
-      ),
-    }),
+    getCheckboxProps: (record) => {
+      const isTopLevelProduct = "variants" in record;
+      const hasVariants = isTopLevelProduct && !!record.variants?.length;
+      // Products WITH variants: disable the parent checkbox — variants are
+      // selected individually via the expanded row's own rowSelection.
+      // Products WITHOUT variants (simple): allow direct selection.
+      // Variant rows (nested): never appear here, but disable just in case.
+      return {
+        disabled: hasVariants || !isTopLevelProduct,
+      };
+    },
   };
 
   if (userLoading)

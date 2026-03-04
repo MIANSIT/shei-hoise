@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye, EyeOff, Clock } from "lucide-react";
 import { ShippingOption } from "@/lib/queries/deliveryCost/getShippingFees";
 
 interface ShippingOptionItemProps {
@@ -9,7 +9,7 @@ interface ShippingOptionItemProps {
   onUpdate: (
     index: number,
     field: keyof ShippingOption,
-    value: string | number | undefined,
+    value: string | number | boolean | undefined,
   ) => void;
   onRemove: (index: number) => void;
 }
@@ -22,137 +22,196 @@ export function ShippingOptionItem({
   onUpdate,
   onRemove,
 }: ShippingOptionItemProps) {
+  const isVisible = option.customer_view !== false;
+
   if (isEditing) {
     return (
-      <div className="group relative border border-gray-200 rounded-2xl p-6 transition-all duration-300 shadow-sm hover:shadow-md">
-        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-          {/* Input Fields */}
-          <div className="flex-1">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-              {/* Shipping Method */}
-              <div className="lg:col-span-6 space-y-3">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Shipping Method <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={option.name}
-                  onChange={(e) => onUpdate(index, "name", e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 placeholder-gray-400"
-                  placeholder="Express Delivery, Standard, etc."
-                  required
-                />
-              </div>
-
-              {/* Cost */}
-              <div className="lg:col-span-3 space-y-3">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Cost ({currency}) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={option.price}
-                  onChange={(e) =>
-                    onUpdate(index, "price", Number(e.target.value))
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              {/* Estimated Days */}
-              <div className="lg:col-span-2 space-y-3">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Estimated Days
-                </label>
-                <input
-                  type="text"
-                  value={option.estimated_days ?? ""}
-                  onChange={(e) =>
-                    onUpdate(
-                      index,
-                      "estimated_days",
-                      e.target.value || undefined,
-                    )
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  placeholder="e.g., 2-3"
-                />
-              </div>
-
-              {/* Delete Button */}
-              <div className="lg:col-span-1 flex items-center justify-center lg:justify-end pt-2">
-                <button
-                  onClick={() => onRemove(index)}
-                  className="w-12 h-12 flex items-center justify-center border border-red-200 text-red-500! rounded-xl hover:border-red-300 hover:text-red-600 transition-all duration-200"
-                  type="button"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Free Shipping Badge */}
-            {option.price === 0 && (
-              <div className="mt-4 flex items-center justify-start">
-                <div className="inline-flex items-center space-x-2 text-green-700 px-3 py-2 rounded-lg border border-green-200 bg-green-50">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm font-medium">Free Shipping</span>
-                </div>
-              </div>
-            )}
+      <div className="border border-slate-200 dark:border-slate-600 rounded-xl p-4 sm:p-5 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+        {/* Row 1: Name + price + days */}
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:gap-4 mb-4">
+          {/* Name */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              Method Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={option.name}
+              onChange={(e) => onUpdate(index, "name", e.target.value)}
+              className="w-full px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50/50 dark:bg-slate-700/50 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
+              placeholder="e.g. Express Delivery"
+              required
+            />
           </div>
+
+          {/* Price */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              Price ({currency ?? "BDT"}){" "}
+              <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="number"
+              value={option.price}
+              onChange={(e) => onUpdate(index, "price", Number(e.target.value))}
+              className="w-full sm:w-32 px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50/50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          {/* Estimated days */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              Est. Days
+            </label>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 dark:text-slate-500 pointer-events-none" />
+              <input
+                type="text"
+                value={option.estimated_days ?? ""}
+                onChange={(e) =>
+                  onUpdate(index, "estimated_days", e.target.value || undefined)
+                }
+                className="w-full sm:w-28 pl-8 pr-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50/50 dark:bg-slate-700/50 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
+                placeholder="e.g. 2-3"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Toggle + badge + delete */}
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+          {/* Available at Checkout toggle */}
+          <button
+            type="button"
+            onClick={() => onUpdate(index, "customer_view", !isVisible)}
+            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 ${
+              isVisible
+                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+            }`}
+            title={
+              isVisible
+                ? "Available at checkout — click to hide"
+                : "Not available at checkout — click to enable"
+            }
+          >
+            <span
+              className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors duration-200 shrink-0 ${
+                isVisible
+                  ? "bg-emerald-400 dark:bg-emerald-500"
+                  : "bg-slate-300 dark:bg-slate-600"
+              }`}
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  isVisible ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+            <span>Available at Checkout</span>
+          </button>
+
+          {/* Free shipping badge */}
+          {option.price === 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/50 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 bg-emerald-400 dark:bg-emerald-500 rounded-full" />
+              Free Shipping
+            </span>
+          )}
+
+          <div className="flex-1" />
+
+          {/* Delete */}
+          <button
+            onClick={() => onRemove(index)}
+            type="button"
+            title="Remove this shipping option"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-red-100 dark:border-red-900/40 text-red-400 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/50 hover:text-red-500 transition-all duration-200"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
         </div>
       </div>
     );
   }
 
-  // View Mode
+  // ── View mode ──
   return (
-    <div className="group border border-gray-200 rounded-2xl p-6 transition-all duration-300 shadow-sm hover:shadow-md">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-          <div>
-            <h4 className="font-semibold text-gray-900 dark:text-gray-300 text-lg">
+    <div
+      className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-xl border px-4 sm:px-5 py-4 transition-all ${
+        isVisible
+          ? "border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-sm"
+          : "border-slate-100 dark:border-slate-700/50 bg-slate-50/60 dark:bg-slate-800/40 opacity-60"
+      }`}
+    >
+      {/* Left: dot + info */}
+      <div className="flex items-start sm:items-center gap-3">
+        <div
+          className={`w-2.5 h-2.5 rounded-full mt-1.5 sm:mt-0 shrink-0 ${
+            isVisible
+              ? "bg-emerald-400 dark:bg-emerald-500"
+              : "bg-slate-300 dark:bg-slate-600"
+          }`}
+        />
+        <div>
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
               {option.name}
             </h4>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-              {option.price === 0 ? "Free delivery" : "Standard delivery"}
-            </p>
-            <p className="text-gray-400 dark:text-gray-300 text-sm mt-1">
-              Estimated Days:{" "}
-              {option.estimated_days
-                ? `${option.estimated_days} day${
-                    !option.estimated_days.toString().includes("-") &&
-                    option.estimated_days !== "1"
-                      ? "s"
-                      : option.estimated_days.toString().includes("-")
-                        ? "s"
-                        : ""
-                  }`
-                : "None"}
-            </p>
+            {/* Visibility badge */}
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
+                isVisible
+                  ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50"
+                  : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600"
+              }`}
+            >
+              {isVisible ? (
+                <>
+                  <Eye className="w-3 h-3" /> Available at Checkout
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-3 h-3" /> Unavailable at Checkout
+                </>
+              )}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+            <span>
+              {option.price === 0 ? "Free delivery" : "Paid delivery"}
+            </span>
+            {option.estimated_days && (
+              <>
+                <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {option.estimated_days} day
+                  {option.estimated_days !== "1" ? "s" : ""}
+                </span>
+              </>
+            )}
           </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <div
-            className={`px-5 py-3 rounded-xl border ${
-              option.price === 0
-                ? "text-green-700 border-green-200"
-                : "text-blue-700 border-blue-200"
-            }`}
-          >
-            <p className="font-bold text-lg">
-              {option.price === 0
-                ? "FREE"
-                : `${currency} ${option.price.toFixed(2)}`}
-            </p>
-          </div>
-        </div>
+      </div>
+
+      {/* Right: price badge */}
+      <div className="self-start sm:self-auto shrink-0 ml-5 sm:ml-0">
+        <span
+          className={`inline-block px-4 py-2 rounded-xl text-sm font-bold border ${
+            option.price === 0
+              ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50"
+              : "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/50"
+          }`}
+        >
+          {option.price === 0
+            ? "FREE"
+            : `${currency} ${option.price.toFixed(2)}`}
+        </span>
       </div>
     </div>
   );

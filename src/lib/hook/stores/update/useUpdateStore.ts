@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { updateStore } from "@/lib/queries/stores/update/updateStore";
-import { uploadStoreMedia } from "@/lib/queries/stores/update/storeMedia";
+import {
+  uploadStoreMedia,
+  deleteStoreMedia,
+} from "@/lib/queries/stores/update/storeMedia";
 import { updateStoreSettings } from "@/lib/queries/stores/update/updateStoreSettings";
 import { updateStoreSocialMedia } from "@/lib/queries/stores/update/updateStoreSocialMedia";
 import type {
@@ -15,11 +18,13 @@ import type {
 } from "@/lib/types/store/store";
 
 interface UpdateStoreInput {
-  storeData?: UpdatedStoreData; // only store fields
-  settingsData?: UpdatedStoreSettings; // only settings
-  socialMediaData?: UpdatedStoreSocialMedia; // only social media
+  storeData?: UpdatedStoreData;
+  settingsData?: UpdatedStoreSettings;
+  socialMediaData?: UpdatedStoreSocialMedia;
   logoFile?: File | null;
   bannerFile?: File | null;
+  clearLogo?: boolean;
+  clearBanner?: boolean;
 }
 
 export function useUpdateStore(storeId: string) {
@@ -32,6 +37,8 @@ export function useUpdateStore(storeId: string) {
     socialMediaData,
     logoFile,
     bannerFile,
+    clearLogo,
+    clearBanner,
   }: UpdateStoreInput): Promise<{
     store: StoreData | null;
     settings: StoreSettings | null;
@@ -41,23 +48,40 @@ export function useUpdateStore(storeId: string) {
       setLoading(true);
       setError(null);
 
-      const storePayload: UpdatedStoreData = { ...(storeData ?? {}) };
+      // Start with provided storeData, stripping undefined values so
+      // Supabase doesn't treat them as explicit nulls
+      const storePayload: UpdatedStoreData = {};
+      if (storeData) {
+        for (const [key, value] of Object.entries(storeData)) {
+          if (value !== undefined) {
+            (storePayload as Record<string, unknown>)[key] = value;
+          }
+        }
+      }
 
-      // Upload media if provided
+      // Handle logo: upload new, or clear existing
       if (logoFile) {
         const logoUrl = await uploadStoreMedia(storeId, logoFile, "logo");
         if (logoUrl) storePayload.logo_url = logoUrl;
+      } else if (clearLogo) {
+        await deleteStoreMedia(storeId, "logo");
+        storePayload.logo_url = null;
       }
 
+      // Handle banner: upload new, or clear existing
       if (bannerFile) {
         const bannerUrl = await uploadStoreMedia(storeId, bannerFile, "banner");
         if (bannerUrl) storePayload.banner_url = bannerUrl;
+      } else if (clearBanner) {
+        await deleteStoreMedia(storeId, "banner");
+        storePayload.banner_url = null;
       }
 
-      // Update store
-      const updatedStore = storePayload
-        ? await updateStore(storeId, storePayload)
-        : null;
+      // Only call updateStore if there are actual fields to update
+      const updatedStore =
+        Object.keys(storePayload).length > 0
+          ? await updateStore(storeId, storePayload)
+          : null;
 
       // Update settings
       const updatedSettings = settingsData

@@ -1,14 +1,10 @@
+// File: app/components/admin/dashboard/store-settings/storeCard/StoreSettingsCard.tsx
 "use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  EditOutlined,
-  InfoCircleOutlined,
-  CloseOutlined,
-  CheckOutlined,
-} from "@ant-design/icons";
+import { Pencil, X, Check, Info } from "lucide-react";
 import type {
   StoreSettings,
   UpdatedStoreSettings,
@@ -16,65 +12,57 @@ import type {
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { Currency, CURRENCY_ICONS } from "@/lib/types/enums";
 
-interface SettingItemProps {
+interface SettingRowProps {
   label: string;
   value?: string | number | null;
-  description?: string;
-  isHighlighted?: boolean;
   info?: string;
   editing?: boolean;
   readOnly?: boolean;
   options?: { label: string; value: string | number }[];
   onChange?: (val: string | number) => void;
+  suffix?: string;
 }
 
-function SettingItem({
+function SettingRow({
   label,
   value,
-  description,
-  isHighlighted,
   info,
   editing,
   onChange,
   options,
   readOnly,
-}: SettingItemProps) {
-  // displayValue only when not editing
-  const displayValue = typeof value === "number" || typeof value === "string" ? value : "";
+  suffix,
+}: SettingRowProps) {
+  const [showInfo, setShowInfo] = useState(false);
 
   return (
-    <div
-      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-lg transition-colors relative ${
-        isHighlighted
-          ? "bg-secondary/5 border border-primary/10"
-          : "hover:bg-muted/50"
-      }`}
-    >
-      <div className="mb-2 sm:mb-0 flex-1">
-        <div className="flex items-start sm:items-center gap-2 relative">
-          <p className="font-medium text-sm sm:text-base">{label}</p>
-          {info && (
-            <div className="group relative flex items-center">
-              <InfoCircleOutlined className="text-muted-foreground cursor-pointer text-sm sm:text-base" />
-              <div className="hidden sm:group-hover:block absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-xs rounded-md bg-gray-800 text-white text-xs px-2 py-1 shadow-lg z-10">
+    <div className="flex items-center justify-between py-3.5 px-3 rounded-xl hover:bg-muted/30 transition-colors group">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {info && (
+          <div className="relative flex items-center">
+            <button
+              onMouseEnter={() => setShowInfo(true)}
+              onMouseLeave={() => setShowInfo(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+            {showInfo && (
+              <div className="absolute left-5 bottom-0 z-50 w-56 rounded-xl bg-popover border border-border shadow-xl px-3 py-2.5 text-xs text-muted-foreground leading-relaxed pointer-events-none">
                 {info}
               </div>
-            </div>
-          )}
-        </div>
-        {description && (
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {description}
-          </p>
+            )}
+          </div>
         )}
       </div>
 
-      <div className="text-right mt-1 sm:mt-0">
+      <div className="ml-4 shrink-0">
         {editing && options ? (
           <select
             value={value ?? ""}
             onChange={(e) => onChange?.(e.target.value)}
-            className="w-full sm:w-32 border px-2 py-1 rounded text-right text-sm sm:text-base"
+            className="bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 px-2.5 py-1.5 rounded-lg text-sm outline-none text-foreground w-32 cursor-pointer"
           >
             {options.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -83,15 +71,22 @@ function SettingItem({
             ))}
           </select>
         ) : editing ? (
-          <input
-            type="number"
-            value={value ?? ""}
-            readOnly={readOnly}
-            onChange={(e) => onChange?.(Number(e.target.value))}
-            className="w-full sm:w-32 border px-2 py-1 rounded text-right text-sm sm:text-base"
-          />
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              value={value ?? ""}
+              readOnly={readOnly}
+              onChange={(e) => onChange?.(Number(e.target.value))}
+              className="bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right w-24 text-foreground tabular-nums"
+            />
+            {suffix && (
+              <span className="text-sm text-muted-foreground">{suffix}</span>
+            )}
+          </div>
         ) : (
-          <div className="text-base sm:text-lg font-semibold">{displayValue}</div>
+          <span className="text-sm font-semibold text-foreground tabular-nums bg-muted/50 px-2.5 py-1 rounded-lg">
+            {value}
+          </span>
         )}
       </div>
     </div>
@@ -122,10 +117,10 @@ export function StoreSettingsCard({
         setLoading(true);
         await onUpdate(formData);
         setEditing(false);
-        notify.success("Store Settings updated successfully!");
+        notify.success("Store settings updated!");
       } catch (err) {
-        console.error("Failed to update settings:", err);
-        notify.error("Failed to update Store Settings.");
+        console.error(err);
+        notify.error("Failed to update settings.");
       } finally {
         setLoading(false);
       }
@@ -137,66 +132,67 @@ export function StoreSettingsCard({
     setEditing(false);
   };
 
-  const currencyIcon =
-    CURRENCY_ICONS[formData.currency as Currency] ?? "";
+  const currencyIcon = CURRENCY_ICONS[formData.currency as Currency] ?? "";
 
   return (
-    <Card className="border shadow-sm">
-      <CardHeader className="border-b p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-          <CardTitle className="text-lg sm:text-xl font-semibold">
-            Store Settings
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Configure your store&apos;s operational parameters
+    <Card className="border-0 shadow-sm bg-card ring-1 ring-border/60 overflow-hidden">
+      <CardHeader className="px-5 py-4 border-b border-border bg-muted/20">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base font-semibold text-foreground">
+              Store Settings
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Operational parameters & policies
             </p>
-          </CardTitle>
-
+          </div>
           {editing ? (
-            <div className="flex gap-2 justify-center sm:justify-end w-full sm:w-auto mt-2 sm:mt-0">
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant="default"
-                className="h-9 px-4 flex-1 sm:flex-none min-w-25"
+                className="h-8 px-3 text-xs font-semibold gap-1.5"
                 onClick={handleSubmit}
                 disabled={loading}
               >
-                <CheckOutlined className="mr-2 text-sm" />
-                <span>Submit</span>
+                <Check className="h-3.5 w-3.5" />
+                {loading ? "Saving..." : "Save"}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 px-4 flex-1 sm:flex-none min-w-25"
+                className="h-8 px-3 text-xs font-medium gap-1.5"
                 onClick={handleCancel}
                 disabled={loading}
               >
-                <CloseOutlined className="mr-2 text-sm" />
-                <span>Close</span>
+                <X className="h-3.5 w-3.5" />
+                Cancel
               </Button>
             </div>
           ) : (
-            <div className="flex justify-center sm:justify-end w-full sm:w-auto mt-2 sm:mt-0">
-              <Button
-                variant="default"
-                size="sm"
-                className="h-9 px-4 w-full sm:w-auto min-w-30"
-                onClick={() => setEditing(true)}
-              >
-                <EditOutlined className="mr-2 text-sm" />
-                <span>Edit Settings</span>
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted/50"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </Button>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="p-3 sm:p-6">
-        <div className="grid grid-cols-1 gap-3 sm:gap-4">
-          <SettingItem
+      <CardContent className="p-2.5">
+        <div className="space-y-0">
+          <SettingRow
             label="Currency"
-            value={formData.currency}
+            value={
+              editing
+                ? formData.currency
+                : `${currencyIcon} ${formData.currency}`
+            }
             info="Primary currency for all transactions"
-            isHighlighted
             editing={editing}
             options={Object.values(Currency).map((cur) => ({
               label: `${CURRENCY_ICONS[cur]} ${cur}`,
@@ -204,71 +200,62 @@ export function StoreSettingsCard({
             }))}
             onChange={(val) => handleChange("currency", String(val))}
           />
-
-          <SettingItem
+          <SettingRow
             label="Tax Rate"
-            value={
-              editing
-                ? formData.tax_rate
-                : `${formData.tax_rate} ${currencyIcon}`
-            }
-            info="Applied to all orders"
-            isHighlighted
+            value={editing ? formData.tax_rate : `${formData.tax_rate}%`}
+            info="Applied as a percentage to all orders"
             editing={editing}
+            suffix="%"
             onChange={(val) => handleChange("tax_rate", Number(val))}
           />
-
-          <SettingItem
-            label="Minimum Order Amount"
+          <SettingRow
+            label="Minimum Order"
             value={
               editing
                 ? formData.min_order_amount
-                : `${formData.min_order_amount} ${currencyIcon}`
+                : `${currencyIcon} ${formData.min_order_amount}`
             }
             info="Minimum amount required to place an order"
-            isHighlighted
             editing={editing}
+            suffix={currencyIcon}
             onChange={(val) => handleChange("min_order_amount", Number(val))}
           />
-
-          <SettingItem
-            label="Order Processing Time"
+          <SettingRow
+            label="Processing Time"
             value={
               editing
                 ? formData.processing_time_days
                 : `${formData.processing_time_days} days`
             }
             info="Average time to process and ship orders"
-            isHighlighted
             editing={editing}
+            suffix="days"
             onChange={(val) =>
               handleChange("processing_time_days", Number(val))
             }
           />
-
-          <SettingItem
-            label="Return Policy Period"
+          <SettingRow
+            label="Return Window"
             value={
               editing
                 ? formData.return_policy_days
                 : `${formData.return_policy_days} days`
             }
-            info="Timeframe for customer returns"
-            isHighlighted
+            info="Timeframe customers can return items"
             editing={editing}
+            suffix="days"
             onChange={(val) => handleChange("return_policy_days", Number(val))}
           />
-
-          <SettingItem
-            label="Free Shipping Threshold"
+          <SettingRow
+            label="Free Shipping At"
             value={
               editing
                 ? formData.free_shipping_threshold
-                : `${formData.free_shipping_threshold} ${currencyIcon}`
+                : `${currencyIcon} ${formData.free_shipping_threshold}`
             }
-            info="Order amount to qualify for free shipping"
-            isHighlighted
+            info="Orders above this amount qualify for free shipping"
             editing={editing}
+            suffix={currencyIcon}
             onChange={(val) =>
               handleChange("free_shipping_threshold", Number(val))
             }

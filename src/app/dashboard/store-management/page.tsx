@@ -13,6 +13,7 @@ import { ShippingFeesCard } from "@/app/components/admin/dashboard/store-setting
 import { PoliciesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PoliciesCard";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
 import { StoreSocialMediaCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSocialMediaCard";
+import { Store } from "lucide-react";
 
 import type {
   StoreData,
@@ -48,67 +49,66 @@ export default function StorePage() {
     if (settings) setLocalSettings(settings);
   }, [settings]);
 
-  // ✅ Updated handleUpdateStore to support logo/banner files
   const handleUpdateStore = async (
     storeData: UpdatedStoreData = {},
     settingsData?: UpdatedStoreSettings,
     logoFile?: File | null,
     bannerFile?: File | null,
+    clearLogo?: boolean,
+    clearBanner?: boolean,
   ): Promise<StoreData> => {
     const updated = await update({
       storeData,
       settingsData,
       logoFile,
       bannerFile,
+      clearLogo,
+      clearBanner,
     });
 
-    if (!updated.store) throw new Error("Failed to update store");
+    // Only throw if a store update was attempted but failed
+    const storeUpdateAttempted =
+      Object.keys(storeData).length > 0 ||
+      logoFile ||
+      bannerFile ||
+      clearLogo ||
+      clearBanner;
 
-    setStore(updated.store);
+    if (storeUpdateAttempted && !updated.store) {
+      throw new Error("Failed to update store");
+    }
+
+    // Use updated store if returned, otherwise keep current store state
+    const resultStore = updated.store ?? store!;
+    setStore(resultStore);
 
     if (updated.settings) setLocalSettings(updated.settings);
 
-    return updated.store;
+    return resultStore;
   };
 
   const handleUpdateSocialMedia = async (
     socialMediaData: UpdatedStoreSocialMedia,
   ): Promise<void> => {
     if (!store) return;
-
-    const updated = await update({
-      socialMediaData, // ✅ only social media fields
-    });
-
-    if (updated.socialMedia) {
-      setSocialMedia(updated.socialMedia); // update UI
-    }
+    const updated = await update({ socialMediaData });
+    if (updated.socialMedia) setSocialMedia(updated.socialMedia);
   };
 
   if (userLoading) return <SheiSkeleton />;
 
   if (!storeId) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-100 space-y-4">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-          <svg
-            className="w-8 h-8 text-muted-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-            />
-          </svg>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5">
+        <div className="h-16 w-16 rounded-2xl bg-muted/60 flex items-center justify-center">
+          <Store className="h-7 w-7 text-muted-foreground" />
         </div>
-        <div className="text-center">
-          <h3 className="text-lg font-medium">No Store Found</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            You don&apos;t have a store assigned to your account.
+        <div className="text-center space-y-1.5">
+          <h3 className="text-base font-semibold text-foreground">
+            No Store Found
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            You don&apos;t have a store assigned to your account yet.
           </p>
         </div>
       </div>
@@ -117,15 +117,15 @@ export default function StorePage() {
 
   if (storeLoading || settingsLoading) {
     return (
-      <div className="space-y-6">
-        <SheiSkeleton />
-        <div className="grid gap-6 md:grid-cols-2">
-          <SheiSkeleton />
-          <SheiSkeleton />
-          <SheiSkeleton />
+      <div className="space-y-5">
+        <SheiSkeleton className="h-52" />
+        <div className="grid gap-5 lg:grid-cols-2">
+          <SheiSkeleton className="h-72" />
+          <SheiSkeleton className="h-72" />
         </div>
-        <SheiSkeleton />
-        <SheiSkeleton />
+        <SheiSkeleton className="h-48" />
+        <SheiSkeleton className="h-48" />
+        <SheiSkeleton className="h-64" />
       </div>
     );
   }
@@ -133,21 +133,30 @@ export default function StorePage() {
   if (!store) return <div>Store Not Found</div>;
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-5 pb-10 max-w-7xl mx-auto">
       <StoreHeader
         store={store}
         onUpdate={setStore}
-        updateStore={({ store_name, store_slug, logoFile, bannerFile }) =>
+        updateStore={({
+          store_name,
+          store_slug,
+          logoFile,
+          bannerFile,
+          clearLogo,
+          clearBanner,
+        }) =>
           handleUpdateStore(
             { store_name, store_slug },
             undefined,
             logoFile,
             bannerFile,
+            clearLogo,
+            clearBanner,
           )
         }
       />
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <StoreInfoCard
           store={store}
           onUpdate={async (data) => {
@@ -163,27 +172,36 @@ export default function StorePage() {
           />
         )}
       </div>
+
       <StoreSocialMediaCard
         socialMedia={socialMedia}
         onUpdate={handleUpdateSocialMedia}
       />
+
       {settings && (
-        <>
-          <ShippingFeesCard fees={settings.shipping_fees} settings={settings} />
-          <PoliciesCard
-            settings={localSettings!}
-            onUpdatePolicy={async (type, content) => {
-              const payload: UpdatedStoreSettings =
-                type === "terms"
-                  ? { terms_and_conditions: content }
-                  : { privacy_policy: content };
-              await handleUpdateStore({}, payload);
-              setLocalSettings((prev) =>
-                prev ? { ...prev, ...payload } : prev,
-              );
-            }}
-          />
-        </>
+        <ShippingFeesCard fees={settings.shipping_fees} settings={settings} />
+      )}
+
+      {settings && (
+        <PoliciesCard
+          settings={localSettings!}
+          onUpdatePolicy={async (type, content) => {
+            const payload: UpdatedStoreSettings =
+              type === "terms"
+                ? { terms_and_conditions: content }
+                : { privacy_policy: content };
+            await handleUpdateStore({}, payload);
+            setLocalSettings((prev) => (prev ? { ...prev, ...payload } : prev));
+          }}
+          onRemovePolicy={async (type) => {
+            const payload: UpdatedStoreSettings =
+              type === "terms"
+                ? { terms_and_conditions: null }
+                : { privacy_policy: null };
+            await handleUpdateStore({}, payload);
+            setLocalSettings((prev) => (prev ? { ...prev, ...payload } : prev));
+          }}
+        />
       )}
     </div>
   );

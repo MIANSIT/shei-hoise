@@ -13,7 +13,10 @@ import {
   Settings,
   Truck,
   // UserCircle,
-  Store,
+  // Store,
+  DollarSign,
+  CreditCard,
+  BarChart2,
 } from "lucide-react";
 import React from "react";
 
@@ -102,12 +105,12 @@ export const sideMenu: MenuItem[] = [
       // },
     ],
   },
-  // {
-  //   title: "Financial",
-  //   icon: DollarSign,
-  //   children: [
-  //     { title: "Billing", href: "/financial/billing", icon: CreditCard },
-  //     { title: "Cost", href: "/financial/cost", icon: BarChart2 },
-  //   ],
-  // },
+  {
+    title: "Financial",
+    icon: DollarSign,
+    children: [
+      { title: "Expense", href: "/dashboard/expense", icon: CreditCard },
+      { title: "Category", href: "/dashboard/expense/category", icon: BarChart2 },
+    ],
+  },
 ];

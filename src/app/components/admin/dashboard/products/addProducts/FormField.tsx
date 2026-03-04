@@ -2,15 +2,13 @@
 
 import React from "react";
 import { Controller, Control, FieldValues, Path } from "react-hook-form";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import { Tooltip } from "antd";
 
 type Option = { label: string; value: string | number };
 
 type BaseProps<T extends FieldValues> = {
-  control?: Control<T>; // optional for react-hook-form
-  value?: T[Path<T>]; // controlled input
-  onChange?: (value: T[Path<T>]) => void; // controlled input
+  control?: Control<T>;
+  value?: T[Path<T>];
+  onChange?: (value: T[Path<T>]) => void;
   name: Path<T>;
   label?: string;
   required?: boolean;
@@ -20,11 +18,20 @@ type BaseProps<T extends FieldValues> = {
   className?: string;
   tooltip?: string;
   as?: "input" | "textarea" | "select" | "checkbox";
-  type?: "text" | "email" | "password" | "number"; // input type
-  options?: Option[]; // for select
+  type?: "text" | "email" | "password" | "number";
+  options?: Option[];
 };
 
 export type FormFieldProps<T extends FieldValues> = BaseProps<T>;
+
+// Shared input classes
+const baseInput =
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50";
+
+const readOnlyInput =
+  "bg-muted text-muted-foreground cursor-not-allowed focus:ring-0 focus:border-border";
+
+const errorText = "mt-1 text-xs text-rose-500";
 
 const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
   const {
@@ -38,18 +45,12 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
     disabled,
     placeholder,
     className,
-    tooltip,
+    tooltip: _tooltip, // consumed upstream, not used here
     as = "input",
     type = "text",
     options = [],
   } = props;
 
-  const commonClasses =
-    "w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500";
-  const readOnlyClasses = "bg-gray-100 text-gray-600 cursor-not-allowed";
-  const extraClass = className ?? "";
-
-  // Strongly typed field & error
   type FieldType = {
     value: T[Path<T>] | undefined;
     onChange: (value: T[Path<T>]) => void;
@@ -72,7 +73,8 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
           <textarea
             id={name}
             placeholder={placeholder}
-            className={`${commonClasses} ${extraClass} resize-none min-h-20`}
+            rows={4}
+            className={`${baseInput} resize-none ${className ?? ""}`}
             disabled={readOnly || disabled}
             value={inputValue as string}
             onChange={(e) => {
@@ -81,9 +83,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             }}
           />
           {fieldState?.error?.message && (
-            <p className="text-red-500 text-sm mt-1">
-              {fieldState.error.message}
-            </p>
+            <p className={errorText}>{fieldState.error.message}</p>
           )}
         </>
       );
@@ -96,12 +96,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             id={name}
             value={inputValue as string | number}
             disabled={readOnly || disabled}
-            className={`${commonClasses} ${extraClass} 
-    bg-white text-gray-700 border-gray-300 
-    focus:ring-gray-500 focus:border-gray-500
-    dark:bg-black dark:text-gray-200 dark:border-gray-600 
-    dark:focus:ring-gray-400 dark:focus:border-gray-400
-  `}
+            className={`${baseInput} ${className ?? ""}`}
             onChange={(e) => {
               field.onChange(e.target.value as T[Path<T>]);
               onChange?.(e.target.value as T[Path<T>]);
@@ -118,11 +113,8 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
               </option>
             ))}
           </select>
-
           {fieldState?.error?.message && (
-            <p className="text-red-500 text-sm mt-1">
-              {fieldState.error.message}
-            </p>
+            <p className={errorText}>{fieldState.error.message}</p>
           )}
         </>
       );
@@ -131,7 +123,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
     if (as === "checkbox") {
       return (
         <>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               checked={!!inputValue}
@@ -141,27 +133,25 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
                 field.onChange(val);
                 onChange?.(val);
               }}
-              className="w-4 h-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-border text-emerald-500 focus:ring-emerald-500"
             />
-            {label && <span>{label}</span>}
+            {label && <span className="text-sm text-foreground">{label}</span>}
           </div>
           {fieldState?.error?.message && (
-            <p className="text-red-500 text-sm mt-1">
-              {fieldState.error.message}
-            </p>
+            <p className={errorText}>{fieldState.error.message}</p>
           )}
         </>
       );
     }
 
-    // Default input (text or number)
+    // Default input
     return (
       <>
         <input
           type={type}
           id={name}
           placeholder={placeholder}
-          className={`${commonClasses} ${readOnly ? readOnlyClasses : ""} ${extraClass}`}
+          className={`${baseInput} ${readOnly ? readOnlyInput : ""} ${className ?? ""}`}
           readOnly={readOnly}
           disabled={disabled}
           value={inputValue as string | number}
@@ -170,38 +160,33 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             if (type === "number") {
               const raw = e.target.value;
               const stripped = raw.replace(/^0+(?=\d)/, "");
-              const numericValue = stripped === "" ? 0 : Number(stripped);
-              val = numericValue as T[Path<T>];
+              val = (stripped === "" ? 0 : Number(stripped)) as T[Path<T>];
             } else {
               val = e.target.value as T[Path<T>];
             }
             field.onChange(val);
             onChange?.(val);
           }}
-          // ✅ Auto-prevent scroll increment for numbers
           onWheel={(e) => {
             if (type === "number") e.currentTarget.blur();
           }}
         />
         {fieldState?.error?.message && (
-          <p className="text-red-500 text-sm mt-1">
-            {fieldState.error.message}
-          </p>
+          <p className={errorText}>{fieldState.error.message}</p>
         )}
       </>
     );
   };
 
   return (
-    <div className="flex flex-col w-full scroll-mt-24" id={`field-${name}`}>
+    <div className="flex w-full flex-col scroll-mt-24" id={`field-${name}`}>
       {label && as !== "checkbox" && (
-        <label htmlFor={name} className="text-sm font-semibold mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
-          {tooltip && (
-            <Tooltip title={tooltip} placement="top">
-              <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 cursor-pointer p-2" />
-            </Tooltip>
-          )}
+        <label
+          htmlFor={name}
+          className="mb-1.5 text-sm font-medium text-foreground"
+        >
+          {label}
+          {required && <span className="ml-0.5 text-rose-500">*</span>}
         </label>
       )}
       {control ? (
