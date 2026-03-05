@@ -327,7 +327,6 @@ const OrdersTable: React.FC<Props> = ({
             <div className="font-medium text-sm truncate max-w-25 lg:max-w-30">
               {getCustomerName(order)}
             </div>
-           
           </div>
         </Space>
       ),
@@ -409,11 +408,18 @@ const OrdersTable: React.FC<Props> = ({
       title: "Delivery",
       dataIndex: "delivery_option",
       key: "delivery_option",
-      render: (option: string) => (
-        <span className="text-xs font-medium capitalize">
-          {option || "Not set"}
-        </span>
-      ),
+      render: (option: string, order: StoreOrder) => {
+        // Fallback: if delivery_option is corrupted (e.g. "Inside Dhaka"),
+        // read from shipping_address.deliveryOption
+        const raw =
+          option || (order.shipping_address as any)?.deliveryOption || "";
+        const display = raw
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (c: string) => c.toUpperCase());
+        return (
+          <span className="text-xs font-medium">{display || "Not set"}</span>
+        );
+      },
       width: 100,
       responsive: ["lg"],
     },
