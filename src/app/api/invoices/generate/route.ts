@@ -24,6 +24,12 @@ interface Customer {
   email?: string;
 }
 
+// ✅ AdditionalCharge interface added
+interface AdditionalCharge {
+  label: string;
+  amount: number;
+}
+
 interface InvoiceRequest {
   store: Store;
   orderId: string;
@@ -34,6 +40,7 @@ interface InvoiceRequest {
   deliveryCharge: number;
   taxAmount: number;
   discountAmount?: number;
+  additionalCharges?: AdditionalCharge[]; // ✅ Added
   totalDue: number;
   paymentStatus?: string;
   paymentMethod?: string;
@@ -88,6 +95,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     deliveryCharge,
     taxAmount,
     discountAmount = 0,
+    additionalCharges = [], // ✅ Destructured with default
     totalDue,
     paymentStatus = "Pending",
     paymentMethod = "N/A",
@@ -137,6 +145,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   if (discountAmount > 0) summaryLines++;
   if (deliveryCharge > 0) summaryLines++;
   if (taxAmount > 0) summaryLines++;
+  summaryLines += additionalCharges.filter((c) => c.amount !== 0).length; // ✅ Count additional charges
   estimatedHeight += summaryLines * 5; // Each summary line
   estimatedHeight += 8; // Grand total with spacing
 
@@ -315,6 +324,9 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   summaryData.forEach((item) => {
     if (item.value !== 0) {
+      pdf.setFont("helvetica", "semibold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
       pdf.text(item.label, summaryX, summaryY);
       pdf.text(`${item.value.toFixed(2)}`, pageWidth - margin, summaryY, {
         align: "right",
@@ -322,6 +334,22 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
       summaryY += 5;
     }
   });
+
+  // ✅ Additional charges rendered in summary
+  if (additionalCharges.length > 0) {
+    additionalCharges.forEach((charge) => {
+      if (charge.amount !== 0) {
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(charge.label, summaryX, summaryY);
+        pdf.text(`${charge.amount.toFixed(2)}`, pageWidth - margin, summaryY, {
+          align: "right",
+        });
+        summaryY += 5;
+      }
+    });
+  }
 
   // Grand Total
   summaryY += 1;
@@ -365,7 +393,6 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   }
 
   // ==================== FOOTER (DYNAMIC POSITION) ====================
-  // Add some spacing before footer
   summaryY += 10;
 
   // Draw separator line
@@ -393,7 +420,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     summaryY + 8,
   );
 
-  // Thank you message - Center (below date/time)
+  // Thank you message
   summaryY += 20;
   pdf.setDrawColor(220, 220, 220);
   pdf.line(margin, summaryY, pageWidth - margin, summaryY);
@@ -429,6 +456,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     deliveryCharge,
     taxAmount,
     discountAmount = 0,
+    additionalCharges = [], // ✅ Destructured with default
     totalDue,
     paymentStatus = "Pending",
     paymentMethod = "N/A",
@@ -613,37 +641,70 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   pdf.setFont("courier", "normal");
   pdf.setFontSize(9);
 
-  const summaryItems = [
-    { label: "Subtotal:", value: subtotal, bold: false },
-    { label: "Discount:", value: -Math.abs(discountAmount), bold: false },
-    { label: "Delivery:", value: deliveryCharge, bold: false },
-    { label: "Tax:", value: taxAmount, bold: false },
-    { label: "TOTAL:", value: totalDue, bold: true },
-  ];
-
   const summaryLabelX = margin;
   const summaryValueX = pageWidth - margin;
 
-  summaryItems.forEach((item) => {
-    if (item.value === 0 && !item.bold) return;
-
-    if (item.bold) {
-      pdf.setFont("courier", "bold");
-      pdf.setFontSize(10);
-    } else {
-      pdf.setFont("courier", "normal");
-      pdf.setFontSize(9);
-    }
-
-    const valueText =
-      item.value >= 0
-        ? `${item.value.toFixed(2)}`
-        : `-${Math.abs(item.value).toFixed(2)}`;
-
-    pdf.text(item.label, summaryLabelX, y);
-    pdf.text(valueText, summaryValueX, y, { align: "right" });
+  // Subtotal
+  if (subtotal !== 0) {
+    pdf.setFont("courier", "normal");
+    pdf.setFontSize(9);
+    pdf.text("Subtotal:", summaryLabelX, y);
+    pdf.text(`${subtotal.toFixed(2)}`, summaryValueX, y, { align: "right" });
     y += 4;
-  });
+  }
+
+  // Discount
+  if (discountAmount > 0) {
+    pdf.setFont("courier", "normal");
+    pdf.setFontSize(9);
+    pdf.text("Discount:", summaryLabelX, y);
+    pdf.text(`-${discountAmount.toFixed(2)}`, summaryValueX, y, {
+      align: "right",
+    });
+    y += 4;
+  }
+
+  // Delivery
+  if (deliveryCharge > 0) {
+    pdf.setFont("courier", "normal");
+    pdf.setFontSize(9);
+    pdf.text("Delivery:", summaryLabelX, y);
+    pdf.text(`${deliveryCharge.toFixed(2)}`, summaryValueX, y, {
+      align: "right",
+    });
+    y += 4;
+  }
+
+  // Tax
+  if (taxAmount > 0) {
+    pdf.setFont("courier", "normal");
+    pdf.setFontSize(9);
+    pdf.text("Tax:", summaryLabelX, y);
+    pdf.text(`${taxAmount.toFixed(2)}`, summaryValueX, y, { align: "right" });
+    y += 4;
+  }
+
+  // ✅ Additional charges rendered in POS summary
+  if (additionalCharges.length > 0) {
+    additionalCharges.forEach((charge) => {
+      if (charge.amount !== 0) {
+        pdf.setFont("courier", "normal");
+        pdf.setFontSize(9);
+        pdf.text(`${charge.label}:`, summaryLabelX, y);
+        pdf.text(`${charge.amount.toFixed(2)}`, summaryValueX, y, {
+          align: "right",
+        });
+        y += 4;
+      }
+    });
+  }
+
+  // Grand Total
+  pdf.setFont("courier", "bold");
+  pdf.setFontSize(10);
+  pdf.text("TOTAL:", summaryLabelX, y);
+  pdf.text(`${totalDue.toFixed(2)}`, summaryValueX, y, { align: "right" });
+  y += 4;
 
   // Separator
   y += 2;
