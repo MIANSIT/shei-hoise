@@ -32,7 +32,7 @@ export const getOrderColumns = (): ColumnsType<Order> => [
 
       return (
         <Tooltip title={tooltipText}>
-          <div className="truncate max-w-[120px]">${total.toFixed(2)}</div>
+          <div className="truncate max-w-30">${total.toFixed(2)}</div>
         </Tooltip>
       );
     },
