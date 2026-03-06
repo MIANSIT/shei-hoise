@@ -50,7 +50,7 @@ export default function UpdateOrderButton({
 }: UpdateOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const [isLoading, setIsLoading] = useState(false);
- const {
+  const {
     currency,
     icon: currencyIcon,
     loading: currencyLoading,
@@ -73,14 +73,34 @@ export default function UpdateOrderButton({
           <Text type="secondary">Order ID: {orderId}</Text>
           <Text type="secondary">Customer: {customerInfo.name}</Text>
           <Text type="secondary">Email: {customerInfo.email}</Text>
-          <Text type="secondary">Address: {customerInfo.address}, {customerInfo.city}</Text>
+          <Text type="secondary">
+            Address: {customerInfo.address}, {customerInfo.city}
+          </Text>
           <Text type="secondary">Phone: {customerInfo.phone}</Text>
-          <Text type="secondary">Subtotal:  {displayCurrencyIconSafe}{subtotal.toFixed(2)}</Text>
-          <Text type="secondary">Discount:  {displayCurrencyIconSafe}{discount.toFixed(2)}</Text>
-          <Text type="secondary">Additional Charges:  {displayCurrencyIconSafe}{additionalCharges.toFixed(2)}</Text>
-          <Text type="secondary">Delivery:  {displayCurrencyIconSafe}{deliveryCost.toFixed(2)}</Text>
-          <Text type="secondary">Tax:  {displayCurrencyIconSafe}{taxAmount.toFixed(2)}</Text>
-          <Text strong>Total Amount:  {displayCurrencyIconSafe}{totalAmount.toFixed(2)}</Text>
+          <Text type="secondary">
+            Subtotal: {displayCurrencyIconSafe}
+            {subtotal.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Discount: {displayCurrencyIconSafe}
+            {discount.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Additional Charges: {displayCurrencyIconSafe}
+            {additionalCharges.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Delivery: {displayCurrencyIconSafe}
+            {deliveryCost.toFixed(2)}
+          </Text>
+          <Text type="secondary">
+            Tax: {displayCurrencyIconSafe}
+            {taxAmount.toFixed(2)}
+          </Text>
+          <Text strong>
+            Total Amount: {displayCurrencyIconSafe}
+            {totalAmount.toFixed(2)}
+          </Text>
           <Text type="warning">
             This will update all order details including products, pricing, and
             customer information.
@@ -93,9 +113,8 @@ export default function UpdateOrderButton({
     });
   };
 
-
-  const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
-  const displayCurrency = currencyLoading ? "" : currency ?? "";
+  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
+  const displayCurrency = currencyLoading ? "" : (currency ?? "");
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
   const displayCurrencySafe = displayCurrency || "BDT"; // fallback
 
@@ -104,8 +123,6 @@ export default function UpdateOrderButton({
 
     setIsLoading(true);
     try {
-      
-
       // Prepare the update data with COMPLETE shipping address
       const updateData = {
         storeId,
@@ -124,7 +141,7 @@ export default function UpdateOrderButton({
           customer_id: customerInfo.customer_id,
           country: customerInfo.country || "Bangladesh",
         },
-        orderProducts: orderProducts.map(product => ({
+        orderProducts: orderProducts.map((product) => ({
           product_id: product.product_id,
           variant_id: product.variant_id || null,
           product_name: product.product_name,
@@ -143,7 +160,7 @@ export default function UpdateOrderButton({
         paymentStatus: paymentStatus, // ✅ Already using enum
         paymentMethod: paymentMethod,
         currency: displayCurrencySafe,
-        deliveryOption: customerInfo.deliveryMethod || "",
+        deliveryOption: customerInfo.deliveryOption || "",
         // ✅ ADDED: Shipping address object for the backend
         shippingAddress: {
           customer_name: customerInfo.name || "",
@@ -156,13 +173,10 @@ export default function UpdateOrderButton({
           country: customerInfo.country || "Bangladesh",
           deliveryOption: customerInfo.deliveryOption || "",
           deliveryMethod: customerInfo.deliveryMethod || "",
-        }
+        },
       };
 
-      
-
       const result = await dataService.updateOrderByNumber(updateData);
-
 
       if (result.success) {
         notification.success({
@@ -180,15 +194,18 @@ export default function UpdateOrderButton({
       }
     } catch (error: any) {
       console.error("💥 Error updating order:", error);
-      
-      let errorMessage = error.title || "Unknown error occurred. Please check the console for details.";
-      
+
+      let errorMessage =
+        error.title ||
+        "Unknown error occurred. Please check the console for details.";
+
       if (error.title?.includes("order not found")) {
         errorMessage = "Order not found. It may have been deleted.";
       } else if (error.title?.includes("permission denied")) {
         errorMessage = "You don't have permission to update this order.";
       } else if (error.title?.includes("network")) {
-        errorMessage = "Network error. Please check your connection and try again.";
+        errorMessage =
+          "Network error. Please check your connection and try again.";
       }
 
       modal.error({
@@ -208,11 +225,11 @@ export default function UpdateOrderButton({
       loading={isLoading}
       disabled={disabled || isLoading || !!emailError}
       onClick={showConfirm}
-      style={{ 
+      style={{
         minWidth: "140px",
         height: "40px",
         fontSize: "16px",
-        fontWeight: "600"
+        fontWeight: "600",
       }}
     >
       {isLoading ? "Updating..." : "Update Order"}
