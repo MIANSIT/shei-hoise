@@ -15,6 +15,7 @@ import {
   Copy,
   X,
   Check,
+  AlignLeft,
 } from "lucide-react";
 import type { StoreData, UpdatedStoreData } from "@/lib/types/store/store";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
@@ -69,7 +70,11 @@ function InfoItem({
           )
         ) : (
           <p
-            className={`text-sm break-all ${value ? "text-foreground font-medium" : "text-muted-foreground italic"}`}
+            className={`text-sm wrap-break-word whitespace-pre-wrap ${
+              value
+                ? "text-foreground font-medium"
+                : "text-muted-foreground italic"
+            }`}
           >
             {value || `No ${label.toLowerCase()} added`}
           </p>
@@ -99,6 +104,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
   const notify = useSheiNotification();
 
   const [formData, setFormData] = useState({
+    description: store.description || "",
     contact_email: store.contact_email || "",
     contact_phone: store.contact_phone || "",
     business_address: store.business_address || "",
@@ -126,6 +132,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
 
   const handleCancel = () => {
     setFormData({
+      description: store.description || "",
       contact_email: store.contact_email || "",
       contact_phone: store.contact_phone || "",
       business_address: store.business_address || "",
@@ -191,6 +198,20 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
 
       <CardContent className="p-2.5">
         <div className="space-y-0">
+          {/* Description — shown first, full width feel */}
+          <InfoItem
+            icon={<AlignLeft className="h-4 w-4" />}
+            label="Store Description"
+            value={formData.description}
+            editing={editing}
+            onChange={(v) => handleChange("description", v)}
+            multiline
+            placeholder="Tell customers what your store is about..."
+          />
+
+          {/* Divider between description and contact fields */}
+          <div className="mx-3 border-t border-border/40 my-1" />
+
           <InfoItem
             icon={<Mail className="h-4 w-4" />}
             label="Contact Email"
@@ -218,6 +239,10 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
             multiline
             placeholder="123 Business St, City, State, Country"
           />
+
+          {/* Divider before legal/tax fields */}
+          <div className="mx-3 border-t border-border/40 my-1" />
+
           <InfoItem
             icon={<CreditCard className="h-4 w-4" />}
             label="Tax ID"
