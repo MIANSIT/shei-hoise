@@ -9,6 +9,7 @@ import { ShoppingCart, Check, Eye } from "lucide-react";
 import { Product } from "@/lib/types/product";
 import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+
 interface ProductCardProps {
   store_slug: string;
   product: Product;
@@ -20,19 +21,17 @@ export default function ProductCard({
   store_slug,
   product,
   onAddToCart,
-}: // isLoading = false,
-ProductCardProps) {
+}: ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const { cart } = useCartStore();
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
+
   const variant = product.variants?.[0];
   const hasVariants = product.variants && product.variants.length > 0;
+
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
       ? variant?.discounted_price
@@ -52,63 +51,43 @@ ProductCardProps) {
         )
       : 0;
 
-  // Check if product is in stock - FIXED: Check all variants
   const isInStock = (): boolean => {
     if (product.variants && product.variants.length > 0) {
       return product.variants.some((variant) => {
         const productInventory = variant.product_inventory?.[0];
-        if (productInventory && productInventory.quantity_available > 0) {
+        if (productInventory && productInventory.quantity_available > 0)
           return true;
-        }
         const stock = variant.stock;
-        if (stock && stock.quantity_available > 0) {
-          return true;
-        }
+        if (stock && stock.quantity_available > 0) return true;
         return false;
       });
     }
-
     const mainProductInventory = product.product_inventory?.[0];
-    if (mainProductInventory && mainProductInventory.quantity_available > 0) {
+    if (mainProductInventory && mainProductInventory.quantity_available > 0)
       return true;
-    }
     const mainStock = product.stock;
-    if (mainStock && mainStock.quantity_available > 0) {
-      return true;
-    }
-
+    if (mainStock && mainStock.quantity_available > 0) return true;
     return false;
   };
 
-  // Get total available stock for this product - FIXED: Sum all variants
   const getTotalAvailableStock = (): number => {
     if (product.variants && product.variants.length > 0) {
       return product.variants.reduce((total, variant) => {
         const productInventory = variant.product_inventory?.[0];
-        if (productInventory) {
+        if (productInventory)
           return total + productInventory.quantity_available;
-        }
         const stock = variant.stock;
-        if (stock) {
-          return total + stock.quantity_available;
-        }
+        if (stock) return total + stock.quantity_available;
         return total;
       }, 0);
     }
-
     const mainProductInventory = product.product_inventory?.[0];
-    if (mainProductInventory) {
-      return mainProductInventory.quantity_available;
-    }
+    if (mainProductInventory) return mainProductInventory.quantity_available;
     const mainStock = product.stock;
-    if (mainStock) {
-      return mainStock.quantity_available;
-    }
-
+    if (mainStock) return mainStock.quantity_available;
     return 0;
   };
 
-  // Get current cart quantity for this product - FIXED: Sum all variants in cart
   const getTotalCartQuantity = (): number => {
     if (hasVariants) {
       return cart
@@ -121,24 +100,17 @@ ProductCardProps) {
       const cartItem = cart.find((item) => {
         const productMatch = item.productId === product.id;
         const storeMatch = item.storeSlug === store_slug;
-
         let variantMatch = false;
-        if (item.variantId === null && !variant?.id) {
-          variantMatch = true;
-        } else if (item.variantId === variant?.id) {
-          variantMatch = true;
-        }
-
+        if (item.variantId === null && !variant?.id) variantMatch = true;
+        else if (item.variantId === variant?.id) variantMatch = true;
         return productMatch && storeMatch && variantMatch;
       });
-
       return cartItem?.quantity || 0;
     }
   };
 
   const totalAvailableStock = getTotalAvailableStock();
   const totalCartQuantity = getTotalCartQuantity();
-
   const isMaxInCart = !hasVariants && totalCartQuantity >= totalAvailableStock;
 
   const handleAddToCart = async () => {
@@ -156,6 +128,7 @@ ProductCardProps) {
   };
 
   const productInStock = isInStock();
+
   const formatName = (name: string) => {
     if (!name) return "";
     const words = name.split(" ");
@@ -164,58 +137,49 @@ ProductCardProps) {
     return words.join(" ");
   };
 
-  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
+  const displayCurrencyIconSafe =
+    (currencyLoading ? null : (currencyIcon ?? null)) || "৳";
 
   return (
-    <Card
-      className={`flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border `}
-    >
+    <Card className="flex flex-col rounded-lg overflow-hidden shadow-sm transition-all duration-500 p-0 bg-card border-border">
       <Link
         href={`${store_slug}/product/${product.slug}`}
         className="flex flex-col flex-1 cursor-pointer hover:text-foreground"
       >
-        {/* Image container with modern bg for transparent images */}
-        <div className="relative w-full h-80 overflow-hidden group bg-[radial-gradient(ellipse_at_center,#f8f8f8_0%,#ececec_100%)]">
-          {/* Subtle grid texture */}
-          <div
-            className="absolute inset-0 opacity-[0.03] pointer-events-none z-10"
-            style={{
-              backgroundImage:
-                "linear-gradient(#888 1px, transparent 1px), linear-gradient(90deg, #888 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          />
-
+        {/* 
+          Image container:
+          - aspect-[4/3] gives a consistent, natural ratio (not too tall, not too wide)
+          - object-cover fills the space cleanly; switch to object-contain if product has transparency
+          - No fixed h-80 that causes empty gaps for smaller images
+        */}
+        <div className="relative w-full aspect-4/3 overflow-hidden group">
           <Image
             src={displayImage}
             alt={product.name}
             fill
-            className={`object-contain transition-transform duration-500 ease-in-out group-hover:scale-105 relative z-20`}
+            className={`object-cover transition-transform duration-500 ease-in-out group-hover:scale-105 ${
+              !productInStock ? "opacity-70 grayscale-30" : ""
+            }`}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
           />
 
-          <div className="absolute inset-0 flex justify-between items-start p-4 z-30">
-            {/* Category Badge */}
-            <span className="text-card-foreground text-xs uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg">
+          {/* Overlay badges */}
+          <div className="absolute inset-0 flex justify-between items-start p-3 z-10">
+            <span className="text-card-foreground text-xs uppercase tracking-wider bg-(--badge) px-2 py-1 rounded-lg backdrop-blur-sm">
               {product.category?.name || "Uncategorized"}
             </span>
 
             <div className="flex flex-col items-end gap-1">
-              {/* Out of Stock */}
               {!productInStock && (
                 <span className="text-white text-xs font-bold bg-chart-5 px-2 py-1 rounded-lg">
                   Stock Out
                 </span>
               )}
-
-              {/* Discount - only show if in stock */}
               {productInStock && calculatedDiscount > 0 && (
                 <span className="text-card-foreground text-xs font-medium bg-chart-2 px-2 py-1 rounded-lg">
                   Save {calculatedDiscount}%
                 </span>
               )}
-
-              {/* Max in Cart - only for products without variants */}
               {productInStock && !hasVariants && isMaxInCart && (
                 <span className="text-card-foreground text-xs font-medium bg-blue-500 px-2 py-1 rounded-lg">
                   Max in Cart
@@ -225,19 +189,18 @@ ProductCardProps) {
           </div>
         </div>
 
-        <div className="flex flex-col p-4 gap-3">
+        <div className="flex flex-col p-4 gap-2">
           <span
-            className={`font-semibold text-lg line-clamp-1 text-foreground ${
+            className={`font-semibold text-base line-clamp-2 leading-snug ${
               productInStock ? "text-foreground" : "text-muted-foreground"
             }`}
           >
             {formatName(product.name)}
           </span>
 
-          {/* Price Box */}
-          <div className="flex felx-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <span
-              className={`text-xl sm:text-2xl font-bold ${
+              className={`text-xl font-bold ${
                 productInStock ? "text-foreground" : "text-muted-foreground"
               }`}
             >
@@ -246,19 +209,19 @@ ProductCardProps) {
             </span>
 
             {calculatedDiscount > 0 && productInStock && (
-              <span className="text-sm sm:text-base text-chart-5 line-through relative">
-                {displayCurrencyIconSafe} {product.base_price.toFixed(2)}
+              <span className="text-sm text-chart-5 line-through">
+                {displayCurrencyIconSafe}
+                {product.base_price.toFixed(2)}
               </span>
             )}
           </div>
-          <div className="mt-1 h-2.5">
+
+          <div className="h-5">
             {hasVariants ? (
               <span className="text-xs font-medium text-popover bg-card-foreground px-1 rounded">
                 Price varies by variant
               </span>
-            ) : (
-              <span className="text-xs text-transparent">Placeholder</span>
-            )}
+            ) : null}
           </div>
         </div>
       </Link>
@@ -297,52 +260,50 @@ ProductCardProps) {
                       : "bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-lg"
                   }`}
                 >
-                  <div className="flex items-center justify-center w-full">
+                  <div className="flex items-center justify-center w-full relative h-5">
                     <div
-                      className={`flex items-center gap-2 ${
+                      className={`absolute flex items-center gap-2 transition-all duration-300 ${
                         adding || showSuccess
-                          ? "opacity-0 -translate-y-4"
+                          ? "opacity-0 -translate-y-3"
                           : "opacity-100 translate-y-0"
                       }`}
                     >
-                      <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <ShoppingCart className="w-4 h-4" />
                       <span className="text-xs sm:text-sm">Add to Cart</span>
                     </div>
 
                     <div
-                      className={`absolute flex items-center gap-2 transition-all duration-500 ease-in-out ${
+                      className={`absolute flex items-center gap-2 transition-all duration-300 ${
                         adding && !showSuccess
                           ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-4"
+                          : "opacity-0 translate-y-3"
                       }`}
                     >
-                      <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin-slow"></div>
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-xs sm:text-sm">Adding...</span>
                     </div>
 
                     <div
-                      className={`absolute flex items-center gap-2 ${
+                      className={`absolute flex items-center gap-2 transition-all duration-300 ${
                         showSuccess
                           ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-4"
+                          : "opacity-0 translate-y-3"
                       }`}
                     >
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Check className="w-4 h-4" />
                       <span className="text-xs sm:text-sm">Added!</span>
                     </div>
                   </div>
                 </Button>
               </div>
             ) : (
-              <div className="flex-1 min-w-0">
-                {/* Empty when max in cart */}
-              </div>
+              <div className="flex-1 min-w-0" />
             )}
 
             <div
-              className={`${
+              className={
                 productInStock && !isMaxInCart ? "flex-1 min-w-0" : "w-full"
-              }`}
+              }
             >
               <Link
                 href={`${store_slug}/product/${product.slug}`}

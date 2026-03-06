@@ -18,49 +18,34 @@ const Thumbnails: FC<ThumbnailsProps> = ({
   if (!images || images.length <= 1) return null;
 
   const containerClass = desktop
-    ? "hidden lg:flex flex-col gap-4"
-    : "lg:hidden flex gap-3 overflow-x-auto mt-3 pb-1 snap-x snap-mandatory";
+    ? "hidden lg:flex flex-col gap-2"
+    : "lg:hidden flex gap-2 overflow-x-auto mt-3 pb-1 snap-x snap-mandatory";
 
   return (
     <div className={containerClass}>
       {images.map((img, idx) => (
         <div
           key={idx}
+          onClick={() => onClick(idx)}
           className={clsx(
-            desktop
-              ? "w-16 h-16 sm:w-20 sm:h-20"
-              : "shrink-0 w-16 h-16 sm:w-20 sm:h-20",
-            "rounded-lg overflow-hidden cursor-pointer relative transition-transform duration-300 shadow-sm",
-            // Modern background for transparent images
-            "bg-[radial-gradient(ellipse_at_center,#f8f8f8_0%,#ececec_100%)]",
+            desktop ? "w-16 sm:w-18" : "shrink-0 w-16 sm:w-18",
+            "aspect-square rounded-lg overflow-hidden cursor-pointer relative",
+            // Same barely-visible fallback bg as MainImage
+            "bg-[#f9f9f9] transition-all duration-200",
             idx === mainIndex
-              ? "scale-105 shadow-lg ring-2 ring-offset-1 ring-gray-400"
-              : "hover:scale-110 hover:shadow-md",
+              ? "ring-2 ring-primary ring-offset-2 scale-105 shadow-md"
+              : "opacity-70 hover:opacity-100 hover:scale-105 hover:shadow-sm",
             !desktop && "snap-start",
           )}
-          onClick={() => onClick(idx)}
         >
-          {idx === mainIndex && (
-            <div className="absolute inset-0 rounded-lg overflow-hidden">
-              <Image
-                src={images[idx]}
-                alt={`Blur background ${idx}`}
-                fill
-                className="object-contain w-full h-full blur-sm scale-105"
-                priority={true}
-              />
-            </div>
-          )}
-          <div className="relative z-10 w-full h-full">
-            <Image
-              src={img}
-              alt={`Thumbnail ${idx + 1}`}
-              width={80}
-              height={80}
-              className="object-contain w-full h-full rounded-lg"
-              loading={idx === 0 ? "eager" : "lazy"}
-            />
-          </div>
+          <Image
+            src={img}
+            alt={`Thumbnail ${idx + 1}`}
+            fill
+            className="object-contain p-1"
+            loading={idx === 0 ? "eager" : "lazy"}
+            sizes="72px"
+          />
         </div>
       ))}
     </div>
