@@ -26,66 +26,54 @@ export default function ShippingMethod({
   minOrderAmount = 0,
 }: ShippingMethodProps) {
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState<
-    number | null
-  >(null);
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [storeMinOrderAmount, setStoreMinOrderAmount] = useState<number>(0);
-  const { icon: currencyIcon, loading: currencyLoading } =
-    useUserCurrencyIcon();
 
-  // Filter out "custom" shipping options AND options hidden from customers (customer_view: false)
-  const filteredShippingOptions = useMemo(() => {
+  const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
+  const displayCurrencyIcon = currencyLoading ? "৳" : (currencyIcon ?? "৳");
+
+  // Only show options where customer_view is NOT false (i.e., visible to customers)
+  const visibleShippingOptions = useMemo(() => {
     return shippingOptions.filter(
-      (option) =>
-        option.name.toLowerCase() !== "custom" &&
-        option.customer_view !== false,
+      (option) => option.customer_view !== false
     );
   }, [shippingOptions]);
 
-  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
-
+  // Check if subtotal meets the minimum order amount (if any)
   const meetsMinOrderAmount = useMemo(() => {
     const effectiveMinAmount = minOrderAmount || storeMinOrderAmount;
     return effectiveMinAmount <= 0 || subtotal >= effectiveMinAmount;
   }, [minOrderAmount, storeMinOrderAmount, subtotal]);
 
-  // const shortfallAmount = useMemo(() => {
-  //   const effectiveMinAmount = minOrderAmount || storeMinOrderAmount;
-  //   return effectiveMinAmount > 0
-  //     ? Math.max(0, effectiveMinAmount - subtotal)
-  //     : 0;
-  // }, [minOrderAmount, storeMinOrderAmount, subtotal]);
-
+  // Fetch store settings once
   useEffect(() => {
     const fetchShippingOptions = async () => {
       try {
         const storeId = await getStoreIdBySlug(storeSlug);
+        if (!storeId) return;
 
-        if (storeId) {
-          const storeSettings = await getStoreSettings(storeId);
+        const storeSettings = await getStoreSettings(storeId);
+        if (!storeSettings) return;
 
-          if (storeSettings) {
-            setShippingOptions(storeSettings.shipping_fees || []);
-            setFreeShippingThreshold(storeSettings.free_shipping_threshold);
-            setTaxAmount(storeSettings.tax_rate || 0);
+        const options = storeSettings.shipping_fees || [];
 
-            if (!minOrderAmount) {
-              setStoreMinOrderAmount(storeSettings.min_order_amount || 0);
-            }
+        setShippingOptions(options);
+        setTaxAmount(storeSettings.tax_rate || 0);
 
-            // Set default — only from customer-visible options
-            const visibleOptions = (storeSettings.shipping_fees || []).filter(
-              (option) =>
-                option.name.toLowerCase() !== "custom" &&
-                option.customer_view !== false,
-            );
+        if (!minOrderAmount) {
+          setStoreMinOrderAmount(storeSettings.min_order_amount || 0);
+        }
 
-            if (visibleOptions.length > 0 && !selectedShipping) {
-              const defaultShipping = visibleOptions[0];
-              onShippingChange(defaultShipping.name, defaultShipping.price);
-            }
+        // If no shipping method is selected yet, pick the first visible one as default
+        if (!selectedShipping) {
+          const visible = options.filter(
+            (option: ShippingFee) => option.customer_view !== false
+          );
+
+          if (visible.length > 0) {
+            const defaultOption = visible[0];
+            // Always use the original price – no free shipping threshold
+            onShippingChange(defaultOption.name, defaultOption.price);
           }
         }
       } catch (error) {
@@ -94,38 +82,25 @@ export default function ShippingMethod({
     };
 
     fetchShippingOptions();
-  }, [onShippingChange, selectedShipping, storeSlug, minOrderAmount]);
+  }, [storeSlug, minOrderAmount, selectedShipping, onShippingChange]);
 
   const handleShippingChange = useCallback(
     (value: string) => {
       if (!meetsMinOrderAmount) return;
 
-      const selectedOption = filteredShippingOptions.find(
-        (option) => option.name === value,
+      const selectedOption = visibleShippingOptions.find(
+        (option) => option.name === value
       );
-      if (selectedOption) {
-        const shippingFee =
-          freeShippingThreshold && subtotal >= freeShippingThreshold
-            ? 0
-            : selectedOption.price;
-        onShippingChange(value, shippingFee);
-      }
+
+      if (!selectedOption) return;
+
+      // Always pass the option's original price
+      onShippingChange(value, selectedOption.price);
     },
-    [
-      filteredShippingOptions,
-      freeShippingThreshold,
-      subtotal,
-      onShippingChange,
-      meetsMinOrderAmount,
-    ],
+    [visibleShippingOptions, onShippingChange, meetsMinOrderAmount]
   );
 
-  const isFreeShipping =
-    freeShippingThreshold && subtotal >= freeShippingThreshold;
-
-  if (filteredShippingOptions.length === 0) {
-    return null;
-  }
+  if (visibleShippingOptions.length === 0) return null;
 
   return (
     <Card className="bg-muted/50">
@@ -135,13 +110,14 @@ export default function ShippingMethod({
           Shipping & Tax
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-4">
         <RadioGroup
           value={selectedShipping}
           onValueChange={handleShippingChange}
           className="space-y-3"
         >
-          {filteredShippingOptions.map((option, index) => (
+          {visibleShippingOptions.map((option, index) => (
             <div key={index} className="flex items-center space-x-3">
               <RadioGroupItem
                 value={option.name}
@@ -149,6 +125,7 @@ export default function ShippingMethod({
                 className="text-blue-600 border-gray-300"
                 disabled={!meetsMinOrderAmount}
               />
+
               <Label
                 htmlFor={`shipping-${index}`}
                 className={`flex-1 cursor-pointer flex justify-between items-center ${
@@ -164,23 +141,23 @@ export default function ShippingMethod({
                       </span>
                     )}
                   </span>
+
                   {option.description && (
                     <span className="text-sm text-muted-foreground uppercase">
                       {option.description}
                     </span>
                   )}
+
                   {option.estimated_days && (
                     <span className="text-xs text-blue-600">
                       Est. {option.estimated_days} days
                     </span>
                   )}
                 </div>
+
                 <span className="font-semibold text-foreground">
-                  {isFreeShipping ? (
-                    <span className="text-green-600">FREE</span>
-                  ) : (
-                    `${displayCurrencyIconSafe}${option.price.toFixed(2)}`
-                  )}
+                  {displayCurrencyIcon}
+                  {option.price.toFixed(2)}
                 </span>
               </Label>
             </div>
@@ -195,43 +172,20 @@ export default function ShippingMethod({
                 Tax Amount
               </span>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="text-sm text-purple-700">
                 Additional tax fee
               </span>
               <span className="font-semibold text-purple-800">
-                {displayCurrencyIconSafe}
+                {displayCurrencyIcon}
                 {taxAmount.toFixed(2)}
               </span>
             </div>
+
             <p className="text-xs text-purple-600 mt-1">
               * Fixed tax amount applied to all orders
             </p>
-          </div>
-        )}
-
-        {freeShippingThreshold && meetsMinOrderAmount && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-blue-700">
-                {isFreeShipping
-                  ? "🎉 You've unlocked free shipping!"
-                  : `Add ${displayCurrencyIconSafe}${(freeShippingThreshold - subtotal).toFixed(2)} for free shipping`}
-              </span>
-              <span className="text-blue-700 font-medium">
-                {displayCurrencyIconSafe}
-                {subtotal.toFixed(2)} / {displayCurrencyIconSafe}
-                {freeShippingThreshold.toFixed(2)}
-              </span>
-            </div>
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                style={{
-                  width: `${Math.min((subtotal / freeShippingThreshold) * 100, 100)}%`,
-                }}
-              />
-            </div>
           </div>
         )}
       </CardContent>
