@@ -628,7 +628,7 @@ export default function ConfirmOrderPage() {
         .from("store_customers")
         .insert({
           name: values.name,
-          email: "", // Empty email for guest
+          email: null, // Empty email for guest
           phone: values.phone,
           auth_user_id: null,
         })
@@ -733,7 +733,7 @@ export default function ConfirmOrderPage() {
               .from("store_customers")
               .insert({
                 name: values.name,
-                email: session.user.email || "", // Use session email if available
+                email: session.user.email || null,
                 phone: values.phone,
                 auth_user_id: session.user.id,
               })

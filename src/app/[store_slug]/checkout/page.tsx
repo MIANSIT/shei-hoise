@@ -349,7 +349,7 @@ export default function CheckoutPage() {
         .from("store_customers")
         .insert({
           name: values.name,
-          email: null, // ✅ IMPORTANT
+          email: null,
           phone: values.phone,
           auth_user_id: null,
         })
@@ -462,7 +462,7 @@ export default function CheckoutPage() {
               .from("store_customers")
               .insert({
                 name: values.name,
-                email: session.user.email ?? null, // Use auth email if available
+                email: session.user.email ?? null, 
                 phone: values.phone,
                 auth_user_id: session.user.id,
               })
