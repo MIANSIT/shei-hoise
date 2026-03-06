@@ -881,17 +881,30 @@ const OrdersTable: React.FC<Props> = ({
             qty: item.quantity,
             price: item.unit_price,
           }))}
-          // ✅ PRODUCTION-READY: Type-safe currency validation
           currency={getValidCurrency(selectedOrderForInvoice.currency)}
           subtotal={selectedOrderForInvoice.subtotal}
           deliveryCharge={selectedOrderForInvoice.shipping_fee}
           taxAmount={selectedOrderForInvoice.tax_amount}
           discountAmount={selectedOrderForInvoice.discount_amount}
+          // ✅ FIX 1: Convert number to AdditionalCharge array
+          additionalCharges={
+            selectedOrderForInvoice.additional_charges &&
+            selectedOrderForInvoice.additional_charges > 0
+              ? [
+                  {
+                    label: "Additional Charges",
+                    amount: selectedOrderForInvoice.additional_charges,
+                  },
+                ]
+              : []
+          }
           totalDue={selectedOrderForInvoice.total_amount}
           paymentStatus={selectedOrderForInvoice.payment_status}
           paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
-          orderStatus={selectedOrderForInvoice.status} // <-- map it here
-          showPOSButton={false} // Hide POS button
+          orderStatus={selectedOrderForInvoice.status}
+          // ✅ FIX 2: Pass notes from order
+          notes={selectedOrderForInvoice.notes ?? ""}
+          showPOSButton={false}
         />
       )}
     </div>
