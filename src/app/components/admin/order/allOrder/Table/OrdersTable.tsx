@@ -115,6 +115,15 @@ const OrdersTable: React.FC<Props> = ({
   };
 
   const handleDelete = async (order: StoreOrder) => {
+    if (order.status !== OrderStatus.CANCELLED) {
+      notification.warning({
+        title: "Cannot Delete Order",
+        description: `Order #${order.order_number} is "${order.status}". Please cancel the order first to restore stock before deleting.`,
+        duration: 4,
+      });
+      return;
+    }
+
     modal.confirm({
       title: "Confirm Delete",
       icon: <ExclamationCircleOutlined />,
@@ -408,18 +417,11 @@ const OrdersTable: React.FC<Props> = ({
       title: "Delivery",
       dataIndex: "delivery_option",
       key: "delivery_option",
-      render: (option: string, order: StoreOrder) => {
-        // Fallback: if delivery_option is corrupted (e.g. "Inside Dhaka"),
-        // read from shipping_address.deliveryOption
-        const raw =
-          option || (order.shipping_address as any)?.deliveryOption || "";
-        const display = raw
-          .replace(/-/g, " ")
-          .replace(/\b\w/g, (c: string) => c.toUpperCase());
-        return (
-          <span className="text-xs font-medium">{display || "Not set"}</span>
-        );
-      },
+      render: (option: string) => (
+        <span className="text-xs font-medium capitalize">
+          {option || "Not set"}
+        </span>
+      ),
       width: 100,
       responsive: ["lg"],
     },
