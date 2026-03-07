@@ -10,45 +10,30 @@ interface MainImageProps {
   swipeHandlers: SwipeableHandlers;
 }
 
-const MainImage: FC<MainImageProps> = ({
-  src,
-  alt,
-  discount,
-  swipeHandlers,
-}) => {
+const MainImage: FC<MainImageProps> = ({ src, alt, discount, swipeHandlers }) => {
   const showDiscount = discount !== undefined && discount > 0;
 
   return (
     <div
       {...swipeHandlers}
       ref={mergeRefs(swipeHandlers.ref as React.Ref<HTMLDivElement>)}
-      className="relative w-full rounded-xl overflow-hidden shadow-xl group"
+      className="relative w-full rounded-xl overflow-hidden shadow-md group"
     >
       {showDiscount && (
-        <span className="absolute top-3 left-3 bg-red-600 text-white text-sm sm:text-base px-3 py-1 rounded-md z-30 shadow-md">
+        <span className="absolute top-3 left-3 bg-red-600 text-white text-sm px-3 py-1 rounded-md z-30 shadow-md">
           -{discount}%
         </span>
       )}
 
-      {/* Modern background for transparent images */}
-      <div className="overflow-hidden bg-[radial-gradient(ellipse_at_center,#f8f8f8_0%,#ececec_100%)]">
-        {/* Subtle grid texture overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03] pointer-events-none z-10"
-          style={{
-            backgroundImage:
-              "linear-gradient(#888 1px, transparent 1px), linear-gradient(90deg, #888 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
-
+      {/* Fixed height container — not full width, not aspect-square tall */}
+      <div className="relative w-full h-105 bg-[#f9f9f9] rounded-xl overflow-hidden">
         <Image
           src={src}
           alt={alt || "Product Image"}
-          width={1920}
-          height={1080}
-          className="relative z-20 w-full h-auto object-contain transition-transform duration-500 ease-in-out group-hover:scale-105"
+          fill
+          className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
           priority
+          sizes="(max-width: 768px) 100vw, 500px"
         />
       </div>
     </div>
