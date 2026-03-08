@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
@@ -12,10 +14,10 @@ import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { StoreSettings } from "@/lib/types/store/store";
 import {
   Minus,
   Plus,
-  // ShoppingCart,
   Truck,
   RefreshCw,
   ShieldCheck,
@@ -161,7 +163,7 @@ const DescAccordion = ({
   );
 };
 
-// ─── Trust badge ──────────────────────────────────────────────────────────────
+// ─── Trust Badge ──────────────────────────────────────────────────────────────
 const TrustBadge = ({
   icon,
   title,
@@ -252,6 +254,9 @@ export default function ProductPage() {
   const product_slug = params.slug as string;
 
   const [product, setProduct] = useState<ApiProduct | null>(null);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -320,27 +325,57 @@ export default function ProductPage() {
       (v.product_inventory?.[0]?.quantity_available ?? 0) <= 10,
   );
 
+  // ── Trust badge visibility ─────────────────────────────────────────────────
+  const showFreeDelivery =
+    !!storeSettings?.free_shipping_threshold &&
+    storeSettings.free_shipping_threshold > 0;
+
+  const showEasyReturns =
+    !!storeSettings?.return_policy_days && storeSettings.return_policy_days > 0;
+
+  const showNoReturn =
+    storeSettings !== null &&
+    (storeSettings.return_policy_days === 0 ||
+      storeSettings.return_policy_days === null);
+
+  const trustBadgeCount =
+    1 + (showFreeDelivery ? 1 : 0) + (showEasyReturns || showNoReturn ? 1 : 0);
+
   // ── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    async function fetchProduct() {
+    async function fetchData() {
       try {
         setLoading(true);
         if (!product_slug) return;
-        const data = await getClientProductBySlug(product_slug);
-        if (!data) {
+
+        const [productData, storeId] = await Promise.all([
+          getClientProductBySlug(product_slug),
+          getStoreIdBySlug(store_slug),
+        ]);
+
+        if (storeId) {
+          getStoreSettings(storeId).then((settings) => {
+            setStoreSettings(settings);
+          });
+        }
+
+        if (!productData) {
           setProduct(null);
           return;
         }
+
         const fixed = {
-          ...data,
-          categories: Array.isArray(data.categories)
-            ? (data.categories[0] ?? null)
-            : data.categories,
-          product_variants: (data.product_variants ?? []).map((v: any) => ({
-            ...v,
-            primary_image:
-              v.product_images?.find((i: any) => i.is_primary) ?? null,
-          })),
+          ...productData,
+          categories: Array.isArray(productData.categories)
+            ? (productData.categories[0] ?? null)
+            : productData.categories,
+          product_variants: (productData.product_variants ?? []).map(
+            (v: any) => ({
+              ...v,
+              primary_image:
+                v.product_images?.find((i: any) => i.is_primary) ?? null,
+            }),
+          ),
         };
         setProduct(fixed as ApiProduct);
         if (fixed.product_variants?.length > 0) {
@@ -356,8 +391,8 @@ export default function ProductPage() {
         setLoading(false);
       }
     }
-    if (product_slug) fetchProduct();
-  }, [product_slug]);
+    if (product_slug) fetchData();
+  }, [product_slug, store_slug]);
 
   useEffect(() => {
     if (showMaxErr) {
@@ -712,23 +747,42 @@ export default function ProductPage() {
             />
 
             {/* Trust badges */}
-            {/* <div className="mt-6 grid grid-cols-3 gap-2 py-5 border-t border-b border-gray-100 dark:border-gray-800">
-              <TrustBadge
-                icon={<Truck className="w-4 h-4" />}
-                title="Free Delivery"
-                sub="Orders over ৳1,000"
-              />
-              <TrustBadge
-                icon={<RefreshCw className="w-4 h-4" />}
-                title="Easy Returns"
-                sub="Within 7 days"
-              />
+            <div
+              className={`mt-6 py-5 border-t border-b border-gray-100 dark:border-gray-800 grid gap-2 ${
+                trustBadgeCount === 1
+                  ? "grid-cols-1"
+                  : trustBadgeCount === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-3"
+              }`}
+            >
+              {showFreeDelivery && (
+                <TrustBadge
+                  icon={<Truck className="w-4 h-4" />}
+                  title="Free Delivery"
+                  sub={`Orders over ${curr}${storeSettings!.free_shipping_threshold!.toLocaleString()}`}
+                />
+              )}
+              {showEasyReturns && (
+                <TrustBadge
+                  icon={<RefreshCw className="w-4 h-4" />}
+                  title="Easy Returns"
+                  sub={`Within ${storeSettings!.return_policy_days} day${storeSettings!.return_policy_days! > 1 ? "s" : ""}`}
+                />
+              )}
+              {showNoReturn && (
+                <TrustBadge
+                  icon={<RefreshCw className="w-4 h-4" />}
+                  title="No Returns"
+                  sub="All sales final"
+                />
+              )}
               <TrustBadge
                 icon={<ShieldCheck className="w-4 h-4" />}
                 title="Secure Payment"
                 sub="100% protected"
               />
-            </div> */}
+            </div>
 
             {/* SKU */}
             <p className="mt-3 text-[11px] text-gray-300 dark:text-gray-700 text-right font-medium">
