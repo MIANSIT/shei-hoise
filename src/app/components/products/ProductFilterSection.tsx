@@ -1,13 +1,13 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Grid3X3, List, Search, X } from "lucide-react";
+import { ChevronDown, Search, X, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, KeyboardEvent, useEffect } from "react";
 
@@ -45,273 +45,179 @@ export default function ProductFilterSection({
   searchQuery = "",
   onSearchChange,
 }: ProductFilterSectionProps) {
-  const [isSortOpen, setIsSortOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
-  // Sync local search with prop
   useEffect(() => {
     setLocalSearch(searchQuery);
   }, [searchQuery]);
 
-  // Filter only active categories and add "All" option
-  const activeCategories = categories.filter((category) => category.is_active);
+  const activeCategories = categories.filter((c) => c.is_active);
   const allCategories = [
     { id: "all", name: "All Products", slug: "all", is_active: true },
     ...activeCategories,
   ];
 
-  const sortOptions = [
-    { value: "newest", label: "Newest First" },
-    { value: "price-low", label: "Price: Low to High" },
-    { value: "price-high", label: "Price: High to Low" },
-    { value: "name", label: "Name: A to Z" },
-    { value: "popular", label: "Most Popular" },
-  ];
-
   const handleSearchSubmit = () => {
-    const trimmedSearch = localSearch.trim();
-    if (onSearchChange) {
-      onSearchChange(trimmedSearch);
-    }
+    if (onSearchChange) onSearchChange(localSearch.trim());
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearchSubmit();
-    }
+    if (e.key === "Enter") handleSearchSubmit();
   };
 
   const handleClearSearch = () => {
     setLocalSearch("");
-    if (onSearchChange) {
-      onSearchChange("");
-    }
-  };
-
-  const handleSearchInputChange = (value: string) => {
-    setLocalSearch(value);
-    // Update search in real-time (optional)
-    // if (onSearchChange) {
-    //   onSearchChange(value.trim());
-    // }
+    if (onSearchChange) onSearchChange("");
   };
 
   return (
-    <section className="w-full">
-      {/* Header Section */}
-      <div className="px-6 py-4 border-b">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          {/* Left Side - Title and Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-            {/* Search Box - Desktop & Tablet */}
-            <div className="hidden md:flex items-center gap-2">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search products by name or description"
-                  value={localSearch}
-                  onChange={(e) => handleSearchInputChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="w-full pl-10 pr-10 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-                {localSearch && (
-                  <button
-                    onClick={handleClearSearch}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <Button
-                onClick={handleSearchSubmit}
-                size="sm"
-                className="whitespace-nowrap"
+    <section className="w-full mb-2">
+      {/* ── Top bar: Search + Count ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-5">
+        {/* Search */}
+        <div className="flex items-center gap-2 flex-1 max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search products…"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="
+                w-full pl-10 pr-10 py-2.5 text-sm
+                bg-gray-50 border border-gray-200 rounded-xl
+                placeholder:text-gray-400 text-gray-900
+                focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400
+                transition-all duration-200
+              "
+            />
+            {localSearch && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Search
-              </Button>
-            </div>
-
-            {/* Product Count - Desktop & Tablet */}
-            <div className="hidden md:block space-y-1">
-              <p className="text-sm text-muted-foreground">
-                {totalProducts} {totalProducts === 1 ? "item" : "items"}
-              </p>
-            </div>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-
-          {/* Right Side - Desktop & Tablet Controls */}
-          <div className="hidden md:flex items-center gap-6">
-            {/* Desktop & Tablet Controls */}
-            <div className="flex items-center gap-3">
-              {/* View Toggle */}
-              {onViewModeChange && (
-                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onViewModeChange("grid")}
-                    className={cn(
-                      "h-8 w-8 p-0 rounded-md",
-                      viewMode === "grid"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onViewModeChange("list")}
-                    className={cn(
-                      "h-8 w-8 p-0 rounded-md",
-                      viewMode === "list"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-
-              {/* Sort Dropdown */}
-              {onSortChange && (
-                <DropdownMenu onOpenChange={setIsSortOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 gap-2">
-                      <span>Sort</span>
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4 transition-transform",
-                          isSortOpen ? "rotate-180" : ""
-                        )}
-                      />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {sortOptions.map((option) => (
-                      <DropdownMenuItem
-                        key={option.value}
-                        onClick={() => onSortChange(option.value)}
-                        className={cn(
-                          "cursor-pointer",
-                          sortOption === option.value && "bg-accent font-medium"
-                        )}
-                      >
-                        {option.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-
-            {/* Category Filter - Desktop & Tablet (Buttons) */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                Categories:
-              </span>
-              <div className="flex flex-wrap gap-2 max-w-xl">
-                {allCategories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant={
-                      activeCategory === category.name ? "default" : "outline"
-                    }
-                    size="sm"
-                    className={cn(
-                      "rounded-lg px-3 py-1 text-sm transition-colors whitespace-nowrap",
-                      activeCategory === category.name
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent"
-                    )}
-                    onClick={() => onCategoryChange(category.name)}
-                  >
-                    {category.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={handleSearchSubmit}
+            className="
+              h-10 px-4 rounded-xl bg-gray-900 text-white text-sm font-semibold
+              hover:bg-gray-700 active:scale-[0.97] transition-all duration-200
+              whitespace-nowrap shrink-0
+            "
+          >
+            Search
+          </button>
         </div>
 
-        {/* Mobile Layout */}
-        <div className="md:hidden flex flex-col gap-4 mt-4">
-          {/* Search Box - Mobile with submit button */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={localSearch}
-                onChange={(e) => handleSearchInputChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full pl-10 pr-10 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              {localSearch && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            <Button
-              onClick={handleSearchSubmit}
-              size="sm"
-              className="whitespace-nowrap px-4"
-            >
-              Search
-            </Button>
-          </div>
-
-          {/* Mobile Controls Row */}
-          <div className="flex items-center justify-between w-full">
-            {/* Product Count */}
-            <p className="text-sm text-muted-foreground">
-              {totalProducts} {totalProducts === 1 ? "item" : "items"}
-            </p>
-
-            {/* Category Dropdown - Mobile */}
-            <DropdownMenu onOpenChange={setIsCategoryOpen}>
-              <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center justify-center gap-2 cursor-pointer bg-accent px-3 py-1 rounded-md border border-border/50 text-sm font-medium hover:bg-accent/80 transition-colors">
-                    <span className="font-semibold">{activeCategory}</span>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 transition-transform",
-                        isCategoryOpen ? "rotate-180" : ""
-                      )}
-                    />
-                  </div>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-56 max-h-64 overflow-y-auto">
-                {allCategories.map((category) => (
-                  <DropdownMenuItem
-                    key={category.id}
-                    onClick={() => onCategoryChange(category.name)}
-                    className={cn(
-                      "cursor-pointer",
-                      activeCategory === category.name &&
-                        "bg-accent font-medium"
-                    )}
-                  >
-                    {category.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        {/* Spacer + count */}
+        <div className="flex items-center gap-3 sm:ml-auto">
+          <span className="text-sm text-gray-400 font-medium tabular-nums">
+            {totalProducts.toLocaleString()}{" "}
+            {totalProducts === 1 ? "product" : "products"}
+          </span>
         </div>
       </div>
+
+      {/* ── Category Pills (Desktop) ── */}
+      <div className="hidden md:flex items-center gap-2 flex-wrap pb-4">
+        <span className="text-xs font-semibold uppercase tracking-widest text-gray-400 mr-1 flex items-center gap-1.5">
+          <SlidersHorizontal className="w-3 h-3" />
+          Filter
+        </span>
+        {allCategories.map((category) => {
+          const isActive = activeCategory === category.name;
+          return (
+            <button
+              key={category.id}
+              onClick={() => onCategoryChange(category.name)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 border",
+                isActive
+                  ? "bg-gray-900 text-white border-gray-900 shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-900",
+              )}
+            >
+              {category.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Mobile: Category Dropdown ── */}
+      <div className="flex md:hidden items-center justify-between pb-4">
+        <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Category
+        </div>
+        <DropdownMenu onOpenChange={setIsCategoryOpen}>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors">
+              {activeCategory}
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 text-gray-400 transition-transform duration-200",
+                  isCategoryOpen && "rotate-180",
+                )}
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-52 rounded-xl shadow-xl border-gray-100 max-h-64 overflow-y-auto"
+          >
+            {allCategories.map((category) => (
+              <DropdownMenuItem
+                key={category.id}
+                onClick={() => onCategoryChange(category.name)}
+                className={cn(
+                  "cursor-pointer text-sm rounded-lg mx-1 my-0.5 px-3 py-2",
+                  activeCategory === category.name
+                    ? "bg-gray-900 text-white font-semibold focus:bg-gray-800 focus:text-white"
+                    : "text-gray-700",
+                )}
+              >
+                {category.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* ── Active filter chip ── */}
+      {(searchQuery || activeCategory !== "All Products") && (
+        <div className="flex flex-wrap gap-2 pb-3">
+          {activeCategory !== "All Products" && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full border border-gray-200">
+              {activeCategory}
+              <button
+                onClick={() => onCategoryChange("All Products")}
+                className="hover:text-gray-900 transition-colors ml-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full border border-gray-200">
+              &ldquo;{searchQuery}&rdquo;
+              <button
+                onClick={handleClearSearch}
+                className="hover:text-gray-900 transition-colors ml-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Divider ── */}
+      <div className="h-px bg-gray-100 w-full" />
     </section>
   );
 }
