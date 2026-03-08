@@ -6,7 +6,7 @@ interface ProductTitleProps {
   rating: number;
 }
 
-const ProductTitle: FC<ProductTitleProps> = ({ name, category, rating }) => {
+const ProductTitle: FC<ProductTitleProps> = ({ name, category }) => {
   return (
     <div>
       <h1 className="text-2xl font-semibold">{name}</h1>
