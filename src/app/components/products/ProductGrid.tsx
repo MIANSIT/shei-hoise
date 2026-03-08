@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import ProductCard from "./shop/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/types/product";
@@ -22,11 +23,13 @@ export default function ProductGrid({
   if (!products.length)
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+        <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
           <span className="text-2xl">🛍️</span>
         </div>
-        <p className="text-gray-500 font-medium">No products available</p>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-gray-500 dark:text-gray-400 font-medium">
+          No products available
+        </p>
+        <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
           Check back soon for new arrivals
         </p>
       </div>

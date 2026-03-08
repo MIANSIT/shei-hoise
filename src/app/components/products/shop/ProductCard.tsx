@@ -137,9 +137,13 @@ export default function ProductCard({
   return (
     <div
       className={`
-        group relative flex flex-col bg-white rounded-2xl overflow-hidden
-        border border-gray-100 hover:border-gray-200
-        shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.10)]
+        group relative flex flex-col
+        bg-white dark:bg-gray-900
+        rounded-2xl overflow-hidden
+        border border-gray-100 dark:border-gray-800
+        hover:border-gray-200 dark:hover:border-gray-700
+        shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]
+        hover:shadow-[0_8px_32px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]
         transition-all duration-300 ease-out
         ${!productInStock ? "opacity-70" : ""}
       `}
@@ -147,7 +151,7 @@ export default function ProductCard({
       {/* Image Block */}
       <Link
         href={`${store_slug}/product/${product.slug}`}
-        className="block relative overflow-hidden bg-gray-50"
+        className="block relative overflow-hidden bg-gray-50 dark:bg-gray-800"
         style={{ aspectRatio: "1/1" }}
       >
         <Image
@@ -161,14 +165,14 @@ export default function ProductCard({
         {/* Badges */}
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10 pointer-events-none">
           {/* Category pill */}
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest bg-white/90 backdrop-blur-sm text-gray-600 px-2.5 py-1 rounded-full border border-gray-200/60 shadow-sm">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
             <Tag className="w-2.5 h-2.5" />
             {product.category?.name || "General"}
           </span>
 
           <div className="flex flex-col items-end gap-1.5">
             {!productInStock && (
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-900 text-white px-2.5 py-1 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-2.5 py-1 rounded-full">
                 Sold Out
               </span>
             )}
@@ -186,7 +190,7 @@ export default function ProductCard({
         </div>
 
         {/* Quick view overlay on hover */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-black/20 transition-colors duration-300" />
       </Link>
 
       {/* Info Block */}
@@ -195,8 +199,8 @@ export default function ProductCard({
           <h3
             className={`font-semibold text-sm leading-snug line-clamp-2 transition-colors duration-200 ${
               productInStock
-                ? "text-gray-900 group-hover:text-black"
-                : "text-gray-400"
+                ? "text-gray-900 dark:text-gray-100 group-hover:text-black dark:group-hover:text-white"
+                : "text-gray-400 dark:text-gray-600"
             }`}
           >
             {formatName(product.name)}
@@ -206,19 +210,25 @@ export default function ProductCard({
         {/* Price Row */}
         <div className="flex items-baseline gap-2 mt-auto">
           <span
-            className={`text-lg font-bold tracking-tight ${productInStock ? "text-gray-900" : "text-gray-400"}`}
+            className={`text-lg font-bold tracking-tight ${
+              productInStock
+                ? "text-gray-900 dark:text-gray-100"
+                : "text-gray-400 dark:text-gray-600"
+            }`}
           >
             {displayCurrencyIconSafe}
             {displayPrice.toFixed(2)}
           </span>
           {calculatedDiscount > 0 && productInStock && (
-            <span className="text-sm text-gray-400 line-through font-normal">
+            <span className="text-sm text-gray-400 dark:text-gray-500 line-through font-normal">
               {displayCurrencyIconSafe}
               {product.base_price.toFixed(2)}
             </span>
           )}
           {hasVariants && (
-            <span className="text-xs text-gray-400 ml-auto">varies</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
+              varies
+            </span>
           )}
         </div>
 
@@ -229,7 +239,7 @@ export default function ProductCard({
               href={`${store_slug}/product/${product.slug}`}
               className="flex-1"
             >
-              <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl bg-gray-900 text-white text-xs font-semibold tracking-wide hover:bg-gray-700 active:scale-[0.98] transition-all duration-200">
+              <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold tracking-wide hover:bg-gray-700 dark:hover:bg-gray-300 active:scale-[0.98] transition-all duration-200">
                 <Eye className="w-3.5 h-3.5" />
                 View Options
               </button>
@@ -250,7 +260,7 @@ export default function ProductCard({
                     ${
                       showSuccess
                         ? "bg-emerald-500 text-white"
-                        : "bg-gray-900 text-white hover:bg-gray-700"
+                        : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300"
                     }
                   `}
                 >
@@ -262,7 +272,7 @@ export default function ProductCard({
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${adding && !showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}
                   >
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3 h-3 border-2 border-white dark:border-gray-900 border-t-transparent rounded-full animate-spin" />
                     Adding
                   </span>
                   <span
@@ -279,7 +289,11 @@ export default function ProductCard({
                 <button
                   className={`
                     flex items-center justify-center gap-1.5 h-9 rounded-xl text-xs font-semibold tracking-wide
-                    border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300
+                    border border-gray-200 dark:border-gray-700
+                    text-gray-600 dark:text-gray-300
+                    bg-white dark:bg-gray-900
+                    hover:bg-gray-50 dark:hover:bg-gray-800
+                    hover:border-gray-300 dark:hover:border-gray-600
                     active:scale-[0.98] transition-all duration-200
                     ${productInStock && !isMaxInCart ? "w-9 px-0" : "w-full px-3"}
                   `}

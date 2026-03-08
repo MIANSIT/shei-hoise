@@ -47,10 +47,9 @@ export default function StorePage({ params }: StorePageProps) {
 
   const ITEMS_PER_PAGE = 10;
   const isLoadingRef = useRef(false);
-  const storeIdRef = useRef<string | null>(null); // cache storeId so filter changes don't re-fetch it
-  const initializedRef = useRef(false); // prevent double-fire in StrictMode
+  const storeIdRef = useRef<string | null>(null);
+  const initializedRef = useRef(false);
 
-  // ── URL sync (no deps on callbacks) ──────────────────────────────────────
   const updateURLParams = (category: string, search: string) => {
     const p = new URLSearchParams();
     if (category !== "All Products") p.set("category", category);
@@ -59,7 +58,6 @@ export default function StorePage({ params }: StorePageProps) {
     window.history.replaceState({}, "", `/${store_slug}${qs ? `?${qs}` : ""}`);
   };
 
-  // ── Core product fetcher ──────────────────────────────────────────────────
   const loadProducts = useCallback(
     async (
       page: number,
@@ -102,7 +100,6 @@ export default function StorePage({ params }: StorePageProps) {
     [store_slug, showError],
   );
 
-  // ── ONE effect: init store + categories + first product load ─────────────
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -118,7 +115,6 @@ export default function StorePage({ params }: StorePageProps) {
         storeIdRef.current = storeId;
         setStoreExists(true);
 
-        // Fetch categories and first page of products in parallel
         const [categoriesData] = await Promise.all([
           getCategoriesQuery(storeId),
           loadProducts(1, activeCategory, searchQuery, true),
@@ -134,17 +130,15 @@ export default function StorePage({ params }: StorePageProps) {
     init();
     updateURLParams(activeCategory, searchQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store_slug]); // only re-run if store_slug changes
+  }, [store_slug]);
 
-  // ── Separate effect: re-fetch products when filters change (not on mount) ─
   const isFirstFilterRun = useRef(true);
   useEffect(() => {
-    // Skip the very first run — init() above already loaded products
     if (isFirstFilterRun.current) {
       isFirstFilterRun.current = false;
       return;
     }
-    if (!storeIdRef.current) return; // store not loaded yet
+    if (!storeIdRef.current) return;
 
     setCurrentPage(1);
     setHasMore(true);
@@ -224,7 +218,7 @@ export default function StorePage({ params }: StorePageProps) {
   if (storeExists === false) return <NotFoundPage />;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Filter Section */}
         <ProductFilterSection
@@ -239,7 +233,7 @@ export default function StorePage({ params }: StorePageProps) {
         {/* Loading state */}
         {loading && products.length === 0 ? (
           <div className="flex justify-center items-center py-32">
-            <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
+            <Loader2 className="h-7 w-7 animate-spin text-gray-400 dark:text-gray-500" />
           </div>
         ) : products.length === 0 ? (
           <motion.div
@@ -247,17 +241,17 @@ export default function StorePage({ params }: StorePageProps) {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-32 text-center"
           >
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4 text-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 text-2xl">
               {searchQuery ? "🔍" : "🛍️"}
             </div>
-            <p className="text-gray-700 font-semibold text-base">
+            <p className="text-gray-700 dark:text-gray-200 font-semibold text-base">
               {searchQuery
                 ? `No results for "${searchQuery}"`
                 : activeCategory === "All Products"
                   ? "No products available yet"
                   : `Nothing in "${activeCategory}" yet`}
             </p>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
               Try a different search or category
             </p>
           </motion.div>
@@ -283,8 +277,13 @@ export default function StorePage({ params }: StorePageProps) {
                   disabled={loadingMore}
                   className="
                     group flex items-center gap-2.5 h-12 px-10 rounded-2xl
-                    border-2 border-gray-200 bg-white text-gray-700 font-semibold text-sm
-                    hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50
+                    border-2 border-gray-200 dark:border-gray-700
+                    bg-white dark:bg-gray-900
+                    text-gray-700 dark:text-gray-200
+                    font-semibold text-sm
+                    hover:border-gray-900 dark:hover:border-gray-400
+                    hover:text-gray-900 dark:hover:text-white
+                    hover:bg-gray-50 dark:hover:bg-gray-800
                     active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
                     transition-all duration-200 shadow-sm
                   "
@@ -297,7 +296,7 @@ export default function StorePage({ params }: StorePageProps) {
                   ) : (
                     <>
                       Show 10 more products
-                      <span className="text-gray-400 font-normal text-xs group-hover:text-gray-600 transition-colors">
+                      <span className="text-gray-400 dark:text-gray-500 font-normal text-xs group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors">
                         ({totalProducts - products.length} remaining)
                       </span>
                     </>
@@ -311,12 +310,12 @@ export default function StorePage({ params }: StorePageProps) {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center gap-1 py-12 border-t border-gray-100"
+                className="flex flex-col items-center gap-1 py-12 border-t border-gray-100 dark:border-gray-800"
               >
-                <p className="text-sm font-semibold text-gray-500">
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
                   All {totalProducts.toLocaleString()} products shown
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   You&apos;ve reached the end
                 </p>
               </motion.div>

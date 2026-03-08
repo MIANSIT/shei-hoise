@@ -1,21 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
-import ProductTitle from "@/app/components/products/singleProduct/ProductTitle";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
-import BackButton from "@/app/components/products/singleProduct/BackButton";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
-import { Button } from "@/components/ui/button";
-import { Minus, Plus } from "lucide-react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
-import { useSheiNotification } from "@/lib/hook/useSheiNotification"; // ADD THIS IMPORT
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import {
+  Minus,
+  Plus,
+  // ShoppingCart,
+  Truck,
+  RefreshCw,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronDown,
+  Star,
+} from "lucide-react";
 
 interface ApiProduct {
   id: string;
@@ -27,15 +34,8 @@ interface ApiProduct {
   base_price: number;
   discounted_price: number | null;
   discount_amount?: number;
-  categories: {
-    id: string;
-    name: string;
-  } | null;
-  product_images: Array<{
-    id: string;
-    image_url: string;
-    is_primary: boolean;
-  }>;
+  categories: { id: string; name: string } | null;
+  product_images: Array<{ id: string; image_url: string; is_primary: boolean }>;
   product_inventory: Array<{
     quantity_available: number;
     quantity_reserved: number;
@@ -49,7 +49,7 @@ interface ApiProduct {
     discounted_price: number | null;
     discount_amount?: number;
     color: string | null;
-    attributes?: Record<string, any>; // ADD THIS LINE
+    attributes?: Record<string, any>;
     product_inventory: Array<{
       quantity_available: number;
       quantity_reserved: number;
@@ -62,6 +62,190 @@ interface ApiProduct {
   }>;
 }
 
+// ─── Breadcrumb ───────────────────────────────────────────────────────────────
+const Breadcrumb = ({
+  store,
+  category,
+  name,
+}: {
+  store: string;
+  category: string;
+  name: string;
+}) => (
+  <nav className="hidden md:flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 font-medium">
+    <a
+      href={`/${store}`}
+      className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+    >
+      Shop
+    </a>
+    <span>/</span>
+    <span className="text-gray-500 dark:text-gray-400">{category}</span>
+    <span>/</span>
+    <span className="text-gray-900 dark:text-gray-100 truncate max-w-45">
+      {name}
+    </span>
+  </nav>
+);
+
+// ─── Stars ────────────────────────────────────────────────────────────────────
+const Stars = ({
+  rating = 5,
+  count = 128,
+}: {
+  rating?: number;
+  count?: number;
+}) => (
+  <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`w-3.5 h-3.5 ${
+            i < Math.floor(rating)
+              ? "fill-amber-400 text-amber-400"
+              : "fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700"
+          }`}
+        />
+      ))}
+    </div>
+    <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+      ({count})
+    </span>
+  </div>
+);
+
+// ─── Accordion ────────────────────────────────────────────────────────────────
+const DescAccordion = ({
+  title,
+  children,
+  open: defaultOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  open?: boolean;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-gray-100 dark:border-gray-800">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between py-4 text-left"
+      >
+        <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 tracking-wide">
+          {title}
+        </span>
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+        </motion.div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="overflow-hidden"
+          >
+            <div className="pb-5 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ─── Trust badge ──────────────────────────────────────────────────────────────
+const TrustBadge = ({
+  icon,
+  title,
+  sub,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  sub: string;
+}) => (
+  <div className="flex flex-col items-center gap-2 text-center">
+    <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400">
+      {icon}
+    </div>
+    <div>
+      <p className="text-[12px] font-semibold text-gray-900 dark:text-gray-100">
+        {title}
+      </p>
+      <p className="text-[11px] text-gray-400 dark:text-gray-500">{sub}</p>
+    </div>
+  </div>
+);
+
+// ─── Description renderer ─────────────────────────────────────────────────────
+function renderDescription(description: string): React.ReactNode[] {
+  const lines = description.split("\n");
+  const els: React.ReactNode[] = [];
+  let list: string[] = [],
+    para: string[] = [];
+
+  const fp = (key: string) => {
+    if (para.length) {
+      els.push(<p key={key}>{para.join(" ")}</p>);
+      para = [];
+    }
+  };
+  const fl = (key: string) => {
+    if (list.length) {
+      els.push(
+        <ul key={key} className="ml-1 space-y-1.5">
+          {list.map((it, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="mt-2 w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-600 shrink-0" />
+              {it}
+            </li>
+          ))}
+        </ul>,
+      );
+      list = [];
+    }
+  };
+
+  lines.forEach((line, idx) => {
+    const t = line.trim();
+    if (!t) {
+      fp(`p-${idx}`);
+      fl(`ul-${idx}`);
+      return;
+    }
+    if (t.startsWith("•")) {
+      fp(`p-${idx}`);
+      list.push(t.slice(1).trim());
+      return;
+    }
+    if (t === t.toUpperCase() && t.length > 2) {
+      fp(`p-${idx}`);
+      fl(`ul-${idx}`);
+      els.push(
+        <p
+          key={`h-${idx}`}
+          className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-700 dark:text-gray-300 pt-2"
+        >
+          {t}
+        </p>,
+      );
+      return;
+    }
+    para.push(t);
+  });
+  fp("p-end");
+  fl("ul-end");
+  return els;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ProductPage() {
   const params = useParams();
   const store_slug = params.store_slug as string;
@@ -72,763 +256,562 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [inputValue, setInputValue] = useState<string>("");
-  const [showMaxQuantityError, setShowMaxQuantityError] = useState(false);
+  const [addedSuccess, setAddedSuccess] = useState(false);
+  const [inputValue, setInputValue] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const {
-    // currency,
-    icon: currencyIcon,
-    loading: currencyLoading,
-  } = useUserCurrencyIcon();
-  const { cart, addToCart } = useCartStore();
-  const { success: showSuccessNotification, error: showErrorNotification } =
-    useSheiNotification(); // ADD THIS
+  const [showMaxErr, setShowMaxErr] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate selectedVariantData based on current state
-  const selectedVariantData = product?.product_variants?.find(
-    (variant) => variant.id === selectedVariant,
+  const { icon: currencyIcon, loading: currencyLoading } =
+    useUserCurrencyIcon();
+  const { cart, addToCart } = useCartStore();
+  const { success: toastSuccess, error: toastError } = useSheiNotification();
+  const curr = currencyLoading ? "৳" : (currencyIcon ?? "৳");
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const selectedVariantData =
+    product?.product_variants?.find((v) => v.id === selectedVariant) ?? null;
+
+  const originalPrice = selectedVariantData
+    ? selectedVariantData.base_price
+    : product?.base_price || 0;
+  const rawDiscounted = selectedVariantData
+    ? selectedVariantData.discounted_price
+    : product?.discounted_price;
+  const displayPrice =
+    rawDiscounted && rawDiscounted > 0 && rawDiscounted < originalPrice
+      ? rawDiscounted
+      : originalPrice;
+  const discount =
+    displayPrice < originalPrice && originalPrice > 0
+      ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
+      : 0;
+
+  const availableStock =
+    selectedVariantData !== null
+      ? (selectedVariantData.product_inventory?.[0]?.quantity_available ?? 0)
+      : (product?.product_inventory?.[0]?.quantity_available ?? 0);
+
+  const cartQty = (() => {
+    if (!product) return 0;
+    return (
+      cart.find(
+        (i) =>
+          i.productId === product.id &&
+          i.variantId === (selectedVariantData?.id ?? null) &&
+          i.storeSlug === store_slug,
+      )?.quantity ?? 0
+    );
+  })();
+
+  const remaining = Math.max(0, availableStock - cartQty);
+  const isOutOfStock = remaining <= 0;
+  const stockStatus =
+    availableStock <= 0
+      ? "out"
+      : remaining === 0
+        ? "maxed"
+        : availableStock <= 10
+          ? "low"
+          : "in";
+  const hasLowStockVariant = product?.product_variants?.some(
+    (v) =>
+      (v.product_inventory?.[0]?.quantity_available ?? 0) > 0 &&
+      (v.product_inventory?.[0]?.quantity_available ?? 0) <= 10,
   );
 
-  // Fixed: Robust cart quantity calculation
-  const getCartQuantity = () => {
-    if (!product) return 0;
-
-    // Handle both cases: with variant and without variant
-    if (selectedVariantData) {
-      // For products with variants
-      const cartItem = cart.find(
-        (item) =>
-          item.productId === product.id &&
-          item.variantId === selectedVariantData.id && // Must match the variant ID
-          item.storeSlug === store_slug,
-      );
-      return cartItem?.quantity || 0;
-    } else {
-      // For products without variants - variantId should be null
-      const cartItem = cart.find(
-        (item) =>
-          item.productId === product.id &&
-          item.variantId === null && // Important: variantId should be null for main product
-          item.storeSlug === store_slug,
-      );
-      return cartItem?.quantity || 0;
-    }
-  };
-
-  // Get available stock - handles both variant and main product inventory
-  const getAvailableStock = () => {
-    if (selectedVariantData) {
-      return (
-        selectedVariantData.product_inventory?.[0]?.quantity_available || 0
-      );
-    }
-    // For products without variants, use main product inventory
-    return product?.product_inventory?.[0]?.quantity_available || 0;
-  };
-
-  const cartQuantity = getCartQuantity();
-  const availableStock = getAvailableStock();
-  const remainingStock = Math.max(0, availableStock - cartQuantity);
-  const isOutOfStock = remainingStock <= 0;
-  const isQuantityExceeded = quantity > remainingStock;
-
-  // Simplified stock status without numbers
-  const getStockStatus = () => {
-    if (availableStock <= 0) {
-      return "out-of-stock";
-    } else if (remainingStock === 0) {
-      return "max-in-cart";
-    } else if (availableStock <= 10) {
-      return "limited";
-    } else {
-      return "available";
-    }
-  };
-
-  const stockStatus = getStockStatus();
-
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchProduct() {
       try {
         setLoading(true);
-
-        if (!product_slug) {
-          console.error("No product slug provided");
-          return;
-        }
-
-        const productData = await getClientProductBySlug(product_slug);
-
-        if (!productData) {
+        if (!product_slug) return;
+        const data = await getClientProductBySlug(product_slug);
+        if (!data) {
           setProduct(null);
           return;
         }
-
-        const fixedProductData = {
-          ...productData,
-          categories: Array.isArray(productData.categories)
-            ? productData.categories[0] || null
-            : productData.categories,
-          product_variants: (productData.product_variants || []).map(
-            (variant: any) => ({
-              ...variant,
-              primary_image:
-                variant.product_images?.find((img: any) => img.is_primary) ||
-                null,
-            }),
-          ),
+        const fixed = {
+          ...data,
+          categories: Array.isArray(data.categories)
+            ? (data.categories[0] ?? null)
+            : data.categories,
+          product_variants: (data.product_variants ?? []).map((v: any) => ({
+            ...v,
+            primary_image:
+              v.product_images?.find((i: any) => i.is_primary) ?? null,
+          })),
         };
-
-        setProduct(fixedProductData as ApiProduct);
-
-        if (
-          fixedProductData.product_variants &&
-          fixedProductData.product_variants.length > 0
-        ) {
-          // Find the first available variant instead of just the first one
-          const firstAvailableVariant = fixedProductData.product_variants.find(
-            (variant) =>
-              (variant.product_inventory?.[0]?.quantity_available || 0) > 0,
+        setProduct(fixed as ApiProduct);
+        if (fixed.product_variants?.length > 0) {
+          const first = fixed.product_variants.find(
+            (v: any) => (v.product_inventory?.[0]?.quantity_available ?? 0) > 0,
           );
-
-          // Set to first available variant, or first variant if none are available
-          setSelectedVariant(
-            firstAvailableVariant?.id ||
-              fixedProductData.product_variants[0].id,
-          );
+          setSelectedVariant(first?.id ?? fixed.product_variants[0].id);
         }
-      } catch (error) {
-        console.error("Error fetching product:", error);
+      } catch (e) {
+        console.error(e);
         setProduct(null);
       } finally {
         setLoading(false);
       }
     }
-
-    if (product_slug) {
-      fetchProduct();
-    }
+    if (product_slug) fetchProduct();
   }, [product_slug]);
 
-  // Clear error message after 3 seconds
   useEffect(() => {
-    if (showMaxQuantityError) {
-      const timer = setTimeout(() => {
-        setShowMaxQuantityError(false);
-      }, 3000);
-      return () => clearTimeout(timer);
+    if (showMaxErr) {
+      const t = setTimeout(() => setShowMaxErr(false), 3000);
+      return () => clearTimeout(t);
     }
-  }, [showMaxQuantityError]);
+  }, [showMaxErr]);
 
-  // Debug effect for cart changes - MOVED AFTER variable definitions
-  useEffect(() => {}, [
-    cart,
-    quantity,
-    product,
-    selectedVariantData,
-    availableStock,
-    cartQuantity,
-    remainingStock,
-    isOutOfStock,
-    isQuantityExceeded,
-    stockStatus,
-  ]);
-
-  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  // const displayCurrency = currencyLoading ? "" : currency ?? "";
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
-  if (loading) {
-    return <ProductPageSkeleton />;
-  }
-
-  if (!product) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <BackButton href={`/${store_slug}`} label="Back to Products" />
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-24 h-24 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-              <svg
-                className="w-12 h-12 text-muted-foreground"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Product Not Found
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Sorry, we couldn&apos;t find the product you&apos;re looking for.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const calculateDiscountPercentage = (
-    originalPrice: number,
-    discountedPrice: number | null,
-    discountAmount?: number,
-  ): number => {
-    if (discountAmount && discountAmount > 0) {
-      if (discountAmount <= 100) {
-        return Math.round(discountAmount);
-      } else {
-        return Math.round((discountAmount / originalPrice) * 100);
-      }
-    }
-
-    if (discountedPrice && discountedPrice < originalPrice) {
-      return Math.round(
-        ((originalPrice - discountedPrice) / originalPrice) * 100,
-      );
-    }
-
-    return 0;
-  };
-
-  const displayPrice = selectedVariantData
-    ? selectedVariantData.discounted_price || selectedVariantData.base_price
-    : product?.discounted_price || product?.base_price || 0;
-
-  const originalPrice = selectedVariantData
-    ? selectedVariantData.base_price
-    : product?.base_price || 0;
-
-  const discount = selectedVariantData
-    ? calculateDiscountPercentage(
-        selectedVariantData.base_price,
-        selectedVariantData.discounted_price,
-        selectedVariantData.discount_amount,
-      )
-    : calculateDiscountPercentage(
-        product?.base_price || 0,
-        product?.discounted_price || null,
-        product?.discount_amount,
-      );
-
-  // Updated stock badge function - No numbers shown
-  const getStockBadge = () => {
-    switch (stockStatus) {
-      case "out-of-stock":
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-            Out of Stock
-          </span>
-        );
-      case "max-in-cart":
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-            Max quantity is already in your cart
-          </span>
-        );
-      case "limited":
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-            Limited Stock
-          </span>
-        );
-      case "available":
-        return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-            In Stock
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Fixed: Strict add to cart logic
-  const handleAddToCart = async (): Promise<void> => {
-    if (!product) return;
-
-    // Get fresh cart quantity
-    const currentCartQty = getCartQuantity();
-    const currentRemaining = Math.max(0, availableStock - currentCartQty);
-
-    // Emergency fallback - double check everything
-    if (currentRemaining <= 0) {
-      setShowMaxQuantityError(true);
-      return;
-    }
-
-    if (quantity > currentRemaining) {
-      setShowMaxQuantityError(true);
-      return;
-    }
-
-    // Original validation
-    if (isOutOfStock || isQuantityExceeded || quantity > remainingStock) {
-      return;
-    }
-
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleAddToCart = async () => {
+    if (!product || isOutOfStock || quantity > remaining) return;
     setIsAdding(true);
     try {
-      const cartProduct: AddToCartType = {
+      addToCart({
         productId: product.id,
         storeSlug: store_slug,
-        quantity: quantity,
-        variantId: selectedVariantData?.id || null, // Explicitly set to null if no variant
-      };
-
-      addToCart(cartProduct); // Remove await since we fixed the cart store
-      showSuccessNotification(`${product.name} added to cart`);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
-
-      // Reset quantity after successful add
+        quantity,
+        variantId: selectedVariantData?.id ?? null,
+      } as AddToCartType);
+      toastSuccess(`${product.name} added to cart`);
+      setAddedSuccess(true);
+      setTimeout(() => setAddedSuccess(false), 2200);
       setQuantity(1);
-      setInputValue("");
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      showErrorNotification("Failed to add product to cart");
+    } catch {
+      toastError("Failed to add to cart");
     } finally {
       setIsAdding(false);
     }
   };
 
   const handleIncrement = () => {
-    const currentRemaining = Math.max(0, availableStock - getCartQuantity());
-    if (quantity < currentRemaining) {
-      setQuantity((prev) => prev + 1);
-      setInputValue("");
-      setIsEditing(false);
-    } else {
-      setShowMaxQuantityError(true);
-      showErrorNotification("Maximum quantity reached");
+    if (quantity < remaining) setQuantity((q) => q + 1);
+    else {
+      setShowMaxErr(true);
+      toastError("Maximum quantity reached");
     }
   };
-
-  const handleDecrement = () => {
-    if (quantity > 1) {
-      setQuantity((prev) => prev - 1);
-      setInputValue("");
-      setIsEditing(false);
-    }
-  };
-
-  const handleInputClick = () => {
-    if (isOutOfStock) return;
-    setIsEditing(true);
-    setInputValue(quantity.toString());
-  };
-
-  const handleInputChange = (value: string) => {
-    setInputValue(value);
-  };
-
+  const handleDecrement = () => quantity > 1 && setQuantity((q) => q - 1);
   const handleInputBlur = () => {
-    if (!inputValue) {
-      // If input is empty, set to 1
-      setQuantity(1);
-      setInputValue("");
-    } else {
-      let newQuantity = parseInt(inputValue, 10);
-
-      // Validate quantity
-      if (isNaN(newQuantity) || newQuantity < 1) {
-        newQuantity = 1;
-      }
-
-      // Check if quantity exceeds remaining stock
-      const currentRemaining = Math.max(0, availableStock - getCartQuantity());
-      if (newQuantity > currentRemaining) {
-        newQuantity = currentRemaining;
-        setShowMaxQuantityError(true);
-        showErrorNotification("Maximum quantity reached");
-      }
-
-      setQuantity(newQuantity);
-      setInputValue("");
+    let v = parseInt(inputValue, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    if (v > remaining) {
+      v = remaining;
+      setShowMaxErr(true);
     }
+    setQuantity(v);
+    setInputValue("");
     setIsEditing(false);
   };
 
-  const handleInputKeyPress = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (event.key === "Enter") {
-      event.currentTarget.blur();
-    }
-  };
+  // ── Guards ─────────────────────────────────────────────────────────────────
+  if (loading) return <ProductPageSkeleton />;
+  if (!product)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white dark:bg-gray-950">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
+          Product not found.
+        </p>
+        <a
+          href={`/${store_slug}`}
+          className="text-xs font-semibold text-gray-900 dark:text-gray-100 underline underline-offset-4"
+        >
+          Back to shop
+        </a>
+      </div>
+    );
 
+  const images = product.product_images.map((i) => i.image_url);
+  const hasVariants = (product.product_variants?.length ?? 0) > 0;
   const totalPrice = displayPrice * quantity;
-  const images = product.product_images.map((img) => img.image_url);
-  const hasVariants =
-    product.product_variants && product.product_variants.length > 0;
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
-      <BackButton href={`/${store_slug}`} label="Back to Products" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:items-start mt-6">
-        <div className="w-full">
-          <ProductImage
-            images={images}
-            alt={product.name}
-            basePrice={selectedVariantData?.base_price || product.base_price}
-            discountedPrice={
-              selectedVariantData?.discounted_price || product.discounted_price
-            }
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
+      {/* Top bar */}
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          <a
+            href={`/${store_slug}`}
+            className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors shrink-0"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Shop
+          </a>
+          <Breadcrumb
+            store={store_slug}
+            category={product.categories?.name ?? "Products"}
+            name={product.name}
           />
         </div>
+      </div>
 
-        <div className="flex flex-col justify-start w-full">
-          <ProductTitle
-            name={product.name}
-            category={product.categories?.name || "Uncategorized"}
-            rating={5}
-          />
+      {/* Main */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-8 lg:gap-12 lg:items-start">
+          {/* LEFT — image */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="lg:sticky lg:top-18"
+          >
+            <ProductImage
+              images={images}
+              alt={product.name}
+              basePrice={selectedVariantData?.base_price ?? product.base_price}
+              discountedPrice={
+                selectedVariantData?.discounted_price ??
+                product.discounted_price
+              }
+            />
+          </motion.div>
 
-          <ProductPrice
-            price={displayPrice}
-            originalPrice={originalPrice}
-            // discount={discount}
-          />
+          {/* RIGHT — info card */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.08 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_12px_rgba(0,0,0,0.4)] p-6 md:p-8 transition-colors duration-200"
+          >
+            {/* Category + stars */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                {product.categories?.name ?? "Product"}
+              </span>
+              <Stars />
+            </div>
 
-          <p className="text-muted-foreground mt-4 text-sm sm:text-base md:text-lg">
-            {product.short_description || "No description available."}
-          </p>
+            {/* Name */}
+            <h1 className="text-[26px] sm:text-[28px] font-bold text-gray-900 dark:text-gray-50 leading-[1.2] tracking-[-0.02em] mb-3">
+              {product.name}
+            </h1>
 
-          {hasVariants && (
-            <div className="mt-6">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                Select Variant:
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {product.product_variants.map((variant) => {
-                  const variantStock =
-                    variant.product_inventory?.[0]?.quantity_available || 0;
-                  const isAvailable = variantStock > 0;
-                  const isSelected = selectedVariant === variant.id;
-                  const variantDiscount = calculateDiscountPercentage(
-                    variant.base_price,
-                    variant.discounted_price,
-                    variant.discount_amount,
-                  );
+            {/* Price */}
+            <div className="mb-4">
+              <ProductPrice
+                price={displayPrice}
+                originalPrice={originalPrice}
+              />
+            </div>
 
-                  return (
-                    <div key={variant.id}>
+            {/* Short desc */}
+            {product.short_description && (
+              <p className="text-[13.5px] text-gray-500 dark:text-gray-400 leading-relaxed mb-5">
+                {product.short_description}
+              </p>
+            )}
+
+            <div className="border-t border-gray-100 dark:border-gray-800 mb-5" />
+
+            {/* Variants */}
+            {hasVariants && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-gray-300">
+                    Size
+                  </span>
+                  <button className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 underline underline-offset-2 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+                    Size Guide
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {product.product_variants.map((v) => {
+                    const inStock =
+                      (v.product_inventory?.[0]?.quantity_available ?? 0) > 0;
+                    const isLow =
+                      inStock &&
+                      (v.product_inventory?.[0]?.quantity_available ?? 0) <= 10;
+                    const isSelected = selectedVariant === v.id;
+                    return (
                       <button
+                        key={v.id}
                         onClick={() => {
-                          if (!isAvailable) {
-                            showErrorNotification(
-                              "This variant is out of stock",
-                            );
+                          if (!inStock) {
+                            toastError("This variant is out of stock");
                             return;
                           }
-                          setSelectedVariant(variant.id);
+                          setSelectedVariant(v.id);
                           setQuantity(1);
                           setInputValue("");
                           setIsEditing(false);
                         }}
-                        disabled={!isAvailable}
-                        className={`px-3 py-2 border rounded-md text-sm transition-all ${
+                        disabled={!inStock}
+                        className={[
+                          "relative px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200",
                           isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : isAvailable
-                              ? "border-border hover:bg-accent text-foreground"
-                              : "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
-                        } ${!isAvailable ? "opacity-50" : ""}`}
+                            ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-sm scale-[1.03]"
+                            : inStock
+                              ? "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-gray-900 dark:hover:border-gray-300"
+                              : "bg-gray-50 dark:bg-gray-800/50 text-gray-300 dark:text-gray-600 border border-gray-100 dark:border-gray-800 cursor-not-allowed",
+                        ].join(" ")}
                       >
-                        <div className="flex flex-col items-start gap-1">
-                          <div className="flex items-center gap-1">
-                            <span>{variant.variant_name}</span>
-                            {variant.color && <span>- {variant.color}</span>}
-                            {variantDiscount > 0 && (
-                              <span className="ml-1 text-xs text-green-600">
-                                (-{variantDiscount}%)
-                              </span>
-                            )}
-                            {!isAvailable && (
-                              <span className="ml-1 text-xs text-red-600">
-                                (Out of Stock)
-                              </span>
-                            )}
-                          </div>
-
-                          {/* NEW: Render attributes */}
-                        </div>
+                        {!inStock && (
+                          <span
+                            className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none"
+                            aria-hidden
+                          >
+                            <span
+                              className="absolute inset-0"
+                              style={{
+                                backgroundImage:
+                                  "repeating-linear-gradient(135deg,transparent,transparent 5px,rgba(0,0,0,0.06) 5px,rgba(0,0,0,0.06) 6px)",
+                              }}
+                            />
+                          </span>
+                        )}
+                        <span className="relative">{v.variant_name}</span>
+                        {isLow && !isSelected && (
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white dark:border-gray-900" />
+                        )}
                       </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                {hasLowStockVariant && (
+                  <p className="mt-2.5 flex items-center gap-1.5 text-[12px] font-medium text-amber-600 dark:text-amber-500">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                    Low stock on some sizes
+                  </p>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="mt-4">{getStockBadge()}</div>
-
-          {/* Updated Quantity and Cart Management Section */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-6">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Quantity:
+            {/* Qty + total */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gray-700 dark:text-gray-300">
+                  Qty
                 </span>
-
-                {/* Quantity Selector */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
+                <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 h-10">
+                  <button
                     onClick={handleDecrement}
                     disabled={quantity <= 1 || isOutOfStock}
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
                   >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
                   <div
-                    className="relative w-12 h-7 flex items-center justify-center cursor-pointer"
-                    onClick={handleInputClick}
+                    className="w-10 h-10 flex items-center justify-center cursor-text"
+                    onClick={() => {
+                      if (!isOutOfStock) {
+                        setIsEditing(true);
+                        setInputValue(quantity.toString());
+                        setTimeout(() => inputRef.current?.select(), 10);
+                      }
+                    }}
                   >
                     {isEditing ? (
                       <input
+                        ref={inputRef}
                         type="text"
                         value={inputValue}
-                        onChange={(e) => handleInputChange(e.target.value)}
+                        onChange={(e) =>
+                          setInputValue(e.target.value.replace(/\D/g, ""))
+                        }
                         onBlur={handleInputBlur}
-                        onKeyPress={handleInputKeyPress}
-                        className="w-full h-full text-center border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                        autoFocus
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && e.currentTarget.blur()
+                        }
+                        className="w-full h-full text-center bg-transparent text-[13px] font-bold focus:outline-none text-gray-900 dark:text-gray-100"
+                        maxLength={3}
                       />
                     ) : (
-                      <span className="text-sm font-medium">{quantity}</span>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={quantity}
+                          initial={{ y: -6, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: 6, opacity: 0 }}
+                          transition={{ duration: 0.12 }}
+                          className="text-[13px] font-bold text-gray-900 dark:text-gray-100"
+                        >
+                          {quantity}
+                        </motion.span>
+                      </AnimatePresence>
                     )}
                   </div>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
+                  <button
                     onClick={handleIncrement}
-                    disabled={isOutOfStock || quantity >= remainingStock}
+                    disabled={isOutOfStock || quantity >= remaining}
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
                   >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-
-                <div className="ml-2">
-                  <motion.span
-                    key={totalPrice}
-                    initial={{ scale: 1.1 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-lg font-semibold text-foreground"
-                  >
-                    {displayCurrencyIconSafe}
-                    {totalPrice.toFixed(2)}
-                  </motion.span>
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-
-              {/* Show max quantity error under quantity section */}
-              {showMaxQuantityError && (
+              <div className="text-right">
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
+                  Total
+                </p>
                 <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-xs text-destructive mt-1"
+                  key={totalPrice}
+                  initial={{ scale: 1.05 }}
+                  animate={{ scale: 1 }}
+                  className="text-[20px] font-extrabold text-gray-900 dark:text-gray-50 tracking-tight"
                 >
-                  Maximum quantity reached
+                  {curr}
+                  {totalPrice.toFixed(2)}
                 </motion.p>
+              </div>
+            </div>
+
+            {/* Max qty error */}
+            <AnimatePresence>
+              {showMaxErr && (
+                <motion.p
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-[12px] text-rose-500 dark:text-rose-400 font-medium mb-2 overflow-hidden"
+                >
+                  Maximum available quantity reached
+                </motion.p>
+              )}
+            </AnimatePresence>
+
+            {/* Stock status */}
+            <div className="mb-4">
+              {stockStatus === "out" && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rose-600 dark:text-rose-400">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  Out of Stock
+                </span>
+              )}
+              {stockStatus === "maxed" && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  Max quantity in cart
+                </span>
+              )}
+              {stockStatus === "low" && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600 dark:text-amber-400">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  Limited Stock
+                </span>
+              )}
+              {stockStatus === "in" && (
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  In Stock
+                </span>
               )}
             </div>
 
-            {/* Updated AddToCartButton with strict validation */}
+            {/* CTA */}
             <AddToCartButton
               onClick={handleAddToCart}
               isLoading={isAdding}
-              showSuccess={showSuccess}
-              disabled={
-                isOutOfStock || isQuantityExceeded || quantity > remainingStock
-              }
-              isMaxInCart={
-                (isQuantityExceeded || remainingStock === 0) && !isOutOfStock
-              }
-              currentCartQuantity={cartQuantity}
-              className=""
+              showSuccess={addedSuccess}
+              disabled={isOutOfStock}
+              isMaxInCart={stockStatus === "maxed"}
+              currentCartQuantity={cartQty}
             />
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-12">
-        <h3 className="text-2xl font-semibold mb-4">Product Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h5 className="font-medium mb-2">Product Details</h5>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <strong>Category:</strong>{" "}
-                {product.categories?.name || "Uncategorized"}
-              </li>
-              <li>
-                <strong>SKU:</strong> {selectedVariantData?.sku || product.sku}
-              </li>
-              {hasVariants && selectedVariantData && (
-                <>
-                  <li>
-                    <strong>Variant:</strong> {selectedVariantData.variant_name}
-                  </li>
-                  {selectedVariantData.attributes && (
-                    <>
-                      {/* Show color separately if it exists */}
-                      {Object.entries(selectedVariantData.attributes).find(
-                        ([key]) =>
-                          key.toLowerCase() === "color" ||
-                          key.toLowerCase() === "colour",
-                      ) && (
-                        <li>
-                          <strong>Color:</strong>{" "}
-                          {selectedVariantData.attributes.color ||
-                            selectedVariantData.attributes.Color ||
-                            selectedVariantData.attributes.colour ||
-                            selectedVariantData.attributes.Colour}
-                        </li>
-                      )}
+            {/* Trust badges */}
+            {/* <div className="mt-6 grid grid-cols-3 gap-2 py-5 border-t border-b border-gray-100 dark:border-gray-800">
+              <TrustBadge
+                icon={<Truck className="w-4 h-4" />}
+                title="Free Delivery"
+                sub="Orders over ৳1,000"
+              />
+              <TrustBadge
+                icon={<RefreshCw className="w-4 h-4" />}
+                title="Easy Returns"
+                sub="Within 7 days"
+              />
+              <TrustBadge
+                icon={<ShieldCheck className="w-4 h-4" />}
+                title="Secure Payment"
+                sub="100% protected"
+              />
+            </div> */}
 
-                      {/* Show all other attributes except color/colour */}
-                      {Object.entries(selectedVariantData.attributes)
-                        .filter(([key]) => {
-                          const lowerKey = key.toLowerCase();
-                          return lowerKey !== "color" && lowerKey !== "colour";
-                        })
-                        .map(([key, value]) => (
-                          <li key={key}>
-                            <strong>
-                              {key.charAt(0).toUpperCase() +
-                                key.slice(1).replace(/_/g, " ")}
-                              :
-                            </strong>{" "}
-                            {String(value)}
-                          </li>
-                        ))}
-                    </>
+            {/* SKU */}
+            <p className="mt-3 text-[11px] text-gray-300 dark:text-gray-700 text-right font-medium">
+              SKU: {selectedVariantData?.sku ?? product.sku}
+            </p>
+
+            {/* Accordions */}
+            <div className="mt-4">
+              <DescAccordion title="Description" open>
+                <div className="space-y-2.5">
+                  {product.description ? (
+                    renderDescription(product.description)
+                  ) : (
+                    <p className="text-gray-400 dark:text-gray-600">
+                      No description available.
+                    </p>
                   )}
-                </>
-              )}
-            </ul>
-          </div>
+                </div>
+              </DescAccordion>
 
-          <div>
-            <h5 className="font-medium mb-2">Product Pricing</h5>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <strong>Base Price:</strong> {displayCurrencyIconSafe}
-                {originalPrice.toFixed(2)}
-              </li>
+              <DescAccordion title="Product Details">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
+                  {(
+                    [
+                      ["Category", product.categories?.name ?? "Uncategorized"],
+                      ["SKU", selectedVariantData?.sku ?? product.sku],
+                      ...(selectedVariantData
+                        ? [
+                            ["Variant", selectedVariantData.variant_name],
+                            ...(selectedVariantData.attributes
+                              ? Object.entries(
+                                  selectedVariantData.attributes,
+                                ).map(([k, v]) => [
+                                  k.charAt(0).toUpperCase() +
+                                    k.slice(1).replace(/_/g, " "),
+                                  String(v),
+                                ])
+                              : []),
+                          ]
+                        : []),
+                    ] as [string, string][]
+                  ).map(([label, value]) => (
+                    <div key={label} className="contents">
+                      <dt className="text-gray-400 dark:text-gray-500 font-medium">
+                        {label}
+                      </dt>
+                      <dd className="text-gray-700 dark:text-gray-300 font-semibold">
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </DescAccordion>
+
               {discount > 0 && (
-                <>
-                  <li>
-                    <strong>Discounted Price:</strong> {displayCurrencyIconSafe}
-                    {displayPrice.toFixed(2)}
-                  </li>
-                  {/* <li>
-                    <strong>You Save:</strong> {displayCurrencyIconSafe}
-                    {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
-                  </li> */}
-                </>
+                <DescAccordion title="Pricing">
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
+                    <dt className="text-gray-400 dark:text-gray-500 font-medium">
+                      Base Price
+                    </dt>
+                    <dd className="text-gray-700 dark:text-gray-300 font-semibold">
+                      {curr}
+                      {originalPrice.toFixed(2)}
+                    </dd>
+                    <dt className="text-gray-400 dark:text-gray-500 font-medium">
+                      Sale Price
+                    </dt>
+                    <dd className="text-emerald-600 dark:text-emerald-400 font-bold">
+                      {curr}
+                      {displayPrice.toFixed(2)}
+                    </dd>
+                    <dt className="text-gray-400 dark:text-gray-500 font-medium">
+                      You Save
+                    </dt>
+                    <dd className="text-rose-500 dark:text-rose-400 font-bold">
+                      {curr}
+                      {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
+                    </dd>
+                  </dl>
+                </DescAccordion>
               )}
-            </ul>
-          </div>
-        </div>
-      </div>
-      <div className="mt-6">
-        <h1>Product Description</h1>
-        <div className="mt-6">
-          {product.description ? (
-            <div className="prose prose-sm sm:prose md:prose-md lg:prose-lg text-muted-foreground max-w-full text-justify wrap-break-word word-spacing-fix">
-              {(() => {
-                const lines = product.description.split("\n");
-                const elements: React.ReactNode[] = [];
-                let currentList: string[] = [];
-                let currentParagraph: string[] = [];
-
-                const flushParagraph = () => {
-                  if (currentParagraph.length > 0) {
-                    elements.push(
-                      <p key={`p-${elements.length}`} className="mb-2">
-                        {currentParagraph.join(" ")}
-                      </p>,
-                    );
-                    currentParagraph = [];
-                  }
-                };
-
-                const flushList = () => {
-                  if (currentList.length > 0) {
-                    elements.push(
-                      <ul
-                        key={`ul-${elements.length}`}
-                        className="ml-4 list-disc mb-2"
-                      >
-                        {currentList.map((item, i) => (
-                          <li key={i}>{item}</li>
-                        ))}
-                      </ul>,
-                    );
-                    currentList = [];
-                  }
-                };
-
-                lines.forEach((line) => {
-                  const trimmed = line.trim();
-                  if (!trimmed) {
-                    // Empty line -> flush paragraph and list
-                    flushParagraph();
-                    flushList();
-                    return;
-                  }
-
-                  // Bullet point
-                  if (trimmed.startsWith("•")) {
-                    flushParagraph();
-                    currentList.push(trimmed.slice(1).trim());
-                    return;
-                  }
-
-                  // All-caps header
-                  if (trimmed === trimmed.toUpperCase() && trimmed.length > 2) {
-                    flushParagraph();
-                    flushList();
-                    elements.push(
-                      <h4
-                        key={`h4-${elements.length}`}
-                        className="mt-4 mb-2 font-semibold"
-                      >
-                        {trimmed}
-                      </h4>,
-                    );
-                    return;
-                  }
-
-                  // Normal paragraph line -> accumulate
-                  currentParagraph.push(trimmed);
-                });
-
-                // Flush remaining paragraph or list at the end
-                flushParagraph();
-                flushList();
-
-                return elements;
-              })()}
             </div>
-          ) : (
-            <p>No description available.</p>
-          )}
+          </motion.div>
         </div>
       </div>
     </div>
