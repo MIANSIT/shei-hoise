@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { FC, useState, useEffect, useRef } from "react";
+import { FC, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
@@ -35,9 +35,15 @@ const ProductImage: FC<ProductImageProps> = ({
     setLightboxOpen(true);
   };
 
-  const lbPrev = () =>
-    setLightboxIndex((i) => (i - 1 + images.length) % images.length);
-  const lbNext = () => setLightboxIndex((i) => (i + 1) % images.length);
+  const lbPrev = useCallback(
+    () => setLightboxIndex((i) => (i - 1 + images.length) % images.length),
+    [images.length],
+  );
+
+  const lbNext = useCallback(
+    () => setLightboxIndex((i) => (i + 1) % images.length),
+    [images.length],
+  );
 
   // Lock body scroll when lightbox open
   useEffect(() => {
@@ -61,7 +67,7 @@ const ProductImage: FC<ProductImageProps> = ({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [lightboxOpen, lightboxIndex]);
+  }, [lightboxOpen, lbPrev, lbNext]);
 
   if (!images || images.length === 0) {
     return (
@@ -129,7 +135,7 @@ const ProductImage: FC<ProductImageProps> = ({
 
         {/* Thumbnail strip — horizontal, below main image */}
         {images.length > 1 && (
-          <div className="flex gap-2  pb-1 scrollbar-hide">
+          <div className="flex gap-2 pb-1 scrollbar-hide">
             {images.map((img, idx) => (
               <button
                 key={idx}
