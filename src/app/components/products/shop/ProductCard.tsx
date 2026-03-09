@@ -193,11 +193,12 @@ export default function ProductCard({
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-black/20 transition-colors duration-300" />
       </Link>
 
-      {/* Info Block */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
+      {/* Info Block — fixed height so all cards are uniform */}
+      <div className="flex flex-col p-4 gap-2 h-38">
+        {/* Name — min-h reserves 2-line space even for short names */}
         <Link href={`${store_slug}/product/${product.slug}`}>
           <h3
-            className={`font-semibold text-sm leading-snug line-clamp-2 transition-colors duration-200 ${
+            className={`font-semibold text-sm leading-snug line-clamp-2 min-h-10 transition-colors duration-200 ${
               productInStock
                 ? "text-gray-900 dark:text-gray-100 group-hover:text-black dark:group-hover:text-white"
                 : "text-gray-400 dark:text-gray-600"
@@ -207,7 +208,7 @@ export default function ProductCard({
           </h3>
         </Link>
 
-        {/* Price Row */}
+        {/* Price Row — mt-auto pins it and buttons to the bottom */}
         <div className="flex items-baseline gap-2 mt-auto">
           <span
             className={`text-lg font-bold tracking-tight ${
