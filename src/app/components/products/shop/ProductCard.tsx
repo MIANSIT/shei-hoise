@@ -51,38 +51,31 @@ export default function ProductCard({
 
   const isInStock = (): boolean => {
     if (product.variants && product.variants.length > 0) {
-      return product.variants.some((variant) => {
-        const productInventory = variant.product_inventory?.[0];
-        if (productInventory && productInventory.quantity_available > 0)
-          return true;
-        const stock = variant.stock;
-        if (stock && stock.quantity_available > 0) return true;
+      return product.variants.some((v) => {
+        const inv = v.product_inventory?.[0];
+        if (inv && inv.quantity_available > 0) return true;
+        if (v.stock && v.stock.quantity_available > 0) return true;
         return false;
       });
     }
-    const mainProductInventory = product.product_inventory?.[0];
-    if (mainProductInventory && mainProductInventory.quantity_available > 0)
-      return true;
-    const mainStock = product.stock;
-    if (mainStock && mainStock.quantity_available > 0) return true;
+    const inv = product.product_inventory?.[0];
+    if (inv && inv.quantity_available > 0) return true;
+    if (product.stock && product.stock.quantity_available > 0) return true;
     return false;
   };
 
   const getTotalAvailableStock = (): number => {
     if (product.variants && product.variants.length > 0) {
-      return product.variants.reduce((total, variant) => {
-        const productInventory = variant.product_inventory?.[0];
-        if (productInventory)
-          return total + productInventory.quantity_available;
-        const stock = variant.stock;
-        if (stock) return total + stock.quantity_available;
+      return product.variants.reduce((total, v) => {
+        const inv = v.product_inventory?.[0];
+        if (inv) return total + inv.quantity_available;
+        if (v.stock) return total + v.stock.quantity_available;
         return total;
       }, 0);
     }
-    const mainProductInventory = product.product_inventory?.[0];
-    if (mainProductInventory) return mainProductInventory.quantity_available;
-    const mainStock = product.stock;
-    if (mainStock) return mainStock.quantity_available;
+    const inv = product.product_inventory?.[0];
+    if (inv) return inv.quantity_available;
+    if (product.stock) return product.stock.quantity_available;
     return 0;
   };
 
@@ -94,17 +87,16 @@ export default function ProductCard({
             item.productId === product.id && item.storeSlug === store_slug,
         )
         .reduce((total, item) => total + item.quantity, 0);
-    } else {
-      const cartItem = cart.find((item) => {
-        const productMatch = item.productId === product.id;
-        const storeMatch = item.storeSlug === store_slug;
-        let variantMatch = false;
-        if (item.variantId === null && !variant?.id) variantMatch = true;
-        else if (item.variantId === variant?.id) variantMatch = true;
-        return productMatch && storeMatch && variantMatch;
-      });
-      return cartItem?.quantity || 0;
     }
+    const cartItem = cart.find((item) => {
+      const productMatch = item.productId === product.id;
+      const storeMatch = item.storeSlug === store_slug;
+      let variantMatch = false;
+      if (item.variantId === null && !variant?.id) variantMatch = true;
+      else if (item.variantId === variant?.id) variantMatch = true;
+      return productMatch && storeMatch && variantMatch;
+    });
+    return cartItem?.quantity || 0;
   };
 
   const totalAvailableStock = getTotalAvailableStock();
@@ -134,10 +126,14 @@ export default function ProductCard({
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   };
 
+  const categoryName = product.category?.name || "General";
+  const truncatedCategory =
+    categoryName.length > 10 ? categoryName.slice(0, 9) + "…" : categoryName;
+
   return (
     <div
       className={`
-        group relative flex flex-col
+        group relative flex flex-col h-full
         bg-white dark:bg-gray-900
         rounded-2xl overflow-hidden
         border border-gray-100 dark:border-gray-800
@@ -148,10 +144,10 @@ export default function ProductCard({
         ${!productInStock ? "opacity-70" : ""}
       `}
     >
-      {/* Image Block */}
+      {/* ── Image (square, never shrinks) ── */}
       <Link
         href={`${store_slug}/product/${product.slug}`}
-        className="block relative overflow-hidden bg-gray-50 dark:bg-gray-800"
+        className="block relative overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0"
         style={{ aspectRatio: "1/1" }}
       >
         <Image
@@ -159,46 +155,52 @@ export default function ProductCard({
           alt={product.name}
           fill
           className={`object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] ${!productInStock ? "grayscale-30" : ""}`}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
         />
 
         {/* Badges */}
-        <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10 pointer-events-none">
-          {/* Category pill */}
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full border border-gray-200/60 dark:border-gray-700/60 shadow-sm">
-            <Tag className="w-2.5 h-2.5" />
-            {product.category?.name || "General"}
+        <div className="absolute top-2 left-2 right-2 flex items-start justify-between z-10 pointer-events-none">
+          <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full border border-gray-200/60 dark:border-gray-700/60 shadow-sm whitespace-nowrap">
+            <Tag className="w-2.5 h-2.5 shrink-0" />
+            <span>{truncatedCategory}</span>
           </span>
 
-          <div className="flex flex-col items-end gap-1.5">
+          <div className="flex flex-col items-end gap-1">
             {!productInStock && (
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-2.5 py-1 rounded-full">
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-2 py-1 rounded-full whitespace-nowrap">
                 Sold Out
               </span>
             )}
             {productInStock && calculatedDiscount > 0 && (
-              <span className="text-[10px] font-bold bg-rose-500 text-white px-2.5 py-1 rounded-full shadow-sm">
+              <span className="text-[9px] font-bold bg-rose-500 text-white px-2 py-1 rounded-full shadow-sm whitespace-nowrap">
                 -{calculatedDiscount}%
               </span>
             )}
             {productInStock && !hasVariants && isMaxInCart && (
-              <span className="text-[10px] font-bold bg-blue-500 text-white px-2.5 py-1 rounded-full">
-                Max Added
+              <span className="text-[9px] font-bold bg-blue-500 text-white px-2 py-1 rounded-full whitespace-nowrap">
+                Max
               </span>
             )}
           </div>
         </div>
 
-        {/* Quick view overlay on hover */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-black/20 transition-colors duration-300" />
       </Link>
 
-      {/* Info Block — fixed height so all cards are uniform */}
-      <div className="flex flex-col p-4 gap-2 h-38">
-        {/* Name — min-h reserves 2-line space even for short names */}
-        <Link href={`${store_slug}/product/${product.slug}`}>
+      {/* ── Info Block ──
+          3 rows with fixed heights so ALL cards are identical:
+          Row 1: name      — min-h-[2.5rem]  (2 lines reserved)
+          Row 2: price     — h-7             (single line)
+          Row 3: buttons   — h-9             (action row)
+      ── */}
+      <div className="flex flex-col p-3 sm:p-4 gap-2 flex-1">
+        {/* Row 1 — Name: fixed 2-line height, hard clamp, no overflow */}
+        <Link
+          href={`${store_slug}/product/${product.slug}`}
+          className="block h-10 sm:h-11 overflow-hidden"
+        >
           <h3
-            className={`font-semibold text-sm leading-snug line-clamp-2 min-h-10 transition-colors duration-200 ${
+            className={`font-semibold text-xs sm:text-sm leading-5 sm:leading-5.5 line-clamp-2 transition-colors duration-200 ${
               productInStock
                 ? "text-gray-900 dark:text-gray-100 group-hover:text-black dark:group-hover:text-white"
                 : "text-gray-400 dark:text-gray-600"
@@ -208,33 +210,46 @@ export default function ProductCard({
           </h3>
         </Link>
 
-        {/* Price Row — mt-auto pins it and buttons to the bottom */}
-        <div className="flex items-baseline gap-2 mt-auto">
-          <span
-            className={`text-lg font-bold tracking-tight ${
-              productInStock
-                ? "text-gray-900 dark:text-gray-100"
-                : "text-gray-400 dark:text-gray-600"
-            }`}
-          >
-            {displayCurrencyIconSafe}
-            {displayPrice.toFixed(2)}
-          </span>
-          {calculatedDiscount > 0 && productInStock && (
-            <span className="text-sm text-gray-400 dark:text-gray-500 line-through font-normal">
+        {/* Row 2 — Price block: always exactly h-[3.25rem] */}
+        <div className="h-13 sm:h-14 flex flex-col justify-center gap-1">
+          {/* Line A: price + strikethrough */}
+          <div className="flex items-baseline gap-1.5">
+            <span
+              className={`text-base sm:text-xl font-bold tracking-tight leading-none ${
+                productInStock
+                  ? "text-gray-900 dark:text-gray-100"
+                  : "text-gray-400 dark:text-gray-600"
+              }`}
+            >
               {displayCurrencyIconSafe}
-              {product.base_price.toFixed(2)}
+              {displayPrice.toFixed(2)}
             </span>
-          )}
-          {hasVariants && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
-              varies
-            </span>
-          )}
+            {calculatedDiscount > 0 && productInStock && (
+              <span className="text-[11px] sm:text-sm text-gray-400 dark:text-gray-500 line-through font-normal leading-none">
+                {displayCurrencyIconSafe}
+                {product.base_price.toFixed(2)}
+              </span>
+            )}
+          </div>
+          {/* Line B: always rendered — variant chip or empty spacer */}
+          <div className="h-4.5 flex items-center">
+            {hasVariants ? (
+              <span className="inline-flex items-center gap-1 text-[9px] font-semibold tracking-widest uppercase text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-500 dark:bg-gray-400" />
+                </span>
+                Select variant
+              </span>
+            ) : (
+              <span className="opacity-0 text-[9px]">-</span>
+            )}
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-1">
+        {/* Row 3 — Buttons (always h-9, stuck to bottom) */}
+        <div className="flex gap-1.5 mt-auto">
           {hasVariants ? (
             <Link
               href={`${store_slug}/product/${product.slug}`}
@@ -268,13 +283,14 @@ export default function ProductCard({
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${adding || showSuccess ? "opacity-0 scale-75" : "opacity-100 scale-100"} absolute`}
                   >
-                    <ShoppingCart className="w-3.5 h-3.5" /> Add to Cart
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Add to Cart</span>
+                    <span className="sm:hidden">Add</span>
                   </span>
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${adding && !showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}
                   >
                     <div className="w-3 h-3 border-2 border-white dark:border-gray-900 border-t-transparent rounded-full animate-spin" />
-                    Adding
                   </span>
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}
