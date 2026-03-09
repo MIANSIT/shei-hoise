@@ -38,7 +38,9 @@ export default function ProductGrid({
   return (
     <motion.div
       layout
-      className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mt-6 mb-8"
+      // 2 cols on mobile → 3 on md → 4 on lg → 5 on xl
+      // gap-3 on mobile, gap-4 on sm+
+      className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mt-4 sm:mt-6 mb-8 items-stretch"
     >
       <AnimatePresence mode="popLayout">
         {products.map((product, index) => (
@@ -54,7 +56,7 @@ export default function ProductGrid({
               damping: 26,
               delay: Math.min(index * 0.04, 0.3),
             }}
-            className="scroll-mt-24"
+            className="scroll-mt-24 h-full"
           >
             <ProductCard
               product={product}
