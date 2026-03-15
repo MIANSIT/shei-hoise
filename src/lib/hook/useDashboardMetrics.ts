@@ -20,16 +20,22 @@ interface ProductVariant {
   base_price: number;
   sale_price?: number;
   tp_price?: number;
+  is_active?: boolean;
+  is_low_stock?: boolean;
+  is_out_of_stock?: boolean;
   stock: {
     quantity_available: number;
     low_stock_threshold?: number;
     track_inventory?: boolean;
-    is_low_stock: boolean;
+    is_low_stock?: boolean;
   };
-  is_low_stock: boolean;
 }
 
-type DashboardProduct = Product & { variants: ProductVariant[] };
+type DashboardProduct = Product & {
+  variants: ProductVariant[];
+  is_out_of_stock?: boolean;
+  is_partially_out_of_stock?: boolean;
+};
 
 // ─────────────────────────────────────────────
 // Expense Metrics Types
@@ -80,11 +86,14 @@ interface DashboardMetrics {
     profit: number;
     profitMargin: number;
   }[];
+  // Unit-level counts (how many individual units)
   inStockCount: number;
   lowStockCount: number;
   outOfStockCount: number;
+  // Product-level counts (how many distinct products)
   lowStockProductCount: number;
   outOfStockProductCount: number;
+  partiallyOutOfStockProductCount: number; // NEW: products where SOME variants are OOS
   totalInventoryValue: number;
   paymentAmounts: Record<PaymentStatus, number>;
   alerts: { type: AlertType; message: string; count: number }[];
@@ -103,8 +112,6 @@ const toDateKey = (d: Date): string => d.toISOString().slice(0, 10);
 //
 // shipping_fee is paid to the courier — NOT store revenue.
 // revenue = total_amount - shipping_fee
-//
-// Example: total=220, shipping=100 → revenue=120 ✅
 // ─────────────────────────────────────────────
 const getOrderRevenue = (order: StoreOrder): number => {
   const total = Number(order.total_amount) || 0;
@@ -114,14 +121,6 @@ const getOrderRevenue = (order: StoreOrder): number => {
 
 // ─────────────────────────────────────────────
 // Helper: adjustment ratio (shipping excluded)
-//
-// Distributes order-level discounts/surcharges across items proportionally.
-// Must exclude shipping from both sides so product profit is never diluted by shipping.
-//
-// ratio = (total_amount - shipping_fee) / subtotal
-//
-// Example: total=220, shipping=100, subtotal=120 → ratio=1.0 (no product discount)
-// Example: total=108, shipping=0,   subtotal=120 → ratio=0.9 (10% discount applied)
 // ─────────────────────────────────────────────
 const getOrderAdjustmentRatio = (order: StoreOrder): number => {
   const subtotal = Number(order.subtotal) || 0;
@@ -179,6 +178,7 @@ export const useDashboardMetrics = (
     outOfStockCount: 0,
     lowStockProductCount: 0,
     outOfStockProductCount: 0,
+    partiallyOutOfStockProductCount: 0,
     totalInventoryValue: 0,
     paymentAmounts: { paid: 0, pending: 0, refunded: 0 },
     alerts: [],
@@ -340,11 +340,7 @@ export const useDashboardMetrics = (
       const orderDate = new Date(order.created_at);
       const isPaid = isOrderPaid(order);
 
-      // Revenue = total_amount - shipping_fee (shipping is NOT store revenue)
       const trueOrderRevenue = getOrderRevenue(order);
-
-      // Ratio = (total_amount - shipping_fee) / subtotal
-      // Correctly distributes discounts/surcharges across items without shipping interference
       const adjustmentRatio = getOrderAdjustmentRatio(order);
 
       const inCurrentPeriod =
@@ -353,7 +349,7 @@ export const useDashboardMetrics = (
       if (inCurrentPeriod) {
         filteredOrders.push(order);
         orderCount++;
-        totalOrderValue += trueOrderRevenue; // AOV = product value only
+        totalOrderValue += trueOrderRevenue;
 
         if (isPaid) {
           revenue += trueOrderRevenue;
@@ -387,18 +383,15 @@ export const useDashboardMetrics = (
         }
       }
 
-      // Order status counts (ALL orders, all time)
       const statusKey = (order.status?.toLowerCase() ||
         "pending") as OrderStatus;
       if (statusKey in orderStatusCounts) orderStatusCounts[statusKey]++;
 
-      // Payment amounts — product revenue only (shipping excluded)
       const paymentKey = (order.payment_status?.toLowerCase() ||
         "pending") as PaymentStatus;
       if (paymentKey in paymentAmounts)
         paymentAmounts[paymentKey] += trueOrderRevenue;
 
-      // Sales trend (paid only, last 30 days) — shipping excluded
       if (isPaid) {
         const dayKey = toDateKey(new Date(order.created_at));
         if (salesTrendMap.has(dayKey)) {
@@ -409,7 +402,6 @@ export const useDashboardMetrics = (
         }
       }
 
-      // Customer spend — shipping excluded
       if (!order.customers?.id) return;
       const customerId = order.customers.id;
       const firstName = order.customers.first_name || "Unknown";
@@ -445,7 +437,6 @@ export const useDashboardMetrics = (
         }
       }
 
-      // Top products (paid only) — shipping-excluded ratio
       if (isPaid) {
         (order.order_items ?? []).forEach((item) => {
           const current = topProductsMap.get(item.product_name) || {
@@ -544,21 +535,37 @@ export const useDashboardMetrics = (
       .map(([method, amount]) => ({ method, amount }));
 
     // ─────────────────────────────────────────────
-    // Inventory metrics
+    // INVENTORY METRICS — FIXED
+    //
+    // Three product-level states:
+    //   1. fully out of stock   → outOfStockProductCount
+    //   2. partially OOS        → partiallyOutOfStockProductCount
+    //      (some variants OOS, some have stock)
+    //   3. low stock            → lowStockProductCount
+    //      (has stock but qty ≤ threshold for at least one variant)
+    //
+    // A product can only appear in ONE bucket (priority: OOS > partial > low)
     // ─────────────────────────────────────────────
     let inStockCount = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
     let lowStockProductCount = 0;
     let outOfStockProductCount = 0;
+    let partiallyOutOfStockProductCount = 0;
     let totalInventoryValue = 0;
 
     products.forEach((product) => {
-      let productHasStock = false;
-      let productHasLowStock = false;
+      const activeVariants = (product.variants ?? []).filter(
+        (v) => v.is_active !== false,
+      );
 
-      if (product.variants?.length > 0) {
-        product.variants.forEach((variant) => {
+      if (activeVariants.length > 0) {
+        // ── Variant-based product ──
+        let productHasAnyStock = false;
+        let productHasAnyOos = false;
+        let productHasLowStock = false;
+
+        activeVariants.forEach((variant) => {
           const stock = variant.stock;
           if (!stock || !stock.track_inventory) return;
 
@@ -568,49 +575,62 @@ export const useDashboardMetrics = (
           const variantPrice =
             variant.discounted_price && variant.discounted_price > 0
               ? variant.discounted_price
-              : variant.price;
+              : (variant.price ?? 0);
 
           if (qty > 0) {
             inStockCount += qty;
-            productHasStock = true;
+            productHasAnyStock = true;
             totalInventoryValue += qty * variantPrice;
 
             if (qty <= threshold) {
+              // In stock but at/below threshold = low stock
               lowStockCount += qty;
               productHasLowStock = true;
             }
           } else {
+            // This specific variant is completely out
             outOfStockCount++;
+            productHasAnyOos = true;
           }
         });
+
+        // Assign product to exactly ONE bucket
+        if (!productHasAnyStock) {
+          // Every active variant is OOS
+          outOfStockProductCount++;
+        } else if (productHasAnyOos) {
+          // Some variants OOS, some in stock → partial
+          partiallyOutOfStockProductCount++;
+        } else if (productHasLowStock) {
+          // All in stock but some are low
+          lowStockProductCount++;
+        }
       } else {
+        // ── No-variant product ──
         const stock = product.stock;
-        if (stock && stock.track_inventory) {
-          const qty = stock.quantity_available ?? 0;
-          const threshold = stock.low_stock_threshold ?? 0;
+        if (!stock || !stock.track_inventory) return;
 
-          const sellingPrice =
-            product.discounted_price && product.discounted_price > 0
-              ? product.discounted_price
-              : (product.base_price ?? 0);
+        const qty = stock.quantity_available ?? 0;
+        const threshold = stock.low_stock_threshold ?? 0;
 
-          if (qty > 0) {
-            inStockCount += qty;
-            productHasStock = true;
-            totalInventoryValue += qty * sellingPrice;
+        const sellingPrice =
+          product.discounted_price && product.discounted_price > 0
+            ? product.discounted_price
+            : (product.base_price ?? 0);
 
-            if (qty <= threshold) {
-              lowStockCount += qty;
-              productHasLowStock = true;
-            }
-          } else {
-            outOfStockCount++;
+        if (qty > 0) {
+          inStockCount += qty;
+          totalInventoryValue += qty * sellingPrice;
+
+          if (qty <= threshold) {
+            lowStockCount += qty;
+            lowStockProductCount++;
           }
+        } else {
+          outOfStockCount++;
+          outOfStockProductCount++;
         }
       }
-
-      if (!productHasStock) outOfStockProductCount++;
-      else if (productHasLowStock) lowStockProductCount++;
     });
 
     // ─────────────────────────────────────────────
@@ -674,22 +694,29 @@ export const useDashboardMetrics = (
       prevOrderCount > 0 ? prevTotalOrderValue / prevOrderCount : 0;
 
     // ─────────────────────────────────────────────
-    // Alerts
+    // Alerts — now includes partial OOS
     // ─────────────────────────────────────────────
     const alerts: { type: AlertType; message: string; count: number }[] = [];
+
+    if (outOfStockProductCount > 0)
+      alerts.push({
+        type: "stock",
+        message: "Products completely out of stock",
+        count: outOfStockProductCount,
+      });
+
+    if (partiallyOutOfStockProductCount > 0)
+      alerts.push({
+        type: "stock",
+        message: "Products with some variants out of stock",
+        count: partiallyOutOfStockProductCount,
+      });
 
     if (lowStockProductCount > 0)
       alerts.push({
         type: "stock",
         message: "Low stock products need attention",
         count: lowStockProductCount,
-      });
-
-    if (outOfStockProductCount > 0)
-      alerts.push({
-        type: "stock",
-        message: "Out of stock products detected",
-        count: outOfStockProductCount,
       });
 
     if (orderStatusCounts.pending > 0)
@@ -753,6 +780,7 @@ export const useDashboardMetrics = (
       outOfStockCount,
       lowStockProductCount,
       outOfStockProductCount,
+      partiallyOutOfStockProductCount,
       totalInventoryValue,
       paymentAmounts,
       alerts,
