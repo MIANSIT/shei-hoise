@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { CurrentUser, userSchema, USERTYPE } from "../types/users";
+import { CurrentUser, userSchema } from "../types/users";
+import { USERTYPE } from "@/lib/types/enums"; // ← add this
+
 import { CustomerProfile } from "../types/customer";
 import { useCheckoutStore } from "../store/userInformationStore";
 import { User } from "@supabase/supabase-js";
@@ -69,7 +71,6 @@ export function useCurrentUser() {
           globalUserCache &&
           Date.now() - globalUserCache.timestamp < CACHE_DURATION
         ) {
-
           setUser(globalUserCache.user);
           setStoreSlug(globalUserCache.storeSlug);
           setStoreId(globalUserCache.storeId);
@@ -88,7 +89,7 @@ export function useCurrentUser() {
         const { data: userData, error: dbErr } = await supabase
           .from("users")
           .select(
-            "id, email, first_name, last_name, phone, store_id, user_type"
+            "id, email, first_name, last_name, phone, store_id, user_type",
           )
           .eq("id", authUser.id)
           .maybeSingle();
@@ -97,7 +98,6 @@ export function useCurrentUser() {
            CUSTOMER FALLBACK
         ======================= */
         if (dbErr || !userData) {
-
           const fallbackUser: CurrentUserWithProfile = {
             id: authUser.id,
             email: authUser.email || "",

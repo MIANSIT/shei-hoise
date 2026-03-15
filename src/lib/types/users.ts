@@ -1,14 +1,8 @@
 // lib/types/users.ts
 import { z } from "zod";
-import { AdminUserWithProfile } from "../queries/user/getAdminUser";
-import { UserWithProfile } from "../queries/user/getUserProfile";
-
-export enum USERTYPE {
-  STORE_OWNER = "store_owner",
-  CUSTOMER = "customer",
-  ADMIN = "admin",
-  SUPER_ADMIN = "super_admin",
-}
+import { AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
+import { UserWithProfile } from "@/lib/queries/user/getUserProfile";
+import { USERTYPE } from "@/lib/types/enums"; // ← import from enums
 
 export const customerProfileSchema = z.object({
   user_id: z.string().uuid(),
@@ -70,5 +64,4 @@ export interface DetailedCustomer extends TableCustomer {
   } | null;
 }
 
-// Add this type for union types
 export type AnyUserProfile = UserWithProfile | AdminUserWithProfile;
