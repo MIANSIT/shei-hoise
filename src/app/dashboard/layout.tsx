@@ -17,7 +17,8 @@ import {
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import { USERTYPE } from "@/lib/types/users";
+import { USERTYPE } from "@/lib/types/enums"; // ← add this
+
 import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
@@ -70,21 +71,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       router.push("/");
     }
   }, [authLoading, session, router, role]);
-
-  // Fetch store data
   useEffect(() => {
-    if (!storeSlug || storeLoading) return;
+    if (!storeSlug) return;
 
+    let cancelled = false;
     setStoreLoading(true);
+
     getStoreBySlugWithLogo(storeSlug)
       .then((data) => {
-        setStore(data);
-        setStoreLoading(false);
+        if (!cancelled) setStore(data);
       })
       .catch((err) => {
         console.error("Failed to fetch store:", err);
-        setStoreLoading(false);
+      })
+      .finally(() => {
+        if (!cancelled) setStoreLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [storeSlug]);
 
   // Check if mobile and handle sidebar - only run on client

@@ -1,6 +1,6 @@
 // lib/queries/user/getUserProfile.ts
 import { supabase } from "@/lib/supabase";
-import { USERTYPE } from "@/lib/types/users";
+import { USERTYPE } from "@/lib/types/enums"; // ← add this
 
 export interface CustomerProfile {
   id: string;
@@ -36,7 +36,7 @@ export interface UserWithProfile {
 }
 
 export async function getUserProfile(
-  customerId: string
+  customerId: string,
 ): Promise<UserWithProfile> {
   // Get customer data
   const { data: customerData, error: customerError } = await supabase
@@ -48,7 +48,7 @@ export async function getUserProfile(
   if (customerError) {
     console.error("Error fetching customer:", customerError);
     throw new Error(
-      `Failed to fetch customer profile: ${customerError.message}`
+      `Failed to fetch customer profile: ${customerError.message}`,
     );
   }
 

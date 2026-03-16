@@ -101,7 +101,6 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
   onSelectChange,
   bulkActive = false,
 }) => {
-  // A "selectable key" is either a productId (no variants) or a variantId (has variants)
   const toggleKey = (id: string) => {
     const newKeys = selectedRowKeys.includes(id)
       ? selectedRowKeys.filter((k) => k !== id)
@@ -109,7 +108,6 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
     onSelectChange(newKeys);
   };
 
-  // For a product with variants: toggle all active variant ids
   const toggleAllVariants = (product: ProductRow) => {
     const activeVariantIds = (product.variants ?? [])
       .filter((v) => v.isActive)
@@ -120,12 +118,10 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
     );
 
     if (allSelected) {
-      // Deselect all variants of this product
       onSelectChange(
         selectedRowKeys.filter((k) => !activeVariantIds.includes(k as string)),
       );
     } else {
-      // Select all active variants
       const existing = selectedRowKeys.filter(
         (k) => !activeVariantIds.includes(k as string),
       );
@@ -141,7 +137,6 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
           .filter((v) => v.isActive)
           .map((v) => v.id);
 
-        // Selection state for the parent checkbox
         const parentSelected = hasVariants
           ? activeVariantIds.length > 0 &&
             activeVariantIds.every((id) => selectedRowKeys.includes(id))
@@ -151,6 +146,9 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
           hasVariants &&
           activeVariantIds.some((id) => selectedRowKeys.includes(id)) &&
           !parentSelected;
+
+        const hasAnyVariantIssue =
+          product.hasOutOfStockVariant || product.hasLowStockVariant;
 
         return (
           <div
@@ -163,7 +161,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                   ? "border-blue-400 dark:border-blue-600 shadow-sm shadow-blue-100 dark:shadow-blue-950/40"
                   : product.isOutOfStock
                     ? "border-gray-200 dark:border-gray-700/60 opacity-75"
-                    : product.isLowStock || product.hasLowStockVariant
+                    : product.isLowStock || hasAnyVariantIssue
                       ? "border-amber-200 dark:border-amber-800/50"
                       : "border-gray-200 dark:border-gray-800"
               }
@@ -217,21 +215,29 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                   {product.title}
                 </span>
 
-                {/* SKU — shown for simple products (no variants) */}
                 {!hasVariants && product.sku && <SkuChip sku={product.sku} />}
 
                 <div className="flex flex-wrap gap-1">
+                  {/* Simple product: out of stock */}
                   {product.isOutOfStock && (
                     <StatusBadge variant="out">Out of stock</StatusBadge>
                   )}
+
+                  {/* Simple product: low stock */}
                   {!product.isOutOfStock && product.isLowStock && (
                     <StatusBadge variant="low">Low stock</StatusBadge>
                   )}
-                  {!product.isOutOfStock &&
-                    product.hasLowStockVariant &&
-                    !product.isLowStock && (
-                      <StatusBadge variant="low">Has low stock</StatusBadge>
-                    )}
+
+                  {/* Product with variants: some variants out of stock */}
+                  {product.hasOutOfStockVariant && (
+                    <StatusBadge variant="out">Has out of stock</StatusBadge>
+                  )}
+
+                  {/* Product with variants: some variants low stock */}
+                  {product.hasLowStockVariant && (
+                    <StatusBadge variant="low">Has low stock</StatusBadge>
+                  )}
+
                   {product.isInactiveProduct && (
                     <StatusBadge
                       variant={
@@ -316,7 +322,6 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                             {variant.title}
                           </span>
-                          {/* SKU per variant */}
                           {variant.sku && <SkuChip sku={variant.sku} />}
                           <div className="flex gap-1 flex-wrap">
                             {!variant.isActive && (

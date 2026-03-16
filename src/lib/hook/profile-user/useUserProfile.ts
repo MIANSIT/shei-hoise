@@ -4,34 +4,42 @@
 import { useState, useEffect } from "react";
 import { useCurrentCustomer } from "../useCurrentCustomer";
 import { useCurrentUser } from "../useCurrentUser";
-import { getUserProfile, UserWithProfile } from "@/lib/queries/user/getUserProfile";
-import { getAdminProfile, AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
+import {
+  getUserProfile,
+  UserWithProfile,
+} from "@/lib/queries/user/getUserProfile";
+import {
+  getAdminProfile,
+  AdminUserWithProfile,
+} from "@/lib/queries/user/getAdminUser";
 import { useParams } from "next/navigation";
-import { USERTYPE } from "@/lib/types/users";
+import { USERTYPE } from "@/lib/types/enums"; // ← add this
 
 export function useUserProfile() {
   const params = useParams();
   const storeSlug = params.store_slug as string;
-  
+
   // Use both hooks
-  const { 
-    customer, 
-    loading: customerLoading, 
+  const {
+    customer,
+    loading: customerLoading,
     error: customerError,
     isLoggedIn: customerIsLoggedIn,
     authUserId: customerAuthUserId,
-    hasAuthUserId
+    hasAuthUserId,
   } = useCurrentCustomer(storeSlug);
-  
+
   const {
     user: adminUser,
     loading: adminLoading,
     error: adminError,
     storeSlug: adminStoreSlug,
-    role
+    role,
   } = useCurrentUser();
-  
-  const [userProfile, setUserProfile] = useState<UserWithProfile | AdminUserWithProfile | null>(null);
+
+  const [userProfile, setUserProfile] = useState<
+    UserWithProfile | AdminUserWithProfile | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -41,10 +49,12 @@ export function useUserProfile() {
         setLoading(true);
         setError(null);
 
-        
-
         // Scenario 1: Store customer with authentication
-        if (customer?.auth_user_id && customerIsLoggedIn && customerAuthUserId === customer.auth_user_id) {
+        if (
+          customer?.auth_user_id &&
+          customerIsLoggedIn &&
+          customerAuthUserId === customer.auth_user_id
+        ) {
           const profile = await getUserProfile(customer.id);
           setUserProfile(profile);
         }
@@ -53,13 +63,13 @@ export function useUserProfile() {
           // Check if role is admin or store_owner using enum values
           const isAdmin = role === USERTYPE.ADMIN;
           const isStoreOwner = role === USERTYPE.STORE_OWNER;
-          
+
           if (isAdmin || isStoreOwner) {
             try {
               const adminProfile = await getAdminProfile(adminUser.id);
               setUserProfile(adminProfile);
             } catch (adminErr) {
-              console.error('❌ Failed to fetch admin profile:', adminErr);
+              console.error("❌ Failed to fetch admin profile:", adminErr);
               // Fallback to basic admin user data
               const fallbackAdminProfile: AdminUserWithProfile = {
                 ...adminUser,
@@ -70,13 +80,12 @@ export function useUserProfile() {
                 store_slug: adminStoreSlug,
                 store_name: null,
                 profile: null,
-                user_type: role as "admin" | "store_owner"
+                user_type: role as "admin" | "store_owner",
               };
               setUserProfile(fallbackAdminProfile);
             }
           }
-        }
-        else {
+        } else {
           setUserProfile(null);
         }
       } catch (err) {
@@ -92,15 +101,15 @@ export function useUserProfile() {
       fetchUserProfile();
     }
   }, [
-    customer, 
-    customerLoading, 
-    adminUser, 
-    adminLoading, 
-    customerIsLoggedIn, 
-    customerAuthUserId, 
-    role, 
+    customer,
+    customerLoading,
+    adminUser,
+    adminLoading,
+    customerIsLoggedIn,
+    customerAuthUserId,
+    role,
     storeSlug,
-    adminStoreSlug
+    adminStoreSlug,
   ]);
 
   // Helper function to check user type
@@ -112,7 +121,10 @@ export function useUserProfile() {
     user: userProfile,
     loading: customerLoading || adminLoading || loading,
     error: customerError || adminError || error,
-    isAuthenticated: !!userProfile || (customer && hasAuthUserId && customerIsLoggedIn) || !!adminUser,
+    isAuthenticated:
+      !!userProfile ||
+      (customer && hasAuthUserId && customerIsLoggedIn) ||
+      !!adminUser,
     isCustomer,
     isAdmin,
     isStoreOwner,
