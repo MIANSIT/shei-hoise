@@ -40,7 +40,8 @@ export interface ProductVariant {
   stock: ProductStock;
   images: ProductImage[];
   is_low_stock?: boolean;
-  tp_price?: number | null; // ✅ ADD
+  is_out_of_stock?: boolean;
+  tp_price?: number | null;
 }
 
 export interface Product {
@@ -62,6 +63,8 @@ export interface Product {
   images: ProductImage[];
   variants: ProductVariant[];
   is_low_stock?: boolean;
+  is_out_of_stock?: boolean;
+  is_partially_out_of_stock?: boolean;
   quantity_available?: number;
   low_stock_threshold?: number;
 }
@@ -79,7 +82,7 @@ interface DbVariant {
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
   color?: string | null;
-  tp_price?: number | null; // ✅ ADD
+  tp_price?: number | null;
   is_active?: boolean;
   product_inventory: ProductStock[] | null;
 }
@@ -111,7 +114,14 @@ interface DbProduct {
 function calculateLowStock(stock?: ProductStock | null): boolean {
   if (!stock || !stock.track_inventory) return false;
   const threshold = stock.low_stock_threshold ?? 0;
-  return stock.quantity_available <= threshold;
+  const qty = stock.quantity_available ?? 0;
+  // qty > 0 but at or below threshold = low stock
+  return qty > 0 && qty <= threshold;
+}
+
+function calculateOutOfStock(stock?: ProductStock | null): boolean {
+  if (!stock || !stock.track_inventory) return false;
+  return (stock.quantity_available ?? 0) === 0;
 }
 
 function mapVariant(v: DbVariant, allImages: ProductImage[]): ProductVariant {
@@ -134,18 +144,18 @@ function mapVariant(v: DbVariant, allImages: ProductImage[]): ProductVariant {
     discount_amount: v.discount_amount ?? null,
     attributes: v.attributes || {},
     weight: v.weight ?? null,
-    tp_price: v.tp_price ?? null, // ✅ MAP
+    tp_price: v.tp_price ?? null,
     color: v.color ?? null,
     is_active: v.is_active ?? true,
     stock,
     images: variantImages,
     is_low_stock: calculateLowStock(stock),
+    is_out_of_stock: calculateOutOfStock(stock),
   };
 }
 
 /* ---------- Main Functions ---------- */
 
-// Get all products for a store
 export async function getProducts(storeId: string): Promise<Product[]> {
   const { data, error } = await supabaseAdmin
     .from("products")
@@ -178,7 +188,7 @@ export async function getProducts(storeId: string): Promise<Product[]> {
         discounted_price,
         discount_amount,
         attributes,
-        tp_price,         
+        tp_price,
         weight,
         color,
         is_active,
@@ -214,6 +224,28 @@ export async function getProducts(storeId: string): Promise<Product[]> {
       mapVariant(v, p.product_images ?? []),
     );
 
+    // ── Derive product-level stock status from variants (if any) ──
+    let is_low_stock = false;
+    let is_out_of_stock = false;
+    let is_partially_out_of_stock = false;
+
+    if (variants.length > 0) {
+      const hasAnyStock = variants.some(
+        (v) => v.is_active && (v.stock.quantity_available ?? 0) > 0,
+      );
+      const hasAnyOos = variants.some(
+        (v) => v.is_active && (v.stock.quantity_available ?? 0) === 0,
+      );
+      const hasAnyLow = variants.some((v) => v.is_active && v.is_low_stock);
+
+      is_out_of_stock = !hasAnyStock;
+      is_partially_out_of_stock = hasAnyStock && hasAnyOos;
+      is_low_stock = hasAnyLow;
+    } else {
+      is_low_stock = calculateLowStock(stock);
+      is_out_of_stock = calculateOutOfStock(stock);
+    }
+
     return {
       id: p.id,
       sku: p.sku || "",
@@ -232,7 +264,9 @@ export async function getProducts(storeId: string): Promise<Product[]> {
       stock,
       images: productImages,
       variants,
-      is_low_stock: calculateLowStock(stock),
+      is_low_stock,
+      is_out_of_stock,
+      is_partially_out_of_stock,
     };
   });
 }

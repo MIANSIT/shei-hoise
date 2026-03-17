@@ -549,9 +549,6 @@ export default function ProductPage() {
                   <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-gray-300">
                     Size
                   </span>
-                  <button className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 underline underline-offset-2 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-                    Size Guide
-                  </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {product.product_variants.map((v) => {

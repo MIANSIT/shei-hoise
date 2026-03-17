@@ -70,16 +70,6 @@ const StockTable: React.FC<StockTableProps> = ({
     useUserCurrencyIcon();
   const symbol = currencyLoading ? "৳" : (currencyIcon ?? "৳");
 
-  // Helper: toggle a single variant key inside the shared rowSelection
-  // const toggleVariantKey = (variantId: string) => {
-  //   if (!rowSelection?.onChange || !rowSelection?.selectedRowKeys) return;
-  //   const current = rowSelection.selectedRowKeys as string[];
-  //   const next = current.includes(variantId)
-  //     ? current.filter((k) => k !== variantId)
-  //     : [...current, variantId];
-  //   rowSelection.onChange(next, [], { type: "single" as const });
-  // };
-
   // Helper: toggle ALL active variants for a product
   const toggleAllVariants = (product: ProductRow) => {
     if (!rowSelection?.onChange || !rowSelection?.selectedRowKeys) return;
@@ -103,7 +93,9 @@ const StockTable: React.FC<StockTableProps> = ({
         const isProduct = "variants" in record;
         const hasIssue = isProduct
           ? !record.isOutOfStock &&
-            (record.isLowStock || record.hasLowStockVariant)
+            (record.isLowStock ||
+              record.hasLowStockVariant ||
+              record.hasOutOfStockVariant)
           : !record.isOutOfStock && record.isLowStock;
 
         return (
@@ -138,8 +130,13 @@ const StockTable: React.FC<StockTableProps> = ({
             {hasIssue && (
               <Tooltip
                 title={
-                  isProduct && (record as ProductRow).hasLowStockVariant
-                    ? "Has low stock variants"
+                  isProduct
+                    ? (record as ProductRow).hasOutOfStockVariant &&
+                      (record as ProductRow).hasLowStockVariant
+                      ? "Has out of stock & low stock variants"
+                      : (record as ProductRow).hasOutOfStockVariant
+                        ? "Has out of stock variants"
+                        : "Has low stock variants"
                     : `Threshold: ${record.lowStockThreshold}`
                 }
               >
@@ -172,14 +169,24 @@ const StockTable: React.FC<StockTableProps> = ({
               {title}
             </span>
             <div className="flex flex-wrap gap-1">
+              {/* Simple product: out of stock */}
               {record.isOutOfStock && <Badge tone="out">Out of stock</Badge>}
+
+              {/* Simple product: low stock */}
               {!record.isOutOfStock && record.isLowStock && (
                 <Badge tone="low">Low stock</Badge>
               )}
-              {!record.isOutOfStock &&
-                isProduct &&
-                (record as ProductRow).hasLowStockVariant &&
-                !record.isLowStock && <Badge tone="low">Has low stock</Badge>}
+
+              {/* Product with variants: some variants out of stock */}
+              {isProduct && (record as ProductRow).hasOutOfStockVariant && (
+                <Badge tone="out">Has out of stock</Badge>
+              )}
+
+              {/* Product with variants: some variants low stock */}
+              {isProduct && (record as ProductRow).hasLowStockVariant && (
+                <Badge tone="low">Has low stock</Badge>
+              )}
+
               {isInactive && (
                 <Badge
                   tone={
@@ -324,7 +331,9 @@ const StockTable: React.FC<StockTableProps> = ({
         }
         const isLow =
           "variants" in record
-            ? record.isLowStock || record.hasLowStockVariant
+            ? record.isLowStock ||
+              record.hasLowStockVariant ||
+              record.hasOutOfStockVariant
             : record.isLowStock;
         return isLow
           ? "bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20"
@@ -354,7 +363,6 @@ const StockTable: React.FC<StockTableProps> = ({
             columnWidth: 48,
             onChange: (keys, _rows, info) => {
               if (!rowSelection?.onChange) return;
-              // Merge: keep keys from other products, replace keys for this product's variants
               const variantIds = record.variants!.map((v) => v.id);
               const otherKeys = selectedKeys.filter(
                 (k) => !variantIds.includes(k),
@@ -369,7 +377,6 @@ const StockTable: React.FC<StockTableProps> = ({
               disabled:
                 !("isActive" in variant) || !(variant as VariantRow).isActive,
             }),
-            // Custom title renders a "select all variants" header checkbox
             columnTitle: (
               <Tooltip
                 title={

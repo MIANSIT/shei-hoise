@@ -27,6 +27,7 @@ export interface ProductRow {
   isOutOfStock: boolean;
   lowStockThreshold: number;
   hasLowStockVariant: boolean;
+  hasOutOfStockVariant: boolean;
   status: ProductStatus;
   isInactiveProduct: boolean;
 }
@@ -52,10 +53,6 @@ export function mapProductsForModernTable(
           const variantLowStockThreshold =
             v.stock?.low_stock_threshold || productLowStockThreshold;
 
-          const isVariantOutOfStock = variantStock === 0;
-          const isVariantLowStock =
-            variantStock > 0 && variantStock <= variantLowStockThreshold;
-
           return {
             id: v.id,
             productId: v.product_id,
@@ -68,14 +65,17 @@ export function mapProductsForModernTable(
             stock: variantStock,
             imageUrl:
               v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
-            isOutOfStock: isVariantOutOfStock,
-            isLowStock: isVariantLowStock,
+            isOutOfStock: variantStock === 0,
+            isLowStock:
+              variantStock > 0 && variantStock <= variantLowStockThreshold,
             lowStockThreshold: variantLowStockThreshold,
             isActive: v.is_active,
           };
         })
       : undefined;
 
+    const hasOutOfStockVariant =
+      processedVariants?.some((v) => v.isOutOfStock) ?? false;
     const hasLowStockVariant =
       processedVariants?.some((v) => v.isLowStock) ?? false;
 
@@ -94,6 +94,7 @@ export function mapProductsForModernTable(
       isLowStock: isProductLowStock,
       lowStockThreshold: productLowStockThreshold,
       hasLowStockVariant,
+      hasOutOfStockVariant,
       variants: processedVariants,
       status: p.status,
       isInactiveProduct:

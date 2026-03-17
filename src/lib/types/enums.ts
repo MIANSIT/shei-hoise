@@ -92,3 +92,10 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
   store_owner: "Store Owner",
   //   customer: "Customer",
 };
+
+export enum USERTYPE {
+  STORE_OWNER = "store_owner",
+  CUSTOMER = "customer",
+  ADMIN = "admin",
+  SUPER_ADMIN = "super_admin",
+}
