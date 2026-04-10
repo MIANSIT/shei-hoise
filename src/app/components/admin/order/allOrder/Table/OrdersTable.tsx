@@ -301,20 +301,19 @@ const OrdersTable: React.FC<Props> = ({
       render: (orderNumber: string) => (
         <Tooltip title="Click to copy">
           <span
-            className="group inline-flex items-center gap-1 cursor-pointer text-blue-600"
+            className="group inline-flex items-center gap-1 cursor-pointer text-blue-600 max-w-full overflow-hidden"
             onClick={(e) => {
               e.stopPropagation();
               copyOrderNumber(orderNumber);
             }}
           >
-            #{orderNumber}
-            <CopyOutlined className="opacity-0 group-hover:opacity-100 text-xs" />
+            <span className="truncate">#{orderNumber}</span>
+            <CopyOutlined className="opacity-0 group-hover:opacity-100 text-xs shrink-0" />
           </span>
         </Tooltip>
       ),
-      width: 100,
+      width: 120,
       fixed: "left" as const,
-      responsive: ["md"],
     },
     {
       title: "Customer",
