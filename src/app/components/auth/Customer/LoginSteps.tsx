@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -382,6 +383,7 @@ interface PasswordStepProps {
   onLogin: () => void;
   onBack: () => void;
   isLoggingIn: boolean;
+  storeSlug: string;
 }
 
 export function PasswordStep({
@@ -392,6 +394,7 @@ export function PasswordStep({
   onLogin,
   onBack,
   isLoggingIn,
+  storeSlug,
 }: PasswordStepProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -458,9 +461,17 @@ export function PasswordStep({
           {/* ✅ Added Password Strength Checker */}
           <PasswordStrength password={password} />
           
-          <p className="text-sm text-muted-foreground">
-            Enter password to access your account
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Enter password to access your account
+            </p>
+            <Link
+              href={`/${storeSlug}/forgot-password`}
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+            >
+              Forgot Password?
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-4">
