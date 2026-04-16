@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, App, Pagination, Spin, Button, Space } from "antd";
 import { TeamOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
@@ -30,6 +30,8 @@ export default function CustomerPage() {
   const router = useRouter();
 
   const { storeId, loading: userLoading } = useCurrentUser();
+  const notificationRef = useRef(notification);
+  notificationRef.current = notification;
   const userFormData = useCustomerFormData(selectedCustomer);
 
   // Use URL sync for search and pagination
@@ -76,7 +78,7 @@ export default function CustomerPage() {
         }
       } catch (error) {
         console.error("Error fetching customers:", error);
-        notification.error({
+        notificationRef.current.error({
           message: "Error",
           description: "Failed to load customers. Please try again.",
         });
@@ -86,7 +88,7 @@ export default function CustomerPage() {
     };
 
     fetchCustomers();
-  }, [storeId, userLoading, notification, searchTerm, currentPage, pageSize]);
+  }, [storeId, userLoading, searchTerm, currentPage, pageSize]);
 
   // Update customer - Use ProfileFormData type
   const handleUpdateCustomer = async (
