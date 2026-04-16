@@ -187,10 +187,14 @@ export function SignupForm() {
         throw new Error("Store not found");
       }
 
+      // Read phone from URL params (LoginForm redirects here with ?phone=xxx)
+      const phoneFromUrl = searchParams.get("phone") || formData.phone || "";
+
       // Create customer record
       const customer = await signupQueries.createCustomer(
-        data.email, 
-        authData.user?.id || loginData?.user?.id
+        data.email,
+        authData.user?.id || loginData?.user?.id,
+        phoneFromUrl
       );
 
       // Create store-customer link

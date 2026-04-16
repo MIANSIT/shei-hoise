@@ -24,7 +24,19 @@ export const signupQueries = {
       options: { data: { email: email.toLowerCase(), role: "customer" } },
     });
 
-    if (error) throw error;
+    if (error) {
+      // Auth user already exists — sign in instead of failing
+      if (error.message.toLowerCase().includes("already registered")) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password,
+        });
+        if (signInError) throw signInError;
+        return signInData;
+      }
+      throw error;
+    }
+
     return data;
   },
 
@@ -52,19 +64,20 @@ export const signupQueries = {
     return store;
   },
 
-  createCustomer: async (email: string, authUserId?: string) => {
+  createCustomer: async (email: string, authUserId?: string, phone?: string) => {
     const { data: customer, error } = await supabase
       .from("store_customers")
       .insert({
         email: email.toLowerCase(),
         auth_user_id: authUserId,
         name: email.split("@")[0],
+        phone: phone || "",
       })
       .select("id")
       .single();
 
     if (error) {
-      console.error("Failed to create customer:", error);
+      console.error("Failed to create customer:", error?.message, error?.code, error?.details);
       // If customer already exists, try to fetch existing one
       const { data: existingCustomer } = await supabase
         .from("store_customers")
