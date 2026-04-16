@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { 
   LoginFormSchema, 
@@ -204,6 +205,18 @@ export function UserForm({
         {/* ✅ Password Strength Indicator (only for signup) */}
         {mode === "signup" && (
           <PasswordStrength password={watchedPassword} />
+        )}
+
+        {/* Forgot Password link — only for admin login mode */}
+        {isAdmin && mode !== "signup" && (
+          <div className="flex justify-end">
+            <Link
+              href="/admin-login/forgot-password"
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+            >
+              Forgot Password?
+            </Link>
+          </div>
         )}
       </div>
 

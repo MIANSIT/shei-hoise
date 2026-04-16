@@ -411,6 +411,7 @@ export function LoginForm() {
           onLogin={handleLogin}
           onBack={customerData?.phone && (!customerData.email || customerData.email.trim() === "") ? backToEmailInput : resetToInitial}
           isLoggingIn={isProcessing}
+          storeSlug={storeSlug}
         />
       )}
 
