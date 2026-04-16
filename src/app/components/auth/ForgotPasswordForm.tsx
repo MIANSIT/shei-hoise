@@ -62,9 +62,11 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
       JSON.stringify({ type, storeSlug: storeSlug ?? null })
     );
 
-    // Single whitelisted redirect URL — add https://www.sheihoise.com/auth/update-password
-    // to Supabase Auth > URL Configuration > Redirect URLs
-    const redirectTo = `${origin}/auth/update-password`;
+    // Server-side callback route handles the PKCE code exchange.
+    // Add to Supabase → Authentication → URL Configuration → Redirect URLs:
+    //   http://localhost:3000/auth/callback
+    //   https://www.sheihoise.com/auth/callback
+    const redirectTo = `${origin}/auth/callback`;
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       values.email,

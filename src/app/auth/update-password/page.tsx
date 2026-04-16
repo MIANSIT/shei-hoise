@@ -1,16 +1,7 @@
 // app/auth/update-password/page.tsx
-//
-// Universal password-reset landing page (PKCE flow).
-//
-// Supabase redirects here with ?code=... after the user clicks the email link.
-// This page exchanges the code for a session, then renders the update-password form.
-//
-// ─── Supabase Dashboard setup ────────────────────────────────────────────────
-//  Authentication → URL Configuration → Redirect URLs — add ALL of these:
-//    https://www.sheihoise.com/auth/update-password   (production)
-//    http://localhost:3000/auth/update-password       (local dev)
-//    http://localhost:3001/auth/update-password       (if you use a different port)
-// ─────────────────────────────────────────────────────────────────────────────
+// The PKCE code is exchanged server-side in /auth/callback/route.ts.
+// By the time the browser lands here the session cookie is already set.
+// This page just reads the stored context and renders the update-password form.
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -26,7 +17,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
 interface ResetContext {
   type: "admin" | "user";
@@ -36,11 +26,11 @@ interface ResetContext {
 function UpdatePasswordWithContext() {
   const searchParams = useSearchParams();
   const [context, setContext] = useState<ResetContext | null>(null);
-  const [ready, setReady] = useState(false);
-  const [exchangeError, setExchangeError] = useState<string | null>(null);
+
+  // If the callback route failed it appends ?error=link_expired
+  const hasError = searchParams.get("error") === "link_expired";
 
   useEffect(() => {
-    // 1. Restore context saved by ForgotPasswordForm
     let resolved: ResetContext = { type: "admin", storeSlug: null };
     try {
       const raw = localStorage.getItem("resetPasswordContext");
@@ -52,35 +42,17 @@ function UpdatePasswordWithContext() {
       // keep default
     }
     setContext(resolved);
+  }, []);
 
-    // 2. Exchange the PKCE ?code= for a Supabase session
-    const code = searchParams.get("code");
-    if (code) {
-      supabase.auth
-        .exchangeCodeForSession(code)
-        .then(({ error }) => {
-          if (error) {
-            setExchangeError(error.message);
-          }
-          setReady(true);
-        });
-    } else {
-      // No code in URL — let UpdatePasswordForm handle session detection
-      // (handles the case where user navigates here directly with a valid session)
-      setReady(true);
-    }
-  }, [searchParams]);
-
-  if (!context || !ready) {
+  if (!context) {
     return (
       <div className="flex justify-center">
-        <SheiLoader size="md" loadingText="Verifying reset link..." />
+        <SheiLoader size="md" loadingText="Loading..." />
       </div>
     );
   }
 
-  // Code exchange failed — show error with retry link derived from context
-  if (exchangeError) {
+  if (hasError) {
     const forgotHref =
       context.type === "admin"
         ? "/admin-login/forgot-password"
@@ -94,7 +66,8 @@ function UpdatePasswordWithContext() {
           </div>
           <CardTitle className="text-xl font-bold">Link Expired</CardTitle>
           <CardDescription className="text-base">
-            This password reset link has expired or was already used.
+            This password reset link has expired or was already used. Please
+            request a new one.
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-6">
@@ -126,7 +99,7 @@ export default function AuthUpdatePasswordPage() {
         <Suspense
           fallback={
             <div className="flex justify-center">
-              <SheiLoader size="md" loadingText="Verifying reset link..." />
+              <SheiLoader size="md" loadingText="Loading..." />
             </div>
           }
         >

@@ -66,20 +66,30 @@ export function UpdatePasswordForm({
       : `/${storeSlug}/forgot-password`;
 
   useEffect(() => {
+    // Immediately check for an existing session.
+    // exchangeCodeForSession on the parent page fires PASSWORD_RECOVERY before
+    // this component mounts, so onAuthStateChange alone will miss it.
+    // getSession() reads the already-stored session synchronously from storage.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setHasSession(true);
+        setIsCheckingSession(false);
+      }
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (
+        event === "PASSWORD_RECOVERY" ||
+        event === "SIGNED_IN" ||
+        (event === "INITIAL_SESSION" && session)
+      ) {
         setHasSession(true);
         setIsCheckingSession(false);
-      } else if (event === "INITIAL_SESSION") {
-        if (session) {
-          setHasSession(true);
-          setIsCheckingSession(false);
-        } else {
-          // Wait briefly for PASSWORD_RECOVERY to fire before showing error
-          setTimeout(() => setIsCheckingSession(false), 1500);
-        }
+      } else if (event === "INITIAL_SESSION" && !session) {
+        // No session yet — wait briefly in case getSession() resolves it
+        setTimeout(() => setIsCheckingSession(false), 1000);
       }
     });
 
