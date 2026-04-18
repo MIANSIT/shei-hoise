@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag } from "lucide-react";
 import { getStoreBySlugFull, StoreFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getFeaturedProducts } from "@/lib/queries/products/getFeaturedProducts";
+import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { Product } from "@/lib/types/product";
 import { Category } from "@/lib/types/category";
@@ -29,6 +30,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const [storeData, setStoreData] = useState<StoreFull | null>(null);
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isFeaturedSection, setIsFeaturedSection] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
@@ -51,7 +53,16 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         ]);
 
         if (categoriesData.data) setCategories(categoriesData.data);
-        setFeaturedProducts(featured);
+
+        if (featured.length > 0) {
+          setFeaturedProducts(featured);
+          setIsFeaturedSection(true);
+        } else {
+          // No featured products — fall back to latest products
+          const latest = await clientGetProducts(store_slug, 1, 5);
+          setFeaturedProducts(latest.products);
+          setIsFeaturedSection(false);
+        }
       } catch (err) {
         console.error(err);
         showError("Failed to load store data");
@@ -301,16 +312,18 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         >
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-gray-400 dark:text-gray-500 mb-1.5">
-              Hand-picked
+              {isFeaturedSection ? "Hand-picked" : "Explore"}
             </p>
             <div className="flex items-center gap-2.5">
               <h2 className="text-2xl sm:text-[1.75rem] font-black text-gray-900 dark:text-white tracking-tight leading-none">
-                Featured Picks
+                {isFeaturedSection ? "Featured Picks" : "Our Collection"}
               </h2>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                <Sparkles className="h-3 w-3" />
-                {featuredProducts.length}
-              </span>
+              {isFeaturedSection && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                  <Sparkles className="h-3 w-3" />
+                  {featuredProducts.length}
+                </span>
+              )}
             </div>
           </div>
           <Link
@@ -321,26 +334,6 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
           </Link>
         </motion.div>
-
-        {/* Empty state */}
-        {featuredProducts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center mb-4">
-              <Sparkles className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-            </div>
-            <p className="text-sm font-bold text-gray-600 dark:text-gray-400">No featured products yet</p>
-            <p className="text-xs text-gray-400 dark:text-gray-600 mt-1 mb-6 max-w-50 leading-relaxed">
-              Check the full shop for all available products.
-            </p>
-            <Link
-              href={`/${store_slug}/shop`}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold hover:bg-gray-700 dark:hover:bg-gray-100 active:scale-95 transition-all duration-200 shadow-sm"
-            >
-              Browse all products
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        )}
 
         {/* Bento grid */}
         {featuredProducts.length > 0 && (
