@@ -43,11 +43,12 @@ export interface Product {
   name: string;
   slug: string;
   base_price: number;
-  discounted_price?: number;
+  discounted_price?: number | null;
+  featured?: boolean;
   category?: Category | null;
   primary_image?: ProductImage | null;
   images?: string[];
   stock?: ProductStock | null;
-  product_inventory?: ProductInventory[]; // Added this
+  product_inventory?: ProductInventory[];
   variants?: ProductVariant[];
 }
