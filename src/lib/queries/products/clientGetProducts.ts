@@ -40,6 +40,7 @@ export async function clientGetProducts(
         short_description,
         base_price,
         discounted_price,
+        featured,
         status,
         categories(id, name, slug),
         product_variants(
@@ -117,6 +118,7 @@ export async function clientGetProducts(
         discounted_price: p.discounted_price
           ? Number(p.discounted_price)
           : null,
+        featured: p.featured ?? false,
         status: (p.status as ProductStatus) || ProductStatus.ACTIVE,
         category: p.categories
           ? { 

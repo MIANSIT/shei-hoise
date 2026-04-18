@@ -452,7 +452,7 @@ export default function ProductPage() {
           Product not found.
         </p>
         <a
-          href={`/${store_slug}`}
+          href={`/${store_slug}/shop`}
           className="text-xs font-semibold text-gray-900 dark:text-gray-100 underline underline-offset-4"
         >
           Back to shop
@@ -470,7 +470,7 @@ export default function ProductPage() {
       <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <a
-            href={`/${store_slug}`}
+            href={`/${store_slug}/shop`}
             className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors shrink-0"
           >
             <ChevronLeft className="w-4 h-4" />
