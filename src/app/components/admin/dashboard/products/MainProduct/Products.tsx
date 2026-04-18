@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Button, Input, Space, Pagination } from "antd";
 import { useRouter } from "next/navigation";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { Star } from "lucide-react";
 import ProductTable from "./ProductTable";
 import {
   getProductsWithVariants,
@@ -37,6 +38,11 @@ const Products: React.FC = () => {
     "ALL",
     (v) => v as ProductStatus | "ALL",
   );
+  const [featuredOnly, setFeaturedOnly] = useUrlSync<boolean>(
+    "featured",
+    false,
+    (v) => v === "true",
+  );
 
   const [localSearch, setLocalSearch] = useState(search);
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
@@ -48,6 +54,7 @@ const Products: React.FC = () => {
     [ProductStatus.DRAFT]: 0,
     ALL: 0,
   });
+  const [featuredCount, setFeaturedCount] = useState(0);
 
   const fetchProducts = useCallback(async () => {
     if (!user?.store_id) return;
@@ -59,16 +66,18 @@ const Products: React.FC = () => {
         page,
         pageSize,
         status: status === "ALL" ? undefined : status,
+        featured: featuredOnly ? true : undefined,
       });
       setProducts(res.data);
       setTotal(res.total);
       setCounts(res.counts);
+      setFeaturedCount(res.featuredCount);
     } catch (error) {
       console.error("Failed to fetch products:", error);
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id, search, page, pageSize, status]);
+  }, [user?.store_id, search, page, pageSize, status, featuredOnly]);
 
   useEffect(() => {
     fetchProducts();
@@ -140,12 +149,13 @@ const Products: React.FC = () => {
         {/* Status pills — desktop */}
         <div className="hidden md:flex items-center gap-1.5 flex-wrap">
           {statusConfig.map(({ key, label }) => {
-            const isActive = status === key;
+            const isActive = status === key && !featuredOnly;
             return (
               <button
                 key={key}
                 onClick={() => {
                   setStatus(key as ProductStatus | "ALL");
+                  setFeaturedOnly(false);
                   setPage(1);
                 }}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
@@ -169,6 +179,36 @@ const Products: React.FC = () => {
               </button>
             );
           })}
+
+          {/* Featured pill */}
+          <button
+            onClick={() => {
+              setFeaturedOnly(!featuredOnly);
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
+              ${
+                featuredOnly
+                  ? "bg-amber-400 border-amber-400 text-white shadow-md shadow-amber-400/25"
+                  : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-amber-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+              }`}
+          >
+            <Star
+              className="w-3 h-3"
+              fill={featuredOnly ? "currentColor" : "none"}
+            />
+            Featured
+            <span
+              className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
+              ${
+                featuredOnly
+                  ? "bg-white/20 text-white"
+                  : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
+              }`}
+            >
+              {featuredCount}
+            </span>
+          </button>
         </div>
 
         {/* Status — mobile dropdown */}
@@ -184,6 +224,7 @@ const Products: React.FC = () => {
             ]}
             onChange={(v) => {
               setStatus(v);
+              setFeaturedOnly(false);
               setPage(1);
             }}
             getLabel={(s) =>
