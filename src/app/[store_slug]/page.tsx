@@ -484,7 +484,7 @@ function ProductCard({
     >
       {/* Image */}
       <Link
-        href={`/${store_slug}/product/${product.id}`}
+        href={`/${store_slug}/product/${product.slug}`}
         className={`relative block overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0 ${imageClassName}`}
       >
         {imageUrl ? (
