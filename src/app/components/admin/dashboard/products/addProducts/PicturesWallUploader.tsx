@@ -6,6 +6,7 @@ import { Upload, Modal } from "antd";
 import type { UploadFile, UploadProps } from "antd/es/upload";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { Eye, Trash2, GripVertical, Star } from "lucide-react";
+import { fileToBase64 } from "@/lib/utils/fileToBase64";
 
 import {
   DndContext,
@@ -185,15 +186,19 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
 
   const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
     const limited = newFileList.slice(0, 5);
-    // Generate blob URLs for new files
-    const processed = limited.map((file) => {
-      if (!file.url && !file.thumbUrl && file.originFileObj) {
-        file.thumbUrl = URL.createObjectURL(file.originFileObj);
-      }
-      return file;
-    });
-    setFileList(processed);
-    syncImages(processed);
+    // Convert new files to base64 so they survive page refreshes
+    void (async () => {
+      const processed = await Promise.all(
+        limited.map(async (file) => {
+          if (!file.url && !file.thumbUrl && file.originFileObj) {
+            file.thumbUrl = await fileToBase64(file.originFileObj);
+          }
+          return file;
+        })
+      );
+      setFileList(processed);
+      syncImages(processed);
+    })();
   };
 
   const sensors = useSensors(

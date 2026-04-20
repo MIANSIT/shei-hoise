@@ -97,8 +97,8 @@ export async function uploadOrUpdateProductImages(
       (ex) => ex.image_url === img.imageUrl,
     );
 
-    // Upload new images (blob URLs = newly added files)
-    if (!existingImage && img.imageUrl.startsWith("blob:")) {
+    // Upload new images (blob URLs or base64 data URLs = newly added files)
+    if (!existingImage && (img.imageUrl.startsWith("blob:") || img.imageUrl.startsWith("data:"))) {
       const response = await fetch(img.imageUrl);
       const blob = await response.blob();
       const filePath = `${storeId}/${productId}-${Date.now()}-${i}.png`;

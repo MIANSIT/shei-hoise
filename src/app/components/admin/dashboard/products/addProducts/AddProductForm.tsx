@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
+import { useAddProductDraftStore } from "@/lib/store/addProductDraftStore";
 
 interface AddProductFormProps {
   product?: ProductType;
@@ -110,10 +111,13 @@ const PriceCard = ({
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
     const { currency, loading: currencyLoading } = useUserCurrencyIcon();
-    const [priceMode, setPriceMode] = useState<"percentage" | "multiplier">(
-      "percentage",
-    );
-    const [priceValue, setPriceValue] = useState<number | "">("");
+    const isAddMode = !product;
+
+    // Subscribe to hydration flag — fires once after localStorage is read
+    const hasHydrated = useAddProductDraftStore((s) => s._hasHydrated);
+
+    const [priceMode, setPriceMode] = useState<"percentage" | "multiplier">("percentage");
+    const [priceValue, setPriceValue] = useState<number| null>(null);
     const [priceValueTouched, setPriceValueTouched] = useState(false);
     const [mrpTouched, setMrpTouched] = useState(false);
     const [statusOpen, setStatusOpen] = useState(false);
@@ -186,7 +190,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     }, [discountedPrice, setValue]);
 
     useEffect(() => {
-      if (!tpPrice || priceValue === "" || !priceValueTouched) return;
+      if (!tpPrice || priceValue === null || !priceValueTouched) return;
       const calculatedMRP =
         priceMode === "percentage"
           ? Number(tpPrice) * (1 + Number(priceValue) / 100)
@@ -232,6 +236,48 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       });
     }, [storeId]);
 
+    // ── Draft persistence (add mode only) ───────────────────────────────────
+    // Restore all draft values once Zustand has finished reading from localStorage.
+    // We must wait for _hasHydrated because getState() returns initial values
+    // synchronously before the persist middleware has loaded from storage.
+    useEffect(() => {
+      if (!isAddMode || !hasHydrated) return;
+      const draft = useAddProductDraftStore.getState();
+      if (draft.formValues) {
+        form.reset({
+          ...initialValues,
+          ...draft.formValues,
+          store_id: storeId, // always enforce current store
+        });
+      }
+      if (draft.priceMode) setPriceMode(draft.priceMode);
+      if (draft.priceValue !== null) setPriceValue(draft.priceValue);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasHydrated]);
+
+    // Sync all form value changes → draft store (no re-renders)
+    useEffect(() => {
+      if (!isAddMode) return;
+      const subscription = watch((values) => {
+        useAddProductDraftStore
+          .getState()
+          .setFormValues(values as Partial<ProductType>);
+      });
+      return () => subscription.unsubscribe();
+    }, [isAddMode, watch]);
+
+    // Sync priceMode → draft store
+    useEffect(() => {
+      if (!isAddMode) return;
+      useAddProductDraftStore.getState().setPriceMode(priceMode);
+    }, [priceMode, isAddMode]);
+
+    // Sync priceValue → draft store
+    useEffect(() => {
+      if (!isAddMode) return;
+      useAddProductDraftStore.getState().setPriceValue(priceValue);
+    }, [priceValue, isAddMode]);
+
     const handleNameChange = (value: unknown) => {
       if (typeof value !== "string") return;
       form.setValue("name", value);
@@ -245,7 +291,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     };
 
     useImperativeHandle(ref, () => ({
-      reset: () => form.reset(initialValues),
+      reset: () => {
+        form.reset(initialValues);
+        if (isAddMode) useAddProductDraftStore.getState().clearDraft();
+      },
       formValues: () => form.getValues(),
     }));
 
@@ -528,10 +577,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                         type="number"
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
                         placeholder={priceMode === "percentage" ? "20" : "1.2"}
-                        value={priceValue}
+                        value={priceValue ?? ""}
                         onChange={(e) => {
                           setPriceValue(
-                            e.target.value === "" ? "" : Number(e.target.value),
+                            e.target.value === "" ? null : Number(e.target.value),
                           );
                           setPriceValueTouched(true);
                         }}
