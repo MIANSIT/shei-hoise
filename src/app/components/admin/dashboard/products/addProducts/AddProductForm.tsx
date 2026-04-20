@@ -659,7 +659,27 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
           {/* ── Status + Submit ── */}
           <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Featured toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  {...form.register("featured")}
+                  className="sr-only peer"
+                  id="featured"
+                />
+                <div className="relative w-9 h-5 rounded-full bg-muted border border-border peer-checked:bg-amber-400 peer-checked:border-amber-400 transition-colors duration-200 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-4" />
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  Featured
+                  <Tooltip title="Featured products appear highlighted in your store homepage." placement="top">
+                    <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
+                  </Tooltip>
+                </span>
+              </label>
+
+              <div className="w-px h-5 bg-border hidden sm:block" />
+
+              <div className="flex items-center gap-3">
               <label htmlFor="status" className="text-sm font-medium">
                 Status
               </label>
@@ -694,6 +714,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   <Info className="h-4 w-4 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
                 </Tooltip>
               )}
+              </div>
             </div>
 
             <Button

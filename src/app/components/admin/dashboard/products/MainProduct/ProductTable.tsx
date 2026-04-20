@@ -5,9 +5,10 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Star } from "lucide-react";
 import { Modal } from "antd";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
+import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Image from "next/image";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
@@ -138,10 +139,31 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [featuredOverrides, setFeaturedOverrides] = useState<
+    Record<string, boolean>
+  >({});
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const sheiNotif = useSheiNotification();
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
   const cur = currencyLoading ? "" : (currencyIcon ?? "৳");
+
+  const getFeatured = (record: ProductWithVariants) =>
+    featuredOverrides[record.id] ?? record.featured;
+
+  const handleToggleFeatured = async (record: ProductWithVariants) => {
+    const next = !getFeatured(record);
+    setFeaturedOverrides((prev) => ({ ...prev, [record.id]: next }));
+    setTogglingId(record.id);
+    try {
+      await toggleProductFeatured(record.id, next);
+    } catch {
+      setFeaturedOverrides((prev) => ({ ...prev, [record.id]: !next }));
+      sheiNotif.error("Failed to update featured status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const handleEdit = (slug: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -266,6 +288,40 @@ const ProductTable: React.FC<ProductTableProps> = ({
       },
     },
     {
+      title: "Featured",
+      key: "featured",
+      align: "center",
+      width: 88,
+      responsive: ["md"],
+      render: (_, record) => {
+        const isFeatured = getFeatured(record);
+        const isToggling = togglingId === record.id;
+        return (
+          <div className="flex justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleFeatured(record);
+              }}
+              disabled={isToggling}
+              title={isFeatured ? "Remove from featured" : "Mark as featured"}
+              className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+                ${
+                  isFeatured
+                    ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500 text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/25"
+                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-300 hover:text-amber-400"
+                }`}
+            >
+              <Star
+                className="w-3.5 h-3.5"
+                fill={isFeatured ? "currentColor" : "none"}
+              />
+            </button>
+          </div>
+        );
+      },
+    },
+    {
       title: "Status",
       key: "status",
       align: "center",
@@ -384,6 +440,22 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       className="flex gap-1.5 ml-auto"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      <button
+                        onClick={() => handleToggleFeatured(record)}
+                        disabled={togglingId === record.id}
+                        title={getFeatured(record) ? "Remove from featured" : "Mark as featured"}
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50
+                          ${
+                            getFeatured(record)
+                              ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500 text-amber-500"
+                              : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600"
+                          }`}
+                      >
+                        <Star
+                          className="w-3.5 h-3.5"
+                          fill={getFeatured(record) ? "currentColor" : "none"}
+                        />
+                      </button>
                       <EditButton onClick={() => handleEdit(record.slug)} />
                       <DeleteButton
                         onClick={() => showDeleteModal(record.id)}

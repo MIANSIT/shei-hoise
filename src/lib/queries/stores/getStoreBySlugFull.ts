@@ -5,6 +5,7 @@ export interface StoreFull {
   store_name: string;
   store_slug: string;
   logo_url: string | null;
+  banner_url: string | null;
   description: string | null;
   created_at: string;
   contact_email: string | null;
@@ -33,6 +34,7 @@ export async function getStoreBySlugFull(store_slug: string): Promise<StoreFull 
       store_name,
       store_slug,
       logo_url,
+      banner_url,
       description,
       contact_email,
       contact_phone,

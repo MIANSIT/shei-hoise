@@ -87,7 +87,8 @@ export default function MobileHeader({
   }, [pathname]);
 
   const navLinks: NavLink[] = [
-    { name: "Shop", path: `/${storeSlug}` },
+    { name: "Home", path: `/${storeSlug}` },
+    { name: "Shop", path: `/${storeSlug}/shop` },
     { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
   ];
 
