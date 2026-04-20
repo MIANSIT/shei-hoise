@@ -4,6 +4,7 @@ import React from "react";
 import { useDropzone } from "react-dropzone";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { ImagePlus, UploadCloud } from "lucide-react";
+import { fileToBase64 } from "@/lib/utils/fileToBase64";
 
 interface ImageUploaderProps {
   images: FrontendImage[];
@@ -16,15 +17,17 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   setImages,
   error,
 }) => {
-  const onDrop = (acceptedFiles: File[]) => {
+  const onDrop = async (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) return;
     const availableSlots = 5 - images.length;
     const filesToAdd = acceptedFiles.slice(0, availableSlots);
-    const newImages: FrontendImage[] = filesToAdd.map((file, index) => ({
-      imageUrl: URL.createObjectURL(file),
-      altText: file.name,
-      isPrimary: images.length + index === 0,
-    }));
+    const newImages: FrontendImage[] = await Promise.all(
+      filesToAdd.map(async (file, index) => ({
+        imageUrl: await fileToBase64(file),
+        altText: file.name,
+        isPrimary: images.length + index === 0,
+      }))
+    );
     setImages([...images, ...newImages]);
   };
 

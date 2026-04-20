@@ -16,7 +16,10 @@ export default function AddProductPage() {
   const { user, loading } = useCurrentUser();
   const formRef = useRef<AddProductFormRef>(null);
 
-  if (loading) return <p>Loading...</p>;
+  // Only block render on the very first load (no cached user yet).
+  // If loading re-triggers due to Supabase token refresh on tab focus,
+  // keep the form mounted so the draft isn't lost.
+  if (loading && !user) return <p>Loading...</p>;
   if (!user || !user.store_id) return <p>No store found for this user.</p>;
 
   const handleSubmit = async (product: ProductType) => {

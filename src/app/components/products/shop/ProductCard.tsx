@@ -146,7 +146,7 @@ export default function ProductCard({
     >
       {/* ── Image (square, never shrinks) ── */}
       <Link
-        href={`${store_slug}/product/${product.slug}`}
+        href={`/${store_slug}/product/${product.slug}`}
         className="block relative overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0"
         style={{ aspectRatio: "1/1" }}
       >
@@ -166,6 +166,11 @@ export default function ProductCard({
           </span>
 
           <div className="flex flex-col items-end gap-1">
+            {product.featured && productInStock && (
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-400 text-amber-950 px-2 py-1 rounded-full shadow-sm whitespace-nowrap">
+                Featured
+              </span>
+            )}
             {!productInStock && (
               <span className="text-[9px] font-bold uppercase tracking-wider bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-2 py-1 rounded-full whitespace-nowrap">
                 Sold Out
@@ -196,7 +201,7 @@ export default function ProductCard({
       <div className="flex flex-col p-3 sm:p-4 gap-2 flex-1">
         {/* Row 1 — Name: fixed 2-line height, hard clamp, no overflow */}
         <Link
-          href={`${store_slug}/product/${product.slug}`}
+          href={`/${store_slug}/product/${product.slug}`}
           className="block h-10 sm:h-11 overflow-hidden"
         >
           <h3
@@ -252,7 +257,7 @@ export default function ProductCard({
         <div className="flex gap-1.5 mt-auto">
           {hasVariants ? (
             <Link
-              href={`${store_slug}/product/${product.slug}`}
+              href={`/${store_slug}/product/${product.slug}`}
               className="flex-1"
             >
               <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold tracking-wide hover:bg-gray-700 dark:hover:bg-gray-300 active:scale-[0.98] transition-all duration-200">
@@ -300,7 +305,7 @@ export default function ProductCard({
                 </button>
               )}
               <Link
-                href={`${store_slug}/product/${product.slug}`}
+                href={`/${store_slug}/product/${product.slug}`}
                 className={productInStock && !isMaxInCart ? "" : "flex-1"}
               >
                 <button

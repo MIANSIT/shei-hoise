@@ -49,6 +49,7 @@ export interface ProductWithVariants {
   sku: string | null;
   base_price: number | null;
   discounted_price: number | null;
+  featured: boolean;
   category_id: string | null;
   category?: Category | null;
   product_images: ProductImage[];
@@ -67,16 +68,19 @@ export async function getProductsWithVariants({
   page,
   pageSize,
   status,
+  featured,
 }: {
   storeId: string;
   search?: string;
   page?: number;
   pageSize?: number;
   status?: ProductStatus;
+  featured?: boolean;
 }): Promise<{
   data: ProductWithVariants[];
   total: number;
   counts: Record<ProductStatus | "ALL", number>;
+  featuredCount: number;
 }> {
   // ------------------ 1️⃣ Fetch products ------------------
   const query = supabase
@@ -89,6 +93,7 @@ export async function getProductsWithVariants({
       sku,
       base_price,
       status,
+      featured,
       discounted_price,
       category_id,
       categories (id, name),
@@ -136,6 +141,7 @@ export async function getProductsWithVariants({
 
   if (search?.trim()) query.ilike("name", `%${search.trim()}%`);
   if (status) query.eq("status", status);
+  if (featured !== undefined) query.eq("featured", featured);
 
   if (page !== undefined && pageSize !== undefined) {
     const from = (page - 1) * pageSize;
@@ -153,6 +159,7 @@ export async function getProductsWithVariants({
     sku: p.sku,
     base_price: p.base_price,
     status: p.status ?? ProductStatus.INACTIVE,
+    featured: p.featured ?? false,
     discounted_price: p.discounted_price,
     category_id: p.category_id,
     category: p.categories
@@ -176,10 +183,10 @@ export async function getProductsWithVariants({
     product_inventory: p.product_inventory ?? [],
   })) as ProductWithVariants[];
 
-  // ------------------ 2️⃣ Fetch counts per status ------------------
+  // ------------------ 2️⃣ Fetch counts per status + featured ------------------
   const { data: countData, error: countError } = await supabase
     .from("products")
-    .select("status", { count: "exact" })
+    .select("status, featured")
     .eq("store_id", storeId);
 
   if (countError) throw countError;
@@ -191,15 +198,19 @@ export async function getProductsWithVariants({
     ALL: 0,
   };
 
+  let featuredCount = 0;
+
   countData?.forEach((p: any) => {
     const s = p.status as ProductStatus;
     if (s in counts) counts[s] += 1;
     counts.ALL += 1;
+    if (p.featured) featuredCount += 1;
   });
 
   return {
     data: products,
     total: count ?? 0,
     counts,
+    featuredCount,
   };
 }
