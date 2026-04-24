@@ -1,86 +1,88 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import PricingCard from "@/app/components/landing/PriceTag/PricingCard";
 
 export default function PricingSection() {
-  const monthlyPrice = 499; // actual monthly price
-  const monthlyOriginalPrice = 699; // crossed-out original price
-  const halfYearlyDiscount = 0.05; // 5% discount
-  const yearlyDiscount = 0.1; // 10% discount
-
   const features = [
-    "Manage products, orders & users",
-    "Track orders live",
-    "One-click customer orders",
-    "Custom store: sheihoise.com/your-store",
-    "Cash on Delivery & view sales reports",
+    "Store Home Page (sheihoise.com/your-store)",
+    "Full Ecommerce Platform",
+    "Smart Order Link (1-Click Order)",
+    "Admin Dashboard & Control Panel",
+    "Product & Inventory Management",
+    "Expense Management",
+    "Customer Management",
+    "Full Finance & Analytics Reports",
+    "Auto Invoice Generation",
+    "24/7 Support",
   ];
 
   const plans = [
     {
-      name: "Monthly",
+      name: "Founders Monthly",
       months: 1,
-      description: "For individuals or small sellers starting their store",
+      price: 199,
+      originalPrice: 0,
+      description: "Start your online store with zero long-term commitment",
       highlighted: false,
+      badge: null,
     },
     {
-      name: "Half-Yearly",
+      name: "Founders 6M",
       months: 6,
-      description: "For growing businesses that need advanced tools",
+      price: 999,
+      originalPrice: 1194,
+      description: "Grow your business — save 16% vs monthly",
       highlighted: true,
+      badge: "Most Popular",
     },
     {
-      name: "Yearly",
+      name: "Founders 12M",
       months: 12,
-      description:
-        "For established businesses with high volume and custom needs",
+      price: 1799,
+      originalPrice: 2388,
+      description: "Maximum savings for serious sellers — save 25%",
       highlighted: false,
+      badge: "Best Value",
     },
   ];
-
-  const calculatePrice = (months: number) => {
-    // Original price = monthlyOriginalPrice × months
-    const originalPrice = monthlyOriginalPrice * months;
-
-    // Discounted price = monthlyPrice × months × (1 - discount)
-    let discountedPrice = monthlyPrice * months;
-    if (months === 6)
-      discountedPrice = discountedPrice * (1 - halfYearlyDiscount);
-    if (months === 12) discountedPrice = discountedPrice * (1 - yearlyDiscount);
-
-    return { originalPrice, discountedPrice };
-  };
 
   return (
     <section id="pricing" className="py-16 md:py-20 px-6 bg-muted/30">
       <div className="container mx-auto text-center mb-12 md:mb-16">
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex items-center gap-2 bg-linear-to-r from-green-600 to-emerald-500 text-white px-5 py-2.5 rounded-full shadow-lg">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span className="font-semibold text-sm md:text-base">
+              Limited Offer for Eid Ul Azha — Founders Pricing
+            </span>
+            <Sparkles className="w-4 h-4 shrink-0" />
+          </div>
+        </div>
+
         <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Shei-Hoise Pricing Plans
+          Shei-Hoise Founders Plans
         </h2>
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-          Choose a plan that fits your business. Start your Shei-Hoise store
-          today and scale effortlessly.
+          Lock in exclusive founders pricing before this offer ends. Start your
+          Shei-Hoise store today and scale effortlessly.
         </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 md:gap-8 max-w-5xl mx-auto">
-        {plans.map((plan) => {
-          const { originalPrice, discountedPrice } = calculatePrice(
-            plan.months
-          );
-          return (
-            <PricingCard
-              key={plan.name}
-              name={plan.name}
-              description={plan.description}
-              features={features}
-              months={plan.months}
-              originalPrice={originalPrice}
-              discountedPrice={discountedPrice}
-              highlighted={plan.highlighted}
-            />
-          );
-        })}
+        {plans.map((plan) => (
+          <PricingCard
+            key={plan.name}
+            name={plan.name}
+            description={plan.description}
+            features={features}
+            months={plan.months}
+            originalPrice={plan.originalPrice}
+            discountedPrice={plan.price}
+            highlighted={plan.highlighted}
+            badge={plan.badge}
+          />
+        ))}
       </div>
     </section>
   );
