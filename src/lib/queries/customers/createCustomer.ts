@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabaseAdmin } from "../../../lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export interface CreateCustomerData {
   store_id: string;

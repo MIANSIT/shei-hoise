@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderProduct, CustomerInfo } from "../../types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 

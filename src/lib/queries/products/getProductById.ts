@@ -1,5 +1,5 @@
 // File: lib/queries/products/getProductById.ts
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 import type {
   Product,

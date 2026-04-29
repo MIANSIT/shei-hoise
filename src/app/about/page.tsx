@@ -50,10 +50,7 @@ export default function AboutPage() {
             <div className="inline-flex items-center space-x-2">
               <span>About Shei Hoise</span>
               <span
-                className=" py-0.5 text-[10px] font-semibold text-white 
-                 bg-linear-to-r from-teal-400 to-blue-500 
-                 rounded-md px-1 -translate-y-1 shadow-md 
-                 uppercase tracking-wider"
+                className="py-0.5 text-[10px] font-semibold text-background bg-chart-2 rounded-md px-1.5 -translate-y-1 shadow-sm uppercase tracking-wider"
               >
                 Beta
               </span>
@@ -90,14 +87,14 @@ export default function AboutPage() {
                 </p>
               </div>
             </div>
-            <div className="bg-linear-to-br from-primary to-primary/80 rounded-2xl p-8 text-primary-foreground">
-              <div className="bg-primary-foreground/10 rounded-xl p-6 backdrop-blur-sm">
+            <div className="bg-linear-to-br from-chart-2 to-chart-2/80 rounded-2xl p-8 text-background">
+              <div className="bg-background/10 rounded-xl p-6 backdrop-blur-sm">
                 <h3 className="text-2xl font-bold mb-4">
                   Why Choose Shei Hoise?
                 </h3>
                 <ul className="space-y-3">
                   <li className="flex items-center">
-                    <div className="w-6 h-6 bg-primary-foreground/20 rounded-full flex items-center justify-center mr-3">
+                    <div className="w-6 h-6 bg-background/20 rounded-full flex items-center justify-center mr-3">
                       <svg
                         className="w-3 h-3"
                         fill="currentColor"
@@ -113,7 +110,7 @@ export default function AboutPage() {
                     No technical skills required
                   </li>
                   <li className="flex items-center">
-                    <div className="w-6 h-6 bg-primary-foreground/20 rounded-full flex items-center justify-center mr-3">
+                    <div className="w-6 h-6 bg-background/20 rounded-full flex items-center justify-center mr-3">
                       <svg
                         className="w-3 h-3"
                         fill="currentColor"
@@ -129,7 +126,7 @@ export default function AboutPage() {
                     1-month full-featured free trial
                   </li>
                   <li className="flex items-center">
-                    <div className="w-6 h-6 bg-primary-foreground/20 rounded-full flex items-center justify-center mr-3">
+                    <div className="w-6 h-6 bg-background/20 rounded-full flex items-center justify-center mr-3">
                       <svg
                         className="w-3 h-3"
                         fill="currentColor"

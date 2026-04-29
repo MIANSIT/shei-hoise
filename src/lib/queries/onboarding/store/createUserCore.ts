@@ -2,7 +2,8 @@
 "use server";
 
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
-import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function createUserCore(payload: CreateUserType) {
   // 1️⃣ Auth user

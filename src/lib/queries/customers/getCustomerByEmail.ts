@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/queries/customers/getCustomerByEmail.ts - FIXED VERSION
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 // Define types for the store customer links
 interface StoreLink {

@@ -1,4 +1,3 @@
-import { createAdminClient, createNormalClient } from "./client";
+import { createNormalClient } from "./client";
 
 export const supabase = createNormalClient();
-export const supabaseAdmin = createAdminClient();

@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SaaS Financial & System Audit Report — Shei Hoise</title>
+  <style>
+    :root {
+      --bg:        #0f1117;
+      --bg-card:   #1a1d27;
+      --bg-code:   #12151f;
+      --border:    #2a2d3e;
+      --accent:    #6366f1;
+      --accent2:   #8b5cf6;
+      --green:     #22c55e;
+      --yellow:    #f59e0b;
+      --red:       #ef4444;
+      --orange:    #f97316;
+      --blue:      #3b82f6;
+      --text:      #e2e8f0;
+      --text-muted:#94a3b8;
+      --text-dim:  #64748b;
+      --radius:    10px;
+      --shadow:    0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #1e1b4b 100%);
+      border-bottom: 1px solid #3730a3;
+      padding: 60px 40px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.25) 0%, transparent 70%);
+    }
+    .header-badge {
+      display: inline-block;
+      background: rgba(99,102,241,0.2);
+      border: 1px solid rgba(99,102,241,0.5);
+      color: #a5b4fc;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 100px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .header h1 {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      position: relative;
+    }
+    .header h1 span { color: #a5b4fc; }
+    .header-sub {
+      margin-top: 16px;
+      color: #c7d2fe;
+      font-size: 16px;
+      position: relative;
+    }
+    .header-meta {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+      position: relative;
+    }
+    .header-meta-item {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 13px;
+    }
+    .header-meta-item strong { color: #a5b4fc; display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 48px;
+    }
+    .toc h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 20px; }
+    .toc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 8px;
+    }
+    .toc a {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--text-muted); text-decoration: none;
+      padding: 8px 12px; border-radius: 6px;
+      font-size: 14px; transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+    .toc a:hover { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); color: var(--text); }
+    .toc-num {
+      width: 24px; height: 24px; border-radius: 6px;
+      background: rgba(99,102,241,0.15); color: var(--accent);
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    /* ── SECTION ── */
+    .section { margin-bottom: 60px; scroll-margin-top: 24px; }
+    .section-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 28px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; font-weight: 800; font-size: 16px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+    }
+    .section-title { font-size: 22px; font-weight: 700; color: #fff; }
+    .section-subtitle { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 16px;
+    }
+
+    /* ── SEVERITY BADGES ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .badge-critical { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-high     { background: rgba(249,115,22,0.15); color: #fdba74; border: 1px solid rgba(249,115,22,0.3); }
+    .badge-medium   { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-low      { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-ok       { background: rgba(34,197,94,0.15);  color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-warn     { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-missing  { background: rgba(239,68,68,0.1);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+
+    /* ── BUG TABLE ── */
+    .bug-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .bug-table th {
+      text-align: left; padding: 12px 16px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .bug-table td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
+    .bug-table tr:last-child td { border-bottom: none; }
+    .bug-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .file-ref {
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px; color: #a5b4fc;
+      background: rgba(99,102,241,0.08);
+      padding: 2px 7px; border-radius: 4px;
+      border: 1px solid rgba(99,102,241,0.15);
+    }
+
+    /* ── CODE BLOCKS ── */
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      margin: 16px 0;
+    }
+    pre .cm  { color: #64748b; }   /* comment */
+    pre .kw  { color: #a78bfa; }   /* keyword */
+    pre .fn  { color: #60a5fa; }   /* function */
+    pre .str { color: #86efac; }   /* string */
+    pre .num { color: #f9a8d4; }   /* number */
+    pre .op  { color: #94a3b8; }   /* operator */
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px; border-radius: 4px;
+      color: #a5b4fc;
+    }
+
+    /* ── ALERT BOXES ── */
+    .alert {
+      border-radius: 8px; padding: 16px 20px;
+      margin: 16px 0; display: flex; gap: 14px; align-items: flex-start;
+    }
+    .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .alert-critical { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); }
+    .alert-high     { background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.25); }
+    .alert-info     { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); }
+    .alert-success  { background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.25);  }
+    .alert-warn     { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+
+    /* ── DATA TABLE ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .data-table th {
+      text-align: left; padding: 10px 16px;
+      background: rgba(99,102,241,0.08); border: 1px solid var(--border);
+      color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+    }
+    .data-table td { padding: 10px 16px; border: 1px solid var(--border); vertical-align: top; }
+    .data-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+    /* ── GRID CARDS ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
+    .kpi-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; text-align: center;
+    }
+    .kpi-card .kpi-num { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+    .kpi-card .kpi-label { font-size: 13px; color: var(--text-muted); }
+    .kpi-red    .kpi-num { color: var(--red); }
+    .kpi-orange .kpi-num { color: var(--orange); }
+    .kpi-yellow .kpi-num { color: var(--yellow); }
+    .kpi-blue   .kpi-num { color: var(--blue); }
+
+    /* ── PHASE PLAN ── */
+    .phase {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 24px; overflow: hidden;
+    }
+    .phase-header {
+      display: flex; align-items: center; gap: 16px;
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+    }
+    .phase-num {
+      width: 44px; height: 44px; border-radius: 10px;
+      font-size: 18px; font-weight: 800; color: #fff;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .phase-1 .phase-num { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .phase-2 .phase-num { background: linear-gradient(135deg,#f97316,#c2410c); }
+    .phase-3 .phase-num { background: linear-gradient(135deg,#6366f1,#4f46e5); }
+    .phase-4 .phase-num { background: linear-gradient(135deg,#22c55e,#15803d); }
+    .phase-5 .phase-num { background: linear-gradient(135deg,#3b82f6,#1d4ed8); }
+    .phase-title { font-size: 17px; font-weight: 700; color: #fff; }
+    .phase-meta  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .phase-body  { padding: 24px; }
+    .phase-body ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .phase-body li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 14px; padding: 10px 14px;
+      background: rgba(255,255,255,0.03); border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .phase-body li::before {
+      content: '→'; color: var(--accent); font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+    .step-file { color: #a5b4fc; font-family: monospace; font-size: 12px; }
+
+    /* ── TIMELINE ── */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: ''; position: absolute; left: 11px; top: 0; bottom: 0;
+      width: 2px; background: linear-gradient(to bottom, var(--accent), transparent);
+    }
+    .timeline-item { position: relative; margin-bottom: 28px; }
+    .timeline-dot {
+      position: absolute; left: -32px; top: 4px;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--accent); border: 3px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .timeline-title { font-weight: 700; font-size: 15px; color: #fff; margin-bottom: 6px; }
+    .timeline-body  { font-size: 14px; color: var(--text-muted); }
+
+    /* ── FORMULA BOX ── */
+    .formula-box {
+      background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 8px; padding: 20px 24px; margin: 16px 0;
+      font-family: 'Cascadia Code','Fira Code','Consolas',monospace;
+      font-size: 14px; color: #c7d2fe; line-height: 2;
+    }
+    .formula-box .label { color: #64748b; font-size: 12px; }
+    .formula-box .val   { color: #a5b4fc; font-weight: 700; }
+    .formula-box .eq    { color: #86efac; }
+
+    /* ── DIVIDER ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* ── MISC ── */
+    p  { margin-bottom: 14px; color: var(--text-muted); }
+    h3 { font-size: 16px; font-weight: 700; color: #fff; margin: 24px 0 12px; }
+    h4 { font-size: 14px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; }
+    ul.std { list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 8px; }
+    ul.std li { display: flex; gap: 10px; font-size: 14px; color: var(--text-muted); }
+    ul.std li::before { content: '•'; color: var(--accent); flex-shrink: 0; }
+    ol.std { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+    ol.std li { font-size: 14px; color: var(--text-muted); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── PRINT ── */
+    @media print {
+      body { background: #fff; color: #000; }
+      .header { background: #1e1b4b; }
+    }
+
+    /* ── SCROLL ── */
+    html { scroll-behavior: smooth; }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center; padding: 32px;
+      color: var(--text-dim); font-size: 13px;
+      border-top: 1px solid var(--border); margin-top: 60px;
+    }
+
+    /* ── PRIORITY TABLE ── */
+    .priority-table { width: 100%; border-collapse: collapse; }
+    .priority-table th {
+      padding: 10px 14px; text-align: left;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 2px solid var(--border);
+      font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);
+    }
+    .priority-table td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 14px; vertical-align: top; }
+    .priority-table tr:last-child td { border-bottom: none; }
+
+    .tag {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 4px; font-size: 11px; font-weight: 700;
+      background: rgba(99,102,241,0.15); color: #a5b4fc;
+    }
+
+    .progress-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 100px; height: 6px; margin-top: 6px; }
+    .progress-bar { height: 6px; border-radius: 100px; }
+    .pb-critical { background: var(--red); }
+    .pb-high     { background: var(--orange); }
+    .pb-medium   { background: var(--yellow); }
+    .pb-low      { background: var(--blue); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-badge">Confidential — Internal Use Only</div>
+  <h1>SaaS Financial &amp; System<br/><span>Audit Report</span></h1>
+  <div class="header-sub">Shei Hoise — Multi-Tenant E-Commerce Platform</div>
+  <div class="header-meta">
+    <div class="header-meta-item"><strong>Project</strong>Shei Hoise</div>
+    <div class="header-meta-item"><strong>Framework</strong>Next.js 16 · Supabase</div>
+    <div class="header-meta-item"><strong>Audit Date</strong>April 26, 2026</div>
+    <div class="header-meta-item"><strong>Auditor</strong>System Analysis</div>
+    <div class="header-meta-item"><strong>Status</strong>Action Required</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     CONTAINER
+══════════════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- BUG SUMMARY KPIs -->
+  <div class="kpi-grid" style="margin-bottom:40px;">
+    <div class="kpi-card kpi-red">
+      <div class="kpi-num">5</div>
+      <div class="kpi-label">Critical Issues</div>
+    </div>
+    <div class="kpi-card kpi-orange">
+      <div class="kpi-num">6</div>
+      <div class="kpi-label">High Issues</div>
+    </div>
+    <div class="kpi-card kpi-yellow">
+      <div class="kpi-num">7</div>
+      <div class="kpi-label">Medium Issues</div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-num">4</div>
+      <div class="kpi-label">Low Issues</div>
+    </div>
+  </div>
+
+  <!-- TABLE OF CONTENTS -->
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <div class="toc-grid">
+      <a href="#s1"><div class="toc-num">1</div>Executive Summary</a>
+      <a href="#s2"><div class="toc-num">2</div>Current System Overview</a>
+      <a href="#s3"><div class="toc-num">3</div>Hand Cash Analysis</a>
+      <a href="#s4"><div class="toc-num">4</div>Dashboard Audit</a>
+      <a href="#s5"><div class="toc-num">5</div>Full Bug Report</a>
+      <a href="#s6"><div class="toc-num">6</div>Root Problems</a>
+      <a href="#s7"><div class="toc-num">7</div>Redesign Plan</a>
+      <a href="#s8"><div class="toc-num">8</div>Implementation Plan</a>
+      <a href="#s9"><div class="toc-num">9</div>Integration Steps</a>
+      <a href="#s10"><div class="toc-num">10</div>Data Migration Plan</a>
+      <a href="#s11"><div class="toc-num">11</div>Dashboard Fix Plan</a>
+      <a href="#s12"><div class="toc-num">12</div>Priority Checklist</div></a>
+    </div>
+  </div>
+
+  <!-- ══════════════ SECTION 1 ══════════════ -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div>
+        <div class="section-title">Executive Summary</div>
+        <div class="section-subtitle">High-level findings and immediate actions required</div>
+      </div>
+    </div>
+
+    <p>The Shei Hoise platform is a functioning multi-tenant e-commerce SaaS built on Next.js 16 and Supabase. The system handles orders, inventory, expenses, and provides a dashboard with financial metrics. However, this audit uncovered <strong style="color:#ef4444;">5 critical security vulnerabilities</strong>, multiple financial calculation errors, and fundamental structural gaps that make accurate hand cash tracking impossible in its current form.</p>
+
+    <div class="alert alert-critical">
+      <div class="alert-icon">🔴</div>
+      <div>
+        <strong style="color:#fca5a5;">Immediate Action Required:</strong> The Supabase service role key is exposed in browser JavaScript. Combined with zero Row-Level Security policies, any visitor to the site has full admin access to your entire database including all customer and order data across all stores.
+      </div>
+    </div>
+
+    <h3>Top 5 Issues Requiring Immediate Action</h3>
+    <ul class="std">
+      <li><span class="badge badge-critical">Critical</span> &nbsp;Service role key exposed as <code>NEXT_PUBLIC</code> — full DB admin access from browser</li>
+      <li><span class="badge badge-critical">Critical</span> &nbsp;Zero RLS policies — all users can read/write all data across all stores</li>
+      <li><span class="badge badge-critical">Critical</span> &nbsp;Auth is a cookie string check — trivially bypassed via DevTools</li>
+      <li><span class="badge badge-critical">Critical</span> &nbsp;Inventory race condition — concurrent orders cause overselling</li>
+      <li><span class="badge badge-critical">Critical</span> &nbsp;COGS uses current product prices for historical orders — profit history is retroactively wrong</li>
+    </ul>
+
+    <h3>Financial System Status</h3>
+    <div class="two-col" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-title">What Works</div>
+        <ul class="std">
+          <li>Order management and status tracking</li>
+          <li>Manual expense entry and categorization</li>
+          <li>Inventory quantity tracking</li>
+          <li>Period-scoped revenue display</li>
+          <li>Product cost price storage (<code>tp_price</code>)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">What Does NOT Work</div>
+        <ul class="std">
+          <li>Accurate hand cash calculation</li>
+          <li>Historical COGS (changes when prices edited)</li>
+          <li>Inventory purchase tracking</li>
+          <li>Initial capital / investment recording</li>
+          <li>Lifetime financial view (only 7/30/365 days)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SECTION 2 ══════════════ -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div>
+        <div class="section-title">Current System Overview</div>
+        <div class="section-subtitle">How each module works — files and functions</div>
+      </div>
+    </div>
+
+    <h3>Sales Flow</h3>
+    <div class="card">
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot">1</div>
+          <div class="timeline-title">Cart → Order Token</div>
+          <div class="timeline-body">Customer cart POSTed to <span class="file-ref">src/app/api/generate-order-token/route.ts</span>. A 7-char Redis token is generated using <code>Math.random()</code> (insecure). Token stores cart+price data in Redis with TTL.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">2</div>
+          <div class="timeline-title">Order Confirmation</div>
+          <div class="timeline-body">Customer confirms via <span class="file-ref">src/app/api/get-confirm-order/route.ts</span>. Token is redeemed, order is created via <code>createOrder()</code> in <span class="file-ref">src/lib/queries/orders/orderService.ts</span>.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">3</div>
+          <div class="timeline-title">DB Write</div>
+          <div class="timeline-body"><code>orders</code> row created with <code>payment_status='pending'</code>. <code>order_items</code> rows created per product. Inventory reserved: <code>quantity_available -= qty</code>.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">4</div>
+          <div class="timeline-title">Admin Marks Paid</div>
+          <div class="timeline-body">Admin changes <code>payment_status</code> to <code>'paid'</code> via <span class="file-ref">src/lib/queries/orders/updateOrderByNumber.ts</span>. No automatic payment capture system exists.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Purchases</h3>
+    <div class="alert alert-critical">
+      <div class="alert-icon">❌</div>
+      <div><strong style="color:#fca5a5;">Purchases do not exist as a system.</strong> There is no table, no API, no UI, and no data model for recording inventory purchases from suppliers. The only cost data is <code>tp_price</code> — a static field on each product. It records what something costs per unit, not when or how much cash you spent buying stock.</div>
+    </div>
+
+    <h3>Expenses</h3>
+    <p>Manual expense entry exists. Admin logs expenses via the dashboard into the <code>expenses</code> table with fields: <code>amount</code>, <code>title</code>, <code>expense_date</code>, <code>vendor_name</code>, <code>payment_method</code>, <code>category_id</code>. <strong>The <code>expenses</code> and <code>expense_categories</code> tables are missing from <span class="file-ref">schema.sql</span></strong> — they were created directly in Supabase.</p>
+
+    <h3>Dashboard Calculation Pipeline</h3>
+    <div class="card">
+      <div class="card-title">Data Flow</div>
+      <pre><span class="cm">-- dashboard/page.tsx fetches three data sources:</span>
+useStoreOrders(storeId)           <span class="cm">→ ALL orders, no pagination</span>
+  └─ getStoreOrders()             <span class="file-ref" style="color:#a5b4fc">src/lib/queries/orders/getStoreOrders.ts</span>
+
+getProducts(storeId)              <span class="cm">→ ALL products + current tp_price</span>
+  └─ supabaseAdmin (!)            <span class="file-ref" style="color:#a5b4fc">src/lib/queries/products/getProducts.ts</span>
+
+getExpensesWithCategory()         <span class="cm">→ up to 10,000 expenses</span>
+  └─ pageSize: 10000 hardcoded    <span class="file-ref" style="color:#a5b4fc">src/app/dashboard/page.tsx:99</span>
+
+useDashboardMetrics(orders, products, expenses, timePeriod)
+  └─ Revenue      = SUM(total_amount - shipping_fee)  [paid + period-filtered]
+  └─ COGS         = SUM(qty × current tp_price)       [❌ not historical snapshot]
+  └─ Gross Profit = Revenue - COGS
+  └─ Net Profit   = Gross Profit - Expenses (period)
+  └─ All numbers  = period-scoped only (7/30/365 days)</pre>
+    </div>
+
+    <h3>Module Status Table</h3>
+    <table class="data-table">
+      <tr>
+        <th>Module</th><th>Status</th><th>Key Files</th><th>Issues</th>
+      </tr>
+      <tr>
+        <td>Order Management</td>
+        <td><span class="badge badge-warn">Has Issues</span></td>
+        <td><span class="file-ref">orderService.ts</span></td>
+        <td>Race condition, no rollback</td>
+      </tr>
+      <tr>
+        <td>Inventory</td>
+        <td><span class="badge badge-warn">Has Issues</span></td>
+        <td><span class="file-ref">product_inventory</span></td>
+        <td>Race condition, silent oversell</td>
+      </tr>
+      <tr>
+        <td>Products</td>
+        <td><span class="badge badge-warn">Has Issues</span></td>
+        <td><span class="file-ref">getProducts.ts</span></td>
+        <td>Uses admin key in browser</td>
+      </tr>
+      <tr>
+        <td>Expenses</td>
+        <td><span class="badge badge-ok">Working</span></td>
+        <td><span class="file-ref">getExpensesWithCategory.ts</span></td>
+        <td>Manual only, 10K row cap</td>
+      </tr>
+      <tr>
+        <td>Dashboard</td>
+        <td><span class="badge badge-warn">Has Issues</span></td>
+        <td><span class="file-ref">useDashboardMetrics.ts</span></td>
+        <td>Wrong COGS, no all-time view</td>
+      </tr>
+      <tr>
+        <td>Authentication</td>
+        <td><span class="badge badge-critical">Broken</span></td>
+        <td><span class="file-ref">api/me/route.ts</span></td>
+        <td>Cookie string check, hardcoded creds</td>
+      </tr>
+      <tr>
+        <td>Purchases</td>
+        <td><span class="badge badge-missing">Missing</span></td>
+        <td>—</td>
+        <td>Does not exist</td>
+      </tr>
+      <tr>
+        <td>Hand Cash Tracking</td>
+        <td><span class="badge badge-missing">Missing</span></td>
+        <td>—</td>
+        <td>Does not exist</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ══════════════ SECTION 3 ══════════════ -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div>
+        <div class="section-title">Hand Cash Analysis</div>
+        <div class="section-subtitle">What data exists, what is missing, and how to calculate</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-icon">⚠️</div>
+      <div>Direct database access is not available in this audit. The formulas and SQL queries below reflect what the code actually does. Run these in <strong>Supabase Studio → SQL Editor</strong> with your real store ID to get actual numbers.</div>
+    </div>
+
+    <h3>Data Source Map</h3>
+    <table class="data-table">
+      <tr><th>Cash Flow</th><th>Source Table</th><th>Field</th><th>Reliability</th></tr>
+      <tr>
+        <td>Sales (Cash In)</td><td><code>orders</code></td>
+        <td><code>total_amount - shipping_fee</code> WHERE <code>payment_status='paid'</code></td>
+        <td><span class="badge badge-ok">Reliable</span></td>
+      </tr>
+      <tr>
+        <td>Investment (Cash In)</td><td>—</td><td>No table</td>
+        <td><span class="badge badge-missing">Missing</span></td>
+      </tr>
+      <tr>
+        <td>COGS (Cash Out)</td><td><code>order_items × products.tp_price</code></td>
+        <td>Derived, not recorded</td>
+        <td><span class="badge badge-warn">Approximate</span></td>
+      </tr>
+      <tr>
+        <td>Expenses (Cash Out)</td><td><code>expenses</code></td><td><code>amount</code></td>
+        <td><span class="badge badge-ok">Reliable if entered</span></td>
+      </tr>
+      <tr>
+        <td>Courier Payments (Cash Out)</td><td>—</td><td>No field</td>
+        <td><span class="badge badge-missing">Missing</span></td>
+      </tr>
+      <tr>
+        <td>Unsold Inventory Cost (Cash Out)</td><td>—</td><td>No purchase ledger</td>
+        <td><span class="badge badge-missing">Missing</span></td>
+      </tr>
+    </table>
+
+    <h3>Hand Cash Formula (Current System)</h3>
+    <div class="formula-box">
+      <span class="label">Hand Cash ≈</span><br/>
+      &nbsp;&nbsp;<span class="val">Total Revenue</span>
+      &nbsp;<span class="eq">=</span>&nbsp;SUM(orders.total_amount − shipping_fee) [payment_status='paid']<br/>
+      &nbsp;&nbsp;<span class="val">− Total COGS</span>
+      &nbsp;<span class="eq">=</span>&nbsp;SUM(order_items.qty × products.tp_price) [paid orders, current prices]<br/>
+      &nbsp;&nbsp;<span class="val">− Total Expenses</span>
+      &nbsp;<span class="eq">=</span>&nbsp;SUM(expenses.amount) [manually entered]<br/>
+      <br/>
+      <span class="label">NOT INCLUDED: Initial Investment · Courier Costs · Unsold Inventory Purchases</span>
+    </div>
+
+    <h3>SQL to Get Actual Numbers</h3>
+    <pre><span class="cm">-- Run in Supabase Studio → SQL Editor</span>
+<span class="cm">-- Replace 'your-store-id' with your actual store UUID</span>
+
+<span class="cm">-- 1. CASH IN: Total revenue from all paid orders (all-time)</span>
+<span class="kw">SELECT</span>
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> paid_orders,
+  <span class="fn">SUM</span>(total_amount - <span class="fn">COALESCE</span>(shipping_fee, 0)) <span class="kw">AS</span> total_revenue
+<span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> payment_status = <span class="str">'paid'</span>
+  <span class="kw">AND</span> store_id = <span class="str">'your-store-id'</span>;
+
+<span class="cm">-- 2. CASH OUT (approx): COGS for all sold products</span>
+<span class="kw">SELECT</span>
+  <span class="fn">SUM</span>(oi.quantity * <span class="fn">COALESCE</span>(pv.tp_price, p.tp_price, 0)) <span class="kw">AS</span> total_cogs
+<span class="kw">FROM</span> order_items oi
+<span class="kw">JOIN</span> orders o <span class="kw">ON</span> o.id = oi.order_id
+<span class="kw">LEFT JOIN</span> product_variants pv <span class="kw">ON</span> pv.id = oi.variant_id
+<span class="kw">LEFT JOIN</span> products p <span class="kw">ON</span> p.id = oi.product_id
+<span class="kw">WHERE</span> o.payment_status = <span class="str">'paid'</span>
+  <span class="kw">AND</span> o.store_id = <span class="str">'your-store-id'</span>;
+
+<span class="cm">-- 3. CASH OUT: All expenses</span>
+<span class="kw">SELECT</span> <span class="fn">SUM</span>(amount) <span class="kw">AS</span> total_expenses, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> expense_count
+<span class="kw">FROM</span> expenses
+<span class="kw">WHERE</span> store_id = <span class="str">'your-store-id'</span>;
+
+<span class="cm">-- hand_cash ≈ total_revenue - total_cogs - total_expenses</span>
+<span class="cm">-- NOTE: Does not include initial investment or courier payments</span></pre>
+
+    <div class="alert alert-info">
+      <div class="alert-icon">ℹ️</div>
+      <div>
+        <strong>Products with NULL tp_price:</strong> Any product missing a cost price contributes 0 to COGS, making that product appear 100% profitable. Check how many products have missing cost prices with:
+        <code style="display:block;margin-top:8px;">SELECT COUNT(*) FROM products WHERE tp_price IS NULL AND store_id = 'your-store-id';</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SECTION 4 ══════════════ -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div>
+        <div class="section-title">Dashboard Calculation Audit</div>
+        <div class="section-subtitle">Formula analysis and identified errors</div>
+      </div>
+    </div>
+
+    <h3>Revenue Calculation</h3>
+    <p>Defined in <span class="file-ref">src/lib/hook/useDashboardMetrics.ts:116–120</span></p>
+    <pre><span class="cm">// What the code does:</span>
+<span class="kw">const</span> getOrderRevenue = (order) => order.total_amount - order.shipping_fee;
+<span class="cm">// Applied only for: payment_status === 'paid' AND within selected time period</span>
+revenue += trueOrderRevenue;</pre>
+    <table class="data-table" style="margin-top:12px;">
+      <tr><th>Check</th><th>Result</th></tr>
+      <tr><td>Only counts paid orders</td><td><span class="badge badge-ok">Correct</span></td></tr>
+      <tr><td>Excludes shipping fee from revenue</td><td><span class="badge badge-warn">Debatable — shipping margin invisible</span></td></tr>
+      <tr><td>Period-filtered only (no all-time)</td><td><span class="badge badge-medium">Issue — no lifetime view</span></td></tr>
+      <tr><td>Pending orders excluded from revenue</td><td><span class="badge badge-ok">Correct</span></td></tr>
+    </table>
+
+    <h3>COGS & Gross Profit Calculation</h3>
+    <p>Defined in <span class="file-ref">src/lib/hook/useDashboardMetrics.ts:274–364</span></p>
+    <pre><span class="cm">// WRONG: Uses current product price, not price at time of sale</span>
+<span class="kw">const</span> getItemCost = (item) => {
+  <span class="kw">const</span> variant = variantMap.get(item.variant_id);   <span class="cm">// from TODAY's products fetch</span>
+  <span class="kw">return</span> variant?.tp_price ?? productMap.get(item.product_id)?.tp_price ?? <span class="num">0</span>;
+  <span class="cm">//                                                                        ↑</span>
+  <span class="cm">// Deleted products → COGS = 0 → 100% profit on those orders (wrong!)</span>
+};
+
+grossProfit += items.reduce((s, item) => {
+  <span class="kw">const</span> adjustedSell = getItemSellingPrice(item) * adjustmentRatio;
+  <span class="kw">const</span> cost = getItemCost(item);
+  <span class="kw">return</span> s + (adjustedSell - cost) * qty;
+}, <span class="num">0</span>);</pre>
+
+    <div class="alert alert-high" style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);">
+      <div class="alert-icon">🔥</div>
+      <div>
+        <strong style="color:#fdba74;">Critical Formula Error:</strong> Gross profit is recalculated from current <code>tp_price</code> every time the dashboard loads. If you edited a product's cost price today, every historical order for that product now uses the new price. Your past profit numbers are retroactively changed without any warning.
+      </div>
+    </div>
+
+    <h3>Dashboard Values vs Actual Values</h3>
+    <table class="data-table">
+      <tr><th>Dashboard Shows</th><th>Actual Reality</th><th>Gap</th></tr>
+      <tr>
+        <td>Revenue (period)</td>
+        <td>Paid orders, last N days, minus shipping</td>
+        <td>Correct for period; no lifetime view</td>
+      </tr>
+      <tr>
+        <td>Gross Profit</td>
+        <td>Revenue minus current-price COGS</td>
+        <td><span class="badge badge-critical">Wrong if any price changed</span></td>
+      </tr>
+      <tr>
+        <td>Net Profit</td>
+        <td>Gross Profit minus period expenses</td>
+        <td><span class="badge badge-critical">Wrong base + period-scoped only</span></td>
+      </tr>
+      <tr>
+        <td>Total Expenses</td>
+        <td>Manual entries, period only, max 10K rows</td>
+        <td>Accurate if entered; silent cap at 10,000</td>
+      </tr>
+      <tr>
+        <td>Inventory Sell Value</td>
+        <td><code>qty × selling_price</code></td>
+        <td>Shows sell value, not cash tied up in stock</td>
+      </tr>
+      <tr>
+        <td>Hand Cash</td>
+        <td>Not shown anywhere</td>
+        <td><span class="badge badge-missing">Missing — does not exist</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ══════════════ SECTION 5 ══════════════ -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div>
+        <div class="section-title">Full Bug Report</div>
+        <div class="section-subtitle">All issues found across the codebase — 22 total</div>
+      </div>
+    </div>
+
+    <!-- Progress bars -->
+    <div style="margin-bottom:24px;">
+      <div style="margin-bottom:8px; display:flex; justify-content:space-between; font-size:13px;"><span style="color:#fca5a5;">Critical (5)</span><span style="color:var(--text-dim);">25%</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar pb-critical" style="width:25%"></div></div>
+      <div style="margin-bottom:8px; margin-top:12px; display:flex; justify-content:space-between; font-size:13px;"><span style="color:#fdba74;">High (6)</span><span style="color:var(--text-dim);">30%</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar pb-high" style="width:30%"></div></div>
+      <div style="margin-bottom:8px; margin-top:12px; display:flex; justify-content:space-between; font-size:13px;"><span style="color:#fcd34d;">Medium (7)</span><span style="color:var(--text-dim);">35%</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar pb-medium" style="width:35%"></div></div>
+      <div style="margin-bottom:8px; margin-top:12px; display:flex; justify-content:space-between; font-size:13px;"><span style="color:#93c5fd;">Low (4)</span><span style="color:var(--text-dim);">20%</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar pb-low" style="width:20%"></div></div>
+    </div>
+
+    <table class="bug-table">
+      <thead>
+        <tr><th>#</th><th>Severity</th><th>Issue</th><th>File / Location</th><th>Impact</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>C1</strong></td>
+          <td><span class="badge badge-critical">Critical</span></td>
+          <td><strong>Service role key in browser JS</strong> — <code>NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY</code> bundled into client JS, giving any visitor full DB admin access bypassing all RLS</td>
+          <td><span class="file-ref">.env.local</span><br/><span class="file-ref">src/lib/supabase.ts</span></td>
+          <td>Full database compromise</td>
+        </tr>
+        <tr>
+          <td><strong>C2</strong></td>
+          <td><span class="badge badge-critical">Critical</span></td>
+          <td><strong>Zero RLS policies</strong> — <code>schema.sql</code> has <code>GRANT ALL</code> to <code>anon</code> and <code>authenticated</code> roles but zero <code>CREATE POLICY</code> statements. All data is globally accessible.</td>
+          <td><span class="file-ref">schema.sql</span></td>
+          <td>Cross-store data leakage</td>
+        </tr>
+        <tr>
+          <td><strong>C3</strong></td>
+          <td><span class="badge badge-critical">Critical</span></td>
+          <td><strong>Cookie string auth bypass</strong> — admin auth checks <code>cookie.value === "true"</code>. Anyone can set this in DevTools in 5 seconds.</td>
+          <td><span class="file-ref">src/app/api/me/route.ts:21</span></td>
+          <td>Instant admin access for anyone</td>
+        </tr>
+        <tr>
+          <td><strong>C4</strong></td>
+          <td><span class="badge badge-critical">Critical</span></td>
+          <td><strong>Hardcoded admin credentials</strong> — email and password are literal strings in login API code.</td>
+          <td><span class="file-ref">src/app/api/login/route.ts</span></td>
+          <td>Permanent credential exposure</td>
+        </tr>
+        <tr>
+          <td><strong>C5</strong></td>
+          <td><span class="badge badge-critical">Critical</span></td>
+          <td><strong>Inventory race condition (overselling)</strong> — READ then WRITE inventory without atomic transaction. Two simultaneous orders both see <code>available=10</code>, both succeed. System oversells.</td>
+          <td><span class="file-ref">src/lib/queries/orders/orderService.ts</span></td>
+          <td>Orders for stock that doesn't exist</td>
+        </tr>
+        <tr>
+          <td><strong>H1</strong></td>
+          <td><span class="badge badge-high">High</span></td>
+          <td><strong>No auth on order token generation</strong> — <code>POST /api/generate-order-token</code> has zero auth checks. Anyone can create order tokens with arbitrary store IDs and prices.</td>
+          <td><span class="file-ref">src/app/api/generate-order-token/route.ts</span></td>
+          <td>Price manipulation, fraud</td>
+        </tr>
+        <tr>
+          <td><strong>H2</strong></td>
+          <td><span class="badge badge-high">High</span></td>
+          <td><strong>Cryptographically weak tokens</strong> — <code>Math.random()</code> used for security tokens. 7-char from 57-char alphabet = ~40 bits entropy. Predictable and enumerable.</td>
+          <td><span class="file-ref">src/lib/redis/generateRedisToken.ts</span></td>
+          <td>Order interception, token forgery</td>
+        </tr>
+        <tr>
+          <td><strong>H3</strong></td>
+          <td><span class="badge badge-high">High</span></td>
+          <td><strong>Inventory not rolled back on order failure</strong> — If inventory reservation fails after order creation, order stays in DB but inventory is wrong. No cleanup, no rollback.</td>
+          <td><span class="file-ref">src/lib/queries/orders/orderService.ts:442</span></td>
+          <td>Inventory count drift over time</td>
+        </tr>
+        <tr>
+          <td><strong>H4</strong></td>
+          <td><span class="badge badge-high">High</span></td>
+          <td><strong>Invoice PDF generation requires no auth</strong> — Any anonymous user can POST arbitrary store/customer data and receive a PDF with your store's branding.</td>
+          <td><span class="file-ref">src/app/api/invoices/generate/route.ts</span></td>
+          <td>Fraudulent invoice generation</td>
+        </tr>
+        <tr>
+          <td><strong>H5</strong></td>
+          <td><span class="badge badge-high">High</span></td>
+          <td><strong>Mass assignment on order financials</strong> — <code>subtotal</code>, <code>tax_amount</code>, <code>total_amount</code> accepted from client without server-side recalculation. Any admin client can send manipulated totals.</td>
+          <td><span class="file-ref">src/lib/queries/orders/updateOrderByNumber.ts:145</span></td>
+          <td>Financial data manipulation</td>
+        </tr>
+        <tr>
+          <td><strong>H6</strong></td>
+          <td><span class="badge badge-high">High</span></td>
+          <td><strong>Bulk order update ignores store ownership</strong> — <code>bulkUpdateOrders</code> uses <code>supabaseAdmin</code> with raw order IDs. No check that IDs belong to the caller's store.</td>
+          <td><span class="file-ref">src/lib/queries/orders/bulkUpdateOrders.ts:51</span></td>
+          <td>Cross-store order modification</td>
+        </tr>
+        <tr>
+          <td><strong>M1</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>COGS uses current tp_price, not historical</strong> — Changing a product's cost price retroactively rewrites all past profit calculations.</td>
+          <td><span class="file-ref">useDashboardMetrics.ts:274</span></td>
+          <td>Wrong historical profit data</td>
+        </tr>
+        <tr>
+          <td><strong>M2</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>Deleted products = 0 COGS</strong> — Fallback is <code>tp_price ?? 0</code>. Deleted products contribute 0 cost, inflating gross profit permanently.</td>
+          <td><span class="file-ref">useDashboardMetrics.ts:279</span></td>
+          <td>Permanently overstated gross profit</td>
+        </tr>
+        <tr>
+          <td><strong>M3</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>Expense fetch hard-capped at 10,000 rows</strong> — Expenses beyond 10,000 are silently dropped. No warning or error shown.</td>
+          <td><span class="file-ref">dashboard/page.tsx:99</span></td>
+          <td>Silent expense undercount</td>
+        </tr>
+        <tr>
+          <td><strong>M4</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>Silent inventory overselling</strong> — <code>Math.max(0, available - qty)</code> clamps at 0 instead of rejecting the order. Customers receive confirmation for stock that doesn't exist.</td>
+          <td><span class="file-ref">orderService.ts</span></td>
+          <td>Unfulfillable order confirmations</td>
+        </tr>
+        <tr>
+          <td><strong>M5</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>supabaseAdmin in client-side code</strong> — <code>getProducts.ts</code> imports <code>supabaseAdmin</code> and is called from a <code>"use client"</code> component.</td>
+          <td><span class="file-ref">src/lib/queries/products/getProducts.ts:1</span></td>
+          <td>Service key executed in browser</td>
+        </tr>
+        <tr>
+          <td><strong>M6</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>expenses table missing from schema.sql</strong> — Created directly in Supabase. Resetting from schema loses all expense data.</td>
+          <td><span class="file-ref">schema.sql</span></td>
+          <td>Data loss risk on schema reset</td>
+        </tr>
+        <tr>
+          <td><strong>M7</strong></td>
+          <td><span class="badge badge-medium">Medium</span></td>
+          <td><strong>discounted_amount field not in order_items schema</strong> — TypeScript type has it; DB table doesn't. Always evaluates to <code>undefined</code>, silently ignored.</td>
+          <td><span class="file-ref">schema.sql:138 + order.ts:55</span></td>
+          <td>Item discounts silently lost</td>
+        </tr>
+        <tr>
+          <td><strong>L1</strong></td>
+          <td><span class="badge badge-low">Low</span></td>
+          <td><strong>useMemo is effectively a no-op</strong> — All three memo wrappers in dashboard return the raw dependency unchanged. Dashboard metrics recalculate on every render.</td>
+          <td><span class="file-ref">dashboard/page.tsx:114</span></td>
+          <td>Unnecessary CPU on large datasets</td>
+        </tr>
+        <tr>
+          <td><strong>L2</strong></td>
+          <td><span class="badge badge-low">Low</span></td>
+          <td><strong>categories!inner drops uncategorized products</strong> — Products with no category are silently excluded from all dashboard calculations.</td>
+          <td><span class="file-ref">getProducts.ts:178</span></td>
+          <td>Missing products in COGS + inventory</td>
+        </tr>
+        <tr>
+          <td><strong>L3</strong></td>
+          <td><span class="badge badge-low">Low</span></td>
+          <td><strong>Double DB call per order fetch</strong> — Every call to <code>getStoreOrders</code> makes a second unnecessary count query even when no filters are applied.</td>
+          <td><span class="file-ref">getStoreOrders.ts:79</span></td>
+          <td>Unnecessary latency per load</td>
+        </tr>
+        <tr>
+          <td><strong>L4</strong></td>
+          <td><span class="badge badge-low">Low</span></td>
+          <td><strong>Inventory value shows sell price, not cost</strong> — "Inventory Sell Value" uses <code>qty × selling_price</code>, not <code>qty × tp_price</code>. Misleading for cash-tied-up analysis.</td>
+          <td><span class="file-ref">useDashboardMetrics.ts:576</span></td>
+          <td>Misleading inventory metric</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════════ SECTION 6 ══════════════ -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div>
+        <div class="section-title">Root Problems</div>
+        <div class="section-subtitle">Structural causes — not just surface bugs</div>
+      </div>
+    </div>
+
+    <h3>Why Hand Cash Cannot Be Accurately Tracked</h3>
+    <div class="card">
+      <ul class="std">
+        <li><strong>No transaction ledger.</strong> The system records outcomes (an order exists, a product has a cost price) but not events (cash left wallet at 3pm Tuesday). Hand cash requires knowing when money moved, in which direction, and how much.</li>
+        <li><strong>COGS is derived, not recorded.</strong> <code>tp_price</code> is a property of a product, not a purchase record. When you restock from a supplier, nothing is written to the database.</li>
+        <li><strong>One-way inventory tracking.</strong> <code>product_inventory</code> tracks current quantities only. There is no history of when stock went in or out, or what was paid per batch.</li>
+        <li><strong>Expenses are manual opt-in.</strong> If you don't log an expense, it doesn't exist. Automatic cash flows like courier fees have no capture mechanism.</li>
+        <li><strong>No initial capital baseline.</strong> Hand Cash = Opening Balance + Cash In − Cash Out. The opening balance field does not exist.</li>
+      </ul>
+    </div>
+
+    <h3>Why Dashboard Numbers May Be Wrong</h3>
+    <div class="card">
+      <ul class="std">
+        <li>COGS uses today's <code>tp_price</code> for all historical orders. Any product price edit rewrites all past profit history.</li>
+        <li>Deleted products contribute 0 COGS — their orders show 100% profit forever.</li>
+        <li>Products with <code>tp_price = NULL</code> show 100% margin — silently inflating gross profit.</li>
+        <li>Dashboard is period-scoped — no lifetime financial view exists.</li>
+        <li>Expenses cap at 10,000 rows. Beyond that, they're silently missing.</li>
+        <li>Shipping margin is invisible — neither collected fee nor courier cost is tracked.</li>
+      </ul>
+    </div>
+
+    <h3>Architectural Weak Points</h3>
+    <table class="data-table">
+      <tr><th>Weakness</th><th>Location</th><th>Risk Level</th></tr>
+      <tr><td>No RLS policies</td><td>Supabase DB</td><td><span class="badge badge-critical">Critical</span></td></tr>
+      <tr><td>Service role key in browser</td><td><code>.env.local</code> + <code>getProducts.ts</code></td><td><span class="badge badge-critical">Critical</span></td></tr>
+      <tr><td>No atomic DB transactions</td><td><code>orderService.ts</code></td><td><span class="badge badge-critical">Critical</span></td></tr>
+      <tr><td>Static cost price (no snapshot)</td><td><code>order_items</code> schema</td><td><span class="badge badge-high">High</span></td></tr>
+      <tr><td>No purchase ledger</td><td>Entire codebase</td><td><span class="badge badge-high">High</span></td></tr>
+      <tr><td>Cookie-string authentication</td><td><code>api/me/route.ts</code></td><td><span class="badge badge-critical">Critical</span></td></tr>
+      <tr><td>No audit trail on any table</td><td>All tables</td><td><span class="badge badge-medium">Medium</span></td></tr>
+      <tr><td>Manual-only expense capture</td><td><code>expenses</code> table</td><td><span class="badge badge-medium">Medium</span></td></tr>
+    </table>
+  </div>
+
+  <!-- ══════════════ SECTION 7 ══════════════ -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div>
+        <div class="section-title">Redesign Plan</div>
+        <div class="section-subtitle">Fix without rebuilding — additive changes only</div>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <div class="alert-icon">💡</div>
+      <div><strong>Core Principle:</strong> Keep every existing table and flow. Add a <code>financial_transactions</code> table that records every financial event. No existing code is broken — new code writes to this table alongside existing operations.</div>
+    </div>
+
+    <h3>New Table 1: financial_transactions</h3>
+    <pre><span class="kw">CREATE TABLE</span> financial_transactions (
+  id              uuid <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  store_id        uuid <span class="kw">NOT NULL REFERENCES</span> stores(id),
+  type            varchar(50) <span class="kw">NOT NULL</span>,
+  <span class="cm">-- Types: 'sale' | 'cogs' | 'expense' | 'purchase' | 'investment'</span>
+  <span class="cm">--        'refund' | 'shipping_in' | 'shipping_out' | 'adjustment'</span>
+  direction       varchar(10) <span class="kw">NOT NULL CHECK</span> (direction <span class="kw">IN</span> (<span class="str">'in'</span>, <span class="str">'out'</span>)),
+  amount          numeric(10,2) <span class="kw">NOT NULL</span>,
+  reference_type  varchar(50),   <span class="cm">-- 'order' | 'expense' | 'purchase' | 'manual'</span>
+  reference_id    uuid,          <span class="cm">-- FK to orders.id, expenses.id, etc.</span>
+  description     text,
+  transaction_date date <span class="kw">NOT NULL DEFAULT</span> CURRENT_DATE,
+  created_at      timestamptz <span class="kw">DEFAULT</span> now(),
+  created_by      uuid
+);
+
+<span class="kw">CREATE INDEX ON</span> financial_transactions(store_id, transaction_date);
+<span class="kw">CREATE INDEX ON</span> financial_transactions(store_id, type, direction);</pre>
+
+    <h3>New Table 2: inventory_purchases</h3>
+    <pre><span class="kw">CREATE TABLE</span> inventory_purchases (
+  id            uuid <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  store_id      uuid <span class="kw">NOT NULL REFERENCES</span> stores(id),
+  product_id    uuid <span class="kw">REFERENCES</span> products(id),
+  variant_id    uuid <span class="kw">REFERENCES</span> product_variants(id),
+  quantity      integer <span class="kw">NOT NULL</span>,
+  unit_cost     numeric(10,2) <span class="kw">NOT NULL</span>,
+  total_cost    numeric(10,2) <span class="kw">GENERATED ALWAYS AS</span> (quantity * unit_cost) <span class="kw">STORED</span>,
+  vendor_name   text,
+  purchase_date date <span class="kw">NOT NULL</span>,
+  payment_method varchar(50),
+  notes         text,
+  created_at    timestamptz <span class="kw">DEFAULT</span> now()
+);</pre>
+
+    <h3>New Table 3: capital_injections</h3>
+    <pre><span class="kw">CREATE TABLE</span> capital_injections (
+  id             uuid <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  store_id       uuid <span class="kw">NOT NULL REFERENCES</span> stores(id),
+  amount         numeric(10,2) <span class="kw">NOT NULL</span>,
+  type           varchar(50) <span class="kw">CHECK</span> (type <span class="kw">IN</span> (<span class="str">'initial_investment'</span>, <span class="str">'owner_contribution'</span>, <span class="str">'loan'</span>)),
+  injection_date date <span class="kw">NOT NULL</span>,
+  notes          text,
+  created_at     timestamptz <span class="kw">DEFAULT</span> now()
+);</pre>
+
+    <h3>Schema Fix: Snapshot Cost Price in order_items</h3>
+    <pre><span class="cm">-- Add cost_price column to order_items</span>
+<span class="kw">ALTER TABLE</span> order_items <span class="kw">ADD COLUMN IF NOT EXISTS</span> cost_price numeric(10,2) <span class="kw">DEFAULT</span> <span class="num">0</span>;
+
+<span class="cm">-- Backfill existing rows (best-effort approximation)</span>
+<span class="kw">UPDATE</span> order_items oi
+<span class="kw">SET</span> cost_price = <span class="fn">COALESCE</span>(
+  (<span class="kw">SELECT</span> pv.tp_price <span class="kw">FROM</span> product_variants pv <span class="kw">WHERE</span> pv.id = oi.variant_id),
+  (<span class="kw">SELECT</span> p.tp_price <span class="kw">FROM</span> products p <span class="kw">WHERE</span> p.id = oi.product_id),
+  <span class="num">0</span>
+);</pre>
+
+    <h3>Corrected Hand Cash Formula (After Fix)</h3>
+    <div class="formula-box">
+      <span class="label">-- Simple, single query after financial_transactions is populated:</span><br/>
+      <span class="val">Hand Cash</span> <span class="eq">=</span><br/>
+      &nbsp;&nbsp;SUM(amount WHERE direction='in')  <span class="label">-- sales + investments</span><br/>
+      &nbsp;&nbsp;- SUM(amount WHERE direction='out') <span class="label">-- cogs + expenses + purchases</span><br/>
+      <br/>
+      <span class="label">WHERE store_id = ? [no period filter = all-time]</span>
+    </div>
+  </div>
+
+  <!-- ══════════════ SECTION 8 ══════════════ -->
+  <div class="section" id="s8">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div>
+        <div class="section-title">Implementation Plan</div>
+        <div class="section-subtitle">5 phases — priority ordered with file references</div>
+      </div>
+    </div>
+
+    <!-- Phase 1 -->
+    <div class="phase phase-1">
+      <div class="phase-header">
+        <div class="phase-num">1</div>
+        <div>
+          <div class="phase-title">🔴 Phase 1 — Security Fixes (Do This First)</div>
+          <div class="phase-meta">Estimated time: 1–2 days &nbsp;·&nbsp; Priority: URGENT</div>
+        </div>
+      </div>
+      <div class="phase-body">
+        <ul>
+          <li>
+            <div>
+              <strong>Remove NEXT_PUBLIC from service role key</strong><br/>
+              <span class="step-file">.env.local</span> → rename <code>NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY</code> to <code>SUPABASE_SERVICE_ROLE_KEY</code>.<br/>
+              <span class="step-file">src/lib/supabase.ts</span> → ensure <code>supabaseAdmin</code> is only instantiated in server context (API routes / server components).
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Move getProducts to server-side only</strong><br/>
+              <span class="step-file">src/lib/queries/products/getProducts.ts</span> → replace <code>supabaseAdmin</code> import with the regular <code>supabase</code> client with user session.<br/>
+              <span class="step-file">src/app/dashboard/page.tsx</span> → convert to a server component for product fetching, or use a server action.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Replace cookie string auth with Supabase session</strong><br/>
+              <span class="step-file">src/app/api/me/route.ts</span> → replace <code>cookie.value === "true"</code> with <code>supabase.auth.getUser()</code>.<br/>
+              All protected API routes → add <code>const { data: { user } } = await supabase.auth.getUser()</code> at the top.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Remove hardcoded credentials</strong><br/>
+              <span class="step-file">src/app/api/login/route.ts</span> → replace with <code>supabase.auth.signInWithPassword({ email, password })</code>. Remove all hardcoded strings.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Enable RLS on all Supabase tables</strong><br/>
+              In Supabase Dashboard → Authentication → Policies → enable RLS on: <code>orders</code>, <code>order_items</code>, <code>products</code>, <code>product_variants</code>, <code>product_inventory</code>, <code>expenses</code>, <code>customers</code>.<br/>
+              Write <code>store_id</code>-based policies: <code>USING (store_id = auth.uid())</code> or via a stores membership check.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Replace Math.random() with crypto.getRandomValues()</strong><br/>
+              <span class="step-file">src/lib/redis/generateRedisToken.ts</span> → replace <code>Math.random()</code> with <code>crypto.getRandomValues(new Uint8Array(32))</code> and encode as hex (64-char token).
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add auth check to order token and invoice endpoints</strong><br/>
+              <span class="step-file">src/app/api/generate-order-token/route.ts</span> → verify caller owns the <code>store_id</code> before proceeding.<br/>
+              <span class="step-file">src/app/api/invoices/generate/route.ts</span> → add user session check at the top.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="phase phase-2">
+      <div class="phase-header">
+        <div class="phase-num">2</div>
+        <div>
+          <div class="phase-title">🟠 Phase 2 — Fix Financial Calculation Accuracy</div>
+          <div class="phase-meta">Estimated time: 3–5 days &nbsp;·&nbsp; Priority: High</div>
+        </div>
+      </div>
+      <div class="phase-body">
+        <ul>
+          <li>
+            <div>
+              <strong>Add cost_price to order_items table</strong><br/>
+              Run in Supabase SQL Editor: <code>ALTER TABLE order_items ADD COLUMN IF NOT EXISTS cost_price numeric(10,2) DEFAULT 0;</code><br/>
+              Add <code>cost_price</code> column to <span class="step-file">schema.sql</span> order_items definition.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Snapshot cost_price at order creation time</strong><br/>
+              <span class="step-file">src/lib/queries/orders/orderService.ts</span> → In the <code>order_items</code> insert array, resolve <code>tp_price</code> from product/variant and include it as <code>cost_price</code> in the DB write.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Update COGS calculation to use snapshotted cost</strong><br/>
+              <span class="step-file">src/lib/hook/useDashboardMetrics.ts:274</span> → Replace <code>productMap.get(item.product_id)?.tp_price</code> with <code>item.cost_price ?? 0</code>.<br/>
+              <span class="step-file">src/lib/queries/orders/getStoreOrders.ts:36</span> → Ensure <code>order_items(*)</code> SELECT includes the new <code>cost_price</code> field.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add "All Time" period option to dashboard</strong><br/>
+              <span class="step-file">src/lib/hook/useDashboardMetrics.ts:198</span> → Add <code>"all_time"</code> to <code>TimePeriod</code> type. In <code>getCurrentPeriodDates</code>, return <code>{ start: new Date('2020-01-01'), end: now }</code> for all_time.<br/>
+              <span class="step-file">src/app/dashboard/page.tsx</span> → Add "All Time" option to the time period selector.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Fix expense fetch pagination</strong><br/>
+              <span class="step-file">src/app/dashboard/page.tsx:99</span> → Replace <code>pageSize: 10000</code> with a paginated loop that fetches all pages, or call a Supabase RPC that returns <code>SUM(amount)</code> directly.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Fix categories!inner to include uncategorized products</strong><br/>
+              <span class="step-file">src/lib/queries/products/getProducts.ts:178</span> → Change <code>categories!inner(id, name)</code> to <code>categories(id, name)</code> (LEFT join). Handle null category in the map function.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add warning for products with missing tp_price</strong><br/>
+              <span class="step-file">src/lib/hook/useDashboardMetrics.ts</span> → Count products where <code>tp_price === null || tp_price === 0</code>. Surface this as a dashboard alert.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="phase phase-3">
+      <div class="phase-header">
+        <div class="phase-num">3</div>
+        <div>
+          <div class="phase-title">🟣 Phase 3 — Transaction Ledger System</div>
+          <div class="phase-meta">Estimated time: 1–2 weeks &nbsp;·&nbsp; Priority: High (for Hand Cash)</div>
+        </div>
+      </div>
+      <div class="phase-body">
+        <ul>
+          <li>
+            <div>
+              <strong>Create financial_transactions table in Supabase</strong><br/>
+              Run the <code>CREATE TABLE financial_transactions (...)</code> SQL from Section 7. Add to <span class="step-file">schema.sql</span>.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Create inventory_purchases table</strong><br/>
+              Run the <code>CREATE TABLE inventory_purchases (...)</code> SQL from Section 7. Add to <span class="step-file">schema.sql</span>.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Create capital_injections table</strong><br/>
+              Run the <code>CREATE TABLE capital_injections (...)</code> SQL from Section 7. Add to <span class="step-file">schema.sql</span>.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Write transaction rows when order is marked PAID</strong><br/>
+              <span class="step-file">src/lib/queries/orders/updateOrderByNumber.ts</span> → When <code>payment_status</code> changes to <code>'paid'</code>, insert two rows into <code>financial_transactions</code>: one <code>type='sale' direction='in'</code> for revenue, one <code>type='cogs' direction='out'</code> for COGS.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Write transaction row when expense is created</strong><br/>
+              <span class="step-file">src/lib/queries/expense/createExpense.ts</span> → After inserting the expense, insert into <code>financial_transactions</code>: <code>type='expense' direction='out'</code>.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Create purchase creation query + UI</strong><br/>
+              New file: <span class="step-file">src/lib/queries/purchases/createPurchase.ts</span> → Insert into <code>inventory_purchases</code>, write <code>type='purchase' direction='out'</code> to <code>financial_transactions</code>, update <code>product_inventory.quantity_available += quantity</code>.<br/>
+              New page: <span class="step-file">src/app/dashboard/purchases/page.tsx</span> — simple form to log supplier purchases.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Handle order refunds</strong><br/>
+              <span class="step-file">src/lib/queries/orders/updateOrderByNumber.ts</span> → When <code>payment_status</code> changes to <code>'refunded'</code>, insert reverse transactions: <code>type='refund' direction='out'</code>.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Create Hand Cash query</strong><br/>
+              New file: <span class="step-file">src/lib/queries/financial/getHandCash.ts</span><br/>
+              <code>SELECT SUM(CASE WHEN direction='in' THEN amount ELSE -amount END) AS hand_cash FROM financial_transactions WHERE store_id = ?</code>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="phase phase-4">
+      <div class="phase-header">
+        <div class="phase-num">4</div>
+        <div>
+          <div class="phase-title">🟢 Phase 4 — Inventory & Order Reliability</div>
+          <div class="phase-meta">Estimated time: 3–5 days &nbsp;·&nbsp; Priority: Medium</div>
+        </div>
+      </div>
+      <div class="phase-body">
+        <ul>
+          <li>
+            <div>
+              <strong>Fix inventory race condition with atomic update</strong><br/>
+              <span class="step-file">src/lib/queries/orders/orderService.ts</span> → Replace READ+WRITE inventory pattern with a single atomic SQL:<br/>
+              <code>UPDATE product_inventory SET quantity_available = quantity_available - $qty WHERE id = $id AND quantity_available >= $qty RETURNING *</code><br/>
+              Check rowcount. If 0 rows returned → insufficient stock → reject order.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Reject orders when stock is insufficient</strong><br/>
+              <span class="step-file">src/lib/queries/orders/orderService.ts</span> → Replace <code>Math.max(0, available - qty)</code> clamp with an explicit stock check that returns an error to the customer.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add rollback for order creation failure</strong><br/>
+              <span class="step-file">src/lib/queries/orders/orderService.ts:442</span> → If inventory reservation fails after order insert, delete the order record before returning the error. Use a try/catch/finally pattern.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Fix mass assignment on order financials</strong><br/>
+              <span class="step-file">src/lib/queries/orders/updateOrderByNumber.ts:145</span> → Remove <code>subtotal</code>, <code>tax_amount</code>, <code>total_amount</code> from the client-accepted update fields. These should be recalculated server-side from <code>order_items</code> if quantity changes, not accepted from client.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add store ownership check to bulk operations</strong><br/>
+              <span class="step-file">src/lib/queries/orders/bulkUpdateOrders.ts:51</span> → Before bulk update, verify all <code>orderIds</code> belong to the caller's <code>store_id</code> with a prior SELECT. Only proceed if all IDs match.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Fix useMemo in dashboard</strong><br/>
+              <span class="step-file">src/app/dashboard/page.tsx:114</span> → Remove the three no-op <code>useMemo</code> wrappers. Pass <code>orders</code>, <code>rawProducts</code>, <code>rawExpenses</code> directly to <code>useDashboardMetrics</code>. The hook already uses <code>useCallback</code> internally.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="phase phase-5">
+      <div class="phase-header">
+        <div class="phase-num">5</div>
+        <div>
+          <div class="phase-title">🔵 Phase 5 — Dashboard Enhancement</div>
+          <div class="phase-meta">Estimated time: 3–5 days &nbsp;·&nbsp; Priority: Medium</div>
+        </div>
+      </div>
+      <div class="phase-body">
+        <ul>
+          <li>
+            <div>
+              <strong>Add Hand Cash widget to dashboard</strong><br/>
+              New component: <span class="step-file">src/app/components/admin/dashboard/HandCashWidget.tsx</span><br/>
+              Fetches from <code>getHandCash(storeId)</code> and displays: Total Cash In, Total Cash Out, Hand Cash (always all-time, no period filter).
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add Inventory Cost Value card</strong><br/>
+              <span class="step-file">src/lib/hook/useDashboardMetrics.ts</span> → Add <code>totalInventoryCostValue = SUM(qty × tp_price)</code> alongside existing sell value. Rename existing card clearly to "Sell Value" vs new "Cost Value".
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add missing tp_price warning</strong><br/>
+              <span class="step-file">src/lib/hook/useDashboardMetrics.ts</span> → Add alert when any active product has <code>tp_price === null || tp_price === 0</code>. Show count in the alerts array.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Add expenses table to schema.sql</strong><br/>
+              <span class="step-file">schema.sql</span> → Add the <code>CREATE TABLE expenses</code> and <code>CREATE TABLE expense_categories</code> DDL statements to match what exists in Supabase live.
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Reduce redundant DB call in getStoreOrders</strong><br/>
+              <span class="step-file">src/lib/queries/orders/getStoreOrders.ts:79</span> → When called with no pagination (dashboard use-case), skip the second count query. Use the first query's count result instead.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SECTION 9 ══════════════ -->
+  <div class="section" id="s9">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <div>
+        <div class="section-title">Integration Steps</div>
+        <div class="section-subtitle">Exactly which functions get new logic added</div>
+      </div>
+    </div>
+
+    <h3>Transaction Write Integration Points</h3>
+    <table class="data-table">
+      <tr><th>Event</th><th>File</th><th>Function</th><th>Transaction to Write</th></tr>
+      <tr>
+        <td>Order marked PAID</td>
+        <td><span class="file-ref">updateOrderByNumber.ts</span></td>
+        <td><code>updateOrderByNumber()</code></td>
+        <td><code>type='sale' direction='in'</code> + <code>type='cogs' direction='out'</code></td>
+      </tr>
+      <tr>
+        <td>Order REFUNDED</td>
+        <td><span class="file-ref">updateOrderByNumber.ts</span></td>
+        <td><code>updateOrderByNumber()</code></td>
+        <td><code>type='refund' direction='out'</code></td>
+      </tr>
+      <tr>
+        <td>Expense created</td>
+        <td><span class="file-ref">createExpense.ts</span></td>
+        <td><code>createExpense()</code></td>
+        <td><code>type='expense' direction='out'</code></td>
+      </tr>
+      <tr>
+        <td>Expense deleted</td>
+        <td><span class="file-ref">deleteExpense.ts</span></td>
+        <td><code>deleteExpense()</code></td>
+        <td>Delete matching transaction row OR insert reversal</td>
+      </tr>
+      <tr>
+        <td>Purchase logged</td>
+        <td><span class="file-ref">createPurchase.ts</span> (new)</td>
+        <td><code>createPurchase()</code></td>
+        <td><code>type='purchase' direction='out'</code></td>
+      </tr>
+      <tr>
+        <td>Capital injected</td>
+        <td><span class="file-ref">createCapitalInjection.ts</span> (new)</td>
+        <td><code>createCapitalInjection()</code></td>
+        <td><code>type='investment' direction='in'</code></td>
+      </tr>
+    </table>
+
+    <h3>COGS Snapshot Integration</h3>
+    <table class="data-table">
+      <tr><th>File</th><th>Change</th></tr>
+      <tr>
+        <td><span class="file-ref">src/lib/queries/orders/orderService.ts</span></td>
+        <td>In <code>order_items</code> insert array: resolve <code>tp_price</code> from product/variant before DB write, include as <code>cost_price</code></td>
+      </tr>
+      <tr>
+        <td><span class="file-ref">src/lib/queries/orders/getStoreOrders.ts</span></td>
+        <td>Ensure <code>order_items(*)</code> includes <code>cost_price</code> column in SELECT</td>
+      </tr>
+      <tr>
+        <td><span class="file-ref">src/lib/types/order.ts</span></td>
+        <td>Add <code>cost_price?: number</code> to <code>OrderItem</code> interface</td>
+      </tr>
+      <tr>
+        <td><span class="file-ref">src/lib/hook/useDashboardMetrics.ts</span></td>
+        <td>Replace <code>getItemCost(item)</code> body: return <code>item.cost_price ?? 0</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ══════════════ SECTION 10 ══════════════ -->
+  <div class="section" id="s10">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div>
+        <div class="section-title">Data Migration Plan</div>
+        <div class="section-subtitle">Handle existing data safely — no data loss</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-icon">⚠️</div>
+      <div><strong>Before running any migration:</strong> Take a full Supabase backup via Dashboard → Settings → Backups. Run all scripts inside <code>BEGIN; ... COMMIT;</code> so they can be rolled back if anything fails.</div>
+    </div>
+
+    <h3>Migration Sequence</h3>
+
+    <div class="card">
+      <h4>Step A — Add cost_price to order_items (safe, additive)</h4>
+      <pre><span class="cm">-- Adds column with DEFAULT 0, no data loss</span>
+<span class="kw">ALTER TABLE</span> order_items <span class="kw">ADD COLUMN IF NOT EXISTS</span> cost_price numeric(10,2) <span class="kw">DEFAULT</span> <span class="num">0</span>;
+
+<span class="cm">-- Backfill using current tp_price (best approximation for historical orders)</span>
+<span class="cm">-- ⚠️ This uses today's prices, not historical. Accept as one-time approximation.</span>
+<span class="kw">UPDATE</span> order_items oi
+<span class="kw">SET</span> cost_price = <span class="fn">COALESCE</span>(
+  (<span class="kw">SELECT</span> pv.tp_price <span class="kw">FROM</span> product_variants pv <span class="kw">WHERE</span> pv.id = oi.variant_id),
+  (<span class="kw">SELECT</span> p.tp_price  <span class="kw">FROM</span> products p         <span class="kw">WHERE</span> p.id  = oi.product_id),
+  <span class="num">0</span>
+);</pre>
+    </div>
+
+    <div class="card">
+      <h4>Step B — Backfill financial_transactions from paid orders</h4>
+      <pre><span class="cm">-- Sale transactions (cash in)</span>
+<span class="kw">INSERT INTO</span> financial_transactions
+  (store_id, type, direction, amount, reference_type, reference_id, transaction_date)
+<span class="kw">SELECT</span>
+  o.store_id, <span class="str">'sale'</span>, <span class="str">'in'</span>,
+  o.total_amount - <span class="fn">COALESCE</span>(o.shipping_fee, <span class="num">0</span>),
+  <span class="str">'order'</span>, o.id, o.created_at::date
+<span class="kw">FROM</span> orders o
+<span class="kw">WHERE</span> o.payment_status = <span class="str">'paid'</span>;
+
+<span class="cm">-- COGS transactions (cash out) using snapshotted cost_price</span>
+<span class="kw">INSERT INTO</span> financial_transactions
+  (store_id, type, direction, amount, reference_type, reference_id, transaction_date)
+<span class="kw">SELECT</span>
+  o.store_id, <span class="str">'cogs'</span>, <span class="str">'out'</span>,
+  <span class="fn">SUM</span>(oi.quantity * <span class="fn">COALESCE</span>(oi.cost_price, <span class="num">0</span>)),
+  <span class="str">'order'</span>, o.id, o.created_at::date
+<span class="kw">FROM</span> orders o
+<span class="kw">JOIN</span> order_items oi <span class="kw">ON</span> oi.order_id = o.id
+<span class="kw">WHERE</span> o.payment_status = <span class="str">'paid'</span>
+<span class="kw">GROUP BY</span> o.id, o.store_id, o.created_at;</pre>
+    </div>
+
+    <div class="card">
+      <h4>Step C — Backfill from expenses</h4>
+      <pre><span class="kw">INSERT INTO</span> financial_transactions
+  (store_id, type, direction, amount, reference_type, reference_id, transaction_date)
+<span class="kw">SELECT</span>
+  store_id, <span class="str">'expense'</span>, <span class="str">'out'</span>,
+  amount, <span class="str">'expense'</span>, id, expense_date
+<span class="kw">FROM</span> expenses;</pre>
+    </div>
+
+    <div class="card">
+      <h4>Step D — Add initial capital manually</h4>
+      <pre><span class="cm">-- First record the capital injection</span>
+<span class="kw">INSERT INTO</span> capital_injections (store_id, amount, type, injection_date, notes)
+<span class="kw">VALUES</span> (<span class="str">'your-store-id'</span>, <span class="num">AMOUNT_YOU_INVESTED</span>, <span class="str">'initial_investment'</span>, <span class="str">'YYYY-MM-DD'</span>, <span class="str">'Opening balance'</span>);
+
+<span class="cm">-- Then write the transaction</span>
+<span class="kw">INSERT INTO</span> financial_transactions (store_id, type, direction, amount, reference_type, transaction_date)
+<span class="kw">VALUES</span> (<span class="str">'your-store-id'</span>, <span class="str">'investment'</span>, <span class="str">'in'</span>, <span class="num">AMOUNT_YOU_INVESTED</span>, <span class="str">'manual'</span>, <span class="str">'YYYY-MM-DD'</span>);</pre>
+    </div>
+
+    <h3>What Will NOT Be Lost</h3>
+    <ul class="std">
+      <li>All existing <code>orders</code>, <code>order_items</code>, <code>products</code> — untouched</li>
+      <li>All <code>expenses</code> — untouched, just backfilled into transactions</li>
+      <li>All <code>product_inventory</code> counts — untouched</li>
+      <li><code>financial_transactions</code> is additive — nothing is deleted or modified</li>
+    </ul>
+  </div>
+
+  <!-- ══════════════ SECTION 11 ══════════════ -->
+  <div class="section" id="s11">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div>
+        <div class="section-title">Dashboard Fix Plan</div>
+        <div class="section-subtitle">Corrected formulas and new card design</div>
+      </div>
+    </div>
+
+    <h3>Corrected Formulas</h3>
+    <div class="two-col">
+      <div>
+        <h4>Before (Wrong)</h4>
+        <div class="formula-box" style="background:rgba(239,68,68,0.05);border-color:rgba(239,68,68,0.2);">
+          <span style="color:#fca5a5;">Revenue = SUM(total_amount - shipping)</span><br/>
+          <span style="color:#fca5a5;">&nbsp;&nbsp;[period-filtered only]</span><br/><br/>
+          <span style="color:#fca5a5;">COGS = qty × CURRENT tp_price</span><br/>
+          <span style="color:#fca5a5;">&nbsp;&nbsp;[retroactively wrong]</span><br/><br/>
+          <span style="color:#fca5a5;">Hand Cash = not shown</span>
+        </div>
+      </div>
+      <div>
+        <h4>After (Correct)</h4>
+        <div class="formula-box" style="background:rgba(34,197,94,0.05);border-color:rgba(34,197,94,0.2);">
+          <span style="color:#86efac;">Revenue = SUM(total_amount - shipping)</span><br/>
+          <span style="color:#86efac;">&nbsp;&nbsp;[period or all-time]</span><br/><br/>
+          <span style="color:#86efac;">COGS = qty × cost_price (snapshotted)</span><br/>
+          <span style="color:#86efac;">&nbsp;&nbsp;[never changes retroactively]</span><br/><br/>
+          <span style="color:#86efac;">Hand Cash = SUM(in) - SUM(out) all-time</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>New Dashboard Card Layout</h3>
+    <table class="data-table">
+      <tr><th>Card</th><th>Source</th><th>Period</th></tr>
+      <tr>
+        <td><strong>Total Revenue</strong></td>
+        <td><code>financial_transactions</code> WHERE type='sale'</td>
+        <td>Period selector applies</td>
+      </tr>
+      <tr>
+        <td><strong>Total COGS</strong></td>
+        <td><code>order_items.cost_price × qty</code></td>
+        <td>Period selector applies</td>
+      </tr>
+      <tr>
+        <td><strong>Total Expenses</strong></td>
+        <td><code>financial_transactions</code> WHERE type='expense'</td>
+        <td>Period selector applies</td>
+      </tr>
+      <tr>
+        <td><strong>Gross Profit</strong></td>
+        <td>Revenue − COGS</td>
+        <td>Period selector applies</td>
+      </tr>
+      <tr>
+        <td><strong>Net Profit</strong></td>
+        <td>Gross Profit − Expenses</td>
+        <td>Period selector applies</td>
+      </tr>
+      <tr>
+        <td style="color:#6366f1;font-weight:700;">✦ Hand Cash</td>
+        <td><code>SUM(in) - SUM(out)</code> from financial_transactions</td>
+        <td><strong>Always all-time, no filter</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Pending Revenue</strong></td>
+        <td><code>orders</code> WHERE payment_status='pending'</td>
+        <td>All pending (no period)</td>
+      </tr>
+      <tr>
+        <td><strong>Inventory Cost</strong></td>
+        <td><code>SUM(qty × tp_price)</code></td>
+        <td>Current snapshot</td>
+      </tr>
+    </table>
+
+    <h3>Warning Cards to Add</h3>
+    <ul class="std">
+      <li><strong>⚠️ X products missing cost price</strong> — gross profit may be overstated for these products</li>
+      <li><strong>⚠️ Expenses may be incomplete</strong> — only manually entered expenses are included</li>
+      <li><strong>⚠️ Hand Cash excludes unlogged purchases</strong> — stock bought but not recorded as a purchase is not counted</li>
+    </ul>
+  </div>
+
+  <!-- ══════════════ SECTION 12 ══════════════ -->
+  <div class="section" id="s12">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div>
+        <div class="section-title">Priority Checklist</div>
+        <div class="section-subtitle">Ordered action items — track your progress</div>
+      </div>
+    </div>
+
+    <table class="priority-table">
+      <thead>
+        <tr><th>Priority</th><th>Action</th><th>File(s)</th><th>Phase</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-critical">P0</span></td>
+          <td>Remove service role key from NEXT_PUBLIC</td>
+          <td><span class="file-ref">.env.local</span></td>
+          <td><span class="tag">Phase 1</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-critical">P0</span></td>
+          <td>Enable RLS on all Supabase tables</td>
+          <td>Supabase Dashboard</td>
+          <td><span class="tag">Phase 1</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-critical">P0</span></td>
+          <td>Replace cookie string auth with Supabase getUser()</td>
+          <td><span class="file-ref">api/me/route.ts</span></td>
+          <td><span class="tag">Phase 1</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-critical">P0</span></td>
+          <td>Remove hardcoded credentials from login</td>
+          <td><span class="file-ref">api/login/route.ts</span></td>
+          <td><span class="tag">Phase 1</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-critical">P0</span></td>
+          <td>Fix inventory race condition with atomic update</td>
+          <td><span class="file-ref">orderService.ts</span></td>
+          <td><span class="tag">Phase 4</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Replace Math.random() with crypto.getRandomValues()</td>
+          <td><span class="file-ref">generateRedisToken.ts</span></td>
+          <td><span class="tag">Phase 1</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Add auth check to token + invoice endpoints</td>
+          <td><span class="file-ref">api/generate-order-token</span></td>
+          <td><span class="tag">Phase 1</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Add cost_price column to order_items</td>
+          <td>Supabase SQL + <span class="file-ref">schema.sql</span></td>
+          <td><span class="tag">Phase 2</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Snapshot cost_price at order creation time</td>
+          <td><span class="file-ref">orderService.ts</span></td>
+          <td><span class="tag">Phase 2</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Update COGS to use item.cost_price instead of productMap</td>
+          <td><span class="file-ref">useDashboardMetrics.ts:274</span></td>
+          <td><span class="tag">Phase 2</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Create financial_transactions table</td>
+          <td>Supabase SQL + <span class="file-ref">schema.sql</span></td>
+          <td><span class="tag">Phase 3</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-high">P1</span></td>
+          <td>Create inventory_purchases + capital_injections tables</td>
+          <td>Supabase SQL + <span class="file-ref">schema.sql</span></td>
+          <td><span class="tag">Phase 3</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Write transaction rows on order payment status change</td>
+          <td><span class="file-ref">updateOrderByNumber.ts</span></td>
+          <td><span class="tag">Phase 3</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Write transaction rows on expense creation/deletion</td>
+          <td><span class="file-ref">createExpense.ts / deleteExpense.ts</span></td>
+          <td><span class="tag">Phase 3</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Add All Time option to dashboard period selector</td>
+          <td><span class="file-ref">useDashboardMetrics.ts</span></td>
+          <td><span class="tag">Phase 2</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Fix expense pagination — remove 10,000 row cap</td>
+          <td><span class="file-ref">dashboard/page.tsx:99</span></td>
+          <td><span class="tag">Phase 2</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Reject orders when stock is insufficient</td>
+          <td><span class="file-ref">orderService.ts</span></td>
+          <td><span class="tag">Phase 4</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Add rollback when inventory reservation fails</td>
+          <td><span class="file-ref">orderService.ts:442</span></td>
+          <td><span class="tag">Phase 4</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Fix mass assignment in order update</td>
+          <td><span class="file-ref">updateOrderByNumber.ts:145</span></td>
+          <td><span class="tag">Phase 4</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-medium">P2</span></td>
+          <td>Add store ownership check to bulk update</td>
+          <td><span class="file-ref">bulkUpdateOrders.ts:51</span></td>
+          <td><span class="tag">Phase 4</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-low">P3</span></td>
+          <td>Add expenses + expense_categories to schema.sql</td>
+          <td><span class="file-ref">schema.sql</span></td>
+          <td><span class="tag">Phase 5</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-low">P3</span></td>
+          <td>Fix categories!inner → categories (left join)</td>
+          <td><span class="file-ref">getProducts.ts:178</span></td>
+          <td><span class="tag">Phase 2</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-low">P3</span></td>
+          <td>Add Hand Cash widget to dashboard</td>
+          <td><span class="file-ref">HandCashWidget.tsx</span> (new)</td>
+          <td><span class="tag">Phase 5</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-low">P3</span></td>
+          <td>Add missing tp_price warning alerts</td>
+          <td><span class="file-ref">useDashboardMetrics.ts</span></td>
+          <td><span class="tag">Phase 5</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-low">P3</span></td>
+          <td>Add Purchases page UI</td>
+          <td><span class="file-ref">dashboard/purchases/page.tsx</span> (new)</td>
+          <td><span class="tag">Phase 3</span></td>
+          <td>☐ Todo</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-low">P3</span></td>
+          <td>Run data migration backfill scripts</td>
+          <td>Supabase SQL Editor</td>
+          <td><span class="tag">Migration</span></td>
+          <td>☐ Todo</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr/>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <div class="footer">
+    <div style="font-size:16px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">SaaS Financial & System Audit Report</div>
+    <div>Project: Shei Hoise &nbsp;·&nbsp; Audit Date: April 26, 2026 &nbsp;·&nbsp; Generated by Claude Code</div>
+    <div style="margin-top:8px; color:var(--text-dim);">This report is confidential and intended for internal use only. Do not share publicly.</div>
+  </div>
+
+</div><!-- /container -->
+
+</body>
+</html>

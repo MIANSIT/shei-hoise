@@ -24,7 +24,7 @@ export default function CTASection() {
           transition={{ duration: 0.6 }}
           className='text-3xl md:text-4xl font-bold mb-6'
         >
-          Ready to Transform Your Store Management?
+          Ready to Run Your Store the Smart Way?
         </motion.h2>
 
         <motion.p
@@ -33,8 +33,8 @@ export default function CTASection() {
           transition={{ duration: 0.6 }}
           className='text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto'
         >
-          Join hundreds of store owners who are already using Shei-Hoise to
-          streamline their business operations.
+          Join store owners who have ditched the spreadsheets and are running
+          their business from one clean, simple dashboard.
         </motion.p>
 
         <div className='flex flex-col sm:flex-row gap-4 justify-center'>

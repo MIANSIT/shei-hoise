@@ -5,7 +5,8 @@ import {
   createUserSchema,
   CreateUserType,
 } from "@/lib/schema/onboarding/user.schema";
-import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createUserCore } from "@/lib/queries/onboarding/store/createUserCore";
 import { createStoreWithSettings } from "@/lib/queries/onboarding/store/createStoreWithSettings";
 import { DomainErrorCode } from "@/lib/errors/domainErrors";

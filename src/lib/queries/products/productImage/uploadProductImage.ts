@@ -1,5 +1,5 @@
 // File: productImage/uploadProductImage.ts
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function uploadProductImage(
   file: File,

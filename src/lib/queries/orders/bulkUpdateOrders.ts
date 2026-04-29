@@ -1,5 +1,5 @@
 // lib/queries/orders/bulkUpdateOrders.ts
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   OrderStatus,
   PaymentStatus,

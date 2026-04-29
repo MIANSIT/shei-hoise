@@ -2,7 +2,7 @@ export const footerContent = {
   brand: {
     name: "Shei Hoise ",
     description:
-      "Your ultimate destination for cutting-edge tech. Trendy gadgets, smart devices, and must-have electronics—all in one place.",
+      "A smart store management platform built for independent sellers. Manage products, track orders, and grow your business from one simple dashboard.",
   },
   links: {
     shop: [

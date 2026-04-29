@@ -1,7 +1,8 @@
 // lib/queries/onboarding/store/createStoreWithSettings.ts
 "use server";
 
-import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   StoreType,
   StoreSettingsType,

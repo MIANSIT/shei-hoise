@@ -1,6 +1,6 @@
 "use client";
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ProductStatus, StockFilter } from "@/lib/types/enums";
 
 export interface ProductImage {

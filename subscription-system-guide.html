@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shei Hoise — Subscription System (MVP)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; font-size: 14px; }
+
+    /* COVER */
+    .cover {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      color: white; min-height: 100vh; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center; padding: 60px 40px;
+      page-break-after: always;
+    }
+    .cover .icon { font-size: 64px; margin-bottom: 24px; }
+    .cover h1 { font-size: 40px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+    .cover .sub { font-size: 18px; opacity: 0.65; margin-bottom: 32px; }
+    .cover .pill {
+      display: inline-block; background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 20px;
+      padding: 6px 18px; font-size: 13px; margin: 4px;
+    }
+    .cover .mvp-badge {
+      margin-top: 40px; background: #22c55e; color: white;
+      padding: 10px 28px; border-radius: 30px; font-weight: 700; font-size: 15px;
+      letter-spacing: 1px;
+    }
+    .cover .meta { margin-top: 40px; opacity: 0.4; font-size: 12px; }
+
+    /* LAYOUT */
+    .page { max-width: 860px; margin: 0 auto; padding: 52px 40px; }
+    .divider { height: 1px; background: #e2e8f0; margin: 52px 0; }
+
+    /* HEADINGS */
+    .sec-label { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; }
+    h2 { font-size: 28px; font-weight: 800; color: #0f172a; margin-bottom: 8px; letter-spacing: -0.5px; }
+    h3 { font-size: 17px; font-weight: 700; color: #1e293b; margin: 32px 0 14px; }
+    .sec-desc { color: #64748b; font-size: 15px; margin-bottom: 28px; max-width: 620px; }
+
+    /* CALLOUT BOXES */
+    .box { border-radius: 12px; padding: 18px 22px; margin: 18px 0; border-left: 4px solid; font-size: 13.5px; }
+    .box.blue   { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+    .box.green  { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+    .box.orange { background: #fff7ed; border-color: #f97316; color: #9a3412; }
+    .box.red    { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+    .box.purple { background: #faf5ff; border-color: #a855f7; color: #6b21a8; }
+    .box strong { font-weight: 700; }
+
+    /* STATUS PILLS */
+    .pill-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+    .spill { border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 7px; border: 2px solid; }
+    .spill .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .spill.trial   { background: #fefce8; border-color: #eab308; color: #713f12; }
+    .spill.trial .dot { background: #eab308; }
+    .spill.grace   { background: #fff7ed; border-color: #f97316; color: #9a3412; }
+    .spill.grace .dot { background: #f97316; }
+    .spill.active  { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+    .spill.active .dot { background: #22c55e; }
+    .spill.expired { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+    .spill.expired .dot { background: #ef4444; }
+
+    /* FLOW */
+    .flow { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
+    .fstep {
+      background: white; border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: 18px 22px; position: relative;
+    }
+    .fstep .fnum {
+      position: absolute; top: -10px; left: 16px;
+      background: #0f172a; color: white; font-size: 10px; font-weight: 800;
+      padding: 2px 10px; border-radius: 20px; letter-spacing: 0.5px;
+    }
+    .fstep .ftitle { font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 5px; }
+    .fstep .fdesc { font-size: 13px; color: #64748b; }
+    .fstep.green-step { border-color: #22c55e; background: #f0fdf4; }
+    .fstep.orange-step { border-color: #f97316; background: #fff7ed; }
+    .fstep.red-step { border-color: #ef4444; background: #fef2f2; }
+    .fstep.blue-step { border-color: #3b82f6; background: #eff6ff; }
+    .farrow { text-align: center; font-size: 22px; color: #cbd5e1; padding: 6px 0; }
+
+    /* HORIZONTAL TIMELINE */
+    .timeline { display: flex; align-items: flex-start; gap: 0; margin: 28px 0; overflow-x: auto; padding: 20px 0; }
+    .tl-item { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 100px; }
+    .tl-dot { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 3px solid; margin-bottom: 10px; background: white; }
+    .tl-dot.yellow { border-color: #eab308; }
+    .tl-dot.orange { border-color: #f97316; }
+    .tl-dot.green  { border-color: #22c55e; }
+    .tl-dot.red    { border-color: #ef4444; }
+    .tl-dot.blue   { border-color: #3b82f6; }
+    .tl-label { font-size: 12px; font-weight: 700; color: #334155; text-align: center; }
+    .tl-sub   { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 3px; }
+    .tl-line  { flex: 1; height: 3px; background: #e2e8f0; align-self: center; margin-bottom: 30px; min-width: 20px; }
+
+    /* TABLES */
+    .tbl { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .tbl th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+    .tbl td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: #f8fafc; }
+
+    /* TAGS */
+    .tag { display: inline-block; padding: 2px 9px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+    .tag.green  { background: #dcfce7; color: #166534; }
+    .tag.red    { background: #fee2e2; color: #991b1b; }
+    .tag.blue   { background: #dbeafe; color: #1e40af; }
+    .tag.orange { background: #ffedd5; color: #9a3412; }
+    .tag.gray   { background: #f1f5f9; color: #475569; }
+    .tag.yellow { background: #fef9c3; color: #854d0e; }
+
+    /* CARDS */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 20px 0; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; }
+    .card .ci { font-size: 28px; margin-bottom: 10px; }
+    .card .ct { font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 6px; }
+    .card .cb { font-size: 12.5px; color: #64748b; line-height: 1.6; }
+
+    /* CODE */
+    .code { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 18px 22px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.9; margin: 14px 0; overflow-x: auto; }
+    .code .cm { color: #475569; }
+    .code .ck { color: #7dd3fc; }
+    .code .cv { color: #86efac; }
+    .code .cs { color: #fca5a5; }
+
+    /* ADMIN PANEL MOCKUP */
+    .admin-mock { background: white; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin: 20px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .admin-mock-header { background: #0f172a; color: white; padding: 14px 20px; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+    .admin-mock-header .dot-row { display: flex; gap: 6px; margin-right: 10px; }
+    .admin-mock-header .dot-row span { width: 10px; height: 10px; border-radius: 50%; }
+    .admin-mock-header .dot-row span:nth-child(1) { background: #ef4444; }
+    .admin-mock-header .dot-row span:nth-child(2) { background: #f59e0b; }
+    .admin-mock-header .dot-row span:nth-child(3) { background: #22c55e; }
+
+    .btn { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; margin: 2px; cursor: pointer; }
+    .btn.g  { background: #dcfce7; color: #166534; }
+    .btn.r  { background: #fee2e2; color: #991b1b; }
+    .btn.b  { background: #dbeafe; color: #1e40af; }
+    .btn.o  { background: #ffedd5; color: #9a3412; }
+
+    /* ROUTE */
+    .route { font-family: 'Courier New', monospace; font-size: 12px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; color: #0f172a; }
+
+    /* CHECKLIST */
+    .cl { list-style: none; margin: 14px 0; }
+    .cl li { padding: 10px 0; border-bottom: 1px solid #f1f5f9; display: flex; gap: 12px; font-size: 13.5px; }
+    .cl li:last-child { border-bottom: none; }
+    .cl .ck { width: 22px; height: 22px; background: #dcfce7; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #166534; flex-shrink: 0; margin-top: 1px; }
+    .cl .ct { font-weight: 700; color: #1e293b; }
+    .cl .cd { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* FILE LIST */
+    .file-list { list-style: none; margin: 14px 0; }
+    .file-list li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; }
+    .file-list .ftype { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+    .file-list .fpath { font-family: monospace; font-size: 12px; font-weight: 700; color: #0f172a; }
+    .file-list .fpurpose { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* FOOTER */
+    .footer { background: #0f172a; color: #475569; text-align: center; padding: 32px; font-size: 12px; margin-top: 60px; }
+    .footer strong { color: #94a3b8; }
+
+    @media print {
+      body { background: white; }
+      .cover { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { padding: 28px 24px; }
+      .divider { margin: 32px 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="icon">🛍️</div>
+  <h1>Shei Hoise</h1>
+  <div class="sub">Subscription System — MVP Guide</div>
+  <div>
+    <span class="pill">Manual Payment</span>
+    <span class="pill">Admin Controls</span>
+    <span class="pill">No Gateway Needed</span>
+  </div>
+  <div class="mvp-badge">✦ MVP — FAST TO BUILD</div>
+  <div class="meta">April 2026 &nbsp;·&nbsp; Internal Use Only</div>
+</div>
+
+
+<!-- SECTION 1: WHAT IS THIS -->
+<div class="page">
+  <div class="sec-label">Section 1</div>
+  <h2>What Is This System?</h2>
+  <p class="sec-desc">Simple, manual subscription management for the first version of Shei Hoise. No payment gateway. No automation. You are in full control.</p>
+
+  <div class="box blue">
+    <strong>Core Idea in One Line:</strong> Every new store gets 7 free trial days. After that, YOU (the admin) decide who gets access — by calling the customer, taking payment manually (bKash/bank), and clicking Activate.
+  </div>
+
+  <h3>Why Keep It Simple for MVP?</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="ci">🚀</div>
+      <div class="ct">Build in Days, Not Weeks</div>
+      <div class="cb">No payment gateway setup, no webhook complexity, no API keys from SSLCommerz needed right now.</div>
+    </div>
+    <div class="card">
+      <div class="ci">🤝</div>
+      <div class="ct">Personal Customer Handling</div>
+      <div class="cb">For a new product, personally calling each customer builds trust and helps you understand their needs.</div>
+    </div>
+    <div class="card">
+      <div class="ci">🧠</div>
+      <div class="ct">You Stay in Control</div>
+      <div class="cb">If a customer's business is busy, you can give them a few extra days before blocking. No rigid automation.</div>
+    </div>
+    <div class="card">
+      <div class="ci">🔧</div>
+      <div class="ct">Easy to Upgrade Later</div>
+      <div class="cb">The database structure is ready for automated payments. You just add SSLCommerz on top later.</div>
+    </div>
+  </div>
+
+  <h3>What You Are NOT Building in MVP</h3>
+  <div class="box red">
+    ✗ &nbsp;No SSLCommerz or payment gateway<br>
+    ✗ &nbsp;No /pricing page with "Pay Now" button<br>
+    ✗ &nbsp;No automatic trial expiry cron job<br>
+    ✗ &nbsp;No webhook or payment callback<br><br>
+    All of this comes in Version 2 after you have paying customers.
+  </div>
+</div>
+
+
+<!-- SECTION 2: STATUSES -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 2</div>
+  <h2>Store Statuses</h2>
+  <p class="sec-desc">Every store has one status at all times. You (the admin) control when it changes.</p>
+
+  <div class="pill-row">
+    <div class="spill trial"><span class="dot"></span> TRIAL</div>
+    <div class="spill grace"><span class="dot"></span> GRACE</div>
+    <div class="spill active"><span class="dot"></span> ACTIVE</div>
+    <div class="spill expired"><span class="dot"></span> EXPIRED</div>
+  </div>
+
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>What It Means</th>
+        <th>Can Use Dashboard?</th>
+        <th>Who Sets It?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag yellow">TRIAL</span></td>
+        <td>Store just created. 7-day free period running.</td>
+        <td><span class="tag green">✓ Yes</span></td>
+        <td>Auto-set when store is created</td>
+      </tr>
+      <tr>
+        <td><span class="tag orange">GRACE</span></td>
+        <td>Trial ended but you haven't blocked yet. Giving customer time to pay.</td>
+        <td><span class="tag green">✓ Yes (for now)</span></td>
+        <td>You (admin) — optional status</td>
+      </tr>
+      <tr>
+        <td><span class="tag green">ACTIVE</span></td>
+        <td>You confirmed payment received. Store fully active.</td>
+        <td><span class="tag green">✓ Yes</span></td>
+        <td>You (admin) click "Activate"</td>
+      </tr>
+      <tr>
+        <td><span class="tag red">EXPIRED</span></td>
+        <td>No payment. Store blocked. Owner sees a contact page.</td>
+        <td><span class="tag red">✗ No — blocked</span></td>
+        <td>You (admin) click "Block"</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box orange">
+    <strong>Key Decision:</strong> After the 7-day trial ends, the store does NOT get automatically blocked. You call the customer first. Only after you decide (no payment after 3 days, for example) do you click "Block" in the admin panel.
+  </div>
+</div>
+
+
+<!-- SECTION 3: THE FULL JOURNEY -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 3</div>
+  <h2>The Full Customer Journey</h2>
+  <p class="sec-desc">What happens from the moment a store is created to when it gets blocked or activated.</p>
+
+  <!-- TIMELINE -->
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-dot yellow">🆕</div>
+      <div class="tl-label">Day 0</div>
+      <div class="tl-sub">Store Created<br>Trial starts</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-item">
+      <div class="tl-dot yellow">⏱️</div>
+      <div class="tl-label">Days 1–7</div>
+      <div class="tl-sub">Free Trial<br>Full access</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-item">
+      <div class="tl-dot orange">📞</div>
+      <div class="tl-label">Day 7+</div>
+      <div class="tl-sub">Trial Over<br>You call them</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-item">
+      <div class="tl-dot green">💸</div>
+      <div class="tl-label">Payment</div>
+      <div class="tl-sub">bKash / Bank<br>You verify</div>
+    </div>
+    <div class="tl-line"></div>
+    <div class="tl-item">
+      <div class="tl-dot green">✅</div>
+      <div class="tl-label">Activate</div>
+      <div class="tl-sub">You click<br>Admin panel</div>
+    </div>
+    <div class="tl-line" style="background:#ef4444;opacity:0.3;"></div>
+    <div class="tl-item">
+      <div class="tl-dot red">🚫</div>
+      <div class="tl-label">OR Block</div>
+      <div class="tl-sub">No payment<br>after 3 days</div>
+    </div>
+  </div>
+
+  <h3>Step-by-Step Detail</h3>
+  <div class="flow">
+    <div class="fstep blue-step">
+      <span class="fnum">STEP 1 — SIGNUP</span>
+      <div class="ftitle">Customer creates a store</div>
+      <div class="fdesc">Goes through /sign-up → /onboarding. Database automatically sets: <code>status = 'trial'</code>, <code>is_active = true</code>, <code>trial_ends_at = today + 7 days</code></div>
+    </div>
+    <div class="farrow">↓</div>
+    <div class="fstep green-step">
+      <span class="fnum">STEP 2 — FREE TRIAL (Days 1–7)</span>
+      <div class="ftitle">Full access to dashboard</div>
+      <div class="fdesc">Customer uses products, orders, customers — everything. A countdown banner shows them how many days are left in their trial. e.g. "Trial expires in: 5d 12h 30m"</div>
+    </div>
+    <div class="farrow">↓</div>
+    <div class="fstep orange-step">
+      <span class="fnum">STEP 3 — TRIAL ENDS (Day 7+)</span>
+      <div class="ftitle">You are notified. Nothing auto-blocks yet.</div>
+      <div class="fdesc">In the admin panel, the store shows as "Trial Ended" with a yellow warning. You can see <em>exactly</em> when the trial expired. Store still has access during this period.</div>
+    </div>
+    <div class="farrow">↓</div>
+    <div class="fstep">
+      <span class="fnum">STEP 4 — YOU CALL THE CUSTOMER</span>
+      <div class="ftitle">Discuss subscription plan, take payment manually</div>
+      <div class="fdesc">Customer pays via bKash, bank transfer, or cash. You verify the payment yourself. If they need more time, you can set the grace period or add a note in the admin panel.</div>
+    </div>
+    <div class="farrow">↓</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:0;">
+    <div class="flow">
+      <div class="fstep green-step">
+        <span class="fnum">STEP 5A — PAYMENT RECEIVED</span>
+        <div class="ftitle">You click "Activate" in admin panel</div>
+        <div class="fdesc">One button click. Store becomes <code>status = 'active'</code>, <code>is_active = true</code>. Customer gets full access. You note: "Paid ৳599 via bKash — 30 days"</div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="fstep red-step">
+        <span class="fnum">STEP 5B — NO PAYMENT (3+ days)</span>
+        <div class="ftitle">You click "Block" in admin panel</div>
+        <div class="fdesc">One button click. Store becomes <code>status = 'expired'</code>, <code>is_active = false</code>. Customer is redirected to a contact page when they visit dashboard.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SECTION 4: ADMIN PANEL -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 4</div>
+  <h2>Admin Panel — Your Control Center</h2>
+  <p class="sec-desc">The one page you use to manage every store. Only Super Admins can see this.</p>
+
+  <h3>What the Admin Panel Looks Like</h3>
+  <div class="admin-mock">
+    <div class="admin-mock-header">
+      <div class="dot-row"><span></span><span></span><span></span></div>
+      🏪 All Stores — Subscription Management
+    </div>
+    <table class="tbl" style="border-radius:0;border:none;margin:0;">
+      <thead>
+        <tr>
+          <th>Store Name</th>
+          <th>Owner</th>
+          <th>Status</th>
+          <th>Trial Ends / Active Until</th>
+          <th>Note</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Rahman Fashion</strong></td>
+          <td>01711-xxxxx</td>
+          <td><span class="tag green">ACTIVE</span></td>
+          <td>Paid until 30 May 2026</td>
+          <td><span style="font-size:11px;color:#64748b;">bKash ৳599</span></td>
+          <td>
+            <span class="btn r">Block</span>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Dhaka Crafts</strong></td>
+          <td>01812-xxxxx</td>
+          <td><span class="tag yellow">TRIAL</span></td>
+          <td style="color:#f97316;font-weight:600;">⏰ 2 days left</td>
+          <td>—</td>
+          <td>
+            <span class="btn g">Activate</span>
+            <span class="btn b">+7 Days</span>
+          </td>
+        </tr>
+        <tr style="background:#fef9c3;">
+          <td><strong>Bhuiyan Store</strong></td>
+          <td>01611-xxxxx</td>
+          <td><span class="tag orange">GRACE</span></td>
+          <td style="color:#ef4444;font-weight:600;">⚠ Trial ended 2 days ago</td>
+          <td><span style="font-size:11px;color:#9a3412;">Called, waiting</span></td>
+          <td>
+            <span class="btn g">Activate</span>
+            <span class="btn r">Block</span>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Sohel Electronics</strong></td>
+          <td>01919-xxxxx</td>
+          <td><span class="tag red">EXPIRED</span></td>
+          <td style="color:#94a3b8;">Blocked 5 Apr 2026</td>
+          <td><span style="font-size:11px;color:#64748b;">No response</span></td>
+          <td>
+            <span class="btn g">Activate</span>
+            <span class="btn b">+7 Days</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Admin Actions — What Each Button Does</h3>
+  <table class="tbl">
+    <thead>
+      <tr><th>Button</th><th>What Happens in Database</th><th>When to Use</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="btn g">Activate</span></td>
+        <td><code>status = 'active'</code>, <code>is_active = true</code>, <code>subscription_expires_at = today + 30 days</code></td>
+        <td>You received bKash / bank payment and verified it</td>
+      </tr>
+      <tr>
+        <td><span class="btn r">Block</span></td>
+        <td><code>status = 'expired'</code>, <code>is_active = false</code></td>
+        <td>Customer hasn't paid after your grace period. Dashboard locked.</td>
+      </tr>
+      <tr>
+        <td><span class="btn b">+7 Days</span></td>
+        <td><code>trial_ends_at = trial_ends_at + 7 days</code>, keeps <code>status = 'trial'</code></td>
+        <td>Customer asked for more time. Business is slow. Goodwill gesture.</td>
+      </tr>
+      <tr>
+        <td><span class="btn o">Grace</span></td>
+        <td><code>status = 'grace'</code>, keeps <code>is_active = true</code></td>
+        <td>Trial ended, customer says they'll pay tomorrow. Mark as grace period.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box green">
+    <strong>Admin Note Field:</strong> Every action should have an optional note. e.g. "Called on 25 Apr, customer paying tomorrow" or "Paid ৳599 via bKash ref: TXN12345". This note is saved in the database so you have a record of every interaction.
+  </div>
+</div>
+
+
+<!-- SECTION 5: ACCESS CONTROL -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 5</div>
+  <h2>Access Control</h2>
+  <p class="sec-desc">How the system decides who gets into the dashboard. Enforced on the server — cannot be bypassed.</p>
+
+  <h3>The Rule Is Simple</h3>
+  <div class="box blue">
+    <strong>Only one condition to check:</strong> Is <code>stores.is_active = true</code>?<br><br>
+    — <strong>true</strong> → allow dashboard access<br>
+    — <strong>false</strong> → redirect to a "Contact Us to Restore Access" page
+  </div>
+
+  <h3>Two Layers of Protection</h3>
+  <div class="cards">
+    <div class="card" style="border-color:#3b82f6;border-width:2px;">
+      <div class="ci">🔐</div>
+      <div class="ct">Layer 1: Next.js Middleware (Root)</div>
+      <div class="cb">
+        File: <code>middleware.ts</code><br><br>
+        Runs on the <strong>server</strong> before any page loads. Checks <code>is_active</code> from the database on every single request to <code>/dashboard/*</code>.<br><br>
+        Even if someone knows JavaScript and tries to bypass the UI — they still get redirected. This is the real security.
+      </div>
+    </div>
+    <div class="card">
+      <div class="ci">🖥️</div>
+      <div class="ct">Layer 2: Dashboard Layout</div>
+      <div class="cb">
+        File: <code>src/app/dashboard/layout.tsx</code><br><br>
+        Already exists. Shows <code>TrialEnded</code> or <code>AccessRestricted</code> screens when <code>storeIsActive = false</code>.<br><br>
+        This is a visual fallback. Middleware handles the real blocking.
+      </div>
+    </div>
+  </div>
+
+  <h3>What the Blocked User Sees</h3>
+  <div class="flow">
+    <div class="fstep red-step">
+      <span class="fnum">BLOCKED STORE</span>
+      <div class="ftitle">Customer tries to visit /dashboard</div>
+      <div class="fdesc">Middleware detects <code>is_active = false</code> → immediately redirects to <strong>/contact-us</strong> (existing page). Customer sees: "Your store access has been suspended. Contact us to reactivate." — with your phone number and email.</div>
+    </div>
+  </div>
+
+  <div class="box orange">
+    <strong>Why redirect to /contact-us and not /pricing?</strong> Because in this MVP, there is no self-service payment page. The customer must contact you to pay manually. You can update this link to /pricing later when you add automated payments.
+  </div>
+</div>
+
+
+<!-- SECTION 6: DATABASE -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 6</div>
+  <h2>Database Changes</h2>
+  <p class="sec-desc">Minimal changes to your existing database. No new complex tables for MVP.</p>
+
+  <div class="box green">
+    <strong>Existing tables NOT touched:</strong> products, orders, customers, expenses — all untouched.<br>
+    <strong>Only <code>stores</code> table gets 3 new columns.</strong> That's it for MVP.
+  </div>
+
+  <h3>Changes to <code>stores</code> Table</h3>
+  <table class="tbl">
+    <thead><tr><th>Column</th><th>Type</th><th>What It Stores</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>status</code></td>
+        <td>TEXT (enum)</td>
+        <td>Now: trial, active, expired, grace, cancelled (was: trial, approved, rejected, pending)</td>
+        <td><span class="tag orange">Updated</span></td>
+      </tr>
+      <tr>
+        <td><code>is_active</code></td>
+        <td>BOOLEAN</td>
+        <td>Already exists. Controls dashboard access. true = open, false = blocked.</td>
+        <td><span class="tag green">Existing</span></td>
+      </tr>
+      <tr>
+        <td><code>trial_ends_at</code></td>
+        <td>TIMESTAMPTZ</td>
+        <td>Exact date/time the 7-day trial expires. Set when store is created.</td>
+        <td><span class="tag blue">New</span></td>
+      </tr>
+      <tr>
+        <td><code>subscription_expires_at</code></td>
+        <td>TIMESTAMPTZ</td>
+        <td>When the paid subscription expires (set by admin when activating). e.g. today + 30 days.</td>
+        <td><span class="tag blue">New</span></td>
+      </tr>
+      <tr>
+        <td><code>admin_notes</code></td>
+        <td>TEXT</td>
+        <td>Free text notes by admin. e.g. "Paid ৳599 bKash on 25 Apr, ref TXN123"</td>
+        <td><span class="tag blue">New</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>SQL to Run in Supabase SQL Editor</h3>
+  <div class="code">
+<span class="cm">-- Step 1: Add new columns to stores table</span>
+<span class="ck">ALTER</span> TABLE stores
+  <span class="ck">ADD COLUMN IF NOT EXISTS</span> trial_ends_at         TIMESTAMPTZ,
+  <span class="ck">ADD COLUMN IF NOT EXISTS</span> subscription_expires_at TIMESTAMPTZ,
+  <span class="ck">ADD COLUMN IF NOT EXISTS</span> admin_notes            TEXT;
+
+<span class="cm">-- Step 2: Backfill trial_ends_at for existing trial stores</span>
+<span class="ck">UPDATE</span> stores
+<span class="ck">SET</span> trial_ends_at = created_at + <span class="cs">INTERVAL '7 days'</span>
+<span class="ck">WHERE</span> status = <span class="cs">'trial'</span> <span class="ck">AND</span> trial_ends_at <span class="ck">IS NULL</span>;
+
+<span class="cm">-- Step 3: Add new status values to enum</span>
+<span class="cm">-- (run these one at a time if your status is an enum type)</span>
+<span class="ck">ALTER</span> TYPE store_status <span class="ck">ADD VALUE IF NOT EXISTS</span> <span class="cs">'active'</span>;
+<span class="ck">ALTER</span> TYPE store_status <span class="ck">ADD VALUE IF NOT EXISTS</span> <span class="cs">'expired'</span>;
+<span class="ck">ALTER</span> TYPE store_status <span class="ck">ADD VALUE IF NOT EXISTS</span> <span class="cs">'grace'</span>;
+<span class="ck">ALTER</span> TYPE store_status <span class="ck">ADD VALUE IF NOT EXISTS</span> <span class="cs">'cancelled'</span>;
+  </div>
+
+  <div class="box orange">
+    <strong>If <code>status</code> is TEXT not ENUM:</strong> Skip Step 3. Just use the string values directly in your code. Check Supabase Table Editor to confirm the column type.
+  </div>
+</div>
+
+
+<!-- SECTION 7: FILES TO BUILD -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 7</div>
+  <h2>Files to Build</h2>
+  <p class="sec-desc">Only 5 things to create or change. That's the entire MVP.</p>
+
+  <div class="box blue">
+    <strong>Total work:</strong> 2 new files, 1 update to existing file, 1 small enum update, 1 SQL query. A developer can finish this in one day.
+  </div>
+
+  <h3>New Files to Create</h3>
+  <ul class="file-list">
+    <li>
+      <span class="ftype tag blue">SERVER</span>
+      <div>
+        <div class="fpath">middleware.ts &nbsp; <span style="font-size:11px;color:#94a3b8;">(project root, next to package.json)</span></div>
+        <div class="fpurpose">Intercepts every /dashboard/* request. Checks is_active from database. Redirects blocked stores to /contact-us. This is the most important file — it makes the protection real.</div>
+      </div>
+    </li>
+    <li>
+      <span class="ftype tag green">PAGE</span>
+      <div>
+        <div class="fpath">src/app/dashboard/admin/stores/page.tsx</div>
+        <div class="fpurpose">Super admin panel. Shows all stores in a table with their status, trial end date, notes. Has Activate / Block / +7 Days / Grace buttons.</div>
+      </div>
+    </li>
+    <li>
+      <span class="ftype tag blue">API</span>
+      <div>
+        <div class="fpath">src/app/api/admin/stores/[id]/route.ts</div>
+        <div class="fpurpose">PATCH endpoint. Handles the admin button actions: activate, block, extend-trial, grace. Only callable by super_admin users.</div>
+      </div>
+    </li>
+  </ul>
+
+  <h3>Existing Files to Modify</h3>
+  <ul class="file-list">
+    <li>
+      <span class="ftype tag orange">EDIT</span>
+      <div>
+        <div class="fpath">src/lib/types/enums.ts</div>
+        <div class="fpurpose">Add ACTIVE, EXPIRED, GRACE, CANCELLED to StoreStatus enum. Update STORE_STATUS_LABELS with these values.</div>
+      </div>
+    </li>
+    <li>
+      <span class="ftype tag orange">EDIT</span>
+      <div>
+        <div class="fpath">src/app/components/admin/StoreStatus/TrialEnded.tsx</div>
+        <div class="fpurpose">Change "Upgrade &amp; Continue" button link from /contact-us to /contact-us (same, already correct). Optionally update text to show phone number.</div>
+      </div>
+    </li>
+    <li>
+      <span class="ftype tag orange">EDIT</span>
+      <div>
+        <div class="fpath">src/lib/queries/onboarding/ (store creation query)</div>
+        <div class="fpurpose">When creating a new store, also set trial_ends_at = now() + 7 days in the INSERT query.</div>
+      </div>
+    </li>
+  </ul>
+
+  <h3>Build Order (Do This First)</h3>
+  <div class="flow">
+    <div class="fstep">
+      <span class="fnum">1st</span>
+      <div class="ftitle">Run the SQL Migration</div>
+      <div class="fdesc">Add the 3 new columns to the stores table. This takes 2 minutes in Supabase SQL Editor.</div>
+    </div>
+    <div class="farrow">↓</div>
+    <div class="fstep">
+      <span class="fnum">2nd</span>
+      <div class="ftitle">Update enums.ts</div>
+      <div class="fdesc">Add the 4 new status values. Zero risk — just adding constants.</div>
+    </div>
+    <div class="farrow">↓</div>
+    <div class="fstep">
+      <span class="fnum">3rd</span>
+      <div class="ftitle">Create middleware.ts</div>
+      <div class="fdesc">The server-side protection. Test it by trying to access /dashboard with an expired store.</div>
+    </div>
+    <div class="farrow">↓</div>
+    <div class="fstep green-step">
+      <span class="fnum">4th</span>
+      <div class="ftitle">Create Admin Panel + API Route</div>
+      <div class="fdesc">The page where you manage all stores. Test each button (Activate, Block, +7 Days).</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SECTION 8: CHECKLIST -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 8</div>
+  <h2>MVP Checklist</h2>
+  <p class="sec-desc">Everything needed for the MVP to work. Check each item off as you build.</p>
+
+  <h3>Database</h3>
+  <ul class="cl">
+    <li><span class="ck">□</span><div><div class="ct">Enable pg_cron extension</div><div class="cd">Optional for MVP — skip for now</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Add trial_ends_at column to stores</div><div class="cd">Run the ALTER TABLE SQL in Supabase SQL Editor</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Add subscription_expires_at column to stores</div><div class="cd">Part of the same SQL migration</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Add admin_notes column to stores</div><div class="cd">Part of the same SQL migration</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Add new status values (active, expired, grace)</div><div class="cd">ALTER TYPE or confirm status is TEXT type</div></div></li>
+  </ul>
+
+  <h3>Code</h3>
+  <ul class="cl">
+    <li><span class="ck">□</span><div><div class="ct">Update StoreStatus enum in enums.ts</div><div class="cd">Add ACTIVE, EXPIRED, GRACE, CANCELLED values</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Create middleware.ts at project root</div><div class="cd">Server-side dashboard protection</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Create /api/admin/stores/[id]/route.ts</div><div class="cd">Handles activate, block, extend, grace actions</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Create /dashboard/admin/stores/page.tsx</div><div class="cd">Admin panel table with all stores and action buttons</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Update store creation to set trial_ends_at</div><div class="cd">In the onboarding INSERT query</div></div></li>
+  </ul>
+
+  <h3>Testing</h3>
+  <ul class="cl">
+    <li><span class="ck">□</span><div><div class="ct">Create a test store → confirm trial_ends_at is set</div><div class="cd">Check in Supabase Table Editor</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Manually set is_active = false on a test store</div><div class="cd">Try to visit /dashboard → should redirect to /contact-us</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Click "Activate" in admin panel</div><div class="cd">Confirm store is_active becomes true → can access dashboard</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Click "Block" in admin panel</div><div class="cd">Confirm dashboard access is immediately removed</div></div></li>
+  </ul>
+
+  <h3>After MVP is Live — Version 2 Additions</h3>
+  <ul class="cl">
+    <li><span class="ck">□</span><div><div class="ct">Add /pricing page with plan cards</div><div class="cd">Show prices, let customers see what they're paying for</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Integrate SSLCommerz payment gateway</div><div class="cd">Self-service payments — no manual calls needed</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Add pg_cron auto-expiry job</div><div class="cd">Automate what you're doing manually today</div></div></li>
+    <li><span class="ck">□</span><div><div class="ct">Email notifications on trial end</div><div class="cd">Automatic email to customer when trial is about to expire</div></div></li>
+  </ul>
+</div>
+
+
+<!-- SECTION 9: WORKFLOW FOR ADMIN -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 9</div>
+  <h2>Your Daily Workflow as Admin</h2>
+  <p class="sec-desc">How you will actually use this system day to day to manage customers.</p>
+
+  <h3>Daily Check (2 Minutes)</h3>
+  <div class="flow">
+    <div class="fstep blue-step">
+      <span class="fnum">CHECK</span>
+      <div class="ftitle">Open /dashboard/admin/stores</div>
+      <div class="fdesc">Look for stores with status TRIAL that have less than 2 days remaining. These customers need a call soon. Also check any GRACE stores that have been waiting too long.</div>
+    </div>
+  </div>
+
+  <h3>When a Trial is Expiring</h3>
+  <table class="tbl">
+    <thead><tr><th>Situation</th><th>Your Action</th><th>Button to Click</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Trial ending in 2 days</td>
+        <td>Call customer. Remind them about subscription.</td>
+        <td>No button yet — just call</td>
+      </tr>
+      <tr>
+        <td>Trial ended, customer asked for 1 more day</td>
+        <td>Set grace period. Note the conversation.</td>
+        <td><span class="btn o">Grace</span> + write note</td>
+      </tr>
+      <tr>
+        <td>Trial ended, customer can't pay for 7 more days</td>
+        <td>Extend trial if you want to keep them happy</td>
+        <td><span class="btn b">+7 Days</span> + write note</td>
+      </tr>
+      <tr>
+        <td>Customer paid via bKash — you verified</td>
+        <td>Activate immediately. Write payment reference in note.</td>
+        <td><span class="btn g">Activate</span> + write note</td>
+      </tr>
+      <tr>
+        <td>3+ days no response, no payment</td>
+        <td>Block the store.</td>
+        <td><span class="btn r">Block</span></td>
+      </tr>
+      <tr>
+        <td>Blocked customer contacts you and pays</td>
+        <td>Activate immediately. Store access restored.</td>
+        <td><span class="btn g">Activate</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box green">
+    <strong>Always write a note.</strong> The admin_notes field is your record of every payment and conversation. If a customer claims they paid but you have no note — you can check. Write: "Paid ৳299 bKash 01711-xxxxx ref TXN123 on 25 Apr 2026"
+  </div>
+</div>
+
+
+<!-- SECTION 10: QUICK SUMMARY -->
+<div class="page">
+  <div class="divider"></div>
+  <div class="sec-label">Section 10</div>
+  <h2>Quick Summary</h2>
+  <p class="sec-desc">The entire system explained in one view.</p>
+
+  <table class="tbl">
+    <thead><tr><th>What</th><th>How</th><th>Who Does It</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>New store gets trial</strong></td>
+        <td>Auto on signup. trial_ends_at = today + 7 days</td>
+        <td>System (code)</td>
+      </tr>
+      <tr>
+        <td><strong>Trial countdown shown</strong></td>
+        <td>Existing StoreStatusPopup component</td>
+        <td>System (code)</td>
+      </tr>
+      <tr>
+        <td><strong>Trial ends</strong></td>
+        <td>Store stays accessible — no auto-block</td>
+        <td>Nothing (manual)</td>
+      </tr>
+      <tr>
+        <td><strong>Admin notified</strong></td>
+        <td>Sees warning in admin panel table</td>
+        <td>Admin checks daily</td>
+      </tr>
+      <tr>
+        <td><strong>Customer pays</strong></td>
+        <td>bKash / bank transfer / cash to admin</td>
+        <td>Customer + Admin</td>
+      </tr>
+      <tr>
+        <td><strong>Store activated</strong></td>
+        <td>Admin clicks "Activate" in admin panel</td>
+        <td>Admin</td>
+      </tr>
+      <tr>
+        <td><strong>Store blocked</strong></td>
+        <td>Admin clicks "Block" → is_active = false</td>
+        <td>Admin</td>
+      </tr>
+      <tr>
+        <td><strong>Block enforced</strong></td>
+        <td>middleware.ts checks database on every page load</td>
+        <td>System (code)</td>
+      </tr>
+      <tr>
+        <td><strong>Blocked store sees</strong></td>
+        <td>"Contact us to restore access" — /contact-us page</td>
+        <td>System (code)</td>
+      </tr>
+      <tr>
+        <td><strong>Version 2 upgrade</strong></td>
+        <td>Add SSLCommerz → customers pay themselves</td>
+        <td>Future work</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box purple">
+    <strong>Bottom line:</strong> The database stores the truth. The middleware enforces it. You control the database through the admin panel. Simple, reliable, and you can build it in one day.
+  </div>
+</div>
+
+
+<div class="footer">
+  <strong>Shei Hoise — Subscription System MVP Guide</strong><br>
+  Internal Document &nbsp;·&nbsp; Version 1.0 (MVP) &nbsp;·&nbsp; April 2026<br><br>
+  To save as PDF: Open in Chrome → Ctrl+P → Save as PDF → A4 paper → Enable Background Graphics
+</div>
+
+</body>
+</html>

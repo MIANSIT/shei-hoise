@@ -1,5 +1,5 @@
 // lib/queries/customers/getCustomerProfile.ts
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { CustomerProfile } from "@/lib/types/customer";
 
 // Cache implementation

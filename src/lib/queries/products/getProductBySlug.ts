@@ -1,5 +1,5 @@
 // lib/queries/products/getProductTypeBySlug.ts
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ProductType } from "@/lib/schema/productSchema";
 import type { ProductStock, ProductImage, Category } from "./getProducts";
 
