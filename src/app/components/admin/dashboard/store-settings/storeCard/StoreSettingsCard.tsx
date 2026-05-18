@@ -18,6 +18,7 @@ interface SettingRowProps {
   info?: string;
   editing?: boolean;
   readOnly?: boolean;
+  type?: "text" | "number";
   options?: { label: string; value: string | number }[];
   onChange?: (val: string | number) => void;
   suffix?: string;
@@ -32,6 +33,7 @@ function SettingRow({
   options,
   readOnly,
   suffix,
+  type = "number",
 }: SettingRowProps) {
   const [showInfo, setShowInfo] = useState(false);
 
@@ -70,6 +72,15 @@ function SettingRow({
               </option>
             ))}
           </select>
+        ) : editing && type === "text" ? (
+          <input
+            type="text"
+            value={value ?? ""}
+            readOnly={readOnly}
+            onChange={(e) => onChange?.(e.target.value)}
+            placeholder="Pixel ID"
+            className="bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 px-2.5 py-1.5 rounded-lg text-sm outline-none w-44 text-foreground"
+          />
         ) : editing ? (
           <div className="flex items-center gap-1.5">
             <input
@@ -107,7 +118,7 @@ export function StoreSettingsCard({
   const [loading, setLoading] = useState(false);
   const notify = useSheiNotification();
 
-  const handleChange = (field: keyof StoreSettings, value: string | number) => {
+  const handleChange = (field: keyof StoreSettings, value: string | number | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -259,6 +270,14 @@ export function StoreSettingsCard({
             onChange={(val) =>
               handleChange("free_shipping_threshold", Number(val))
             }
+          />
+          <SettingRow
+            label="Facebook Pixel ID"
+            value={formData.facebook_pixel_id ?? ""}
+            info="Meta Pixel ID for tracking customer events (PageView, Purchase, etc.)"
+            editing={editing}
+            type="text"
+            onChange={(val) => handleChange("facebook_pixel_id", String(val) || null)}
           />
         </div>
       </CardContent>

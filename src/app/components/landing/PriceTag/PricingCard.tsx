@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, Gift } from "lucide-react";
 import PriceTag from "@/app/components/landing/PriceTag/PriceTag";
 
 interface PricingCardProps {
@@ -13,6 +13,7 @@ interface PricingCardProps {
   discountedPrice: number;
   months: number;
   highlighted?: boolean;
+  badge?: string | null;
 }
 
 export default function PricingCard({
@@ -23,7 +24,15 @@ export default function PricingCard({
   discountedPrice,
   months,
   highlighted,
+  badge,
 }: PricingCardProps) {
+  const badgeColor =
+    badge === "Best Value"
+      ? "bg-green-500"
+      : badge === "Most Popular"
+        ? "bg-chart-3"
+        : "bg-chart-3";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -36,10 +45,12 @@ export default function PricingCard({
           : "bg-card border shadow-lg"
       }`}
     >
-      {highlighted && (
+      {badge && (
         <div className="absolute -top-3 md:-top-4 left-1/2 transform -translate-x-1/2">
-          <span className="bg-chart-3 text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-medium">
-            Most Popular
+          <span
+            className={`${badgeColor} text-white px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-medium whitespace-nowrap`}
+          >
+            {badge}
           </span>
         </div>
       )}
@@ -66,6 +77,59 @@ export default function PricingCard({
         highlighted={highlighted}
       />
 
+      {/* 7-Day Free Trial Banner */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-5 md:mb-6 ${
+          highlighted
+            ? "bg-white/15 border border-white/25"
+            : "bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
+        }`}
+      >
+        <div
+          className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 ${
+            highlighted
+              ? "bg-white/25"
+              : "bg-emerald-100 dark:bg-emerald-900"
+          }`}
+        >
+          <Gift
+            className={`w-4 h-4 ${
+              highlighted
+                ? "text-white"
+                : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p
+            className={`text-sm font-bold leading-none mb-1 ${
+              highlighted
+                ? "text-white"
+                : "text-emerald-700 dark:text-emerald-300"
+            }`}
+          >
+            7 days FREE
+          </p>
+          <p
+            className={`text-xs leading-none ${
+              highlighted
+                ? "text-white/65"
+                : "text-emerald-600/80 dark:text-emerald-500"
+            }`}
+          >
+            then your plan starts · cancel anytime
+          </p>
+        </div>
+        <ArrowRight
+          className={`w-4 h-4 shrink-0 ${
+            highlighted ? "text-white/60" : "text-emerald-400"
+          }`}
+        />
+      </motion.div>
+
       <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
         {features.map((feature) => (
           <li key={feature} className="flex items-start gap-2 md:gap-3">
@@ -85,16 +149,25 @@ export default function PricingCard({
         ))}
       </ul>
 
-      <Button
-        className={`w-full ${
-          highlighted
-            ? "bg-white text-chart-2 hover:bg-white/90"
-            : "bg-chart-2 hover:bg-chart-2/90 text-white"
-        }`}
-        size="lg"
-      >
-        Get Started
-      </Button>
+      <div>
+        <Button
+          className={`w-full ${
+            highlighted
+              ? "bg-white text-chart-2 hover:bg-white/90"
+              : "bg-chart-2 hover:bg-chart-2/90 text-white"
+          }`}
+          size="lg"
+        >
+          Start Free Trial
+        </Button>
+        <p
+          className={`text-center text-xs mt-2 ${
+            highlighted ? "text-white/55" : "text-muted-foreground"
+          }`}
+        >
+          No payment needed for 7 days
+        </p>
+      </div>
     </motion.div>
   );
 }
