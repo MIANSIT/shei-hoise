@@ -6,17 +6,24 @@ import { useEffect } from "react";
 
 interface FacebookPixelScriptProps {
   pixelId: string;
+  storeSlug: string;
 }
 
 // Fires PageView on every client-side navigation automatically
-export function FacebookPixelScript({ pixelId }: FacebookPixelScriptProps) {
+export function FacebookPixelScript({ pixelId, storeSlug }: FacebookPixelScriptProps) {
   const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.fbq) {
       window.fbq("track", "PageView");
     }
-  }, [pathname]);
+    // Save PageView to our DB
+    fetch("/api/pixel-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "PageView", params: { path: pathname }, store_slug: storeSlug }),
+    }).catch(() => {});
+  }, [pathname, storeSlug]);
 
   // Pixel IDs are numeric — strip anything non-numeric as a safety measure
   const safePixelId = pixelId.replace(/\D/g, "");

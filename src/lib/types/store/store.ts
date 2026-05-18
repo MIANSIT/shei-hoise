@@ -52,6 +52,7 @@ export interface StoreSettings {
   privacy_policy?: string | null;
   shipping_fees?: ShippingFees | null;
   facebook_pixel_id?: string | null;
+  facebook_access_token?: string | null;
   created_at?: Date | string;
   updated_at?: Date | string;
 }

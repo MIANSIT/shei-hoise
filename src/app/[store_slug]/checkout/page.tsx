@@ -128,7 +128,7 @@ export default function CheckoutPage() {
         num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
         value: calculations.subtotal,
         currency: "BDT",
-      });
+      }, store_slug);
     }
   }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal]);
 
@@ -539,7 +539,7 @@ export default function CheckoutPage() {
           value: calculations.totalPrice + shippingFee + taxAmount,
           currency: "BDT",
           order_id: result.orderNumber,
-        });
+        }, store_slug);
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);
