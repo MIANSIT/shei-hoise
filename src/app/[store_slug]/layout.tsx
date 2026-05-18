@@ -2,6 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import StoreHeader from "@/app/components/common/StoreHeader";
 import StoreFooter from "@/app/components/common/storeFooter/StoreFooter";
+import { FacebookPixelScript } from "@/app/components/common/FacebookPixelScript";
 import { footerContent } from "@/lib/store/footerContent";
 import { getStoreBySlugFull } from "@/lib/queries/stores/getStoreBySlugFull";
 
@@ -23,6 +24,9 @@ export default async function StoreLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
+      {storeData.facebook_pixel_id && (
+        <FacebookPixelScript pixelId={storeData.facebook_pixel_id} />
+      )}
       <StoreHeader storeSlug={store_slug} />
       <main className="grow">
         {React.cloneElement(children as React.ReactElement<{ store: typeof storeData }>, {
