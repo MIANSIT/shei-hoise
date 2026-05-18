@@ -11,6 +11,7 @@ export interface StoreFull {
   contact_email: string | null;
   contact_phone: string | null;
   business_address: string | null;
+  facebook_pixel_id: string | null;
   social: {
     facebook_link: string | null;
     instagram_link: string | null;
@@ -49,20 +50,23 @@ export async function getStoreBySlugFull(store_slug: string): Promise<StoreFull 
     return null;
   }
 
-  // fetch social
-  const { data: social } = await supabase
-    .from("store_social_media")
-    .select(`
-      facebook_link,
-      instagram_link,
-      twitter_link,
-      youtube_link
-    `)
-    .eq("store_id", store.id)
-    .single();
+  // fetch social + pixel settings in parallel
+  const [{ data: social }, { data: pixelSettings }] = await Promise.all([
+    supabase
+      .from("store_social_media")
+      .select("facebook_link, instagram_link, twitter_link, youtube_link")
+      .eq("store_id", store.id)
+      .single(),
+    supabase
+      .from("store_settings")
+      .select("facebook_pixel_id")
+      .eq("store_id", store.id)
+      .single(),
+  ]);
 
   const full: StoreFull = {
     ...store,
+    facebook_pixel_id: pixelSettings?.facebook_pixel_id ?? null,
     social: social ?? null,
   };
 

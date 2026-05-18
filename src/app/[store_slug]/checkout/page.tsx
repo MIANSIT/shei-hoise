@@ -24,6 +24,7 @@ import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -116,6 +117,20 @@ export default function CheckoutPage() {
       fetchStoreSettings();
     }
   }, [store_slug, taxLoaded]);
+
+  // Fire InitiateCheckout once when cart data is ready
+  const hasTrackedCheckout = useRef(false);
+  useEffect(() => {
+    if (isMounted && !isLoadingOverall && cartItems.length > 0 && !hasTrackedCheckout.current) {
+      hasTrackedCheckout.current = true;
+      fbq(FbEvent.INITIATE_CHECKOUT, {
+        content_ids: cartItems.map((i) => i.productId),
+        num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
+        value: calculations.subtotal,
+        currency: "BDT",
+      });
+    }
+  }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal]);
 
   // Check minimum order amount - WITHOUT NOTIFICATION
   useEffect(() => {
@@ -517,6 +532,14 @@ export default function CheckoutPage() {
         if (!result.success) {
           return notify.error(result.error || "Failed to place order");
         }
+
+        fbq(FbEvent.PURCHASE, {
+          content_ids: cartItems.map((i) => i.productId),
+          num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
+          value: calculations.totalPrice + shippingFee + taxAmount,
+          currency: "BDT",
+          order_id: result.orderNumber,
+        });
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);

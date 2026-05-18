@@ -11,6 +11,7 @@ import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
+import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
@@ -384,6 +385,14 @@ export default function ProductPage() {
           );
           setSelectedVariant(first?.id ?? fixed.product_variants[0].id);
         }
+
+        fbq(FbEvent.VIEW_CONTENT, {
+          content_ids: [fixed.id],
+          content_name: fixed.name,
+          content_type: "product",
+          value: fixed.discounted_price ?? fixed.base_price,
+          currency: "BDT",
+        });
       } catch (e) {
         console.error(e);
         setProduct(null);
@@ -412,6 +421,14 @@ export default function ProductPage() {
         quantity,
         variantId: selectedVariantData?.id ?? null,
       } as AddToCartType);
+      fbq(FbEvent.ADD_TO_CART, {
+        content_ids: [product.id],
+        content_name: product.name,
+        content_type: "product",
+        value: displayPrice * quantity,
+        currency: "BDT",
+        num_items: quantity,
+      });
       toastSuccess(`${product.name} added to cart`);
       setAddedSuccess(true);
       setTimeout(() => setAddedSuccess(false), 2200);
