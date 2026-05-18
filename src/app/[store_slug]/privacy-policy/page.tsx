@@ -8,6 +8,7 @@ import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 type ShippingFee = {
   name: string;
   price: number;
+  customer_view?: boolean;
 };
 
 export default function PrivacyPolicyPageClient() {
@@ -74,15 +75,17 @@ export default function PrivacyPolicyPageClient() {
         <h1>Privacy Policy</h1>
         <div className="w-full border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-8 sm:p-12 mt-3">
           <ul className="space-y-4">
-            {shippingFees.map((fee, index) => (
-              <li
-                key={index}
-                className="flex justify-between border-b border-gray-200 dark:border-gray-800 pb-2 text-lg"
-              >
-                <span>{fee.name}</span>
-                <span className="font-semibold">৳ {fee.price}</span>
-              </li>
-            ))}
+            {shippingFees
+              .filter((fee) => fee.customer_view !== false)
+              .map((fee, index) => (
+                <li
+                  key={index}
+                  className="flex justify-between border-b border-gray-200 dark:border-gray-800 pb-2 text-lg"
+                >
+                  <span>{fee.name}</span>
+                  <span className="font-semibold">৳ {fee.price}</span>
+                </li>
+              ))}
           </ul>
         </div>
       </div>
