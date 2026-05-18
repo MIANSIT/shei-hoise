@@ -392,7 +392,7 @@ export default function ProductPage() {
           content_type: "product",
           value: fixed.discounted_price ?? fixed.base_price,
           currency: "BDT",
-        });
+        }, store_slug);
       } catch (e) {
         console.error(e);
         setProduct(null);
@@ -428,7 +428,7 @@ export default function ProductPage() {
         value: displayPrice * quantity,
         currency: "BDT",
         num_items: quantity,
-      });
+      }, store_slug);
       toastSuccess(`${product.name} added to cart`);
       setAddedSuccess(true);
       setTimeout(() => setAddedSuccess(false), 2200);

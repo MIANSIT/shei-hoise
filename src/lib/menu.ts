@@ -17,6 +17,7 @@ import {
   DollarSign,
   CreditCard,
   BarChart2,
+  TrendingUp,
 } from "lucide-react";
 import React from "react";
 
@@ -112,5 +113,10 @@ export const sideMenu: MenuItem[] = [
       { title: "Expense", href: "/dashboard/expense", icon: CreditCard },
       { title: "Category", href: "/dashboard/expense/category", icon: BarChart2 },
     ],
+  },
+  {
+    title: "Pixel Analytics",
+    href: "/dashboard/pixel-analytics",
+    icon: TrendingUp,
   },
 ];

@@ -1,19 +1,35 @@
-// Typed wrapper around window.fbq — safe to call before pixel loads (queued)
 declare global {
   interface Window {
-    fbq: ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue?: unknown[]; loaded?: boolean; version?: string; push?: (...args: unknown[]) => void };
+    fbq: ((...args: unknown[]) => void) & {
+      callMethod?: (...args: unknown[]) => void;
+      queue?: unknown[];
+      loaded?: boolean;
+      version?: string;
+      push?: (...args: unknown[]) => void;
+    };
     _fbq?: unknown;
   }
 }
 
 type FbqParams = Record<string, unknown>;
 
-export function fbq(event: string, params?: FbqParams): void {
-  if (typeof window === "undefined" || !window.fbq) return;
-  if (params) {
-    window.fbq("track", event, params);
-  } else {
-    window.fbq("track", event);
+export function fbq(event: string, params?: FbqParams, storeSlug?: string): void {
+  // Send to Facebook
+  if (typeof window !== "undefined" && window.fbq) {
+    if (params) {
+      window.fbq("track", event, params);
+    } else {
+      window.fbq("track", event);
+    }
+  }
+
+  // Mirror to our own DB for the analytics dashboard (fire-and-forget)
+  if (storeSlug) {
+    fetch("/api/pixel-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, params, store_slug: storeSlug }),
+    }).catch(() => {});
   }
 }
 

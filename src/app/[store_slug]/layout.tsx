@@ -25,7 +25,7 @@ export default async function StoreLayout({
   return (
     <div className="min-h-screen flex flex-col">
       {storeData.facebook_pixel_id && (
-        <FacebookPixelScript pixelId={storeData.facebook_pixel_id} />
+        <FacebookPixelScript pixelId={storeData.facebook_pixel_id} storeSlug={store_slug} />
       )}
       <StoreHeader storeSlug={store_slug} />
       <main className="grow">
