@@ -1,5 +1,18 @@
 // app/about/page.tsx
+import type { Metadata } from "next";
 import React from "react";
+
+export const metadata: Metadata = {
+  title: "About Us | Shei Hoise",
+  description:
+    "Learn about Shei Hoise – the multi-tenant e-commerce platform that empowers store owners to sell online with powerful tools and insights.",
+  openGraph: {
+    title: "About Us | Shei Hoise",
+    description:
+      "Learn about Shei Hoise – the multi-tenant e-commerce platform that empowers store owners to sell online.",
+    type: "website",
+  },
+};
 import PageHeader from "@/app/components/websiteDetialsSection/PageHeader";
 import FeatureGrid from "@/app/components/websiteDetialsSection/FeatureGrid";
 import CTASection from "@/app/components/websiteDetialsSection/CTASection";
