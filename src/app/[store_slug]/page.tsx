@@ -468,11 +468,17 @@ function ProductCard({
 }: ProductCardProps) {
   const inStock = isProductInStock(product);
   const imageUrl = product.images?.[0] ?? product.primary_image?.image_url ?? null;
-  const price = product.discounted_price ?? product.base_price;
-  const hasDiscount =
-    product.discounted_price != null && product.discounted_price < product.base_price;
+
+  // Prefer variant discount → variant base → product discount → product base
+  const firstVariant = product.variants?.[0];
+  const originalPrice = firstVariant?.base_price ?? product.base_price;
+  const price =
+    firstVariant?.discounted_price && firstVariant.discounted_price > 0
+      ? firstVariant.discounted_price
+      : (firstVariant?.base_price ?? product.discounted_price ?? product.base_price);
+  const hasDiscount = originalPrice > price;
   const discountPct = hasDiscount
-    ? Math.round(((product.base_price - (product.discounted_price ?? 0)) / product.base_price) * 100)
+    ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
 
   return (
@@ -532,7 +538,7 @@ function ProductCard({
               </span>
               {hasDiscount && (
                 <span className="text-white/55 text-xs line-through font-medium">
-                  ৳{Number(product.base_price).toLocaleString()}
+                  ৳{Number(originalPrice).toLocaleString()}
                 </span>
               )}
             </div>
@@ -570,7 +576,7 @@ function ProductCard({
               </span>
               {hasDiscount && (
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">
-                  ৳{Number(product.base_price).toLocaleString()}
+                  ৳{Number(originalPrice).toLocaleString()}
                 </span>
               )}
             </div>
