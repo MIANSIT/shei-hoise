@@ -267,8 +267,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               </Link>
             </motion.div>
 
-            {/* Cards grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            {/* Cards grid — horizontal slider on mobile, grid on sm+ */}
+            <div className="flex overflow-x-auto gap-3 pb-3 sm:pb-0 sm:grid sm:grid-cols-3 lg:grid-cols-6 sm:gap-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {categories.slice(0, 6).map((cat, i) => (
                 <CategoryCard
                   key={cat.id}
@@ -410,27 +410,28 @@ function CategoryCard({ category, store_slug, index }: CategoryCardProps) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.38, ease: "easeOut" }}
+      className="w-20 shrink-0 sm:w-auto"
     >
       <Link
         href={`/${store_slug}/shop?category=${encodeURIComponent(category.name)}`}
-        className="group flex flex-col items-center text-center rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.10)] hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+        className="group flex flex-col items-center text-center rounded-xl sm:rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.10)] hover:-translate-y-1 transition-all duration-300 overflow-hidden"
       >
         {/* Top micro-accent line on hover */}
         <div className="w-full h-0.5 bg-linear-to-r from-transparent via-gray-200 to-transparent group-hover:via-gray-400 dark:group-hover:via-gray-500 transition-all duration-300" />
 
-        <div className="flex flex-col items-center gap-3 px-3 py-6 sm:py-7 w-full">
+        <div className="flex flex-col items-center gap-2 sm:gap-3 px-2 sm:px-3 py-3 sm:py-7 w-full">
           {/* Icon container */}
-          <div className="w-11 h-11 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center shrink-0 group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-colors duration-300">
-            <Tag className="h-4.5 w-4.5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300" />
+          <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center shrink-0 group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-colors duration-300">
+            <Tag className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300" />
           </div>
 
           {/* Category name */}
-          <p className="text-[13px] font-bold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 tracking-tight group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200">
+          <p className="text-[10px] sm:text-[13px] font-bold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2 tracking-tight group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200">
             {category.name}
           </p>
 
-          {/* Browse CTA */}
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:translate-x-0.5 transition-all duration-300">
+          {/* Browse CTA — hidden on mobile to keep thumbnail compact */}
+          <span className="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:translate-x-0.5 transition-all duration-300">
             Browse
             <ArrowRight className="h-3 w-3" />
           </span>
