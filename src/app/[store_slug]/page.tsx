@@ -234,72 +234,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          MOBILE — category chip strip
-          Sits immediately below the hero / header,
-          visible only on mobile (<sm)
-      ══════════════════════════════════════════ */}
-      {categories.length > 0 && (
-        <div className="sm:hidden pt-3 pb-1">
-          <div className="flex gap-2 overflow-x-auto px-4 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {categories.map((cat, i) => (
-              <CategoryChip key={cat.id} category={cat} store_slug={store_slug} index={i} />
-            ))}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: Math.min(categories.length * 0.05, 0.4), duration: 0.28 }}
-              className="shrink-0"
-            >
-              <Link
-                href={`/${store_slug}/shop`}
-                className="flex items-center gap-1 px-3.5 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all duration-150"
-              >
-                All <ArrowRight className="h-3 w-3" />
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════
-          DESKTOP — full category card section
-          Hidden on mobile, shown on sm+
-      ══════════════════════════════════════════ */}
-      {categories.length > 0 && (
-        <section className="hidden sm:block bg-white dark:bg-gray-950/80 border-b border-gray-100 dark:border-gray-800/60">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex items-end justify-between mb-10"
-            >
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-gray-400 dark:text-gray-500 mb-1.5">
-                  Browse Collection
-                </p>
-                <h2 className="text-[1.75rem] font-black text-gray-900 dark:text-white tracking-tight leading-none">
-                  Shop by Category
-                </h2>
-              </div>
-              <Link
-                href={`/${store_slug}/shop`}
-                className="group inline-flex items-center gap-1.5 text-sm font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-              >
-                View all
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
-              </Link>
-            </motion.div>
-
-            <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
-              {categories.slice(0, 6).map((cat, i) => (
-                <CategoryCard key={cat.id} category={cat} store_slug={store_slug} index={i} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      
 
       {/* ══════════════════════════════════════════
           FEATURED PRODUCTS — bento grid on all screens
@@ -394,6 +329,72 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           )}
         </div>
       </section>
+      {/* ══════════════════════════════════════════
+          MOBILE — category chip strip
+          Sits immediately below the hero / header,
+          visible only on mobile (<sm)
+      ══════════════════════════════════════════ */}
+      {categories.length > 0 && (
+        <div className="sm:hidden pt-3 pb-1">
+          <div className="flex gap-2 overflow-x-auto px-4 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {categories.map((cat, i) => (
+              <CategoryChip key={cat.id} category={cat} store_slug={store_slug} index={i} />
+            ))}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: Math.min(categories.length * 0.05, 0.4), duration: 0.28 }}
+              className="shrink-0"
+            >
+              <Link
+                href={`/${store_slug}/shop`}
+                className="flex items-center gap-1 px-3.5 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all duration-150"
+              >
+                All <ArrowRight className="h-3 w-3" />
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          DESKTOP — full category card section
+          Hidden on mobile, shown on sm+
+      ══════════════════════════════════════════ */}
+      {categories.length > 0 && (
+        <section className="hidden sm:block bg-white dark:bg-gray-950/80 border-b border-gray-100 dark:border-gray-800/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex items-end justify-between mb-10"
+            >
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-gray-400 dark:text-gray-500 mb-1.5">
+                  Browse Collection
+                </p>
+                <h2 className="text-[1.75rem] font-black text-gray-900 dark:text-white tracking-tight leading-none">
+                  Shop by Category
+                </h2>
+              </div>
+              <Link
+                href={`/${store_slug}/shop`}
+                className="group inline-flex items-center gap-1.5 text-sm font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+              >
+                View all
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
+              </Link>
+            </motion.div>
+
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+              {categories.slice(0, 6).map((cat, i) => (
+                <CategoryCard key={cat.id} category={cat} store_slug={store_slug} index={i} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
