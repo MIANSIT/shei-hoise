@@ -534,7 +534,7 @@ export default function ProductPage() {
               <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
                 {product.categories?.name ?? "Product"}
               </span>
-              <Stars />
+              {/* <Stars /> */}
             </div>
 
             {/* Name */}
