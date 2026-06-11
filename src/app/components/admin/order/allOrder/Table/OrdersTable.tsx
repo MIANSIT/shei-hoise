@@ -2,7 +2,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Avatar, Space, Tooltip, App, Card, Button, Pagination } from "antd";
+import {
+  Avatar,
+  Space,
+  Tooltip,
+  App,
+  Card,
+  Button,
+  Pagination,
+  DatePicker,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
@@ -73,6 +82,7 @@ const OrdersTable: React.FC<Props> = ({
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [selectedRange, setSelectedRange] = useState<any>(null);
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
@@ -172,6 +182,88 @@ const OrdersTable: React.FC<Props> = ({
 
   const handleBulkUpdateSuccess = () => {
     setSelectedRowKeys([]);
+  };
+
+  const handleDownloadCsv = () => {
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    if (selectedRange && selectedRange.length === 2) {
+      const s = selectedRange[0];
+      const e = selectedRange[1];
+      startDate = s && s.toDate ? s.toDate() : s ? new Date(s) : null;
+      endDate = e && e.toDate ? e.toDate() : e ? new Date(e) : null;
+
+      if (startDate) startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+      if (endDate) endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
+    }
+
+    const targetOrders = startDate && endDate
+      ? orders.filter((o) => {
+          const d = new Date(o.created_at);
+          return d >= startDate! && d <= endDate!;
+        })
+      : orders;
+
+    if (!targetOrders || targetOrders.length === 0) {
+      notification.info({
+        message: "No Orders",
+        description: "No orders found for the selected date",
+      });
+      return;
+    }
+
+    const header = [
+      "Order #",
+      "Created At",
+      "Customer",
+      "Email",
+      "Phone",
+      "Address",
+      "Total",
+      "Currency",
+      "Status",
+      "Payment Status",
+    ];
+
+    const escape = (v: any) => {
+      if (v == null) return "";
+      const s = String(v).replace(/"/g, '""');
+      return `"${s}"`;
+    };
+
+    const rows = targetOrders.map((o) => [
+      o.order_number,
+      new Date(o.created_at).toLocaleString(),
+      (o.shipping_address?.customer_name || o.customers?.first_name || ""),
+      o.customers?.email || o.shipping_address?.email || "",
+      o.shipping_address?.phone || o.customers?.phone || "",
+      (o.shipping_address?.address_line_1 || o.shipping_address?.address || "") + (o.shipping_address?.city ? (", " + o.shipping_address.city) : ""),
+      o.total_amount,
+      o.currency || "",
+      o.status,
+      o.payment_status,
+    ]);
+
+    const csvContent = [header, ...rows]
+      .map((r) => r.map(escape).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    let datePart = "all-dates";
+    if (startDate && endDate) {
+      const s = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
+      const e = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
+      datePart = `${s}_to_${e}`;
+    }
+    a.href = url;
+    a.download = `orders_${datePart}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -695,19 +787,33 @@ const OrdersTable: React.FC<Props> = ({
         </div>
       )}
 
-      <div className="mb-4">
-        <OrdersFilterTabs
-          orders={orders}
-          totalOrders={totalOrders}
-          totalByOrderStatus={totalByOrderStatus}
-          totalByPaymentStatus={totalByPaymentStatus}
-          searchValue={search}
-          onSearchChange={onSearchChange}
-          onStatusChange={onStatusChange}
-          onPaymentStatusChange={onPaymentStatusChange}
-          initialCategory={initialCategory}
-          initialStatus={initialStatus}
-        />
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex-1">
+          <OrdersFilterTabs
+            orders={orders}
+            totalOrders={totalOrders}
+            totalByOrderStatus={totalByOrderStatus}
+            totalByPaymentStatus={totalByPaymentStatus}
+            searchValue={search}
+            onSearchChange={onSearchChange}
+            onStatusChange={onStatusChange}
+            onPaymentStatusChange={onPaymentStatusChange}
+            initialCategory={initialCategory}
+            initialStatus={initialStatus}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <DatePicker.RangePicker
+            value={selectedRange}
+            onChange={(d) => setSelectedRange(d)}
+            allowClear
+            className="w-80"
+          />
+          <Button type="primary" onClick={handleDownloadCsv}>
+            Download CSV
+          </Button>
+        </div>
       </div>
 
       <DataTable<StoreOrder>

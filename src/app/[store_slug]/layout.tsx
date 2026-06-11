@@ -1,10 +1,60 @@
 import React from "react";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import StoreHeader from "@/app/components/common/StoreHeader";
 import StoreFooter from "@/app/components/common/storeFooter/StoreFooter";
 import { FacebookPixelScript } from "@/app/components/common/FacebookPixelScript";
 import { footerContent } from "@/lib/store/footerContent";
 import { getStoreBySlugFull } from "@/lib/queries/stores/getStoreBySlugFull";
+
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ store_slug: string }>;
+}): Promise<Metadata> {
+  const { store_slug } = await params;
+  const store = await getStoreBySlugFull(store_slug);
+
+  if (!store) {
+    return { title: "Store Not Found" };
+  }
+
+  const storeUrl = `${baseUrl}/${store_slug}`;
+
+  return {
+    title: {
+      default: store.store_name,
+      template: `%s | ${store.store_name}`,
+    },
+    description: store.description ?? `Shop at ${store.store_name} – browse our latest products.`,
+    metadataBase: new URL(baseUrl),
+    alternates: {
+      canonical: storeUrl,
+    },
+    openGraph: {
+      title: store.store_name,
+      description: store.description ?? `Shop at ${store.store_name}`,
+      url: storeUrl,
+      siteName: store.store_name,
+      images: store.banner_url
+        ? [{ url: store.banner_url, alt: store.store_name }]
+        : store.logo_url
+          ? [{ url: store.logo_url, alt: store.store_name }]
+          : [],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: store.store_name,
+      description: store.description ?? `Shop at ${store.store_name}`,
+      images: store.banner_url ? [store.banner_url] : store.logo_url ? [store.logo_url] : [],
+    },
+  };
+}
 
 interface StoreLayoutProps {
   children: React.ReactNode;

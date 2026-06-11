@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface FacebookPixelScriptProps {
   pixelId: string;
@@ -13,15 +13,41 @@ interface FacebookPixelScriptProps {
 export function FacebookPixelScript({ pixelId, storeSlug }: FacebookPixelScriptProps) {
   const pathname = usePathname();
 
+  const isFirstMount = useRef(true);
+
   useEffect(() => {
-    if (typeof window !== "undefined" && window.fbq) {
+    const urlSearch = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const utm: Record<string, string> = {};
+    if (urlSearch) {
+      const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
+      utmKeys.forEach((k) => {
+        const v = urlSearch.get(k);
+        if (v) utm[k] = v;
+      });
+      // Also capture fbclid so we can identify Facebook ad traffic even without UTM params
+      const fbclid = urlSearch.get("fbclid");
+      if (fbclid) utm.fbclid = fbclid;
+
+      try {
+        if (Object.keys(utm).length > 0) {
+          localStorage.setItem("sh_utm", JSON.stringify(utm));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Only fire PageView to Facebook on client-side navigations (not initial load)
+    // because the inline script already fires fbq('track','PageView') on first load
+    if (!isFirstMount.current && typeof window !== "undefined" && window.fbq) {
       window.fbq("track", "PageView");
     }
-    // Save PageView to our DB
+    isFirstMount.current = false;
+
     fetch("/api/pixel-event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event: "PageView", params: { path: pathname }, store_slug: storeSlug }),
+      body: JSON.stringify({ event: "PageView", params: { path: pathname, ...utm }, store_slug: storeSlug }),
     }).catch(() => {});
   }, [pathname, storeSlug]);
 

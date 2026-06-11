@@ -25,11 +25,24 @@ export function fbq(event: string, params?: FbqParams, storeSlug?: string): void
 
   // Mirror to our own DB for the analytics dashboard (fire-and-forget)
   if (storeSlug) {
-    fetch("/api/pixel-event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, params, store_slug: storeSlug }),
-    }).catch(() => {});
+    // merge persisted UTM params (if any) so campaign data is stored
+    try {
+      const utmRaw = typeof window !== "undefined" ? localStorage.getItem("sh_utm") : null;
+      const utm = utmRaw ? JSON.parse(utmRaw) : null;
+      const mergedParams = utm ? { ...(params || {}), ...utm } : params;
+
+      fetch("/api/pixel-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event, params: mergedParams, store_slug: storeSlug }),
+      }).catch(() => {});
+    } catch {
+      fetch("/api/pixel-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event, params, store_slug: storeSlug }),
+      }).catch(() => {});
+    }
   }
 }
 

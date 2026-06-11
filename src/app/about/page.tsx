@@ -1,17 +1,27 @@
 // app/about/page.tsx
+import type { Metadata } from "next";
 import React from "react";
+
+export const metadata: Metadata = {
+  title: "About Us | Shei Hoise",
+  description:
+    "Learn about Shei Hoise – the multi-tenant e-commerce platform that empowers store owners to sell online with powerful tools and insights.",
+  openGraph: {
+    title: "About Us | Shei Hoise",
+    description:
+      "Learn about Shei Hoise – the multi-tenant e-commerce platform that empowers store owners to sell online.",
+    type: "website",
+  },
+};
 import PageHeader from "@/app/components/websiteDetialsSection/PageHeader";
 import FeatureGrid from "@/app/components/websiteDetialsSection/FeatureGrid";
 import CTASection from "@/app/components/websiteDetialsSection/CTASection";
 import { Feature } from "@/lib/types/content.types";
 import Header from "../components/common/Header";
 import {
-  // Store,
   BarChart3,
   ShoppingCart,
-  // Users,
   Package,
-  // CreditCard,
 } from "lucide-react";
 import Footer from "../components/common/Footer";
 
