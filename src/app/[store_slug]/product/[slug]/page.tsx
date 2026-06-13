@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
@@ -9,6 +9,7 @@ import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
+import BuyNowButton from "@/app/components/products/singleProduct/BuyNowButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { fbq, FbEvent } from "@/lib/utils/fbPixel";
@@ -263,6 +264,7 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [showMaxErr, setShowMaxErr] = useState(false);
@@ -272,6 +274,7 @@ export default function ProductPage() {
     useUserCurrencyIcon();
   const { cart, addToCart } = useCartStore();
   const { success: toastSuccess, error: toastError } = useSheiNotification();
+  const router = useRouter();
   const curr = currencyLoading ? "৳" : (currencyIcon ?? "৳");
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -437,6 +440,31 @@ export default function ProductPage() {
       toastError("Failed to add to cart");
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!product || isOutOfStock || quantity > remaining) return;
+    setIsBuyingNow(true);
+    try {
+      addToCart({
+        productId: product.id,
+        storeSlug: store_slug,
+        quantity,
+        variantId: selectedVariantData?.id ?? null,
+      } as AddToCartType);
+      fbq(FbEvent.ADD_TO_CART, {
+        content_ids: [product.id],
+        content_name: product.name,
+        content_type: "product",
+        value: displayPrice * quantity,
+        currency: "BDT",
+        num_items: quantity,
+      }, store_slug);
+      router.push(`/${store_slug}/checkout`);
+    } catch {
+      toastError("Failed to proceed to checkout");
+      setIsBuyingNow(false);
     }
   };
 
@@ -751,14 +779,23 @@ export default function ProductPage() {
             </div>
 
             {/* CTA */}
-            <AddToCartButton
-              onClick={handleAddToCart}
-              isLoading={isAdding}
-              showSuccess={addedSuccess}
-              disabled={isOutOfStock}
-              isMaxInCart={stockStatus === "maxed"}
-              currentCartQuantity={cartQty}
-            />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <AddToCartButton
+                onClick={handleAddToCart}
+                isLoading={isAdding}
+                showSuccess={addedSuccess}
+                disabled={isOutOfStock}
+                isMaxInCart={stockStatus === "maxed"}
+                currentCartQuantity={cartQty}
+                className="sm:flex-1"
+              />
+              <BuyNowButton
+                onClick={handleBuyNow}
+                isLoading={isBuyingNow}
+                disabled={isOutOfStock}
+                className="sm:flex-1"
+              />
+            </div>
 
             {/* Trust badges */}
             <div
