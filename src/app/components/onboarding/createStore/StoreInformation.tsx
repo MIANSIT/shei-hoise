@@ -6,17 +6,20 @@ import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
 import UploadImage from "../uploads/UploadImage";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface Props {
   control: Control<CreateUserType>;
 }
 
 export default function StoreInformation({ control }: Props) {
+  const t = useTranslation();
+
   return (
     <div className="">
-      <h3 className="text-2xl font-semibold mb-2">Store Information</h3>
+      <h3 className="text-2xl font-semibold mb-2">{t.onboarding.storeInfoTitle}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Fill in your store details. Your data is secure and private.
+        {t.onboarding.storeInfoSubtitle}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -28,8 +31,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Name
-                  <Tooltip title="Enter your business or brand name as you want customers to see it">
+                  {t.onboarding.storeName}
+                  <Tooltip title={t.onboarding.storeNameTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -39,7 +42,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <Input
                 {...field}
-                placeholder="Enter your store name"
+                placeholder={t.onboarding.storeNamePlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </FormItemWrapper>
@@ -54,8 +57,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Slug
-                  <Tooltip title="A unique URL-friendly identifier for your store (e.g., 'my-awesome-store')">
+                  {t.onboarding.storeSlug}
+                  <Tooltip title={t.onboarding.storeSlugTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -65,7 +68,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <Input
                 {...field}
-                placeholder="Unique store URL slug"
+                placeholder={t.onboarding.storeSlugPlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </FormItemWrapper>
@@ -80,8 +83,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Description
-                  <Tooltip title="Write a brief description of your store, products, and what makes your business unique">
+                  {t.onboarding.storeDesc}
+                  <Tooltip title={t.onboarding.storeDescTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -92,7 +95,7 @@ export default function StoreInformation({ control }: Props) {
               <Input.TextArea
                 {...field}
                 rows={4}
-                placeholder="Briefly describe your store"
+                placeholder={t.onboarding.storeDescPlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring resize-none"
               />
             </FormItemWrapper>
@@ -107,8 +110,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Logo
-                  <Tooltip title="Upload your store's logo. Recommended: square image, minimum 200x200px, PNG or JPG format">
+                  {t.onboarding.storeLogo}
+                  <Tooltip title={t.onboarding.storeLogoTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -117,7 +120,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <UploadImage
                 field={field}
-                label={<span className="text-foreground">Upload Logo</span>}
+                label={<span className="text-foreground">{t.onboarding.uploadLogo}</span>}
               />
             </FormItemWrapper>
           )}
@@ -131,8 +134,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Banner (Optional)
-                  <Tooltip title="Upload a banner image for your store page. Recommended: 1200x400px or wider, PNG or JPG format">
+                  {t.onboarding.storeBanner}
+                  <Tooltip title={t.onboarding.storeBannerTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -141,7 +144,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <UploadImage
                 field={field}
-                label={<span className="text-foreground">Upload Banner</span>}
+                label={<span className="text-foreground">{t.onboarding.uploadBanner}</span>}
               />
             </FormItemWrapper>
           )}
@@ -155,8 +158,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Contact Email
-                  <Tooltip title="Primary email address where customers can reach your business for inquiries and support">
+                  {t.onboarding.contactEmail}
+                  <Tooltip title={t.onboarding.contactEmailTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -166,7 +169,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <Input
                 {...field}
-                placeholder="Enter store contact email"
+                placeholder={t.onboarding.contactEmailPlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </FormItemWrapper>
@@ -182,8 +185,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Store Contact Number
-                  <Tooltip title="Primary phone number for customer service and business inquiries. Include country code if applicable">
+                  {t.onboarding.contactPhone}
+                  <Tooltip title={t.onboarding.contactPhoneTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -194,7 +197,7 @@ export default function StoreInformation({ control }: Props) {
               <Input
                 {...field}
                 type="tel"
-                placeholder="Enter contact phone"
+                placeholder={t.onboarding.contactPhonePlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </FormItemWrapper>
@@ -209,8 +212,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Business Address
-                  <Tooltip title="Enter your complete business address including street, city, postal code, and country">
+                  {t.onboarding.businessAddress}
+                  <Tooltip title={t.onboarding.businessAddressTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -222,7 +225,7 @@ export default function StoreInformation({ control }: Props) {
               <Input.TextArea
                 {...field}
                 rows={4}
-                placeholder="Enter business address"
+                placeholder={t.onboarding.businessAddressPlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring resize-none"
               />
             </FormItemWrapper>
@@ -237,8 +240,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Business License (Optional)
-                  <Tooltip title="Enter your business license number or registration number if applicable">
+                  {t.onboarding.businessLicense}
+                  <Tooltip title={t.onboarding.businessLicenseTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -246,7 +249,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <Input
                 {...field}
-                placeholder="Enter business license"
+                placeholder={t.onboarding.businessLicensePlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </FormItemWrapper>
@@ -261,8 +264,8 @@ export default function StoreInformation({ control }: Props) {
             <FormItemWrapper
               label={
                 <span className="text-foreground flex items-center gap-1">
-                  Business Tax ID (Optional)
-                  <Tooltip title="Enter your business tax identification number (TIN, VAT number, or equivalent) if applicable">
+                  {t.onboarding.taxId}
+                  <Tooltip title={t.onboarding.taxIdTip}>
                     <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                   </Tooltip>
                 </span>
@@ -271,7 +274,7 @@ export default function StoreInformation({ control }: Props) {
             >
               <Input
                 {...field}
-                placeholder="Enter tax ID"
+                placeholder={t.onboarding.taxIdPlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             </FormItemWrapper>
@@ -279,19 +282,16 @@ export default function StoreInformation({ control }: Props) {
         />
       </div>
 
-      {/* Divider */}
       <Divider className="my-4 border-border" />
 
-      {/* Trust & Security Notice */}
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg">
         <div className="shrink-0 text-emerald-600">
           <SafetyOutlined className="text-xl" />
         </div>
         <div>
-          <h4 className="font-semibold text-foreground">Your data is secure</h4>
+          <h4 className="font-semibold text-foreground">{t.onboarding.storeSecureTitle}</h4>
           <p className="text-sm text-muted-foreground">
-            All store information you provide is encrypted and safely stored. We
-            do not share your data with third parties without your consent.
+            {t.onboarding.storeSecureDesc}
           </p>
         </div>
       </div>

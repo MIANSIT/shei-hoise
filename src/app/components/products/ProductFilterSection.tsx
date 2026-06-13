@@ -9,6 +9,8 @@ import {
 import { ChevronDown, Search, X, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, KeyboardEvent, useEffect } from "react";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface Category {
   id: string;
@@ -46,6 +48,8 @@ export default function ProductFilterSection({
 }: ProductFilterSectionProps) {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
+  const t = useTranslation();
+  const n = useLocalNum();
 
   useEffect(() => {
     setLocalSearch(searchQuery);
@@ -53,8 +57,8 @@ export default function ProductFilterSection({
 
   const activeCategories = categories.filter((c) => c.is_active);
   const allCategories = [
-    { id: "all", name: "All Products", slug: "all", is_active: true },
-    ...activeCategories,
+    { id: "all", name: "All Products", displayName: t.shop.allProducts, slug: "all", is_active: true },
+    ...activeCategories.map(c => ({ ...c, displayName: c.name })),
   ];
 
   const handleSearchSubmit = () => {
@@ -80,7 +84,7 @@ export default function ProductFilterSection({
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search products…"
+              placeholder={t.filter.searchPlaceholder}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -117,15 +121,15 @@ export default function ProductFilterSection({
               whitespace-nowrap shrink-0
             "
           >
-            Search
+            {t.filter.search}
           </button>
         </div>
 
         {/* Spacer + count */}
         <div className="flex items-center gap-3 sm:ml-auto">
           <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
-            {totalProducts.toLocaleString()}{" "}
-            {totalProducts === 1 ? "product" : "products"}
+            {n(totalProducts)}{" "}
+            {totalProducts === 1 ? t.filter.product : t.filter.products}
           </span>
         </div>
       </div>
@@ -134,7 +138,7 @@ export default function ProductFilterSection({
       <div className="hidden md:flex items-center gap-2 flex-wrap pb-4">
         <span className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mr-1 flex items-center gap-1.5">
           <SlidersHorizontal className="w-3 h-3" />
-          Filter
+          {t.filter.filter}
         </span>
         {allCategories.map((category) => {
           const isActive = activeCategory === category.name;
@@ -149,7 +153,7 @@ export default function ProductFilterSection({
                   : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100",
               )}
             >
-              {category.name}
+              {category.displayName}
             </button>
           );
         })}
@@ -159,12 +163,12 @@ export default function ProductFilterSection({
       <div className="flex md:hidden items-center justify-between pb-4">
         <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 font-medium">
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          Category
+          {t.filter.category}
         </div>
         <DropdownMenu onOpenChange={setIsCategoryOpen}>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-              {activeCategory}
+              {activeCategory === "All Products" ? t.shop.allProducts : activeCategory}
               <ChevronDown
                 className={cn(
                   "h-3.5 w-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200",
@@ -188,7 +192,7 @@ export default function ProductFilterSection({
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
                 )}
               >
-                {category.name}
+                {category.displayName}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

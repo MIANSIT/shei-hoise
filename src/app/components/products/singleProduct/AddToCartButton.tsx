@@ -2,6 +2,8 @@
 
 import { ShoppingCart, Check, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface AddToCartButtonProps {
   onClick: () => void;
@@ -22,8 +24,12 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   isMaxInCart = false,
   currentCartQuantity = 0,
   className = "",
-  label = "Add to Cart",
+  label,
 }) => {
+  const t = useTranslation();
+  const n = useLocalNum();
+  const resolvedLabel = label ?? t.cart.addToCart;
+
   const handleClick = () => {
     if (disabled || isLoading || isMaxInCart) return;
     onClick();
@@ -60,7 +66,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
             className="flex items-center gap-2"
           >
             <Check className="w-4 h-4" />
-            Added to Cart
+            {t.cart.addedToCart}
           </motion.span>
         ) : isLoading ? (
           <motion.span
@@ -89,7 +95,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
                 d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
               />
             </svg>
-            Adding…
+            {t.cart.adding}
           </motion.span>
         ) : isMaxInCart ? (
           <motion.span
@@ -100,7 +106,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
             className="flex items-center gap-2"
           >
             <Info className="w-4 h-4" />
-            Max in Cart ({currentCartQuantity})
+            {t.cart.maxInCart} ({n(currentCartQuantity)})
           </motion.span>
         ) : disabled ? (
           <motion.span
@@ -111,7 +117,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
             className="flex items-center gap-2"
           >
             <ShoppingCart className="w-4 h-4" />
-            Out of Stock
+            {t.cart.outOfStock}
           </motion.span>
         ) : (
           <motion.span
@@ -122,7 +128,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
             className="flex items-center gap-2"
           >
             <ShoppingCart className="w-4 h-4" />
-            {label}
+            {resolvedLabel}
           </motion.span>
         )}
       </AnimatePresence>

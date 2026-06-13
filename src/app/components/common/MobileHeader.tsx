@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import LogoTitle from "../header/LogoTitle";
 import { NavLink } from "../header/NavMenu";
 import ThemeToggle from "../theme/ThemeToggle";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { HiOutlineMenu, HiOutlineX, HiChevronDown } from "react-icons/hi";
 
 export default function MobileHeader() {
@@ -13,28 +15,15 @@ export default function MobileHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false); // Sections dropdown
   const pathname = usePathname();
+  const t = useTranslation();
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
   const navLinks: NavLink[] = [
-    { name: "Home", path: "/" },
-    // Only show Sections on the home page
-    // ...(pathname === "/"
-    //   ? [
-    //       {
-    //         name: "Sections",
-    //         children: [
-    //           { name: "Store", path: "#stores" },
-    //           { name: "Request Demo", path: "#request-demo" },
-    //         ],
-    //       },
-    //     ]
-    //   : []),
-    { name: "Request Demo", path: "/#request-demo" },
-
-    // { name: "All Stores", path: "/stores" },
+    { name: t.nav.home, path: "/" },
+    { name: t.landing.requestDemo, path: "/#request-demo" },
   ];
 
   return (
@@ -44,6 +33,7 @@ export default function MobileHeader() {
           <LogoTitle showTitle={true} />
 
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <ThemeToggle />
 
             <button

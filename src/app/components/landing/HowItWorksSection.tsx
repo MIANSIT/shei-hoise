@@ -1,27 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function HowItWorksSection() {
+  const t = useTranslation();
+
   const steps = [
-    {
-      step: "01",
-      title: "Sign Up and Create Your Store",
-      description:
-        "Create your account and get a custom store link instantly. No setup fees, no technical skills needed.",
-    },
-    {
-      step: "02",
-      title: "Add Your Products",
-      description:
-        "Upload products, set prices, and organize your inventory. Add everything in minutes with bulk tools.",
-    },
-    {
-      step: "03",
-      title: "Share and Start Selling",
-      description:
-        "Send your store link to customers and start receiving orders right away, with full COD support built in.",
-    },
+    { step: "01", title: t.landing.step1Title, description: t.landing.step1Desc },
+    { step: "02", title: t.landing.step2Title, description: t.landing.step2Desc },
+    { step: "03", title: t.landing.step3Title, description: t.landing.step3Desc },
   ];
 
   return (
@@ -33,7 +21,7 @@ export default function HowItWorksSection() {
           transition={{ duration: 0.6 }}
           className="text-3xl md:text-4xl font-bold mb-4"
         >
-          Up and Running in 3 Simple Steps
+          {t.landing.howTitle}
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 40 }}
@@ -41,7 +29,7 @@ export default function HowItWorksSection() {
           transition={{ duration: 0.6 }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
         >
-          Your store can be live today. No complicated setup, no waiting.
+          {t.landing.howSubtitle}
         </motion.p>
       </div>
 

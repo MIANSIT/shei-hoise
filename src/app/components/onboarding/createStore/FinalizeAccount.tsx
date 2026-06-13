@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { PasswordStrength } from "../../common/PasswordStrength";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface Props {
   control: Control<CreateUserType>;
@@ -22,24 +23,22 @@ export default function FinalizeAccount({
 }: Props) {
   const {
     formState: { errors },
-    // setValue, // <-- important to update form state
     watch,
   } = formState;
 
-  // Local state ONLY for UI validation
+  const t = useTranslation();
+
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [confirmError, setConfirmError] = useState("");
   const [termsError, setTermsError] = useState("");
 
-  // Watch password for validation
   const passwordValue = watch("password");
 
-  // Validate confirm password on change
   const handleConfirmChange = (value: string) => {
     setConfirmPassword(value);
     if (value !== passwordValue) {
-      setConfirmError("Passwords do not match");
+      setConfirmError(t.onboarding.passwordMismatch);
     } else {
       setConfirmError("");
     }
@@ -48,13 +47,12 @@ export default function FinalizeAccount({
   const handleTermsChange = (checked: boolean) => {
     setAcceptTerms(checked);
     if (!checked) {
-      setTermsError("You must accept Terms & Privacy");
+      setTermsError(t.onboarding.mustAcceptTerms);
     } else {
       setTermsError("");
     }
   };
 
-  // Update validation status whenever dependencies change
   useEffect(() => {
     const isValid = confirmPassword === passwordValue && acceptTerms;
     if (onValidationChange) {
@@ -62,29 +60,28 @@ export default function FinalizeAccount({
     }
   }, [confirmPassword, passwordValue, acceptTerms, onValidationChange]);
 
-  // Also validate when password changes
   useEffect(() => {
     if (confirmPassword && confirmPassword !== passwordValue) {
-      setConfirmError("Passwords do not match");
+      setConfirmError(t.onboarding.passwordMismatch);
     } else if (confirmPassword) {
       setConfirmError("");
     }
-  }, [passwordValue, confirmPassword]);
+  }, [passwordValue, confirmPassword, t.onboarding.passwordMismatch]);
 
   return (
     <div className="">
-      <h3 className="text-2xl font-semibold mb-4">Finalize Account</h3>
+      <h3 className="text-2xl font-semibold mb-4">{t.onboarding.finalizeTitle}</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Set your account credentials and accept the terms & privacy policy.
+        {t.onboarding.finalizeSubtitle}
       </p>
 
       <div className="grid grid-cols-1 gap-4">
-        {/* Email (editable now) */}
+        {/* Email */}
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Email
-              <Tooltip title="This email will be used for login and account recovery. Make sure it's an email you have access to">
+              {t.onboarding.email}
+              <Tooltip title={t.onboarding.emailTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -98,7 +95,7 @@ export default function FinalizeAccount({
               <Input
                 {...field}
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t.onboarding.emailPlaceholder}
                 className="rounded-lg bg-input text-foreground border-border focus:border-ring focus:ring-1 focus:ring-ring"
               />
             )}
@@ -109,8 +106,8 @@ export default function FinalizeAccount({
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Password
-              <Tooltip title="Create a strong password with at least 8 characters, including uppercase, lowercase, numbers, and special characters">
+              {t.onboarding.password}
+              <Tooltip title={t.onboarding.passwordTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -124,22 +121,21 @@ export default function FinalizeAccount({
               <>
                 <Input.Password
                   {...field}
-                  placeholder="Enter password"
+                  placeholder={t.onboarding.passwordPlaceholder}
                   className="rounded-lg bg-input text-foreground border-border"
                 />
-                {/* Password Strength Component */}
                 <PasswordStrength password={field.value} className="mt-2" />
               </>
             )}
           />
         </FormItemWrapper>
 
-        {/* Confirm Password (UI-only) */}
+        {/* Confirm Password */}
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Confirm Password
-              <Tooltip title="Re-enter your password to ensure it matches and avoid typos">
+              {t.onboarding.confirmPassword}
+              <Tooltip title={t.onboarding.confirmPasswordTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -148,13 +144,13 @@ export default function FinalizeAccount({
         >
           <Input.Password
             value={confirmPassword}
-            placeholder="Confirm password"
+            placeholder={t.onboarding.confirmPasswordPlaceholder}
             onChange={(e) => handleConfirmChange(e.target.value)}
             className="rounded-lg bg-input text-foreground border-border"
           />
         </FormItemWrapper>
 
-        {/* Terms & Privacy (UI-only) */}
+        {/* Terms & Privacy */}
         <FormItemWrapper label="" error={termsError}>
           <div className="flex items-start gap-2">
             <Checkbox
@@ -163,41 +159,40 @@ export default function FinalizeAccount({
               className="mt-0.5"
             >
               <span className="text-foreground">
-                I have read and agree to the{" "}
+                {t.onboarding.agreeText}{" "}
               </span>
               <Link
                 href="/terms-and-conditions"
                 className="underline text-badge hover:text-ring"
               >
-                Terms & Conditions
+                {t.onboarding.termsLink}
               </Link>{" "}
-              <span className="text-foreground">and </span>
+              <span className="text-foreground">{t.onboarding.andText} </span>
               <Link
                 href="/privacy-policy"
                 className="underline text-badge hover:text-ring"
               >
-                Privacy Policy
+                {t.onboarding.privacyLink}
               </Link>
               .
             </Checkbox>
-            <Tooltip title="You must accept our Terms & Conditions and Privacy Policy to create an account">
+            <Tooltip title={t.onboarding.mustAcceptTerms}>
               <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help mt-1" />
             </Tooltip>
           </div>
         </FormItemWrapper>
       </div>
+
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">
         <div className="shrink-0 text-emerald-600">
           <SafetyOutlined className="text-xl" />
         </div>
         <div>
           <h4 className="font-semibold text-foreground">
-            Credentials & Privacy
+            {t.onboarding.credentialsTitle}
           </h4>
           <p className="text-sm text-muted-foreground">
-            Your account information is securely encrypted and stored. We
-            respect your privacy and never share your credentials or personal
-            data with third parties without consent.
+            {t.onboarding.credentialsDesc}
           </p>
         </div>
       </div>

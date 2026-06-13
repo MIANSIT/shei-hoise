@@ -9,51 +9,18 @@ import {
   Package,
   Users,
 } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function FeaturesSection() {
+  const t = useTranslation();
+
   const features = [
-    {
-      icon: BarChart3,
-      title: "Profit & Loss Tracking",
-      description:
-        "See your revenue, expenses, and net profit updated daily. Know exactly where your business stands with 30-day comparisons.",
-      color: "text-chart-2",
-    },
-    {
-      icon: Bell,
-      title: "Smart Business Alerts",
-      description:
-        "Get instant alerts for out-of-stock products, low inventory, and pending payments. Fix issues before they cost you sales.",
-      color: "text-chart-5",
-    },
-    {
-      icon: GitBranch,
-      title: "Full Order Pipeline",
-      description:
-        "Track every order from Pending through Confirmed, Shipped, and Delivered. Full lifecycle visibility in one clean view.",
-      color: "text-chart-3",
-    },
-    {
-      icon: Wallet,
-      title: "Payment Flow Overview",
-      description:
-        "Monitor collected, awaiting, and returned payments at a glance. Always know exactly what money is moving and when.",
-      color: "text-chart-4",
-    },
-    {
-      icon: Package,
-      title: "Inventory Health",
-      description:
-        "Real-time stock levels across all products, with low-stock warnings, out-of-stock flags, and total inventory sell value.",
-      color: "text-chart-1",
-    },
-    {
-      icon: Users,
-      title: "Customer Insights",
-      description:
-        "Track new vs. returning customers, measure your return rate, and identify your top spenders to grow smarter.",
-      color: "text-chart-2",
-    },
+    { icon: BarChart3, title: t.landing.feature1Title, description: t.landing.feature1Desc, color: "text-chart-2" },
+    { icon: Bell,     title: t.landing.feature2Title, description: t.landing.feature2Desc, color: "text-chart-5" },
+    { icon: GitBranch,title: t.landing.feature3Title, description: t.landing.feature3Desc, color: "text-chart-3" },
+    { icon: Wallet,   title: t.landing.feature4Title, description: t.landing.feature4Desc, color: "text-chart-4" },
+    { icon: Package,  title: t.landing.feature5Title, description: t.landing.feature5Desc, color: "text-chart-1" },
+    { icon: Users,    title: t.landing.feature6Title, description: t.landing.feature6Desc, color: "text-chart-2" },
   ];
 
   return (
@@ -65,7 +32,7 @@ export default function FeaturesSection() {
           transition={{ duration: 0.6 }}
           className="text-3xl md:text-4xl font-bold mb-4"
         >
-          A Real Business Dashboard, Not Just a Store
+          {t.landing.featuresTitle}
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 40 }}
@@ -73,8 +40,7 @@ export default function FeaturesSection() {
           transition={{ duration: 0.6 }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
         >
-          Shei Hoise gives you the financial visibility and operational control
-          that serious store owners actually need.
+          {t.landing.featuresSubtitle}
         </motion.p>
       </div>
 

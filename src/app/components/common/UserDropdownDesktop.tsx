@@ -11,6 +11,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
 import { useParams } from "next/navigation";
 import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer"; // ADD THIS
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface UserDropdownProps {
   className?: string;
@@ -28,16 +29,17 @@ export default function UserDropdownDesktop({
   const { loading } = useCurrentCustomer(storeSlug); // UPDATED
   const { logout } = useAuthStore();
   const { success, error } = useSheiNotification();
+  const t = useTranslation();
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
       logout();
       clearCustomerCache(); // Clear customer cache
-      success("Logged out successfully ✅");
+      success(t.user.loggedOutSuccess);
     } catch (err) {
       console.error("Logout error:", err);
-      error("Failed to log out. Please try again.");
+      error(t.user.logoutFailed);
     }
   };
 
@@ -56,11 +58,11 @@ export default function UserDropdownDesktop({
   const items: MenuProps["items"] = [
     {
       key: "profile",
-      label: <Link href={`/${storeSlug}/my-profile`}>Profile</Link>,
+      label: <Link href={`/${storeSlug}/my-profile`}>{t.user.profile}</Link>,
     },
     {
       key: "orders",
-      label: <Link href={`/${storeSlug}/order-status`}>Order Status</Link>,
+      label: <Link href={`/${storeSlug}/order-status`}>{t.user.orderStatus}</Link>,
     },
     {
       type: "divider",
@@ -72,7 +74,7 @@ export default function UserDropdownDesktop({
           onClick={handleLogout}
           className="w-full text-left flex items-center gap-2 text-red-500 font-semibold hover:text-red-600"
         >
-          <LogoutOutlined /> Logout
+          <LogoutOutlined /> {t.user.logout}
         </button>
       ),
     },
