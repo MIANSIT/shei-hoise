@@ -26,6 +26,7 @@ import {
   useDashboardMetrics,
   TimePeriod,
 } from "@/lib/hook/useDashboardMetrics";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ProductVariant {
   id: string;
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const [rawExpenses, setRawExpenses] = useState<Expense[]>([]);
   const [loadingExpenses, setLoadingExpenses] = useState(true);
 
+  const t = useTranslation();
   const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
 
   const renderCurrency = (amount: number) => {
@@ -130,7 +132,7 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto" />
           <p className="mt-4 text-lg text-gray-500 dark:text-gray-400">
-            Loading dashboard...
+            {t.admin.loadingDashboard}
           </p>
         </div>
       </div>
@@ -142,7 +144,7 @@ export default function DashboardPage() {
     return (
       <div className="p-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg">
         <h2 className="text-red-700 dark:text-red-400 font-semibold">
-          Error fetching user data
+          {t.admin.errorFetchingUser}
         </h2>
         <p className="text-red-600 dark:text-red-300 mt-2">
           {userError.message}
@@ -154,7 +156,7 @@ export default function DashboardPage() {
     return (
       <div className="p-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg">
         <h2 className="text-red-700 dark:text-red-400 font-semibold">
-          Error fetching orders
+          {t.admin.errorFetchingOrders}
         </h2>
       </div>
     );
@@ -165,53 +167,53 @@ export default function DashboardPage() {
 
   const getPeriodLabel = (p: TimePeriod) =>
     p === "weekly"
-      ? "Last 7 Days"
+      ? t.admin.periodLast7
       : p === "monthly"
-        ? "Last 30 Days"
-        : "Last 365 Days";
+        ? t.admin.periodLast30
+        : t.admin.periodLast365;
 
   const getComparisonText = (p: TimePeriod) =>
     p === "weekly"
-      ? "vs Prev 7 Days"
+      ? t.admin.vsPrev7
       : p === "monthly"
-        ? "vs Prev 30 Days"
-        : "vs Prev 365 Days";
+        ? t.admin.vsPrev30
+        : t.admin.vsPrev365;
 
   const fmt = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
 
   // ── Revenue / Order KPI cards ────────────────────────────────────────────────
   const stats = [
     {
-      title: `${getPeriodLabel(timePeriod)} Revenue (Paid)`,
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.revenuePaid}`,
       value: renderCurrency(metrics.revenue),
       icon: <DollarOutlined className="text-emerald-500" />,
       change: `${fmt(metrics.changePercentage.revenue)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.revenue),
-      description: `From ${metrics.paidOrders.length} paid orders`,
+      description: `${metrics.paidOrders.length} ${t.admin.fromPaidOrders}`,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Orders (All)`,
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.ordersAll}`,
       value: metrics.orderCount.toString(),
       icon: <ShoppingCartOutlined className="text-blue-500" />,
       change: `${fmt(metrics.changePercentage.orders)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.orders),
-      description: `Total orders (${metrics.paidOrders.length} paid)`,
+      description: `${t.admin.totalOrdersOf} (${metrics.paidOrders.length} ${t.admin.paid})`,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Avg Order Value`,
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.avgOrderValue}`,
       value: renderCurrency(metrics.averageOrderValue),
       icon: <LineChartOutlined className="text-violet-500" />,
       change: `${fmt(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.aov),
-      description: "Subtotal ÷ all orders",
+      description: t.admin.subtotalAllOrders,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Gross Profit`,
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.grossProfit}`,
       value: renderCurrency(metrics.grossProfit),
       icon: <DollarOutlined className="text-amber-500" />,
       change: `${fmt(metrics.changePercentage.profit)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.profit),
-      description: "Based on product cost and selling price",
+      description: t.admin.basedOnCost,
     },
   ];
 
@@ -229,24 +231,24 @@ export default function DashboardPage() {
 
   const expenseRatioLabel =
     expenseMetrics.expenseToRevenueRatio === 0
-      ? "No revenue data"
+      ? t.admin.noRevenueData
       : expenseMetrics.expenseToRevenueRatio >= 80
-        ? "⚠️ High — review costs"
+        ? t.admin.highReviewCosts
         : expenseMetrics.expenseToRevenueRatio >= 60
-          ? "⚡ Moderate"
-          : "✅ Healthy";
+          ? t.admin.moderate
+          : t.admin.healthy;
 
   const expenseStats = [
     {
-      title: `${getPeriodLabel(timePeriod)} Total Expenses`,
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.totalExpenses}`,
       value: renderCurrency(expenseMetrics.totalExpenses),
       icon: <FallOutlined className="text-rose-500" />,
       change: `${fmt(expenseMetrics.changePercentage.expenses)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(-expenseMetrics.changePercentage.expenses),
-      description: `${expenseMetrics.expenseCount} expense records`,
+      description: `${expenseMetrics.expenseCount} ${t.admin.expenseRecords}`,
     },
     {
-      title: `${getPeriodLabel(timePeriod)} Net Profit`,
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.netProfit}`,
       value: renderCurrency(expenseMetrics.netProfit),
       icon: (
         <RiseOutlined
@@ -260,58 +262,58 @@ export default function DashboardPage() {
         expenseMetrics.netProfit < 0
           ? "negative"
           : getChangeType(expenseMetrics.changePercentage.netProfit),
-      description: "Gross profit minus all expenses",
+      description: t.admin.grossProfitMinus,
     },
     {
-      title: "Expense / Revenue Ratio",
+      title: t.admin.expenseRevenueRatio,
       value: `${expenseMetrics.expenseToRevenueRatio}%`,
       icon: <PieChartOutlined className="text-orange-500" />,
       change: expenseRatioLabel,
       changeType: expenseRatioHealth,
-      description: "% of revenue consumed by expenses",
+      description: t.admin.percentRevenue,
     },
     {
-      title: "Top Expense Category",
+      title: t.admin.topExpenseCategory,
       value: expenseMetrics.topExpenseCategory.name,
       icon: <TagOutlined className="text-pink-500" />,
       change: renderCurrency(expenseMetrics.topExpenseCategory.amount),
       changeType: "neutral" as const,
-      description: "Highest spend category this period",
+      description: t.admin.highestSpendCat,
     },
   ];
 
   // ── Order status cards ────────────────────────────────────────────────────────
   const orderStatusCards = [
     {
-      title: "Pending",
+      title: t.admin.pending,
       value: metrics.orderStatusCounts.pending.toString(),
       icon: <ExclamationOutlined className="text-amber-500" />,
       color: "bg-amber-50",
       textColor: "text-amber-700",
     },
     {
-      title: "Confirmed",
+      title: t.admin.confirmed,
       value: metrics.orderStatusCounts.confirmed.toString(),
       icon: <CheckCircleOutlined className="text-blue-500" />,
       color: "bg-blue-50",
       textColor: "text-blue-700",
     },
     {
-      title: "Shipped",
+      title: t.admin.shipped,
       value: metrics.orderStatusCounts.shipped.toString(),
       icon: <ShoppingCartOutlined className="text-violet-500" />,
       color: "bg-purple-50",
       textColor: "text-purple-700",
     },
     {
-      title: "Delivered",
+      title: t.admin.delivered,
       value: metrics.orderStatusCounts.delivered.toString(),
       icon: <CheckCircleOutlined className="text-emerald-500" />,
       color: "bg-green-50",
       textColor: "text-green-700",
     },
     {
-      title: "Cancelled",
+      title: t.admin.cancelled,
       value: metrics.orderStatusCounts.cancelled.toString(),
       icon: <CloseCircleOutlined className="text-rose-500" />,
       color: "bg-red-50",
@@ -322,49 +324,49 @@ export default function DashboardPage() {
   // ── Inventory alerts ──────────────────────────────────────────────────────────
   const inventoryAlerts = [
     {
-      title: "In Stock (Units)",
+      title: t.admin.inStockUnits,
       value: metrics.inStockCount.toString(),
       icon: <CheckCircleOutlined className="text-emerald-600" />,
       color: "bg-green-100",
-      actionText: "View Items",
+      actionText: t.admin.viewItems,
     },
     {
-      title: "Low Stock (Products)",
+      title: t.admin.lowStockProducts,
       value: metrics.lowStockProductCount.toString(),
       icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
-      actionText: "Review",
+      actionText: t.admin.review,
     },
     {
-      title: "Out of Stock (Products)",
+      title: t.admin.outOfStockProducts,
       value: metrics.outOfStockProductCount.toString(),
       icon: <CloseCircleOutlined className="text-rose-600" />,
       color: "bg-red-100",
-      actionText: "Restock Now",
+      actionText: t.admin.restockNow,
     },
     {
-      title: "Inventory Sell Value",
+      title: t.admin.inventorySellValue,
       value: renderCurrency(metrics.totalInventoryValue),
       icon: <DatabaseOutlined className="text-indigo-600" />,
       color: "bg-indigo-100",
-      actionText: "View Details",
+      actionText: t.admin.viewDetails,
     },
   ];
 
   // ── Customer stats ────────────────────────────────────────────────────────────
   const customerStats = [
     {
-      title: `New Customers (${getPeriodLabel(timePeriod)})`,
+      title: `${t.admin.newCustomers} (${getPeriodLabel(timePeriod)})`,
       value: metrics.customerSnapshot.newCustomers.toString(),
       icon: <StarOutlined className="text-blue-500" />,
     },
     {
-      title: "Returning Rate",
+      title: t.admin.returningRate,
       value: `${metrics.customerSnapshot.returningRate}%`,
       icon: <StarOutlined className="text-emerald-500" />,
     },
     {
-      title: "Top Customer",
+      title: t.admin.topCustomer,
       value: metrics.customerSnapshot.topCustomer.name,
       subValue: renderCurrency(metrics.customerSnapshot.topCustomer.totalSpent),
       icon: <StarOutlined className="text-violet-500" />,
@@ -374,17 +376,17 @@ export default function DashboardPage() {
   // ── Payment amounts ───────────────────────────────────────────────────────────
   const orderAmounts = [
     {
-      title: "Pending Amount",
+      title: t.admin.pendingAmount,
       amount: metrics.paymentAmounts.pending,
       status: "pending" as const,
     },
     {
-      title: "Paid Amount",
+      title: t.admin.paidAmount,
       amount: metrics.paymentAmounts.paid,
       status: "paid" as const,
     },
     {
-      title: "Refunded Amount",
+      title: t.admin.refundedAmount,
       amount: metrics.paymentAmounts.refunded,
       status: "refunded" as const,
     },
