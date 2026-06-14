@@ -32,78 +32,20 @@ import {
   SourceStats,
   ProductStat,
 } from "@/lib/queries/pixelEvents/getPixelAnalytics";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface Props {
   storeId: string;
   pixelId?: string | null;
 }
 
-const EVENT_META = [
-  {
-    key: "PageView",
-    label: "Page Views",
-    icon: Eye,
-    color: "text-blue-500",
-    bg: "bg-blue-50 dark:bg-blue-500/10",
-    border: "border-blue-100 dark:border-blue-500/20",
-    bar: "from-blue-400 to-blue-600",
-    chartColor: "#3b82f6",
-  },
-  {
-    key: "ViewContent",
-    label: "Product Views",
-    icon: ShoppingBag,
-    color: "text-indigo-500",
-    bg: "bg-indigo-50 dark:bg-indigo-500/10",
-    border: "border-indigo-100 dark:border-indigo-500/20",
-    bar: "from-indigo-400 to-indigo-600",
-    chartColor: "#6366f1",
-  },
-  {
-    key: "AddToCart",
-    label: "Add to Cart",
-    icon: ShoppingCart,
-    color: "text-amber-500",
-    bg: "bg-amber-50 dark:bg-amber-500/10",
-    border: "border-amber-100 dark:border-amber-500/20",
-    bar: "from-amber-400 to-amber-600",
-    chartColor: "#f59e0b",
-  },
-  {
-    key: "InitiateCheckout",
-    label: "Checkout Started",
-    icon: CreditCard,
-    color: "text-orange-500",
-    bg: "bg-orange-50 dark:bg-orange-500/10",
-    border: "border-orange-100 dark:border-orange-500/20",
-    bar: "from-orange-400 to-orange-600",
-    chartColor: "#f97316",
-  },
-  {
-    key: "Purchase",
-    label: "Purchases",
-    icon: CheckCircle,
-    color: "text-emerald-500",
-    bg: "bg-emerald-50 dark:bg-emerald-500/10",
-    border: "border-emerald-100 dark:border-emerald-500/20",
-    bar: "from-emerald-400 to-emerald-600",
-    chartColor: "#10b981",
-  },
-];
-
 const PERIODS: { label: string; value: PixelPeriod }[] = [
   { label: "7D", value: "7d" },
   { label: "30D", value: "30d" },
   { label: "90D", value: "90d" },
 ];
-
-function fmt(n: number) {
-  return n.toLocaleString("en-BD");
-}
-
-function fmtBDT(n: number) {
-  return `৳ ${n.toLocaleString("en-BD", { minimumFractionDigits: 0 })}`;
-}
 
 function convRate(a: number, b: number) {
   if (!b) return "—";
@@ -134,10 +76,18 @@ function StatTable({
   rows,
   loading,
   accentColor,
+  eventMeta,
+  n,
+  fmtBDT,
+  t,
 }: {
   rows: [string, CampaignStats | SourceStats][];
   loading: boolean;
   accentColor: string;
+  eventMeta: { key: string; label: string }[];
+  n: (v: number | string) => string;
+  fmtBDT: (v: number) => string;
+  t: ReturnType<typeof useTranslation>;
 }) {
   return (
     <div className="overflow-x-auto -mx-5 px-5">
@@ -145,9 +95,9 @@ function StatTable({
         <thead>
           <tr className="border-b border-gray-100 dark:border-gray-800">
             <th className="text-left font-semibold text-gray-500 dark:text-gray-400 pb-2 pr-4">
-              Name
+              {t.admin.pixelNameCol}
             </th>
-            {EVENT_META.map((m) => (
+            {eventMeta.map((m) => (
               <th
                 key={m.key}
                 className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap"
@@ -156,10 +106,10 @@ function StatTable({
               </th>
             ))}
             <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
-              Revenue
+              {t.admin.pixelRevenueCol}
             </th>
             <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 pl-2 whitespace-nowrap">
-              Conv.
+              {t.admin.pixelConversionRate}
             </th>
           </tr>
         </thead>
@@ -175,12 +125,12 @@ function StatTable({
                   <span className="truncate">{name}</span>
                 </span>
               </td>
-              {EVENT_META.map((m) => (
+              {eventMeta.map((m) => (
                 <td
                   key={m.key}
                   className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300"
                 >
-                  {loading ? "—" : fmt(stats.events[m.key] ?? 0)}
+                  {loading ? "—" : n(stats.events[m.key] ?? 0)}
                 </td>
               ))}
               <td className="py-2.5 px-2 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
@@ -206,168 +156,28 @@ function StatTable({
   );
 }
 
-function CampaignBreakdown({
-  campaigns,
-  loading,
-}: {
-  campaigns: Record<string, CampaignStats>;
-  loading: boolean;
-}) {
-  const sorted = Object.entries(campaigns).sort(
-    (a, b) => b[1].revenue - a[1].revenue || b[1].total - a[1].total
-  );
-
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-      <SectionHeader
-        gradient="from-pink-400 to-rose-500"
-        title="Campaign Breakdown"
-        right={
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">
-            {sorted.length} campaign{sorted.length !== 1 ? "s" : ""}
-          </span>
-        }
-      />
-      <StatTable rows={sorted} loading={loading} accentColor="bg-rose-400" />
-    </div>
-  );
-}
-
-function NoCampaignHint() {
-  return (
-    <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 p-5">
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
-          <Info className="w-4 h-4 text-amber-500" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-            No campaign data tracked yet
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-            To see per-campaign stats, add UTM parameters to your Facebook Ad URLs.
-            In Ads Manager, go to your ad → <strong>Website URL</strong> and append:
-          </p>
-          <code className="mt-2 block text-[11px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 font-mono leading-relaxed break-all">
-            ?utm_source=facebook&amp;utm_medium=cpc&amp;utm_campaign=YOUR_CAMPAIGN_NAME
-          </code>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TrafficSources({
-  sources,
-  loading,
-}: {
-  sources: Record<string, SourceStats>;
-  loading: boolean;
-}) {
-  const sorted = Object.entries(sources).sort(
-    (a, b) => b[1].revenue - a[1].revenue || b[1].total - a[1].total
-  );
-
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-      <SectionHeader
-        gradient="from-sky-400 to-blue-500"
-        title="Traffic Sources"
-        right={
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">
-            {sorted.length} source{sorted.length !== 1 ? "s" : ""}
-          </span>
-        }
-      />
-      <StatTable rows={sorted} loading={loading} accentColor="bg-sky-400" />
-    </div>
-  );
-}
-
-function TopProducts({
-  products,
-  loading,
-}: {
-  products: ProductStat[];
-  loading: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-      <SectionHeader
-        gradient="from-violet-400 to-purple-500"
-        title="Top Products"
-        right={
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">
-            by revenue
-          </span>
-        }
-      />
-      <div className="overflow-x-auto -mx-5 px-5">
-        <table className="w-full text-xs min-w-120">
-          <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-800">
-              <th className="text-left font-semibold text-gray-500 dark:text-gray-400 pb-2 pr-4">
-                Product
-              </th>
-              <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
-                Views
-              </th>
-              <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
-                Add to Cart
-              </th>
-              <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
-                Purchases
-              </th>
-              <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
-                Revenue
-              </th>
-              <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 pl-2 whitespace-nowrap">
-                View→Buy
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-            {products.map((p) => (
-              <tr
-                key={p.name}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
-              >
-                <td className="py-2.5 pr-4 font-medium text-gray-800 dark:text-gray-200 max-w-48">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
-                    <span className="truncate">{p.name}</span>
-                  </span>
-                </td>
-                <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
-                  {loading ? "—" : fmt(p.views)}
-                </td>
-                <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
-                  {loading ? "—" : fmt(p.cartAdds)}
-                </td>
-                <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
-                  {loading ? "—" : fmt(p.purchases)}
-                </td>
-                <td className="py-2.5 px-2 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
-                  {loading ? "—" : p.revenue > 0 ? fmtBDT(p.revenue) : "—"}
-                </td>
-                <td className="py-2.5 pl-2 text-right tabular-nums text-indigo-600 dark:text-indigo-400 font-semibold">
-                  {loading ? "—" : convRate(p.purchases, p.views)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 // ── Main dashboard ────────────────────────────────────────────────────────────
 
 export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   const [period, setPeriod] = useState<PixelPeriod>("7d");
   const [data, setData] = useState<PixelAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const t = useTranslation();
+  const n = useLocalNum();
+  const { icon: currencyIcon } = useUserCurrencyIcon();
+
+  const EVENT_META = [
+    { key: "PageView", label: t.admin.pixelPageViews, icon: Eye, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-400 to-blue-600", chartColor: "#3b82f6" },
+    { key: "ViewContent", label: t.admin.pixelProductViews, icon: ShoppingBag, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-500/10", border: "border-indigo-100 dark:border-indigo-500/20", bar: "from-indigo-400 to-indigo-600", chartColor: "#6366f1" },
+    { key: "AddToCart", label: t.admin.pixelAddToCart, icon: ShoppingCart, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10", border: "border-amber-100 dark:border-amber-500/20", bar: "from-amber-400 to-amber-600", chartColor: "#f59e0b" },
+    { key: "InitiateCheckout", label: t.admin.pixelCheckoutStarted, icon: CreditCard, color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-500/10", border: "border-orange-100 dark:border-orange-500/20", bar: "from-orange-400 to-orange-600", chartColor: "#f97316" },
+    { key: "Purchase", label: t.admin.pixelPurchases, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-100 dark:border-emerald-500/20", bar: "from-emerald-400 to-emerald-600", chartColor: "#10b981" },
+  ];
+
+  const fmtBDT = (val: number) => {
+    const sym = typeof currencyIcon === "string" ? currencyIcon : "৳";
+    return `${sym} ${n(Math.round(val).toString())}`;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -392,17 +202,18 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
             <TrendingUp className="w-8 h-8 text-indigo-500" />
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-            No Pixel Connected
+            {t.admin.pixelNoPixel}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Go to{" "}
-            <strong>Store Settings → Facebook Pixel ID</strong> and paste your
-            Meta Pixel ID to start tracking.
+            {t.admin.pixelNoPixelHint}
           </p>
         </div>
       </div>
     );
   }
+
+  const sorted_campaigns = data?.campaigns ? Object.entries(data.campaigns).sort((a, b) => b[1].revenue - a[1].revenue || b[1].total - a[1].total) : [];
+  const sorted_sources = data?.sources ? Object.entries(data.sources).sort((a, b) => b[1].revenue - a[1].revenue || b[1].total - a[1].total) : [];
 
   return (
     <div className="max-w-350 mx-auto px-3 sm:px-6 py-6 space-y-6">
@@ -414,11 +225,11 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
               <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Pixel Analytics
+              {t.admin.pixelTitle}
             </h1>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Pixel ID:{" "}
+            {t.admin.pixelIdLabel}{" "}
             <span className="font-mono text-gray-600 dark:text-gray-300">
               {pixelId}
             </span>
@@ -454,28 +265,30 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
       {/* ── Revenue Hero ── */}
       <div className="relative rounded-2xl overflow-hidden bg-linear-to-br from-indigo-500 via-indigo-600 to-violet-600 p-5 sm:p-7 text-white shadow-lg shadow-indigo-500/20">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-1">
-              Tracked Revenue
+              {t.admin.pixelTrackedRevenue}
             </p>
             <p className="text-3xl sm:text-4xl font-black tabular-nums">
               {fmtBDT(data?.totalRevenue ?? 0)}
             </p>
             <p className="text-indigo-200 text-xs mt-1">
-              From {fmt(data?.totalOrders ?? 0)} purchases via pixel
+              {t.admin.pixelFromPurchases.includes("purchases")
+                ? `${t.admin.pixelFromPurchases.replace("purchases", n(data?.totalOrders ?? 0) + " purchases")}`
+                : `${n(data?.totalOrders ?? 0)} ${t.admin.pixelFromPurchases}`}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-center bg-white/10 rounded-xl px-4 py-3">
               <p className="text-lg font-black">
                 {data?.totalOrders
-                  ? `${(((data.totalOrders) / (totals.PageView || 1)) * 100).toFixed(2)}%`
+                  ? `${n(((data.totalOrders / (totals.PageView || 1)) * 100).toFixed(2))}%`
                   : "—"}
               </p>
               <p className="text-indigo-200 text-[10px] font-medium mt-0.5">
-                Visit→Buy
+                {t.admin.pixelVisitToBuy}
               </p>
             </div>
             <div className="text-center bg-white/10 rounded-xl px-4 py-3">
@@ -483,17 +296,17 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
                 {data?.avgOrderValue ? fmtBDT(Math.round(data.avgOrderValue)) : "—"}
               </p>
               <p className="text-indigo-200 text-[10px] font-medium mt-0.5">
-                Avg Order
+                {t.admin.pixelAvgOrder}
               </p>
             </div>
             <div className="text-center bg-white/10 rounded-xl px-4 py-3">
               <p className="text-lg font-black">
                 {data?.avgItemsPerOrder
-                  ? data.avgItemsPerOrder.toFixed(1)
+                  ? n(data.avgItemsPerOrder.toFixed(1))
                   : "—"}
               </p>
               <p className="text-indigo-200 text-[10px] font-medium mt-0.5">
-                Items/Order
+                {t.admin.pixelItemsPerOrder}
               </p>
             </div>
           </div>
@@ -515,7 +328,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
                 <Icon className={`w-4 h-4 ${meta.color}`} />
               </div>
               <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">
-                {loading ? "—" : fmt(count)}
+                {loading ? "—" : n(count)}
               </p>
               <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">
                 {meta.label}
@@ -527,7 +340,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
       {/* ── Conversion Funnel ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-indigo-400 to-violet-500" title="Conversion Funnel" />
+        <SectionHeader gradient="from-indigo-400 to-violet-500" title={t.admin.pixelConversionFunnel} />
         <div className="space-y-2">
           {EVENT_META.map((meta, i) => {
             const count = totals[meta.key] ?? 0;
@@ -544,12 +357,12 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
                     </span>
                     {prev !== null && (
                       <span className="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full">
-                        {convRate(count, prev)} from prev
+                        {convRate(count, prev)} {t.admin.pixelFromPrev}
                       </span>
                     )}
                   </div>
                   <span className="text-xs font-black text-gray-900 dark:text-white tabular-nums">
-                    {loading ? "—" : fmt(count)}
+                    {loading ? "—" : n(count)}
                   </span>
                 </div>
                 <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -566,14 +379,14 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
       {/* ── Daily Trend Chart ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-blue-400 to-indigo-500" title="Daily Trend" />
+        <SectionHeader gradient="from-blue-400 to-indigo-500" title={t.admin.pixelDailyTrend} />
         {loading ? (
           <div className="h-52 flex items-center justify-center">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : daily.length === 0 ? (
           <div className="h-52 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
-            No data for this period yet
+            {t.admin.pixelNoPeriodData}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
@@ -624,46 +437,46 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
       {/* ── Revenue + Order Stats ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-emerald-400 to-teal-500" title="Revenue & Orders" />
+        <SectionHeader gradient="from-emerald-400 to-teal-500" title={t.admin.pixelRevenueOrders} />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
             {
-              label: "Total Revenue",
+              label: t.admin.pixelTotalRevenue,
               value: fmtBDT(data?.totalRevenue ?? 0),
               icon: DollarSign,
               color: "text-emerald-500",
               bg: "bg-emerald-50 dark:bg-emerald-500/10",
             },
             {
-              label: "Total Orders",
-              value: fmt(data?.totalOrders ?? 0),
+              label: t.admin.pixelTotalOrders,
+              value: n(data?.totalOrders ?? 0),
               icon: CheckCircle,
               color: "text-blue-500",
               bg: "bg-blue-50 dark:bg-blue-500/10",
             },
             {
-              label: "Avg Order Value",
+              label: t.admin.pixelAvgOrderValue,
               value: data?.avgOrderValue ? fmtBDT(Math.round(data.avgOrderValue)) : "—",
               icon: TrendingUp,
               color: "text-indigo-500",
               bg: "bg-indigo-50 dark:bg-indigo-500/10",
             },
             {
-              label: "Avg Items/Order",
-              value: data?.avgItemsPerOrder ? data.avgItemsPerOrder.toFixed(1) : "—",
+              label: t.admin.pixelAvgItemsPerOrder,
+              value: data?.avgItemsPerOrder ? n(data.avgItemsPerOrder.toFixed(1)) : "—",
               icon: Package,
               color: "text-violet-500",
               bg: "bg-violet-50 dark:bg-violet-500/10",
             },
             {
-              label: "Cart→Buy Rate",
+              label: t.admin.pixelCartToBuyRate,
               value: convRate(data?.totalOrders ?? 0, totals.AddToCart ?? 0),
               icon: ShoppingCart,
               color: "text-amber-500",
               bg: "bg-amber-50 dark:bg-amber-500/10",
             },
             {
-              label: "View→Buy Rate",
+              label: t.admin.pixelViewToBuyRate,
               value: convRate(data?.totalOrders ?? 0, totals.ViewContent ?? 0),
               icon: Globe,
               color: "text-rose-500",
@@ -688,19 +501,128 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
       {/* ── Traffic Sources ── */}
       {data?.sources && Object.keys(data.sources).length > 0 && (
-        <TrafficSources sources={data.sources} loading={loading} />
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <SectionHeader
+            gradient="from-sky-400 to-blue-500"
+            title={t.admin.pixelTrafficSources}
+            right={
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                {n(sorted_sources.length)}{" "}
+                {sorted_sources.length !== 1 ? t.admin.pixelSourcePlural : t.admin.pixelSourceSingular}
+              </span>
+            }
+          />
+          <StatTable rows={sorted_sources} loading={loading} accentColor="bg-sky-400" eventMeta={EVENT_META} n={n} fmtBDT={fmtBDT} t={t} />
+        </div>
       )}
 
       {/* ── Top Products ── */}
       {data?.topProducts && data.topProducts.length > 0 && (
-        <TopProducts products={data.topProducts} loading={loading} />
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <SectionHeader
+            gradient="from-violet-400 to-purple-500"
+            title={t.admin.pixelTopProducts}
+            right={
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                {t.admin.pixelByRevenue}
+              </span>
+            }
+          />
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-xs min-w-120">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="text-left font-semibold text-gray-500 dark:text-gray-400 pb-2 pr-4">
+                    {t.admin.pixelProductCol}
+                  </th>
+                  <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
+                    {t.admin.pixelViewsCol}
+                  </th>
+                  <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
+                    {t.admin.pixelAddToCartCol}
+                  </th>
+                  <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
+                    {t.admin.pixelPurchasesCol}
+                  </th>
+                  <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 px-2 whitespace-nowrap">
+                    {t.admin.pixelRevenueCol}
+                  </th>
+                  <th className="text-right font-semibold text-gray-500 dark:text-gray-400 pb-2 pl-2 whitespace-nowrap">
+                    {t.admin.pixelViewToBuy}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                {(data.topProducts as ProductStat[]).map((p) => (
+                  <tr
+                    key={p.name}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                  >
+                    <td className="py-2.5 pr-4 font-medium text-gray-800 dark:text-gray-200 max-w-48">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0" />
+                        <span className="truncate">{p.name}</span>
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
+                      {loading ? "—" : n(p.views)}
+                    </td>
+                    <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
+                      {loading ? "—" : n(p.cartAdds)}
+                    </td>
+                    <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
+                      {loading ? "—" : n(p.purchases)}
+                    </td>
+                    <td className="py-2.5 px-2 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                      {loading ? "—" : p.revenue > 0 ? fmtBDT(p.revenue) : "—"}
+                    </td>
+                    <td className="py-2.5 pl-2 text-right tabular-nums text-indigo-600 dark:text-indigo-400 font-semibold">
+                      {loading ? "—" : convRate(p.purchases, p.views)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* ── Campaign Breakdown ── */}
       {data?.campaigns && Object.keys(data.campaigns).length > 0 ? (
-        <CampaignBreakdown campaigns={data.campaigns} loading={loading} />
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <SectionHeader
+            gradient="from-pink-400 to-rose-500"
+            title={t.admin.pixelCampaignBreakdown}
+            right={
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                {n(sorted_campaigns.length)}{" "}
+                {sorted_campaigns.length !== 1 ? t.admin.pixelCampaignPlural : t.admin.pixelCampaignSingular}
+              </span>
+            }
+          />
+          <StatTable rows={sorted_campaigns} loading={loading} accentColor="bg-rose-400" eventMeta={EVENT_META} n={n} fmtBDT={fmtBDT} t={t} />
+        </div>
       ) : (
-        !loading && <NoCampaignHint />
+        !loading && (
+          <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Info className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                  {t.admin.pixelNoCampaignTitle}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  {t.admin.pixelNoCampaignHint}
+                </p>
+                <code className="mt-2 block text-[11px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 font-mono leading-relaxed break-all">
+                  ?utm_source=facebook&amp;utm_medium=cpc&amp;utm_campaign=YOUR_CAMPAIGN_NAME
+                </code>
+              </div>
+            </div>
+          </div>
+        )
       )}
     </div>
   );

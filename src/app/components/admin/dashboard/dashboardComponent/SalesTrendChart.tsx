@@ -11,6 +11,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface SalesTrendChartProps {
   data: { date: string; sales: number }[];
@@ -21,11 +23,13 @@ const CustomTooltip = ({
   payload,
   label,
   sym,
+  n,
 }: {
   active?: boolean;
   payload?: { value: number }[];
   label?: string;
   sym: string;
+  n: (v: number | string) => string;
 }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -39,9 +43,7 @@ const CustomTooltip = ({
       </div>
       <div className="text-base font-black tabular-nums text-indigo-600 dark:text-indigo-400">
         {sym}{" "}
-        {payload[0].value.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-        })}
+        {n(payload[0].value.toFixed(2))}
       </div>
     </div>
   );
@@ -51,6 +53,8 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
   const [days, setDays] = useState(14);
   const { icon, loading } = useUserCurrencyIcon();
   const sym = loading ? "৳" : typeof icon === "string" ? icon : "৳";
+  const t = useTranslation();
+  const n = useLocalNum();
 
   const sliced = useMemo(() => data.slice(-days), [data, days]);
   const prevSlice = useMemo(() => {
@@ -72,11 +76,11 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
           <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
-            Period Total
+            {t.admin.salesPeriodTotal}
           </div>
           <div className="text-xl sm:text-2xl font-black tabular-nums text-gray-900 dark:text-white">
             {sym}{" "}
-            {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {n(total.toFixed(2))}
           </div>
         </div>
 
@@ -141,7 +145,7 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
               tickLine={false}
               width={36}
             />
-            <Tooltip content={<CustomTooltip sym={sym} />} />
+            <Tooltip content={(props) => <CustomTooltip {...props} sym={sym} n={n} />} />
             {prevSlice.length > 0 && (
               <Area
                 type="monotone"
@@ -176,14 +180,14 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-0.5 rounded bg-indigo-500" />
           <span className="text-[10px] text-gray-400 dark:text-gray-500">
-            Current period
+            {t.admin.salesCurrentPeriod}
           </span>
         </div>
         {prevSlice.length > 0 && (
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-0.5 rounded bg-gray-300 dark:bg-gray-600" />
             <span className="text-[10px] text-gray-400 dark:text-gray-500">
-              Previous period
+              {t.admin.salesPreviousPeriod}
             </span>
           </div>
         )}

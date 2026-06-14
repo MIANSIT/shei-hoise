@@ -15,9 +15,11 @@ import { ProfileDetailsCard } from "../../components/user-profile/adminProfile/A
 import { EditProfileForm } from "../../components/user-profile/adminProfile/EditAdminProfile";
 import { AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
 import { ProfileFormData } from "@/lib/types/adminProfile";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();
+  const t = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<AdminUserWithProfile | null>(
     null
@@ -88,8 +90,8 @@ export default function StoreOwnerProfilePage() {
   if (user && user.user_type !== "store_owner") {
     return (
       <AccessDenied
-        title="Access Restricted"
-        message="This page is only accessible to store owners."
+        title={t.admin.profileAccessTitle}
+        message={t.admin.profileOwnerOnly}
         showHomeButton={true}
         showLoginButton={false}
       />
@@ -103,11 +105,11 @@ export default function StoreOwnerProfilePage() {
   if (!isAuthenticated || error) {
     return (
       <AccessDenied
-        title={error ? "Error Loading Profile" : "Access Denied"}
+        title={error ? t.admin.profileErrTitle : t.admin.profileDeniedTitle}
         message={
           error
-            ? "Failed to load user profile. Please try again."
-            : "Please log in to access this page."
+            ? t.admin.profileErrDesc
+            : t.admin.profileLoginRequired
         }
         showHomeButton={true}
         showLoginButton={!error}

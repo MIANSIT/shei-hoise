@@ -6,13 +6,8 @@ import StockChangeTable from "@/app/components/admin/dashboard/products/stock/St
 import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
-
-const FILTER_CONFIG: { value: StockFilter; label: string; color: string }[] = [
-  { value: StockFilter.ALL, label: "All", color: "gray" },
-  { value: StockFilter.IN, label: "In Stock", color: "green" },
-  { value: StockFilter.LOW, label: "Low Stock", color: "amber" },
-  { value: StockFilter.OUT, label: "Out of Stock", color: "red" },
-];
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 const activeClass = {
   gray: "bg-gray-900  dark:bg-gray-100  text-white  dark:text-gray-900",
@@ -25,6 +20,16 @@ const inactiveClass =
   "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500";
 
 const StockPage = () => {
+  const t = useTranslation();
+  const n = useLocalNum();
+
+  const FILTER_CONFIG: { value: StockFilter; label: string; color: string }[] = [
+    { value: StockFilter.ALL, label: t.admin.stockAll, color: "gray" },
+    { value: StockFilter.IN, label: t.admin.stockInStock, color: "green" },
+    { value: StockFilter.LOW, label: t.admin.stockLowStock, color: "amber" },
+    { value: StockFilter.OUT, label: t.admin.stockOutOfStock, color: "red" },
+  ];
+
   const [searchText, setSearchText] = useUrlSync<string>("search", "");
   const [stockFilter, setStockFilter] = useUrlSync<StockFilter>(
     "filter",
@@ -60,10 +65,10 @@ const StockPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
-            Inventory
+            {t.admin.stockTitle}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Manage stock levels across all products and variants
+            {t.admin.stockSubtitle}
           </p>
         </div>
         {totalProducts > 0 && (
@@ -76,7 +81,7 @@ const StockPage = () => {
             border border-gray-200 dark:border-gray-700
           "
           >
-            {totalProducts.toLocaleString()} products
+            {n(totalProducts)} {t.admin.stockProducts}
           </span>
         )}
       </div>
@@ -93,7 +98,7 @@ const StockPage = () => {
           />
           <input
             type="text"
-            placeholder="Search by name or SKU…"
+            placeholder={t.admin.stockSearchPlaceholder}
             value={searchText}
             onChange={handleSearchChange}
             className="
@@ -169,9 +174,9 @@ const StockPage = () => {
           {/* Mobile */}
           <div className="flex flex-col items-center gap-2 md:hidden">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {Math.min((currentPage - 1) * pageSize + 1, totalProducts)}–
-              {Math.min(currentPage * pageSize, totalProducts)} of{" "}
-              {totalProducts}
+              {n(Math.min((currentPage - 1) * pageSize + 1, totalProducts))}–
+              {n(Math.min(currentPage * pageSize, totalProducts))} {t.admin.customerOfLabel}{" "}
+              {n(totalProducts)}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -187,10 +192,10 @@ const StockPage = () => {
                   transition-colors duration-150
                 "
               >
-                ← Prev
+                {t.admin.stockPrev}
               </button>
               <span className="text-xs text-gray-500 dark:text-gray-400 px-2">
-                {currentPage} / {totalPages}
+                {n(currentPage)} / {n(totalPages)}
               </span>
               <button
                 disabled={currentPage >= totalPages}
@@ -207,7 +212,7 @@ const StockPage = () => {
                   transition-colors duration-150
                 "
               >
-                Next →
+                {t.admin.stockNext}
               </button>
             </div>
           </div>
@@ -225,7 +230,7 @@ const StockPage = () => {
                 setPageSize(size);
               }}
               showTotal={(total, range) =>
-                `${range[0]}–${range[1]} of ${total}`
+                `${n(range[0])}–${n(range[1])} ${t.admin.customerOfLabel} ${n(total)}`
               }
               className="[&_.ant-pagination-item-active]:border-blue-500! [&_.ant-pagination-item-active_a]:text-blue-600!"
             />

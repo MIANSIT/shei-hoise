@@ -10,6 +10,7 @@ import {
 } from "@/app/components/admin/dashboard/expense/category/iconForm/ColorPicker";
 import { IconPicker } from "@/app/components/admin/dashboard/expense/category/iconForm/IconPicker";
 import { CategoryPreview } from "@/app/components/admin/dashboard/expense/category/iconForm/CategoryPreview";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface FormValues {
   name: string;
@@ -34,6 +35,7 @@ export function CategoryFormModal({
   onClose,
   onSubmit,
 }: CategoryFormModalProps) {
+  const t = useTranslation();
   const [form] = Form.useForm<FormValues>();
   const [preview, setPreview] = useState<FormValues>({
     name: "",
@@ -95,7 +97,7 @@ export function CategoryFormModal({
             )}
           </div>
           <span className="text-base font-bold text-gray-900 dark:text-white">
-            {editingCategory ? "Edit Category" : "New Category"}
+            {editingCategory ? t.admin.catEditTitle : t.admin.catNewTitle}
           </span>
         </div>
       }
@@ -106,7 +108,7 @@ export function CategoryFormModal({
             onClick={handleCancel}
             disabled={saving}
           >
-            Cancel
+            {t.admin.catCancelBtn}
           </Button>
           <Button
             type="primary"
@@ -118,7 +120,7 @@ export function CategoryFormModal({
               boxShadow: "0 4px 14px rgba(102,126,234,0.4)",
             }}
           >
-            {editingCategory ? "Save Changes" : "Create"}
+            {editingCategory ? t.admin.catSaveBtn : t.admin.catCreateBtn}
           </Button>
         </div>
       }
@@ -144,13 +146,13 @@ export function CategoryFormModal({
             name="name"
             label={
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Category Name
+                {t.admin.catNameLabel}
               </span>
             }
-            rules={[{ required: true, message: "Category name is required" }]}
+            rules={[{ required: true, message: t.admin.catNameRequired }]}
           >
             <Input
-              placeholder="e.g. Marketing, Operations…"
+              placeholder={t.admin.catNamePlaceholder}
               className="rounded-xl"
               style={{ height: 44 }}
             />
@@ -160,13 +162,13 @@ export function CategoryFormModal({
             name="description"
             label={
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Description
+                {t.admin.catDescLabel}
               </span>
             }
           >
             <Input.TextArea
               rows={2}
-              placeholder="Optional — describe what expenses belong here"
+              placeholder={t.admin.catDescPlaceholder}
               className="rounded-xl"
               style={{ resize: "none" }}
             />
@@ -176,7 +178,7 @@ export function CategoryFormModal({
             name="color"
             label={
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Color
+                {t.admin.catColorLabel}
               </span>
             }
           >
@@ -187,7 +189,7 @@ export function CategoryFormModal({
             name="icon"
             label={
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Icon
+                {t.admin.catIconLabel}
               </span>
             }
           >
@@ -198,7 +200,7 @@ export function CategoryFormModal({
             name="is_active"
             label={
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Active
+                {t.admin.catActiveLabel}
               </span>
             }
             valuePropName="checked"

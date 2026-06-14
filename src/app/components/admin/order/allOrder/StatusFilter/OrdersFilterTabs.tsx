@@ -6,6 +6,8 @@ import { StoreOrder } from "@/lib/types/order";
 import { SearchOutlined } from "@ant-design/icons";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 import MobileFilter from "@/app/components/admin/common/MobileFilter"; // adjust path
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface Props {
   orders: StoreOrder[];
@@ -32,8 +34,6 @@ const statusColors: Record<string, string> = {
   all: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 const OrdersFilterTabs: React.FC<Props> = ({
   orders,
   searchValue,
@@ -46,6 +46,8 @@ const OrdersFilterTabs: React.FC<Props> = ({
   initialCategory = "order",
   initialStatus = "all",
 }) => {
+  const t = useTranslation();
+  const n = useLocalNum();
   const [category, setCategory] = useUrlSync<"order" | "payment">(
     "category",
     initialCategory
@@ -69,6 +71,21 @@ const OrdersFilterTabs: React.FC<Props> = ({
   ];
   const paymentStatuses = ["all", "pending", "paid", "failed", "refunded"];
   const statuses = category === "order" ? orderStatuses : paymentStatuses;
+
+  const getStatusLabel = (status: string): string => {
+    const map: Record<string, string> = {
+      all: t.admin.statusAll,
+      pending: t.admin.pending,
+      confirmed: t.admin.confirmed,
+      shipped: t.admin.shipped,
+      delivered: t.admin.delivered,
+      cancelled: t.admin.cancelled,
+      paid: t.admin.statusPaid,
+      failed: t.admin.statusFailed,
+      refunded: t.admin.statusRefunded,
+    };
+    return map[status] ?? status;
+  };
 
   // Debounce input
   const handleInputChange = (value: string) => {
@@ -134,8 +151,8 @@ const OrdersFilterTabs: React.FC<Props> = ({
         activeKey={category}
         onChange={handleCategoryChange}
         items={[
-          { key: "order", label: "Order Status" },
-          { key: "payment", label: "Payment Status" },
+          { key: "order", label: t.admin.orderStatusTab },
+          { key: "payment", label: t.admin.paymentStatusTab },
         ]}
         type="card"
       />
@@ -144,13 +161,13 @@ const OrdersFilterTabs: React.FC<Props> = ({
         <div className="w-full md:w-1/2">
           <Space.Compact className="w-full">
             <Input
-              placeholder="Search by Order #"
+              placeholder={t.admin.searchByOrderNum}
               value={searchValue}
               onChange={(e) => handleInputChange(e.target.value)}
               allowClear
               onPressEnter={(e) => onSearchChange(e.currentTarget.value)}
               suffix={
-                isTyping ? <span className="text-xs">Typing...</span> : null
+                isTyping ? <span className="text-xs">{t.admin.typingLabel}</span> : null
               }
             />
             <Button
@@ -180,7 +197,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
                       : "hover:scale-105 hover:shadow-sm"
                   }`}
                 >
-                  <span>{capitalize(status)}</span>
+                  <span>{getStatusLabel(status)}</span>
                   <span
                     className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
                       isActive
@@ -188,7 +205,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
                         : "bg-black bg-opacity-20 text-white"
                     }`}
                   >
-                    {getStatusCount(status)}
+                    {n(getStatusCount(status))}
                   </span>
                 </button>
               );
@@ -202,7 +219,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
             options={statuses}
             onChange={handleStatusChange}
             getLabel={(status) =>
-              `${capitalize(status)} (${getStatusCount(status)})`
+              `${getStatusLabel(status)} (${n(getStatusCount(status))})`
             }
           />
         </div>

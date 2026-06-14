@@ -11,6 +11,8 @@ import { updateCategory } from "@/lib/queries/expense/category/updateExpenseCate
 import { deleteCategory } from "@/lib/queries/expense/category/deleteExpenseCategory";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 import { CategoryHeader } from "@/app/components/admin/dashboard/expense/category/CategoryHeader";
 import { CategoryGrid } from "@/app/components/admin/dashboard/expense/category/CategoryGrid";
@@ -19,6 +21,8 @@ import { DeleteConfirmModal } from "@/app/components/admin/dashboard/expense/cat
 
 export default function CategoriesPage() {
   const { success, error } = useSheiNotification();
+  const t = useTranslation();
+  const n = useLocalNum();
   const { storeId, loading: userLoading } = useCurrentUser();
 
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -71,7 +75,7 @@ export default function CategoriesPage() {
         setTotalPages(response.totalPages);
       } catch (err) {
         error(
-          err instanceof Error ? err.message : "Failed to fetch categories",
+          err instanceof Error ? err.message : t.admin.expCatFetchFailed,
         );
       } finally {
         setLoading(false);
@@ -125,7 +129,7 @@ export default function CategoriesPage() {
     color?: string;
     is_active?: boolean;
   }) => {
-    if (!storeId) return error("Store ID not found.");
+    if (!storeId) return error(t.admin.expCatStoreNotFound);
     try {
       setSaving(true);
       await createCategory({
@@ -136,12 +140,12 @@ export default function CategoriesPage() {
         color: values.color,
         is_active: values.is_active ?? true,
       });
-      success("Category created successfully");
+      success(t.admin.expCatCreated);
       setIsFormModalOpen(false);
       setCurrentPage(1);
       await fetchCategories({ page: 1, size: pageSize, query: search });
     } catch (err) {
-      error(err instanceof Error ? err.message : "Failed to create category");
+      error(err instanceof Error ? err.message : t.admin.expCatCreateFailed);
     } finally {
       setSaving(false);
     }
@@ -165,7 +169,7 @@ export default function CategoriesPage() {
         color: values.color,
         is_active: values.is_active ?? true,
       });
-      success("Category updated successfully");
+      success(t.admin.expCatUpdated);
       setIsFormModalOpen(false);
       await fetchCategories({
         page: currentPage,
@@ -173,7 +177,7 @@ export default function CategoriesPage() {
         query: search,
       });
     } catch (err) {
-      error(err instanceof Error ? err.message : "Failed to update category");
+      error(err instanceof Error ? err.message : t.admin.expCatUpdateFailed);
     } finally {
       setSaving(false);
     }
@@ -183,7 +187,7 @@ export default function CategoriesPage() {
     if (!deleteTarget) return;
     try {
       await deleteCategory(deleteTarget.id);
-      success("Category deleted");
+      success(t.admin.expCatDeleted);
       const nextPage =
         categories.length === 1 && currentPage > 1
           ? currentPage - 1
@@ -191,7 +195,7 @@ export default function CategoriesPage() {
       setCurrentPage(nextPage);
       await fetchCategories({ page: nextPage, size: pageSize, query: search });
     } catch (err) {
-      error(err instanceof Error ? err.message : "Failed to delete category");
+      error(err instanceof Error ? err.message : t.admin.expCatDeleteFailed);
     } finally {
       setDeleteModalOpen(false);
       setDeleteTarget(null);
@@ -248,10 +252,10 @@ export default function CategoriesPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
-                Categories
+                {t.admin.expCatTitle}
               </h1>
               <p className="text-xs text-gray-400 dark:text-gray-500 m-0 hidden sm:block">
-                Manage expense categories
+                {t.admin.expCatSubtitle}
               </p>
             </div>
           </div>
@@ -289,7 +293,7 @@ export default function CategoriesPage() {
                   onChange={handlePageChange}
                   showSizeChanger
                   showQuickJumper
-                  showTotal={(total) => `Total ${total} categories`}
+                  showTotal={(total) => `${t.admin.expCatTotalLabel} ${n(total)} ${t.admin.expCatCategoriesLabel}`}
                   pageSizeOptions={["8", "12", "24", "48"]}
                   disabled={paginationLoading}
                 />

@@ -44,6 +44,8 @@ import type { ShippingFee } from "@/lib/types/store/store";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -51,6 +53,8 @@ type CustomerType = "new" | "existing";
 
 export default function CreateOrder() {
   const { notification } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<
@@ -158,8 +162,8 @@ export default function CreateOrder() {
     } catch (error) {
       console.error("Error fetching store settings:", error);
       notification.error({
-        message: "Error Loading Store Settings",
-        description: "Failed to load shipping fees and tax rates.",
+        message: t.admin.createOrderErrLoadStore,
+        description: t.admin.createOrderErrLoadStoreDesc,
       });
     } finally {
       setSettingsLoading(false);
@@ -204,8 +208,8 @@ export default function CreateOrder() {
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({
-        message: "Error Loading Products",
-        description: "Failed to load products. Please try again.",
+        message: t.admin.createOrderErrLoadProducts,
+        description: t.admin.createOrderErrLoadProductsDesc,
       });
     } finally {
       setLoading(false);
@@ -241,8 +245,8 @@ export default function CreateOrder() {
     } catch (err: any) {
       console.error("Error fetching customers:", err);
       notification.error({
-        message: "Error Loading Customers",
-        description: "Failed to load customer list from orders.",
+        message: t.admin.createOrderErrLoadCusts,
+        description: t.admin.createOrderErrLoadCustsDesc,
         duration: 4,
       });
       setCustomers([]);
@@ -447,7 +451,7 @@ export default function CreateOrder() {
       key: "new",
       label: (
         <Space>
-          <Text>New Customer</Text>
+          <Text>{t.admin.createOrderNewCust}</Text>
         </Space>
       ),
       icon: <UserAddOutlined />,
@@ -456,7 +460,7 @@ export default function CreateOrder() {
       key: "existing",
       label: (
         <Space>
-          <Text>Existing Customer</Text>
+          <Text>{t.admin.createOrderExistCust}</Text>
         </Space>
       ),
       icon: <UserOutlined />,
@@ -493,11 +497,11 @@ export default function CreateOrder() {
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Row gutter={[16, 16]} align="middle">
           <Col flex="auto">
-            <Text strong>Select Existing Customer</Text>
+            <Text strong>{t.admin.createOrderExistCust}</Text>
           </Col>
           <Col>
             <Button type="default" onClick={handleNewCustomer}>
-              New Customer Instead
+              {t.admin.createOrderNewInstead}
             </Button>
           </Col>
         </Row>
@@ -506,7 +510,7 @@ export default function CreateOrder() {
           <div style={{ textAlign: "center", padding: "20px" }}>
             <Spin size="large" />
             <div style={{ marginTop: "16px" }}>
-              <Text type="secondary">Loading customers...</Text>
+              <Text type="secondary">{t.admin.createOrderLoadingCusts}</Text>
             </div>
           </div>
         ) : filteredCustomers.length === 0 ? (
@@ -514,13 +518,13 @@ export default function CreateOrder() {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
               <Space orientation="vertical">
-                <Text>No customers found from order history</Text>
+                <Text>{t.admin.createOrderNoCusts}</Text>
                 <Button
                   type="primary"
                   onClick={fetchCustomers}
                   loading={customerLoading}
                 >
-                  Refresh Customer List
+                  {t.admin.createOrderRefreshBtn}
                 </Button>
               </Space>
             }
@@ -528,7 +532,7 @@ export default function CreateOrder() {
         ) : (
           <Space orientation="vertical" style={{ width: "100%" }} size="large">
             <Select
-              placeholder="Select a customer from order history..."
+              placeholder={t.admin.createOrderCustSearchPH}
               value={selectedCustomer?.id || undefined}
               onChange={handleCustomerSelect}
               style={{ width: "100%" }}
@@ -541,7 +545,7 @@ export default function CreateOrder() {
                 onSearch: setSearchTerm,
               }}
               notFoundContent={
-                searchTerm ? "No customers found" : "Type to search customers"
+                searchTerm ? t.admin.createOrderNoSearchResult : t.admin.createOrderTypeSearch
               }
             >
               {filteredCustomers.map((customer) => (
@@ -577,7 +581,7 @@ export default function CreateOrder() {
                         strong
                         className="text-[#1f1f1f] dark:text-[#e6f4ff]"
                       >
-                        Selected Customer Information
+                        {t.admin.createOrderSelectedCustTitle}
                       </Text>
 
                       <Tag
@@ -591,7 +595,7 @@ export default function CreateOrder() {
           dark:bg-[rgba(24,144,255,0.25)]
         "
                       >
-                        Existing Customer
+                        {t.admin.createOrderExistingTag}
                       </Tag>
 
                       {profileLoading && <Spin size="small" />}
@@ -599,28 +603,28 @@ export default function CreateOrder() {
                   }
                 >
                   <Descriptions bordered size="small" column={1}>
-                    <Descriptions.Item label="Name">
+                    <Descriptions.Item label={t.admin.createOrderFieldName}>
                       <Text strong>
                         {selectedCustomer.name || "Unnamed Customer"}
                       </Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Email">
+                    <Descriptions.Item label={t.admin.createOrderFieldEmail}>
                       <Space>
                         <MailOutlined />
                         <Text>{selectedCustomer.email}</Text>
                       </Space>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Phone">
+                    <Descriptions.Item label={t.admin.createOrderFieldPhone}>
                       <Space>
                         <PhoneOutlined />
-                        <Text>{selectedCustomer.phone || "Not provided"}</Text>
+                        <Text>{selectedCustomer.phone || t.admin.createOrderNotProvided}</Text>
                       </Space>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Order Count">
-                      <Text>{selectedCustomer.order_count || 0} orders</Text>
+                    <Descriptions.Item label={t.admin.createOrderFieldOrderCount}>
+                      <Text>{n(selectedCustomer.order_count || 0)} {t.admin.createOrderFieldOrders}</Text>
                     </Descriptions.Item>
                     {customerProfile?.address && (
-                      <Descriptions.Item label="Address">
+                      <Descriptions.Item label={t.admin.createOrderFieldAddress}>
                         <Space>
                           <HomeOutlined />
                           <Text>{customerProfile.address}</Text>
@@ -631,16 +635,16 @@ export default function CreateOrder() {
 
                   {customerProfile ? (
                     <Alert
-                      title="Address Auto-filled"
-                      description="Customer address has been auto-filled from their recent order. You can modify if needed."
+                      title={t.admin.createOrderAddrFilled}
+                      description={t.admin.createOrderAddrFilledDesc}
                       type="success"
                       showIcon
                       style={{ marginTop: "16px" }}
                     />
                   ) : (
                     <Alert
-                      title="Address Required"
-                      description="Please enter the delivery address and city for this order."
+                      title={t.admin.createOrderAddrRequired}
+                      description={t.admin.createOrderAddrRequiredDesc}
                       type="info"
                       showIcon
                       style={{ marginTop: "16px" }}
@@ -663,8 +667,8 @@ export default function CreateOrder() {
 
             {!selectedCustomer && filteredCustomers.length > 0 && (
               <Alert
-                title="Select a Customer"
-                description="Choose a customer from the dropdown above to pre-fill their information."
+                title={t.admin.createOrderSelectCustHint}
+                description={t.admin.createOrderSelectCustHintDesc}
                 type="info"
                 showIcon
               />
@@ -680,7 +684,7 @@ export default function CreateOrder() {
       <div className="flex justify-center items-center min-h-64 flex-col">
         <Spin size="large" />
         <div className="mt-4">
-          <Text type="secondary">Loading data...</Text>
+          <Text type="secondary">{t.admin.createOrderLoading}</Text>
         </div>
       </div>
     );
@@ -692,10 +696,10 @@ export default function CreateOrder() {
         <Space orientation="vertical" size="large" className="w-full">
           <div>
             <Title level={2} className="m-0">
-              Create New Order
+              {t.admin.createOrderTitle}
             </Title>
             <Text type="secondary">
-              Create orders for new or existing customers
+              {t.admin.createOrderDesc}
             </Text>
           </div>
 
@@ -712,7 +716,7 @@ export default function CreateOrder() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <Text strong className="text-lg">
-                    Customer Type
+                    {t.admin.createOrderCustTypeLabel}
                   </Text>
                 </div>
 
@@ -744,8 +748,8 @@ export default function CreateOrder() {
                         )}
                         <Text strong>
                           {customerType === "new"
-                            ? "New Customer"
-                            : "Existing Customer"}
+                            ? t.admin.createOrderNewCust
+                            : t.admin.createOrderExistCust}
                         </Text>
                       </Space>
                       <DownOutlined className="text-xs" />
@@ -761,7 +765,7 @@ export default function CreateOrder() {
                     onClick={() => handleCustomerTypeChange("new")}
                     size="large"
                   >
-                    New Customer
+                    {t.admin.createOrderNewCust}
                   </Button>
                   <Button
                     type={customerType === "existing" ? "primary" : "default"}
@@ -769,7 +773,7 @@ export default function CreateOrder() {
                     onClick={() => handleCustomerTypeChange("existing")}
                     size="large"
                   >
-                    Existing Customer
+                    {t.admin.createOrderExistCust}
                   </Button>
                 </div>
               </div>
@@ -781,7 +785,7 @@ export default function CreateOrder() {
                     <>
                       <UserAddOutlined className="text-blue-600" />
                       <Text strong className="text-blue-600">
-                        Creating order for a new customer
+                        {t.admin.createOrderCreatingFor}
                       </Text>
                     </>
                   ) : (
@@ -789,8 +793,8 @@ export default function CreateOrder() {
                       <UserOutlined className="text-green-600" />
                       <Text strong className="text-green-600">
                         {selectedCustomer
-                          ? `Selected: ${selectedCustomer.name}`
-                          : "Select an existing customer"}
+                          ? `${t.admin.createOrderSelectedPrefix} ${selectedCustomer.name}`
+                          : t.admin.createOrderSelectHint}
                       </Text>
                     </>
                   )}

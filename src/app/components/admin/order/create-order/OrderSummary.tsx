@@ -19,38 +19,11 @@ import type { ShippingFee } from "@/lib/types/store/store";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
-
-// Helper functions for dropdown options
-const getOrderStatusOptions = () => {
-  return [
-    { value: OrderStatus.PENDING, label: "Pending" },
-    { value: OrderStatus.CONFIRMED, label: "Confirmed" },
-    { value: OrderStatus.SHIPPED, label: "Shipped" },
-    { value: OrderStatus.DELIVERED, label: "Delivered" },
-    { value: OrderStatus.CANCELLED, label: "Cancelled" },
-  ];
-};
-
-const getPaymentStatusOptions = () => {
-  return [
-    { value: PaymentStatus.PENDING, label: "Pending" },
-    { value: PaymentStatus.PAID, label: "Paid" },
-    { value: PaymentStatus.FAILED, label: "Failed" },
-    { value: PaymentStatus.REFUNDED, label: "Refunded" },
-  ];
-};
-
-const getPaymentMethodOptions = () => {
-  return [
-    { value: "cod", label: "Cash on Delivery" },
-    { value: "card", label: "Credit/Debit Card" },
-    { value: "bkash", label: "bKash" },
-    { value: "nagad", label: "Nagad" },
-  ];
-};
 
 interface OrderSummaryProps {
   orderProducts: OrderProduct[];
@@ -95,10 +68,35 @@ export default function OrderSummary({
   shippingFees = [],
   customerDeliveryOption,
 }: OrderSummaryProps) {
+  const t = useTranslation();
+  const n = useLocalNum();
   const [isManualDeliveryCost, setIsManualDeliveryCost] = useState(false);
 
   // Check if delivery option is custom
   const isCustomDelivery = customerDeliveryOption === "custom";
+
+  const orderStatusOptions = [
+    { value: OrderStatus.PENDING, label: t.admin.bulkPending },
+    { value: OrderStatus.CONFIRMED, label: t.admin.bulkConfirmed },
+    { value: OrderStatus.SHIPPED, label: t.admin.bulkShipped },
+    { value: OrderStatus.DELIVERED, label: t.admin.bulkDelivered },
+    { value: OrderStatus.CANCELLED, label: t.admin.bulkCancelled },
+  ];
+
+  const paymentStatusOptions = [
+    { value: PaymentStatus.PENDING, label: t.admin.bulkPending },
+    { value: PaymentStatus.PAID, label: t.admin.bulkPaid },
+    { value: PaymentStatus.FAILED, label: t.admin.bulkFailed },
+    { value: PaymentStatus.REFUNDED, label: t.admin.bulkRefunded },
+  ];
+
+  const paymentMethodOptions = [
+    { value: "cod", label: "Cash on Delivery" },
+    { value: "card", label: t.admin.orderPayCard },
+    { value: "bkash", label: t.admin.orderPayBkash },
+    { value: "nagad", label: t.admin.orderPayNagad },
+  ];
+
   const {
     currency,
     icon: currencyIcon,
@@ -148,9 +146,9 @@ export default function OrderSummary({
   // Determine which shipping fee details to display
   const displayShippingFee = isManualDeliveryCost
     ? {
-        name: "Custom Shipping Fee",
+        name: t.admin.orderSummaryCustomShipping,
         price: deliveryCost,
-        description: "Manually adjusted shipping fee",
+        description: t.admin.orderSummaryCustomShippingDesc,
         estimated_days: selectedShippingFee?.estimated_days || undefined,
       }
     : selectedShippingFee;
@@ -168,7 +166,7 @@ export default function OrderSummary({
     >
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Title level={4} style={{ margin: 0 }}>
-          Order Summary
+          {t.admin.orderSummaryTitle}
         </Title>
 
         {/* Shipping Fee Alert */}
@@ -176,14 +174,14 @@ export default function OrderSummary({
           <Alert
             title={
               isManualDeliveryCost
-                ? "Custom Shipping Fee"
-                : "Shipping Fee Applied"
+                ? t.admin.orderSummaryCustomShipping
+                : t.admin.orderSummaryShippingApplied
             }
             description={
               <Space orientation="vertical" size={0}>
                 <Text>
                   <strong>{displayShippingFee.name}</strong>: (
-                  {displayCurrencyIcon}){displayShippingFee.price}
+                  {displayCurrencyIcon}){n(displayShippingFee.price)}
                 </Text>
                 {displayShippingFee.description && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
@@ -195,13 +193,13 @@ export default function OrderSummary({
                     className="text-ring"
                     style={{ fontSize: "12px", display: "block" }}
                   >
-                    📦 Estimated Delivery: {displayShippingFee.estimated_days}{" "}
-                    {displayShippingFee.estimated_days === 1 ? "day" : "days"}
+                    📦 {t.admin.orderSummaryEstDelivery} {n(displayShippingFee.estimated_days)}{" "}
+                    {displayShippingFee.estimated_days === 1 ? t.admin.orderSummaryDay : t.admin.orderSummaryDays}
                   </Text>
                 )}
                 {isManualDeliveryCost && (
                   <Text type="warning" style={{ fontSize: "12px" }}>
-                    Manual delivery cost override in effect
+                    {t.admin.orderSummaryManualOverride}
                   </Text>
                 )}
               </Space>
@@ -214,15 +212,15 @@ export default function OrderSummary({
         {/* Custom Delivery Alert */}
         {isCustomDelivery && (
           <Alert
-            title="Custom Delivery Fee"
+            title={t.admin.orderSummaryCustomDelivery}
             description={
               <Space orientation="vertical" size={0}>
                 <Text>
-                  <strong>Custom Delivery</strong>: ({displayCurrencyIcon})
-                  {deliveryCost}
+                  <strong>{t.admin.orderSummaryCustomDeliveryName}</strong>: ({displayCurrencyIcon})
+                  {n(deliveryCost)}
                 </Text>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
-                  You can manually adjust the delivery cost for custom delivery
+                  {t.admin.orderSummaryCustomAdjust}
                 </Text>
               </Space>
             }
@@ -235,11 +233,11 @@ export default function OrderSummary({
         <Space orientation="vertical" style={{ width: "100%" }} size="small">
           <Row gutter={16}>
             <Col span={12}>
-              <Text>Subtotal:</Text>
+              <Text>{t.admin.orderSummarySubtotal}</Text>
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
               <Text strong>
-                {subtotal.toFixed(2)} ({displayCurrencyIcon})
+                {n(subtotal.toFixed(2))} ({displayCurrencyIcon})
               </Text>
             </Col>
           </Row>
@@ -250,7 +248,7 @@ export default function OrderSummary({
                 <Form.Item
                   label={
                     <span className="flex items-center space-x-1">
-                      <span>Tax Amount ({displayCurrency})</span>
+                      <span>{t.admin.orderSummaryTaxAmount} ({displayCurrency})</span>
                       <Tooltip
                         title="Enter the tax amount to apply on the order. Ensure this aligns with local tax regulations."
                         placement="top"
@@ -288,7 +286,7 @@ export default function OrderSummary({
                 <Form.Item
                   label={
                     <span className="flex items-center space-x-1">
-                      <span>Discount Amount ({displayCurrency})</span>
+                      <span>{t.admin.orderSummaryDiscount} ({displayCurrency})</span>
                       <Tooltip
                         title="Include any extra charges such as packaging, handling, or special services."
                         placement="top"
@@ -319,7 +317,7 @@ export default function OrderSummary({
                 <Form.Item
                   label={
                     <span className="flex items-center space-x-1">
-                      <span>Additional Charges ({displayCurrency})</span>
+                      <span>{t.admin.orderSummaryAdditional} ({displayCurrency})</span>
                       <Tooltip
                         title="Include any extra charges such as packaging, handling, or special services."
                         placement="top"
@@ -343,7 +341,7 @@ export default function OrderSummary({
                   </Space.Compact>
                 </Form.Item>
                 <Text type="secondary" style={{ fontSize: "12px" }}>
-                  Additional fees like packaging, handling, or special services
+                  {t.admin.orderSummaryAdditionalDesc}
                 </Text>
               </Col>
             </Row>
@@ -353,7 +351,7 @@ export default function OrderSummary({
                 <Form.Item
                   label={
                     <span className="flex items-center space-x-1">
-                      <span>Delivery Cost ({displayCurrency})</span>
+                      <span>{t.admin.orderSummaryDeliveryCost} ({displayCurrency})</span>
                       <Tooltip
                         title="Delivery cost is automatically calculated based on the selected delivery option. For custom delivery, you can manually adjust this value."
                         placement="top"
@@ -386,18 +384,17 @@ export default function OrderSummary({
 
                 {customerDeliveryOption && !isCustomDelivery && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    Delivery cost is automatically set based on selected
-                    location
+                    {t.admin.orderSummaryAutoSet}
                   </Text>
                 )}
                 {isCustomDelivery && (
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    Enter custom delivery cost for this order
+                    {t.admin.orderSummaryEnterCustom}
                   </Text>
                 )}
                 {isManualDeliveryCost && !isCustomDelivery && (
                   <Text type="warning" style={{ fontSize: "12px" }}>
-                    Manual delivery cost override in effect
+                    {t.admin.orderSummaryManualOverride}
                   </Text>
                 )}
               </Col>
@@ -408,11 +405,11 @@ export default function OrderSummary({
 
           <Row gutter={16}>
             <Col span={12}>
-              <Text strong>Total Amount:</Text>
+              <Text strong>{t.admin.orderSummaryTotal}</Text>
             </Col>
             <Col span={12} style={{ textAlign: "right" }}>
               <Text strong style={{ fontSize: "18px", color: "#1890ff" }}>
-                ({displayCurrencyIcon}){""} {totalAmount.toFixed(2)}
+                ({displayCurrencyIcon}){""} {n(totalAmount.toFixed(2))}
               </Text>
             </Col>
           </Row>
@@ -424,14 +421,14 @@ export default function OrderSummary({
         <Space orientation="vertical" style={{ width: "100%" }} size="middle">
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label="Order Status">
+              <Form.Item label={t.admin.orderSummaryOrderStatus}>
                 <Select
                   value={status}
                   onChange={(value: OrderStatus) => setStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
                 >
-                  {getOrderStatusOptions().map((option) => (
+                  {orderStatusOptions.map((option) => (
                     <Option key={option.value} value={option.value}>
                       {option.label}
                     </Option>
@@ -441,14 +438,14 @@ export default function OrderSummary({
             </Col>
 
             <Col xs={24} md={12}>
-              <Form.Item label="Payment Status">
+              <Form.Item label={t.admin.orderSummaryPaymentStatus}>
                 <Select
                   value={paymentStatus}
                   onChange={(value: PaymentStatus) => setPaymentStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
                 >
-                  {getPaymentStatusOptions().map((option) => (
+                  {paymentStatusOptions.map((option) => (
                     <Option key={option.value} value={option.value}>
                       {option.label}
                     </Option>
@@ -458,7 +455,7 @@ export default function OrderSummary({
             </Col>
           </Row>
 
-          <Form.Item label="Payment Method">
+          <Form.Item label={t.admin.orderSummaryPaymentMethod}>
             <Select
               value={paymentMethod}
               onChange={setPaymentMethod}
@@ -466,7 +463,7 @@ export default function OrderSummary({
               size="large"
               placeholder="Select payment method"
             >
-              {getPaymentMethodOptions().map((option) => (
+              {paymentMethodOptions.map((option) => (
                 <Option key={option.value} value={option.value}>
                   {option.label}
                 </Option>
@@ -480,20 +477,17 @@ export default function OrderSummary({
           <Row gutter={16}>
             <Col xs={12} md={6}>
               <Statistic
-                title="Items"
-                value={orderProducts.reduce(
-                  (sum, item) => sum + item.quantity,
-                  0,
-                )}
+                title={t.admin.orderSummaryItems}
+                value={n(orderProducts.reduce((sum, item) => sum + item.quantity, 0))}
                 prefix={<ShoppingCartOutlined />}
               />
             </Col>
             <Col xs={12} md={6}>
-              <Statistic title="Products" value={orderProducts.length} />
+              <Statistic title={t.admin.orderSummaryProducts} value={n(orderProducts.length)} />
             </Col>
             {shippingFees.length > 0 && (
               <Col xs={12} md={6}>
-                <Statistic title="Shipping Zones" value={shippingFees.length} />
+                <Statistic title={t.admin.orderSummaryShippingZones} value={n(shippingFees.length)} />
               </Col>
             )}
           </Row>

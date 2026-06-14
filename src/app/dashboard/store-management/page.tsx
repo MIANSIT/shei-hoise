@@ -21,9 +21,11 @@ import type {
   UpdatedStoreData,
   UpdatedStoreSettings,
 } from "@/lib/types/store/store";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function StorePage() {
   const { storeId, loading: userLoading } = useCurrentUser();
+  const t = useTranslation();
   const safeStoreId = storeId ?? "";
 
   const {
@@ -105,10 +107,10 @@ export default function StorePage() {
         </div>
         <div className="text-center space-y-1.5">
           <h3 className="text-base font-semibold text-foreground">
-            No Store Found
+            {t.admin.storeNotFoundTitle}
           </h3>
           <p className="text-sm text-muted-foreground max-w-xs">
-            You don&apos;t have a store assigned to your account yet.
+            {t.admin.storeNotAssigned}
           </p>
         </div>
       </div>
@@ -130,7 +132,7 @@ export default function StorePage() {
     );
   }
 
-  if (!store) return <div>Store Not Found</div>;
+  if (!store) return <div>{t.admin.storeNotFoundDB}</div>;
 
   return (
     <div className="space-y-5 pb-10 max-w-7xl mx-auto">

@@ -27,6 +27,7 @@ import {
   TimePeriod,
 } from "@/lib/hook/useDashboardMetrics";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface ProductVariant {
   id: string;
@@ -62,19 +63,20 @@ export default function DashboardPage() {
   const [loadingExpenses, setLoadingExpenses] = useState(true);
 
   const t = useTranslation();
+  const n = useLocalNum();
   const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
 
   const renderCurrency = (amount: number) => {
-    if (!currency) return amount.toFixed(2);
+    if (!currency) return n(amount.toFixed(2));
     if (typeof CurrencyIcon === "string")
-      return `${CurrencyIcon} ${amount.toFixed(2)}`;
+      return `${CurrencyIcon} ${n(amount.toFixed(2))}`;
     if (CurrencyIcon)
       return (
         <>
-          {CurrencyIcon} {amount.toFixed(2)}
+          {CurrencyIcon} {n(amount.toFixed(2))}
         </>
       );
-    return amount.toFixed(2);
+    return n(amount.toFixed(2));
   };
 
   useEffect(() => {
@@ -162,8 +164,8 @@ export default function DashboardPage() {
     );
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const getChangeType = (n: number): "positive" | "negative" | "neutral" =>
-    n > 0 ? "positive" : n < 0 ? "negative" : "neutral";
+  const getChangeType = (val: number): "positive" | "negative" | "neutral" =>
+    val > 0 ? "positive" : val < 0 ? "negative" : "neutral";
 
   const getPeriodLabel = (p: TimePeriod) =>
     p === "weekly"
@@ -179,7 +181,7 @@ export default function DashboardPage() {
         ? t.admin.vsPrev30
         : t.admin.vsPrev365;
 
-  const fmt = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
+  const fmt = (pct: number) => `${pct > 0 ? "+" : ""}${n(pct.toFixed(1))}%`;
 
   // ── Revenue / Order KPI cards ────────────────────────────────────────────────
   const stats = [
@@ -189,15 +191,15 @@ export default function DashboardPage() {
       icon: <DollarOutlined className="text-emerald-500" />,
       change: `${fmt(metrics.changePercentage.revenue)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.revenue),
-      description: `${metrics.paidOrders.length} ${t.admin.fromPaidOrders}`,
+      description: `${n(metrics.paidOrders.length)} ${t.admin.fromPaidOrders}`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.ordersAll}`,
-      value: metrics.orderCount.toString(),
+      value: n(metrics.orderCount),
       icon: <ShoppingCartOutlined className="text-blue-500" />,
       change: `${fmt(metrics.changePercentage.orders)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.orders),
-      description: `${t.admin.totalOrdersOf} (${metrics.paidOrders.length} ${t.admin.paid})`,
+      description: `${t.admin.totalOrdersOf} (${n(metrics.paidOrders.length)} ${t.admin.paid})`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.avgOrderValue}`,
@@ -245,7 +247,7 @@ export default function DashboardPage() {
       icon: <FallOutlined className="text-rose-500" />,
       change: `${fmt(expenseMetrics.changePercentage.expenses)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(-expenseMetrics.changePercentage.expenses),
-      description: `${expenseMetrics.expenseCount} ${t.admin.expenseRecords}`,
+      description: `${n(expenseMetrics.expenseCount)} ${t.admin.expenseRecords}`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.netProfit}`,
@@ -266,7 +268,7 @@ export default function DashboardPage() {
     },
     {
       title: t.admin.expenseRevenueRatio,
-      value: `${expenseMetrics.expenseToRevenueRatio}%`,
+      value: `${n(expenseMetrics.expenseToRevenueRatio)}%`,
       icon: <PieChartOutlined className="text-orange-500" />,
       change: expenseRatioLabel,
       changeType: expenseRatioHealth,
@@ -286,35 +288,35 @@ export default function DashboardPage() {
   const orderStatusCards = [
     {
       title: t.admin.pending,
-      value: metrics.orderStatusCounts.pending.toString(),
+      value: n(metrics.orderStatusCounts.pending),
       icon: <ExclamationOutlined className="text-amber-500" />,
       color: "bg-amber-50",
       textColor: "text-amber-700",
     },
     {
       title: t.admin.confirmed,
-      value: metrics.orderStatusCounts.confirmed.toString(),
+      value: n(metrics.orderStatusCounts.confirmed),
       icon: <CheckCircleOutlined className="text-blue-500" />,
       color: "bg-blue-50",
       textColor: "text-blue-700",
     },
     {
       title: t.admin.shipped,
-      value: metrics.orderStatusCounts.shipped.toString(),
+      value: n(metrics.orderStatusCounts.shipped),
       icon: <ShoppingCartOutlined className="text-violet-500" />,
       color: "bg-purple-50",
       textColor: "text-purple-700",
     },
     {
       title: t.admin.delivered,
-      value: metrics.orderStatusCounts.delivered.toString(),
+      value: n(metrics.orderStatusCounts.delivered),
       icon: <CheckCircleOutlined className="text-emerald-500" />,
       color: "bg-green-50",
       textColor: "text-green-700",
     },
     {
       title: t.admin.cancelled,
-      value: metrics.orderStatusCounts.cancelled.toString(),
+      value: n(metrics.orderStatusCounts.cancelled),
       icon: <CloseCircleOutlined className="text-rose-500" />,
       color: "bg-red-50",
       textColor: "text-red-700",
@@ -325,21 +327,21 @@ export default function DashboardPage() {
   const inventoryAlerts = [
     {
       title: t.admin.inStockUnits,
-      value: metrics.inStockCount.toString(),
+      value: n(metrics.inStockCount),
       icon: <CheckCircleOutlined className="text-emerald-600" />,
       color: "bg-green-100",
       actionText: t.admin.viewItems,
     },
     {
       title: t.admin.lowStockProducts,
-      value: metrics.lowStockProductCount.toString(),
+      value: n(metrics.lowStockProductCount),
       icon: <ExclamationOutlined className="text-amber-600" />,
       color: "bg-amber-100",
       actionText: t.admin.review,
     },
     {
       title: t.admin.outOfStockProducts,
-      value: metrics.outOfStockProductCount.toString(),
+      value: n(metrics.outOfStockProductCount),
       icon: <CloseCircleOutlined className="text-rose-600" />,
       color: "bg-red-100",
       actionText: t.admin.restockNow,
@@ -357,12 +359,12 @@ export default function DashboardPage() {
   const customerStats = [
     {
       title: `${t.admin.newCustomers} (${getPeriodLabel(timePeriod)})`,
-      value: metrics.customerSnapshot.newCustomers.toString(),
+      value: n(metrics.customerSnapshot.newCustomers),
       icon: <StarOutlined className="text-blue-500" />,
     },
     {
       title: t.admin.returningRate,
-      value: `${metrics.customerSnapshot.returningRate}%`,
+      value: `${n(metrics.customerSnapshot.returningRate)}%`,
       icon: <StarOutlined className="text-emerald-500" />,
     },
     {

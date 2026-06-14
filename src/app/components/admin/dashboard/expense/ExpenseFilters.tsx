@@ -16,6 +16,8 @@ import {
   renderCategoryOption,
   type CategoryOption,
 } from "./CategorySelectOptions";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 const { RangePicker } = DatePicker;
 
@@ -59,6 +61,8 @@ function FilterControls({
   vertical?: boolean;
   onCalendarOpenChange?: (open: boolean) => void;
 }) {
+  const t = useTranslation();
+  const n = useLocalNum();
   const categoryOptions = useMemo(
     () => buildCategoryOptions(categories),
     [categories],
@@ -70,7 +74,7 @@ function FilterControls({
     >
       <Input
         prefix={<SearchOutlined style={{ color: "#d1d5db", fontSize: 13 }} />}
-        placeholder="Search title, vendor..."
+        placeholder={t.admin.expenseSearchPlaceholder}
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         style={{ width: vertical ? "100%" : 220, borderRadius: 10, height: 36 }}
@@ -81,7 +85,7 @@ function FilterControls({
         placeholder={
           <span className="flex items-center gap-1.5">
             <Tag size={12} color="#9ca3af" strokeWidth={2} />
-            <span>Category</span>
+            <span>{t.admin.expenseCategoryPh}</span>
           </span>
         }
         allowClear
@@ -102,7 +106,7 @@ function FilterControls({
         placeholder={
           <span className="flex items-center gap-1.5">
             <CreditCard size={12} color="#9ca3af" strokeWidth={2} />
-            <span>Payment</span>
+            <span>{t.admin.expensePaymentPh}</span>
           </span>
         }
         allowClear
@@ -147,7 +151,7 @@ function FilterControls({
           onClick={onClear}
           className="text-red-500 hover:text-red-600 flex items-center gap-1 h-8 rounded-lg"
         >
-          Clear {activeCount > 0 && `(${activeCount})`}
+          {t.admin.expenseClearFilters} {activeCount > 0 && `(${n(activeCount)})`}
         </Button>
       )}
     </div>
@@ -155,6 +159,8 @@ function FilterControls({
 }
 
 function ExpenseFilters(props: ExpenseFiltersProps) {
+  const t = useTranslation();
+  const n = useLocalNum();
   const { search, categoryFilter, paymentFilter, dateRange } = props;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -177,7 +183,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
             prefix={
               <SearchOutlined style={{ color: "#d1d5db", fontSize: 13 }} />
             }
-            placeholder="Search..."
+            placeholder={t.admin.expenseSearchMobile}
             value={search}
             onChange={(e) => props.onSearchChange(e.target.value)}
             style={{ borderRadius: 10, height: 38, width: "100%" }}
@@ -189,7 +195,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
           className="flex items-center gap-1.5 h-9.5 rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           icon={<FilterOutlined />}
         >
-          Filters
+          {t.admin.expenseFiltersBtn}
           {activeCount > 0 && (
             <Badge
               count={activeCount}
@@ -207,7 +213,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
       <Drawer
         title={
           <span className="font-semibold text-gray-800 dark:text-white">
-            Filter Expenses
+            {t.admin.expenseFilterTitle}
           </span>
         }
         placement="bottom"
@@ -245,7 +251,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
           }}
           onClick={() => setDrawerOpen(false)}
         >
-          Apply Filters
+          {t.admin.expenseApplyFilters}
         </Button>
       </Drawer>
     </>

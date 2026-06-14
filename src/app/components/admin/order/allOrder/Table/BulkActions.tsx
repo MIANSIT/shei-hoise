@@ -3,12 +3,14 @@
 
 import React, { useState } from "react";
 import { Button, Select, Modal, App, Space, Tag, Alert } from "antd";
-import { StoreOrder } from "@/lib/types/order"; // Import StoreOrder
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // Import StoreOrder
+import { StoreOrder } from "@/lib/types/order";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import dataService from "@/lib/queries/dataService";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface Props {
-  selectedOrders: StoreOrder[]; // Change from string[] to StoreOrder[]
+  selectedOrders: StoreOrder[];
   onSuccess: () => void;
   onClearSelection: () => void;
 }
@@ -21,50 +23,51 @@ interface UpdatesState {
   payment_method?: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "shipped", label: "Shipped" },
-  { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-const PAYMENT_STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "paid", label: "Paid" },
-  { value: "failed", label: "Failed" },
-  { value: "refunded", label: "Refunded" },
-];
-
-const PAYMENT_METHODS = [
-  { value: "cod", label: "Cash on Delivery" },
-  // { value: "online", label: "Online Payment" },
-];
-
 const BulkActions: React.FC<Props> = ({
   selectedOrders,
   onSuccess,
   onClearSelection,
 }) => {
   const { message, modal } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updates, setUpdates] = useState<UpdatesState>({
     status: undefined,
     payment_status: undefined,
-    payment_method: "cod", // Set "cod" as default
+    payment_method: "cod",
   });
+
+  const STATUS_OPTIONS = [
+    { value: "pending", label: t.admin.bulkPending },
+    { value: "confirmed", label: t.admin.bulkConfirmed },
+    { value: "shipped", label: t.admin.bulkShipped },
+    { value: "delivered", label: t.admin.bulkDelivered },
+    { value: "cancelled", label: t.admin.bulkCancelled },
+  ];
+
+  const PAYMENT_STATUS_OPTIONS = [
+    { value: "pending", label: t.admin.bulkPending },
+    { value: "paid", label: t.admin.bulkPaid },
+    { value: "failed", label: t.admin.bulkFailed },
+    { value: "refunded", label: t.admin.bulkRefunded },
+  ];
+
+  const PAYMENT_METHODS = [
+    { value: "cod", label: t.admin.bulkCod },
+  ];
 
   const handleUpdate = async () => {
     if (Object.values(updates).every((val) => val === undefined)) {
-      message.warning("Please select at least one field to update");
+      message.warning(t.admin.bulkWarning);
       return;
     }
 
     setLoading(true);
     try {
       const result = await dataService.bulkUpdateOrders({
-        orderIds: selectedOrders.map((order) => order.id), // Extract IDs for API call
+        orderIds: selectedOrders.map((order) => order.id),
         status: updates.status,
         payment_status: updates.payment_status,
         payment_method: updates.payment_method,
@@ -78,16 +81,16 @@ const BulkActions: React.FC<Props> = ({
         setUpdates({
           status: undefined,
           payment_status: undefined,
-          payment_method: "cod", // Reset to "cod" when modal closes
+          payment_method: "cod",
         });
         onSuccess();
         onClearSelection();
       } else {
-        message.error(result.error || "Failed to update orders");
+        message.error(result.error || t.admin.bulkUpdateFailed);
       }
     } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to update orders";
+        error instanceof Error ? error.message : t.admin.bulkUpdateFailed;
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -96,17 +99,17 @@ const BulkActions: React.FC<Props> = ({
 
   const showConfirmModal = () => {
     if (Object.values(updates).every((val) => val === undefined)) {
-      message.warning("Please select at least one field to update");
+      message.warning(t.admin.bulkWarning);
       return;
     }
 
     modal.confirm({
-      title: `Update ${selectedOrders.length} Orders?`,
+      title: `${t.admin.bulkUpdateTitle} ${n(selectedOrders.length)} ${t.admin.bulkOrdersSelected}?`,
       content: (
         <div className="p-1">
           <Alert
-            title="Bulk Update Action"
-            description="This will update all selected orders with the following changes:"
+            title={t.admin.bulkActionTitle}
+            description={t.admin.bulkActionDesc}
             type="info"
             showIcon
             className="mb-3"
@@ -114,52 +117,40 @@ const BulkActions: React.FC<Props> = ({
           <div className="space-y-3 ">
             {updates.status && (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mt-4">
-                <span className="font-medium text-sm">Order Status:</span>
+                <span className="font-medium text-sm">{t.admin.bulkOrderStatusLabel}</span>
                 <Tag color="blue" className="w-fit">
-                  {
-                    STATUS_OPTIONS.find((s) => s.value === updates.status)
-                      ?.label
-                  }
+                  {STATUS_OPTIONS.find((s) => s.value === updates.status)?.label}
                 </Tag>
               </div>
             )}
             {updates.payment_status && (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                <span className="font-medium text-sm">Payment Status:</span>
+                <span className="font-medium text-sm">{t.admin.bulkPaymentStatusLabel}</span>
                 <Tag color="green" className="w-fit">
-                  {
-                    PAYMENT_STATUS_OPTIONS.find(
-                      (s) => s.value === updates.payment_status
-                    )?.label
-                  }
+                  {PAYMENT_STATUS_OPTIONS.find((s) => s.value === updates.payment_status)?.label}
                 </Tag>
               </div>
             )}
             {updates.payment_method && (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                <span className="font-medium text-sm">Payment Method:</span>
+                <span className="font-medium text-sm">{t.admin.bulkPaymentMethodLabel}</span>
                 <Tag color="purple" className="w-fit">
-                  {
-                    PAYMENT_METHODS.find(
-                      (s) => s.value === updates.payment_method
-                    )?.label
-                  }
+                  {PAYMENT_METHODS.find((s) => s.value === updates.payment_method)?.label}
                 </Tag>
               </div>
             )}
           </div>
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800 text-center">
-              <strong>Note:</strong> This action cannot be undone. Inventory
-              will be automatically adjusted for status changes.
+              {t.admin.bulkNoteText}
             </p>
           </div>
         </div>
       ),
-      okText: "Update Orders",
+      okText: t.admin.bulkUpdateOrdersBtn,
       okType: "primary",
       okButtonProps: { loading },
-      cancelText: "Cancel",
+      cancelText: t.admin.bulkCancelBtn,
       onOk: handleUpdate,
       width: "90%",
       style: { maxWidth: "500px" },
@@ -187,13 +178,13 @@ const BulkActions: React.FC<Props> = ({
         className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
         size="middle"
       >
-        Bulk Update ({selectedOrders.length})
+        {t.admin.bulkUpdateBtn} ({n(selectedOrders.length)})
       </Button>
 
       <Modal
         title={
           <div className="text-base sm:text-lg font-semibold">
-            Bulk Update - {selectedOrders.length} Orders Selected
+            {t.admin.bulkUpdateTitle} - {n(selectedOrders.length)} {t.admin.bulkOrdersSelected}
           </div>
         }
         open={isModalOpen}
@@ -202,7 +193,7 @@ const BulkActions: React.FC<Props> = ({
           setUpdates({
             status: undefined,
             payment_status: undefined,
-            payment_method: "cod", // Reset to "cod" when modal closes
+            payment_method: "cod",
           });
         }}
         footer={null}
@@ -212,8 +203,8 @@ const BulkActions: React.FC<Props> = ({
       >
         <div className="space-y-4 sm:space-y-6">
           <Alert
-            title="Bulk Update Instructions"
-            description="Select the fields you want to update for all selected orders. Leave a field empty to keep its current value."
+            title={t.admin.bulkInstructionsTitle}
+            description={t.admin.bulkInstructionsDesc}
             type="info"
             showIcon
             className="text-xs sm:text-sm"
@@ -222,13 +213,13 @@ const BulkActions: React.FC<Props> = ({
           <div className="grid grid-cols-1 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm sm:text-base font-medium mb-2">
-                Order Status
+                {t.admin.bulkOrderStatusLabel}
                 {updates.status && (
-                  <span className="text-green-600 ml-2">✓ Selected</span>
+                  <span className="text-green-600 ml-2">{t.admin.bulkChecked}</span>
                 )}
               </label>
               <Select
-                placeholder="Keep current status"
+                placeholder={t.admin.bulkKeepCurrentStatus}
                 value={updates.status}
                 onChange={(value: OrderStatus) => handleChange("status", value)}
                 options={STATUS_OPTIONS}
@@ -240,13 +231,13 @@ const BulkActions: React.FC<Props> = ({
 
             <div>
               <label className="block text-sm sm:text-base font-medium mb-2">
-                Payment Status
+                {t.admin.bulkPaymentStatusLabel}
                 {updates.payment_status && (
-                  <span className="text-green-600 ml-2">✓ Selected</span>
+                  <span className="text-green-600 ml-2">{t.admin.bulkChecked}</span>
                 )}
               </label>
               <Select
-                placeholder="Keep current status"
+                placeholder={t.admin.bulkKeepCurrentStatus}
                 value={updates.payment_status}
                 onChange={(value: PaymentStatus) =>
                   handleChange("payment_status", value)
@@ -260,15 +251,15 @@ const BulkActions: React.FC<Props> = ({
 
             <div>
               <label className="block text-sm sm:text-base font-medium mb-2">
-                Payment Method
+                {t.admin.bulkPaymentMethodLabel}
                 {updates.payment_method && (
-                  <span className="text-green-600 ml-2">✓ Selected</span>
+                  <span className="text-green-600 ml-2">{t.admin.bulkChecked}</span>
                 )}
               </label>
               <Select
-                placeholder="Keep current method"
+                placeholder={t.admin.bulkKeepCurrentMethod}
                 value={updates.payment_method}
-                defaultValue="cod" // Set default value
+                defaultValue="cod"
                 onChange={(value: string) =>
                   handleChange("payment_method", value)
                 }
@@ -282,7 +273,7 @@ const BulkActions: React.FC<Props> = ({
 
           <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
             <p className="text-sm sm:text-base font-medium mb-2 sm:mb-3">
-              Selected Orders ({selectedOrders.length}):
+              {t.admin.bulkSelectedOrders} ({n(selectedOrders.length)}):
             </p>
             <div className="max-h-32 overflow-y-auto">
               <Space wrap size={[4, 8]} className="w-full">
@@ -297,7 +288,7 @@ const BulkActions: React.FC<Props> = ({
                 ))}
                 {selectedOrders.length > 15 && (
                   <Tag className="text-xs">
-                    +{selectedOrders.length - 15} more
+                    +{n(selectedOrders.length - 15)} {t.admin.bulkMore}
                   </Tag>
                 )}
               </Space>
@@ -306,8 +297,8 @@ const BulkActions: React.FC<Props> = ({
 
           {hasUpdates && (
             <Alert
-              title="Ready to Update"
-              description="Click 'Review Changes' to confirm the bulk update operation."
+              title={t.admin.bulkReadyTitle}
+              description={t.admin.bulkReadyDesc}
               type="success"
               showIcon
               className="text-xs sm:text-sm"
@@ -320,7 +311,7 @@ const BulkActions: React.FC<Props> = ({
               className="w-full sm:w-1/2 h-12 sm:h-10 text-sm sm:text-base"
               size="large"
             >
-              Cancel
+              {t.admin.bulkCancelBtn}
             </Button>
             <Button
               type="primary"
@@ -329,7 +320,7 @@ const BulkActions: React.FC<Props> = ({
               className="w-full sm:w-1/2 h-12 sm:h-10 text-sm sm:text-base"
               size="large"
             >
-              Review Changes
+              {t.admin.bulkReviewChanges}
             </Button>
           </div>
         </div>
