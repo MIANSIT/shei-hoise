@@ -1,6 +1,8 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+
+export const revalidate = 300; // cache store layout for 5 minutes on Vercel CDN
 import StoreHeader from "@/app/components/common/StoreHeader";
 import StoreFooter from "@/app/components/common/storeFooter/StoreFooter";
 import { FacebookPixelScript } from "@/app/components/common/FacebookPixelScript";

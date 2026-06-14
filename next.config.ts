@@ -21,7 +21,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        // Static assets have content hashes — cache them forever
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // API routes — never cache
+        source: "/api/:path*",
         headers: [
           {
             key: "Cache-Control",
