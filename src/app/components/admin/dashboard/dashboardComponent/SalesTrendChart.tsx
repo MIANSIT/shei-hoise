@@ -26,8 +26,8 @@ const CustomTooltip = ({
   n,
 }: {
   active?: boolean;
-  payload?: { value: number }[];
-  label?: string;
+  payload?: readonly { value: number; payload?: Record<string, unknown> }[];
+  label?: string | number;
   sym: string;
   n: (v: number | string) => string;
 }) => {
@@ -42,8 +42,7 @@ const CustomTooltip = ({
         {label}
       </div>
       <div className="text-base font-black tabular-nums text-indigo-600 dark:text-indigo-400">
-        {sym}{" "}
-        {n(payload[0].value.toFixed(2))}
+        {sym} {n(payload[0].value.toFixed(2))}
       </div>
     </div>
   );
@@ -79,8 +78,7 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
             {t.admin.salesPeriodTotal}
           </div>
           <div className="text-xl sm:text-2xl font-black tabular-nums text-gray-900 dark:text-white">
-            {sym}{" "}
-            {n(total.toFixed(2))}
+            {sym} {n(total.toFixed(2))}
           </div>
         </div>
 
@@ -145,7 +143,9 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
               tickLine={false}
               width={36}
             />
-            <Tooltip content={(props) => <CustomTooltip {...props} sym={sym} n={n} />} />
+            <Tooltip
+              content={(props) => <CustomTooltip {...props} sym={sym} n={n} />}
+            />
             {prevSlice.length > 0 && (
               <Area
                 type="monotone"
