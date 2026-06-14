@@ -29,6 +29,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { StoreSettings } from "@/lib/types/store/store";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface PolicySectionProps {
   title: string;
@@ -46,6 +47,7 @@ function PolicySection({
   onRemove,
 }: PolicySectionProps) {
   const [expanded, setExpanded] = useState(false);
+  const t = useTranslation();
   const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
   const previewContent = expanded
     ? content
@@ -75,7 +77,7 @@ function PolicySection({
           <div>
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {wordCount.toLocaleString()} words
+              {wordCount.toLocaleString()} {t.admin.storeMgmtPolicyWords}
             </p>
           </div>
         </div>
@@ -87,7 +89,7 @@ function PolicySection({
             className="h-7 px-2.5 text-xs font-medium gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60 shrink-0"
           >
             <Pencil className="h-3 w-3" />
-            Edit
+            {t.admin.storeMgmtPolicyEdit}
           </Button>
           <Button
             variant="ghost"
@@ -96,7 +98,7 @@ function PolicySection({
             className="h-7 px-2.5 text-xs font-medium gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
           >
             <Trash2 className="h-3 w-3" />
-            Remove
+            {t.admin.storeMgmtPolicyRemove}
           </Button>
         </div>
       </div>
@@ -119,11 +121,11 @@ function PolicySection({
         >
           {expanded ? (
             <>
-              <ChevronUp className="h-3.5 w-3.5" /> Show less
+              <ChevronUp className="h-3.5 w-3.5" /> {t.admin.storeMgmtPolicyShowLess}
             </>
           ) : (
             <>
-              Read full <ChevronDown className="h-3.5 w-3.5" />
+              {t.admin.storeMgmtPolicyReadFull} <ChevronDown className="h-3.5 w-3.5" />
             </>
           )}
         </button>
@@ -145,6 +147,7 @@ export function PoliciesCard({
 }: PoliciesCardProps) {
   const hasTerms = !!settings?.terms_and_conditions;
   const hasPrivacy = !!settings?.privacy_policy;
+  const t = useTranslation();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formType, setFormType] = useState<"terms" | "privacy">("terms");
@@ -158,7 +161,7 @@ export function PoliciesCard({
 
   const handleAddPolicy = (type: "terms" | "privacy") => {
     const defaultTitle =
-      type === "terms" ? "Terms & Conditions" : "Privacy Policy";
+      type === "terms" ? t.admin.storeMgmtPoliciesTerms : t.admin.storeMgmtPoliciesPrivacy;
     const existingContent =
       type === "terms"
         ? settings.terms_and_conditions
@@ -215,10 +218,10 @@ export function PoliciesCard({
               </div>
               <div>
                 <CardTitle className="text-base font-semibold text-foreground">
-                  Store Policies
+                  {t.admin.storeMgmtPolicies}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Legal documents shown at checkout
+                  {t.admin.storeMgmtPoliciesDesc}
                 </p>
               </div>
             </div>
@@ -230,7 +233,7 @@ export function PoliciesCard({
                   className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted/50"
                   onClick={() => handleAddPolicy("terms")}
                 >
-                  <Plus className="h-3 w-3" /> Add Terms
+                  <Plus className="h-3 w-3" /> {t.admin.storeMgmtAddTerms}
                 </Button>
               )}
               {!hasPrivacy && (
@@ -240,7 +243,7 @@ export function PoliciesCard({
                   className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted/50"
                   onClick={() => handleAddPolicy("privacy")}
                 >
-                  <Plus className="h-3 w-3" /> Add Privacy Policy
+                  <Plus className="h-3 w-3" /> {t.admin.storeMgmtAddPrivacy}
                 </Button>
               )}
             </div>
@@ -254,7 +257,7 @@ export function PoliciesCard({
                 {hasTerms && (
                   <div className="p-4 rounded-xl border border-border/50 bg-card">
                     <PolicySection
-                      title="Terms & Conditions"
+                      title={t.admin.storeMgmtPoliciesTerms}
                       content={settings.terms_and_conditions!}
                       type="terms"
                       onEdit={handleEditPolicy}
@@ -265,7 +268,7 @@ export function PoliciesCard({
                 {hasPrivacy && (
                   <div className="p-4 rounded-xl border border-border/50 bg-card">
                     <PolicySection
-                      title="Privacy Policy"
+                      title={t.admin.storeMgmtPoliciesPrivacy}
                       content={settings.privacy_policy!}
                       type="privacy"
                       onEdit={handleEditPolicy}
@@ -277,8 +280,7 @@ export function PoliciesCard({
               <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-primary/5 border border-primary/10 px-4 py-3">
                 <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  These documents are automatically displayed during checkout.
-                  Keep them current and compliant with local regulations.
+                  {t.admin.storeMgmtPoliciesNote}
                 </p>
               </div>
             </>
@@ -289,11 +291,10 @@ export function PoliciesCard({
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  No policies yet
+                  {t.admin.storeMgmtNoPolicies}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                  Add Terms & Conditions and a Privacy Policy to build trust
-                  with your customers.
+                  {t.admin.storeMgmtNoPoliciesDesc}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -303,7 +304,7 @@ export function PoliciesCard({
                   className="h-8 px-3 text-xs gap-1.5"
                   onClick={() => handleAddPolicy("terms")}
                 >
-                  <Plus className="h-3 w-3" /> Add Terms
+                  <Plus className="h-3 w-3" /> {t.admin.storeMgmtAddTerms}
                 </Button>
                 <Button
                   variant="outline"
@@ -311,7 +312,7 @@ export function PoliciesCard({
                   className="h-8 px-3 text-xs gap-1.5"
                   onClick={() => handleAddPolicy("privacy")}
                 >
-                  <Plus className="h-3 w-3" /> Add Privacy Policy
+                  <Plus className="h-3 w-3" /> {t.admin.storeMgmtAddPrivacy}
                 </Button>
               </div>
             </div>
@@ -335,13 +336,13 @@ export function PoliciesCard({
                   <Lock className="h-4 w-4" />
                 )}
               </div>
-              {formData.content ? "Edit" : "Create"}{" "}
-              {formType === "terms" ? "Terms & Conditions" : "Privacy Policy"}
+              {formData.content ? t.admin.storeMgmtPolicyEdit : t.admin.storeMgmtPolicyCreate}{" "}
+              {formType === "terms" ? t.admin.storeMgmtPoliciesTerms : t.admin.storeMgmtPoliciesPrivacy}
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
               {formType === "terms"
-                ? "Define the rules and conditions for using your store"
-                : "Specify how customer data is collected, used, and protected"}
+                ? t.admin.storeMgmtTermsDesc
+                : t.admin.storeMgmtPrivacyDesc}
             </DialogDescription>
           </DialogHeader>
 
@@ -349,11 +350,11 @@ export function PoliciesCard({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-foreground">
-                  Content
+                  {t.admin.storeMgmtPolicyContent}
                 </Label>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {formData.content.trim().split(/\s+/).filter(Boolean).length}{" "}
-                  words
+                  {t.admin.storeMgmtPolicyWords}
                 </span>
               </div>
               <div className="min-h-64 sm:min-h-96">
@@ -369,10 +370,10 @@ export function PoliciesCard({
             <div
               className={`rounded-xl p-3 border text-sm leading-relaxed ${formType === "terms" ? "bg-blue-50/50 border-blue-100 text-blue-700 dark:bg-blue-900/10 dark:border-blue-900/30 dark:text-blue-400" : "bg-violet-50/50 border-violet-100 text-violet-700 dark:bg-violet-900/10 dark:border-violet-900/30 dark:text-violet-400"}`}
             >
-              <strong>Tip: </strong>
+              <strong>{t.admin.storeMgmtPolicyTipLabel} </strong>
               {formType === "terms"
-                ? "Include: user responsibilities, payment terms, shipping policy, returns & refunds, and liability limitations."
-                : "Include: what data you collect, how it's used, third-party sharing, and how users can manage their data."}
+                ? t.admin.storeMgmtTermsTip
+                : t.admin.storeMgmtPrivacyTip}
             </div>
           </div>
 
@@ -383,7 +384,7 @@ export function PoliciesCard({
               disabled={isSubmitting}
               className="h-9 px-4 text-sm"
             >
-              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
+              <X className="h-3.5 w-3.5 mr-1.5" /> {t.admin.storeMgmtCancel}
             </Button>
             <Button
               onClick={handleSavePolicy}
@@ -392,11 +393,11 @@ export function PoliciesCard({
             >
               {isSubmitting ? (
                 <>
-                  <span className="animate-spin">⟳</span> Saving...
+                  <span className="animate-spin">⟳</span> {t.admin.storeMgmtPolicySaving}
                 </>
               ) : (
                 <>
-                  <Save className="h-3.5 w-3.5" /> Save Policy
+                  <Save className="h-3.5 w-3.5" /> {t.admin.storeMgmtPolicySave}
                 </>
               )}
             </Button>
@@ -414,18 +415,17 @@ export function PoliciesCard({
               <div className="h-7 w-7 rounded-lg bg-destructive/10 flex items-center justify-center">
                 <Trash2 className="h-4 w-4 text-destructive" />
               </div>
-              Remove{" "}
-              {removeType === "terms" ? "Terms & Conditions" : "Privacy Policy"}
+              {t.admin.storeMgmtPolicyRemove}{" "}
+              {removeType === "terms" ? t.admin.storeMgmtPoliciesTerms : t.admin.storeMgmtPoliciesPrivacy}
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This will permanently remove your{" "}
+              {t.admin.storeMgmtRemoveDesc1}{" "}
               <strong>
                 {removeType === "terms"
-                  ? "Terms & Conditions"
-                  : "Privacy Policy"}
+                  ? t.admin.storeMgmtPoliciesTerms
+                  : t.admin.storeMgmtPoliciesPrivacy}
               </strong>{" "}
-              from your store. Customers will no longer see it at checkout. You
-              can add it back at any time.
+              {t.admin.storeMgmtRemoveDesc2}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2 pt-2">
@@ -435,7 +435,7 @@ export function PoliciesCard({
               disabled={isRemoving}
               className="h-9 px-4 text-sm"
             >
-              Cancel
+              {t.admin.storeMgmtCancel}
             </Button>
             <Button
               variant="destructive"
@@ -445,11 +445,11 @@ export function PoliciesCard({
             >
               {isRemoving ? (
                 <>
-                  <span className="animate-spin">⟳</span> Removing...
+                  <span className="animate-spin">⟳</span> {t.admin.storeMgmtRemoving}
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                  <Trash2 className="h-3.5 w-3.5" /> {t.admin.storeMgmtPolicyRemove}
                 </>
               )}
             </Button>

@@ -8,6 +8,7 @@ import {
   type CreateCategoryType,
 } from "@/lib/schema/category.schema";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import type { Category } from "@/lib/types/category";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
 
@@ -24,6 +25,7 @@ export default function AddCategoryCardForm({
   onSuccess,
 }: AddCategoryCardFormProps) {
   const toast = useSheiNotification();
+  const t = useTranslation();
 
   // Track whether the form was JUST populated by editingCategory reset.
   // We skip one slug-sync cycle after reset so we don't overwrite
@@ -121,10 +123,10 @@ export default function AddCategoryCardForm({
                       bg-gray-50 dark:bg-[#13151d]"
       >
         <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-500 mb-0.5">
-          {editingCategory ? "Editing" : "New"}
+          {editingCategory ? t.admin.prodCatEditing : t.admin.prodCatFormNew}
         </p>
         <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
-          {editingCategory ? (editingCategory as any).name : "Create Category"}
+          {editingCategory ? (editingCategory as any).name : t.admin.prodCatCreateBtn}
         </h2>
       </div>
 
@@ -136,8 +138,8 @@ export default function AddCategoryCardForm({
         <FormField
           control={form.control}
           name="name"
-          label="Name"
-          placeholder="e.g. Electronics"
+          label={t.admin.prodCatNameLabel}
+          placeholder={t.admin.prodCatNamePlaceholder}
           required
           tooltip="Enter the official name of the category."
         />
@@ -145,9 +147,9 @@ export default function AddCategoryCardForm({
         <FormField
           control={form.control}
           name="slug"
-          label="Slug"
+          label={t.admin.prodCatSlugLabel}
           tooltip="Auto-generated from name. Updates as you type."
-          placeholder="auto-generated-slug"
+          placeholder={t.admin.prodCatSlugPlaceholder}
           readOnly
         />
 
@@ -155,8 +157,8 @@ export default function AddCategoryCardForm({
           control={form.control}
           name="description"
           tooltip="Brief description of this category."
-          label="Description"
-          placeholder="Optional description"
+          label={t.admin.prodCatDescLabel}
+          placeholder={t.admin.prodCatDescPlaceholder}
           as="textarea"
         />
 
@@ -182,9 +184,9 @@ export default function AddCategoryCardForm({
         >
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-              Active Status
+              {t.admin.prodCatActiveStatus}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">Visible in store</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t.admin.prodCatVisibleInStore}</p>
           </div>
           <button
             type="button"
@@ -218,12 +220,12 @@ export default function AddCategoryCardForm({
           {isSubmitting ? (
             <>
               <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              {editingCategory ? "Updating…" : "Creating…"}
+              {editingCategory ? t.admin.prodCatUpdating : t.admin.prodCatCreating}
             </>
           ) : editingCategory ? (
-            "Update Category"
+            t.admin.prodCatUpdateBtn
           ) : (
-            "Create Category"
+            t.admin.prodCatCreateBtn
           )}
         </button>
       </form>

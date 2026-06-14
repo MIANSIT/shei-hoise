@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import { useState, useEffect, useRef } from "react";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface Props {
   showForm: boolean;
@@ -24,17 +25,15 @@ type FilterOption = "all" | "active" | "inactive";
 
 const filterOptions: FilterOption[] = ["all", "active", "inactive"];
 
-const filterConfig: Record<
+const filterStyleConfig: Record<
   FilterOption,
   {
-    label: string;
     icon: React.ReactNode;
     activeClass: string;
     inactiveClass: string;
   }
 > = {
   all: {
-    label: "All",
     icon: <AppstoreOutlined />,
     activeClass:
       "bg-indigo-500 text-white border-indigo-500 shadow-sm shadow-indigo-200 dark:shadow-indigo-900/40",
@@ -42,7 +41,6 @@ const filterConfig: Record<
       "bg-white dark:bg-[#16181f] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2a2d3a] hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-500",
   },
   active: {
-    label: "Active",
     icon: <CheckCircleOutlined />,
     activeClass:
       "bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40",
@@ -50,7 +48,6 @@ const filterConfig: Record<
       "bg-white dark:bg-[#16181f] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2a2d3a] hover:border-emerald-300 dark:hover:border-emerald-600 hover:text-emerald-500",
   },
   inactive: {
-    label: "Inactive",
     icon: <CloseCircleOutlined />,
     activeClass:
       "bg-red-500 text-white border-red-500 shadow-sm shadow-red-200 dark:shadow-red-900/40",
@@ -67,6 +64,7 @@ export default function CategoryTopBar({
   statusFilter,
   onStatusFilter,
 }: Props) {
+  const t = useTranslation();
   const [localSearch, setLocalSearch] = useState(searchText);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -98,8 +96,14 @@ export default function CategoryTopBar({
     else onStatusFilter(false);
   };
 
+  const filterLabels: Record<FilterOption, string> = {
+    all: t.admin.prodCatAll,
+    active: t.admin.prodCatStatActive,
+    inactive: t.admin.prodCatStatInactive,
+  };
+
   const getFilterLabel = (opt: string) =>
-    filterConfig[opt as FilterOption]?.label ?? opt;
+    filterLabels[opt as FilterOption] ?? opt;
 
   const filterValue: FilterOption =
     statusFilter === true
@@ -135,7 +139,7 @@ export default function CategoryTopBar({
                 setIsTyping(false);
               }
             }}
-            placeholder="Search categories…"
+            placeholder={t.admin.prodCatSearch}
             className="w-full pl-9 pr-9 py-2 sm:py-2.5 rounded-xl
                        border border-gray-200 dark:border-[#2a2d3a]
                        bg-gray-50 dark:bg-[#0f1117]
@@ -167,7 +171,7 @@ export default function CategoryTopBar({
                           rounded-xl p-1 border border-gray-200 dark:border-[#2a2d3a] shrink-0"
           >
             {filterOptions.map((opt) => {
-              const cfg = filterConfig[opt];
+              const cfg = filterStyleConfig[opt];
               const isActive = filterValue === opt;
               return (
                 <button
@@ -178,7 +182,7 @@ export default function CategoryTopBar({
                               ${isActive ? cfg.activeClass : cfg.inactiveClass}`}
                 >
                   {cfg.icon}
-                  <span className="hidden sm:inline">{cfg.label}</span>
+                  <span className="hidden sm:inline">{filterLabels[opt]}</span>
                 </button>
               );
             })}
@@ -212,13 +216,13 @@ export default function CategoryTopBar({
             {showForm ? (
               <>
                 <CloseOutlined />
-                <span>Close</span>
+                <span>{t.admin.prodCatClose}</span>
               </>
             ) : (
               <>
                 <PlusOutlined />
-                <span className="hidden xs:inline sm:inline">New Category</span>
-                <span className="xs:hidden sm:hidden">New</span>
+                <span className="hidden xs:inline sm:inline">{t.admin.prodCatNewCategory}</span>
+                <span className="xs:hidden sm:hidden">{t.admin.prodCatNew}</span>
               </>
             )}
           </button>

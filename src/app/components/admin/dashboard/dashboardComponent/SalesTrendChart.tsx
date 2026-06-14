@@ -26,12 +26,13 @@ const CustomTooltip = ({
   n,
 }: {
   active?: boolean;
-  payload?: readonly { value: number; payload?: Record<string, unknown> }[];
+  payload?: readonly { value?: number }[];
   label?: string | number;
   sym: string;
   n: (v: number | string) => string;
 }) => {
   if (!active || !payload?.length) return null;
+  const value = payload[0]?.value ?? 0;
   return (
     <div
       className="rounded-xl px-3 py-2 shadow-xl
@@ -42,7 +43,7 @@ const CustomTooltip = ({
         {label}
       </div>
       <div className="text-base font-black tabular-nums text-indigo-600 dark:text-indigo-400">
-        {sym} {n(payload[0].value.toFixed(2))}
+        {sym} {n(value.toFixed(2))}
       </div>
     </div>
   );
@@ -88,20 +89,27 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
           bg-gray-100 dark:bg-gray-800
           border border-gray-200 dark:border-gray-700"
         >
-          {[7, 14, 30].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] font-black tracking-wider transition-all duration-150
-                ${
-                  days === d
-                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                }`}
-            >
-              {d}D
-            </button>
-          ))}
+          {([7, 14, 30] as const).map((d) => {
+            const periodLabel: Record<7 | 14 | 30, string> = {
+              7: t.admin.period7D,
+              14: t.admin.period14D,
+              30: t.admin.period30D,
+            };
+            return (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] font-black tracking-wider transition-all duration-150
+                  ${
+                    days === d
+                      ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+              >
+                {periodLabel[d]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -144,7 +152,22 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
               width={36}
             />
             <Tooltip
-              content={(props) => <CustomTooltip {...props} sym={sym} n={n} />}
+              content={(props) => {
+                const p = props as {
+                  active?: boolean;
+                  payload?: readonly { value?: number }[];
+                  label?: string | number;
+                };
+                return (
+                  <CustomTooltip
+                    active={p.active}
+                    payload={p.payload}
+                    label={p.label}
+                    sym={sym}
+                    n={n}
+                  />
+                );
+              }}
             />
             {prevSlice.length > 0 && (
               <Area

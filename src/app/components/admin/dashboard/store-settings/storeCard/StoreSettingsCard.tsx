@@ -10,6 +10,7 @@ import type {
   UpdatedStoreSettings,
 } from "@/lib/types/store/store";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { Currency, CURRENCY_ICONS } from "@/lib/types/enums";
 
 interface SettingRowProps {
@@ -117,6 +118,7 @@ export function StoreSettingsCard({
   const [formData, setFormData] = useState({ ...settings });
   const [loading, setLoading] = useState(false);
   const notify = useSheiNotification();
+  const t = useTranslation();
 
   const handleChange = (field: keyof StoreSettings, value: string | number | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -128,10 +130,10 @@ export function StoreSettingsCard({
         setLoading(true);
         await onUpdate(formData);
         setEditing(false);
-        notify.success("Store settings updated!");
+        notify.success(t.admin.storeMgmtSettingsOk);
       } catch (err) {
         console.error(err);
-        notify.error("Failed to update settings.");
+        notify.error(t.admin.storeMgmtSettingsFail);
       } finally {
         setLoading(false);
       }
@@ -151,10 +153,10 @@ export function StoreSettingsCard({
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-semibold text-foreground">
-              Store Settings
+              {t.admin.storeMgmtSettings}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Operational parameters & policies
+              {t.admin.storeMgmtSettingsDesc}
             </p>
           </div>
           {editing ? (
@@ -167,7 +169,7 @@ export function StoreSettingsCard({
                 disabled={loading}
               >
                 <Check className="h-3.5 w-3.5" />
-                {loading ? "Saving..." : "Save"}
+                {loading ? t.admin.storeMgmtSaving : t.admin.storeMgmtSave}
               </Button>
               <Button
                 size="sm"
@@ -177,7 +179,7 @@ export function StoreSettingsCard({
                 disabled={loading}
               >
                 <X className="h-3.5 w-3.5" />
-                Cancel
+                {t.admin.storeMgmtCancel}
               </Button>
             </div>
           ) : (
@@ -188,7 +190,7 @@ export function StoreSettingsCard({
               onClick={() => setEditing(true)}
             >
               <Pencil className="h-3 w-3" />
-              Edit
+              {t.admin.storeMgmtEdit}
             </Button>
           )}
         </div>
@@ -197,13 +199,13 @@ export function StoreSettingsCard({
       <CardContent className="p-2.5">
         <div className="space-y-0">
           <SettingRow
-            label="Currency"
+            label={t.admin.storeMgmtCurrency}
             value={
               editing
                 ? formData.currency
                 : `${currencyIcon} ${formData.currency}`
             }
-            info="Primary currency for all transactions"
+            info={t.admin.storeMgmtCurrencyInfo}
             editing={editing}
             options={Object.values(Currency).map((cur) => ({
               label: `${CURRENCY_ICONS[cur]} ${cur}`,
@@ -212,59 +214,59 @@ export function StoreSettingsCard({
             onChange={(val) => handleChange("currency", String(val))}
           />
           <SettingRow
-            label="Tax Rate"
+            label={t.admin.storeMgmtTaxRate}
             value={editing ? formData.tax_rate : `${formData.tax_rate}%`}
-            info="Applied as a percentage to all orders"
+            info={t.admin.storeMgmtTaxRateInfo}
             editing={editing}
             suffix="%"
             onChange={(val) => handleChange("tax_rate", Number(val))}
           />
           <SettingRow
-            label="Minimum Order"
+            label={t.admin.storeMgmtMinOrder}
             value={
               editing
                 ? formData.min_order_amount
                 : `${currencyIcon} ${formData.min_order_amount}`
             }
-            info="Minimum amount required to place an order"
+            info={t.admin.storeMgmtMinOrderInfo}
             editing={editing}
             suffix={currencyIcon}
             onChange={(val) => handleChange("min_order_amount", Number(val))}
           />
           <SettingRow
-            label="Processing Time"
+            label={t.admin.storeMgmtProcessingTime}
             value={
               editing
                 ? formData.processing_time_days
-                : `${formData.processing_time_days} days`
+                : `${formData.processing_time_days} ${t.admin.storeMgmtDaysSuffix}`
             }
-            info="Average time to process and ship orders"
+            info={t.admin.storeMgmtProcessingInfo}
             editing={editing}
-            suffix="days"
+            suffix={t.admin.storeMgmtDaysSuffix}
             onChange={(val) =>
               handleChange("processing_time_days", Number(val))
             }
           />
           <SettingRow
-            label="Return Window"
+            label={t.admin.storeMgmtReturnWindow}
             value={
               editing
                 ? formData.return_policy_days
-                : `${formData.return_policy_days} days`
+                : `${formData.return_policy_days} ${t.admin.storeMgmtDaysSuffix}`
             }
-            info="Timeframe customers can return items"
+            info={t.admin.storeMgmtReturnInfo}
             editing={editing}
-            suffix="days"
+            suffix={t.admin.storeMgmtDaysSuffix}
             onChange={(val) => handleChange("return_policy_days", Number(val))}
           />
           <SettingRow
-            label="Free Shipping At"
+            label={t.admin.storeMgmtFreeShipping}
             value={
               editing
                 ? formData.free_shipping_threshold
                 : `${currencyIcon} ${formData.free_shipping_threshold}`
             }
-            info="Orders above this amount qualify for free shipping"
+            info={t.admin.storeMgmtFreeShippingInfo}
             editing={editing}
             suffix={currencyIcon}
             onChange={(val) =>
@@ -272,9 +274,9 @@ export function StoreSettingsCard({
             }
           />
           <SettingRow
-            label="Facebook Pixel ID"
+            label={t.admin.storeMgmtFbPixel}
             value={formData.facebook_pixel_id ?? ""}
-            info="Meta Pixel ID for tracking customer events (PageView, Purchase, etc.)"
+            info={t.admin.storeMgmtFbPixelInfo}
             editing={editing}
             type="text"
             onChange={(val) => handleChange("facebook_pixel_id", String(val) || null)}

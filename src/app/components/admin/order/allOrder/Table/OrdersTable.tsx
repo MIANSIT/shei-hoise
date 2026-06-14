@@ -437,7 +437,7 @@ const OrdersTable: React.FC<Props> = ({
       key: "phone",
       render: (_, order: StoreOrder) => (
         <div className="truncate max-w-30 lg:max-w-37.5 text-xs lg:text-sm">
-          {getCustomerPhone(order)}
+          {n(getCustomerPhone(order))}
         </div>
       ),
       width: 120,
@@ -634,7 +634,7 @@ const OrdersTable: React.FC<Props> = ({
             </div>
 
             <div className="text-xs text-gray-600 truncate">
-              {getCustomerPhone(order)}
+              {n(getCustomerPhone(order))}
             </div>
           </div>
         </div>
