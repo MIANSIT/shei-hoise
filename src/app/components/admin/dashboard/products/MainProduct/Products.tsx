@@ -14,17 +14,21 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import { ProductStatus } from "@/lib/types/enums";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
-
-const statusConfig = [
-  { key: "ALL", label: "All Products" },
-  { key: ProductStatus.ACTIVE, label: "Active" },
-  { key: ProductStatus.INACTIVE, label: "Inactive" },
-  { key: ProductStatus.DRAFT, label: "Draft" },
-];
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 const Products: React.FC = () => {
+  const t = useTranslation();
+  const n = useLocalNum();
   const router = useRouter();
   const { user } = useCurrentUser();
+
+  const statusConfig = [
+    { key: "ALL", label: t.admin.allProductsFilter },
+    { key: ProductStatus.ACTIVE, label: t.admin.activeFilter },
+    { key: ProductStatus.INACTIVE, label: t.admin.inactiveFilter },
+    { key: ProductStatus.DRAFT, label: t.admin.draftFilter },
+  ];
 
   const [search, setSearch] = useUrlSync<string>("search", "", (v) => v ?? "");
   const [page, setPage] = useUrlSync<number>("page", 1, parseInteger);
@@ -101,10 +105,10 @@ const Products: React.FC = () => {
       <div className="flex flex-wrap items-start justify-between gap-3 pb-1">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100 leading-tight">
-            Products
+            {t.admin.productsTitle}
           </h1>
           <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-            Manage your catalogue · {counts.ALL} total items
+            {t.admin.productsManage} · {n(counts.ALL)} {t.admin.totalItems}
           </p>
         </div>
 
@@ -114,7 +118,7 @@ const Products: React.FC = () => {
           className="hidden md:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white text-sm font-semibold shadow-lg shadow-indigo-500/30 transition-all duration-150 cursor-pointer"
         >
           <PlusOutlined className="text-base" />
-          Add Product
+          {t.admin.addProductBtn}
         </button>
       </div>
 
@@ -124,7 +128,7 @@ const Products: React.FC = () => {
         <div className="w-full md:max-w-sm">
           <Space.Compact className="w-full">
             <Input
-              placeholder="Search products…"
+              placeholder={t.admin.searchProducts}
               allowClear
               size="large"
               value={localSearch}
@@ -174,7 +178,7 @@ const Products: React.FC = () => {
                       : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
                   }`}
                 >
-                  {counts[key as ProductStatus | "ALL"] ?? 0}
+                  {n(counts[key as ProductStatus | "ALL"] ?? 0)}
                 </span>
               </button>
             );
@@ -197,7 +201,7 @@ const Products: React.FC = () => {
               className="w-3 h-3"
               fill={featuredOnly ? "currentColor" : "none"}
             />
-            Featured
+            {t.admin.featuredFilter}
             <span
               className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
               ${
@@ -206,7 +210,7 @@ const Products: React.FC = () => {
                   : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
               }`}
             >
-              {featuredCount}
+              {n(featuredCount)}
             </span>
           </button>
         </div>
@@ -228,7 +232,7 @@ const Products: React.FC = () => {
               setPage(1);
             }}
             getLabel={(s) =>
-              `${statusConfig.find((c) => c.key === s)?.label ?? s} (${counts[s as ProductStatus | "ALL"] ?? 0})`
+              `${statusConfig.find((c) => c.key === s)?.label ?? s} (${n(counts[s as ProductStatus | "ALL"] ?? 0)})`
             }
           />
         </div>
@@ -248,8 +252,8 @@ const Products: React.FC = () => {
       <div className="md:hidden flex flex-col items-center gap-2 pt-1">
         <p className="text-xs text-gray-500 dark:text-slate-400">
           {total > 0
-            ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total} items`
-            : "No items"}
+            ? `${n((page - 1) * pageSize + 1)}–${n(Math.min(page * pageSize, total))} ${t.admin.ofText} ${n(total)} ${t.admin.itemsLabel}`
+            : t.admin.noItems}
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -257,17 +261,17 @@ const Products: React.FC = () => {
             onClick={() => setPage(page - 1)}
             className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
-            ← Prev
+            {t.admin.prevBtn}
           </button>
           <span className="text-xs font-semibold text-gray-700 dark:text-slate-300 px-1">
-            {page} / {Math.ceil(total / pageSize) || 1}
+            {n(page)} / {n(Math.ceil(total / pageSize) || 1)}
           </span>
           <button
             disabled={page >= Math.ceil(total / pageSize)}
             onClick={() => setPage(page + 1)}
             className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
-            Next →
+            {t.admin.nextBtn}
           </button>
         </div>
       </div>
@@ -276,8 +280,8 @@ const Products: React.FC = () => {
       <div className="hidden md:flex items-center justify-between pt-1">
         <p className="text-xs text-gray-500 dark:text-slate-400">
           {total > 0
-            ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total} products`
-            : "No products found"}
+            ? `${t.admin.showingRange} ${n((page - 1) * pageSize + 1)}–${n(Math.min(page * pageSize, total))} ${t.admin.ofText} ${n(total)} ${t.admin.productsLabel}`
+            : t.admin.noProductsFound}
         </p>
         <Pagination
           current={page}
@@ -297,7 +301,7 @@ const Products: React.FC = () => {
       {/* ── FAB — mobile ── */}
       <button
         onClick={handleAddProduct}
-        aria-label="Add Product"
+        aria-label={t.admin.addProductBtn}
         className="md:hidden fixed bottom-6 right-5 z-50 w-14 h-14 rounded-full bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white text-xl shadow-xl shadow-indigo-500/40 flex items-center justify-center transition-all duration-150 cursor-pointer"
       >
         <PlusOutlined />

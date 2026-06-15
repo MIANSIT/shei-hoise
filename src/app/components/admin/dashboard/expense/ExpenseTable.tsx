@@ -9,6 +9,7 @@ import type { MenuProps } from "antd";
 import dayjs from "dayjs";
 import type { Expense } from "@/lib/types/expense/type";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { ExpenseCard } from "./ExpenseCard";
 import {
   ExpenseCell,
@@ -51,19 +52,22 @@ const TABLE_STYLES = `
   .dark .ant-drawer-body { background-color: #1f2937 !important; }
 `;
 
-const emptyState = (
-  <div className="py-16 flex flex-col items-center gap-3">
-    <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 flex items-center justify-center">
-      <ReceiptText size={28} color="#a5b4fc" strokeWidth={1.5} />
+const EmptyExpense = () => {
+  const t = useTranslation();
+  return (
+    <div className="py-16 flex flex-col items-center gap-3">
+      <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 flex items-center justify-center">
+        <ReceiptText size={28} color="#a5b4fc" strokeWidth={1.5} />
+      </div>
+      <p className="font-semibold text-gray-700 dark:text-gray-300 m-0">
+        {t.admin.expenseEmpty}
+      </p>
+      <p className="text-sm text-gray-400 dark:text-gray-500 m-0">
+        {t.admin.expenseEmptyHint}
+      </p>
     </div>
-    <p className="font-semibold text-gray-700 dark:text-gray-300 m-0">
-      No expenses found
-    </p>
-    <p className="text-sm text-gray-400 dark:text-gray-500 m-0">
-      Try adjusting your filters or add a new expense
-    </p>
-  </div>
-);
+  );
+};
 
 function ExpenseTable({
   data,
@@ -72,6 +76,7 @@ function ExpenseTable({
   onEdit,
   onDelete,
 }: ExpenseTableProps) {
+  const t = useTranslation();
   const { icon: currencyIcon } = useUserCurrencyIcon();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -90,7 +95,7 @@ function ExpenseTable({
         icon: <ReceiptText size={14} color="#6366f1" />,
         label: (
           <span className="text-gray-700 dark:text-gray-300 text-sm">
-            View Details
+            {t.admin.expenseViewDetails}
           </span>
         ),
         onClick: ({ domEvent }) => {
@@ -102,7 +107,7 @@ function ExpenseTable({
         key: "edit",
         icon: <EditOutlined style={{ color: "#6366f1" }} />,
         label: (
-          <span className="text-gray-700 dark:text-gray-300 text-sm">Edit</span>
+          <span className="text-gray-700 dark:text-gray-300 text-sm">{t.admin.expenseEditAction}</span>
         ),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
@@ -117,18 +122,18 @@ function ExpenseTable({
           deletingId === record.id ? <Spin size="small" /> : <DeleteOutlined />,
         label: (
           <Popconfirm
-            title="Delete expense?"
-            description="This action cannot be undone."
+            title={t.admin.expenseDeleteTitle}
+            description={t.admin.expenseDeleteDesc}
             onConfirm={(e) => {
               e?.stopPropagation();
               onDelete(record.id);
             }}
             onCancel={(e) => e?.stopPropagation()}
-            okText="Delete"
-            cancelText="Cancel"
+            okText={t.admin.expenseDeleteOkText}
+            cancelText={t.admin.expenseDeleteCancelText}
             okButtonProps={{ danger: true }}
           >
-            <span onClick={(e) => e.stopPropagation()}>Delete</span>
+            <span onClick={(e) => e.stopPropagation()}>{t.admin.expenseDeleteAction}</span>
           </Popconfirm>
         ),
         onClick: ({ domEvent }) => domEvent.stopPropagation(),
@@ -139,18 +144,18 @@ function ExpenseTable({
 
   const columns: ColumnsType<Expense> = [
     {
-      title: "Expense",
+      title: t.admin.expenseColTitle,
       key: "title",
       render: (_, record) => <ExpenseCell record={record} />,
     },
     {
-      title: "Category",
+      title: t.admin.expenseCatCol,
       key: "category",
       width: 160,
       render: (_, record) => <CategoryCell record={record} />,
     },
     {
-      title: "Amount",
+      title: t.admin.expenseAmountCol,
       dataIndex: "amount",
       key: "amount",
       sorter: (a, b) => Number(a.amount) - Number(b.amount),
@@ -160,7 +165,7 @@ function ExpenseTable({
       ),
     },
     {
-      title: "Date",
+      title: t.admin.expenseDateCol,
       dataIndex: "expense_date",
       key: "expense_date",
       sorter: (a, b) =>
@@ -170,7 +175,7 @@ function ExpenseTable({
       render: (date: string) => <DateCell date={date} />,
     },
     {
-      title: "Payment",
+      title: t.admin.expensePaymentCol,
       dataIndex: "payment_method",
       key: "payment_method",
       width: 140,
@@ -210,7 +215,7 @@ function ExpenseTable({
           loading={loading}
           rowKey="id"
           className="expense-table"
-          locale={{ emptyText: emptyState }}
+          locale={{ emptyText: <EmptyExpense /> }}
           pagination={false}
         />
       </div>
@@ -222,7 +227,7 @@ function ExpenseTable({
             <Spin size="large" />
           </div>
         ) : data.length === 0 ? (
-          emptyState
+          <EmptyExpense />
         ) : (
           data.map((record) => (
             <ExpenseCard

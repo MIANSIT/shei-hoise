@@ -1,5 +1,8 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ProfileHeaderProps {
   firstName?: string | null;
@@ -14,13 +17,15 @@ export function ProfileHeader({
   userType,
   isActive,
 }: ProfileHeaderProps) {
+  const t = useTranslation();
+
   const getUserStatusBadge = () => {
     return isActive ? (
       <Badge variant="default" className="bg-green-100 text-green-800">
-        Active
+        {t.admin.myProfileActive}
       </Badge>
     ) : (
-      <Badge variant="destructive">Inactive</Badge>
+      <Badge variant="destructive">{t.admin.myProfileInactive}</Badge>
     );
   };
 
@@ -46,12 +51,12 @@ export function ProfileHeader({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              My Profile
+              {t.admin.myProfileTitle}
             </h1>
             <p className="text-muted-foreground mt-2">
               {firstName && lastName
-                ? `Welcome back, ${firstName} ${lastName}`
-                : "Manage your account information and preferences"}
+                ? `${t.admin.myProfileWelcomePrefix} ${firstName} ${lastName}`
+                : t.admin.myProfileManageDesc}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">

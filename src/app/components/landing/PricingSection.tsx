@@ -2,48 +2,51 @@
 
 import { Sparkles } from "lucide-react";
 import PricingCard from "@/app/components/landing/PriceTag/PricingCard";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function PricingSection() {
+  const t = useTranslation();
+
   const features = [
-    "Store Home Page (sheihoise.com/your-store)",
-    "Full Ecommerce Platform",
-    "Smart Order Link (1-Click Order)",
-    "Admin Dashboard & Control Panel",
-    "Product & Inventory Management",
-    "Expense Management",
-    "Customer Management",
-    "Full Finance & Analytics Reports",
-    "Auto Invoice Generation",
-    "24/7 Support",
+    t.landing.pricingFeature1,
+    t.landing.pricingFeature2,
+    t.landing.pricingFeature3,
+    t.landing.pricingFeature4,
+    t.landing.pricingFeature5,
+    t.landing.pricingFeature6,
+    t.landing.pricingFeature7,
+    t.landing.pricingFeature8,
+    t.landing.pricingFeature9,
+    t.landing.pricingFeature10,
   ];
 
   const plans = [
     {
-      name: "Founders Monthly",
+      name: t.landing.plan1Name,
       months: 1,
       price: 199,
       originalPrice: 0,
-      description: "Start your online store with zero long-term commitment",
+      description: t.landing.plan1Desc,
       highlighted: false,
       badge: null,
     },
     {
-      name: "Founders 6M",
+      name: t.landing.plan2Name,
       months: 6,
       price: 999,
       originalPrice: 1194,
-      description: "Grow your business — save 16% vs monthly",
+      description: t.landing.plan2Desc,
       highlighted: true,
-      badge: "Most Popular",
+      badge: t.landing.mostPopular,
     },
     {
-      name: "Founders 12M",
+      name: t.landing.plan3Name,
       months: 12,
       price: 1799,
       originalPrice: 2388,
-      description: "Maximum savings for serious sellers — save 25%",
+      description: t.landing.plan3Desc,
       highlighted: false,
-      badge: "Best Value",
+      badge: t.landing.bestValue,
     },
   ];
 
@@ -54,18 +57,17 @@ export default function PricingSection() {
           <div className="inline-flex items-center gap-2 bg-linear-to-r from-green-600 to-emerald-500 text-white px-5 py-2.5 rounded-full shadow-lg">
             <Sparkles className="w-4 h-4 shrink-0" />
             <span className="font-semibold text-sm md:text-base">
-              Limited Offer for Eid Ul Azha — Founders Pricing
+              {t.landing.limitedOffer}
             </span>
             <Sparkles className="w-4 h-4 shrink-0" />
           </div>
         </div>
 
         <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Shei-Hoise Founders Plans
+          {t.landing.pricingTitle}
         </h2>
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-          Lock in exclusive founders pricing before this offer ends. Start your
-          Shei-Hoise store today and scale effortlessly.
+          {t.landing.pricingSubtitle}
         </p>
       </div>
 

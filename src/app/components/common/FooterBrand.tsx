@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Facebook, Instagram,Linkedin ,Twitter } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type BrandProps = {
   brand: {
@@ -19,6 +20,7 @@ type SocialLink = {
 };
 
 export default function FooterBrand({ brand }: BrandProps) {
+  const t = useTranslation();
   const socialLinks: SocialLink[] = [
     {
       href: "https://www.facebook.com/bd.shei.hoise",
@@ -42,7 +44,7 @@ export default function FooterBrand({ brand }: BrandProps) {
   return (
     <div>
       <h2 className="text-xl font-semibold text-foreground">{brand.name}</h2>
-      <p className="mt-3 text-sm text-muted-foreground">{brand.description}</p>
+      <p className="mt-3 text-sm text-muted-foreground">{t.landing.footerBrandDesc}</p>
 
       <div className="flex gap-4 mt-4">
         {socialLinks.map((social, index) => {

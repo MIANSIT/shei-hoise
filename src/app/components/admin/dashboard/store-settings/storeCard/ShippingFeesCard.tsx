@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ShippingFees, StoreSettings } from "@/lib/types/store/store";
 import { CURRENCY_ICONS, Currency } from "@/lib/types/enums";
 import { Package, Clock, ArrowUpRight, Truck, EyeOff } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export function ShippingFeesCard({
   fees,
@@ -16,6 +17,7 @@ export function ShippingFeesCard({
 }) {
   const currencyIcon = CURRENCY_ICONS[settings.currency as Currency];
   const hasFees = fees && fees.length > 0;
+  const t = useTranslation();
 
   return (
     <Card className="border-0 shadow-sm bg-card ring-1 ring-border/60 overflow-hidden">
@@ -27,12 +29,12 @@ export function ShippingFeesCard({
             </div>
             <div>
               <CardTitle className="text-base font-semibold text-foreground">
-                Shipping Methods
+                {t.admin.storeMgmtShipping}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {hasFees
-                  ? `${fees.length} method${fees.length !== 1 ? "s" : ""} configured`
-                  : "No shipping methods configured"}
+                  ? `${fees.length} ${fees.length !== 1 ? t.admin.storeMgmtShippingMethods : t.admin.storeMgmtShippingMethod} ${t.admin.storeMgmtShippingConfigured}`
+                  : t.admin.storeMgmtShippingNone}
               </p>
             </div>
           </div>
@@ -41,7 +43,7 @@ export function ShippingFeesCard({
             target="_blank"
             className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
           >
-            Manage
+            {t.admin.storeMgmtShippingManage}
             <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </Link>
         </div>
@@ -62,7 +64,7 @@ export function ShippingFeesCard({
                 {fee.customer_view === false && (
                   <div className="absolute top-3 right-3 flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                     <EyeOff className="h-3 w-3" />
-                    Hidden
+                    {t.admin.storeMgmtShippingHidden}
                   </div>
                 )}
 
@@ -87,7 +89,7 @@ export function ShippingFeesCard({
                     <Clock className="h-3.5 w-3.5" />
                     {fee.estimated_days !== undefined
                       ? `${fee.estimated_days} day${Number(fee.estimated_days) > 1 ? "s" : ""}`
-                      : "No estimate"}
+                      : t.admin.storeMgmtShippingNoEstimate}
                   </div>
                   <span
                     className={`text-sm font-bold px-2.5 py-1 rounded-lg ${
@@ -96,7 +98,7 @@ export function ShippingFeesCard({
                         : "bg-primary/10 text-primary"
                     }`}
                   >
-                    {fee.price === 0 ? "FREE" : `${currencyIcon} ${fee.price}`}
+                    {fee.price === 0 ? t.admin.storeMgmtShippingFree : `${currencyIcon} ${fee.price}`}
                   </span>
                 </div>
               </div>
@@ -110,10 +112,10 @@ export function ShippingFeesCard({
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              No shipping methods yet
+              {t.admin.storeMgmtShippingNoneYet}
             </p>
             <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-              Configure your shipping options to start accepting orders.
+              {t.admin.storeMgmtShippingNoneDesc}
             </p>
           </div>
           <Link
@@ -121,20 +123,20 @@ export function ShippingFeesCard({
             target="_blank"
             className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
           >
-            Set up shipping <ArrowUpRight className="h-3.5 w-3.5" />
+            {t.admin.storeMgmtShippingSetup} <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       )}
 
       <div className="px-5 py-3 border-t border-border bg-muted/10">
         <p className="text-xs text-muted-foreground">
-          Manage all shipping options in the{" "}
+          {t.admin.storeMgmtShippingFooterText}{" "}
           <Link
             href="/dashboard/shipping-Management"
             target="_blank"
             className="text-primary font-medium hover:underline"
           >
-            Shipping Management page
+            {t.admin.storeMgmtShippingPage}
           </Link>
           .
         </p>

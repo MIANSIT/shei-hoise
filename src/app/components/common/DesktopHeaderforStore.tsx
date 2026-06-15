@@ -15,6 +15,8 @@ import {
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { SheiSkeleton } from "../ui/shei-skeleton";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface DesktopHeaderProps {
   storeSlug: string;
@@ -38,6 +40,7 @@ export default function DesktopHeader({
   } = useCurrentCustomer(storeSlug);
 
   const pathname = usePathname();
+  const t = useTranslation();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -59,9 +62,9 @@ export default function DesktopHeader({
   }, [storeSlug]);
 
   const navLinks: NavLink[] = [
-    { name: "Home", path: `/${storeSlug}` },
-    { name: "Shop", path: `/${storeSlug}/shop` },
-    { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
+    { name: t.nav.home, path: `/${storeSlug}` },
+    { name: t.nav.shop, path: `/${storeSlug}/shop` },
+    { name: t.nav.generateOrder, path: `/${storeSlug}/generate-orders-link` },
   ];
 
   // AuthLinks for non-logged-in customers
@@ -69,11 +72,11 @@ export default function DesktopHeader({
     !isAdmin && !isLoggedIn
       ? [
           {
-            name: "Log in",
+            name: t.nav.login,
             path: `/${storeSlug}/login?redirect=/${storeSlug}`,
           },
           {
-            name: "Sign up",
+            name: t.nav.signup,
             path: `/${storeSlug}/signup?redirect=/${storeSlug}`,
             isHighlighted: true,
           },
@@ -141,7 +144,7 @@ export default function DesktopHeader({
                       : "text-foreground hover:bg-accent"
                   }`}
                 >
-                  My Orders
+                  {t.nav.myOrders}
                 </Link>
               )}
             </div>
@@ -161,6 +164,7 @@ export default function DesktopHeader({
             </div>
           ) : (
             <>
+              <LanguageSwitcher />
               <ThemeToggle />
               <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
 

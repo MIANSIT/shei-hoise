@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Store, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface StoreInfoCardProps {
   storeSlug?: string | null;
@@ -8,6 +11,8 @@ interface StoreInfoCardProps {
 }
 
 export function StoreInfoCard({ storeSlug, storeName }: StoreInfoCardProps) {
+  const t = useTranslation();
+
   if (!storeSlug) return null;
 
   return (
@@ -15,7 +20,7 @@ export function StoreInfoCard({ storeSlug, storeName }: StoreInfoCardProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Store className="w-5 h-5" />
-          Store Information
+          {t.admin.myProfileStoreInfo}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -23,7 +28,7 @@ export function StoreInfoCard({ storeSlug, storeName }: StoreInfoCardProps) {
           {storeName && (
             <div>
               <div className="text-sm font-medium text-foreground">
-                Store Name
+                {t.admin.myProfileStoreName}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
                 {storeName}
@@ -33,14 +38,14 @@ export function StoreInfoCard({ storeSlug, storeName }: StoreInfoCardProps) {
           {storeSlug && (
             <div>
               <div className="text-sm font-medium text-foreground">
-                Store URL
+                {t.admin.myProfileStoreUrl}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="text-sm text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded border">
                   {storeSlug}
                 </div>
                 <Link
-                  href={`/${storeSlug}`} // Change this to your actual base URL if needed, e.g., `https://example.com/${storeSlug}`
+                  href={`/${storeSlug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -48,7 +53,7 @@ export function StoreInfoCard({ storeSlug, storeName }: StoreInfoCardProps) {
                 </Link>
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                Your store&apos;s unique web address
+                {t.admin.myProfileStoreWebAddr}
               </div>
             </div>
           )}

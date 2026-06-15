@@ -5,9 +5,11 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
 import Modal from "@/app/components//common/Modal"; // Import the modal component
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function CTASection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const t = useTranslation();
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -24,7 +26,7 @@ export default function CTASection() {
           transition={{ duration: 0.6 }}
           className='text-3xl md:text-4xl font-bold mb-6'
         >
-          Ready to Run Your Store the Smart Way?
+          {t.landing.ctaTitle}
         </motion.h2>
 
         <motion.p
@@ -33,8 +35,7 @@ export default function CTASection() {
           transition={{ duration: 0.6 }}
           className='text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto'
         >
-          Join store owners who have ditched the spreadsheets and are running
-          their business from one clean, simple dashboard.
+          {t.landing.ctaSubtitle}
         </motion.p>
 
         <div className='flex flex-col sm:flex-row gap-4 justify-center'>
@@ -44,12 +45,12 @@ export default function CTASection() {
             size='lg'
             className='border-chart-2 text-chart-2 hover:bg-chart-2/10 px-6 md:px-8 py-3 text-base md:text-lg'
           >
-            Take a Guided Tour{" "}
+            {t.landing.guidedTour}
           </Button>
         </div>
 
         <p className='mt-4 text-xs md:text-sm text-muted-foreground'>
-          No credit card required • 7-day free trial • Setup in minutes
+          {t.landing.ctaFine}
         </p>
       </div>
 

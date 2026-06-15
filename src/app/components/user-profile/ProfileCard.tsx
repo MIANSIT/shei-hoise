@@ -1,6 +1,9 @@
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, Edit, Shield, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ProfileCardProps {
   firstName?: string | null;
@@ -11,7 +14,7 @@ interface ProfileCardProps {
   userType?: string | null;
   hasProfile?: boolean;
   showEditButton?: boolean;
-  isEditing?: boolean; // 👈 new prop
+  isEditing?: boolean;
   onEdit: () => void;
 }
 
@@ -24,9 +27,11 @@ export function ProfileCard({
   userType,
   hasProfile = false,
   showEditButton = false,
-  isEditing = false, // 👈 default false
+  isEditing = false,
   onEdit,
 }: ProfileCardProps) {
+  const t = useTranslation();
+
   const getInitials = () => {
     const first = firstName?.[0] || "";
     const last = lastName?.[0] || "";
@@ -54,7 +59,7 @@ export function ProfileCard({
           <h2 className="text-xl font-semibold text-foreground">
             {firstName && lastName
               ? `${firstName} ${lastName}`
-              : "Complete Your Profile"}
+              : t.admin.myProfileCompleteProfile}
           </h2>
 
           <div className="text-muted-foreground flex items-center justify-center gap-2">
@@ -77,11 +82,10 @@ export function ProfileCard({
           )}
         </div>
 
-        {/* 👇 Dynamic section based on editing status */}
         {isEditing ? (
           <div className="flex items-center justify-center gap-2 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-lg w-full">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Editing Profile...</span>
+            <span>{t.admin.myProfileEditingStatus}</span>
           </div>
         ) : showEditButton ? (
           <Button
@@ -90,15 +94,15 @@ export function ProfileCard({
             className="w-full flex items-center gap-2"
           >
             <Edit className="w-4 h-4" />
-            Edit Profile
+            {t.admin.myProfileEditBtn}
           </Button>
         ) : !hasProfile ? (
           <div className="text-center text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-lg w-full">
-            <p>No profile data available to edit</p>
+            <p>{t.admin.myProfileNoData}</p>
           </div>
         ) : (
           <div className="text-center text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-lg w-full">
-            <p>Profile editing is managed through admin panel</p>
+            <p>{t.admin.myProfileAdminPanel}</p>
           </div>
         )}
       </div>

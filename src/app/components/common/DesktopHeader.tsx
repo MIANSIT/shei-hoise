@@ -3,27 +3,15 @@
 import LogoTitle from "../header/LogoTitle";
 import NavMenu, { NavLink } from "../header/NavMenu";
 import ThemeToggle from "../theme/ThemeToggle";
-// import { usePathname } from "next/navigation";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function DesktopHeader() {
-  // const pathname = usePathname();
+  const t = useTranslation();
 
   const mainLinks: NavLink[] = [
-    { name: "Home", path: "/" },
-    // Only show Sections on the home page
-    // ...(pathname === "/"
-    //   ? [
-    //       {
-    //         name: "Sections",
-    //         children: [
-    //           { name: "Store", path: "#stores" },
-    //           { name: "Request Demo", path: "#request-demo" },
-    //         ],
-    //       },
-    //     ]
-    //   : []),
-    { name: "Request Demo", path: "/#request-demo" },
-    // { name: "All Stores", path: "/stores" },
+    { name: t.nav.home, path: "/" },
+    { name: t.landing.requestDemo, path: "/#request-demo" },
   ];
 
   return (
@@ -37,6 +25,7 @@ export default function DesktopHeader() {
 
         {/* Right */}
         <div className='flex items-center gap-5'>
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
       </header>

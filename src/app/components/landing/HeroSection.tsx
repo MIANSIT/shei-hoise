@@ -4,26 +4,28 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const MotionButton = motion(Button);
-
-const pnl = [
-  { label: "Revenue", value: "৳6,801", color: "text-chart-2", border: "border-t-chart-2" },
-  { label: "Expenses", value: "৳100", color: "text-chart-5", border: "border-t-chart-5" },
-  { label: "Net Profit", value: "৳647", color: "text-chart-2", border: "border-t-chart-2" },
-];
-
-const pipeline = [
-  { label: "Delivered", count: 13, dot: "bg-chart-2", text: "text-chart-2" },
-  { label: "Shipped", count: 1, dot: "bg-chart-3", text: "text-chart-3" },
-  { label: "Pending", count: 0, dot: "bg-muted-foreground/40", text: "text-muted-foreground" },
-  { label: "Cancelled", count: 0, dot: "bg-chart-5/50", text: "text-muted-foreground" },
-];
 
 const salesBars = [2, 4, 3, 6, 8, 5, 3, 4, 7, 9, 6, 8, 5, 4, 6, 7];
 
 export default function HeroSection() {
   const router = useRouter();
+  const t = useTranslation();
+
+  const pnl = [
+    { label: t.landing.pnlRevenue, value: "৳6,801", color: "text-chart-2", border: "border-t-chart-2" },
+    { label: t.landing.pnlExpenses, value: "৳100", color: "text-chart-5", border: "border-t-chart-5" },
+    { label: t.landing.pnlNetProfit, value: "৳647", color: "text-chart-2", border: "border-t-chart-2" },
+  ];
+
+  const pipeline = [
+    { label: t.landing.pipelineDelivered, count: 13, dot: "bg-chart-2", text: "text-chart-2" },
+    { label: t.landing.pipelineShipped, count: 1, dot: "bg-chart-3", text: "text-chart-3" },
+    { label: t.landing.pipelinePending, count: 0, dot: "bg-muted-foreground/40", text: "text-muted-foreground" },
+    { label: t.landing.pipelineCancelled, count: 0, dot: "bg-chart-5/50", text: "text-muted-foreground" },
+  ];
 
   const fadeInUp = {
     initial: { y: 50, opacity: 0 },
@@ -36,10 +38,12 @@ export default function HeroSection() {
   };
 
   const stats = [
-    { value: "500+", label: "Active Stores" },
-    { value: "10k+", label: "Orders Managed" },
-    { value: "7-Day", label: "Free Trial" },
+    { value: t.landing.stat1Value, label: t.landing.stat1Label },
+    { value: t.landing.stat2Value, label: t.landing.stat2Label },
+    { value: t.landing.stat3Value, label: t.landing.stat3Label },
   ];
+
+  const trustBadges = [t.landing.trust1, t.landing.trust2, t.landing.trust3];
 
   return (
     <>
@@ -57,7 +61,7 @@ export default function HeroSection() {
             <motion.div variants={fadeInUp}>
               <span className="inline-flex items-center gap-2 bg-chart-2/10 text-chart-2 text-xs font-semibold px-4 py-1.5 rounded-full border border-chart-2/20">
                 <Zap className="w-3 h-3" />
-                Built for Independent Store Owners
+                {t.landing.badge}
               </span>
             </motion.div>
 
@@ -66,9 +70,9 @@ export default function HeroSection() {
               variants={fadeInUp}
               className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
             >
-              Run Your Store
+              {t.landing.headline1}
               <br />
-              <span className="text-chart-2">Without the Chaos.</span>
+              <span className="text-chart-2">{t.landing.headline2}</span>
             </motion.h1>
 
             {/* SUBTEXT */}
@@ -76,9 +80,7 @@ export default function HeroSection() {
               variants={fadeInUp}
               className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg"
             >
-              Track profits and expenses, manage every order through the full
-              pipeline, monitor inventory health, and get paid on time. All from
-              one powerful business dashboard.
+              {t.landing.subtext}
             </motion.p>
 
             {/* CTA BUTTONS */}
@@ -92,7 +94,7 @@ export default function HeroSection() {
                 whileTap={{ scale: 0.96 }}
                 onClick={() => router.push("/onboarding")}
               >
-                Start for Free
+                {t.landing.startFree}
                 <ArrowRight className="ml-2 hidden sm:block w-5 h-5" />
               </MotionButton>
 
@@ -106,7 +108,7 @@ export default function HeroSection() {
                     ?.scrollIntoView({ behavior: "smooth" })
                 }
               >
-                See How It Works
+                {t.landing.seeHowItWorks}
               </Button>
             </motion.div>
 
@@ -115,14 +117,12 @@ export default function HeroSection() {
               variants={fadeInUp}
               className="flex flex-wrap gap-4 text-sm text-muted-foreground"
             >
-              {["7-day free trial", "No credit card required", "Cancel anytime"].map(
-                (text, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-chart-2" />
-                    {text}
-                  </div>
-                )
-              )}
+              {trustBadges.map((text, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-chart-2" />
+                  {text}
+                </div>
+              ))}
             </motion.div>
 
             {/* STATS */}
@@ -182,7 +182,7 @@ export default function HeroSection() {
                   {/* Header row */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[11px] font-bold leading-tight">Business Overview</p>
+                      <p className="text-[11px] font-bold leading-tight">{t.landing.dashboardHeader}</p>
                       <p className="text-[9px] text-muted-foreground">Mon, Apr 27, 2026</p>
                     </div>
                     <div className="flex gap-1">
@@ -205,14 +205,14 @@ export default function HeroSection() {
                   <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/30 rounded px-2 py-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                     <p className="text-[9px] text-amber-700 dark:text-amber-400 font-medium truncate">
-                      2 alerts need your attention
+                      {t.landing.dashboardAlert}
                     </p>
                   </div>
 
                   {/* P&L Snapshot */}
                   <div>
                     <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-widest mb-1.5">
-                      Profit & Loss · Last 30 Days
+                      {t.landing.pnlTitle}
                     </p>
                     <div className="grid grid-cols-3 gap-1.5">
                       {pnl.map((item) => (
@@ -234,7 +234,7 @@ export default function HeroSection() {
                   {/* Order Pipeline */}
                   <div>
                     <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-widest mb-1.5">
-                      Order Pipeline
+                      {t.landing.pipelineTitle}
                     </p>
                     <div className="space-y-1">
                       {pipeline.map((item) => (
@@ -257,16 +257,16 @@ export default function HeroSection() {
                   {/* Payment Flow */}
                   <div>
                     <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-widest mb-1.5">
-                      Payment Flow
+                      {t.landing.paymentTitle}
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
                       <div className="bg-chart-2/10 rounded p-2">
                         <p className="text-[11px] font-bold text-chart-2">৳8,650</p>
-                        <p className="text-[8px] text-muted-foreground">Collected</p>
+                        <p className="text-[8px] text-muted-foreground">{t.landing.paymentCollected}</p>
                       </div>
                       <div className="bg-chart-3/10 rounded p-2">
                         <p className="text-[11px] font-bold text-chart-3">৳430</p>
-                        <p className="text-[8px] text-muted-foreground">Awaiting</p>
+                        <p className="text-[8px] text-muted-foreground">{t.landing.paymentAwaiting}</p>
                       </div>
                     </div>
                   </div>
@@ -274,7 +274,7 @@ export default function HeroSection() {
                   {/* Sales Trend */}
                   <div>
                     <p className="text-[8px] text-muted-foreground font-semibold uppercase tracking-widest mb-1.5">
-                      Sales Trend
+                      {t.landing.salesTitle}
                     </p>
                     <div className="flex items-end gap-0.5 h-7">
                       {salesBars.map((h, i) => (
@@ -314,7 +314,7 @@ export default function HeroSection() {
             whileTap={{ scale: 0.96 }}
             onClick={() => router.push("/onboarding")}
           >
-            Start 7-Day Free Trial
+            {t.landing.startTrial}
           </MotionButton>
         </div>
       </div>

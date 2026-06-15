@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface OrderAmountCardProps {
   title: string;
@@ -45,6 +46,7 @@ const OrderAmountCard: React.FC<OrderAmountCardProps> = ({
   status = "pending",
 }) => {
   const { icon: currencyIcon, loading } = useUserCurrencyIcon();
+  const n = useLocalNum();
   const sym = loading
     ? "৳"
     : typeof currencyIcon === "string"
@@ -72,7 +74,7 @@ const OrderAmountCard: React.FC<OrderAmountCardProps> = ({
       </div>
       <div className={`text-lg font-black tabular-nums ${c.amount}`}>
         {sym}
-        {amount.toLocaleString()}
+        {n(amount.toFixed(2))}
       </div>
     </div>
   );

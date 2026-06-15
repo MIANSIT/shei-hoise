@@ -37,6 +37,8 @@ import InvoiceModal from "@/app/components/invoice/invoice";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import dataService from "@/lib/queries/dataService";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface Props {
   orders: StoreOrder[];
@@ -78,6 +80,8 @@ const OrdersTable: React.FC<Props> = ({
   onRefresh,
 }) => {
   const { notification, modal } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
   const [searchOrderId] = useState<string>("");
   const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
@@ -127,7 +131,7 @@ const OrdersTable: React.FC<Props> = ({
   const handleDelete = async (order: StoreOrder) => {
     if (order.status !== OrderStatus.CANCELLED) {
       notification.warning({
-        title: "Cannot Delete Order",
+        title: t.admin.orderCannotDeleteTitle,
         description: `Order #${order.order_number} is "${order.status}". Please cancel the order first to restore stock before deleting.`,
         duration: 4,
       });
@@ -135,12 +139,12 @@ const OrdersTable: React.FC<Props> = ({
     }
 
     modal.confirm({
-      title: "Confirm Delete",
+      title: t.admin.orderDeleteTitle,
       icon: <ExclamationCircleOutlined />,
       content: `Are you sure you want to delete order #${order.order_number}? This action cannot be undone.`,
-      okText: "Yes, Delete",
+      okText: t.admin.orderDeleteOk,
       okType: "danger",
-      cancelText: "Cancel",
+      cancelText: t.admin.orderDeleteCancel,
       onOk: async () => {
         await performDelete(order.id);
       },
@@ -155,14 +159,14 @@ const OrdersTable: React.FC<Props> = ({
       await dataService.deleteOrder(orderId);
 
       notification.success({
-        title: "Order Deleted",
-        description: "Order has been deleted successfully.",
+        title: t.admin.orderDeletedSuccess,
+        description: t.admin.orderDeletedSuccessDesc,
       });
       onRefresh?.();
     } catch (error: any) {
       console.error("Error deleting order:", error);
       notification.error({
-        title: "Delete Failed",
+        title: t.admin.orderDeleteFailed,
         description: error.title || "Failed to delete order. Please try again.",
       });
     } finally {
@@ -207,8 +211,8 @@ const OrdersTable: React.FC<Props> = ({
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
-        message: "No Orders",
-        description: "No orders found for the selected date",
+        message: t.admin.orderNoOrders,
+        description: t.admin.orderNoOrdersDate,
       });
       return;
     }
@@ -288,12 +292,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const formatCurrency = (amount: number, currency?: string | null) => {
     const finalCurrency = currency || storeCurrency || "";
-
-    return new Intl.NumberFormat("en-BD", {
-      style: "currency",
-      currency: finalCurrency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+    return `${finalCurrency} ${n(amount.toFixed(2))}`;
   };
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -350,13 +349,13 @@ const OrdersTable: React.FC<Props> = ({
     try {
       await navigator.clipboard.writeText(orderNumber);
       notification.success({
-        title: "Copied",
+        title: t.admin.orderCopied,
         description: `Order #${orderNumber} copied to clipboard`,
         duration: 1.5,
       });
     } catch {
       notification.error({
-        title: "Failed",
+        title: t.admin.orderCopyFailed,
         description: "Could not copy order number",
       });
     }
@@ -387,7 +386,7 @@ const OrdersTable: React.FC<Props> = ({
   // ✅ FIXED: Updated columns with proper address display
   const columns: ColumnsType<StoreOrder> = [
     {
-      title: "Order #",
+      title: t.admin.orderColNum,
       dataIndex: "order_number",
       key: "order_number",
       render: (orderNumber: string) => (
@@ -408,7 +407,7 @@ const OrdersTable: React.FC<Props> = ({
       fixed: "left" as const,
     },
     {
-      title: "Customer",
+      title: t.admin.orderColCustomer,
       key: "customer",
       render: (_, order: StoreOrder) => (
         <Space size="small">
@@ -434,18 +433,18 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
-      title: "Phone",
+      title: t.admin.orderColPhone,
       key: "phone",
       render: (_, order: StoreOrder) => (
         <div className="truncate max-w-30 lg:max-w-37.5 text-xs lg:text-sm">
-          {getCustomerPhone(order)}
+          {n(getCustomerPhone(order))}
         </div>
       ),
       width: 120,
       responsive: ["lg"],
     },
     {
-      title: "Address",
+      title: t.admin.orderColAddress,
       key: "address",
       render: (_, order: StoreOrder) => {
         const displayAddress = getDisplayAddress(order);
@@ -463,7 +462,7 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["lg"],
     },
     {
-      title: "Total",
+      title: t.admin.orderColTotal,
       key: "total",
       render: (_, order: StoreOrder) => (
         <div className="text-right">
@@ -485,7 +484,7 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["sm"],
     },
     {
-      title: "Status",
+      title: t.admin.orderColStatus,
       dataIndex: "status",
       key: "status",
       render: (status: OrderStatus) => (
@@ -495,7 +494,7 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["sm"],
     },
     {
-      title: "Payment",
+      title: t.admin.orderColPayment,
       dataIndex: "payment_status",
       key: "payment_status",
       render: (status: PaymentStatus) => (
@@ -505,31 +504,31 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
-      title: "Delivery",
+      title: t.admin.orderColDelivery,
       dataIndex: "delivery_option",
       key: "delivery_option",
       render: (option: string) => (
         <span className="text-xs font-medium capitalize">
-          {option || "Not set"}
+          {option || t.admin.orderNotSet}
         </span>
       ),
       width: 100,
       responsive: ["lg"],
     },
     {
-      title: "Payment Method",
+      title: t.admin.orderColPaymentMethod,
       dataIndex: "payment_method",
       key: "payment_method",
       render: (method: string) => (
         <span className="text-xs font-medium capitalize">
-          {method === "cod" ? "Cash on Delivery" : method || "Not set"}
+          {method === "cod" ? t.admin.orderCod : method || t.admin.orderNotSet}
         </span>
       ),
       width: 120,
       responsive: ["lg"],
     },
     {
-      title: "Invoice",
+      title: t.admin.orderColInvoice,
       key: "invoice",
       render: (_, order: StoreOrder) => (
         <Tooltip title="View Invoice">
@@ -547,7 +546,7 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
-      title: "Actions",
+      title: t.admin.orderColActions,
       key: "actions",
       render: (_, order: StoreOrder) => renderActionButtons(order),
       width: 100,
@@ -601,7 +600,7 @@ const OrdersTable: React.FC<Props> = ({
               {formatCurrency(order.total_amount, order.currency)}
             </div>
             <div className="text-xs text-gray-600">
-              Shipping: {formatCurrency(order.shipping_fee, order.currency)}
+              {t.admin.orderShippingLabel} {formatCurrency(order.shipping_fee, order.currency)}
             </div>
           </div>
         </div>
@@ -610,7 +609,7 @@ const OrdersTable: React.FC<Props> = ({
         {selectedRowKeys.includes(order.id) && (
           <div className="flex items-center gap-1 mb-2 text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
             <Check size={12} />
-            Selected for bulk action
+            {t.admin.orderSelectedForBulk}
           </div>
         )}
 
@@ -635,7 +634,7 @@ const OrdersTable: React.FC<Props> = ({
             </div>
 
             <div className="text-xs text-gray-600 truncate">
-              {getCustomerPhone(order)}
+              {n(getCustomerPhone(order))}
             </div>
           </div>
         </div>
@@ -643,7 +642,7 @@ const OrdersTable: React.FC<Props> = ({
         {/* Address */}
         <div className="mb-3">
           <div className="text-xs sm:text-sm text-gray-600">
-            <span className="font-medium">Address: </span>
+            <span className="font-medium">{t.admin.orderAddressLabel} </span>
             <Tooltip title={fullAddress}>
               <span className="line-clamp-2">{displayAddress}</span>
             </Tooltip>
@@ -653,19 +652,19 @@ const OrdersTable: React.FC<Props> = ({
         {/* Backend Values Display */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div>
-            <span className="text-xs font-medium text-gray-500">Delivery:</span>
+            <span className="text-xs font-medium text-gray-500">{t.admin.orderDeliveryLabel}</span>
             <div className="text-sm font-medium capitalize">
-              {order.delivery_option || "Not set"}
+              {order.delivery_option || t.admin.orderNotSet}
             </div>
           </div>
           <div>
             <span className="text-xs font-medium text-gray-500">
-              Payment Method:
+              {t.admin.orderPaymentMethodLabel}
             </span>
             <div className="text-sm font-medium capitalize">
               {order.payment_method === "cod"
-                ? "Cash on Delivery"
-                : order.payment_method || "Not set"}
+                ? t.admin.orderCod
+                : order.payment_method || t.admin.orderNotSet}
             </div>
           </div>
         </div>
@@ -689,7 +688,7 @@ const OrdersTable: React.FC<Props> = ({
               size="small"
               className="bg-green-600! border-green-600! hover:bg-green-700!"
             >
-              Invoice
+              {t.admin.orderInvoiceBtn}
             </Button>
           </Tooltip>
           {renderActionButtons(order)}
@@ -703,7 +702,7 @@ const OrdersTable: React.FC<Props> = ({
             }
             className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
           >
-            {expandedRowKey === order.id ? "Hide Details" : "View Details"}
+            {expandedRowKey === order.id ? t.admin.orderHideDetails : t.admin.orderViewDetails}
           </button>
         </div>
 
@@ -765,7 +764,7 @@ const OrdersTable: React.FC<Props> = ({
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="text-sm font-medium text-blue-800 text-center sm:text-left">
-              {selectedRowKeys.length} order(s) selected
+              {n(selectedRowKeys.length)} {t.admin.orderSelected}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <BulkActions
@@ -780,7 +779,7 @@ const OrdersTable: React.FC<Props> = ({
                 onClick={() => setSelectedRowKeys([])}
                 className="w-full sm:w-auto"
               >
-                Clear Selection
+                {t.admin.orderClearSelection}
               </Button>
             </div>
           </div>
@@ -811,7 +810,7 @@ const OrdersTable: React.FC<Props> = ({
             className="w-80"
           />
           <Button type="primary" onClick={handleDownloadCsv}>
-            Download CSV
+            {t.admin.orderDownloadCsv}
           </Button>
         </div>
       </div>
@@ -827,14 +826,14 @@ const OrdersTable: React.FC<Props> = ({
           selections: [
             {
               key: "all",
-              text: "Select All",
+              text: t.admin.orderSelectAll,
               onSelect: () => {
                 setSelectedRowKeys(filteredOrders.map((order) => order.id));
               },
             },
             {
               key: "none",
-              text: "Clear All",
+              text: t.admin.orderClearAll,
               onSelect: () => {
                 setSelectedRowKeys([]);
               },
@@ -853,31 +852,31 @@ const OrdersTable: React.FC<Props> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
                 <div>
                   <span className="text-sm font-medium text-gray-300">
-                    Delivery Option:
+                    {t.admin.orderDeliveryOption}
                   </span>
                   <div className="font-medium capitalize">
-                    {order.delivery_option || "Not set"}
+                    {order.delivery_option || t.admin.orderNotSet}
                   </div>
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-300">
-                    Payment Method:
+                    {t.admin.orderPaymentMethodOption}
                   </span>
                   <div className="font-medium capitalize">
                     {order.payment_method === "cod"
-                      ? "Cash on Delivery"
-                      : order.payment_method || "Not set"}
+                      ? t.admin.orderCod
+                      : order.payment_method || t.admin.orderNotSet}
                   </div>
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-300">
-                    Order Status: {""}
+                    {t.admin.orderStatusOption}{" "}
                   </span>
                   <StatusTag status={order.status as OrderStatus} />
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-300">
-                    Payment Status:{" "}
+                    {t.admin.orderPaymentStatusOption}{" "}
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>
@@ -921,10 +920,7 @@ const OrdersTable: React.FC<Props> = ({
       <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
         {/* Show total items */}
         <div className="text-sm text-gray-600">
-          {`${Math.min((page - 1) * pageSize + 1, total)}-${Math.min(
-            page * pageSize,
-            total,
-          )} of ${total} items`}
+          {`${n(Math.min((page - 1) * pageSize + 1, total))}-${n(Math.min(page * pageSize, total))} ${t.admin.orderOf} ${n(total)} ${t.admin.orderItemsLabel}`}
         </div>
 
         {/* Previous / Next buttons */}
@@ -934,17 +930,17 @@ const OrdersTable: React.FC<Props> = ({
             disabled={page === 1}
             onClick={() => onTableChange({ current: page - 1, pageSize })}
           >
-            ← Previous
+            {t.admin.orderPrevBtn}
           </Button>
           <span className="text-sm">
-            Page {page} of {Math.ceil(total / pageSize) || 1}
+            {t.admin.orderPageOf} {n(page)} {t.admin.orderOf} {n(Math.ceil(total / pageSize) || 1)}
           </span>
           <Button
             size="small"
             disabled={page >= Math.ceil(total / pageSize)}
             onClick={() => onTableChange({ current: page + 1, pageSize })}
           >
-            Next →
+            {t.admin.orderNextBtn}
           </Button>
         </div>
       </div>
@@ -958,7 +954,7 @@ const OrdersTable: React.FC<Props> = ({
           onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
           pageSizeOptions={["5", "10", "20", "50"]}
           showTotal={(total, range) =>
-            `${range[0]}-${range[1]} of ${total} items`
+            `${n(range[0])}-${n(range[1])} ${t.admin.orderOf} ${n(total)} ${t.admin.orderItemsLabel}`
           }
         />
       </div>

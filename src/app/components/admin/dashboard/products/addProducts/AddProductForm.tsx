@@ -29,6 +29,7 @@ import {
   Info,
 } from "lucide-react";
 import { useAddProductDraftStore } from "@/lib/store/addProductDraftStore";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface AddProductFormProps {
   product?: ProductType;
@@ -110,6 +111,7 @@ const PriceCard = ({
 // ─── Main Component ──────────────────────────────────────────────────────────
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
+    const t = useTranslation();
     const { currency, loading: currencyLoading } = useUserCurrencyIcon();
     const isAddMode = !product;
 
@@ -376,11 +378,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             setValidationErrors([]);
           }}
           onConfirm={handleConfirmSubmit}
-          title="Pricing Warning"
+          title={t.admin.addProductPricingWarning}
           message={
             <div className="space-y-3">
               <p className="font-medium">
-                Pricing issues detected — continue anyway?
+                {t.admin.addProductPricingIssues}
               </p>
               <ul className="max-h-48 space-y-1.5 overflow-y-auto rounded-lg bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
                 {validationErrors.map((err, i) => (
@@ -394,12 +396,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 ))}
               </ul>
               <p className="text-sm text-muted-foreground">
-                You may be selling at a loss. Please review the pricing.
+                {t.admin.addProductSellingAtLoss}
               </p>
             </div>
           }
-          confirmText="Continue Anyway"
-          cancelText="Review Pricing"
+          confirmText={t.admin.addProductContinueAnyway}
+          cancelText={t.admin.addProductReviewPricing}
           type="warning"
         />
 
@@ -408,7 +410,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           <div className="fixed right-4 top-4 z-50 flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-lg dark:border-rose-800/50 dark:bg-rose-950/80 max-w-sm animate-slideInRight">
             <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
             <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
-              All variants inactive — status set to{" "}
+              {t.admin.addProductAllVariantsInactive}{" "}
               <span className="font-bold">Draft</span>
             </p>
             <button
@@ -427,23 +429,23 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           {/* Page header */}
           <div className="mb-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {product ? "Edit Product" : "New Product"}
+              {product ? t.admin.addProductEditTitle : t.admin.addProductNewTitle}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {product
-                ? "Update the details below to modify your product."
-                : "Fill in the details below to add a new product to your store."}
+                ? t.admin.addProductUpdateDesc
+                : t.admin.addProductAddDesc}
             </p>
           </div>
 
           {/* ── Product Information ── */}
-          <Section icon={Package} title="Product Information">
+          <Section icon={Package} title={t.admin.addProductInfoSection}>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div>
                 <FieldLabel
-                  label="Product Name"
+                  label={t.admin.addProductNameLabel}
                   required
-                  tooltip="Enter the official product name. E.g. 'Premium Cotton T-Shirt'"
+                  tooltip={t.admin.addProductNameTooltip}
                 />
                 <FormField
                   name="name"
@@ -456,8 +458,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
               <div>
                 <FieldLabel
-                  label="URL Slug"
-                  tooltip="Auto-generated from product name. Used in URLs."
+                  label={t.admin.addProductSlugLabel}
+                  tooltip={t.admin.addProductSlugTooltip}
                 />
                 <FormField
                   name="slug"
@@ -469,9 +471,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
               <div>
                 <FieldLabel
-                  label="Category"
+                  label={t.admin.addProductCategoryLabel}
                   required
-                  tooltip="Choose the category that best fits this product."
+                  tooltip={t.admin.addProductCategoryTooltip}
                 />
                 <FormField
                   name="category_id"
@@ -480,15 +482,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   required
                   placeholder={
                     hasCategories
-                      ? "Choose a category…"
-                      : "No categories — create one first"
+                      ? t.admin.addProductChooseCat
+                      : t.admin.addProductNoCatFirst
                   }
                   options={[
                     ...activeCategories.map((c) => ({
                       value: c.id,
                       label: c.name,
                     })),
-                    { value: "create_new", label: "➕ Create New Category" },
+                    { value: "create_new", label: t.admin.addProductCreateNewCat },
                   ]}
                   onChange={(value) => {
                     if (value === "create_new")
@@ -497,15 +499,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 />
                 {!hasCategories && (
                   <p className="mt-1.5 text-xs text-rose-500">
-                    No categories yet. Please create one to continue.
+                    {t.admin.addProductNoCats}
                   </p>
                 )}
               </div>
 
               <div>
                 <FieldLabel
-                  label="Short Description"
-                  tooltip="1–2 sentence summary shown in listings."
+                  label={t.admin.addProductShortDescLabel}
+                  tooltip={t.admin.addProductShortDescTooltip}
                 />
                 <FormField
                   name="short_description"
@@ -517,9 +519,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
               <div className="md:col-span-2">
                 <FieldLabel
-                  label="Description"
+                  label={t.admin.addProductDescLabel}
                   required
-                  tooltip="Detailed description including features, materials, usage, warranty."
+                  tooltip={t.admin.addProductDescTooltip}
                 />
                 <FormField
                   name="description"
@@ -535,15 +537,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
           {/* ── Pricing ── */}
           {variants.length === 0 && (
-            <Section icon={Tag} title="Pricing & Inventory">
+            <Section icon={Tag} title={t.admin.addProductPricingSection}>
               <div className="space-y-5">
                 {/* TP + Markup row */}
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <PriceCard label="Trade Price (Cost)">
+                  <PriceCard label={t.admin.addProductTPLabel}>
                     <FieldLabel
-                      label={`TP Price (${displayCurrency})`}
+                      label={`${t.admin.addProductTPPriceLabel} (${displayCurrency})`}
                       required
-                      tooltip="Wholesale / cost price you pay. Used to calculate profit margin."
+                      tooltip={t.admin.addProductTPTooltip}
                     />
                     <FormField
                       name="tp_price"
@@ -554,10 +556,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                     />
                   </PriceCard>
 
-                  <PriceCard label="Price Markup">
+                  <PriceCard label={t.admin.addProductMarkupLabel}>
                     <FieldLabel
-                      label="Markup Calculator"
-                      tooltip="Applies markup to TP to auto-calculate MRP. Percentage: 20% on TP 100 → MRP 120. Multiplier: 1.2× on TP 100 → MRP 120."
+                      label={t.admin.addProductMarkupCalcLabel}
+                      tooltip={t.admin.addProductMarkupTooltip}
                     />
                     <div className="flex gap-2">
                       <select
@@ -570,8 +572,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                           setPriceValueTouched(true);
                         }}
                       >
-                        <option value="percentage">% Percent</option>
-                        <option value="multiplier">× Multiplier</option>
+                        <option value="percentage">{t.admin.addProductPercent}</option>
+                        <option value="multiplier">{t.admin.addProductMultiplier}</option>
                       </select>
                       <input
                         type="number"
@@ -591,11 +593,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
                 {/* MRP / Discount / Final Price row */}
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                  <PriceCard label="Selling Price">
+                  <PriceCard label={t.admin.addProductSellingPrice}>
                     <FieldLabel
-                      label={`MRP (${displayCurrency})`}
+                      label={`${t.admin.addProductMRPLabel} (${displayCurrency})`}
                       required
-                      tooltip="Regular selling price before discounts."
+                      tooltip={t.admin.addProductMRPTooltip}
                     />
                     <FormField
                       name="base_price"
@@ -607,10 +609,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                     />
                   </PriceCard>
 
-                  <PriceCard label="Discount">
+                  <PriceCard label={t.admin.addProductDiscountLabel}>
                     <FieldLabel
-                      label={`Discount Amount (${displayCurrency})`}
-                      tooltip="Amount subtracted from MRP. Leave blank for no discount."
+                      label={`${t.admin.addProductDiscountAmtLabel} (${displayCurrency})`}
+                      tooltip={t.admin.addProductDiscountTooltip}
                     />
                     <FormField
                       name="discount_amount"
@@ -620,16 +622,16 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                     />
                   </PriceCard>
 
-                  <PriceCard label="Final Price">
+                  <PriceCard label={t.admin.addProductFinalLabel}>
                     <FieldLabel
-                      label={`Discounted Price (${displayCurrency})`}
-                      tooltip="Auto-calculated: MRP − Discount Amount."
+                      label={`${t.admin.addProductDiscountedLabel} (${displayCurrency})`}
+                      tooltip={t.admin.addProductDiscountedTooltip}
                     />
                     <FormField
                       name="discounted_price"
                       type="number"
                       control={control}
-                      placeholder="Auto-calculated"
+                      placeholder={t.admin.addProductAutoCalc}
                       readOnly
                     />
                   </PriceCard>
@@ -639,8 +641,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                   <div>
                     <FieldLabel
-                      label="Weight (kg)"
-                      tooltip="Used for shipping calculations. E.g. 0.5, 1.2"
+                      label={t.admin.addProductWeightLabel}
+                      tooltip={t.admin.addProductWeightTooltip}
                     />
                     <FormField
                       name="weight"
@@ -651,9 +653,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   </div>
                   <div>
                     <FieldLabel
-                      label="SKU"
+                      label={t.admin.addProductSkuLabel}
                       required
-                      tooltip="Unique product identifier. E.g. TSHIRT-BLK-001"
+                      tooltip={t.admin.addProductSkuTooltip}
                     />
                     <FormField
                       name="sku"
@@ -664,9 +666,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   </div>
                   <div>
                     <FieldLabel
-                      label="Stock"
+                      label={t.admin.addProductStockLabel}
                       required
-                      tooltip="Available inventory quantity."
+                      tooltip={t.admin.addProductStockTooltip}
                     />
                     <FormField
                       name="stock"
@@ -692,10 +694,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               </span>
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">
-                  Product Images
+                  {t.admin.addProductImagesSection}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Up to 5 images · Max 5MB each · First image is primary
+                  {t.admin.addProductImagesSubtext}
                 </p>
               </div>
             </div>
@@ -719,8 +721,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 />
                 <div className="relative w-9 h-5 rounded-full bg-muted border border-border peer-checked:bg-amber-400 peer-checked:border-amber-400 transition-colors duration-200 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-4" />
                 <span className="text-sm font-medium flex items-center gap-1.5">
-                  Featured
-                  <Tooltip title="Featured products appear highlighted in your store homepage." placement="top">
+                  {t.admin.addProductFeaturedLabel}
+                  <Tooltip title={t.admin.addProductFeaturedTooltip} placement="top">
                     <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
                   </Tooltip>
                 </span>
@@ -730,7 +732,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
               <div className="flex items-center gap-3">
               <label htmlFor="status" className="text-sm font-medium">
-                Status
+                {t.admin.addProductStatusLabel}
               </label>
               <div className="relative">
                 <select
@@ -753,11 +755,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
               {showInactiveWarning ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950/50 dark:text-rose-400">
-                  <AlertTriangle className="h-3 w-3" /> Locked as Draft
+                  <AlertTriangle className="h-3 w-3" /> {t.admin.addProductLockedDraft}
                 </span>
               ) : (
                 <Tooltip
-                  title="Active = visible & purchasable. Draft = hidden work-in-progress. Inactive = hidden & not purchasable."
+                  title={t.admin.addProductStatusTooltip}
                   placement="top"
                 >
                   <Info className="h-4 w-4 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
@@ -773,11 +775,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
             >
               {isSubmitting
                 ? product
-                  ? "Updating…"
-                  : "Saving…"
+                  ? t.admin.addProductUpdatingLabel
+                  : t.admin.addProductSavingLabel
                 : product
-                  ? "Update Product"
-                  : "Save Product"}
+                  ? t.admin.addProductUpdateBtn
+                  : t.admin.addProductSaveBtn}
             </Button>
           </div>
         </form>

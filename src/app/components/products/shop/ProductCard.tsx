@@ -7,6 +7,8 @@ import { ShoppingCart, Check, Eye, Tag } from "lucide-react";
 import { Product } from "@/lib/types/product";
 import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface ProductCardProps {
   store_slug: string;
@@ -24,8 +26,9 @@ export default function ProductCard({
   const [showSuccess, setShowSuccess] = useState(false);
 
   const { cart } = useCartStore();
-  const { icon: currencyIcon, loading: currencyLoading } =
-    useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
+  const t = useTranslation();
+  const n = useLocalNum();
 
   const variant = product.variants?.[0];
   const hasVariants = product.variants && product.variants.length > 0;
@@ -144,7 +147,7 @@ export default function ProductCard({
         ${!productInStock ? "opacity-70" : ""}
       `}
     >
-      {/* ── Image (square, never shrinks) ── */}
+      {/* ── Image ── */}
       <Link
         href={`/${store_slug}/product/${product.slug}`}
         className="block relative overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0"
@@ -168,22 +171,22 @@ export default function ProductCard({
           <div className="flex flex-col items-end gap-1">
             {product.featured && productInStock && (
               <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-400 text-amber-950 px-2 py-1 rounded-full shadow-sm whitespace-nowrap">
-                Featured
+                {t.card.featured}
               </span>
             )}
             {!productInStock && (
               <span className="text-[9px] font-bold uppercase tracking-wider bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-2 py-1 rounded-full whitespace-nowrap">
-                Sold Out
+                {t.card.soldOut}
               </span>
             )}
             {productInStock && calculatedDiscount > 0 && (
               <span className="text-[9px] font-bold bg-rose-500 text-white px-2 py-1 rounded-full shadow-sm whitespace-nowrap">
-                -{calculatedDiscount}%
+                -{n(calculatedDiscount)}%
               </span>
             )}
             {productInStock && !hasVariants && isMaxInCart && (
               <span className="text-[9px] font-bold bg-blue-500 text-white px-2 py-1 rounded-full whitespace-nowrap">
-                Max
+                {t.card.max}
               </span>
             )}
           </div>
@@ -192,14 +195,9 @@ export default function ProductCard({
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-black/20 transition-colors duration-300" />
       </Link>
 
-      {/* ── Info Block ──
-          3 rows with fixed heights so ALL cards are identical:
-          Row 1: name      — min-h-[2.5rem]  (2 lines reserved)
-          Row 2: price     — h-7             (single line)
-          Row 3: buttons   — h-9             (action row)
-      ── */}
+      {/* ── Info Block ── */}
       <div className="flex flex-col p-3 sm:p-4 gap-2 flex-1">
-        {/* Row 1 — Name: fixed 2-line height, hard clamp, no overflow */}
+        {/* Row 1 — Name */}
         <Link
           href={`/${store_slug}/product/${product.slug}`}
           className="block h-10 sm:h-11 overflow-hidden"
@@ -215,9 +213,8 @@ export default function ProductCard({
           </h3>
         </Link>
 
-        {/* Row 2 — Price block: always exactly h-[3.25rem] */}
+        {/* Row 2 — Price block */}
         <div className="h-13 sm:h-14 flex flex-col justify-center gap-1">
-          {/* Line A: price + strikethrough */}
           <div className="flex items-baseline gap-1.5">
             <span
               className={`text-base sm:text-xl font-bold tracking-tight leading-none ${
@@ -227,16 +224,15 @@ export default function ProductCard({
               }`}
             >
               {displayCurrencyIconSafe}
-              {displayPrice.toFixed(2)}
+              {n(displayPrice.toFixed(2))}
             </span>
             {calculatedDiscount > 0 && productInStock && (
               <span className="text-[11px] sm:text-sm text-gray-400 dark:text-gray-500 line-through font-normal leading-none">
                 {displayCurrencyIconSafe}
-                {product.base_price.toFixed(2)}
+                {n(product.base_price.toFixed(2))}
               </span>
             )}
           </div>
-          {/* Line B: always rendered — variant chip or empty spacer */}
           <div className="h-4.5 flex items-center">
             {hasVariants ? (
               <span className="inline-flex items-center gap-1 text-[9px] font-semibold tracking-widest uppercase text-gray-400 dark:text-gray-500 whitespace-nowrap">
@@ -245,7 +241,7 @@ export default function ProductCard({
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-500 dark:bg-gray-400" />
                 </span>
-                Select variant
+                {t.card.selectVariant}
               </span>
             ) : (
               <span className="opacity-0 text-[9px]">-</span>
@@ -253,7 +249,7 @@ export default function ProductCard({
           </div>
         </div>
 
-        {/* Row 3 — Buttons (always h-9, stuck to bottom) */}
+        {/* Row 3 — Buttons */}
         <div className="flex gap-1.5 mt-auto">
           {hasVariants ? (
             <Link
@@ -262,7 +258,7 @@ export default function ProductCard({
             >
               <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold tracking-wide hover:bg-gray-700 dark:hover:bg-gray-300 active:scale-[0.98] transition-all duration-200">
                 <Eye className="w-3.5 h-3.5" />
-                View Options
+                {t.card.viewOptions}
               </button>
             </Link>
           ) : (
@@ -289,8 +285,8 @@ export default function ProductCard({
                     className={`flex items-center gap-1.5 transition-all duration-200 ${adding || showSuccess ? "opacity-0 scale-75" : "opacity-100 scale-100"} absolute`}
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Add to Cart</span>
-                    <span className="sm:hidden">Add</span>
+                    <span className="hidden sm:inline">{t.card.addToCart}</span>
+                    <span className="sm:hidden">{t.card.add}</span>
                   </span>
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${adding && !showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}
@@ -300,7 +296,7 @@ export default function ProductCard({
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}
                   >
-                    <Check className="w-3.5 h-3.5" /> Added!
+                    <Check className="w-3.5 h-3.5" /> {t.card.added}
                   </span>
                 </button>
               )}
@@ -322,7 +318,7 @@ export default function ProductCard({
                 >
                   <Eye className="w-3.5 h-3.5 shrink-0" />
                   {(!productInStock || isMaxInCart) && (
-                    <span>View Details</span>
+                    <span>{t.card.viewDetails}</span>
                   )}
                 </button>
               </Link>

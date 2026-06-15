@@ -3,8 +3,11 @@
 
 import Link from "next/link";
 import React from "react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function TrialEnded() {
+  const t = useTranslation();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-green-100 px-4">
       <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
@@ -27,22 +30,21 @@ export default function TrialEnded() {
 
         {/* Title */}
         <h1 className="text-xl font-semibold text-primary">
-          Your Free Trial Has Ended
+          {t.admin.trialEndedTitle}
         </h1>
 
         {/* Description */}
         <p className="mt-3 text-sm text-primary leading-relaxed">
-          Thanks for trying our platform! Your trial period has now ended.
+          {t.admin.trialEndedP1}
         </p>
 
         <p className="mt-2 text-sm text-primary leading-relaxed">
-          To continue managing your store, accessing orders, customers, and
-          analytics, please choose a plan and complete your payment.
+          {t.admin.trialEndedP2}
         </p>
 
         {/* Highlight box */}
         <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
-          Your store and data are safe — nothing has been deleted.
+          {t.admin.trialDataSafe}
         </div>
 
         {/* Actions */}
@@ -51,13 +53,13 @@ export default function TrialEnded() {
             href="/contact-us"
             className="inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-primary hover:bg-green-800 transition"
           >
-            Upgrade & Continue
+            {t.admin.upgradeAndContinue}
           </Link>
         </div>
 
         {/* Footer note */}
         <p className="mt-6 text-xs text-gray-500">
-          Need help choosing a plan? Our support team is happy to help.
+          {t.admin.trialHelpText}
         </p>
       </div>
     </div>

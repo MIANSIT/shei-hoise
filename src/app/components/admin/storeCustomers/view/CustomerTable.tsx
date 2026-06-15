@@ -1,5 +1,4 @@
 // app/components/admin/customers/view/CustomerTable.tsx
-import React from "react";
 import {
   Table,
   Card,
@@ -20,18 +19,20 @@ import {
   ExclamationCircleOutlined,
   ShoppingOutlined,
 } from "@ant-design/icons";
-import { DetailedCustomer } from "@/lib/types/users"; // Change to DetailedCustomer
+import { DetailedCustomer } from "@/lib/types/users";
 import { deleteUserWithCheck } from "@/lib/queries/user/deleteUserWithCheck";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 const { Text, Title } = Typography;
 
 interface CustomerTableProps {
-  customers: DetailedCustomer[]; // Change to DetailedCustomer[]
-  onEdit: (customer: DetailedCustomer) => void; // Update parameter type
-  onDelete: (customer: DetailedCustomer) => void; // Update parameter type
-  onViewDetails: (customer: DetailedCustomer) => void; // Update parameter type
+  customers: DetailedCustomer[];
+  onEdit: (customer: DetailedCustomer) => void;
+  onDelete: (customer: DetailedCustomer) => void;
+  onViewDetails: (customer: DetailedCustomer) => void;
   isLoading?: boolean;
-  storeId: string | null; // ✅ ADD THIS
+  storeId: string | null;
 }
 
 export function CustomerTable({
@@ -43,20 +44,22 @@ export function CustomerTable({
   storeId,
 }: CustomerTableProps) {
   const { notification, modal } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
 
   const handleDelete = (customer: DetailedCustomer) => {
     modal.confirm({
-      title: "Delete Customer",
+      title: t.admin.customerTableDeleteTitle,
       icon: <ExclamationCircleOutlined />,
       content: `Are you sure you want to delete ${customer.name}? This action cannot be undone.`,
-      okText: "Yes, Delete",
+      okText: t.admin.customerTableDeleteOk,
       okType: "danger",
-      cancelText: "Cancel",
+      cancelText: t.admin.customerTableDeleteCancel,
       async onOk() {
         if (!storeId) {
           notification.error({
-            message: "Delete Failed",
-            description: "Store ID is missing.",
+            message: t.admin.customerTableDeleteFailed,
+            description: t.admin.customerTableStoreIdMissing,
           });
           return;
         }
@@ -65,19 +68,12 @@ export function CustomerTable({
 
         if (!result.success) {
           notification.error({
-            message: "Delete Failed",
+            message: t.admin.customerTableDeleteFailed,
             description: result.message,
           });
           return;
         }
 
-        // ✅ Only here
-        // notification.success({
-        //   message: "Customer Deleted",
-        //   description: result.message,
-        // });
-
-        // Update table (no notification)
         onDelete(customer);
       },
     });
@@ -85,13 +81,10 @@ export function CustomerTable({
 
   const columns = [
     {
-      title: "Customer",
+      title: t.admin.customerTableColCustomer,
       dataIndex: "name",
       key: "name",
-      render: (
-        name: string,
-        record: DetailedCustomer // Update type
-      ) => (
+      render: (name: string, record: DetailedCustomer) => (
         <Space>
           <div
             style={{
@@ -114,7 +107,7 @@ export function CustomerTable({
               {typeof record.order_count === "number" &&
                 record.order_count > 0 && (
                   <Tag color="green" className="text-xs">
-                    {record.order_count} orders
+                    {n(record.order_count)} {t.admin.customerTableOrdersTag}
                   </Tag>
                 )}
             </Space>
@@ -123,13 +116,10 @@ export function CustomerTable({
       ),
     },
     {
-      title: "Contact",
+      title: t.admin.customerTableColContact,
       dataIndex: "email",
       key: "email",
-      render: (
-        email: string,
-        record: DetailedCustomer // Update type
-      ) => (
+      render: (email: string, record: DetailedCustomer) => (
         <Space orientation="vertical" size={0}>
           <Space>
             <MailOutlined style={{ color: "#1890ff" }} />
@@ -145,7 +135,7 @@ export function CustomerTable({
       ),
     },
     {
-      title: "Status",
+      title: t.admin.customerTableColStatus,
       dataIndex: "status",
       key: "status",
       render: (status: string = "active") => (
@@ -155,11 +145,9 @@ export function CustomerTable({
       ),
     },
     {
-      title: "Actions",
+      title: t.admin.customerTableColActions,
       key: "actions",
-      render: (
-        record: DetailedCustomer // Update type
-      ) => (
+      render: (record: DetailedCustomer) => (
         <Space>
           <Button
             type="primary"
@@ -167,14 +155,14 @@ export function CustomerTable({
             size="small"
             onClick={() => onViewDetails(record)}
           >
-            View
+            {t.admin.customerTableViewBtn}
           </Button>
           <Button
             icon={<EditOutlined />}
             size="small"
             onClick={() => onEdit(record)}
           >
-            Edit
+            {t.admin.customerTableEditBtn}
           </Button>
           <Button
             danger
@@ -182,7 +170,7 @@ export function CustomerTable({
             size="small"
             onClick={() => handleDelete(record)}
           >
-            Delete
+            {t.admin.customerTableDeleteBtn}
           </Button>
         </Space>
       ),
@@ -194,7 +182,7 @@ export function CustomerTable({
       <div style={{ textAlign: "center", padding: "50px" }}>
         <Spin size="large" />
         <div style={{ marginTop: 16 }}>
-          <Text type="secondary">Loading customers...</Text>
+          <Text type="secondary">{t.admin.customerTableLoading}</Text>
         </div>
       </div>
     );
@@ -207,10 +195,10 @@ export function CustomerTable({
         description={
           <div>
             <Title level={4} style={{ marginBottom: 8 }}>
-              No Customers Found
+              {t.admin.customerTableEmpty}
             </Title>
             <Text type="secondary">
-              Get started by adding your first customer
+              {t.admin.customerTableEmptyHint}
             </Text>
           </div>
         }
@@ -265,13 +253,13 @@ export function CustomerTable({
                           color="blue"
                           className="text-xs"
                         >
-                          Orders
+                          {t.admin.customerTableOrdersSource}
                         </Tag>
                       )}
                       {typeof customer.order_count === "number" &&
                         customer.order_count > 0 && (
                           <Tag color="green" className="text-xs">
-                            {customer.order_count} orders
+                            {n(customer.order_count)} {t.admin.customerTableOrdersTag}
                           </Tag>
                         )}
                     </div>
@@ -304,20 +292,20 @@ export function CustomerTable({
                   size="middle"
                   onClick={() => onViewDetails(customer)}
                   className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium"
-                ></Button>
+                />
                 <Button
                   icon={<EditOutlined />}
                   size="middle"
                   onClick={() => onEdit(customer)}
                   className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
-                ></Button>
+                />
                 <Button
                   danger
                   icon={<DeleteOutlined />}
                   size="middle"
                   onClick={() => handleDelete(customer)}
                   className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium"
-                ></Button>
+                />
               </div>
             </Card>
           ))}

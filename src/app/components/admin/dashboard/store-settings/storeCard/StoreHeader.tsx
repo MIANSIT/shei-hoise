@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface Props {
   store: StoreData;
@@ -49,6 +50,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
   const [loading, setLoading] = useState(false);
 
   const notify = useSheiNotification();
+  const t = useTranslation();
 
   const getStoreAge = (createdAt: string | Date) => {
     const created = new Date(createdAt);
@@ -57,8 +59,8 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffMonths = Math.floor(diffDays / 30);
     if (diffMonths > 0)
-      return `${diffMonths} month${diffMonths > 1 ? "s" : ""}`;
-    return `${diffDays} day${diffDays > 1 ? "s" : ""}`;
+      return `${diffMonths} ${diffMonths > 1 ? t.admin.storeMgmtMonths : t.admin.storeMgmtMonth}`;
+    return `${diffDays} ${diffDays > 1 ? t.admin.storeMgmtDays2 : t.admin.storeMgmtDay2}`;
   };
 
   const statusConfig: Record<
@@ -68,22 +70,22 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
     [StoreStatus.PENDING]: {
       pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20",
       dot: "bg-amber-500",
-      label: "Pending",
+      label: t.admin.storeMgmtPending,
     },
     [StoreStatus.APPROVED]: {
       pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20",
       dot: "bg-emerald-500",
-      label: "Verified",
+      label: t.admin.storeMgmtVerified,
     },
     [StoreStatus.REJECTED]: {
       pill: "bg-red-500/10 text-red-600 dark:text-red-400 ring-1 ring-red-500/20",
       dot: "bg-red-500",
-      label: "Rejected",
+      label: t.admin.storeMgmtRejected,
     },
     [StoreStatus.TRIAL]: {
       pill: "bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-1 ring-violet-500/20",
       dot: "bg-violet-500",
-      label: "Trial",
+      label: t.admin.storeMgmtTrial,
     },
   };
 
@@ -132,9 +134,9 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
       setLogoRemoved(false);
       setBannerRemoved(false);
       setIsModalOpen(false);
-      notify.success("Store updated successfully!");
+      notify.success(t.admin.storeMgmtUpdateSuccess);
     } catch {
-      message.error("Failed to update store");
+      message.error(t.admin.storeMgmtUpdateError);
     } finally {
       setLoading(false);
     }
@@ -173,7 +175,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
             className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-background/80 backdrop-blur-md border border-border/60 text-xs font-medium text-foreground hover:bg-background transition-all duration-200 shadow-sm"
           >
             <Camera className="h-3 w-3" />
-            <span className="hidden sm:inline">Edit banner</span>
+            <span className="hidden sm:inline">{t.admin.storeMgmtEditBanner}</span>
           </button>
         </div>
 
@@ -226,17 +228,17 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
                   </span>
                   <span className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
-                    {getStoreAge(store.created_at!)} old
+                    {getStoreAge(store.created_at!)} {t.admin.storeMgmtOld}
                   </span>
                   <span className="flex items-center gap-1 text-sm">
                     <Activity className="h-3.5 w-3.5 text-muted-foreground" />
                     {store.is_active ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                        Active
+                        {t.admin.storeMgmtActive}
                       </span>
                     ) : (
                       <span className="text-muted-foreground font-medium">
-                        Inactive
+                        {t.admin.storeMgmtInactive}
                       </span>
                     )}
                   </span>
@@ -258,8 +260,8 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
                   className="w-full sm:w-auto h-9 px-4 text-sm font-medium gap-2"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">View Store</span>
-                  <span className="sm:hidden">View</span>
+                  <span className="hidden sm:inline">{t.admin.storeMgmtViewStore}</span>
+                  <span className="sm:hidden">{t.admin.storeMgmtView}</span>
                 </Button>
               </Link>
               <Button
@@ -269,8 +271,8 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
                 onClick={handleOpenModal}
               >
                 <Pencil className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Edit Store</span>
-                <span className="sm:hidden">Edit</span>
+                <span className="hidden sm:inline">{t.admin.storeMgmtEditStore}</span>
+                <span className="sm:hidden">{t.admin.storeMgmtEdit}</span>
               </Button>
             </div>
           </div>
@@ -293,7 +295,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
               <Pencil className="h-3.5 w-3.5 text-primary" />
             </div>
             <span className="text-base font-semibold text-foreground">
-              Edit Store Profile
+              {t.admin.storeMgmtEditProfile}
             </span>
           </div>
         }
@@ -307,7 +309,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
               className="w-full sm:w-auto h-9"
               disabled={loading}
             >
-              Cancel
+              {t.admin.storeMgmtCancel}
             </Button>
             <Button
               onClick={handleModalOk}
@@ -315,7 +317,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
               className="w-full sm:w-auto h-9 gap-2"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? t.admin.storeMgmtSaving : t.admin.storeMgmtSaveChanges}
             </Button>
           </div>
         }
@@ -326,7 +328,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">
-                Store Name
+                {t.admin.storeMgmtStoreName}
               </label>
               <Input
                 value={storeName}
@@ -337,7 +339,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
             </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">
-                Store Slug
+                {t.admin.storeMgmtStoreSlug}
               </label>
               <Input
                 value={storeSlug}
@@ -355,7 +357,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
 
           <div className="pt-1 border-t border-border">
             <p className="text-sm font-medium text-foreground mb-3">
-              Store Media
+              {t.admin.storeMgmtStoreMedia}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ImageUploader

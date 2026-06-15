@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import StatCard from "./StatCard";
 import InventoryAlertCard from "./InventoryAlertCard";
 import OrderAmountCard from "./OrderAmountCard";
@@ -74,7 +75,9 @@ interface MainDashboardProps {
 const PeriodSelector: React.FC<{
   value: TimePeriod;
   onChange: (v: TimePeriod) => void;
-}> = ({ value, onChange }) => (
+}> = ({ value, onChange }) => {
+  const t = useTranslation();
+  return (
   <div
     className="inline-flex items-center rounded-xl p-1 gap-0.5
     bg-gray-100 dark:bg-gray-800
@@ -82,9 +85,9 @@ const PeriodSelector: React.FC<{
   >
     {(
       [
-        ["weekly", "7D"],
-        ["monthly", "30D"],
-        ["yearly", "1Y"],
+        ["weekly", t.admin.period7D],
+        ["monthly", t.admin.period30D],
+        ["yearly", t.admin.period1Y],
       ] as [TimePeriod, string][]
     ).map(([key, label]) => (
       <button
@@ -101,7 +104,8 @@ const PeriodSelector: React.FC<{
       </button>
     ))}
   </div>
-);
+  );
+};
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 const SectionHeader: React.FC<{
@@ -152,6 +156,7 @@ const PLHeroBar: React.FC<{
   netChangeType: "positive" | "negative" | "neutral";
   periodLabel: string;
 }> = ({ revenue, expenses, netProfit, netChangeType, periodLabel }) => {
+  const t = useTranslation();
   const netStyle =
     netChangeType === "positive"
       ? {
@@ -219,7 +224,7 @@ const PLHeroBar: React.FC<{
           bg="bg-emerald-50 dark:bg-emerald-500/10"
           textCls="text-emerald-600 dark:text-emerald-300"
           glyph="▲"
-          label="Revenue"
+          label={t.admin.revenue}
           val={revenue}
           borderRight
         />
@@ -227,7 +232,7 @@ const PLHeroBar: React.FC<{
           bg="bg-rose-50 dark:bg-rose-500/10"
           textCls="text-rose-600 dark:text-rose-300"
           glyph="▼"
-          label="Expenses"
+          label={t.admin.expenses}
           val={expenses}
           borderRight
         />
@@ -235,7 +240,7 @@ const PLHeroBar: React.FC<{
           bg={netStyle.bg}
           textCls={netStyle.value}
           glyph={netStyle.glyph}
-          label="Net Profit"
+          label={t.admin.netProfit}
           val={netProfit}
         />
       </div>
@@ -277,7 +282,16 @@ const OrderStatusRow: React.FC<{ title: string; value: string }> = ({
   title,
   value,
 }) => {
-  const cfg = statusConfig[title] ?? {
+  const t = useTranslation();
+  const translatedToKey: Record<string, string> = {
+    [t.admin.pending]: "Pending",
+    [t.admin.confirmed]: "Confirmed",
+    [t.admin.shipped]: "Shipped",
+    [t.admin.delivered]: "Delivered",
+    [t.admin.cancelled]: "Cancelled",
+  };
+  const configKey = translatedToKey[title] ?? title;
+  const cfg = statusConfig[configKey] ?? {
     text: "text-gray-600 dark:text-gray-300",
     bg: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
     dot: "bg-gray-400",
@@ -345,12 +359,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   timePeriod,
   onTimePeriodChange,
 }) => {
+  const t = useTranslation();
   const periodLabel =
     timePeriod === "weekly"
-      ? "Last 7 Days"
+      ? t.admin.periodLast7
       : timePeriod === "monthly"
-        ? "Last 30 Days"
-        : "Last 365 Days";
+        ? t.admin.periodLast30
+        : t.admin.periodLast365;
 
   const revenueValue = stats[0]?.value ?? "—";
   const expensesValue = expenseStats[0]?.value ?? "—";
@@ -394,7 +409,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
                 className="text-xs sm:text-sm font-bold leading-none truncate
                 text-gray-900 dark:text-white"
               >
-                Business Overview
+                {t.admin.businessOverview}
               </p>
               <p
                 className="text-[9px] sm:text-[10px] mt-0.5 hidden sm:block
@@ -423,8 +438,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
                 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em]
                 text-amber-600 dark:text-amber-400"
               >
-                {alerts.length} Alert{alerts.length > 1 ? "s" : ""} · Action
-                Required
+                {alerts.length} {alerts.length > 1 ? t.admin.alertPlural : t.admin.alertSingle} · {t.admin.actionRequired}
               </span>
             </div>
             <AlertsSection alerts={alerts} />
@@ -434,8 +448,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         {/* P&L HERO */}
         <div>
           <SectionHeader
-            title="Profit & Loss Snapshot"
-            sub={`${periodLabel} · Revenue vs Expenses vs Net Profit`}
+            title={t.admin.profitLossSnapshot}
+            sub={`${periodLabel} · ${t.admin.revenueVsExpenses}`}
             accentClass="bg-emerald-500"
           />
           <PLHeroBar
@@ -451,7 +465,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
                 className="text-[9px] sm:text-[10px] uppercase tracking-wider self-center
                 text-gray-400 dark:text-gray-500"
               >
-                Expense split:
+                {t.admin.expenseSplit}
               </span>
               {expenseCategoryBreakdown.map((cat, i) => {
                 const c = chipStyles[i % chipStyles.length];
@@ -472,8 +486,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         {/* REVENUE KPIs — 2 col mobile, 4 col xl */}
         <div>
           <SectionHeader
-            title="Revenue & Orders"
-            sub={`${periodLabel} performance`}
+            title={t.admin.revenueOrders}
+            sub={`${periodLabel} ${t.admin.periodPerformance}`}
             accentClass="bg-indigo-500"
           />
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">
@@ -486,8 +500,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         {/* FINANCIAL KPIs — 2 col mobile, 4 col xl */}
         <div>
           <SectionHeader
-            title="Financial Health"
-            sub="Expenses · Net Profit · Burn Rate · Top Category"
+            title={t.admin.financialHealth}
+            sub={t.admin.expenseNetBurnTop}
             accentClass="bg-rose-500"
           />
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">
@@ -502,8 +516,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         {/* SALES TREND */}
         <div>
           <SectionHeader
-            title="Sales Trend"
-            sub="Daily paid revenue · Last 30 days"
+            title={t.admin.salesTrendTitle}
+            sub={t.admin.dailyPaidRevenue}
             accentClass="bg-sky-500"
           />
           <Card className="p-3 sm:p-5">
@@ -517,8 +531,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <SectionHeader
-              title="Order Pipeline"
-              sub="All-time status breakdown"
+              title={t.admin.orderPipeline}
+              sub={t.admin.allTimeStatus}
               accentClass="bg-amber-500"
             />
             <Card className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
@@ -529,8 +543,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
           <div>
             <SectionHeader
-              title="Payment Flow"
-              sub="All-time financial summary"
+              title={t.admin.paymentFlow}
+              sub={t.admin.allTimeFinancial}
               accentClass="bg-emerald-500"
             />
             <Card className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
@@ -552,8 +566,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <SectionHeader
-              title="Top Products"
-              sub="By units sold · Paid orders only"
+              title={t.admin.topProductsTitle}
+              sub={t.admin.byUnitsSold}
               accentClass="bg-violet-500"
             />
             <Card className="p-3 sm:p-5">
@@ -562,8 +576,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
           <div>
             <SectionHeader
-              title="Customer Insights"
-              sub="New · Returning · Top spender"
+              title={t.admin.customerInsights}
+              sub={t.admin.newReturningTop}
               accentClass="bg-cyan-500"
             />
             <Card className="p-3 sm:p-5">
@@ -577,8 +591,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
         {/* INVENTORY — 2 col mobile, 4 col xl */}
         <div>
           <SectionHeader
-            title="Inventory Health"
-            sub="Stock levels across all products"
+            title={t.admin.inventoryHealth}
+            sub={t.admin.stockLevels}
             accentClass="bg-orange-500"
           />
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3">

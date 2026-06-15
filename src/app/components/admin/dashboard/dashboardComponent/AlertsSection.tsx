@@ -3,6 +3,8 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { StockFilter } from "@/lib/types/enums";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface AlertsSectionProps {
   alerts: {
@@ -45,6 +47,23 @@ const alertMeta = {
 
 const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   const router = useRouter();
+  const t = useTranslation();
+  const n = useLocalNum();
+
+  const translateMessage = (message: string): string => {
+    const map: Record<string, string> = {
+      "Products completely out of stock": t.admin.alertOutOfStock,
+      "Products with some variants out of stock": t.admin.alertPartialOOS,
+      "Low stock products need attention": t.admin.alertLowStock,
+      "Pending orders require action": t.admin.alertPendingOrders,
+      "Pending payments awaiting confirmation": t.admin.alertPendingPayments,
+      "Net profit is negative this period": t.admin.alertNegativeProfit,
+    };
+    if (map[message]) return map[message];
+    const expMatch = message.match(/^Expenses are (\d+)% of revenue/);
+    if (expMatch) return `${t.admin.alertExpensePrefix} ${n(expMatch[1])}${t.admin.alertExpenseSuffix}`;
+    return message;
+  };
 
   const handleAction = (alert: { type: string; message: string }) => {
     if (alert.type === "stock") {
@@ -85,10 +104,10 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
               <span className="text-base shrink-0">{m.icon}</span>
               <div className="min-w-0">
                 <div className={`text-sm font-bold truncate ${m.text}`}>
-                  {alert.message}
+                  {translateMessage(alert.message)}
                 </div>
                 <div className={`text-[10px] mt-0.5 ${m.sub}`}>
-                  {alert.count} item{alert.count !== 1 ? "s" : ""} affected
+                  {n(alert.count)} {alert.count !== 1 ? t.admin.alertItemsAffected : t.admin.alertItemAffected}
                 </div>
               </div>
             </div>
@@ -96,7 +115,7 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
               onClick={() => handleAction(alert)}
               className={`shrink-0 text-[11px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${m.btn}`}
             >
-              Fix →
+              {t.admin.alertFix}
             </button>
           </div>
         );

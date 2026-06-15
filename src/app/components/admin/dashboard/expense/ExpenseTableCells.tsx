@@ -10,6 +10,7 @@ import {
   PAYMENT_METHOD_CONFIG,
   isPaymentMethodKey,
 } from "@/lib/types/expense/expense-constants";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 export function ExpenseCell({ record }: { record: Expense }) {
   const color = record.category ? getCategoryColor(record.category) : "#9ca3af";
@@ -85,12 +86,11 @@ export function AmountCell({
   amount: number;
   currencyIcon: React.ReactNode;
 }) {
+  const n = useLocalNum();
   return (
     <span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums flex items-center gap-0.5">
       <span>{currencyIcon}</span>
-      <span>
-        {Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-      </span>
+      <span>{n(Number(amount).toFixed(2))}</span>
     </span>
   );
 }

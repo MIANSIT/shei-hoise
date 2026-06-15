@@ -24,6 +24,7 @@ import {
 import { deleteExpense } from "@/lib/queries/expense/deleteExpense";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import type {
   Expense,
   ExpenseCategory,
@@ -45,6 +46,7 @@ const PAGE_SIZE = 10;
 export default function ExpensesPage() {
   const { storeId, storeSlug, loading: userLoading } = useCurrentUser();
   const { success, error } = useSheiNotification();
+  const t = useTranslation();
   const router = useRouter();
 
   // ── Data ──
@@ -102,7 +104,7 @@ export default function ExpensesPage() {
       setTotal(result.total);
     } catch (err) {
       console.error("[ExpensesPage] fetchExpenses failed:", err);
-      error("Failed to load expenses. Please refresh the page.");
+      error(t.admin.expenseLoadFailed);
     } finally {
       setLoading(false);
     }
@@ -216,11 +218,11 @@ export default function ExpensesPage() {
           };
           const created = await createExpense(input);
           if (created) {
-            success("Expense added successfully!");
+            success(t.admin.expenseAddedOk);
             closeModal();
             fetchExpenses();
           } else {
-            error("Failed to add expense. Please try again.");
+            error(t.admin.expenseAddFailed);
           }
         } else if (modalMode === "edit" && editingExpense) {
           const input: UpdateExpenseInput = {
@@ -237,16 +239,16 @@ export default function ExpensesPage() {
           };
           const updated = await updateExpense(input);
           if (updated) {
-            success("Expense updated successfully!");
+            success(t.admin.expenseUpdatedOk);
             closeModal();
             fetchExpenses();
           } else {
-            error("Failed to update expense. Please try again.");
+            error(t.admin.expenseUpdateFailed);
           }
         }
       } catch (err) {
         console.error("[ExpensesPage] handleSubmit failed:", err);
-        error("Something went wrong. Please try again.");
+        error(t.admin.expenseWentWrong);
       } finally {
         setSubmitting(false);
       }
@@ -268,14 +270,14 @@ export default function ExpensesPage() {
       try {
         const deleted = await deleteExpense(id);
         if (deleted) {
-          success("Expense deleted.");
+          success(t.admin.expenseDeletedOk);
           fetchExpenses();
         } else {
-          error("Failed to delete expense.");
+          error(t.admin.expenseDeleteFailed2);
         }
       } catch (err) {
         console.error("[ExpensesPage] handleDelete failed:", err);
-        error("Something went wrong. Please try again.");
+        error(t.admin.expenseWentWrong);
       } finally {
         setDeletingId(null);
       }
@@ -294,10 +296,10 @@ export default function ExpensesPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
-                Expenses
+                {t.admin.expenseTitle}
               </h1>
               <p className="text-xs text-gray-400 dark:text-gray-500 m-0 hidden sm:block">
-                Track and manage store expenses
+                {t.admin.expenseSubtitle}
               </p>
             </div>
           </div>
@@ -311,8 +313,8 @@ export default function ExpensesPage() {
               onClick={() => router.push("/dashboard/expense/category")}
               className="font-semibold rounded-xl h-9"
             >
-              <span className="hidden sm:inline">Add Category</span>
-              <span className="sm:hidden">Category</span>
+              <span className="hidden sm:inline">{t.admin.expenseAddCategory}</span>
+              <span className="sm:hidden">{t.admin.expenseAddCategoryShort}</span>
             </Button>
             <Button
               type="primary"
@@ -325,8 +327,8 @@ export default function ExpensesPage() {
                 boxShadow: "0 4px 14px rgba(102,126,234,0.4)",
               }}
             >
-              <span className="hidden sm:inline">Add Expense</span>
-              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">{t.admin.expenseAddExpense}</span>
+              <span className="sm:hidden">{t.admin.expenseAddShort}</span>
             </Button>
           </div>
         </div>

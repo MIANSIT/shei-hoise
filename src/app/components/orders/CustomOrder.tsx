@@ -19,9 +19,11 @@ import {
   compressToEncodedURIComponent,
   // decompressFromEncodedURIComponent,
 } from "lz-string";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function CustomOrder() {
   const params = useParams();
+  const t = useTranslation();
   const storeSlug = Array.isArray(params.store_slug)
     ? params.store_slug[0]
     : params.store_slug;
@@ -63,7 +65,7 @@ export default function CustomOrder() {
   // Fetch products using storeSlug
   const fetchProducts = useCallback(async () => {
     if (!storeSlug) {
-      showToast("Store not found", "Store slug missing in URL.", "destructive");
+      showToast(t.admin.genOrderStoreNotFound, t.admin.genOrderStoreMissing, "destructive");
       return;
     }
 
@@ -71,11 +73,7 @@ export default function CustomOrder() {
     try {
       const storeId = await getStoreIdBySlug(storeSlug);
       if (!storeId) {
-        showToast(
-          "Invalid Store",
-          "Could not find a store with this slug.",
-          "destructive"
-        );
+        showToast(t.admin.genOrderInvalidStore, t.admin.genOrderStoreNotExist, "destructive");
         return;
       }
 
@@ -83,11 +81,7 @@ export default function CustomOrder() {
       setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
-      showToast(
-        "Error Loading Products",
-        "Failed to load products. Please try again.",
-        "destructive"
-      );
+      showToast(t.admin.genOrderErrLoading, t.admin.genOrderErrLoadingDesc, "destructive");
     } finally {
       setLoading(false);
     }
@@ -103,10 +97,7 @@ export default function CustomOrder() {
   const copyLinkToClipboard = (link: string) => {
     navigator.clipboard.writeText(window.location.origin + link);
     setCopied(true);
-    showToast(
-      "Link Copied",
-      "The order link has been copied to your clipboard."
-    );
+    showToast(t.admin.genOrderLinkCopiedTitle, t.admin.genOrderLinkCopiedDesc);
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -136,9 +127,9 @@ export default function CustomOrder() {
       setGeneratedLink(data.url);
       copyLinkToClipboard(data.url);
 
-      showToast("Order Link Generated", "Link copied successfully!");
+      showToast(t.admin.genOrderGeneratedTitle, t.admin.genOrderGeneratedDesc);
     } catch (err) {
-      showToast("Error", "Failed to generate order link", "destructive");
+      showToast(t.admin.genOrderErrTitle, t.admin.genOrderErrDesc, "destructive");
     }
   };
 
@@ -172,10 +163,10 @@ export default function CustomOrder() {
         <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-2'>
           <div>
             <h3 className='text-lg font-semibold text-foreground'>
-              Quick Order Link
+              {t.admin.genOrderTitle}
             </h3>
             <p className='text-sm text-muted-foreground'>
-              Generate a unique order link for your customers instantly.
+              {t.admin.genOrderDesc}
             </p>
           </div>
         </div>
@@ -205,7 +196,7 @@ export default function CustomOrder() {
               className='w-full sm:w-auto'
             >
               <Link className='w-4 h-4 mr-2' />
-              Generate & Copy Order Link
+              {t.admin.genOrderGenBtn}
             </Button>
           ) : (
             <>
@@ -221,7 +212,7 @@ export default function CustomOrder() {
                 ) : (
                   <Copy className='w-4 h-4 mr-2' />
                 )}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t.admin.genOrderCopied : t.admin.genOrderCopy}
               </Button>
             </>
           )}

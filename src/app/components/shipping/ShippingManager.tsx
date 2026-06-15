@@ -9,6 +9,8 @@ import { ShippingLoadingState } from "@/app/components/shipping/ShippingLoadingS
 import { ShippingErrorState } from "@/app/components/shipping/ShippingErrorState";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { Package, Tag, Eye, Banknote } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface ShippingManagerProps {
   storeSlug: string;
@@ -26,6 +28,8 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   } = useAdminShipping(storeSlug);
 
   const { warning, info } = useSheiNotification();
+  const t = useTranslation();
+  const n = useLocalNum();
   const [isEditing, setIsEditing] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [hasValidated, setHasValidated] = useState(false);
@@ -45,7 +49,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   useEffect(() => {
     if (isEditing) {
       clearError();
-      info("Editing mode active. Make your changes and save when ready.");
+      info(t.admin.shippingEditingMode);
       setHasValidated(false);
     }
   }, [isEditing, clearError, info]);
@@ -61,14 +65,14 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   const isValidForm = (showWarning = true) => {
     if (shippingOptions.length === 0) {
       if (showWarning)
-        warning("Add at least one shipping option before saving.");
+        warning(t.admin.shippingMinOne);
       return false;
     }
     const valid = shippingOptions.every(
       (o) => o.name.trim() !== "" && o.price >= 0,
     );
     if (!valid && showWarning)
-      warning("Please fill all required fields for all options.");
+      warning(t.admin.shippingFillRequired);
     return valid;
   };
 
@@ -80,7 +84,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
       ...shippingOptions,
       { name: "", price: 0, customer_view: true },
     ]);
-    info("New shipping option added.");
+    info(t.admin.shippingOptionAdded);
   };
 
   const updateShippingOption = (
@@ -94,15 +98,15 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
   };
 
   const removeShippingOption = (index: number) => {
-    const name = shippingOptions[index].name || `Option ${index + 1}`;
+    const name = shippingOptions[index].name || `Option ${n(index + 1)}`;
     setShippingOptions(shippingOptions.filter((_, i) => i !== index));
-    info(`"${name}" removed.`);
+    info(`"${name}" ${t.admin.shippingOptionRemovedSuffix}`);
   };
 
   const handleSave = async () => {
     setHasValidated(true);
     if (!hasChanges()) {
-      warning("No changes to save.");
+      warning(t.admin.shippingNoChanges);
       return;
     }
     if (!isValidForm(true)) return;
@@ -121,7 +125,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
     setIsEditing(false);
     clearError();
     setHasValidated(false);
-    info("Changes discarded.");
+    info(t.admin.shippingDiscarded);
   };
 
   const visibleCount = shippingOptions.filter(
@@ -135,31 +139,31 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
 
   const stats = [
     {
-      label: "Total Methods",
-      value: shippingOptions.length,
+      label: t.admin.shippingTotalMethods,
+      value: n(shippingOptions.length),
       icon: Package,
       iconBg: "bg-blue-50 dark:bg-blue-900/20",
       iconColor: "text-blue-500 dark:text-blue-400",
       sub: null,
     },
     {
-      label: "Free Shipping",
-      value: freeCount,
+      label: t.admin.shippingFreeCount,
+      value: n(freeCount),
       icon: Tag,
       iconBg: "bg-emerald-50 dark:bg-emerald-900/20",
       iconColor: "text-emerald-500 dark:text-emerald-400",
       sub: null,
     },
     {
-      label: "At Checkout",
-      value: visibleCount,
+      label: t.admin.shippingAtCheckout,
+      value: n(visibleCount),
       icon: Eye,
       iconBg: "bg-violet-50 dark:bg-violet-900/20",
       iconColor: "text-violet-500 dark:text-violet-400",
-      sub: hiddenCount > 0 ? `${hiddenCount} hidden` : null,
+      sub: hiddenCount > 0 ? `${n(hiddenCount)} ${t.admin.shippingHidden}` : null,
     },
     {
-      label: "Currency",
+      label: t.admin.shippingCurrency,
       value: shippingConfig?.currency || "BDT",
       icon: Banknote,
       iconBg: "bg-amber-50 dark:bg-amber-900/20",
@@ -220,10 +224,10 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
         <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/80">
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-              Delivery Methods
+              {t.admin.shippingDeliveryMethods}
             </h2>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 hidden sm:block">
-              Configure options visible to customers at checkout
+              {t.admin.shippingDeliveryDesc}
             </p>
           </div>
           {/* Desktop actions */}
@@ -279,14 +283,12 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
               </svg>
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-              Fields marked <span className="text-red-500 font-bold">*</span>{" "}
-              are required. Toggle <strong>Available at Checkout</strong> to
-              control what customers see when ordering.
+              {t.admin.shippingRequiredHint}
               {!canSave() && hasValidated && (
                 <span className="block mt-1 text-orange-600 dark:text-orange-400 font-semibold">
                   {!hasChanges()
-                    ? "No changes made yet."
-                    : "Complete all required fields to save."}
+                    ? t.admin.shippingNoChangesYet
+                    : t.admin.shippingCompleteFields}
                 </span>
               )}
             </p>

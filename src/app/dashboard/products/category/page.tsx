@@ -8,6 +8,8 @@ import { updateCategory } from "@/lib/queries/categories/updateCategory";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { deleteCategoryQuery } from "@/lib/queries/categories/deleteCategory";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 import CategoryTopBar from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTopBar";
 import CategoryTablePanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryTablePanel";
 import CategoryFormPanel from "@/app/components/admin/dashboard/products/ProductCategory/CategoryFormPanel";
@@ -72,6 +74,8 @@ export default function CategoryPage() {
   );
 
   const notify = useSheiNotification();
+  const t = useTranslation();
+  const n = useLocalNum();
   const { user, loading: userLoading } = useCurrentUser();
   const width = useWindowWidth();
   const isLgUp = width >= 1024;
@@ -167,10 +171,10 @@ export default function CategoryPage() {
       try {
         await deleteCategoryQuery(category.id, user.store_id);
         fetchCategories();
-        notify.info(`Deleted category "${category.name}"`);
+        notify.info(`${t.admin.prodCatDeletedMsg} "${category.name}"`);
       } catch (err: unknown) {
         notify.error(
-          err instanceof Error ? err.message : "Failed to delete category",
+          err instanceof Error ? err.message : t.admin.prodCatDeleteFailed,
         );
       }
     },
@@ -194,12 +198,12 @@ export default function CategoryPage() {
         );
         fetchCategories();
         if (isActive) {
-          notify.success(`"${category.name}" is now active`);
+          notify.success(`"${category.name}" ${t.admin.prodCatNowActive}`);
         } else {
-          notify.error(`"${category.name}" is now inactive`);
+          notify.error(`"${category.name}" ${t.admin.prodCatNowInactive}`);
         }
       } catch {
-        notify.error("Failed to update category status");
+        notify.error(t.admin.prodCatStatusFailed);
       }
     },
     [user?.store_id, fetchCategories, notify],
@@ -218,7 +222,7 @@ export default function CategoryPage() {
           c.slug.toLowerCase() === slugToCheck && c.id !== editingCategory?.id,
       );
       if (exists) {
-        notify.error(`Slug "${data.slug}" already exists.`);
+        notify.error(`${t.admin.prodCatSlugPrefix} "${data.slug}" ${t.admin.prodCatSlugExists}`);
         return;
       }
       try {
@@ -234,20 +238,20 @@ export default function CategoryPage() {
             },
             user.store_id,
           );
-          notify.info(`"${data.name}" updated successfully!`);
+          notify.info(`"${data.name}" ${t.admin.prodCatUpdated}`);
         } else {
           await createCategory(
             { ...data, parent_id, is_active: data.is_active ?? true },
             user.store_id,
           );
-          notify.success(`"${data.name}" created successfully!`);
+          notify.success(`"${data.name}" ${t.admin.prodCatCreated}`);
         }
         setShowForm(false);
         setEditingCategory(null);
         fetchCategories();
       } catch (err: unknown) {
         notify.error(
-          err instanceof Error ? err.message : "Failed to save category",
+          err instanceof Error ? err.message : t.admin.prodCatSaveFailed,
         );
       }
     },
@@ -282,14 +286,14 @@ export default function CategoryPage() {
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[10px] sm:text-xs font-semibold tracking-widest uppercase text-indigo-500 mb-0.5">
-              Product Management
+              {t.admin.prodCatSubtitle}
             </p>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-              Categories
+              {t.admin.prodCatTitle}
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-              {total} total &middot; {activeCount} active &middot;{" "}
-              {inactiveCount} inactive
+              {n(total)} {t.admin.prodCatTotalDesc} &middot; {n(activeCount)} {t.admin.prodCatActiveDesc} &middot;{" "}
+              {n(inactiveCount)} {t.admin.prodCatInactiveDesc}
             </p>
           </div>
         </div>
@@ -298,19 +302,19 @@ export default function CategoryPage() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
             {
-              label: "Total",
+              label: t.admin.prodCatStatTotal,
               value: total,
               color: "text-indigo-500",
               bg: "bg-indigo-500/10",
             },
             {
-              label: "Active",
+              label: t.admin.prodCatStatActive,
               value: activeCount,
               color: "text-emerald-500",
               bg: "bg-emerald-500/10",
             },
             {
-              label: "Inactive",
+              label: t.admin.prodCatStatInactive,
               value: inactiveCount,
               color: "text-amber-500",
               bg: "bg-amber-500/10",
@@ -327,7 +331,7 @@ export default function CategoryPage() {
                 className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg shrink-0 ${s.bg} flex items-center justify-center`}
               >
                 <span className={`text-sm sm:text-base font-bold ${s.color}`}>
-                  {s.value}
+                  {n(s.value)}
                 </span>
               </div>
               {/* Label — always visible at every breakpoint */}
@@ -338,7 +342,7 @@ export default function CategoryPage() {
                   {s.label}
                 </p>
                 <p className="text-[10px] sm:text-xs text-gray-400 hidden sm:block">
-                  Categories
+                  {t.admin.prodCatCategoriesLabel}
                 </p>
               </div>
             </div>
@@ -396,7 +400,7 @@ export default function CategoryPage() {
         {/* Mobile/tablet */}
         <div className="flex flex-col items-center gap-2 lg:hidden">
           <p className="text-xs text-gray-400 tabular-nums">
-            {`${Math.min((page - 1) * pageSize + 1, total)}–${Math.min(page * pageSize, total)} of ${total}`}
+            {`${n(Math.min((page - 1) * pageSize + 1, total))}–${n(Math.min(page * pageSize, total))} ${t.admin.customerOfLabel} ${n(total)}`}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -408,10 +412,10 @@ export default function CategoryPage() {
                          disabled:opacity-40 disabled:cursor-not-allowed
                          hover:bg-gray-50 dark:hover:bg-[#1c1f2b] transition-colors"
             >
-              ← Prev
+              {t.admin.prodCatPrev}
             </button>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300 tabular-nums">
-              {page} / {Math.ceil(total / pageSize) || 1}
+              {n(page)} / {n(Math.ceil(total / pageSize) || 1)}
             </span>
             <button
               disabled={page >= Math.ceil(total / pageSize)}
@@ -422,7 +426,7 @@ export default function CategoryPage() {
                          disabled:opacity-40 disabled:cursor-not-allowed
                          hover:bg-gray-50 dark:hover:bg-[#1c1f2b] transition-colors"
             >
-              Next →
+              {t.admin.prodCatNext}
             </button>
           </div>
         </div>
@@ -437,7 +441,7 @@ export default function CategoryPage() {
             pageSizeOptions={["10", "20", "50", "100"]}
             onChange={handlePaginationChange}
             showTotal={(total, range) =>
-              `${range[0]}–${range[1]} of ${total} items`
+              `${n(range[0])}–${n(range[1])} ${t.admin.customerOfLabel} ${n(total)}`
             }
           />
         </div>
@@ -457,7 +461,7 @@ export default function CategoryPage() {
                             flex items-center justify-between"
             >
               <DialogTitle className="text-base font-bold text-gray-900 dark:text-white">
-                {editingCategory ? "Edit Category" : "Create Category"}
+                {editingCategory ? t.admin.prodCatEditTitle : t.admin.prodCatCreateTitle}
               </DialogTitle>
               <button
                 onClick={() => setShowForm(false)}

@@ -16,6 +16,8 @@ import NotFoundPage from "../not-found";
 import useCartStore from "@/lib/store/cartStore";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface StoreHomePageProps {
   params: Promise<{ store_slug: string }>;
@@ -26,6 +28,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const { store_slug } = React.use(params);
   const { success, error: showError } = useSheiNotification();
   const { addToCart } = useCartStore();
+  const t = useTranslation();
+  const n = useLocalNum();
 
   const [storeData, setStoreData] = useState<StoreFull | null>(null);
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
@@ -64,7 +68,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         }
       } catch (err) {
         console.error(err);
-        showError("Failed to load store data");
+        showError(t.home.failedStore);
       } finally {
         setLoading(false);
       }
@@ -88,7 +92,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   };
 
   const handleAddToCart = async (product: Product) => {
-    if (!isProductInStock(product)) { showError("This product is out of stock"); return; }
+    if (!isProductInStock(product)) { showError(t.home.outOfStockError); return; }
     setLoadingProductId(product.id);
     try {
       const variant = product.variants?.[0];
@@ -99,10 +103,10 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         variantId: variant?.id || null,
       };
       addToCart(cartProduct);
-      success(`${product.name} added to cart`);
+      success(`${product.name} ${t.home.addedToCart}`);
     } catch (err) {
       console.error(err);
-      showError("Failed to add product to cart");
+      showError(t.home.failedAddToCart);
     } finally {
       setLoadingProductId(null);
     }
@@ -173,8 +177,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm bg-white text-gray-900 shadow-lg hover:bg-gray-50 active:scale-95 transition-all duration-200"
                 >
                   <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Shop All</span>
-                  <span className="sm:hidden">Shop</span>
+                  <span className="hidden sm:inline">{t.home.shopAll}</span>
+                  <span className="sm:hidden">{t.home.shop}</span>
                 </Link>
               </motion.div>
             </div>
@@ -226,8 +230,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm hover:bg-gray-700 dark:hover:bg-gray-100 active:scale-95 transition-all duration-200"
               >
                 <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Shop All</span>
-                <span className="sm:hidden">Shop</span>
+                <span className="hidden sm:inline">{t.home.shopAll}</span>
+                <span className="sm:hidden">{t.home.shop}</span>
               </Link>
             </motion.div>
           </div>
@@ -251,11 +255,11 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           >
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-gray-400 dark:text-gray-500 mb-1 sm:mb-1.5">
-                {isFeaturedSection ? "Hand-picked" : "Explore"}
+                {isFeaturedSection ? t.home.handPicked : t.home.explore}
               </p>
               <div className="flex items-center gap-2 sm:gap-2.5">
                 <h2 className="text-lg sm:text-[1.75rem] font-black text-gray-900 dark:text-white tracking-tight leading-none">
-                  {isFeaturedSection ? "Featured Picks" : "Our Collection"}
+                  {isFeaturedSection ? t.home.featuredPicks : t.home.ourCollection}
                 </h2>
                 {isFeaturedSection && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 text-[10px] sm:text-[11px] font-bold text-amber-600 dark:text-amber-400">
@@ -269,7 +273,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               href={`/${store_slug}/shop`}
               className="group inline-flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
             >
-              See all
+              {t.home.seeAll}
               <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
             </Link>
           </motion.div>
@@ -316,13 +320,13 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               className="mt-8 sm:mt-14 flex flex-col items-center gap-3"
             >
               <p className="hidden sm:block text-xs text-gray-400 dark:text-gray-600 tracking-wide">
-                Showing {featuredProducts.length} hand-picked products
+                {[t.home.showingPrefix, n(featuredProducts.length) + t.home.showingSuffix].filter(s => s.trim()).join(" ")}
               </p>
               <Link
                 href={`/${store_slug}/shop`}
                 className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold text-sm hover:border-gray-800 dark:hover:border-gray-400 hover:bg-gray-900 dark:hover:bg-white hover:text-white dark:hover:text-gray-900 active:scale-95 transition-all duration-200 group"
               >
-                Browse all products
+                {t.home.browseAll}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
               </Link>
             </motion.div>
@@ -372,17 +376,17 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             >
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-gray-400 dark:text-gray-500 mb-1.5">
-                  Browse Collection
+                  {t.home.browseCollection}
                 </p>
                 <h2 className="text-[1.75rem] font-black text-gray-900 dark:text-white tracking-tight leading-none">
-                  Shop by Category
+                  {t.home.shopByCategory}
                 </h2>
               </div>
               <Link
                 href={`/${store_slug}/shop`}
                 className="group inline-flex items-center gap-1.5 text-sm font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
               >
-                View all
+                {t.home.viewAll}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
               </Link>
             </motion.div>
@@ -437,6 +441,7 @@ interface CategoryCardProps {
 }
 
 function CategoryCard({ category, store_slug, index }: CategoryCardProps) {
+  const t = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -456,7 +461,7 @@ function CategoryCard({ category, store_slug, index }: CategoryCardProps) {
             {category.name}
           </p>
           <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:translate-x-0.5 transition-all duration-300">
-            Browse
+            {t.home.browse}
             <ArrowRight className="h-3 w-3" />
           </span>
         </div>
@@ -491,6 +496,8 @@ function ProductCard({
   isHero,
   index,
 }: ProductCardProps) {
+  const t = useTranslation();
+  const n = useLocalNum();
   const inStock = isProductInStock(product);
   const imageUrl = product.images?.[0] ?? product.primary_image?.image_url ?? null;
 
@@ -537,12 +544,12 @@ function ProductCard({
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
           {hasDiscount && (
             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-500 text-white shadow-sm tracking-wide">
-              -{discountPct}%
+              -{n(discountPct)}%
             </span>
           )}
           {!inStock && (
             <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gray-900/80 backdrop-blur-sm text-white">
-              Sold out
+              {t.home.soldOut}
             </span>
           )}
         </div>
@@ -554,11 +561,11 @@ function ProductCard({
             </p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="text-white font-black text-base drop-shadow">
-                ৳{Number(price).toLocaleString()}
+                ৳{n(Number(price).toLocaleString())}
               </span>
               {hasDiscount && (
                 <span className="text-white/55 text-xs line-through font-medium">
-                  ৳{Number(originalPrice).toLocaleString()}
+                  ৳{n(Number(originalPrice).toLocaleString())}
                 </span>
               )}
             </div>
@@ -576,7 +583,7 @@ function ProductCard({
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
               : <ShoppingBag className="h-3.5 w-3.5" />
             }
-            {inStock ? "Quick Add" : "Out of Stock"}
+            {inStock ? t.home.quickAdd : t.home.outOfStock}
           </button>
         </div>
       </Link>
@@ -591,11 +598,11 @@ function ProductCard({
             </Link>
             <div className="flex items-baseline gap-1.5 mt-1.5">
               <span className="text-sm font-black text-gray-900 dark:text-white">
-                ৳{Number(price).toLocaleString()}
+                ৳{n(Number(price).toLocaleString())}
               </span>
               {hasDiscount && (
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">
-                  ৳{Number(originalPrice).toLocaleString()}
+                  ৳{n(Number(originalPrice).toLocaleString())}
                 </span>
               )}
             </div>

@@ -6,6 +6,7 @@ import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Category } from "@/lib/types/category";
 import DataTable from "@/app/components/admin/common/DataTable";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface CategoryTableProps {
   data: Category[];
@@ -54,9 +55,10 @@ export default function CategoryTable({
   onDelete,
   onToggleActive,
 }: CategoryTableProps) {
+  const t = useTranslation();
   const columns: ColumnsType<Category> = [
     {
-      title: <ColHeader>Name</ColHeader>,
+      title: <ColHeader>{t.admin.prodCatColName}</ColHeader>,
       dataIndex: "name",
       key: "name",
       width: 200,
@@ -74,7 +76,7 @@ export default function CategoryTable({
       ),
     },
     {
-      title: <ColHeader>Slug</ColHeader>,
+      title: <ColHeader>{t.admin.prodCatColSlug}</ColHeader>,
       dataIndex: "slug",
       key: "slug",
       width: 160,
@@ -92,7 +94,7 @@ export default function CategoryTable({
       ),
     },
     {
-      title: <ColHeader>Created</ColHeader>,
+      title: <ColHeader>{t.admin.prodCatColCreated}</ColHeader>,
       dataIndex: "createdAt",
       key: "createdAt",
       width: 110,
@@ -104,7 +106,7 @@ export default function CategoryTable({
       ),
     },
     {
-      title: <ColHeader>Status</ColHeader>,
+      title: <ColHeader>{t.admin.prodCatColStatus}</ColHeader>,
       dataIndex: "is_active",
       key: "is_active",
       width: 110,
@@ -118,7 +120,7 @@ export default function CategoryTable({
             className={`text-xs font-medium hidden sm:inline
                             ${record.is_active ? "text-emerald-500" : "text-gray-400 dark:text-gray-500"}`}
           >
-            {record.is_active ? "Active" : "Inactive"}
+            {record.is_active ? t.admin.prodCatActiveLabel : t.admin.prodCatInactiveLabel}
           </span>
         </div>
       ),
@@ -126,7 +128,7 @@ export default function CategoryTable({
     {
       title: (
         <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block text-right">
-          Actions
+          {t.admin.prodCatColActions}
         </span>
       ),
       key: "actions",
@@ -150,17 +152,17 @@ export default function CategoryTable({
 
           <Popconfirm
             title={
-              <span className="text-sm font-medium">Delete this category?</span>
+              <span className="text-sm font-medium">{t.admin.prodCatDeleteConfirm}</span>
             }
             description={
               <span className="text-xs text-gray-400">
-                This cannot be undone.
+                {t.admin.prodCatDeleteCantUndo}
               </span>
             }
             onConfirm={() => onDelete(record)}
-            okText="Delete"
+            okText={t.admin.prodCatDeleteOk}
             okButtonProps={{ danger: true }}
-            cancelText="Cancel"
+            cancelText={t.admin.prodCatDeleteCancel}
             placement="topRight"
           >
             <Tooltip title="Delete">

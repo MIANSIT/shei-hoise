@@ -6,6 +6,8 @@ import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Expense, ExpenseCategory } from "@/lib/types/expense/type";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface StatItem {
   title: string;
@@ -28,6 +30,8 @@ function sumAmounts(list: Expense[]): number {
 }
 
 function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
+  const t = useTranslation();
+  const n = useLocalNum();
   const { icon: currencyIcon } = useUserCurrencyIcon();
 
   function formatCurrency(amount: number): React.ReactNode {
@@ -35,7 +39,7 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
       <span className="flex items-center gap-0.5">
         <span>{currencyIcon}</span>
         <span>
-          {amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          {n(amount.toFixed(2))}
         </span>
       </span>
     );
@@ -59,16 +63,16 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
     ).size;
     return [
       {
-        title: "Filtered Total",
+        title: t.admin.expenseFilteredTotal,
         value: formatCurrency(sumAmounts(filtered)),
         icon: <Wallet size={20} color="#6366f1" strokeWidth={1.8} />,
         iconBg: "linear-gradient(135deg, #eef2ff, #e0e7ff)",
         iconBgDark: "linear-gradient(135deg, #1e1b4b, #312e81)",
         trend: null,
-        sub: `${filtered.length} record${filtered.length !== 1 ? "s" : ""}`,
+        sub: `${n(filtered.length)} ${filtered.length !== 1 ? t.admin.expenseRecords2 : t.admin.expenseRecord}`,
       },
       {
-        title: "This Month",
+        title: t.admin.expenseThisMonth,
         value: formatCurrency(thisMonthTotal),
         icon: <TrendingUp size={20} color="#10b981" strokeWidth={1.8} />,
         iconBg: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
@@ -77,20 +81,19 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
           monthChange !== 0
             ? { up: monthChange > 0, pct: Math.abs(monthChange).toFixed(1) }
             : null,
-        sub: "vs last month",
+        sub: t.admin.expenseVsLastMonth,
       },
       {
-        title: "Categories",
-        value: String(usedCategoryCount),
+        title: t.admin.expenseCategories,
+        value: n(usedCategoryCount),
         icon: <LayoutGrid size={20} color="#8b5cf6" strokeWidth={1.8} />,
         iconBg: "linear-gradient(135deg, #f5f3ff, #ede9fe)",
         iconBgDark: "linear-gradient(135deg, #1e1b4b, #2e1065)",
         trend: null,
-        sub: "available",
+        sub: t.admin.expenseAvailable,
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, expenses, categories, currencyIcon]);
+  }, [filtered, expenses, categories, currencyIcon, n, t]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -137,7 +140,7 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
                   ) : (
                     <ArrowDownOutlined style={{ fontSize: 9 }} />
                   )}
-                  {stat.trend.pct}%
+                  {n(stat.trend.pct)}%
                 </span>
               )}
             </div>

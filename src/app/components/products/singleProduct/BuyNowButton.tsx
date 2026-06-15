@@ -2,6 +2,7 @@
 
 import { Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface BuyNowButtonProps {
   onClick: () => void;
@@ -16,6 +17,8 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
   disabled = false,
   className = "",
 }) => {
+  const t = useTranslation();
+
   const handleClick = () => {
     if (disabled || isLoading) return;
     onClick();
@@ -62,7 +65,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
                 d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
               />
             </svg>
-            Processing…
+            {t.cart.processing}
           </motion.span>
         ) : disabled ? (
           <motion.span
@@ -73,7 +76,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
             className="flex items-center gap-2"
           >
             <Zap className="w-4 h-4" />
-            Out of Stock
+            {t.cart.outOfStock}
           </motion.span>
         ) : (
           <motion.span
@@ -84,7 +87,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
             className="flex items-center gap-2"
           >
             <Zap className="w-4 h-4" />
-            Buy Now
+            {t.cart.buyNow}
           </motion.span>
         )}
       </AnimatePresence>

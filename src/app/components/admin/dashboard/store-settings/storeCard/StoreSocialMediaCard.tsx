@@ -16,6 +16,7 @@ import type {
   UpdatedStoreSocialMedia,
 } from "@/lib/types/store/store";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface Props {
   socialMedia: StoreSocialMedia | null;
@@ -69,6 +70,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const notify = useSheiNotification();
+  const t = useTranslation();
 
   const [formData, setFormData] = useState<Record<string, string>>({
     facebook_link: "",
@@ -119,10 +121,10 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
       }
       await onUpdate(normalizeFormData());
       setEditing(false);
-      notify.success("Social media links updated!");
+      notify.success(t.admin.storeMgmtSocialOk);
     } catch (err) {
       console.error(err);
-      notify.error("Failed to update social media links.");
+      notify.error(t.admin.storeMgmtSocialFail);
     } finally {
       setLoading(false);
     }
@@ -152,12 +154,12 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
             </div>
             <div>
               <CardTitle className="text-base font-semibold text-foreground">
-                Social Media
+                {t.admin.storeMgmtSocial}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {connectedCount > 0
-                  ? `${connectedCount} of ${PLATFORMS.length} connected`
-                  : "No profiles connected yet"}
+                  ? `${connectedCount} ${t.admin.storeMgmtSocialOf} ${PLATFORMS.length} ${t.admin.storeMgmtSocialConnected}`
+                  : t.admin.storeMgmtSocialNone}
               </p>
             </div>
           </div>
@@ -171,7 +173,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
                   disabled={loading}
                 >
                   <Check className="h-3.5 w-3.5" />
-                  {loading ? "Saving..." : "Save"}
+                  {loading ? t.admin.storeMgmtSaving : t.admin.storeMgmtSave}
                 </Button>
                 <Button
                   size="sm"
@@ -181,7 +183,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
                   disabled={loading}
                 >
                   <X className="h-3.5 w-3.5" />
-                  Cancel
+                  {t.admin.storeMgmtCancel}
                 </Button>
               </>
             ) : (
@@ -192,7 +194,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
                 onClick={() => setEditing(true)}
               >
                 <Pencil className="h-3 w-3" />
-                Edit
+                {t.admin.storeMgmtEdit}
               </Button>
             )}
           </div>
@@ -240,7 +242,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
                       {hasLink && !editing && (
                         <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Live
+                          {t.admin.storeMgmtSocialLive}
                         </span>
                       )}
                     </div>
@@ -257,7 +259,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
                           className="w-full bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 px-3 py-2 rounded-lg text-xs outline-none text-foreground placeholder:text-muted-foreground transition-all"
                         />
                         <p className="text-xs text-muted-foreground mt-1.5">
-                          Leave empty to disconnect
+                          {t.admin.storeMgmtSocialDisconnect}
                         </p>
                       </div>
                     ) : hasLink ? (
@@ -295,7 +297,7 @@ export function StoreSocialMediaCard({ socialMedia, onUpdate }: Props) {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">
-                        Not connected
+                        {t.admin.storeMgmtSocialNotConnected}
                       </p>
                     )}
                   </div>

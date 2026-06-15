@@ -6,22 +6,24 @@ import { FormItemWrapper } from "./FormItemWrapper";
 import { RichTextController } from "./RichTextController";
 import { Form, Tooltip } from "antd";
 import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface Props {
   control: Control<CreateUserType>;
 }
 
 export default function TermsPrivacy({ control }: Props) {
+  const t = useTranslation();
+
   return (
     <>
       <div className="space-y-8">
-        {/* Option 1: Use vertical layout form */}
         <Form layout="vertical">
           <FormItemWrapper
             label={
               <span className="text-foreground flex items-center gap-1">
-                Terms & Conditions
-                <Tooltip title="Define the rules, guidelines, and legal agreements that govern the use of your store and services">
+                {t.onboarding.termsLabel}
+                <Tooltip title={t.onboarding.termsTip}>
                   <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                 </Tooltip>
               </span>
@@ -44,8 +46,8 @@ export default function TermsPrivacy({ control }: Props) {
           <FormItemWrapper
             label={
               <span className="text-foreground flex items-center gap-1">
-                Privacy Policy
-                <Tooltip title="Describe how you collect, use, store, and protect customer data in compliance with privacy regulations">
+                {t.onboarding.privacyLabel}
+                <Tooltip title={t.onboarding.privacyTip}>
                   <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                 </Tooltip>
               </span>
@@ -72,12 +74,10 @@ export default function TermsPrivacy({ control }: Props) {
           </div>
           <div>
             <h4 className="font-semibold text-foreground">
-              Store Security & Compliance
+              {t.onboarding.complianceTitle}
             </h4>
             <p className="text-sm text-muted-foreground">
-              Ensure your store&apos;s security guidelines and data protection
-              policies are complete, accurate, and compliant with all applicable
-              laws, keeping your business and customers safe.
+              {t.onboarding.complianceDesc}
             </p>
           </div>
         </div>

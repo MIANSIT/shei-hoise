@@ -24,6 +24,7 @@ import {
 } from "@ant-design/icons";
 import { FormItemWrapper } from "./FormItemWrapper";
 import { Currency } from "@/lib/types/enums";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const { Option } = Select;
 
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export default function StoreSettings({ control, errors }: Props) {
+  const t = useTranslation();
   const { fields, append, remove } = useFieldArray({
     control,
     name: "store_settings.shipping_fees",
@@ -44,20 +46,18 @@ export default function StoreSettings({ control, errors }: Props) {
 
   return (
     <div className="">
-      {/* Header */}
-      <h3 className="text-2xl font-semibold mb-2">Store Settings</h3>
+      <h3 className="text-2xl font-semibold mb-2">{t.onboarding.settingsTitle}</h3>
       <p className="text-sm text-muted-foreground">
-        Configure your store preferences, pricing, and delivery options.
+        {t.onboarding.settingsSubtitle}
       </p>
 
-      {/* Basic Settings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Currency */}
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Currency
-              <Tooltip title="Select the default currency for all transactions in your store">
+              {t.onboarding.currency}
+              <Tooltip title={t.onboarding.currencyTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -69,7 +69,7 @@ export default function StoreSettings({ control, errors }: Props) {
             render={({ field }) => (
               <Select
                 {...field}
-                placeholder="Select currency"
+                placeholder={t.onboarding.currencyPlaceholder}
                 style={{ width: "150px" }}
               >
                 {Object.values(Currency).map((c) => (
@@ -86,8 +86,8 @@ export default function StoreSettings({ control, errors }: Props) {
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Tax Rate (Tk)
-              <Tooltip title="Enter the tax amount to be applied to every order (e.g., 50 for 50 Tk tax)">
+              {t.onboarding.taxRate}
+              <Tooltip title={t.onboarding.taxRateTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -103,11 +103,12 @@ export default function StoreSettings({ control, errors }: Props) {
           />
         </FormItemWrapper>
 
+        {/* Min Order */}
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Minimum Order Value (Tk)
-              <Tooltip title="Enter the minimum order value for customers to place an order (e.g., 50 for 50 Tk minimum)">
+              {t.onboarding.minOrder}
+              <Tooltip title={t.onboarding.minOrderTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -127,8 +128,8 @@ export default function StoreSettings({ control, errors }: Props) {
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Processing Time (days)
-              <Tooltip title="Number of business days needed to prepare and package orders before shipping">
+              {t.onboarding.processingTime}
+              <Tooltip title={t.onboarding.processingTimeTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -148,8 +149,8 @@ export default function StoreSettings({ control, errors }: Props) {
         <FormItemWrapper
           label={
             <span className="text-foreground flex items-center gap-1">
-              Return Policy Days
-              <Tooltip title="Number of days customers have to return products after delivery (0 = no returns accepted)">
+              {t.onboarding.returnDays}
+              <Tooltip title={t.onboarding.returnDaysTip}>
                 <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
               </Tooltip>
             </span>
@@ -171,8 +172,8 @@ export default function StoreSettings({ control, errors }: Props) {
       {/* Shipping Fees */}
       <div className="space-y-4">
         <div className="flex items-center gap-1">
-          <h4 className="text-xl font-semibold">Shipping Fees</h4>
-          <Tooltip title="Configure shipping methods, delivery fees, and estimated delivery times for different locations">
+          <h4 className="text-xl font-semibold">{t.onboarding.shippingFees}</h4>
+          <Tooltip title={t.onboarding.shippingFeesTip}>
             <InfoCircleOutlined className="text-muted-foreground text-sm cursor-help" />
           </Tooltip>
         </div>
@@ -185,10 +186,9 @@ export default function StoreSettings({ control, errors }: Props) {
               key={field.id}
               className="rounded-lg border border-border bg-background p-4 shadow-sm space-y-3"
             >
-              {/* Header Row */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground">
-                  Shipping Method {index + 1}
+                  {t.onboarding.shippingMethod} {index + 1}
                 </span>
 
                 <Button
@@ -201,7 +201,6 @@ export default function StoreSettings({ control, errors }: Props) {
                 />
               </div>
 
-              {/* Inputs */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Method */}
                 <Controller
@@ -211,7 +210,7 @@ export default function StoreSettings({ control, errors }: Props) {
                     isDropdown ? (
                       <Select
                         {...nameField}
-                        placeholder="Select delivery area"
+                        placeholder={t.onboarding.deliveryAreaPlaceholder}
                         className="w-full"
                       >
                         {shippingOptions
@@ -230,7 +229,7 @@ export default function StoreSettings({ control, errors }: Props) {
                       <Input
                         min={1}
                         {...nameField}
-                        placeholder="Shipping method name"
+                        placeholder={t.onboarding.shippingNamePlaceholder}
                       />
                     )
                   }
@@ -247,7 +246,7 @@ export default function StoreSettings({ control, errors }: Props) {
                           {...field}
                           min={1}
                           className="w-full"
-                          placeholder="Fee"
+                          placeholder={t.onboarding.feePlaceholder}
                         />
                       )}
                     />
@@ -257,7 +256,7 @@ export default function StoreSettings({ control, errors }: Props) {
                   </Space.Compact>
                 </div>
 
-                {/* Estimated Days Range */}
+                {/* Estimated Days */}
                 <div>
                   <Controller
                     name={`store_settings.shipping_fees.${index}.estimated_days`}
@@ -265,10 +264,10 @@ export default function StoreSettings({ control, errors }: Props) {
                     render={({ field }) => (
                       <Input
                         {...field}
-                        placeholder="e.g., 2-3"
+                        placeholder={t.onboarding.estimatedDaysPlaceholder}
                         suffix={
                           <span className="text-muted-foreground text-sm">
-                            days
+                            {t.onboarding.daysSuffix}
                           </span>
                         }
                         className="w-full"
@@ -295,20 +294,21 @@ export default function StoreSettings({ control, errors }: Props) {
             })
           }
         >
-          Add Shipping Method
+          {t.onboarding.addShipping}
         </Button>
+
         <Divider className="border-border mt-8" />
 
         {/* Social Media Links */}
         <div className="space-y-4">
           <div className="flex items-center gap-1">
-            <h4 className="text-xl font-semibold">Social Media Links</h4>
-            <Tooltip title="Add links to your store's social media profiles to connect with customers">
+            <h4 className="text-xl font-semibold">{t.onboarding.socialMedia}</h4>
+            <Tooltip title={t.onboarding.socialMediaTip}>
               <InfoCircleOutlined className="text-muted-foreground text-sm cursor-help" />
             </Tooltip>
           </div>
           <p className="text-sm text-muted-foreground">
-            Optional links to your store&apos;s social media profiles.
+            {t.onboarding.socialMediaSubtitle}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,8 +320,8 @@ export default function StoreSettings({ control, errors }: Props) {
                 <FormItemWrapper
                   label={
                     <span className="text-foreground flex items-center gap-1">
-                      Facebook Page
-                      <Tooltip title="Enter the full URL of your Facebook business page">
+                      {t.onboarding.facebook}
+                      <Tooltip title={t.onboarding.facebookTip}>
                         <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                       </Tooltip>
                     </span>
@@ -345,8 +345,8 @@ export default function StoreSettings({ control, errors }: Props) {
                 <FormItemWrapper
                   label={
                     <span className="text-foreground flex items-center gap-1">
-                      Instagram Profile
-                      <Tooltip title="Enter the full URL of your Instagram business profile">
+                      {t.onboarding.instagram}
+                      <Tooltip title={t.onboarding.instagramTip}>
                         <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                       </Tooltip>
                     </span>
@@ -370,8 +370,8 @@ export default function StoreSettings({ control, errors }: Props) {
                 <FormItemWrapper
                   label={
                     <span className="text-foreground flex items-center gap-1">
-                      Youtube
-                      <Tooltip title="Enter the full URL of your Youtube channel">
+                      {t.onboarding.youtube}
+                      <Tooltip title={t.onboarding.youtubeTip}>
                         <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                       </Tooltip>
                     </span>
@@ -395,8 +395,8 @@ export default function StoreSettings({ control, errors }: Props) {
                 <FormItemWrapper
                   label={
                     <span className="text-foreground flex items-center gap-1">
-                      Twitter / X
-                      <Tooltip title="Enter the full URL of your Twitter/X profile">
+                      {t.onboarding.twitter}
+                      <Tooltip title={t.onboarding.twitterTip}>
                         <InfoCircleOutlined className="text-muted-foreground text-xs cursor-help" />
                       </Tooltip>
                     </span>
@@ -414,18 +414,17 @@ export default function StoreSettings({ control, errors }: Props) {
           </div>
         </div>
       </div>
+
       <div className="flex items-start space-x-3 mt-4 p-4 bg-muted rounded-lg border border-border">
         <div className="shrink-0 text-emerald-600">
           <SafetyOutlined className="text-xl" />
         </div>
         <div>
           <h4 className="font-semibold text-foreground">
-            Protected Store Information
+            {t.onboarding.protectedTitle}
           </h4>
           <p className="text-sm text-muted-foreground">
-            Your store information, including pricing, shipping, and policies,
-            is securely encrypted and stored. Only authorized personnel can
-            access this data, ensuring your business remains safe and private.
+            {t.onboarding.protectedDesc}
           </p>
         </div>
       </div>

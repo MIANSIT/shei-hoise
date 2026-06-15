@@ -12,11 +12,13 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Header from "@/app/components/common/Header";
 import Footer from "@/app/components/common/Footer";
 import { DomainErrorCode } from "@/lib/errors/domainErrors";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function StoreCreatePage() {
   const [loading, setLoading] = useState(false);
   const notify = useSheiNotification();
   const router = useRouter();
+  const t = useTranslation();
 
   const handleCreateStore = async (
     values: CreateUserType,
@@ -26,7 +28,7 @@ export default function StoreCreatePage() {
     try {
       const payload = createUserSchema.parse(values);
       await createUser(payload);
-      notify.success("Store owner created successfully!");
+      notify.success(t.onboarding.createdSuccess);
       resetForm();
       router.push("/admin-login");
     } catch (err: unknown) {
@@ -36,9 +38,9 @@ export default function StoreCreatePage() {
         err instanceof Error &&
         err.message === DomainErrorCode.EMAIL_EXISTS
       ) {
-        notify.error("Email already registered");
+        notify.error(t.onboarding.emailExists);
       } else {
-        notify.error("Failed to create store owner");
+        notify.error(t.onboarding.createFailed);
       }
     }
   };

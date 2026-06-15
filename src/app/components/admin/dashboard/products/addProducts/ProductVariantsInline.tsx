@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { calculateDiscountedPrice } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { Tooltip } from "antd";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ProductVariantsInlineProps {
   form: UseFormReturn<ProductType>;
@@ -44,6 +45,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
 }) => {
   const variants = form.watch("variants") ?? [];
   const { setValue } = form;
+  const t = useTranslation();
   const { currency, loading: currencyLoading } = useUserCurrencyIcon();
   const displayCurrency = currencyLoading ? "" : (currency ?? "");
 
@@ -182,9 +184,9 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             <Layers className="h-5 w-5 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-foreground">No variants yet</p>
+            <p className="font-medium text-foreground">{t.admin.variantNoYet}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Add variants for different sizes, colors, or configurations.
+              {t.admin.variantNoYetDesc}
             </p>
           </div>
           <Button
@@ -192,7 +194,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
             onClick={handleAddVariant}
             className="rounded-xl border border-emerald-600 bg-transparent px-5 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white"
           >
-            + Add First Variant
+            {t.admin.variantAddFirst}
           </Button>
         </div>
       </div>
@@ -208,10 +210,10 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
           </span>
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              Variants
+              {t.admin.variantSectionTitle}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {variants.length} variant{variants.length !== 1 ? "s" : ""}
+              {variants.length} {variants.length !== 1 ? t.admin.variantPlural : t.admin.variantSingular}
             </p>
           </div>
         </div>
@@ -220,7 +222,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
           onClick={handleAddVariant}
           className="rounded-xl border border-emerald-600 bg-transparent px-4 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white"
         >
-          + Add Variant
+          {t.admin.variantAddMore}
         </Button>
       </div>
 
@@ -252,7 +254,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 </span>
                 {!isActive && (
                   <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
-                    Inactive
+                    {t.admin.variantInactive}
                   </span>
                 )}
               </div>
@@ -292,7 +294,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     <span
                       className={`text-sm font-medium ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}
                     >
-                      {isActive ? "Active" : "Inactive"}
+                      {isActive ? t.admin.variantActive : t.admin.variantInactive}
                     </span>
                   </div>
                 )}
@@ -300,12 +302,12 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 {/* Basic info */}
                 <div>
                   <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Basic Info
+                    {t.admin.variantBasicInfo}
                   </p>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <FieldLabel
-                        label="Variant Name"
+                        label={t.admin.variantNameLabel}
                         required
                         tooltip="E.g. Small, Medium, Red, 128GB"
                       />
@@ -318,7 +320,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     </div>
                     <div>
                       <FieldLabel
-                        label="SKU"
+                        label={t.admin.variantSkuLabel}
                         required
                         tooltip="Unique code. E.g. TSHIRT-001-S"
                       />
@@ -331,7 +333,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     </div>
                     <div>
                       <FieldLabel
-                        label="Color"
+                        label={t.admin.variantColorLabel}
                         tooltip="E.g. Black, Navy Blue"
                       />
                       <FormField
@@ -342,7 +344,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     </div>
                     <div>
                       <FieldLabel
-                        label="Weight (kg)"
+                        label={t.admin.variantWeightLabel}
                         tooltip="Used for shipping. E.g. 0.5, 1.2"
                       />
                       <FormField
@@ -358,7 +360,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 {/* Attributes */}
                 <div>
                   <FieldLabel
-                    label="Attributes"
+                    label={t.admin.variantAttributesLabel}
                     tooltip="Key-Value pairs. E.g. Size-M, Material-Cotton, Fit-Slim"
                   />
                   <Controller
@@ -407,14 +409,14 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 {/* Pricing */}
                 <div>
                   <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Pricing
+                    {t.admin.variantPricingLabel}
                   </p>
 
                   {/* TP + Markup */}
                   <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="rounded-xl border border-border bg-muted/30 p-3">
                       <FieldLabel
-                        label={`TP Price (${displayCurrency})`}
+                        label={`${t.admin.variantTpPriceLabel} (${displayCurrency})`}
                         tooltip="Wholesale cost price for this variant."
                       />
                       <FormField
@@ -436,7 +438,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
 
                     <div className="rounded-xl border border-border bg-muted/30 p-3">
                       <FieldLabel
-                        label="Price Markup (Auto-calculates MRP)"
+                        label={t.admin.variantPriceMarkup}
                         tooltip="Add a markup to TP Price to calculate MRP. Percentage: 20% on TP 100 → MRP 120. Multiplier: 1.5× on TP 100 → MRP 150."
                       />
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -450,8 +452,8 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                             )
                           }
                         >
-                          <option value="percentage">Percentage (%)</option>
-                          <option value="multiplier">Multiplier (×)</option>
+                          <option value="percentage">{t.admin.variantPercentage}</option>
+                          <option value="multiplier">{t.admin.variantMultiplier}</option>
                         </select>
                         <input
                           type="number"
@@ -489,7 +491,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="rounded-xl border border-border bg-muted/30 p-3">
                       <FieldLabel
-                        label={`MRP (${displayCurrency})`}
+                        label={`${t.admin.variantMrpLabel} (${displayCurrency})`}
                         tooltip="Regular selling price."
                       />
                       <FormField
@@ -502,7 +504,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     </div>
                     <div className="rounded-xl border border-border bg-muted/30 p-3">
                       <FieldLabel
-                        label={`Discount (${displayCurrency})`}
+                        label={`${t.admin.variantDiscountLabel} (${displayCurrency})`}
                         tooltip="Amount off MRP."
                       />
                       <FormField
@@ -515,7 +517,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                     </div>
                     <div className="rounded-xl border border-border bg-emerald-500/5 p-3">
                       <FieldLabel
-                        label={`Final Price (${displayCurrency})`}
+                        label={`${t.admin.variantFinalPrice} (${displayCurrency})`}
                         tooltip="Auto-calculated: MRP − Discount."
                       />
                       <FormField
@@ -532,7 +534,7 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                 {/* Stock */}
                 <div className="max-w-xs">
                   <FieldLabel
-                    label="Stock"
+                    label={t.admin.variantStockLabel}
                     tooltip="Available inventory for this variant."
                   />
                   <FormField

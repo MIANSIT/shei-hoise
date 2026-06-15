@@ -8,6 +8,8 @@ import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { useRouter } from "next/navigation";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -48,6 +50,8 @@ export default function SaveOrderButton({
   emailError,
 }: SaveOrderButtonProps) {
   const { modal, notification } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const {
@@ -58,56 +62,56 @@ export default function SaveOrderButton({
   const showConfirm = () => {
     if (emailError) {
       notification.error({
-        message: "Cannot Create Order",
+        message: t.admin.saveOrderCannotCreate,
         description: emailError,
       });
       return;
     }
 
     modal.confirm({
-      title: "Confirm Order Creation",
+      title: t.admin.saveOrderConfirmTitle,
       icon: <ExclamationCircleOutlined />,
       content: (
         <Space orientation="vertical">
-          <Text>Are you sure you want to create this order?</Text>
-          <Text type="secondary">Order ID: {orderId}</Text>
-          <Text type="secondary">Customer: {customerInfo.name}</Text>
+          <Text>{t.admin.saveOrderConfirmMsg}</Text>
+          <Text type="secondary">{t.admin.saveOrderOrderIdLabel} {orderId}</Text>
+          <Text type="secondary">{t.admin.saveOrderConfirmCustomer} {customerInfo.name}</Text>
           {customerInfo.email && (
-            <Text type="secondary">Email: {customerInfo.email}</Text>
+            <Text type="secondary">{t.admin.saveOrderConfirmEmail} {customerInfo.email}</Text>
           )}
           <Text type="secondary">
-            Subtotal: {displayCurrencyIconSafe}
-            {subtotal.toFixed(2)}
+            {t.admin.saveOrderConfirmSubtotal} {displayCurrencyIconSafe}
+            {n(subtotal.toFixed(2))}
           </Text>
           <Text type="secondary">
-            Discount: {displayCurrencyIconSafe}
-            {discount.toFixed(2)}
+            {t.admin.saveOrderConfirmDiscount} {displayCurrencyIconSafe}
+            {n(discount.toFixed(2))}
           </Text>
           <Text type="secondary">
-            Additional Charges: {displayCurrencyIconSafe}
-            {additionalCharges.toFixed(2)}
+            {t.admin.saveOrderConfirmAdditional} {displayCurrencyIconSafe}
+            {n(additionalCharges.toFixed(2))}
           </Text>
           <Text type="secondary">
-            Delivery: {displayCurrencyIconSafe}
-            {deliveryCost.toFixed(2)}
+            {t.admin.saveOrderConfirmDelivery} {displayCurrencyIconSafe}
+            {n(deliveryCost.toFixed(2))}
           </Text>
           <Text type="secondary">
-            Tax: {displayCurrencyIconSafe}
-            {taxAmount.toFixed(2)}
+            {t.admin.saveOrderConfirmTax} {displayCurrencyIconSafe}
+            {n(taxAmount.toFixed(2))}
           </Text>
           <Text strong>
-            Total Amount: {displayCurrencyIconSafe}
-            {totalAmount.toFixed(2)}
+            {t.admin.saveOrderConfirmTotal} {displayCurrencyIconSafe}
+            {n(totalAmount.toFixed(2))}
           </Text>
           {!customerInfo.customer_id && (
             <Text type="warning">
-              A new customer record will be created in the system.
+              {t.admin.saveOrderConfirmNewCust}
             </Text>
           )}
         </Space>
       ),
-      okText: "Yes, Create Order",
-      cancelText: "Cancel",
+      okText: t.admin.saveOrderConfirmOk,
+      cancelText: t.admin.saveOrderConfirmCancel,
       onOk: handleSave,
     });
   };
@@ -158,33 +162,30 @@ export default function SaveOrderButton({
           }
 
           notification.success({
-            title: "Customer Created",
-            description:
-              "New customer record created successfully in store_customers.",
+            message: t.admin.saveOrderCustCreatedTitle,
+            description: t.admin.saveOrderCustCreatedDesc,
           });
         } catch (customerError: any) {
           console.error("Error creating customer:", customerError);
 
           const shouldContinue = await new Promise((resolve) => {
             modal.confirm({
-              title: "Customer Creation Failed",
+              title: t.admin.saveOrderCustFailedTitle,
               content: (
                 <Space orientation="vertical">
                   <Text>
-                    Failed to create customer record: {customerError.message}
+                    {t.admin.saveOrderCustFailedDesc} {customerError.message}
                   </Text>
                   <Text type="warning">
-                    Do you want to create the order without linking it to a
-                    customer record?
+                    {t.admin.saveOrderCustFailedWarning}
                   </Text>
                   <Text type="secondary">
-                    The order will be created but no customer record will be
-                    created.
+                    {t.admin.saveOrderCustFailedNote}
                   </Text>
                 </Space>
               ),
-              okText: "Continue Without Customer",
-              cancelText: "Cancel Order",
+              okText: t.admin.saveOrderContinueWithout,
+              cancelText: t.admin.saveOrderCancelOrder,
               onOk: () => resolve(true),
               onCancel: () => resolve(false),
             });
@@ -218,36 +219,35 @@ export default function SaveOrderButton({
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
-        let successMessage = `Order ${orderId} has been created successfully.`;
+        let successMessage = `${t.admin.saveOrderOrderIdLabel} ${orderId} ${t.admin.saveOrderCreatedSuccess}`;
         if (customerCreated) {
-          successMessage +=
-            " A new customer record was also created in store_customers.";
+          successMessage += ` ${t.admin.saveOrderNewCustNote}`;
         } else if (!customerInfo.customer_id) {
-          successMessage += " Note: No customer record was created.";
+          successMessage += ` ${t.admin.saveOrderNoCustNote}`;
         }
 
         modal.success({
-          title: "Order Created Successfully",
+          title: t.admin.saveOrderSuccessTitle,
           content: (
             <Space orientation="vertical">
               <Text>{successMessage}</Text>
-              <Text type="secondary">Order ID: {result.orderId}</Text>
+              <Text type="secondary">{t.admin.saveOrderOrderIdLabel} {result.orderId}</Text>
               {customerInfo.email && (
                 <Text type="secondary">
-                  Customer Email: {customerInfo.email}
+                  {t.admin.saveOrderCustEmailLabel} {customerInfo.email}
                 </Text>
               )}
               <Text type="secondary">
-                Discount Applied: {displayCurrencyIconSafe}
-                {discount.toFixed(2)}
+                {t.admin.saveOrderDiscountApplied} {displayCurrencyIconSafe}
+                {n(discount.toFixed(2))}
               </Text>
               <Text type="secondary">
-                Additional Charges: {displayCurrencyIconSafe}
-                {additionalCharges.toFixed(2)}
+                {t.admin.saveOrderAdditionalLabel} {displayCurrencyIconSafe}
+                {n(additionalCharges.toFixed(2))}
               </Text>
               <Text strong>
-                Total: {displayCurrencyIconSafe}
-                {totalAmount.toFixed(2)}
+                {t.admin.saveOrderTotalLabel} {displayCurrencyIconSafe}
+                {n(totalAmount.toFixed(2))}
               </Text>
             </Space>
           ),
@@ -262,7 +262,7 @@ export default function SaveOrderButton({
     } catch (error: any) {
       console.error("Error saving order:", error);
       modal.error({
-        title: "Order Creation Failed",
+        title: t.admin.saveOrderFailedTitle,
         content:
           error.message ||
           "Unknown error occurred. Please check the console for details.",
@@ -281,7 +281,7 @@ export default function SaveOrderButton({
       onClick={showConfirm}
       style={{ minWidth: "120px" }}
     >
-      {isLoading ? "Creating..." : "Create Order"}
+      {isLoading ? t.admin.saveOrderCreating : t.admin.saveOrderBtn}
     </Button>
   );
 }
