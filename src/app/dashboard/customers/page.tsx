@@ -16,12 +16,16 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useCustomerFormData } from "@/lib/hook/profile-user/useCustomerFormData";
 import { updateCustomerProfileAsAdmin } from "@/lib/queries/user/admin-customers";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 // Constants for pagination
 const DEFAULT_PAGE_SIZE = 10;
 
 export default function CustomerPage() {
   const { notification } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
   const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "details" | "edit">("list");
@@ -79,8 +83,8 @@ export default function CustomerPage() {
       } catch (error) {
         console.error("Error fetching customers:", error);
         notificationRef.current.error({
-          message: "Error",
-          description: "Failed to load customers. Please try again.",
+          message: t.admin.customerLoadError,
+          description: t.admin.customerLoadErrorDesc,
         });
       } finally {
         setLoading(false);
@@ -150,15 +154,15 @@ export default function CustomerPage() {
         setSelectedCustomer(updatedCustomer);
 
       notification.success({
-        title: "Customer Updated",
-        description: `${updatedCustomer.name} updated successfully.`,
+        message: t.admin.customerUpdatedTitle,
+        description: `${updatedCustomer.name} ${t.admin.customerUpdatedDesc}`,
       });
 
       return updatedCustomer;
     } catch (error) {
       notification.error({
-        title: "Error",
-        description: "Failed to update customer.",
+        message: t.admin.customerUpdateError,
+        description: t.admin.customerUpdateErrorDesc,
       });
       throw error;
     }
@@ -184,8 +188,8 @@ export default function CustomerPage() {
   const handleDelete = (customer: DetailedCustomer) => {
     setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
     notification.success({
-      message: "Customer Deleted",
-      description: `${customer.name} deleted successfully.`,
+      message: t.admin.customerDeletedTitle,
+      description: `${customer.name} ${t.admin.customerDeletedDesc}`,
     });
   };
 
@@ -288,7 +292,7 @@ export default function CustomerPage() {
         title={
           <div className="flex items-center gap-2">
             <TeamOutlined />
-            Customer List
+            {t.admin.customerListTitle}
             {loading && <Spin size="small" className="ml-2" />}
           </div>
         }
@@ -308,9 +312,9 @@ export default function CustomerPage() {
             {/* Desktop Pagination */}
             <div className="hidden md:flex justify-between items-center">
               <div className="text-gray-600">
-                Showing {(currentPage - 1) * pageSize + 1} to{" "}
-                {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-                customers
+                {t.admin.customerShowing} {n((currentPage - 1) * pageSize + 1)} {t.admin.customerTo}{" "}
+                {n(Math.min(currentPage * pageSize, totalCount))} {t.admin.customerOfLabel} {n(totalCount)}{" "}
+                {t.admin.customerCustomers}
               </div>
               <Pagination
                 current={currentPage}
@@ -321,7 +325,7 @@ export default function CustomerPage() {
                 showSizeChanger
                 pageSizeOptions={[10, 25, 50, 100]}
                 showTotal={(total, range) =>
-                  `${range[0]}-${range[1]} of ${total} items`
+                  `${n(range[0])}-${n(range[1])} ${t.admin.customerOfLabel} ${n(total)} ${t.admin.customerItems}`
                 }
               />
             </div>
@@ -331,10 +335,10 @@ export default function CustomerPage() {
               <div className="flex flex-col gap-4">
                 {/* Page info */}
                 <div className="text-center text-gray-600 text-sm">
-                  Page {currentPage} of {totalPages} •{" "}
-                  {(currentPage - 1) * pageSize + 1}-
-                  {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-                  customers
+                  {t.admin.customerPage} {n(currentPage)} {t.admin.customerOfLabel} {n(totalPages)} •{" "}
+                  {n((currentPage - 1) * pageSize + 1)}-
+                  {n(Math.min(currentPage * pageSize, totalCount))} {t.admin.customerOfLabel} {n(totalCount)}{" "}
+                  {t.admin.customerCustomers}
                 </div>
 
                 {/* Navigation buttons */}
@@ -346,14 +350,14 @@ export default function CustomerPage() {
                     disabled={currentPage === 1}
                     className="flex-1 max-w-30"
                   >
-                    Previous
+                    {t.admin.customerPrev}
                   </Button>
 
                   <div className="text-center px-4">
                     <span className="font-semibold text-gray-800">
-                      {currentPage}
+                      {n(currentPage)}
                     </span>
-                    <span className="text-gray-500"> / {totalPages}</span>
+                    <span className="text-gray-500"> / {n(totalPages)}</span>
                   </div>
 
                   <Button
@@ -363,14 +367,14 @@ export default function CustomerPage() {
                     disabled={currentPage === totalPages}
                     className="flex-1 max-w-30"
                   >
-                    Next
+                    {t.admin.customerNext}
                   </Button>
                 </div>
 
                 {/* Page size selector for mobile */}
                 <div className="flex justify-center mt-2">
                   <Space wrap>
-                    <span className="text-gray-600 text-sm">Show:</span>
+                    <span className="text-gray-600 text-sm">{t.admin.customerShow}</span>
                     {[10, 25, 50].map((size) => (
                       <Button
                         key={size}
@@ -381,7 +385,7 @@ export default function CustomerPage() {
                           setCurrentPage(1);
                         }}
                       >
-                        {size}
+                        {n(size)}
                       </Button>
                     ))}
                   </Space>

@@ -1,5 +1,8 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User as UserIcon } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface AccountInfoCardProps {
   createdAt?: string;
@@ -12,6 +15,8 @@ export function AccountInfoCard({
   updatedAt,
 //   userId,
 }: AccountInfoCardProps) {
+  const t = useTranslation();
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -25,28 +30,22 @@ export function AccountInfoCard({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <UserIcon className="w-5 h-5" />
-          Account Info
+          {t.admin.myProfileAccountInfo}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-foreground">Member Since</div>
+          <div className="text-sm font-medium text-foreground">{t.admin.myProfileMemberSince}</div>
           <div className="text-sm text-muted-foreground">
             {createdAt ? formatDate(createdAt) : "N/A"}
           </div>
         </div>
         <div>
-          <div className="text-sm font-medium text-foreground">Last Updated</div>
+          <div className="text-sm font-medium text-foreground">{t.admin.myProfileLastUpdated}</div>
           <div className="text-sm text-muted-foreground">
             {updatedAt ? formatDate(updatedAt) : "N/A"}
           </div>
         </div>
-        {/* <div>
-          <div className="text-sm font-medium text-gray-900">User ID</div>
-          <div className="text-sm text-gray-600 font-mono truncate">
-            {userId}
-          </div>
-        </div> */}
       </CardContent>
     </Card>
   );

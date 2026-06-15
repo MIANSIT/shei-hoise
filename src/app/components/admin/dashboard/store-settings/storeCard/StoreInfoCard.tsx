@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { StoreData, UpdatedStoreData } from "@/lib/types/store/store";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface InfoItemProps {
   icon: React.ReactNode;
@@ -102,6 +103,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const notify = useSheiNotification();
+  const t = useTranslation();
 
   const [formData, setFormData] = useState({
     description: store.description || "",
@@ -121,10 +123,10 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
     try {
       await onUpdate(formData);
       setEditing(false);
-      notify.success("Store information updated!");
+      notify.success(t.admin.storeMgmtInfoOk);
     } catch (err) {
       console.error(err);
-      notify.error("Failed to update store information.");
+      notify.error(t.admin.storeMgmtInfoFail);
     } finally {
       setLoading(false);
     }
@@ -153,10 +155,10 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-semibold text-foreground">
-              Store Information
+              {t.admin.storeMgmtInfoTitle}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Contact details & business identifiers
+              {t.admin.storeMgmtInfoDesc}
             </p>
           </div>
           {editing ? (
@@ -169,7 +171,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
                 disabled={loading}
               >
                 <Check className="h-3.5 w-3.5" />
-                {loading ? "Saving..." : "Save"}
+                {loading ? t.admin.storeMgmtSaving : t.admin.storeMgmtSave}
               </Button>
               <Button
                 size="sm"
@@ -179,7 +181,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
                 disabled={loading}
               >
                 <X className="h-3.5 w-3.5" />
-                Cancel
+                {t.admin.storeMgmtCancel}
               </Button>
             </div>
           ) : (
@@ -190,7 +192,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
               onClick={() => setEditing(true)}
             >
               <Pencil className="h-3 w-3" />
-              Edit
+              {t.admin.storeMgmtEdit}
             </Button>
           )}
         </div>
@@ -201,7 +203,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
           {/* Description — shown first, full width feel */}
           <InfoItem
             icon={<AlignLeft className="h-4 w-4" />}
-            label="Store Description"
+            label={t.admin.storeMgmtStoreDesc}
             value={formData.description}
             editing={editing}
             onChange={(v) => handleChange("description", v)}
@@ -214,7 +216,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
 
           <InfoItem
             icon={<Mail className="h-4 w-4" />}
-            label="Contact Email"
+            label={t.admin.storeMgmtContactEmail}
             value={formData.contact_email}
             editing={editing}
             onChange={(v) => handleChange("contact_email", v)}
@@ -223,7 +225,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
           />
           <InfoItem
             icon={<Phone className="h-4 w-4" />}
-            label="Contact Phone"
+            label={t.admin.storeMgmtContactPhone}
             value={formData.contact_phone}
             editing={editing}
             onChange={(v) => handleChange("contact_phone", v)}
@@ -232,7 +234,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
           />
           <InfoItem
             icon={<MapPin className="h-4 w-4" />}
-            label="Business Address"
+            label={t.admin.storeMgmtBizAddr}
             value={formData.business_address}
             editing={editing}
             onChange={(v) => handleChange("business_address", v)}
@@ -245,7 +247,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
 
           <InfoItem
             icon={<CreditCard className="h-4 w-4" />}
-            label="Tax ID"
+            label={t.admin.storeMgmtTaxId}
             value={formData.tax_id}
             editing={editing}
             onChange={(v) => handleChange("tax_id", v)}
@@ -254,7 +256,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
           />
           <InfoItem
             icon={<FileText className="h-4 w-4" />}
-            label="Business License"
+            label={t.admin.storeMgmtBizLicense}
             value={formData.business_license}
             editing={editing}
             onChange={(v) => handleChange("business_license", v)}
@@ -268,7 +270,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
         <div className="px-5 py-3 border-t border-border bg-muted/10">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
-            Store registered{" "}
+            {t.admin.storeMgmtRegistered}{" "}
             {new Date(store.created_at).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",

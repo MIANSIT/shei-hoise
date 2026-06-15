@@ -6,6 +6,7 @@ import { Card, Row, Col, Space, Typography, Alert } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
 import type { ShippingFee } from "@/lib/types/store/store";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const { Title, Text } = Typography;
 
@@ -30,6 +31,8 @@ export default function CustomerInfo({
   shippingFees = [],
   settingsLoading = false,
 }: CustomerInfoProps) {
+  const t = useTranslation();
+
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(?:\+88|01)?\d{9,11}$/;
     return phoneRegex.test(phone.replace(/\s/g, ""));
@@ -70,23 +73,23 @@ export default function CustomerInfo({
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div>
             <Title level={4} style={{ margin: 0 }}>
-              Customer Information
+              {t.admin.createOrderCustInfoTitle}
             </Title>
             {isExistingCustomer && (
               <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-                Existing Customer
+                {t.admin.createOrderCustExistingLabel}
               </Text>
             )}
           </div>
 
-          <FormField name="orderId" label="Order ID" value={orderId} readOnly />
+          <FormField name="orderId" label={t.admin.createOrderFieldOrderId} value={orderId} readOnly />
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <FormField
                 name="name"
-                label="Customer Name"
-                placeholder="Enter customer name"
+                label={t.admin.createOrderFieldCustName}
+                placeholder={t.admin.createOrderFieldCustNamePH}
                 required
                 tooltip="Enter the full name of the customer as it appears on official documents or for delivery purposes."
                 value={customerInfo.name}
@@ -94,14 +97,14 @@ export default function CustomerInfo({
               />
               {touchedFields.name && !customerInfo.name && (
                 <Text type="danger" style={{ fontSize: 12 }}>
-                  Customer name is required
+                  {t.admin.createOrderErrName}
                 </Text>
               )}
             </Col>
             <Col xs={24} md={12}>
               <FormField
                 name="email"
-                label="Customer Email"
+                label={t.admin.createOrderFieldCustEmail}
                 placeholder="customer@example.com"
                 tooltip="Enter a valid email address. Used for order confirmation and communication. Optional field."
                 value={customerInfo.email}
@@ -119,7 +122,7 @@ export default function CustomerInfo({
             <Col xs={24} md={12}>
               <FormField
                 name="phone"
-                label="Customer Phone"
+                label={t.admin.createOrderFieldCustPhone}
                 placeholder="017********"
                 required
                 tooltip="Enter a valid phone number, e.g., 017XXXXXXXX. Include country code if necessary for international deliveries."
@@ -129,16 +132,16 @@ export default function CustomerInfo({
               {showPhoneError && (
                 <Text type="danger" style={{ fontSize: 12 }}>
                   {!customerInfo.phone
-                    ? "Phone number is required"
-                    : "Please enter a valid phone number"}
+                    ? t.admin.createOrderErrPhone
+                    : t.admin.createOrderErrPhoneInvalid}
                 </Text>
               )}
             </Col>
             <Col xs={24} md={12}>
               <FormField
                 name="city"
-                label="City"
-                placeholder="Enter city (e.g., Dhaka, Chittagong, Sylhet)"
+                label={t.admin.createOrderFieldCity}
+                placeholder={t.admin.createOrderFieldCityPH}
                 required
                 tooltip="Enter the city where the order will be delivered, e.g., Dhaka, Chittagong."
                 value={customerInfo.city}
@@ -146,7 +149,7 @@ export default function CustomerInfo({
               />
               {touchedFields.city && !customerInfo.city && (
                 <Text type="danger" style={{ fontSize: 12 }}>
-                  City is required
+                  {t.admin.createOrderErrCity}
                 </Text>
               )}
             </Col>
@@ -154,8 +157,8 @@ export default function CustomerInfo({
 
           <FormField
             name="address"
-            label="Customer Address"
-            placeholder="Enter complete address"
+            label={t.admin.createOrderFieldAddr}
+            placeholder={t.admin.createOrderFieldAddrPH}
             as="textarea"
             required
             tooltip="Enter the complete delivery address including street, house number, and any landmarks to ensure accurate delivery."
@@ -164,7 +167,7 @@ export default function CustomerInfo({
           />
           {touchedFields.address && !customerInfo.address && (
             <Text type="danger" style={{ fontSize: 12 }}>
-              Address is required
+              {t.admin.createOrderErrAddr}
             </Text>
           )}
 
@@ -173,8 +176,8 @@ export default function CustomerInfo({
               <FormField
                 name="postal_code"
                 tooltip="Provide the postal or ZIP code for the delivery address to assist with accurate shipping. Optional field."
-                label="Postal Code"
-                placeholder="Enter postal code (e.g., 1200, 1216)"
+                label={t.admin.createOrderFieldPostal}
+                placeholder={t.admin.createOrderFieldPostalPH}
                 value={customerInfo.postal_code || ""}
                 onChange={(val) => handleFieldChange("postal_code", val)}
               />
@@ -182,11 +185,11 @@ export default function CustomerInfo({
             <Col xs={24} md={12}>
               <FormField
                 name="deliveryOption"
-                label="Delivery City Option"
+                label={t.admin.createOrderFieldDelivery}
                 tooltip="Select the city-specific delivery option. This determines the shipping fees and available delivery partners."
                 as="select"
                 required
-                placeholder="Select delivery option"
+                placeholder={t.admin.createOrderFieldDeliveryPH}
                 options={validShippingFees.map((fee) => ({
                   label: fee.name,
                   value: fee.name.toLowerCase().replace(/\s+/g, "-"),
@@ -197,7 +200,7 @@ export default function CustomerInfo({
               />
               {touchedFields.deliveryOption && !customerInfo.deliveryOption && (
                 <Text type="danger" style={{ fontSize: 12 }}>
-                  Delivery option is required
+                  {t.admin.createOrderErrDelivery}
                 </Text>
               )}
             </Col>
@@ -205,23 +208,22 @@ export default function CustomerInfo({
 
           <FormField
             name="notes"
-            label="Order Notes"
+            label={t.admin.createOrderFieldNotes}
             tooltip="Optional: Provide special instructions for delivery or any other notes related to the order."
             as="textarea"
-            placeholder="Any special instructions or notes..."
+            placeholder={t.admin.createOrderFieldNotesPH}
             value={customerInfo.notes}
             onChange={(val) => handleFieldChange("notes", val)}
           />
 
           {!isExistingCustomer && emailError && (
             <Alert
-              title="Duplicate Email Detected"
+              title={t.admin.createOrderDuplicateEmail}
               description={
                 <Space orientation="vertical" size={0}>
                   <Text>{emailError}</Text>
                   <Text type="secondary">
-                    Please use the existing customer option or a different email
-                    address.
+                    {t.admin.createOrderDuplicateEmailHint}
                   </Text>
                 </Space>
               }
@@ -232,16 +234,14 @@ export default function CustomerInfo({
 
           {!isExistingCustomer && !emailError && (
             <Alert
-              title="Customer Record Creation"
+              title={t.admin.createOrderCustRecordTitle}
               description={
                 <Space orientation="vertical" size={0}>
                   <Text>
-                    A customer record will be created in the system with the
-                    provided information.
+                    {t.admin.createOrderCustRecordDesc}
                   </Text>
                   <Text type="secondary">
-                    No password is required at this stage — the customer will
-                    create their own password later.
+                    {t.admin.createOrderCustRecordNoPassword}
                   </Text>
                 </Space>
               }
@@ -252,8 +252,8 @@ export default function CustomerInfo({
 
           {isExistingCustomer && customerInfo.customer_id && (
             <Alert
-              title="Customer Information"
-              description="This order is linked to an existing customer. Basic customer information is auto-filled. You can modify the delivery address and city for this specific order."
+              title={t.admin.createOrderExistLinkedTitle}
+              description={t.admin.createOrderExistLinkedDesc}
               type="info"
               showIcon
             />

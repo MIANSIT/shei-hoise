@@ -1,6 +1,6 @@
-import React from "react";
 import { Button, Divider, Input, Space } from "antd";
 import { UserAddOutlined, SearchOutlined } from "@ant-design/icons";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface PageHeaderProps {
   onAddCustomer: () => void;
@@ -8,6 +8,8 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
+  const t = useTranslation();
+
   return (
     <div className="mb-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -15,7 +17,7 @@ export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
         <div className="w-80">
           <Space.Compact className="w-full ">
             <Input
-              placeholder="Search name, email or phone"
+              placeholder={t.admin.customerSearchPlaceholder}
               allowClear
               onChange={(e) => onSearchChange(e.target.value)}
               size="large"
@@ -38,7 +40,7 @@ export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
             onClick={onAddCustomer}
             className="h-12"
           >
-            Add Customer
+            {t.admin.customerAddBtn}
           </Button>
         </div>
       </div>

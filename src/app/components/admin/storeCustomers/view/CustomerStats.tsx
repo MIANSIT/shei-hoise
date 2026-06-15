@@ -1,5 +1,4 @@
 // app/components/admin/customers/CustomerStats.tsx
-import React from "react";
 import { Row, Col, Card, Statistic } from "antd";
 import {
   TeamOutlined,
@@ -7,6 +6,7 @@ import {
   RiseOutlined,
   UserOutlined,
 } from "@ant-design/icons";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface CustomerStatsProps {
   totalCustomers: number;
@@ -21,17 +21,19 @@ export function CustomerStats({
   activeCustomersStatus,
   thisMonth,
 }: CustomerStatsProps) {
+  const t = useTranslation();
+
   return (
     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
       <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="Total Customers"
+            title={t.admin.customerTotalStat}
             value={totalCustomers}
             prefix={<TeamOutlined />}
             styles={{
               content: {
-                color: "#1890ff", // now applied here
+                color: "#1890ff",
               },
             }}
           />
@@ -40,12 +42,12 @@ export function CustomerStats({
       <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="Active Customers (From Orders)"
+            title={t.admin.customerActiveOrders}
             value={activeCustomersOrders}
             prefix={<CheckCircleOutlined />}
             styles={{
               content: {
-                color: "#52c41a", // now applied here
+                color: "#52c41a",
               },
             }}
           />
@@ -54,12 +56,12 @@ export function CustomerStats({
       <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="Active Customers (From Status)"
+            title={t.admin.customerActiveStatus}
             value={activeCustomersStatus}
             prefix={<UserOutlined />}
             styles={{
               content: {
-                color: "#faad14", // now applied here
+                color: "#faad14",
               },
             }}
           />
@@ -68,12 +70,12 @@ export function CustomerStats({
       <Col xs={24} sm={6}>
         <Card>
           <Statistic
-            title="This Month"
+            title={t.admin.customerThisMonth}
             value={thisMonth}
             prefix={<RiseOutlined />}
             styles={{
               content: {
-                color: "#722ed1", // now applied here
+                color: "#722ed1",
               },
             }}
           />

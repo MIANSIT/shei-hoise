@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type FooterBottomProps = {
   links: { label: string; href: string }[];
@@ -45,6 +46,13 @@ export default function FooterBottom({
   storeDescription,
   isStore = false, // Default to false for main website
 }: FooterBottomProps) {
+  const t = useTranslation();
+
+  const translateLink = (label: string) => {
+    if (label === "Privacy & Policy") return t.landing.footerPrivacy;
+    if (label === "Terms & Condition") return t.landing.footerTerms;
+    return label;
+  };
   return (
     <div className="border-t border-border ">
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -105,7 +113,7 @@ export default function FooterBottom({
                     href={link.href}
                     className="text-sm text-foreground font-medium hover:text-primary hover:underline underline-offset-4 transition-all duration-200"
                   >
-                    {link.label}
+                    {translateLink(link.label)}
                   </Link>
                 ))}
               </div>
@@ -130,7 +138,7 @@ export default function FooterBottom({
                     Beta
                   </span>
                 </Link>{" "}
-                . All rights reserved.
+                . {t.landing.allRightsReserved}
               </p>
 
               {/* Right: Links */}
@@ -141,7 +149,7 @@ export default function FooterBottom({
                     href={link.href}
                     className="text-sm text-foreground font-medium hover:text-primary hover:underline underline-offset-4 transition-all duration-200"
                   >
-                    {link.label}
+                    {translateLink(link.label)}
                   </Link>
                 ))}
               </div>
@@ -167,7 +175,7 @@ export default function FooterBottom({
                     Beta
                   </span>
                 </Link>
-               {" "} . All rights reserved.
+               {" "} . {t.landing.allRightsReserved}
               </p>
             </div>
           )}
@@ -225,7 +233,7 @@ export default function FooterBottom({
                 href={link.href}
                 className="text-sm text-foreground font-medium hover:text-primary hover:underline underline-offset-4 duration-200 py-2 px-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors w-full text-center border border-border"
               >
-                {link.label}
+                {translateLink(link.label)}
               </Link>
             ))}
           </div>
@@ -240,7 +248,7 @@ export default function FooterBottom({
               >
                 {brandName}
               </Link>
-              . All rights reserved.
+              . {t.landing.allRightsReserved}
             </p>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import {
   FaFacebookF,
   FaInstagram,
@@ -72,6 +73,7 @@ export default function StoreFooter({
   bottomLinks,
   //   newsletterCTA,
 }: StoreFooterProps) {
+  const t = useTranslation();
   const renderSocialIcons = () => (
     <div className="flex gap-3">
       {socialLinks?.facebook && (
@@ -195,7 +197,7 @@ export default function StoreFooter({
             {socialLinks && (
               <div className="pt-4">
                 <p className="text-sm font-semibold text-gray-900 mb-3 dark:text-white">
-                  Connect with us
+                  {t.nav.footerConnect}
                 </p>
                 {renderSocialIcons()}
               </div>
@@ -205,7 +207,7 @@ export default function StoreFooter({
           {/* Column 2: Company */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 dark:text-white">
-              Company
+              {t.nav.footerCompany}
             </h4>
             <ul className="space-y-3">
               {aboutLink && (
@@ -214,7 +216,7 @@ export default function StoreFooter({
                     href={aboutLink}
                     className="text-gray-600 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1 dark:text-gray-400 dark:hover:text-primary-400"
                   >
-                    About Us
+                    {t.nav.footerAbout}
                   </Link>
                 </li>
               )}
@@ -224,7 +226,7 @@ export default function StoreFooter({
           {/* Column 3: Contact */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 dark:text-white">
-              Contact
+              {t.nav.footerContact}
             </h4>
             <ul className="space-y-4">
               {contactEmail && (
@@ -263,19 +265,26 @@ export default function StoreFooter({
           {/* Column 4: Legal */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 dark:text-white">
-              Legal
+              {t.nav.footerLegal}
             </h4>
             <ul className="space-y-3">
-              {bottomLinks.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-gray-600 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1 dark:text-gray-400 dark:hover:text-primary-400"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {bottomLinks.map((link) => {
+                const label = link.href.includes("privacy")
+                  ? t.nav.footerPrivacy
+                  : link.href.includes("terms")
+                    ? t.nav.footerTerms
+                    : link.label;
+                return (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-gray-600 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1 dark:text-gray-400 dark:hover:text-primary-400"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>
@@ -308,7 +317,7 @@ export default function StoreFooter({
                   </Link>
                 )}
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Premium E-commerce Solutions
+                  {t.nav.footerTagline}
                 </p>
               </div>
             </div>
@@ -324,7 +333,7 @@ export default function StoreFooter({
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
-                Company
+                {t.nav.footerCompany}
               </h4>
               <ul className="space-y-3">
                 {aboutLink && (
@@ -333,7 +342,7 @@ export default function StoreFooter({
                       href={aboutLink}
                       className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
                     >
-                      About Us
+                      {t.nav.footerAbout}
                     </Link>
                   </li>
                 )}
@@ -342,19 +351,26 @@ export default function StoreFooter({
 
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
-                Legal
+                {t.nav.footerLegal}
               </h4>
               <ul className="space-y-3">
-                {bottomLinks.slice(0, 3).map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
+                {bottomLinks.slice(0, 3).map((link) => {
+                  const label = link.href.includes("privacy")
+                    ? t.nav.footerPrivacy
+                    : link.href.includes("terms")
+                      ? t.nav.footerTerms
+                      : link.label;
+                  return (
+                    <li key={link.label}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -363,7 +379,7 @@ export default function StoreFooter({
           {(contactEmail || contactPhone || contactAddress) && (
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
-                Contact
+                {t.nav.footerContact}
               </h4>
               <ul className="space-y-3">
                 {contactEmail && (
@@ -404,7 +420,7 @@ export default function StoreFooter({
           {socialLinks && (
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
-                Follow Us
+                {t.nav.footerFollow}
               </h4>
               {renderSocialIcons()}
             </div>
@@ -422,7 +438,7 @@ export default function StoreFooter({
               >
                 {brandName}
               </Link>
-              . All rights reserved.
+              . {t.nav.footerRights}
             </div>
           </div>
         </div>

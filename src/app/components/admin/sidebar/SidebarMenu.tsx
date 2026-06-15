@@ -6,17 +6,17 @@ import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { sideMenu, MenuItem } from "@/lib/menu";
 import { LucideIcon } from "@/lib/LucideIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
   storeSlug?: string | null;
   isMobile?: boolean;
-  onMobileMenuClick?: () => void; // Add this prop
+  onMobileMenuClick?: () => void;
 }
 
 type AntdMenuItem = Required<MenuProps>["items"][number];
 
-// Helper function to safely render icons
 function renderIcon(
   IconComponent?: React.ComponentType<React.SVGProps<SVGSVGElement>>,
 ) {
@@ -25,6 +25,7 @@ function renderIcon(
 
 function mapMenuItem(
   item: MenuItem,
+  translateTitle: (title: string) => string,
   storeSlug?: string | null,
   onMobileMenuClick?: () => void,
 ): AntdMenuItem {
@@ -32,34 +33,31 @@ function mapMenuItem(
 
   if (item.children?.length) {
     const children: AntdMenuItem[] = item.children.map((child) => {
-      // Handle Generate Order Link specially
       if (child.title === "Generate Order Link" && storeSlug) {
         return {
           key: `/${storeSlug}/generate-orders-link`,
           icon: renderIcon(child.icon),
-          label: "Generate Order Link",
-          title: "Generate Order Link",
+          label: translateTitle(child.title),
+          title: translateTitle(child.title),
           onClick: (e) => {
             e.domEvent.stopPropagation();
             window.open(`/${storeSlug}/generate-orders-link`, "_blank");
-            // Close drawer on mobile
             onMobileMenuClick?.();
           },
         };
       }
 
-      // Regular menu items
       return {
         key: child.href || child.title,
         icon: renderIcon(child.icon),
-        label: child.title,
+        label: translateTitle(child.title),
       };
     });
 
     return {
       key: item.title,
       icon,
-      label: item.title,
+      label: translateTitle(item.title),
       children,
     };
   }
@@ -67,7 +65,7 @@ function mapMenuItem(
   return {
     key: item.href || item.title,
     icon,
-    label: item.title,
+    label: translateTitle(item.title),
   };
 }
 
@@ -78,10 +76,37 @@ export default function SidebarMenu({
 }: SidebarMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslation();
+
+  const translateTitle = (title: string): string => {
+    const map: Record<string, string> = {
+      "Dashboard": t.admin.menuDashboard,
+      "Users": t.admin.menuUsers,
+      "All Users": t.admin.menuAllUsers,
+      "Create Users": t.admin.menuCreateUsers,
+      "Products": t.admin.menuProducts,
+      "Add Product": t.admin.menuAddProduct,
+      "Stock Update": t.admin.menuStockUpdate,
+      "All Products": t.admin.menuAllProducts,
+      "All Categories": t.admin.menuAllCategories,
+      "Orders": t.admin.menuOrders,
+      "Create Order": t.admin.menuCreateOrder,
+      "All Orders": t.admin.menuAllOrders,
+      "Generate Order Link": t.admin.menuGenerateOrderLink,
+      "Setting": t.admin.menuSetting,
+      "Shipping": t.admin.menuShipping,
+      "Financial": t.admin.menuFinancial,
+      "Expense": t.admin.menuExpense,
+      "Category": t.admin.menuCategory,
+      "Pixel Analytics": t.admin.menuPixelAnalytics,
+    };
+    return map[title] ?? title;
+  };
 
   const items = useMemo(
-    () => sideMenu.map((i) => mapMenuItem(i, storeSlug, onMobileMenuClick)),
-    [storeSlug, onMobileMenuClick],
+    () => sideMenu.map((i) => mapMenuItem(i, translateTitle, storeSlug, onMobileMenuClick)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [storeSlug, onMobileMenuClick, t],
   );
 
   const defaultOpenKeys = useMemo(() => {
@@ -95,7 +120,6 @@ export default function SidebarMenu({
   }, [pathname]);
 
   const handleClick: MenuProps["onClick"] = (e) => {
-    // Skip navigation for Generate Order Link (it has its own onClick)
     if (e.key.includes("generate-orders-link")) {
       return;
     }
@@ -104,7 +128,6 @@ export default function SidebarMenu({
     const clicked = flatten.find((i) => i.href === e.key);
     if (clicked?.href) {
       router.push(clicked.href);
-      // Close drawer on mobile after navigation
       if (isMobile && onMobileMenuClick) {
         onMobileMenuClick();
       }

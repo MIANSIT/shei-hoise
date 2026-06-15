@@ -16,6 +16,8 @@ import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { StoreSettings } from "@/lib/types/store/store";
 import {
   Minus,
@@ -275,6 +277,8 @@ export default function ProductPage() {
   const { cart, addToCart } = useCartStore();
   const { success: toastSuccess, error: toastError } = useSheiNotification();
   const router = useRouter();
+  const t = useTranslation();
+  const n = useLocalNum();
   const curr = currencyLoading ? "৳" : (currencyIcon ?? "৳");
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -432,12 +436,12 @@ export default function ProductPage() {
         currency: "BDT",
         num_items: quantity,
       }, store_slug);
-      toastSuccess(`${product.name} added to cart`);
+      toastSuccess(`${product.name} ${t.cart.addedSuccess}`);
       setAddedSuccess(true);
       setTimeout(() => setAddedSuccess(false), 2200);
       setQuantity(1);
     } catch {
-      toastError("Failed to add to cart");
+      toastError(t.cart.addFailed);
     } finally {
       setIsAdding(false);
     }
@@ -463,7 +467,7 @@ export default function ProductPage() {
       }, store_slug);
       router.push(`/${store_slug}/checkout`);
     } catch {
-      toastError("Failed to proceed to checkout");
+      toastError(t.cart.checkoutFailed);
       setIsBuyingNow(false);
     }
   };
@@ -472,7 +476,7 @@ export default function ProductPage() {
     if (quantity < remaining) setQuantity((q) => q + 1);
     else {
       setShowMaxErr(true);
-      toastError("Maximum quantity reached");
+      toastError(t.product.maxQtyReached);
     }
   };
   const handleDecrement = () => quantity > 1 && setQuantity((q) => q - 1);
@@ -494,13 +498,13 @@ export default function ProductPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white dark:bg-gray-950">
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          Product not found.
+          {t.product.productNotFound}
         </p>
         <a
           href={`/${store_slug}/shop`}
           className="text-xs font-semibold text-gray-900 dark:text-gray-100 underline underline-offset-4"
         >
-          Back to shop
+          {t.product.backToShop}
         </a>
       </div>
     );
@@ -519,7 +523,7 @@ export default function ProductPage() {
             className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors shrink-0"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to Shop
+            {t.nav.backToShop}
           </a>
           <Breadcrumb
             store={store_slug}
@@ -592,7 +596,7 @@ export default function ProductPage() {
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-gray-300">
-                    Size
+                    {t.product.size}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -608,7 +612,7 @@ export default function ProductPage() {
                         key={v.id}
                         onClick={() => {
                           if (!inStock) {
-                            toastError("This variant is out of stock");
+                            toastError(t.product.outOfStock);
                             return;
                           }
                           setSelectedVariant(v.id);
@@ -651,7 +655,7 @@ export default function ProductPage() {
                 {hasLowStockVariant && (
                   <p className="mt-2.5 flex items-center gap-1.5 text-[12px] font-medium text-amber-600 dark:text-amber-500">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-                    Low stock on some sizes
+                    {t.product.lowStockSizes}
                   </p>
                 )}
               </div>
@@ -661,7 +665,7 @@ export default function ProductPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gray-700 dark:text-gray-300">
-                  Qty
+                  {t.product.qty}
                 </span>
                 <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 h-10">
                   <button
@@ -706,7 +710,7 @@ export default function ProductPage() {
                           transition={{ duration: 0.12 }}
                           className="text-[13px] font-bold text-gray-900 dark:text-gray-100"
                         >
-                          {quantity}
+                          {n(quantity)}
                         </motion.span>
                       </AnimatePresence>
                     )}
@@ -722,7 +726,7 @@ export default function ProductPage() {
               </div>
               <div className="text-right">
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
-                  Total
+                  {t.product.total}
                 </p>
                 <motion.p
                   key={totalPrice}
@@ -731,7 +735,7 @@ export default function ProductPage() {
                   className="text-[20px] font-extrabold text-gray-900 dark:text-gray-50 tracking-tight"
                 >
                   {curr}
-                  {totalPrice.toFixed(2)}
+                  {n(totalPrice.toFixed(2))}
                 </motion.p>
               </div>
             </div>
@@ -745,7 +749,7 @@ export default function ProductPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="text-[12px] text-rose-500 dark:text-rose-400 font-medium mb-2 overflow-hidden"
                 >
-                  Maximum available quantity reached
+                  {t.product.maxQtyReached}
                 </motion.p>
               )}
             </AnimatePresence>
@@ -755,25 +759,25 @@ export default function ProductPage() {
               {stockStatus === "out" && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rose-600 dark:text-rose-400">
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  Out of Stock
+                  {t.product.outOfStock}
                 </span>
               )}
               {stockStatus === "maxed" && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue-600 dark:text-blue-400">
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Max quantity in cart
+                  {t.product.maxInCart}
                 </span>
               )}
               {stockStatus === "low" && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-600 dark:text-amber-400">
                   <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  Limited Stock
+                  {t.product.limitedStock}
                 </span>
               )}
               {stockStatus === "in" && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  In Stock
+                  {t.product.inStock}
                 </span>
               )}
             </div>
@@ -810,28 +814,28 @@ export default function ProductPage() {
               {showFreeDelivery && (
                 <TrustBadge
                   icon={<Truck className="w-4 h-4" />}
-                  title="Free Delivery"
-                  sub={`Orders over ${curr}${storeSettings!.free_shipping_threshold!.toLocaleString()}`}
+                  title={t.product.freeDelivery}
+                  sub={`${t.product.ordersOver} ${curr}${n(storeSettings!.free_shipping_threshold!)}`}
                 />
               )}
               {showEasyReturns && (
                 <TrustBadge
                   icon={<RefreshCw className="w-4 h-4" />}
-                  title="Easy Returns"
-                  sub={`Within ${storeSettings!.return_policy_days} day${storeSettings!.return_policy_days! > 1 ? "s" : ""}`}
+                  title={t.product.easyReturns}
+                  sub={`${t.product.within} ${n(storeSettings!.return_policy_days!)} ${storeSettings!.return_policy_days! > 1 ? t.product.days : t.product.day}`}
                 />
               )}
               {showNoReturn && (
                 <TrustBadge
                   icon={<RefreshCw className="w-4 h-4" />}
-                  title="No Returns"
-                  sub="All sales final"
+                  title={t.product.noReturns}
+                  sub={t.product.allSalesFinal}
                 />
               )}
               <TrustBadge
                 icon={<ShieldCheck className="w-4 h-4" />}
-                title="Secure Payment"
-                sub="100% protected"
+                title={t.product.securePayment}
+                sub={t.product.hundredProtected}
               />
             </div>
 
@@ -842,27 +846,27 @@ export default function ProductPage() {
 
             {/* Accordions */}
             <div className="mt-4">
-              <DescAccordion title="Description" open>
+              <DescAccordion title={t.product.description} open>
                 <div className="space-y-2.5">
                   {product.description ? (
                     renderDescription(product.description)
                   ) : (
                     <p className="text-gray-400 dark:text-gray-600">
-                      No description available.
+                      {t.product.noDescription}
                     </p>
                   )}
                 </div>
               </DescAccordion>
 
-              <DescAccordion title="Product Details">
+              <DescAccordion title={t.product.productDetails}>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
                   {(
                     [
-                      ["Category", product.categories?.name ?? "Uncategorized"],
+                      [t.product.category, product.categories?.name ?? "Uncategorized"],
                       ["SKU", selectedVariantData?.sku ?? product.sku],
                       ...(selectedVariantData
                         ? [
-                            ["Variant", selectedVariantData.variant_name],
+                            [t.product.variant, selectedVariantData.variant_name],
                             ...(selectedVariantData.attributes
                               ? Object.entries(
                                   selectedVariantData.attributes,
@@ -889,28 +893,28 @@ export default function ProductPage() {
               </DescAccordion>
 
               {discount > 0 && (
-                <DescAccordion title="Pricing">
+                <DescAccordion title={t.product.pricing}>
                   <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
                     <dt className="text-gray-400 dark:text-gray-500 font-medium">
-                      Base Price
+                      {t.product.basePrice}
                     </dt>
                     <dd className="text-gray-700 dark:text-gray-300 font-semibold">
                       {curr}
-                      {originalPrice.toFixed(2)}
+                      {n(originalPrice.toFixed(2))}
                     </dd>
                     <dt className="text-gray-400 dark:text-gray-500 font-medium">
-                      Sale Price
+                      {t.product.salePrice}
                     </dt>
                     <dd className="text-emerald-600 dark:text-emerald-400 font-bold">
                       {curr}
-                      {displayPrice.toFixed(2)}
+                      {n(displayPrice.toFixed(2))}
                     </dd>
                     <dt className="text-gray-400 dark:text-gray-500 font-medium">
-                      You Save
+                      {t.product.youSave}
                     </dt>
                     <dd className="text-rose-500 dark:text-rose-400 font-bold">
                       {curr}
-                      {(originalPrice - displayPrice).toFixed(2)} ({discount}%)
+                      {n((originalPrice - displayPrice).toFixed(2))} ({n(discount)}%)
                     </dd>
                   </dl>
                 </DescAccordion>

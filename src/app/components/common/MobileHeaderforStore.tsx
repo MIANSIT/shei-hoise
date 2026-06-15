@@ -17,6 +17,8 @@ import {
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import AuthButtons from "../header/AuthButtons";
 import { SheiSkeleton } from "../ui/shei-skeleton";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface MobileHeaderProps {
   storeSlug: string;
@@ -42,6 +44,7 @@ export default function MobileHeader({
 
   const pathname = usePathname();
   const menuRef = useRef<HTMLDivElement>(null);
+  const t = useTranslation();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -87,9 +90,9 @@ export default function MobileHeader({
   }, [pathname]);
 
   const navLinks: NavLink[] = [
-    { name: "Home", path: `/${storeSlug}` },
-    { name: "Shop", path: `/${storeSlug}/shop` },
-    { name: "Generate Order", path: `/${storeSlug}/generate-orders-link` },
+    { name: t.nav.home, path: `/${storeSlug}` },
+    { name: t.nav.shop, path: `/${storeSlug}/shop` },
+    { name: t.nav.generateOrder, path: `/${storeSlug}/generate-orders-link` },
   ];
 
   // AuthLinks for mobile menu
@@ -97,11 +100,11 @@ export default function MobileHeader({
     !isAdmin && !isLoggedIn
       ? [
           {
-            name: "Log in",
+            name: t.nav.login,
             path: `/${storeSlug}/login?redirect=/${storeSlug}`,
           },
           {
-            name: "Sign up",
+            name: t.nav.signup,
             path: `/${storeSlug}/signup?redirect=/${storeSlug}`,
             isHighlighted: true,
           },
@@ -110,7 +113,7 @@ export default function MobileHeader({
 
   // Get customer display name
   const customerDisplayName =
-    customer?.name || authEmail?.split("@")[0] || "Customer";
+    customer?.name || authEmail?.split("@")[0] || t.user.customer;
   const customerDisplayEmail = customer?.email || authEmail || "";
 
   return (
@@ -144,6 +147,7 @@ export default function MobileHeader({
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <LanguageSwitcher />
               <ThemeToggle />
               <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
               <button
@@ -221,7 +225,7 @@ export default function MobileHeader({
                         onClick={() => setMenuOpen(false)}
                         tabIndex={menuOpen ? 0 : -1}
                       >
-                        My Orders
+                        {t.nav.myOrders}
                       </Link>
                     </li>
                   )}

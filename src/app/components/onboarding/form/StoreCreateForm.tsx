@@ -15,6 +15,7 @@ import {
   Step as StepType,
 } from "@/lib/hook/onboarding/useStepForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 import UserInformation from "@/app/components/onboarding/createStore/UserInformation";
 import StoreInformation from "@/app/components/onboarding/createStore/StoreInformation";
@@ -33,6 +34,7 @@ export default function StoreCreateForm({
 }: StoreCreateFormProps) {
   const [isFinalStepValid, setIsFinalStepValid] = useState(false);
   const notify = useSheiNotification();
+  const t = useTranslation();
 
   const form = useForm<CreateUserType>({
     resolver: zodResolver(createUserSchema),
@@ -62,7 +64,7 @@ export default function StoreCreateForm({
         shipping_fees: [
           {
             name: "Inside Dhaka",
-            price: 0, // or you can use null/undefined if you adjust the schema
+            price: 0,
             estimated_days: "",
           },
         ],
@@ -87,7 +89,7 @@ export default function StoreCreateForm({
 
   const stepsList: StepType[] = [
     {
-      title: "User Info",
+      title: t.onboarding.stepUserInfo,
       content: <UserInformation control={control} formState={form} />,
       fields: [
         "user_type",
@@ -100,7 +102,7 @@ export default function StoreCreateForm({
       ] as Path<CreateUserType>[],
     },
     {
-      title: "Store Info",
+      title: t.onboarding.stepStoreInfo,
       content: <StoreInformation control={control} />,
       fields: [
         "store.store_name",
@@ -116,7 +118,7 @@ export default function StoreCreateForm({
       ] as Path<CreateUserType>[],
     },
     {
-      title: "Store Settings",
+      title: t.onboarding.stepStoreSettings,
       content: <StoreSettings control={control} />,
       fields: [
         "store_settings.currency",
@@ -127,7 +129,7 @@ export default function StoreCreateForm({
       ] as Path<CreateUserType>[],
     },
     {
-      title: "Terms & Privacy",
+      title: t.onboarding.stepTermsPrivacy,
       content: <TermsPrivacy control={control} />,
       fields: [
         "store_settings.terms_and_conditions",
@@ -135,7 +137,7 @@ export default function StoreCreateForm({
       ] as Path<CreateUserType>[],
     },
     {
-      title: "Finalize Account",
+      title: t.onboarding.stepFinalize,
       content: (
         <FinalizeAccount
           control={control}
@@ -163,7 +165,7 @@ export default function StoreCreateForm({
     if (!currentFields || currentFields.length === 0) return;
     const isStepValid = await trigger(currentFields, { shouldFocus: true });
     if (!isStepValid) {
-      notify.error("Please Fill Up the required fields to proceed");
+      notify.error(t.onboarding.fillRequired);
       return;
     }
     next();
@@ -177,13 +179,13 @@ export default function StoreCreateForm({
     } else {
       const isStepValid = await trigger(currentFields, { shouldFocus: true });
       if (isStepValid) goTo(stepIndex);
-      else notify.error("Please Fill Up the required fields to proceed");
+      else notify.error(t.onboarding.fillRequired);
     }
   };
 
   const onSubmitForm = (data: CreateUserType) => {
     if (!isFinalStepValid) {
-      notify.error("Please complete password confirmation and accept terms");
+      notify.error(t.onboarding.completePassword);
       return;
     }
     onSubmit(data, reset);
@@ -195,7 +197,6 @@ export default function StoreCreateForm({
       <div className='hidden md:flex mb-6 justify-between items-center'>
         {steps.map((step, idx) => (
           <div key={idx} className='flex-1 flex items-center'>
-            {/* Circle */}
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
             ${
@@ -209,7 +210,6 @@ export default function StoreCreateForm({
             >
               {idx + 1}
             </div>
-            {/* Step Name */}
             <span
               className={`ml-2 font-medium text-sm
           ${
@@ -224,7 +224,6 @@ export default function StoreCreateForm({
               {step.title}
             </span>
 
-            {/* Line */}
             {idx < steps.length - 1 && (
               <div
                 className={`flex-1 h-1 mx-2
@@ -240,9 +239,8 @@ export default function StoreCreateForm({
         {/* Mobile: Vertical Sidebar with line & numbers */}
         <div className='flex md:hidden flex-col items-center mr-4 top-4 h-screen'>
           {" "}
-          {steps.map((step, idx) => (
+          {steps.map((_step, idx) => (
             <div key={idx} className='flex flex-col items-center mb-4'>
-              {/* Circle */}
               <button
                 onClick={() => handleStepClick(idx)}
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors duration-200
@@ -258,7 +256,6 @@ export default function StoreCreateForm({
                 {idx + 1}
               </button>
 
-              {/* Line below circle */}
               {idx < steps.length - 1 && (
                 <div
                   className={`w-1 h-8
@@ -278,14 +275,14 @@ export default function StoreCreateForm({
           <div className='mt-6 flex justify-between items-center'>
             {!isFirst && (
               <Button onClick={prev} type='default'>
-                Previous
+                {t.onboarding.previous}
               </Button>
             )}
 
             <div className='flex-1 flex justify-end'>
               {!isLast ? (
                 <Button type='primary' onClick={handleNext} htmlType='button'>
-                  Next
+                  {t.onboarding.next}
                 </Button>
               ) : (
                 <Button
@@ -306,7 +303,7 @@ export default function StoreCreateForm({
                     ).style.backgroundColor = "var(--chart-2)";
                   }}
                 >
-                  Request Onboard
+                  {t.onboarding.requestOnboard}
                 </Button>
               )}
             </div>

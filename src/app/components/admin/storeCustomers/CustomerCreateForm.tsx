@@ -16,6 +16,7 @@ import {
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { CreateCustomerResponse } from "@/lib/types/customer";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -42,11 +43,12 @@ interface CustomerFormData {
 export default function CustomerCreateForm({
   onCustomerCreated,
   showSuccessMessage = true,
-  buttonText = "Create Customer",
+  buttonText,
   compact = false,
   resetKey,
 }: CustomerCreateFormProps) {
   const { notification } = App.useApp();
+  const t = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const { user, loading: userLoading } = useCurrentUser();
@@ -65,8 +67,8 @@ export default function CustomerCreateForm({
   const onFinish = async (values: CustomerFormData) => {
     if (!user?.store_id) {
       notification.error({
-        message: "Store ID Required",
-        description: "Store ID is required to create customer",
+        message: t.admin.customerStoreRequired,
+        description: t.admin.customerStoreRequiredDesc,
       });
       return;
     }
@@ -88,8 +90,8 @@ export default function CustomerCreateForm({
 
       if (showSuccessMessage) {
         notification.success({
-          message: "Customer Created Successfully",
-          description: `Customer ${values.name} has been created successfully`,
+          message: t.admin.customerCreatedMsg,
+          description: `${values.name} ${t.admin.customerCreatedDesc2}`,
         });
       }
 
@@ -103,12 +105,12 @@ export default function CustomerCreateForm({
       const errorMessage =
         error instanceof Error
           ? error.message
-          : "Please check the information and try again";
+          : t.admin.customerCheckInfo;
 
       notification.error({
-        message: "Failed to Create Customer",
+        message: t.admin.customerFailedMsg,
         description: errorMessage.includes("already exists")
-          ? "A customer with this email already exists. Please use a different email."
+          ? t.admin.customerEmailExists
           : errorMessage,
       });
     } finally {
@@ -129,7 +131,7 @@ export default function CustomerCreateForm({
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         {!compact && (
           <Title level={4} style={{ margin: 0 }}>
-            Create New Customer
+            {t.admin.customerCreateTitle}
           </Title>
         )}
 
@@ -144,13 +146,13 @@ export default function CustomerCreateForm({
             <Col xs={24} md={compact ? 24 : 12}>
               <Form.Item
                 name="name"
-                label="Customer Name"
+                label={t.admin.customerNameLabel}
                 rules={[
-                  { required: true, message: "Customer name is required" },
+                  { required: true, message: t.admin.customerNameRequired2 },
                 ]}
               >
                 <Input
-                  placeholder="Enter customer name"
+                  placeholder={t.admin.customerNamePlaceholder}
                   size="large"
                   disabled={loading}
                 />
@@ -159,10 +161,10 @@ export default function CustomerCreateForm({
             <Col xs={24} md={compact ? 24 : 12}>
               <Form.Item
                 name="email"
-                label="Customer Email"
+                label={t.admin.customerEmailLabel}
                 rules={[
-                  { required: true, message: "Email is required" },
-                  { type: "email", message: "Please enter a valid email" },
+                  { required: true, message: t.admin.customerEmailRequired },
+                  { type: "email", message: t.admin.customerValidEmail },
                 ]}
               >
                 <Input
@@ -178,20 +180,18 @@ export default function CustomerCreateForm({
             <Col xs={24} md={compact ? 24 : 12}>
               <Form.Item
                 name="phone"
-                label="Customer Phone"
+                label={t.admin.customerPhoneLabel}
                 rules={[
-                  { required: true, message: "Phone number is required" },
+                  { required: true, message: t.admin.customerPhoneRequired },
                   {
                     validator: (_, value) => {
                       if (!value)
                         return Promise.reject(
-                          new Error("Phone number is required")
+                          new Error(t.admin.customerPhoneRequired)
                         );
                       if (!validatePhone(value))
                         return Promise.reject(
-                          new Error(
-                            "Please enter a valid Bangladeshi phone number"
-                          )
+                          new Error(t.admin.customerValidPhone)
                         );
                       return Promise.resolve();
                     },
@@ -208,11 +208,11 @@ export default function CustomerCreateForm({
             <Col xs={24} md={compact ? 24 : 12}>
               <Form.Item
                 name="city"
-                label="City"
-                rules={[{ required: true, message: "City is required" }]}
+                label={t.admin.customerCityLabel}
+                rules={[{ required: true, message: t.admin.customerCityRequired }]}
               >
                 <Input
-                  placeholder="Enter city (e.g., Dhaka, Chittagong)"
+                  placeholder={t.admin.customerCityPlaceholder}
                   size="large"
                   disabled={loading}
                 />
@@ -222,11 +222,11 @@ export default function CustomerCreateForm({
 
           <Form.Item
             name="address"
-            label="Customer Address"
-            rules={[{ required: true, message: "Address is required" }]}
+            label={t.admin.customerAddressLabel}
+            rules={[{ required: true, message: t.admin.customerAddressRequired }]}
           >
             <TextArea
-              placeholder="Enter complete address"
+              placeholder={t.admin.customerAddressPlaceholder}
               rows={3}
               disabled={loading}
             />
@@ -236,26 +236,26 @@ export default function CustomerCreateForm({
             <Col xs={24} md={compact ? 24 : 12}>
               <Form.Item
                 name="postal_code"
-                label="Postal Code"
-                rules={[{ required: true, message: "Postal code is required" }]}
+                label={t.admin.customerPostalLabel}
+                rules={[{ required: true, message: t.admin.customerPostalRequired }]}
               >
                 <Input
-                  placeholder="Enter postal code (e.g., 1200)"
+                  placeholder={t.admin.customerPostalPlaceholder}
                   size="large"
                   disabled={loading}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} md={compact ? 24 : 12}>
-              <Form.Item name="country" label="Country">
-                <Input placeholder="Country" size="large" disabled={loading} />
+              <Form.Item name="country" label={t.admin.customerCountryLabel}>
+                <Input placeholder={t.admin.customerCountryLabel} size="large" disabled={loading} />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item name="notes" label="Notes (Optional)">
+          <Form.Item name="notes" label={t.admin.customerNotesLabel}>
             <Input
-              placeholder="Any additional notes..."
+              placeholder={t.admin.customerNotesPlaceholder}
               size="large"
               disabled={loading}
             />
@@ -270,25 +270,18 @@ export default function CustomerCreateForm({
               block={compact}
               style={!compact ? { width: "200px" } : {}}
             >
-              {buttonText}
+              {buttonText ?? t.admin.customerCreateBtn}
             </Button>
           </Form.Item>
         </Form>
 
         <Alert
-          title="Customer Account Creation"
+          title={t.admin.customerAccCreation}
           description={
             <Space orientation="vertical" size={0}>
-              <Text>
-                The admin will create the customer account without a password.
-              </Text>
-              <Text>
-                The customer will receive an email/letter to generate their own
-                password.
-              </Text>
-              <Text type="secondary">
-                Customer can update their information later.
-              </Text>
+              <Text>{t.admin.customerNoPassword}</Text>
+              <Text>{t.admin.customerEmailInfo}</Text>
+              <Text type="secondary">{t.admin.customerUpdateInfo}</Text>
             </Space>
           }
           type="info"

@@ -2,6 +2,8 @@
 
 import React from "react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface TopProductsProps {
   products: { name: string; revenue: number; quantity: number }[];
@@ -24,6 +26,8 @@ const rankStyles = [
 
 const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
   const { currency, icon, loading } = useUserCurrencyIcon();
+  const n = useLocalNum();
+  const t = useTranslation();
 
   if (loading)
     return (
@@ -35,18 +39,15 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
   if (products.length === 0)
     return (
       <div className="text-center py-10 text-sm text-gray-500 dark:text-gray-400">
-        No sales data for this period
+        {t.admin.topProductsNoData}
       </div>
     );
 
   const maxRevenue = Math.max(...products.map((p) => p.revenue));
   const fmt = (v: number) =>
     typeof icon === "string"
-      ? `${icon} ${v.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
-      : `${currency ?? ""} ${v.toFixed(2)}`;
+      ? `${icon} ${n(v.toFixed(2))}`
+      : `${currency ?? ""} ${n(v.toFixed(2))}`;
 
   return (
     <div className="space-y-3">
@@ -67,7 +68,7 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="flex items-center gap-2 min-w-0">
                 <span className={`text-sm font-black shrink-0 ${s.rank}`}>
-                  #{i + 1}
+                  #{n(i + 1)}
                 </span>
                 <span className="text-sm font-semibold truncate text-gray-800 dark:text-gray-100">
                   {p.name}
@@ -80,8 +81,8 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
 
             {/* Units · Avg */}
             <div className="flex justify-between text-xs mb-2.5 text-gray-500 dark:text-gray-400">
-              <span>{p.quantity} units sold</span>
-              <span>{fmt(avg)} avg / unit</span>
+              <span>{n(p.quantity)} {t.admin.topProductsUnitsSold}</span>
+              <span>{fmt(avg)} {t.admin.topProductsAvgUnit}</span>
             </div>
 
             {/* Progress bar */}

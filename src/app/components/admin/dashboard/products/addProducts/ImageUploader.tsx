@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { ImagePlus, UploadCloud } from "lucide-react";
 import { fileToBase64 } from "@/lib/utils/fileToBase64";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ImageUploaderProps {
   images: FrontendImage[];
@@ -17,6 +18,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   setImages,
   error,
 }) => {
+  const t = useTranslation();
   const onDrop = async (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) return;
     const availableSlots = 5 - images.length;
@@ -74,25 +76,25 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
           <div>
             <p className="font-semibold text-foreground">
               {isDragActive
-                ? "Drop your images here"
-                : "Drag & drop images here"}
+                ? t.admin.imgDropHere
+                : t.admin.imgDragHere}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              or{" "}
+              {t.admin.imgOrText}{" "}
               <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                browse files
+                {t.admin.imgBrowse}
               </span>
             </p>
           </div>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="rounded-full bg-muted px-3 py-1">
-              PNG · JPG · WEBP
+              {t.admin.imgFormats}
             </span>
             <span className="rounded-full bg-muted px-3 py-1">
-              Max 5 images
+              {t.admin.imgMaxCount}
             </span>
-            <span className="rounded-full bg-muted px-3 py-1">5MB each</span>
+            <span className="rounded-full bg-muted px-3 py-1">{t.admin.imgMaxSize}</span>
           </div>
         </div>
       </div>

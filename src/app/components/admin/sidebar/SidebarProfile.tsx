@@ -12,11 +12,13 @@ import {
   getStoreBySlugWithLogo,
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function SidebarProfile() {
   const { user, storeSlug } = useCurrentUser();
   const router = useRouter();
   const notify = useSheiNotification();
+  const t = useTranslation();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
@@ -41,14 +43,14 @@ export default function SidebarProfile() {
     try {
       setLogoutLoading(true);
       await supabase.auth.signOut();
-      notify.success("Logout successful!");
+      notify.success(t.admin.logoutSuccess);
       router.push("/admin-login");
     } catch (err: unknown) {
       console.error("Logout error:", err);
       if (err instanceof Error) {
-        notify.error(`Logout failed: ${err.message}`);
+        notify.error(`${t.admin.logoutFailed}${err.message}`);
       } else {
-        notify.error("Logout failed. Please try again.");
+        notify.error(t.admin.logoutRetry);
       }
     } finally {
       setLogoutLoading(false);
@@ -75,14 +77,14 @@ export default function SidebarProfile() {
       {
         key: "profile",
         icon: <User className="w-4 h-4" />,
-        label: <span className="text-sm font-medium">Profile</span>,
+        label: <span className="text-sm font-medium">{t.admin.profileMenuItem}</span>,
         onClick: () => router.push("/dashboard/admin-profile"),
         className: "!py-2",
       },
       {
         key: "store-management",
         icon: <Store className="w-4 h-4" />,
-        label: <span className="text-sm font-medium">Store Management</span>,
+        label: <span className="text-sm font-medium">{t.admin.storeManagement}</span>,
         onClick: () => router.push("/dashboard/store-management"),
         className: "!py-2",
       },
@@ -92,7 +94,7 @@ export default function SidebarProfile() {
       {
         key: "logout",
         icon: <LogOut className="w-4 h-4" />,
-        label: <span className="text-sm font-medium">Logout</span>,
+        label: <span className="text-sm font-medium">{t.admin.logout}</span>,
         danger: true,
         onClick: handleLogout,
         className: "!py-2",

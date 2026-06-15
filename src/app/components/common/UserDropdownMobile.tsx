@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ChevronDown, User, Package, LogOut } from "lucide-react";
 import { clearCustomerCache } from "@/lib/hook/useCurrentCustomer";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface UserDropdownMobileProps {
   customerName: string;
@@ -22,6 +23,7 @@ export default function UserDropdownMobile({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const t = useTranslation();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -69,26 +71,26 @@ export default function UserDropdownMobile({
         <div className="absolute left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-[100]">
           <Link
             href={`/${storeSlug}/my-profile`}
-            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm" // Added text-sm and text-foreground
+            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm"
             onClick={() => setIsOpen(false)}
           >
             <User className="h-4 w-4" />
-            <span>My Profile</span>
+            <span>{t.user.myProfile}</span>
           </Link>
           <Link
             href={`/${storeSlug}/order-status`}
-            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm" // Added text-sm and text-foreground
+            className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm"
             onClick={() => setIsOpen(false)}
           >
             <Package className="h-4 w-4" />
-            <span>My Orders</span>
+            <span>{t.user.myOrders}</span>
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 p-3 w-full text-left hover:bg-destructive/10 text-destructive transition-colors text-sm" // Added text-sm
+            className="flex items-center gap-3 p-3 w-full text-left hover:bg-destructive/10 text-destructive transition-colors text-sm"
           >
             <LogOut className="h-4 w-4" />
-            <span>Logout</span>
+            <span>{t.user.logout}</span>
           </button>
         </div>
       )}

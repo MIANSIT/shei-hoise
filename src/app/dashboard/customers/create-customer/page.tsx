@@ -5,20 +5,21 @@ import { Space, Typography, App } from "antd";
 import { useRouter } from "next/navigation";
 import CustomerCreateForm from "@/app/components/admin/storeCustomers/CustomerCreateForm";
 import type { CreateCustomerResponse } from "@/lib/types/customer";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const { Title, Text } = Typography;
 
 export default function CreateCustomerPage() {
   const router = useRouter();
   const { notification } = App.useApp();
+  const t = useTranslation();
 
   const handleCustomerCreated = (customer: CreateCustomerResponse) => {
     notification.success({
-      title: "Customer Created Successfully",
-      description: `${customer.name} has been added to your store.`,
+      message: t.admin.createCustSuccessTitle,
+      description: `${customer.name} ${t.admin.createCustSuccessDesc}`,
     });
 
-    // Redirect to customers list page
     router.push("/dashboard/customers");
   };
 
@@ -30,9 +31,9 @@ export default function CreateCustomerPage() {
           <div className="flex items-center space-x-4">
             <div>
               <Title level={2} className="mb-1">
-                Create New Customer
+                {t.admin.createCustPageTitle}
               </Title>
-              <Text type="secondary">Add a new customer to your store</Text>
+              <Text type="secondary">{t.admin.createCustPageDesc}</Text>
             </div>
           </div>
         </div>
@@ -42,7 +43,7 @@ export default function CreateCustomerPage() {
           <CustomerCreateForm
             onCustomerCreated={handleCustomerCreated}
             showSuccessMessage={false}
-            buttonText="Create Customer Account"
+            buttonText={t.admin.createCustBtnText}
           />
         </div>
       </Space>

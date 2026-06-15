@@ -26,6 +26,8 @@ import {
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 import TrialEnded from "@/app/components/admin/StoreStatus/TrialEnded";
 import AccessRestricted from "@/app/components/admin/StoreStatus/AccessRestricted";
+import LanguageSwitcher from "@/app/components/common/LanguageSwitcher";
+import { useTranslation } from "@/lib/hook/useTranslation";
 // import { supabase } from "@/lib/supabase";
 // import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
@@ -34,6 +36,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const t = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
@@ -265,7 +268,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
       <div className="flex items-center justify-center min-h-screen flex-col gap-4">
         <Spin size="large" />
-        <div className="text-primary">Loading...</div>
+        <div className="text-primary">{t.admin.loading}</div>
       </div>
     );
   }
@@ -336,7 +339,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <div className="flex items-center gap-2 px-2 ">
               <h1 className="text-lg font-bold">
-                {store?.store_name ? `${store.store_name} ` : "Dashboard"}
+                {store?.store_name ? `${store.store_name} ` : t.admin.dashboardFallback}
               </h1>
 
               <button
@@ -353,6 +356,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
+              <LanguageSwitcher />
               {/* Theme toggle button */}
               <button
                 onClick={() => {
@@ -393,7 +397,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Mobile Drawer for Sidebar - Now takes 100% width */}
             <Drawer
-              title="Menu" // <-- just a string
+              title={t.admin.menu}
               placement="bottom"
               open={mobileDrawerOpen}
               onClose={() => setMobileDrawerOpen(false)}

@@ -26,6 +26,7 @@ import {
   type CategoryOption,
 } from "./CategorySelectOptions";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type ModalMode = "create" | "edit";
 
@@ -64,6 +65,7 @@ function ExpenseFormModal({
   onSubmit,
   onCancel,
 }: ExpenseFormModalProps) {
+  const t = useTranslation();
   const [form] = Form.useForm<ExpenseFormValues>();
   const { icon: currencyIcon } = useUserCurrencyIcon();
   const categoryOptions = useMemo(
@@ -122,7 +124,7 @@ function ExpenseFormModal({
             )}
           </div>
           <span className="text-base font-bold text-gray-900 dark:text-white">
-            {mode === "create" ? "New Expense" : "Edit Expense"}
+            {mode === "create" ? t.admin.expenseNewTitle : t.admin.expenseEditTitle}
           </span>
         </div>
       }
@@ -133,7 +135,7 @@ function ExpenseFormModal({
             onClick={handleCancel}
             disabled={submitting}
           >
-            Cancel
+            {t.admin.expenseCancelBtn}
           </Button>
           <Button
             type="primary"
@@ -145,7 +147,7 @@ function ExpenseFormModal({
               boxShadow: "0 4px 14px rgba(102,126,234,0.4)",
             }}
           >
-            {mode === "create" ? "Save Expense" : "Update Expense"}
+            {mode === "create" ? t.admin.expenseSaveBtn : t.admin.expenseUpdateBtn}
           </Button>
         </div>
       }
@@ -154,14 +156,14 @@ function ExpenseFormModal({
         <Form form={form} layout="vertical">
           <Form.Item
             name="title"
-            label={<FieldLabel>Title</FieldLabel>}
+            label={<FieldLabel>{t.admin.expenseTitleLabel}</FieldLabel>}
             rules={[
-              { required: true, message: "Title is required" },
-              { max: 255, message: "Max 255 characters" },
+              { required: true, message: t.admin.expenseTitleRequired },
+              { max: 255, message: t.admin.expenseMax255 },
             ]}
           >
             <Input
-              placeholder="e.g. Office Supplies"
+              placeholder={t.admin.expenseTitlePlaceholder}
               className="rounded-lg h-9.5"
               maxLength={255}
             />
@@ -170,13 +172,13 @@ function ExpenseFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item
               name="amount"
-              label={<FieldLabel>Amount</FieldLabel>}
+              label={<FieldLabel>{t.admin.expenseAmountLabel}</FieldLabel>}
               rules={[
-                { required: true, message: "Amount is required" },
+                { required: true, message: t.admin.expenseAmountRequired },
                 {
                   type: "number",
                   min: 0.01,
-                  message: "Must be greater than 0",
+                  message: t.admin.expenseAmountMin,
                 },
               ]}
             >
@@ -190,8 +192,8 @@ function ExpenseFormModal({
 
             <Form.Item
               name="expense_date"
-              label={<FieldLabel>Date</FieldLabel>}
-              rules={[{ required: true, message: "Date is required" }]}
+              label={<FieldLabel>{t.admin.expenseDateLabel}</FieldLabel>}
+              rules={[{ required: true, message: t.admin.expenseDateRequired }]}
             >
               <DatePicker
                 className="rounded-lg w-full h-9.5"
@@ -203,10 +205,10 @@ function ExpenseFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item
               name="category_id"
-              label={<FieldLabel>Category</FieldLabel>}
+              label={<FieldLabel>{t.admin.expenseCategoryLabel}</FieldLabel>}
             >
               <Select
-                placeholder="Select category"
+                placeholder={t.admin.expenseSelectCategory}
                 allowClear
                 showSearch={{
                   filterOption: (input, option) =>
@@ -222,10 +224,10 @@ function ExpenseFormModal({
 
             <Form.Item
               name="payment_method"
-              label={<FieldLabel>Payment Method</FieldLabel>}
+              label={<FieldLabel>{t.admin.expensePaymentMethodLabel}</FieldLabel>}
             >
               <Select
-                placeholder="Select method"
+                placeholder={t.admin.expenseSelectMethod}
                 allowClear
                 options={PAYMENT_OPTIONS}
                 optionRender={(option) => (
@@ -246,11 +248,11 @@ function ExpenseFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item
               name="vendor_name"
-              label={<FieldLabel>Vendor</FieldLabel>}
-              rules={[{ max: 255, message: "Max 255 characters" }]}
+              label={<FieldLabel>{t.admin.expenseVendorLabel}</FieldLabel>}
+              rules={[{ max: 255, message: t.admin.expenseMax255 }]}
             >
               <Input
-                placeholder="Vendor name"
+                placeholder={t.admin.expenseVendorPlaceholder}
                 className="rounded-lg h-9.5"
                 maxLength={255}
               />
@@ -258,11 +260,11 @@ function ExpenseFormModal({
 
             <Form.Item
               name="platform"
-              label={<FieldLabel>Platform</FieldLabel>}
-              rules={[{ max: 100, message: "Max 100 characters" }]}
+              label={<FieldLabel>{t.admin.expensePlatformLabel}</FieldLabel>}
+              rules={[{ max: 100, message: t.admin.expenseMax100 }]}
             >
               <Input
-                placeholder="e.g. Web, TikTok Ads..."
+                placeholder={t.admin.expensePlatformPlaceholder}
                 className="rounded-lg h-9.5"
                 maxLength={100}
               />
@@ -271,12 +273,12 @@ function ExpenseFormModal({
 
           <Form.Item
             name="description"
-            label={<FieldLabel>Description</FieldLabel>}
-            rules={[{ max: 500, message: "Max 500 characters" }]}
+            label={<FieldLabel>{t.admin.expenseDescriptionLabel}</FieldLabel>}
+            rules={[{ max: 500, message: t.admin.expenseMax500 }]}
           >
             <Input.TextArea
               rows={2}
-              placeholder="Brief description..."
+              placeholder={t.admin.expenseDescPlaceholder}
               className="rounded-lg"
               maxLength={500}
               showCount
@@ -285,13 +287,13 @@ function ExpenseFormModal({
 
           <Form.Item
             name="notes"
-            label={<FieldLabel>Notes</FieldLabel>}
-            rules={[{ max: 500, message: "Max 500 characters" }]}
+            label={<FieldLabel>{t.admin.expenseNotesLabel}</FieldLabel>}
+            rules={[{ max: 500, message: t.admin.expenseMax500 }]}
             style={{ marginBottom: 0 }}
           >
             <Input.TextArea
               rows={2}
-              placeholder="Any additional notes..."
+              placeholder={t.admin.expenseNotesPlaceholder}
               className="rounded-lg"
               maxLength={500}
               showCount

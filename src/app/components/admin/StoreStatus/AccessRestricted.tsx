@@ -3,12 +3,15 @@
 
 import Link from "next/link";
 import React from "react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface AccessRestrictedProps {
   status?: string;
 }
 
 export default function AccessRestricted({  }: AccessRestrictedProps) {
+  const t = useTranslation();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-green-50 to-green-100 px-4">
       <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
@@ -31,18 +34,16 @@ export default function AccessRestricted({  }: AccessRestrictedProps) {
 
         {/* Title */}
         <h1 className="text-xl font-semibold text-primary">
-          Dashboard Access Temporarily Restricted
+          {t.admin.accessRestrictedTitle}
         </h1>
 
         {/* Description */}
         <p className="mt-3 text-sm text-primary leading-relaxed">
-          Your dashboard access has been temporarily restricted due to a
-          pending payment or subscription issue.
+          {t.admin.accessRestrictedP1}
         </p>
 
         <p className="mt-2 text-sm text-primary leading-relaxed">
-          Your store, data, and customers are completely safe. Once the
-          payment is settled, full access will be restored automatically.
+          {t.admin.accessRestrictedP2}
         </p>
 
         {/* Actions */}
@@ -51,14 +52,13 @@ export default function AccessRestricted({  }: AccessRestrictedProps) {
             href="/contact-us"
             className="inline-flex w-full items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-primary hover:bg-green-800 transition"
           >
-            Contact Support
+            {t.admin.contactSupport}
           </Link>
         </div>
 
         {/* Footer note */}
         <p className="mt-6 text-xs text-primary">
-          If you believe this is a mistake, please reach out to our support
-          team.
+          {t.admin.accessRestrictedFooter}
         </p>
       </div>
     </div>

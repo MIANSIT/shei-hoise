@@ -1,4 +1,5 @@
 import { Save, X, Settings } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ShippingHeaderActionsProps {
   isEditing: boolean;
@@ -17,6 +18,8 @@ export function ShippingHeaderActions({
   isSaving = false,
   canSave = false,
 }: ShippingHeaderActionsProps) {
+  const t = useTranslation();
+
   if (!isEditing) {
     return (
       <button
@@ -24,7 +27,7 @@ export function ShippingHeaderActions({
         className="flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/25 focus:outline-none focus:ring-2 focus:ring-blue-500/30 group"
       >
         <Settings className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
-        <span>Configure</span>
+        <span>{t.admin.shippingConfigure}</span>
       </button>
     );
   }
@@ -37,7 +40,7 @@ export function ShippingHeaderActions({
         className="flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600"
       >
         <X className="h-4 w-4" />
-        <span>Cancel</span>
+        <span>{t.admin.shippingCancel}</span>
       </button>
       <button
         onClick={onSave}
@@ -49,7 +52,7 @@ export function ShippingHeaderActions({
         ) : (
           <Save className="h-4 w-4" />
         )}
-        <span>{isSaving ? "Saving…" : "Save"}</span>
+        <span>{isSaving ? t.admin.shippingSaving : t.admin.shippingSave}</span>
       </button>
     </div>
   );

@@ -16,6 +16,8 @@ import NotFoundPage from "../../not-found";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface ShopPageProps {
   params: Promise<{ store_slug: string }>;
@@ -25,6 +27,8 @@ export default function ShopPage({ params }: ShopPageProps) {
   const { success, error: showError } = useSheiNotification();
   const { addToCart } = useCartStore();
   const { store_slug } = React.use(params);
+  const t = useTranslation();
+  const n = useLocalNum();
   const searchParams = useSearchParams();
 
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
@@ -94,7 +98,7 @@ export default function ShopPage({ params }: ShopPageProps) {
         setTotalProducts(result.totalCount);
       } catch (err) {
         console.error(err);
-        showError("Failed to load products");
+        showError(t.shop.failedLoad);
       } finally {
         if (isInitialLoad) setLoading(false);
         else setLoadingMore(false);
@@ -127,7 +131,7 @@ export default function ShopPage({ params }: ShopPageProps) {
         if (categoriesData.data) setCategories(categoriesData.data);
       } catch (err) {
         console.error(err);
-        showError("Failed to load store data");
+        showError(t.shop.failedStore);
       }
     }
 
@@ -196,7 +200,7 @@ export default function ShopPage({ params }: ShopPageProps) {
 
   const handleAddToCart = async (product: Product) => {
     if (!isProductInStock(product)) {
-      showError("This product is out of stock");
+      showError(t.shop.outOfStock);
       return;
     }
     setLoadingProductId(product.id);
@@ -209,10 +213,10 @@ export default function ShopPage({ params }: ShopPageProps) {
         variantId: variant?.id || null,
       };
       addToCart(cartProduct);
-      success(`${product.name} added to cart`);
+      success(`${product.name} ${t.shop.addedToCart}`);
     } catch (err) {
       console.error(err);
-      showError("Failed to add product to cart");
+      showError(t.shop.failedAddToCart);
     } finally {
       setLoadingProductId(null);
     }
@@ -250,13 +254,13 @@ export default function ShopPage({ params }: ShopPageProps) {
             </div>
             <p className="text-gray-700 dark:text-gray-200 font-semibold text-base">
               {searchQuery
-                ? `No results for "${searchQuery}"`
+                ? `${t.shop.noResultsFor} "${searchQuery}"`
                 : activeCategory === "All Products"
-                  ? "No products available yet"
-                  : `Nothing in "${activeCategory}" yet`}
+                  ? t.shop.noProducts
+                  : `${t.shop.nothingIn} "${activeCategory}" ${t.shop.yet}`.trim()}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-              Try a different search or category
+              {t.shop.tryDifferent}
             </p>
           </motion.div>
         ) : (
@@ -295,13 +299,13 @@ export default function ShopPage({ params }: ShopPageProps) {
                   {loadingMore ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading more…
+                      {t.shop.loadingMore}
                     </>
                   ) : (
                     <>
-                      Show 10 more products
+                      {t.shop.show10More}
                       <span className="text-gray-400 dark:text-gray-500 font-normal text-xs group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors">
-                        ({totalProducts - products.length} remaining)
+                        ({n(totalProducts - products.length)} {t.shop.remaining})
                       </span>
                     </>
                   )}
@@ -317,10 +321,10 @@ export default function ShopPage({ params }: ShopPageProps) {
                 className="flex flex-col items-center gap-1 py-12 border-t border-gray-100 dark:border-gray-800"
               >
                 <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                  All {totalProducts.toLocaleString()} products shown
+                  {[t.shop.allShownPrefix, n(totalProducts), t.shop.allShownSuffix].filter(s => s.trim()).join(" ")}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">
-                  You&apos;ve reached the end
+                  {t.shop.reachedEnd}
                 </p>
               </motion.div>
             )}

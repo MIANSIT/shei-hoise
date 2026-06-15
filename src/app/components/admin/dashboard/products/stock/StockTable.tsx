@@ -13,6 +13,8 @@ import {
 } from "@/lib/hook/products/stock/mapProductsForTable";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -66,6 +68,8 @@ const StockTable: React.FC<StockTableProps> = ({
   loading,
   bulkActive = false,
 }) => {
+  const t = useTranslation();
+  const n = useLocalNum();
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
   const symbol = currencyLoading ? "৳" : (currencyIcon ?? "৳");
@@ -133,11 +137,11 @@ const StockTable: React.FC<StockTableProps> = ({
                   isProduct
                     ? (record as ProductRow).hasOutOfStockVariant &&
                       (record as ProductRow).hasLowStockVariant
-                      ? "Has out of stock & low stock variants"
+                      ? t.admin.stockHasOutAndLow
                       : (record as ProductRow).hasOutOfStockVariant
-                        ? "Has out of stock variants"
-                        : "Has low stock variants"
-                    : `Threshold: ${record.lowStockThreshold}`
+                        ? t.admin.stockHasOutVariant
+                        : t.admin.stockHasLowVariant
+                    : `Threshold: ${n(record.lowStockThreshold ?? 0)}`
                 }
               >
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 dark:bg-amber-400 rounded-full flex items-center justify-center">
@@ -154,7 +158,7 @@ const StockTable: React.FC<StockTableProps> = ({
 
     /* ── Name ── */
     {
-      title: "Product",
+      title: t.admin.stockProduct,
       dataIndex: "title",
       key: "title",
       render: (title: string, record) => {
@@ -170,21 +174,21 @@ const StockTable: React.FC<StockTableProps> = ({
             </span>
             <div className="flex flex-wrap gap-1">
               {/* Simple product: out of stock */}
-              {record.isOutOfStock && <Badge tone="out">Out of stock</Badge>}
+              {record.isOutOfStock && <Badge tone="out">{t.admin.stockOutOfStock}</Badge>}
 
               {/* Simple product: low stock */}
               {!record.isOutOfStock && record.isLowStock && (
-                <Badge tone="low">Low stock</Badge>
+                <Badge tone="low">{t.admin.stockLowStock}</Badge>
               )}
 
               {/* Product with variants: some variants out of stock */}
               {isProduct && (record as ProductRow).hasOutOfStockVariant && (
-                <Badge tone="out">Has out of stock</Badge>
+                <Badge tone="out">{t.admin.stockHasOutOfStock}</Badge>
               )}
 
               {/* Product with variants: some variants low stock */}
               {isProduct && (record as ProductRow).hasLowStockVariant && (
-                <Badge tone="low">Has low stock</Badge>
+                <Badge tone="low">{t.admin.stockHasLowStock}</Badge>
               )}
 
               {isInactive && (
@@ -196,8 +200,8 @@ const StockTable: React.FC<StockTableProps> = ({
                   }
                 >
                   {isProduct && record.status === ProductStatus.DRAFT
-                    ? "Draft"
-                    : "Inactive"}
+                    ? t.admin.stockDraft
+                    : t.admin.stockInactive}
                 </Badge>
               )}
             </div>
@@ -208,14 +212,14 @@ const StockTable: React.FC<StockTableProps> = ({
 
     /* ── SKU ── */
     {
-      title: "SKU",
+      title: t.admin.stockSku,
       dataIndex: "sku",
       key: "sku",
       render: (_sku, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-              varies
+              {t.admin.stockVaries}
             </span>
           );
         }
@@ -229,14 +233,14 @@ const StockTable: React.FC<StockTableProps> = ({
 
     /* ── Price ── */
     {
-      title: "Price",
+      title: t.admin.stockPrice,
       dataIndex: "currentPrice",
       key: "currentPrice",
       render: (_price, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
             <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-              varies
+              {t.admin.stockVaries}
             </span>
           );
         }
@@ -246,7 +250,7 @@ const StockTable: React.FC<StockTableProps> = ({
             <span className="text-gray-400 dark:text-gray-500 text-xs mr-0.5">
               {symbol}
             </span>
-            {price.toFixed(2)}
+            {n(price.toFixed(2))}
           </span>
         );
       },
@@ -254,7 +258,7 @@ const StockTable: React.FC<StockTableProps> = ({
 
     /* ── Stock ── */
     {
-      title: "Stock",
+      title: t.admin.stockStock,
       key: "stock",
       render: (_v, record) => {
         const isProduct = "variants" in record;
@@ -266,7 +270,7 @@ const StockTable: React.FC<StockTableProps> = ({
         if (isProduct && record.variants?.length) {
           return (
             <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-              managed in variants
+              {t.admin.stockManagedInVariants}
             </span>
           );
         }
@@ -308,7 +312,7 @@ const StockTable: React.FC<StockTableProps> = ({
                   onSingleUpdate(parentId, variantId, editedValue);
                 }}
               >
-                Save
+                {t.admin.stockSave}
               </SheiButton>
             )}
           </div>
@@ -381,8 +385,8 @@ const StockTable: React.FC<StockTableProps> = ({
               <Tooltip
                 title={
                   allSelected
-                    ? "Deselect all variants"
-                    : "Select all active variants"
+                    ? t.admin.deselectAllVariants
+                    : t.admin.selectAllActiveVariants
                 }
               >
                 <input

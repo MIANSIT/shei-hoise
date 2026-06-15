@@ -7,9 +7,11 @@ import dataService from "@/lib/queries/dataService";
 import type { StoreOrder } from "@/lib/types/order";
 import OrdersTable from "./OrdersTable";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
+  const t = useTranslation();
   const { user, loading: userLoading } = useCurrentUser();
 
   const [search, setSearch] = useUrlSync<string>("search", "", undefined, 500);
@@ -91,10 +93,10 @@ const MainOrders: React.FC = () => {
         setTotalByPaymentStatus(result.totalByPaymentStatus);
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : "Failed to load orders";
+          err instanceof Error ? err.message : t.admin.allOrdersLoadFailed;
         setError(message);
         notification.error({
-          message: "Error Loading Orders",
+          message: t.admin.allOrdersErrorTitle,
           description: message,
         });
       } finally {
@@ -197,7 +199,7 @@ const MainOrders: React.FC = () => {
     return (
       <div className="p-4 sm:p-6">
         <Alert
-          title="Error Loading Orders"
+          title={t.admin.allOrdersErrorTitle}
           description={error}
           type="error"
           showIcon
@@ -215,7 +217,7 @@ const MainOrders: React.FC = () => {
               }
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
-              Try Again
+              {t.admin.allOrdersTryAgain}
             </button>
           }
         />
@@ -227,10 +229,10 @@ const MainOrders: React.FC = () => {
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold ">
-            All Orders
+            {t.admin.allOrdersTitle}
           </h2>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">
-            Manage and track your store orders
+            {t.admin.allOrdersDesc}
           </p>
         </div>
         {/* ✅ ADD: Refresh button for manual refresh */}

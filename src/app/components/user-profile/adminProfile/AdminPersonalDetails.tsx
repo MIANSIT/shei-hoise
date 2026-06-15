@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -6,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MapPin, Calendar, UserX } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface ProfileDetails {
   date_of_birth?: string | null;
@@ -23,6 +26,8 @@ interface ProfileDetailsCardProps {
 }
 
 export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
+  const t = useTranslation();
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -38,10 +43,10 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
           <div className="text-center py-8">
             <UserX className="w-12 h-12 text-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              No Profile Details
+              {t.admin.myProfileNoDetailsTitle}
             </h3>
             <div className="text-muted-foreground mb-4 max-w-md mx-auto">
-              Additional profile information is not available.
+              {t.admin.myProfileNoDetailsDesc}
             </div>
           </div>
         </CardContent>
@@ -59,10 +64,10 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
           <div className="text-center py-8">
             <UserX className="w-12 h-12 text-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              No Additional Information
+              {t.admin.myProfileNoAdditionalTitle}
             </h3>
             <div className="text-foreground mb-4 max-w-md mx-auto">
-              No additional profile details have been added.
+              {t.admin.myProfileNoAdditionalDesc}
             </div>
           </div>
         </CardContent>
@@ -73,9 +78,9 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle>Profile Details</CardTitle>
+        <CardTitle>{t.admin.myProfileDetailsTitle}</CardTitle>
         <CardDescription>
-          Additional profile information from your user profile
+          {t.admin.myProfileDetailsDesc}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -84,7 +89,7 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
             <div>
               <div className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                Date of Birth
+                {t.admin.myProfileDOB}
               </div>
               <div className="mt-1 text-muted-foreground">
                 {formatDate(profile.date_of_birth)}
@@ -93,7 +98,7 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
           )}
           {profile.gender && (
             <div>
-              <div className="text-sm font-medium text-foreground">Gender</div>
+              <div className="text-sm font-medium text-foreground">{t.admin.myProfileGender}</div>
               <div className="mt-1 text-muted-foreground capitalize">
                 {profile.gender}
               </div>
@@ -103,7 +108,7 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
             <div className="md:col-span-2">
               <div className="text-sm font-medium text-foreground flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                Address
+                {t.admin.myProfileAddress}
               </div>
               <div className="mt-1 text-muted-foreground space-y-1">
                 {profile.address_line_1 && <div>{profile.address_line_1}</div>}

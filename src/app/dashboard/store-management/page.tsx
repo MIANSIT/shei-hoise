@@ -13,7 +13,7 @@ import { ShippingFeesCard } from "@/app/components/admin/dashboard/store-setting
 import { PoliciesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PoliciesCard";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
 import { StoreSocialMediaCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSocialMediaCard";
-import { Store } from "lucide-react";
+import { Store, Info, Settings, Share2, Truck, Shield } from "lucide-react";
 
 import type {
   StoreData,
@@ -21,9 +21,11 @@ import type {
   UpdatedStoreData,
   UpdatedStoreSettings,
 } from "@/lib/types/store/store";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function StorePage() {
   const { storeId, loading: userLoading } = useCurrentUser();
+  const t = useTranslation();
   const safeStoreId = storeId ?? "";
 
   const {
@@ -105,10 +107,10 @@ export default function StorePage() {
         </div>
         <div className="text-center space-y-1.5">
           <h3 className="text-base font-semibold text-foreground">
-            No Store Found
+            {t.admin.storeNotFoundTitle}
           </h3>
           <p className="text-sm text-muted-foreground max-w-xs">
-            You don&apos;t have a store assigned to your account yet.
+            {t.admin.storeNotAssigned}
           </p>
         </div>
       </div>
@@ -130,7 +132,15 @@ export default function StorePage() {
     );
   }
 
-  if (!store) return <div>Store Not Found</div>;
+  if (!store) return <div>{t.admin.storeNotFoundDB}</div>;
+
+  const navItems = [
+    { id: "store-info", label: t.admin.storeMgmtNavInfo, icon: <Info className="h-3.5 w-3.5" /> },
+    { id: "store-settings", label: t.admin.storeMgmtNavSettings, icon: <Settings className="h-3.5 w-3.5" /> },
+    { id: "social-media", label: t.admin.storeMgmtNavSocial, icon: <Share2 className="h-3.5 w-3.5" /> },
+    { id: "shipping", label: t.admin.storeMgmtNavShipping, icon: <Truck className="h-3.5 w-3.5" /> },
+    { id: "policies", label: t.admin.storeMgmtNavPolicies, icon: <Shield className="h-3.5 w-3.5" /> },
+  ];
 
   return (
     <div className="space-y-5 pb-10 max-w-7xl mx-auto">
@@ -156,52 +166,81 @@ export default function StorePage() {
         }
       />
 
+      {/* Sticky section navigation */}
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border border-border/60 rounded-xl shadow-sm">
+        <nav className="flex items-center gap-1 px-3 py-2 overflow-x-auto scrollbar-none">
+          <span className="text-xs font-semibold text-muted-foreground shrink-0 pr-2 border-r border-border mr-1">
+            {t.admin.storeMgmtNavHeader}
+          </span>
+          {navItems.map(({ id, label, icon }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all whitespace-nowrap shrink-0"
+            >
+              {icon}
+              {label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-2">
-        <StoreInfoCard
-          store={store}
-          onUpdate={async (data) => {
-            await handleUpdateStore(data);
-          }}
-        />
-        {settings && (
-          <StoreSettingsCard
-            settings={settings}
-            onUpdate={async (updatedSettings) => {
-              await handleUpdateStore({}, updatedSettings);
+        <div id="store-info">
+          <StoreInfoCard
+            store={store}
+            onUpdate={async (data) => {
+              await handleUpdateStore(data);
             }}
           />
+        </div>
+        {settings && (
+          <div id="store-settings">
+            <StoreSettingsCard
+              settings={settings}
+              onUpdate={async (updatedSettings) => {
+                await handleUpdateStore({}, updatedSettings);
+              }}
+            />
+          </div>
         )}
       </div>
 
-      <StoreSocialMediaCard
-        socialMedia={socialMedia}
-        onUpdate={handleUpdateSocialMedia}
-      />
+      <div id="social-media">
+        <StoreSocialMediaCard
+          socialMedia={socialMedia}
+          onUpdate={handleUpdateSocialMedia}
+        />
+      </div>
 
       {settings && (
-        <ShippingFeesCard fees={settings.shipping_fees} settings={settings} />
+        <div id="shipping">
+          <ShippingFeesCard fees={settings.shipping_fees} settings={settings} />
+        </div>
       )}
 
       {settings && (
-        <PoliciesCard
-          settings={localSettings!}
-          onUpdatePolicy={async (type, content) => {
-            const payload: UpdatedStoreSettings =
-              type === "terms"
-                ? { terms_and_conditions: content }
-                : { privacy_policy: content };
-            await handleUpdateStore({}, payload);
-            setLocalSettings((prev) => (prev ? { ...prev, ...payload } : prev));
-          }}
-          onRemovePolicy={async (type) => {
-            const payload: UpdatedStoreSettings =
-              type === "terms"
-                ? { terms_and_conditions: null }
-                : { privacy_policy: null };
-            await handleUpdateStore({}, payload);
-            setLocalSettings((prev) => (prev ? { ...prev, ...payload } : prev));
-          }}
-        />
+        <div id="policies">
+          <PoliciesCard
+            settings={localSettings!}
+            onUpdatePolicy={async (type, content) => {
+              const payload: UpdatedStoreSettings =
+                type === "terms"
+                  ? { terms_and_conditions: content }
+                  : { privacy_policy: content };
+              await handleUpdateStore({}, payload);
+              setLocalSettings((prev) => (prev ? { ...prev, ...payload } : prev));
+            }}
+            onRemovePolicy={async (type) => {
+              const payload: UpdatedStoreSettings =
+                type === "terms"
+                  ? { terms_and_conditions: null }
+                  : { privacy_policy: null };
+              await handleUpdateStore({}, payload);
+              setLocalSettings((prev) => (prev ? { ...prev, ...payload } : prev));
+            }}
+          />
+        </div>
       )}
     </div>
   );

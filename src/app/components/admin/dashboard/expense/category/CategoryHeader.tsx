@@ -6,6 +6,7 @@ import {
   PlusOutlined,
   CloseCircleFilled,
 } from "@ant-design/icons";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface CategoryHeaderProps {
   search: string;
@@ -18,6 +19,8 @@ export function CategoryHeader({
   onSearchChange,
   onNewCategory,
 }: CategoryHeaderProps) {
+  const t = useTranslation();
+
   return (
     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
       <div className="relative flex-1 sm:w-64">
@@ -31,7 +34,7 @@ export function CategoryHeader({
               />
             ) : null
           }
-          placeholder="Search categories..."
+          placeholder={t.admin.catSearchPlaceholder}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           className="rounded-xl h-9"
@@ -50,7 +53,7 @@ export function CategoryHeader({
           paddingInline: "16px",
         }}
       >
-        New Category
+        {t.admin.catNewBtn}
       </Button>
     </div>
   );

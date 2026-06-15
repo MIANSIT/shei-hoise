@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Gift } from "lucide-react";
 import PriceTag from "@/app/components/landing/PriceTag/PriceTag";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface PricingCardProps {
   name: string;
@@ -26,6 +27,7 @@ export default function PricingCard({
   highlighted,
   badge,
 }: PricingCardProps) {
+  const t = useTranslation();
   const badgeColor =
     badge === "Best Value"
       ? "bg-green-500"
@@ -111,7 +113,7 @@ export default function PricingCard({
                 : "text-emerald-700 dark:text-emerald-300"
             }`}
           >
-            7 days FREE
+            {t.landing.trialDays}
           </p>
           <p
             className={`text-xs leading-none ${
@@ -120,7 +122,7 @@ export default function PricingCard({
                 : "text-emerald-600/80 dark:text-emerald-500"
             }`}
           >
-            then your plan starts · cancel anytime
+            {t.landing.trialNote}
           </p>
         </div>
         <ArrowRight
@@ -158,14 +160,14 @@ export default function PricingCard({
           }`}
           size="lg"
         >
-          Start Free Trial
+          {t.landing.startFreeTrial}
         </Button>
         <p
           className={`text-center text-xs mt-2 ${
             highlighted ? "text-white/55" : "text-muted-foreground"
           }`}
         >
-          No payment needed for 7 days
+          {t.landing.noPayment}
         </p>
       </div>
     </motion.div>

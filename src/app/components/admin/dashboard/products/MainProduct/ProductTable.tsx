@@ -15,6 +15,8 @@ import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
 import type { TablePaginationConfig } from "antd/es/table";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface ProductTableProps {
   products: ProductWithVariants[];
@@ -60,24 +62,25 @@ const getProductImage = (record: ProductWithVariants) => {
 // ── Status Badge ─────────────────────────────────────────────────────────────
 
 const StatusBadge: React.FC<{ status: ProductStatus }> = ({ status }) => {
+  const t = useTranslation();
   const config: Record<
     ProductStatus,
     { label: string; dot: string; badge: string }
   > = {
     [ProductStatus.ACTIVE]: {
-      label: "Active",
+      label: t.admin.productStatusActive,
       dot: "bg-emerald-500",
       badge:
         "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     },
     [ProductStatus.DRAFT]: {
-      label: "Draft",
+      label: t.admin.productStatusDraft,
       dot: "bg-amber-400",
       badge:
         "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
     },
     [ProductStatus.INACTIVE]: {
-      label: "Inactive",
+      label: t.admin.productStatusInactive,
       dot: "bg-red-400",
       badge: "bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-400",
     },
@@ -133,6 +136,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
   loading,
   onDeleteSuccess,
 }) => {
+  const t = useTranslation();
+  const n = useLocalNum();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -159,7 +164,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       await toggleProductFeatured(record.id, next);
     } catch {
       setFeaturedOverrides((prev) => ({ ...prev, [record.id]: !next }));
-      sheiNotif.error("Failed to update featured status");
+      sheiNotif.error(t.admin.featuredUpdateFailed);
     } finally {
       setTogglingId(null);
     }
@@ -183,12 +188,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
     setDeleteLoading(true);
     try {
       await deleteProduct(deletingId);
-      sheiNotif.success("Product deleted successfully");
+      sheiNotif.success(t.admin.productDeletedSuccess);
       setModalOpen(false);
       setDeletingId(null);
       onDeleteSuccess?.();
     } catch {
-      sheiNotif.error("Failed to delete product");
+      sheiNotif.error(t.admin.productDeleteFailed);
     } finally {
       setDeleteLoading(false);
     }
@@ -216,7 +221,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       ),
     },
     {
-      title: "Product",
+      title: t.admin.productCol,
       key: "name",
       render: (_, record) => (
         <div className="flex flex-col gap-0.5">
@@ -224,13 +229,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
             {record.name}
           </span>
           <span className="text-xs text-gray-400 dark:text-slate-500">
-            {record.category?.name || "Uncategorized"}
+            {record.category?.name || t.admin.uncategorized}
           </span>
         </div>
       ),
     },
     {
-      title: "Variants",
+      title: t.admin.variantsCol,
       key: "variants",
       width: 220,
       responsive: ["md"],
@@ -239,17 +244,17 @@ const ProductTable: React.FC<ProductTableProps> = ({
         if (!vars.length)
           return (
             <span className="text-xs text-gray-300 dark:text-slate-600 italic">
-              No variants
+              {t.admin.noVariants}
             </span>
           );
         return (
           <div className="flex items-center gap-1.5 flex-wrap">
             <VariantChip
-              label={`${vars[0].variant_name ?? "Unnamed"}: ${cur}${vars[0].base_price ?? "—"}`}
+              label={`${vars[0].variant_name ?? "Unnamed"}: ${cur}${n(vars[0].base_price ?? 0)}`}
             />
             {vars.length > 1 && (
               <span className="text-[11px] text-gray-400 dark:text-slate-500">
-                +{vars.length - 1}
+                +{n(vars.length - 1)}
               </span>
             )}
           </div>
@@ -257,7 +262,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       },
     },
     {
-      title: "Base Price",
+      title: t.admin.basePriceCol,
       key: "base_price",
       align: "right",
       responsive: ["md"],
@@ -265,13 +270,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
         const price = getLowestBasePrice(record);
         return (
           <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-            {price ? `${cur}${price.toFixed(2)}` : "—"}
+            {price ? `${cur}${n(price.toFixed(2))}` : "—"}
           </span>
         );
       },
     },
     {
-      title: "Sale Price",
+      title: t.admin.salePriceCol,
       key: "discounted_price",
       align: "right",
       responsive: ["md"],
@@ -280,7 +285,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         return price ? (
           <span className="text-sm font-semibold text-emerald-500">
             {cur}
-            {price.toFixed(2)}
+            {n(price.toFixed(2))}
           </span>
         ) : (
           <span className="text-sm text-gray-300 dark:text-slate-600">—</span>
@@ -288,7 +293,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       },
     },
     {
-      title: "Featured",
+      title: t.admin.featuredCol,
       key: "featured",
       align: "center",
       width: 88,
@@ -304,7 +309,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 handleToggleFeatured(record);
               }}
               disabled={isToggling}
-              title={isFeatured ? "Remove from featured" : "Mark as featured"}
+              title={isFeatured ? t.admin.removeFromFeatured : t.admin.markAsFeatured}
               className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
                 ${
                   isFeatured
@@ -322,7 +327,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       },
     },
     {
-      title: "Status",
+      title: t.admin.statusCol,
       key: "status",
       align: "center",
       width: 110,
@@ -332,7 +337,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       ),
     },
     {
-      title: "Actions",
+      title: t.admin.actionsCol,
       key: "actions",
       align: "center",
       width: 96,
@@ -357,11 +362,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
             🛍️
           </div>
           <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100 tracking-tight">
-            Product List
+            {t.admin.productListTitle}
           </h2>
         </div>
         <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700/60 px-2.5 py-1 rounded-full">
-          {products.length} items
+          {n(products.length)} {t.admin.itemsLabel}
         </span>
       </div>
 
@@ -371,7 +376,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <span className="text-4xl">📦</span>
             <p className="text-sm text-gray-400 dark:text-slate-500">
-              No products found
+              {t.admin.noProductsFound}
             </p>
           </div>
         )}
@@ -394,18 +399,18 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 />
               }
               title={record.name}
-              subtitle={record.category?.name || "Uncategorized"}
+              subtitle={record.category?.name || t.admin.uncategorized}
               content={
                 <div className="flex flex-col gap-2.5 mt-1">
                   {/* Variants */}
                   {variants.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
                       <VariantChip
-                        label={`${variants[0].variant_name ?? "Unnamed"}: ${cur}${variants[0].base_price ?? "—"}`}
+                        label={`${variants[0].variant_name ?? "Unnamed"}: ${cur}${n(variants[0].base_price ?? 0)}`}
                       />
                       {variants.length > 1 && (
                         <span className="text-[11px] text-gray-400 dark:text-slate-500">
-                          +{variants.length - 1} more
+                          +{n(variants.length - 1)} {t.admin.moreVariants}
                         </span>
                       )}
                     </div>
@@ -418,16 +423,16 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       {discountedPrice ? (
                         <>
                           <span className="text-xs text-gray-400 line-through">
-                            {basePrice ? `${cur}${basePrice.toFixed(2)}` : "—"}
+                            {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
                           </span>
                           <span className="text-sm font-bold text-emerald-500">
                             {cur}
-                            {discountedPrice.toFixed(2)}
+                            {n(discountedPrice.toFixed(2))}
                           </span>
                         </>
                       ) : (
                         <span className="text-sm font-bold text-gray-700 dark:text-slate-300">
-                          {basePrice ? `${cur}${basePrice.toFixed(2)}` : "—"}
+                          {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
                         </span>
                       )}
                     </div>
@@ -443,7 +448,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       <button
                         onClick={() => handleToggleFeatured(record)}
                         disabled={togglingId === record.id}
-                        title={getFeatured(record) ? "Remove from featured" : "Mark as featured"}
+                        title={getFeatured(record) ? t.admin.removeFromFeatured : t.admin.markAsFeatured}
                         className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50
                           ${
                             getFeatured(record)
@@ -487,20 +492,19 @@ const ProductTable: React.FC<ProductTableProps> = ({
         open={modalOpen}
         title={
           <span className="text-sm font-bold text-gray-900 dark:text-slate-100">
-            Delete Product
+            {t.admin.deleteProductTitle}
           </span>
         }
         onOk={handleDelete}
         onCancel={() => setModalOpen(false)}
-        okText="Delete"
-        cancelText="Cancel"
+        okText={t.admin.deleteBtn}
+        cancelText={t.admin.cancelBtn}
         confirmLoading={deleteLoading}
         centered
         okButtonProps={{ danger: true }}
       >
         <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed">
-          Are you sure you want to delete this product? This action is permanent
-          and cannot be undone.
+          {t.admin.deleteProductConfirm}
         </p>
       </Modal>
     </>

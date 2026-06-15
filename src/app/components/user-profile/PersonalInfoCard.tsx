@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -7,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone, Shield } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface PersonalInfoCardProps {
   firstName?: string | null;
@@ -15,7 +18,7 @@ interface PersonalInfoCardProps {
   phone?: string | null;
   emailVerified?: boolean;
   userType?: string | null;
-  showAdminMessage?: boolean; // New boolean prop
+  showAdminMessage?: boolean;
 }
 
 export function PersonalInfoCard({
@@ -25,43 +28,44 @@ export function PersonalInfoCard({
   phone,
   // emailVerified,
   userType,
-  showAdminMessage = true, // Default to false since it's also used on user side
+  showAdminMessage = true,
 }: PersonalInfoCardProps) {
+  const t = useTranslation();
   const isAdminOrVendor = userType === "admin" || userType === "store_owner";
 
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle>Personal Information</CardTitle>
+        <CardTitle>{t.admin.myProfilePersonalTitle}</CardTitle>
         <CardDescription>
           {isAdminOrVendor
-            ? "Your administrative account information"
-            : "Your basic personal details and contact information"}
+            ? t.admin.myProfileAdminDesc
+            : t.admin.myProfileUserDesc}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="text-sm font-medium text-foreground">
-              First Name
+              {t.admin.myProfileFirstName}
             </div>
             <div className="mt-1 text-muted-foreground">
               {firstName || (
-                <span className="text-muted-foreground">Not provided</span>
+                <span className="text-muted-foreground">{t.admin.myProfileNotProvided}</span>
               )}
             </div>
           </div>
           <div>
-            <div className="text-sm font-medium text-foreground">Last Name</div>
+            <div className="text-sm font-medium text-foreground">{t.admin.myProfileLastName}</div>
             <div className="mt-1 text-muted-foreground">
               {lastName || (
-                <span className="text-muted-foreground">Not provided</span>
+                <span className="text-muted-foreground">{t.admin.myProfileNotProvided}</span>
               )}
             </div>
           </div>
           <div className="md:col-span-1">
             <div className="text-sm font-medium text-foreground">
-              Email Address
+              {t.admin.myProfileEmailAddr}
             </div>
             <div className="mt-1 text-muted-foreground space-y-2">
               <div className="flex items-center gap-2">
@@ -72,12 +76,12 @@ export function PersonalInfoCard({
           </div>
           <div className="md:col-span-1">
             <div className="text-sm font-medium text-foreground">
-              Phone Number
+              {t.admin.myProfilePhoneNum}
             </div>
             <div className="mt-1 text-muted-foreground flex items-center gap-2">
               <Phone className="w-4 h-4" />
               <span>
-                {phone || <span className="text-muted-foreground">Not provided</span>}
+                {phone || <span className="text-muted-foreground">{t.admin.myProfileNotProvided}</span>}
               </span>
             </div>
           </div>
@@ -86,7 +90,7 @@ export function PersonalInfoCard({
             <div className="md:col-span-2">
               <div className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                Account Role
+                {t.admin.myProfileAccountRole}
               </div>
 
               <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
@@ -99,15 +103,15 @@ export function PersonalInfoCard({
                 {showAdminMessage && (
                   <span className="text-sm text-foreground">
                     {userType === "admin"
-                      ? "Full system access"
-                      : "Store management access"}
+                      ? t.admin.myProfileFullAccess
+                      : t.admin.myProfileStoreAccess}
                   </span>
                 )}
               </div>
 
               {isAdminOrVendor && showAdminMessage && (
                 <div className="text-sm text-muted-foreground mt-2">
-                  Profile editing is managed through the administrative system.
+                  {t.admin.myProfileAdminEditNote}
                 </div>
               )}
             </div>
