@@ -68,7 +68,7 @@ export default function UserDropdownMobile({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-[100]">
+        <div className="absolute left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-100">
           <Link
             href={`/${storeSlug}/my-profile`}
             className="flex items-center gap-3 p-3 hover:bg-accent transition-colors text-foreground border-b text-sm"
