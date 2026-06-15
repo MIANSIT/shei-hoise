@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import React from "react";
 import { createNormalClient } from "@/lib/supabase/client";
 
+export const revalidate = 300; // cache product metadata for 5 minutes on Vercel CDN
+
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
