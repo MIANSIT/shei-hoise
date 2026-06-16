@@ -46,6 +46,7 @@ import { DetailedCustomer } from "@/lib/types/users";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useCreateOrderDraftStore } from "@/lib/store/orderDraftStore";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -107,6 +108,10 @@ export default function CreateOrder() {
 
   // Email validation state
   const [emailError, setEmailError] = useState<string>("");
+
+  // Draft persistence - survives tab switches / accidental reloads
+  const hasHydrated = useCreateOrderDraftStore((s) => s._hasHydrated);
+  const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
 
   // Validate email uniqueness - only validate if email is provided
   const validateEmailUniqueness = useCallback(
@@ -298,6 +303,11 @@ export default function CreateOrder() {
 
   // Generate order ID with store name prefix
   useEffect(() => {
+    // Keep the order ID from a restored draft instead of generating a new one
+    if (hasHydrated && useCreateOrderDraftStore.getState().draft?.orderId) {
+      return;
+    }
+
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, "0");
@@ -309,7 +319,75 @@ export default function CreateOrder() {
       .padStart(3, "0")}`;
 
     setOrderId(newOrderId);
-  }, [storeName]);
+  }, [storeName, hasHydrated]);
+
+  // Restore a saved draft once Zustand has finished reading from localStorage.
+  // This runs exactly once and must come before the "sync to draft" effect
+  // below, otherwise the still-blank initial state would overwrite the
+  // draft before it gets a chance to load.
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    const draft = useCreateOrderDraftStore.getState().draft;
+    if (draft) {
+      if (draft.orderId) setOrderId(draft.orderId);
+      setCustomerInfo(draft.customerInfo);
+      setOrderProducts(draft.orderProducts);
+      setDiscount(draft.discount);
+      setAdditionalCharges(draft.additionalCharges);
+      setDeliveryCost(draft.deliveryCost);
+      setTaxAmount(draft.taxAmount);
+      setStatus(draft.status);
+      setPaymentStatus(draft.paymentStatus);
+      setPaymentMethod(draft.paymentMethod);
+      if (draft.customerInfo.customer_id) {
+        setCustomerType("existing");
+      }
+    }
+
+    setReadyToSyncDraft(true);
+  }, [hasHydrated]);
+
+  // Re-select the matching customer card once both the customer list and
+  // the restored draft are available.
+  useEffect(() => {
+    if (!readyToSyncDraft || selectedCustomer || !customerInfo.customer_id) {
+      return;
+    }
+    const match = customers.find((c) => c.id === customerInfo.customer_id);
+    if (match) setSelectedCustomer(match);
+  }, [readyToSyncDraft, customers, customerInfo.customer_id, selectedCustomer]);
+
+  // Sync every change to the draft store so it survives tab switches and
+  // accidental reloads. Gated on readyToSyncDraft so it never fires before
+  // the restore effect above has had a chance to run.
+  useEffect(() => {
+    if (!readyToSyncDraft) return;
+    useCreateOrderDraftStore.getState().setDraft({
+      orderId,
+      customerInfo,
+      orderProducts,
+      discount,
+      additionalCharges,
+      deliveryCost,
+      taxAmount,
+      status,
+      paymentStatus,
+      paymentMethod,
+    });
+  }, [
+    readyToSyncDraft,
+    orderId,
+    customerInfo,
+    orderProducts,
+    discount,
+    additionalCharges,
+    deliveryCost,
+    taxAmount,
+    status,
+    paymentStatus,
+    paymentMethod,
+  ]);
 
   // Filter customers based on search
   useEffect(() => {
@@ -861,6 +939,9 @@ export default function CreateOrder() {
                   paymentMethod={paymentMethod}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   onCustomerCreated={fetchCustomers}
+                  onOrderCreated={() =>
+                    useCreateOrderDraftStore.getState().clearDraft()
+                  }
                   emailError={emailError}
                 />
               </Col>

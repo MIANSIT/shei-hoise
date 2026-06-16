@@ -131,10 +131,15 @@ async function validateStockAvailability(
   }
 }
 
-// Helper function to update inventory (reserve or release stock)
+// Helper function to update inventory (reserve, release, or finalize stock)
+// - "reserve": order placed - move stock from available into reserved
+// - "release": order cancelled - move stock from reserved back into available
+// - "finalize": order delivered - the stock has actually left the building,
+//   so just clear the reservation hold (reserved only, available untouched,
+//   since it was already decremented when the stock was reserved)
 async function updateInventoryForOrder(
   orderProducts: OrderProduct[],
-  action: "reserve" | "release"
+  action: "reserve" | "release" | "finalize"
 ): Promise<{ success: boolean; error?: string }> {
   
 
@@ -178,13 +183,16 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          
+
+        } else if (action === "finalize") {
+          // Stock already left available stock when reserved; just clear the hold
+          updateData.quantity_reserved = Math.max(0, currentReserved - item.quantity);
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          
+
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -257,13 +265,16 @@ async function updateInventoryForOrder(
           const newReserved = currentReserved + item.quantity;
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          
+
+        } else if (action === "finalize") {
+          // Stock already left available stock when reserved; just clear the hold
+          updateData.quantity_reserved = Math.max(0, currentReserved - item.quantity);
         } else {
           const newAvailable = currentAvailable + item.quantity;
           const newReserved = Math.max(0, currentReserved - item.quantity);
           updateData.quantity_available = newAvailable;
           updateData.quantity_reserved = newReserved;
-          
+
         }
 
         updateData.updated_at = new Date().toISOString();
@@ -453,9 +464,24 @@ export async function createOrder(
       console.warn(
         "⚠️ Order created but inventory reservation failed. Manual intervention may be required."
       );
-    } else {
     }
 
+    // Step 4: If the order is created already marked as delivered (direct
+    // delivery, skipping pending/confirmed/shipped), there is no later
+    // status-change update to trigger the usual "finalize" deduction - so
+    // clear the reservation hold right away or it would stay stuck forever.
+    if (status === OrderStatus.DELIVERED) {
+      const finalizeResult = await updateInventoryForOrder(
+        orderProducts,
+        "finalize"
+      );
+      if (!finalizeResult.success) {
+        console.error(
+          "❌ Failed to finalize inventory for directly-delivered order:",
+          finalizeResult.error
+        );
+      }
+    }
 
     return {
       success: true,
@@ -591,7 +617,20 @@ export async function createCustomerOrder(
       console.warn(
         "⚠️ Customer order created but inventory reservation failed. Manual intervention may be required."
       );
-    } else {
+    }
+
+    // Same direct-delivery safeguard as createOrder() above.
+    if (status === OrderStatus.DELIVERED) {
+      const finalizeResult = await updateInventoryForOrder(
+        orderProducts,
+        "finalize"
+      );
+      if (!finalizeResult.success) {
+        console.error(
+          "❌ Failed to finalize inventory for directly-delivered order:",
+          finalizeResult.error
+        );
+      }
     }
 
     return {
