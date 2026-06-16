@@ -616,10 +616,10 @@ export default function CreateOrder() {
               style={{ width: "100%" }}
               size="large"
               showSearch={{
-                filterOption: (input, option) => {
-                  const customer = option?.children?.[1]?.props?.children || "";
-                  return customer.toLowerCase().includes(input.toLowerCase());
-                },
+                // Filtering is already done externally via filteredCustomers
+                // (searchTerm effect above), so disable antd's own
+                // filterOption to avoid double-filtering the rendered options.
+                filterOption: false,
                 onSearch: setSearchTerm,
               }}
               notFoundContent={
