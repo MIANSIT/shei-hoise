@@ -16,6 +16,7 @@ import { EditProfileForm } from "../../components/user-profile/EditProfileForm";
 import { UserWithProfile } from "@/lib/queries/user/getUserProfile";
 import { AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
 import { ProfileFormData } from "@/lib/types/profile";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type DisplayUser = UserWithProfile | AdminUserWithProfile;
 
@@ -30,6 +31,7 @@ function isCustomerUser(user: DisplayUser): user is UserWithProfile {
 }
 
 export default function UserProfilePage() {
+  const t = useTranslation();
   const { user, loading, error, isAuthenticated, isCustomer } =
     useUserProfile();
   const [currentUser, setCurrentUser] = useState<DisplayUser | null>(null);
@@ -95,11 +97,11 @@ export default function UserProfilePage() {
   if (!isAuthenticated || error) {
     return (
       <AccessDenied
-        title={error ? "Error Loading Profile" : "Access Denied"}
+        title={error ? t.admin.accessDeniedErrorTitle : t.admin.accessDeniedTitle}
         message={
           error
-            ? "Failed to load user profile. Please try again."
-            : "Please log in to access this page."
+            ? t.admin.accessDeniedFailedLoad
+            : t.admin.accessDeniedPleaseLogin
         }
         showHomeButton={true}
         showLoginButton={!error}

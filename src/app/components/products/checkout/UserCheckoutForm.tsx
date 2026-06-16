@@ -22,6 +22,7 @@ import { ArrowRight, ShoppingBag } from "lucide-react";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { CheckoutFormSkeleton } from "../../../components/skeletons/CheckoutFormSkeleton";
 import { useParams } from "next/navigation";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface CheckoutFormProps {
   onSubmit: (values: CustomerCheckoutFormValues) => void;
@@ -55,6 +56,7 @@ const CheckoutForm = ({
 }: CheckoutFormProps) => {
   const params = useParams();
   const storeSlug = params.store_slug as string;
+  const t = useTranslation();
 
   const { session, loading: authLoading } = useSupabaseAuth();
   const { formData, setFormData, setStoreSlug } = useCheckoutStore();
@@ -238,12 +240,12 @@ const CheckoutForm = ({
 
   // Button text
   const getButtonText = useMemo(() => {
-    return "Place Order";
-  }, []);
+    return t.checkout.placeOrder;
+  }, [t]);
 
   const getLoadingText = useMemo(() => {
-    return "Placing Order...";
-  }, []);
+    return t.checkout.placingOrder;
+  }, [t]);
 
   if (authLoading) {
     return <CheckoutFormSkeleton />;
@@ -253,10 +255,10 @@ const CheckoutForm = ({
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
       {/* Name Field */}
       <div className="grid gap-2">
-        <Label htmlFor="name">Full Name *</Label>
+        <Label htmlFor="name">{t.checkout.fullName}</Label>
         <Input
           {...form.register("name")}
-          placeholder="John Doe"
+          placeholder={t.checkout.fullNamePlaceholder}
           disabled={isSubmitting}
         />
         {form.formState.errors.name && (
@@ -269,12 +271,12 @@ const CheckoutForm = ({
       {/* Phone field - SIMPLE & PROMINENT */}
       <div className="grid gap-2">
         <Label htmlFor="phone" className="text-base font-semibold">
-          Phone Number *
+          {t.checkout.phoneNumber}
         </Label>
         <div className="relative">
           <Input
             {...form.register("phone")}
-            placeholder="01XXXXXXXXX"
+            placeholder={t.checkout.phonePlaceholder}
             type="tel"
             disabled={isSubmitting}
             onChange={(e) => {
@@ -296,14 +298,14 @@ const CheckoutForm = ({
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          We&apos;ll use this to contact you about your order
+          {t.checkout.phoneHint}
         </p>
       </div>
 
       {/* Address fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="country">Country *</Label>
+          <Label htmlFor="country">{t.checkout.country}</Label>
           <CountryFlag
             value={form.watch("country")}
             onValueChange={(value) => form.setValue("country", value)}
@@ -318,10 +320,10 @@ const CheckoutForm = ({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="city">City *</Label>
+          <Label htmlFor="city">{t.checkout.city}</Label>
           <Input
             {...form.register("city")}
-            placeholder="Dhaka"
+            placeholder={t.checkout.cityPlaceholder}
             disabled={isSubmitting}
           />
           {form.formState.errors.city && (
@@ -332,10 +334,10 @@ const CheckoutForm = ({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="postCode">Postal Code</Label>
+          <Label htmlFor="postCode">{t.checkout.postalCode}</Label>
           <Input
             {...form.register("postCode")}
-            placeholder="1000"
+            placeholder={t.checkout.postalCodePlaceholder}
             disabled={isSubmitting}
           />
           {form.formState.errors.postCode && (
@@ -348,10 +350,10 @@ const CheckoutForm = ({
 
       {/* Shipping Address */}
       <div className="grid gap-2">
-        <Label htmlFor="shippingAddress">Shipping Address *</Label>
+        <Label htmlFor="shippingAddress">{t.checkout.shippingAddress}</Label>
         <Input
           {...form.register("shippingAddress")}
-          placeholder="House #123, Road #456, Area Name"
+          placeholder={t.checkout.shippingAddressPlaceholder}
           disabled={isSubmitting}
           className="h-12"
         />
@@ -361,7 +363,7 @@ const CheckoutForm = ({
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          Please provide detailed address for delivery
+          {t.checkout.shippingAddressHint}
         </p>
       </div>
 
@@ -391,7 +393,7 @@ const CheckoutForm = ({
       {/* ✅ Option to create account later */}
       <div className="text-center pt-2">
         <p className="text-sm text-muted-foreground">
-          Want to save your details for faster checkout?{" "}
+          {t.checkout.saveDetailsPrompt}{" "}
           <button
             type="button"
             onClick={() => {
@@ -399,7 +401,7 @@ const CheckoutForm = ({
             }}
             className="text-blue-600 hover:text-blue-800 font-medium underline"
           >
-            Create account later
+            {t.checkout.createAccountLater}
           </button>
         </p>
       </div>

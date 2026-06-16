@@ -9,6 +9,8 @@ import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import type { ShippingFee } from "@/lib/types/store/store";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface ShippingMethodProps {
   storeSlug: string;
@@ -31,6 +33,8 @@ export default function ShippingMethod({
 
   const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
   const displayCurrencyIcon = currencyLoading ? "৳" : (currencyIcon ?? "৳");
+  const t = useTranslation();
+  const n = useLocalNum();
 
   // Only show options where customer_view is NOT false (i.e., visible to customers)
   const visibleShippingOptions = useMemo(() => {
@@ -107,7 +111,7 @@ export default function ShippingMethod({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Truck className="h-5 w-5 text-blue-500" />
-          Shipping & Tax
+          {t.checkout.shippingAndTax}
         </CardTitle>
       </CardHeader>
 
@@ -137,7 +141,7 @@ export default function ShippingMethod({
                     {option.name}
                     {!meetsMinOrderAmount && (
                       <span className="text-xs text-yellow-600 ml-2">
-                        (Minimum order required)
+                        {t.checkout.minOrderRequired}
                       </span>
                     )}
                   </span>
@@ -150,14 +154,14 @@ export default function ShippingMethod({
 
                   {option.estimated_days && (
                     <span className="text-xs text-blue-600">
-                      Est. {option.estimated_days} days
+                      {t.checkout.estimated} {n(option.estimated_days)} {t.checkout.days}
                     </span>
                   )}
                 </div>
 
                 <span className="font-semibold text-foreground">
                   {displayCurrencyIcon}
-                  {option.price.toFixed(2)}
+                  {n(option.price.toFixed(2))}
                 </span>
               </Label>
             </div>
@@ -169,22 +173,22 @@ export default function ShippingMethod({
             <div className="flex items-center gap-2 mb-2">
               <Receipt className="h-4 w-4 text-purple-600" />
               <span className="text-sm font-medium text-purple-800">
-                Tax Amount
+                {t.checkout.taxAmount}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-sm text-purple-700">
-                Additional tax fee
+                {t.checkout.additionalTaxFee}
               </span>
               <span className="font-semibold text-purple-800">
                 {displayCurrencyIcon}
-                {taxAmount.toFixed(2)}
+                {n(taxAmount.toFixed(2))}
               </span>
             </div>
 
             <p className="text-xs text-purple-600 mt-1">
-              * Fixed tax amount applied to all orders
+              {t.checkout.fixedTaxNote}
             </p>
           </div>
         )}

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Loader2, Save, X } from "lucide-react";
 import { ProfileFormData } from "@/lib/types/profile";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 // Update the schema to match ProfileFormData
 const profileSchema = z.object({
@@ -64,6 +65,7 @@ export function EditProfileForm({
   onSave,
 }: EditProfileFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const t = useTranslation();
 
   const {
     register,
@@ -113,21 +115,21 @@ export function EditProfileForm({
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle>Edit Profile</CardTitle>
-        <CardDescription>Update your personal information</CardDescription>
+        <CardTitle>{t.admin.myProfileEditTitle}</CardTitle>
+        <CardDescription>{t.admin.myProfileEditDesc}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Personal Information</h3>
+            <h3 className="text-lg font-medium">{t.admin.myProfilePersonalInfoSection}</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
+                <Label htmlFor="name">{t.admin.myProfileFullName}</Label>
                 <Input
                   id="name"
                   {...register("name")}
-                  placeholder="Enter full name"
+                  placeholder={t.admin.myProfileFullNamePlaceholder}
                 />
                 {errors.name && (
                   <div className="text-sm text-red-600">
@@ -137,28 +139,28 @@ export function EditProfileForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+                <Label htmlFor="email">{t.admin.myProfileEmailAddressLabel}</Label>
                 <Input
                   id="email"
                   type="email"
                   {...register("email")}
-                  placeholder="Enter email"
+                  placeholder={t.admin.myProfileEmailPlaceholder}
                   disabled
                 />
                 <div className="text-xs text-gray-500">
-                  Email cannot be changed
+                  {t.admin.myProfileEmailCannotChange}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{t.admin.myProfilePhoneLabel}</Label>
                 <Input
                   id="phone"
                   type="tel"
                   {...register("phone")}
-                  placeholder="Enter phone number"
+                  placeholder={t.admin.myProfilePhonePlaceholder}
                 />
                 {errors.phone && (
                   <div className="text-sm text-red-600">
@@ -168,7 +170,7 @@ export function EditProfileForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="date_of_birth">Date of Birth</Label>
+                <Label htmlFor="date_of_birth">{t.admin.myProfileDOBLabel}</Label>
                 <Input
                   id="date_of_birth"
                   type="date"
@@ -178,30 +180,30 @@ export function EditProfileForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
+              <Label htmlFor="gender">{t.admin.myProfileGender}</Label>
               <select
                 id="gender"
                 {...register("gender")}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
+                <option value="">{t.admin.myProfileSelectGender}</option>
+                <option value="male">{t.admin.myProfileMale}</option>
+                <option value="female">{t.admin.myProfileFemale}</option>
+                <option value="other">{t.admin.myProfileOther}</option>
+                <option value="prefer_not_to_say">{t.admin.myProfilePreferNotToSay}</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Address Information</h3>
+            <h3 className="text-lg font-medium">{t.admin.myProfileAddressInfoSection}</h3>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">{t.admin.myProfileAddressLabel}</Label>
               <Input
                 id="address"
                 {...register("address")}
-                placeholder="Street address, P.O. box, company name"
+                placeholder={t.admin.myProfileAddressPlaceholder}
               />
               {errors.address && (
                 <div className="text-sm text-red-600">
@@ -212,35 +214,35 @@ export function EditProfileForm({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input id="city" {...register("city")} placeholder="City" />
+                <Label htmlFor="city">{t.admin.myProfileCity}</Label>
+                <Input id="city" {...register("city")} placeholder={t.admin.myProfileCityPlaceholder} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="state">State/Province</Label>
+                <Label htmlFor="state">{t.admin.myProfileState}</Label>
                 <Input
                   id="state"
                   {...register("state")}
-                  placeholder="State or province"
+                  placeholder={t.admin.myProfileStatePlaceholder}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="postal_code">Postal Code</Label>
+                <Label htmlFor="postal_code">{t.admin.myProfilePostalCode}</Label>
                 <Input
                   id="postal_code"
                   {...register("postal_code")}
-                  placeholder="Postal code"
+                  placeholder={t.admin.myProfilePostalPlaceholder}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
+              <Label htmlFor="country">{t.admin.myProfileCountryLabel}</Label>
               <Input
                 id="country"
                 {...register("country")}
-                placeholder="Country"
+                placeholder={t.admin.myProfileCountryPlaceholder}
               />
             </div>
           </div>
@@ -257,7 +259,7 @@ export function EditProfileForm({
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? t.admin.myProfileSaving : t.admin.myProfileSaveChanges}
             </Button>
             <Button
               type="button"
@@ -267,7 +269,7 @@ export function EditProfileForm({
               className="flex items-center gap-2"
             >
               <X className="w-4 h-4" />
-              Cancel
+              {t.admin.myProfileCancel}
             </Button>
           </div>
         </form>

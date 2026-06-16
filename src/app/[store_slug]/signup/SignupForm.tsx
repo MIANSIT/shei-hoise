@@ -27,6 +27,7 @@ import { SignupEmailStep } from "../../components/auth/Customer/SignupEmailStep"
 import { SignupPasswordStep } from "../../components/auth/Customer/SignupPasswordStep";
 import { SignupBenefitsCard } from "../../components/auth/Customer/SignupBenefitsCard";
 import { supabase } from "@/lib/supabase";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export function SignupForm() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export function SignupForm() {
   };
   
   const redirectTo = getRedirectUrl();
+  const t = useTranslation();
   const { success, error } = useSheiNotification();
   const { 
     formData, 
@@ -159,7 +161,7 @@ export function SignupForm() {
     // Additional password strength check
     const passwordStrength = calculatePasswordStrength(data.password);
     if (passwordStrength < 2) {
-      error("Please choose a stronger password");
+      error(t.auth.weakPasswordError);
       return;
     }
 
@@ -169,7 +171,7 @@ export function SignupForm() {
       // Check if email exists
       const emailExists = await signupQueries.checkEmailExists(data.email);
       if (emailExists) {
-        error("This email is already registered. Please login instead.");
+        error(t.auth.emailAlreadyRegisteredLogin);
         setIsSubmitting(false);
         return;
       }
@@ -184,7 +186,7 @@ export function SignupForm() {
       const store = await signupQueries.getStoreBySlug(storeSlug);
       
       if (!store) {
-        throw new Error("Store not found");
+        throw new Error(t.auth.storeNotFoundError);
       }
 
       // Read phone from URL params (LoginForm redirects here with ?phone=xxx)
@@ -213,7 +215,7 @@ export function SignupForm() {
 
       // Get current Supabase session to ensure auth state is updated
       const { data: { session } } = await supabase.auth.getSession();
-      success("Account created successfully! Welcome!", { duration: 2000 });
+      success(t.auth.accountCreatedWelcome, { duration: 2000 });
 
       // Clear account creation flags
       setTimeout(() => {
@@ -239,11 +241,11 @@ export function SignupForm() {
       console.error("❌ Signup error:", err);
       
       if (err.message.includes("already registered")) {
-        error("This email is already registered. Please login instead.");
+        error(t.auth.emailAlreadyRegisteredLogin);
       } else if (err.message.includes("Password should be at least 8 characters")) {
-        error("Password must be at least 8 characters long");
+        error(t.auth.passwordMinLengthError);
       } else {
-        error(err.message || "An unexpected error occurred. Please try again.");
+        error(err.message || t.auth.unexpectedErrorTryAgain);
       }
     } finally {
       setIsSubmitting(false);
@@ -277,7 +279,7 @@ export function SignupForm() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <SheiLoader size="lg" loaderColor="primary" />
-          <p className="mt-4 text-muted-foreground">Loading...</p>
+          <p className="mt-4 text-muted-foreground">{t.auth.loadingText}</p>
         </div>
       </div>
     );
@@ -291,10 +293,10 @@ export function SignupForm() {
             <Shield className="h-10 w-10 text-chart-2" />
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight">
-            Create Account
+            {t.auth.createAccountTitle}
           </CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
-            Sign up to get started with your shopping
+            {t.auth.signUpToStart}
           </CardDescription>
         </CardHeader>
 
@@ -327,12 +329,12 @@ export function SignupForm() {
               {isSubmitting ? (
                 <>
                   <SheiLoader size="sm" loaderColor="white" className="mr-3" />
-                  <span className="text-base font-medium">Creating Account...</span>
+                  <span className="text-base font-medium">{t.auth.creatingAccount}</span>
                 </>
               ) : (
                 <>
                   <UserPlus className="h-6 w-6 mr-3" />
-                  <span className="text-base font-medium">Create Account</span>
+                  <span className="text-base font-medium">{t.auth.createAccount}</span>
                 </>
               )}
             </Button>
@@ -344,7 +346,7 @@ export function SignupForm() {
         <CardFooter className="flex flex-col gap-5 pt-8 pb-10 px-8 border-t border-border/40">
           <div className="text-center">
             <p className="text-base text-muted-foreground mb-4">
-              Already have an account?
+              {t.auth.alreadyHaveAccount}
             </p>
             <Button
               type="button"
@@ -354,7 +356,7 @@ export function SignupForm() {
               variant="outline"
               className="w-full text-base"
             >
-              Login Instead
+              {t.auth.loginInstead}
             </Button>
           </div>
         </CardFooter>

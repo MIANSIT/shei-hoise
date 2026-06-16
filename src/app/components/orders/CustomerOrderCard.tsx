@@ -14,6 +14,8 @@ import {
 import { useState } from "react";
 import Link from "next/link";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 interface OrdersCardProps {
   orders: StoreOrder[];
   onViewInvoice?: (order: StoreOrder) => void;
@@ -22,16 +24,20 @@ interface OrdersCardProps {
 export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const { currency, icon, loading: currencyLoading } = useUserCurrencyIcon();
+  const t = useTranslation();
+  const n = useLocalNum();
   // Format currency
   const formatCurrency = (amount: number) => {
      if (currencyLoading) {
-    return "Loading..."; // or "Loading..."
+    return t.myOrders.loadingDots;
   }
-    if (!currency) return amount.toFixed(2); // fallback
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-    }).format(amount);
+    if (!currency) return n(amount.toFixed(2)); // fallback
+    return n(
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+      }).format(amount)
+    );
   };
 
   // Format date
@@ -122,7 +128,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                 <button
                   onClick={() => copyOrderId(getDisplayOrderId(order))}
                   className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer shrink-0"
-                  title="Copy Order ID"
+                  title={t.myOrders.copyOrderId}
                 >
                   {copiedOrderId === getDisplayOrderId(order) ? (
                     <Check className="h-4 w-4 text-green-600" />
@@ -146,7 +152,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                 <Link
                   href={storeUrl}
                   className="p-2 rounded-md hover:bg-accent transition-colors flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                  title="Visit Store"
+                  title={t.myOrders.visitStore}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -161,7 +167,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <DollarSign className="h-4 w-4" />
-                  <span>Total</span>
+                  <span>{t.myOrders.total}</span>
                 </div>
                 <div className="text-sm font-medium text-foreground">
                   {formatCurrency(order.total_amount || 0)}
@@ -181,7 +187,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                     {order.status
                       ? order.status.charAt(0).toUpperCase() +
                         order.status.slice(1)
-                      : "Pending"}
+                      : t.myOrders.pending}
                   </span>
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(
@@ -193,15 +199,15 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                     {order.payment_status
                       ? order.payment_status.charAt(0).toUpperCase() +
                         order.payment_status.slice(1)
-                      : "Pending"}
+                      : t.myOrders.pending}
                   </span>
                 </div>
 
                 {/* Store Name */}
                 <div className="text-right">
-                  <div className="text-xs text-muted-foreground">Store</div>
+                  <div className="text-xs text-muted-foreground">{t.myOrders.store}</div>
                   <div className="text-sm font-medium text-foreground truncate max-w-[120px]">
-                    {order.stores?.store_name || "Store"}
+                    {order.stores?.store_name || t.myOrders.store}
                   </div>
                 </div>
               </div>
@@ -209,8 +215,8 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
               {/* Additional Info */}
               <div className="pt-2 border-t border-border">
                 <div className="text-xs text-muted-foreground">
-                  Shipping: {icon && <span>{icon} </span>}
-                  {order.shipping_fee || 0} •{" "}
+                  {t.myOrders.shippingLabel} {icon && <span>{icon} </span>}
+                  {n(order.shipping_fee || 0)} •{" "}
                   <span className="uppercase">{order.delivery_option}</span>
                 </div>
               </div>
@@ -222,7 +228,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                   className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors cursor-pointer"
                 >
                   <Receipt className="h-4 w-4" />
-                  View Invoice
+                  {t.myOrders.viewInvoice}
                 </button>
               </div>
             </div>
@@ -232,7 +238,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
 
       {orders.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
-          No orders found
+          {t.myOrders.noOrdersFound}
         </div>
       )}
     </div>

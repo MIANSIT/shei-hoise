@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordToggle } from "../../../components/common/PasswordToggle";
 import { PasswordStrength } from "../../../components/common/PasswordStrength";
 import { Check } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface SignupPasswordStepProps {
   password: string;
@@ -24,16 +25,17 @@ export function SignupPasswordStep({
   onKeyPress,
   disabled,
 }: SignupPasswordStepProps) {
+  const t = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const passwordsMatch = password === confirmPassword && password.length > 0;
 
   return (
     <>
       <div className="space-y-3">
         <Label htmlFor="password" className="text-base font-semibold">
-          Password
+          {t.auth.password}
         </Label>
         <div className="relative">
           <Input
@@ -60,7 +62,7 @@ export function SignupPasswordStep({
 
       <div className="space-y-3">
         <Label htmlFor="confirmPassword" className="text-base font-semibold">
-          Confirm Password
+          {t.auth.confirmPassword}
         </Label>
         <div className="relative">
           <Input
@@ -85,13 +87,13 @@ export function SignupPasswordStep({
         {confirmPassword.length > 0 && !passwordsMatch && (
           <p className="text-sm text-red-500 flex items-center gap-2 mt-2">
             <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
-            Passwords do not match
+            {t.auth.passwordsDoNotMatch}
           </p>
         )}
         {confirmPassword.length > 0 && passwordsMatch && (
           <p className="text-sm text-green-600 flex items-center gap-2 mt-2">
             <Check className="h-4 w-4" />
-            Passwords match
+            {t.auth.passwordsMatch}
           </p>
         )}
       </div>

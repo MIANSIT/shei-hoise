@@ -4,6 +4,8 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 type CartCheckoutLayoutProps = {
   subtotal: number;
@@ -14,10 +16,12 @@ type CartCheckoutLayoutProps = {
 export default function CartCheckoutLayout({
   subtotal,
   onCheckout,
-  buttonText = "Proceed to Checkout",
+  buttonText,
 }: CartCheckoutLayoutProps) {
+  const t = useTranslation();
+  const n = useLocalNum();
   // ✅ Simple formatting - your subtotal is already in correct dollars
-  const formattedSubtotal = subtotal.toFixed(2);
+  const formattedSubtotal = n(subtotal.toFixed(2));
  const {
     currency,
     // icon: currencyIcon,
@@ -34,7 +38,7 @@ export default function CartCheckoutLayout({
       transition={{ duration: 0.3 }}
     >
       <div className="flex justify-between mb-4">
-        <span>SubTotal:</span>
+        <span>{t.cart.subtotalLabel}</span>
         <motion.span 
           className="font-bold"
           key={`subtotal-${subtotal}`}
@@ -53,7 +57,7 @@ export default function CartCheckoutLayout({
           className="w-full bg-linear-to-r from-yellow-400 to-yellow-600 text-white hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
           onClick={onCheckout}
         >
-          {buttonText}
+          {buttonText ?? t.cart.proceedToCheckout}
         </Button>
       </motion.div>
     </motion.div>

@@ -6,6 +6,8 @@ import { Copy, Check, ExternalLink, Receipt } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface OrdersTableProps {
   orders: StoreOrder[];
@@ -22,18 +24,22 @@ export default function OrdersTable({
     // icon: currencyIcon,
     loading: currencyLoading,
   } = useUserCurrencyIcon();
+  const t = useTranslation();
+  const n = useLocalNum();
   // Format currency
   const formatCurrency = (amount: number, orderCurrency?: string | null) => {
     if (currencyLoading) {
-      return "Loading..";
+      return t.myOrders.loadingDots;
     }
     const finalCurrency = orderCurrency || storeCurrency || "BDT";
 
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: finalCurrency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+    return n(
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: finalCurrency,
+        minimumFractionDigits: 2,
+      }).format(amount)
+    );
   };
 
   // Format date
@@ -113,22 +119,22 @@ export default function OrdersTable({
           <thead className="bg-muted">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Order
+                {t.myOrders.orderColumn}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Total
+                {t.myOrders.totalColumn}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Order Status
+                {t.myOrders.orderStatus}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Payment Status
+                {t.myOrders.paymentStatus}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Store
+                {t.myOrders.store}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Actions
+                {t.myOrders.actions}
               </th>
             </tr>
           </thead>
@@ -149,7 +155,7 @@ export default function OrdersTable({
                       <button
                         onClick={() => copyOrderId(getDisplayOrderId(order))}
                         className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer shrink-0"
-                        title="Copy Order ID"
+                        title={t.myOrders.copyOrderId}
                       >
                         {copiedOrderId === getDisplayOrderId(order) ? (
                           <Check className="h-3 w-3 text-green-600" />
@@ -174,10 +180,10 @@ export default function OrdersTable({
                       {formatCurrency(order.total_amount || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Product Total: {formatCurrency(order.subtotal || 0)}
+                      {t.myOrders.productTotal} {formatCurrency(order.subtotal || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Shipping Fee: {formatCurrency(order.shipping_fee) || 0} |{" "}
+                      {t.myOrders.shippingFeeLabel} {formatCurrency(order.shipping_fee) || 0} |{" "}
                       <span className="uppercase">{order.delivery_option}</span>
                     </div>
                   </td>
@@ -193,7 +199,7 @@ export default function OrdersTable({
                       {order.status
                         ? order.status.charAt(0).toUpperCase() +
                           order.status.slice(1)
-                        : "Pending"}
+                        : t.myOrders.pending}
                     </span>
                   </td>
 
@@ -209,7 +215,7 @@ export default function OrdersTable({
                       {order.payment_status
                         ? order.payment_status.charAt(0).toUpperCase() +
                           order.payment_status.slice(1)
-                        : "Pending"}
+                        : t.myOrders.pending}
                     </span>
                   </td>
 
@@ -218,7 +224,7 @@ export default function OrdersTable({
                     <div className="flex items-center gap-2">
                       <div className="min-w-0">
                         <div className="text-sm text-foreground truncate">
-                          {order.stores?.store_name || "Store"}
+                          {order.stores?.store_name || t.myOrders.store}
                         </div>
                         <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
                           {order.stores?.store_slug ? (
@@ -252,7 +258,7 @@ export default function OrdersTable({
                                   }
                                 }}
                                 className="p-1 rounded-md hover:bg-accent transition-colors cursor-pointer shrink-0"
-                                title="Copy Store URL"
+                                title={t.myOrders.copyStoreUrl}
                               >
                                 {copiedOrderId ===
                                 `${window.location.origin}/${order.stores.store_slug}` ? (
@@ -263,7 +269,7 @@ export default function OrdersTable({
                               </button>
                             </div>
                           ) : (
-                            "N/A"
+                            t.myOrders.notAvailable
                           )}
                         </div>
                       </div>
@@ -275,10 +281,10 @@ export default function OrdersTable({
                     <button
                       onClick={() => onViewInvoice?.(order)}
                       className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors cursor-pointer"
-                      title="View Invoice"
+                      title={t.myOrders.viewInvoice}
                     >
                       <Receipt className="h-4 w-4" />
-                      Invoice
+                      {t.myOrders.invoice}
                     </button>
                   </td>
                 </tr>
@@ -290,7 +296,7 @@ export default function OrdersTable({
 
       {orders.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
-          No orders found
+          {t.myOrders.noOrdersFound}
         </div>
       )}
     </div>

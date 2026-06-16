@@ -10,6 +10,7 @@ import { Lock, Home, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface AccessDeniedProps {
   title?: string;
@@ -20,12 +21,15 @@ interface AccessDeniedProps {
 }
 
 export function AccessDenied({
-  title = "Access Denied",
-  message = "You don't have permission to access this page.",
+  title,
+  message,
   showLoginButton = true,
   showHomeButton = true,
   showSignupButton = false, // Add signup button option
 }: AccessDeniedProps) {
+  const t = useTranslation();
+  const resolvedTitle = title ?? t.admin.accessDeniedTitle;
+  const resolvedMessage = message ?? t.admin.accessDeniedDefaultMsg;
   const pathname = usePathname();
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -75,15 +79,15 @@ export function AccessDenied({
 
   // Get button text based on current page
   const getLoginButtonText = () => {
-    if (isLoginActive) return "Currently on Login";
-    if (storeSlug) return `Login`;
-    return "Log In";
+    if (isLoginActive) return t.admin.accessDeniedCurrentlyOnLogin;
+    if (storeSlug) return t.admin.accessDeniedLoginShort;
+    return t.admin.accessDeniedLogin;
   };
 
   const getSignupButtonText = () => {
-    if (isSignupActive) return "Currently on Sign Up";
-    if (storeSlug) return `Join ${storeSlug}`;
-    return "Sign Up";
+    if (isSignupActive) return t.admin.accessDeniedCurrentlyOnSignup;
+    if (storeSlug) return `${t.admin.accessDeniedJoinPrefix} ${storeSlug}`;
+    return t.admin.accessDeniedSignup;
   };
 
   return (
@@ -96,10 +100,10 @@ export function AccessDenied({
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
-            {title}
+            {resolvedTitle}
           </CardTitle>
           <CardDescription className="text-gray-600 mt-2">
-            {message}
+            {resolvedMessage}
           </CardDescription>
           
         </CardHeader>
@@ -114,7 +118,7 @@ export function AccessDenied({
               >
                 <Link href={storeHomeUrl}>
                   <Home className="w-4 h-4" />
-                  Go Back To Store
+                  {t.admin.accessDeniedGoBackToStore}
                 </Link>
               </Button>
             )}
@@ -151,8 +155,8 @@ export function AccessDenied({
           {/* Help text */}
           <div className="text-center text-sm text-gray-500 mt-4">
             <p>
-              You need to be logged in to access this page. 
-              {storeSlug && " Your account is specific to this store."}
+              {t.admin.accessDeniedHelpText}{" "}
+              {storeSlug && t.admin.accessDeniedStoreSpecific}
             </p>
           </div>
         </CardContent>
