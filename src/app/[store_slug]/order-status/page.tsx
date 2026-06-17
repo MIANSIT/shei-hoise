@@ -27,10 +27,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Store, Package, ExternalLink, Phone } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 export default function StoreOrdersPage() {
   const params = useParams();
   const storeSlug = params.store_slug as string;
+  const t = useTranslation();
+  const n = useLocalNum();
 
   const {
     customer,
@@ -197,8 +201,8 @@ export default function StoreOrdersPage() {
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-destructive">Error</CardTitle>
-            <CardDescription>Unable to load customer data</CardDescription>
+            <CardTitle className="text-2xl text-destructive">{t.myOrders.errorTitle}</CardTitle>
+            <CardDescription>{t.myOrders.unableLoadCustomer}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button
@@ -206,7 +210,7 @@ export default function StoreOrdersPage() {
               onClick={() => window.location.reload()}
               className="w-full"
             >
-              Try Again
+              {t.myOrders.tryAgain}
             </Button>
           </CardContent>
         </Card>
@@ -226,8 +230,6 @@ export default function StoreOrdersPage() {
         hasAuthUserId={hasAuthUserId}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
-        title="Account Mismatch"
-        description={`You're logged in as ${authEmail} but your orders are under ${customer?.email}`}
       />
     );
   }
@@ -242,8 +244,6 @@ export default function StoreOrdersPage() {
         hasAuthUserId={hasAuthUserId}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
-        title="Sign In Required"
-        description={`You have an account with ${customer.email}. Please sign in to view your orders.`}
       />
     );
   }
@@ -258,8 +258,6 @@ export default function StoreOrdersPage() {
         hasAuthUserId={hasAuthUserId}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
-        title="Complete Your Account"
-        description={`You ordered as ${customer.email}. Create a password to complete your account and view orders.`}
       />
     );
   }
@@ -274,8 +272,6 @@ export default function StoreOrdersPage() {
         hasAuthUserId={false}
         isLoggedIn={isLoggedIn}
         authEmail={authEmail}
-        title="Access Your Orders"
-        description="Sign in or enter your phone number to view your order history"
       />
     );
   }
@@ -290,9 +286,9 @@ export default function StoreOrdersPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold">My Orders</h1>
+                <h1 className="text-3xl font-bold">{t.myOrders.title}</h1>
                 <p className="text-muted-foreground mt-2">
-                  View all your orders across all stores
+                  {t.myOrders.subtitle}
                 </p>
               </div>
               {customer.phone && (
@@ -321,8 +317,8 @@ export default function StoreOrdersPage() {
                           <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-70 transition-opacity" />
                         </Link>
                         <Badge variant="secondary">
-                          {storeOrders.length} order
-                          {storeOrders.length !== 1 ? "s" : ""}
+                          {n(storeOrders.length)}{" "}
+                          {storeOrders.length !== 1 ? t.myOrders.orders : t.myOrders.order}
                         </Badge>
                       </div>
 
@@ -370,7 +366,7 @@ export default function StoreOrdersPage() {
                     </svg>
                   </div>
                   <h3 className="font-semibold text-destructive mb-1">
-                    Unable to Load Orders
+                    {t.myOrders.unableLoadOrdersTitle}
                   </h3>
                   <p className="text-destructive/80 text-sm">{error}</p>
                   <Button
@@ -378,7 +374,7 @@ export default function StoreOrdersPage() {
                     className="mt-4"
                     onClick={() => window.location.reload()}
                   >
-                    Try Again
+                    {t.myOrders.tryAgain}
                   </Button>
                 </div>
               </CardContent>
@@ -390,17 +386,16 @@ export default function StoreOrdersPage() {
                   <div className="mx-auto w-24 h-24 mb-6 rounded-full bg-muted flex items-center justify-center">
                     <Package className="h-12 w-12 text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">No Orders Yet</h3>
+                  <h3 className="text-xl font-semibold mb-2">{t.myOrders.noOrdersYetTitle}</h3>
                   <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    You haven&apos;t placed any orders yet. Start shopping to
-                    see your orders here!
+                    {t.myOrders.noOrdersYetDesc}
                   </p>
                   <Button
                     onClick={() => (window.location.href = `/${storeSlug}`)}
                     className="gap-2"
                   >
                     <Store className="h-4 w-4" />
-                    Start Shopping
+                    {t.myOrders.startShopping}
                   </Button>
                 </div>
               </CardContent>

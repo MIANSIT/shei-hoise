@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import CartCheckoutLayout from "./CartCheckoutLayout";
 import { useRouter, useParams } from "next/navigation";
 import useCartStore from "@/lib/store/cartStore";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -21,9 +23,11 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
   // Use the custom hook to get cart items with fresh data
   const { items: cartItems, calculations, loading, error } = useCartItems(store_slug);
-  
+
   // Get cart store functions for handling cart operations
   const { removeItem, updateQuantity, clearStoreCart, getCartByStore } = useCartStore();
+  const t = useTranslation();
+  const n = useLocalNum();
 
   // Debug: Check what's in the cart
   useEffect(() => {
@@ -86,7 +90,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         <div className='flex flex-col h-full'>
           <div className='flex items-center justify-between p-4 border-b border-border'>
             <h2 className='text-lg font-semibold'>
-              Your Cart ({calculations.totalItems})
+              {t.cart.yourCart} ({n(calculations.totalItems)})
             </h2>
             <button
               onClick={onClose}
@@ -96,33 +100,33 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
               <X className='h-5 w-5' />
             </button>
           </div>
-          
+
           <div className='flex-1 p-4 overflow-y-auto'>
             {loading ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">Loading cart...</p>
+                <p className="text-muted-foreground">{t.cart.loadingCart}</p>
               </div>
             ) : error ? (
               <div className="text-center py-8">
-                <p className="text-destructive">Error: {error}</p>
+                <p className="text-destructive">{t.cart.errorPrefix} {error}</p>
                 <Button
                   className="mt-4 w-full"
                   onClick={() => window.location.reload()}
                 >
-                  Retry
+                  {t.cart.retry}
                 </Button>
               </div>
             ) : cartItems.length === 0 ? (
               <div className='text-center py-8'>
-                <p className='text-muted-foreground'>Your cart is empty</p>
+                <p className='text-muted-foreground'>{t.cart.cartEmpty}</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Add some products to get started!
+                  {t.cart.addProductsPrompt}
                 </p>
                 <Button
                   className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
                   onClick={handleContinueShopping}
                 >
-                  Continue Shopping at {store_slug}
+                  {t.cart.continueShoppingAt} {store_slug}
                 </Button>
               </div>
             ) : (
@@ -141,7 +145,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             <CartCheckoutLayout
               subtotal={calculations.totalPrice}
               onCheckout={handleCheckout}
-              buttonText="Proceed to Checkout"
+              buttonText={t.cart.proceedToCheckout}
             />
           )}
         </div>

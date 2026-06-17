@@ -12,6 +12,8 @@ import { CartProductWithDetails, CartCalculations } from "@/lib/types/cart";
 import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface UnifiedCheckoutLayoutProps {
   storeSlug: string;
@@ -57,6 +59,8 @@ export default function UnifiedCheckoutLayout({
     loading: currencyLoading,
   } = useUserCurrencyIcon();
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
+  const t = useTranslation();
+  const n = useLocalNum();
 
   const totalWithShippingAndTax =
     calculations.totalPrice + shippingFee + (taxAmount > 0 ? taxAmount : 0);
@@ -105,11 +109,11 @@ export default function UnifiedCheckoutLayout({
           <div className='bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto'>
             <div className='text-red-500 text-6xl mb-4'>⚠️</div>
             <h2 className='text-xl font-bold text-red-800 mb-2'>
-              Invalid Order Data
+              {t.checkout.invalidOrderData}
             </h2>
             <p className='text-red-600 mb-4'>{error}</p>
             <p className='text-sm text-muted-foreground'>
-              Please check your order link or try again.
+              {t.checkout.checkOrderLink}
             </p>
           </div>
         </div>
@@ -138,22 +142,22 @@ export default function UnifiedCheckoutLayout({
     <div className='container mx-auto p-4 lg:p-8 pb-20 lg:pb-8'>
       <div className='text-center lg:text-left mb-6 lg:mb-8'>
         <h1 className='text-2xl lg:text-3xl font-bold text-foreground'>
-          {mode === "confirm" ? "Confirm Your Order" : "Checkout"}
+          {mode === "confirm" ? t.checkout.confirmTitle : t.checkout.title}
         </h1>
         <p className='text-sm lg:text-base text-muted-foreground mt-2'>
           {mode === "confirm"
-            ? "Review your items and enter your details"
-            : "Complete your purchase"}
+            ? t.checkout.reviewAndDetails
+            : t.checkout.completePurchase}
         </p>
-        
+
         {/* Minimum Order Amount Warning */}
         {minOrderAmount > 0 && !meetsMinOrderAmount && (
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 font-medium">
-              Minimum order amount is {displayCurrencyIconSafe}{minOrderAmount.toFixed(2)}
+              {t.checkout.minOrderWarningPrefix} {displayCurrencyIconSafe}{n(minOrderAmount.toFixed(2))}
             </p>
             <p className="text-yellow-600 text-sm mt-1">
-              Add {displayCurrencyIconSafe}{shortfallAmount.toFixed(2)} more to proceed
+              {t.checkout.addMoreToProceed} {displayCurrencyIconSafe}{n(shortfallAmount.toFixed(2))} {t.checkout.addMoreToProceedSuffix}
             </p>
           </div>
         )}
@@ -172,7 +176,7 @@ export default function UnifiedCheckoutLayout({
             {activeSection === "customer" && (
               <ChevronLeft className='h-4 w-4' />
             )}
-            Cart
+            {t.checkout.cartTab}
           </button>
           <button
             onClick={() => setActiveSection("customer")}
@@ -182,7 +186,7 @@ export default function UnifiedCheckoutLayout({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Details
+            {t.checkout.detailsTab}
             {activeSection === "cart" && <ChevronRight className='h-4 w-4' />}
           </button>
         </div>
@@ -208,11 +212,11 @@ export default function UnifiedCheckoutLayout({
                 </div>
                 <div>
                   <CardTitle className='text-lg lg:text-xl font-semibold text-card-foreground'>
-                    Your Order
+                    {t.checkout.yourOrder}
                   </CardTitle>
                   <p className='text-sm text-muted-foreground'>
-                    {calculations.totalItems}{" "}
-                    {calculations.totalItems === 1 ? "item" : "items"}
+                    {n(calculations.totalItems)}{" "}
+                    {calculations.totalItems === 1 ? t.checkout.item : t.checkout.items}
                   </p>
                 </div>
               </div>
@@ -223,7 +227,7 @@ export default function UnifiedCheckoutLayout({
                 <div className='text-center py-8'>
                   <ShoppingBag className='h-12 w-12 text-muted-foreground mx-auto mb-3' />
                   <p className='text-muted-foreground'>
-                    No products found in your order
+                    {t.checkout.noProductsInOrder}
                   </p>
                 </div>
               ) : (
@@ -243,11 +247,11 @@ export default function UnifiedCheckoutLayout({
               {cartItems.length > 0 && (
                 <div className='space-y-3 pt-4 border-t border-border'>
                   <div className='flex justify-between text-foreground'>
-                    <span>Subtotal:</span>
+                    <span>{t.checkout.subtotalLabel}</span>
                     <span>
                       {" "}
                       {displayCurrencyIconSafe}
-                      {calculations.subtotal.toFixed(2)}
+                      {n(calculations.subtotal.toFixed(2))}
                     </span>
                   </div>
 
@@ -262,7 +266,7 @@ export default function UnifiedCheckoutLayout({
                   </div>
 
                   <div className='flex justify-between font-bold text-foreground text-lg pt-3 border-t border-border'>
-                    <span>Total:</span>
+                    <span>{t.checkout.totalLabel}</span>
                     <motion.span
                       key={`total-${totalWithShippingAndTax}`}
                       initial={{ scale: 1.1 }}
@@ -270,7 +274,7 @@ export default function UnifiedCheckoutLayout({
                       transition={{ duration: 0.2 }}
                     >
                       {displayCurrencyIconSafe}
-                      {totalWithShippingAndTax.toFixed(2)}
+                      {n(totalWithShippingAndTax.toFixed(2))}
                     </motion.span>
                   </div>
 
@@ -281,11 +285,11 @@ export default function UnifiedCheckoutLayout({
                   >
                     {meetsMinOrderAmount ? (
                       <>
-                        Continue to Details
+                        {t.checkout.continueToDetails}
                         <ChevronRight className='h-4 w-4 ml-2' />
                       </>
                     ) : (
-                      `Add ${displayCurrencyIconSafe}${shortfallAmount.toFixed(2)} More`
+                      `${t.checkout.addPrefix} ${displayCurrencyIconSafe}${n(shortfallAmount.toFixed(2))} ${t.checkout.moreSuffix}`
                     )}
                   </Button>
                 </div>
@@ -308,10 +312,10 @@ export default function UnifiedCheckoutLayout({
                   </div>
                   <div>
                     <CardTitle className='text-lg lg:text-xl font-semibold text-card-foreground'>
-                      Customer Information
+                      {t.checkout.customerInformation}
                     </CardTitle>
                     <p className='text-sm text-muted-foreground'>
-                      Shipping and contact details
+                      {t.checkout.shippingAndContactDetails}
                     </p>
                   </div>
                 </div>
@@ -334,7 +338,7 @@ export default function UnifiedCheckoutLayout({
                   onClick={() => setActiveSection("cart")}
                 >
                   <ChevronLeft className='h-4 w-4 mr-2' />
-                  Back to Cart
+                  {t.checkout.backToCart}
                 </Button>
               </CardContent>
             </Card>

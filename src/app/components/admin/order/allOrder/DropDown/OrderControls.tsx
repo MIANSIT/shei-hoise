@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { Button, Input } from "antd";
-import StatusTag from "../StatusFilter/StatusTag";
 import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
 // import EditableDeliveryOption from "./EditableDeliveryOption";
@@ -65,7 +64,6 @@ const OrderControls: React.FC<Props> = ({
   }, [note, onSelectCancelNote]);
 
   const isCancelled = selectedStatus === "cancelled";
-  const isDelivered = selectedStatus === "delivered"; // ✅ FIXED: "delivered" not "delevered"
 
   const hasChanges =
     selectedStatus !== status ||
@@ -89,15 +87,10 @@ const OrderControls: React.FC<Props> = ({
         <span className="font-medium text-sm sm:text-base whitespace-nowrap">
           Order Status:
         </span>
-        {isDelivered || isCancelled ? (
-          <StatusTag status={selectedStatus} />
-        ) : (
-          <EditableOrderStatus
-            status={selectedStatus}
-            onSave={onSelectStatus}
-            hideDelivered={selectedPaymentStatus !== "paid"}
-          />
-        )}
+        <EditableOrderStatus
+          status={selectedStatus}
+          onSave={onSelectStatus}
+        />
         {selectedStatus !== status && (
           <span className="text-xs text-orange-500 font-medium">Unsaved</span>
         )}
@@ -131,14 +124,10 @@ const OrderControls: React.FC<Props> = ({
           <span className="font-medium text-sm sm:text-base whitespace-nowrap">
             Payment Status:
           </span>
-          {paymentStatus === "paid" || isDelivered ? (
-            <StatusTag status={selectedPaymentStatus} />
-          ) : (
-            <EditablePaymentStatus
-              status={selectedPaymentStatus}
-              onSave={onSelectPaymentStatus}
-            />
-          )}
+          <EditablePaymentStatus
+            status={selectedPaymentStatus}
+            onSave={onSelectPaymentStatus}
+          />
           {selectedPaymentStatus !== paymentStatus && (
             <span className="text-xs text-orange-500 font-medium">Unsaved</span>
           )}
@@ -178,7 +167,7 @@ const OrderControls: React.FC<Props> = ({
       )}
 
       {/* Save Button */}
-      {hasChanges && !isLocked && (
+      {hasChanges && (
         <div className="w-full sm:w-auto flex justify-end pt-2 border-t sm:border-t-0 sm:pt-0">
           <Button
             type="primary"

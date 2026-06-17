@@ -30,6 +30,7 @@ import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import type { ShippingFee } from "@/lib/types/store/store";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { useEditOrderDraftStore } from "@/lib/store/orderDraftStore";
 
 const { Title, Text } = Typography;
 
@@ -91,6 +92,13 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [originalOrder, setOriginalOrder] = useState<OrderWithItems | null>(
     null
   );
+  // Frozen snapshot of the order's items as originally loaded from the
+  // database. Their quantities are already counted in the product/variant
+  // inventory's `quantity_reserved`, so this is used to compute the true
+  // remaining stock while editing (see AdminOrderDetails).
+  const [originalOrderProducts, setOriginalOrderProducts] = useState<
+    OrderProduct[]
+  >([]);
   const [hasFetchedData, setHasFetchedData] = useState(false);
 
   // Store settings states
@@ -99,6 +107,10 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
   // Email validation state
   const [emailError, setEmailError] = useState<string>("");
+
+  // Draft persistence - survives tab switches / accidental reloads
+  const hasHydrated = useEditOrderDraftStore((s) => s._hasHydrated);
+  const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
 
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
@@ -284,6 +296,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         );
 
         setOrderProducts(convertedOrderProducts);
+        setOriginalOrderProducts(convertedOrderProducts);
       }
     } catch (error) {
       console.error("Error fetching order data:", error);
@@ -295,6 +308,65 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       setOrderLoading(false);
     }
   }, [user?.store_id, orderNumber, fetchCustomerProfile, notification]);
+
+  // Restore a saved draft (if any) for THIS order, once the original data
+  // has been fetched from the DB and Zustand has finished reading from
+  // localStorage. Must run before the "sync to draft" effect below, or the
+  // freshly-fetched DB values would overwrite the draft before it loads.
+  useEffect(() => {
+    if (!hasHydrated || !originalOrder || readyToSyncDraft) return;
+
+    const draft = useEditOrderDraftStore.getState().getDraft(orderNumber);
+    if (draft) {
+      setCustomerInfo(draft.customerInfo);
+      setOrderProducts(draft.orderProducts);
+      setDiscount(draft.discount);
+      setAdditionalCharges(draft.additionalCharges);
+      setDeliveryCost(draft.deliveryCost);
+      setTaxAmount(draft.taxAmount);
+      setStatus(draft.status);
+      setPaymentStatus(draft.paymentStatus);
+      setPaymentMethod(draft.paymentMethod);
+      notification.info({
+        message: "Unsaved Changes Restored",
+        description: "We restored your unsaved edits to this order.",
+      });
+    }
+
+    setReadyToSyncDraft(true);
+  }, [hasHydrated, originalOrder, readyToSyncDraft, orderNumber, notification]);
+
+  // Sync every change to this order's draft so it survives tab switches and
+  // accidental reloads. Gated on readyToSyncDraft so it never fires before
+  // the restore effect above has had a chance to run.
+  useEffect(() => {
+    if (!readyToSyncDraft) return;
+    useEditOrderDraftStore.getState().setDraft(orderNumber, {
+      orderId,
+      customerInfo,
+      orderProducts,
+      discount,
+      additionalCharges,
+      deliveryCost,
+      taxAmount,
+      status,
+      paymentStatus,
+      paymentMethod,
+    });
+  }, [
+    readyToSyncDraft,
+    orderNumber,
+    orderId,
+    customerInfo,
+    orderProducts,
+    discount,
+    additionalCharges,
+    deliveryCost,
+    taxAmount,
+    status,
+    paymentStatus,
+    paymentMethod,
+  ]);
 
   // Auto-select delivery option based on shipping fee from backend
   useEffect(() => {
@@ -538,6 +610,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   products={products}
                   orderProducts={orderProducts}
                   setOrderProducts={setOrderProducts}
+                  originalOrderProducts={originalOrderProducts}
                 />
               </Col>
 
@@ -587,6 +660,9 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   paymentMethod={paymentMethod}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   emailError={emailError}
+                  onOrderUpdated={() =>
+                    useEditOrderDraftStore.getState().clearDraft(orderNumber)
+                  }
                 />
               </Col>
             </Row>

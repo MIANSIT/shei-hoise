@@ -19,6 +19,7 @@ import { SheiLoader } from "../ui/SheiLoader/loader";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { supabase } from "@/lib/supabase";
 import { Mail, ArrowLeft, KeyRound } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const forgotPasswordSchema = z.object({
   email: z
@@ -39,6 +40,7 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
   const storeSlug = type === "user" ? (params.store_slug as string) : undefined;
   const { success, error } = useSheiNotification();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const t = useTranslation();
 
   const backToLoginHref =
     type === "admin" ? "/admin-login" : `/${storeSlug}/login`;
@@ -74,12 +76,12 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
     );
 
     if (resetError) {
-      error(resetError.message || "Failed to send reset email. Please try again.");
+      error(resetError.message || t.auth.failedSendResetEmail);
       return;
     }
 
     setIsSubmitted(true);
-    success("Password reset email sent! Please check your inbox.");
+    success(t.auth.resetEmailSent);
   };
 
   if (isSubmitted) {
@@ -89,16 +91,15 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
           <div className="mx-auto w-16 h-16 bg-linear-to-br from-green-100 to-green-200 dark:from-green-900/20 dark:to-green-800/20 rounded-full flex items-center justify-center">
             <Mail className="h-8 w-8 text-green-600 dark:text-green-500" />
           </div>
-          <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t.auth.checkYourEmailTitle}</CardTitle>
           <CardDescription className="text-base">
-            We&apos;ve sent a password reset link to{" "}
+            {t.auth.resetLinkSentPrefix}{" "}
             <strong className="text-foreground">{getValues("email")}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-2 pb-6">
           <p className="text-sm text-muted-foreground text-center">
-            Click the link in your email to reset your password. The link will
-            expire in 1 hour. Check your spam folder if you don&apos;t see it.
+            {t.auth.resetLinkInstructions}
           </p>
           <Button
             type="button"
@@ -107,16 +108,16 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
             onClick={() => router.push(backToLoginHref)}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Login
+            {t.auth.backToLogin}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            Didn&apos;t receive it?{" "}
+            {t.auth.didntReceive}{" "}
             <button
               type="button"
               onClick={() => setIsSubmitted(false)}
               className="text-primary hover:underline font-medium"
             >
-              Try again
+              {t.auth.tryAgainLink}
             </button>
           </p>
         </CardContent>
@@ -130,9 +131,9 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
         <div className="mx-auto w-16 h-16 bg-linear-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
           <KeyRound className="h-8 w-8 text-chart-2" />
         </div>
-        <CardTitle className="text-2xl font-bold">Forgot Password?</CardTitle>
+        <CardTitle className="text-2xl font-bold">{t.auth.forgotPasswordTitle}</CardTitle>
         <CardDescription className="text-base text-muted-foreground">
-          Enter your email and we&apos;ll send you a reset link
+          {t.auth.forgotPasswordDesc}
         </CardDescription>
       </CardHeader>
 
@@ -144,12 +145,12 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
         >
           <div className="space-y-2">
             <Label htmlFor="email" className="text-base font-semibold">
-              Email Address
+              {t.auth.emailAddressLabel}
             </Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t.auth.emailPlaceholder}
               {...register("email")}
               disabled={isSubmitting}
               autoFocus
@@ -171,10 +172,10 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
             {isSubmitting ? (
               <>
                 <SheiLoader size="sm" loaderColor="white" className="mr-2" />
-                Sending Reset Link...
+                {t.auth.sendingResetLink}
               </>
             ) : (
-              "Send Reset Link"
+              t.auth.sendResetLink
             )}
           </Button>
 
@@ -185,7 +186,7 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
             onClick={() => router.push(backToLoginHref)}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Login
+            {t.auth.backToLogin}
           </Button>
         </form>
       </CardContent>

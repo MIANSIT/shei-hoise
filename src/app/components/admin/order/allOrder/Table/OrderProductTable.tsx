@@ -50,7 +50,7 @@ const OrderProductTable: React.FC<Props> = ({
   const [cancelNote, setCancelNote] = useState(order.notes || "");
   const [saving, setSaving] = useState(false);
 
-  const isLocked = order.status === "delivered" || order.status === "cancelled";
+  const isLocked = false;
 
   const handleSaveAll = async () => {
     if (saving) return;

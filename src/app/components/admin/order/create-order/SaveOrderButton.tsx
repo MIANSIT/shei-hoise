@@ -28,6 +28,7 @@ interface SaveOrderButtonProps {
   paymentMethod: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
+  onOrderCreated?: () => void;
   emailError?: string;
 }
 
@@ -47,6 +48,7 @@ export default function SaveOrderButton({
   paymentMethod,
   disabled = false,
   onCustomerCreated,
+  onOrderCreated,
   emailError,
 }: SaveOrderButtonProps) {
   const { modal, notification } = App.useApp();
@@ -219,6 +221,9 @@ export default function SaveOrderButton({
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
+        // Clear the saved draft right away - the order now exists in the DB
+        onOrderCreated?.();
+
         let successMessage = `${t.admin.saveOrderOrderIdLabel} ${orderId} ${t.admin.saveOrderCreatedSuccess}`;
         if (customerCreated) {
           successMessage += ` ${t.admin.saveOrderNewCustNote}`;
