@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface OrderAuthPromptProps {
   storeSlug: string;
@@ -30,8 +31,6 @@ interface OrderAuthPromptProps {
   hasAuthUserId?: boolean;
   isLoggedIn?: boolean;
   authEmail?: string | null;
-  title?: string;
-  description?: string;
 }
 
 export function OrderAuthPrompt({
@@ -41,9 +40,8 @@ export function OrderAuthPrompt({
   hasAuthUserId = false,
   isLoggedIn = false,
   authEmail = null,
-  title = "Access Your Orders",
-  description = "Enter your phone number to access your order history",
 }: OrderAuthPromptProps) {
+  const t = useTranslation();
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState(customerPhone || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,10 +101,10 @@ export function OrderAuthPrompt({
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
               <AlertCircle className="h-8 w-8 text-chart-2" />
             </div>
-            <CardTitle className="text-2xl font-bold">Account Mismatch</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t.auth.accountMismatchTitle}</CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              You&apos;re logged in as <strong className="text-foreground">{authEmail}</strong><br />
-              but your order is under <strong className="text-foreground">{customerEmail}</strong>
+              {t.auth.loggedInAsPrefix} <strong className="text-foreground">{authEmail}</strong><br />
+              {t.auth.orderIsUnderPrefix} <strong className="text-foreground">{customerEmail}</strong>
             </CardDescription>
           </CardHeader>
 
@@ -116,30 +114,30 @@ export function OrderAuthPrompt({
                 <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 mt-0.5" />
                 <div>
                   <p className="text-foreground text-sm font-medium">
-                    Different Email Address
+                    {t.auth.differentEmailTitle}
                   </p>
                   <p className="text-muted-foreground text-sm mt-1">
-                    To view orders for <strong>{customerEmail}</strong>, please log out and sign in with that email.
+                    {t.auth.differentEmailDescPrefix} <strong>{customerEmail}</strong>, {t.auth.differentEmailDescSuffix}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3">
-              <Button 
+              <Button
                 onClick={() => router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(customerEmail)}`)}
                 className="w-full h-12"
                 variant="greenish"
               >
-                Sign In with {customerEmail}
+                {t.auth.signInWithPrefix} {customerEmail}
               </Button>
-              
+
               <Button
                 onClick={() => router.push(`/${storeSlug}/order-status`)}
                 variant="outline"
                 className="w-full h-12"
               >
-                View Orders for {authEmail}
+                {t.auth.viewOrdersForPrefix} {authEmail}
               </Button>
             </div>
           </CardContent>
@@ -157,9 +155,9 @@ export function OrderAuthPrompt({
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
               <Key className="h-8 w-8 text-chart-2" />
             </div>
-            <CardTitle className="text-2xl font-bold">Complete Your Account</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t.auth.completeAccountTitle}</CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              You&apos;ve ordered as <strong className="text-foreground">{customerEmail}</strong>
+              {t.auth.orderedAsPrefix} <strong className="text-foreground">{customerEmail}</strong>
             </CardDescription>
           </CardHeader>
 
@@ -169,33 +167,33 @@ export function OrderAuthPrompt({
                 <AlertCircle className="h-4 w-4 text-chart-2 mt-0.5" />
                 <div>
                   <p className="text-foreground text-sm font-medium">
-                    Quick Account Setup
+                    {t.auth.quickSetupTitle}
                   </p>
                   <p className="text-muted-foreground text-sm mt-1">
-                    Your email is already registered. Just create a password to complete your account and view all your orders.
+                    {t.auth.quickSetupDesc}
                   </p>
                 </div>
               </div>
             </div>
 
-            <Button 
-              onClick={handleCompleteAccount} 
+            <Button
+              onClick={handleCompleteAccount}
               className="w-full h-12"
               variant="greenish"
             >
-              Set Password & View Orders
+              {t.auth.setPasswordViewOrders}
             </Button>
 
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Already have an account with this email?
+                {t.auth.alreadyHaveAccountEmail}
               </p>
               <Button
                 variant="link"
                 onClick={handleLogin}
                 className="text-sm"
               >
-                Sign In Instead
+                {t.auth.signInInstead}
               </Button>
             </div>
           </CardContent>
@@ -213,9 +211,9 @@ export function OrderAuthPrompt({
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
               <LogIn className="h-8 w-8 text-chart-2" />
             </div>
-            <CardTitle className="text-2xl font-bold">Sign In Required</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t.auth.signInRequiredTitle}</CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              An account already exists for <strong className="text-foreground">{customerEmail}</strong>
+              {t.auth.accountExistsPrefix} <strong className="text-foreground">{customerEmail}</strong>
             </CardDescription>
           </CardHeader>
 
@@ -225,27 +223,27 @@ export function OrderAuthPrompt({
                 <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-500 mt-0.5" />
                 <div>
                   <p className="text-foreground text-sm font-medium">
-                    Account Already Exists
+                    {t.auth.accountExistsTitle}
                   </p>
                   <p className="text-muted-foreground text-sm mt-1">
-                    This email is already associated with an account. Please sign in to access your order history.
+                    {t.auth.accountExistsDesc}
                   </p>
                 </div>
               </div>
             </div>
 
-            <Button 
-              onClick={handleLogin} 
+            <Button
+              onClick={handleLogin}
               className="w-full h-12"
               variant="greenish"
             >
-              Sign In with Email
+              {t.auth.signInWithEmail}
             </Button>
 
             {customerPhone && (
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Or sign in with phone number:
+                  {t.auth.orSignInWithPhone}
                 </p>
                 <Button
                   onClick={() => router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status&phone=${encodeURIComponent(customerPhone)}`)}
@@ -253,7 +251,7 @@ export function OrderAuthPrompt({
                   className="w-full h-12"
                 >
                   <Phone className="h-4 w-4 mr-2" />
-                  Sign In with {customerPhone}
+                  {t.auth.signInWithPrefix} {customerPhone}
                 </Button>
               </div>
             )}
@@ -271,9 +269,9 @@ export function OrderAuthPrompt({
           <div className="mx-auto w-16 h-16 bg-gradient-to-br from-chart-2/10 to-chart-2/20 rounded-full flex items-center justify-center">
             <UserCheck className="h-8 w-8 text-chart-2" />
           </div>
-          <CardTitle className="text-2xl font-bold">Verify Your Identity</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t.auth.verifyIdentityTitle}</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
-            Enter your phone number to access your order history
+            {t.auth.enterPhoneToAccessOrders}
           </CardDescription>
         </CardHeader>
 
@@ -282,11 +280,11 @@ export function OrderAuthPrompt({
             <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                Phone Number
+                {t.auth.phoneNumberLabel}
               </Label>
               <Input
                 id="phone"
-                placeholder="01XXXXXXXXX"
+                placeholder={t.auth.phonePlaceholder}
                 type="tel"
                 value={phoneNumber}
                 onChange={handlePhoneInputChange}
@@ -294,22 +292,22 @@ export function OrderAuthPrompt({
                 className="h-12 text-center text-lg"
               />
               <p className="text-xs text-muted-foreground text-center">
-                Enter the phone number used during checkout
+                {t.auth.enterPhoneUsedCheckout}
               </p>
             </div>
 
-            <Button 
+            <Button
               onClick={handleLoginWithPhone}
               className="w-full h-12"
               variant="greenish"
               disabled={isSubmitting || phoneNumber.length !== 11}
             >
               {isSubmitting ? (
-                "Verifying..."
+                t.auth.verifying
               ) : (
                 <>
                   <Phone className="h-4 w-4 mr-2" />
-                  {customerPhone ? "Sign In with existing phone number" : "Access My Orders"}
+                  {customerPhone ? t.auth.signInExistingPhone : t.auth.accessMyOrders}
                 </>
               )}
             </Button>
@@ -317,13 +315,13 @@ export function OrderAuthPrompt({
 
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              Don&apos;t have orders with this phone number?{" "}
+              {t.auth.noOrdersWithPhonePrefix}{" "}
               <Button
                 variant="link"
                 onClick={() => router.push(`/${storeSlug}`)}
                 className="text-sm p-0"
               >
-                Start Shopping
+                {t.auth.startShoppingBtn}
               </Button>
             </p>
           </div>

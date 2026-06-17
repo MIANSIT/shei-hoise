@@ -18,6 +18,7 @@ import {
   LoadingStep 
 } from "../../components/auth/Customer/LoginSteps";
 import { SheiLoader } from "../../components/ui/SheiLoader/loader";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type LoginStep = "emailOrPhone" | "emailInput" | "password" | "loading";
 
@@ -48,6 +49,7 @@ export function LoginForm() {
   const redirectTo = getRedirectUrl();
   const { success, error, info } = useSheiNotification();
   const { formData, clearAccountCreationFlags } = useCheckoutStore();
+  const t = useTranslation();
   
   const [step, setStep] = useState<LoginStep>("emailOrPhone");
   const [inputValue, setInputValue] = useState("");
@@ -115,7 +117,7 @@ export function LoginForm() {
   // Handle email/phone submission
   const handleInputSubmit = async () => {
     if (!inputValue.trim()) {
-      error("Please enter phone number or email");
+      error(t.auth.enterPhoneOrEmailError);
       return;
     }
 
@@ -131,7 +133,7 @@ export function LoginForm() {
         setPhoneNumber(cleanedPhone);
         
         if (cleanedPhone.length !== 11) {
-          error("Please enter a valid 11-digit phone number");
+          error(t.auth.invalidPhoneError);
           setStep("emailOrPhone");
           setIsProcessing(false);
           return;
@@ -150,21 +152,21 @@ export function LoginForm() {
             
             if (customerByPhone.auth_user_id) {
               // Account exists and has auth, go to password
-              success("Account found! Please enter your password");
+              success(t.auth.accountFoundEnterPassword);
               setStep("password");
             } else {
               // Phone+email but no auth account
-              info("Account needs setup. Please create a password.");
+              info(t.auth.accountNeedsSetup);
               setStep("password");
             }
           } else {
             // Phone found but no email - need to ask for email
-            info("Please enter an email address for your account");
+            info(t.auth.enterEmailForAccount);
             setStep("emailInput");
           }
         } else {
           // Phone not found - treat as new user
-          info("No account found with this phone number");
+          info(t.auth.noAccountWithPhone);
           setTimeout(() => {
             router.push(`/${storeSlug}/signup?phone=${encodeURIComponent(cleanedPhone)}`);
           }, 1000);
@@ -178,14 +180,14 @@ export function LoginForm() {
           setEmail(customerByEmail.email);
           
           if (customerByEmail.auth_user_id) {
-            success("Account found! Please enter your password");
+            success(t.auth.accountFoundEnterPassword);
             setStep("password");
           } else {
-            info("Account found but needs setup");
+            info(t.auth.accountFoundNeedsSetup);
             setStep("password");
           }
         } else {
-          info("No account found with this email");
+          info(t.auth.noAccountWithEmail);
           setTimeout(() => {
             router.push(`/${storeSlug}/signup?email=${encodeURIComponent(inputValue)}`);
           }, 1000);
@@ -193,7 +195,7 @@ export function LoginForm() {
       }
     } catch (err: any) {
       console.error("Error checking input:", err);
-      error("Failed to check account. Please try again.");
+      error(t.auth.failedCheckAccount);
       setStep("emailOrPhone");
     } finally {
       setIsProcessing(false);
@@ -203,7 +205,7 @@ export function LoginForm() {
   // Handle email input (for phone without email)
   const handleEmailSubmit = async () => {
     if (!email.trim() || !email.includes("@")) {
-      error("Please enter a valid email address");
+      error(t.auth.invalidEmailError);
       return;
     }
 
@@ -222,14 +224,14 @@ export function LoginForm() {
           setCustomerData({ ...customerData, email });
           
           if (existingCustomer.auth_user_id) {
-            success("Email updated! Please enter your password");
+            success(t.auth.emailUpdatedEnterPassword);
             setStep("password");
           } else {
             setStep("password");
           }
         } else {
           // Email belongs to different customer - ask what to do
-          error("This email is already registered with another account");
+          error(t.auth.emailAlreadyRegisteredOther);
           setStep("emailInput");
         }
       } else {
@@ -238,7 +240,7 @@ export function LoginForm() {
           const updated = await updateCustomerEmailByPhone(phoneNumber, email);
           if (updated) {
             setCustomerData({ ...customerData, email });
-            success("Email added to your account!");
+            success(t.auth.emailAddedToAccount);
             setStep("password");
           } else {
             throw new Error("Failed to update email");
@@ -247,7 +249,7 @@ export function LoginForm() {
       }
     } catch (err: any) {
       console.error("Error processing email:", err);
-      error(err.message || "Failed to process email. Please try again.");
+      error(err.message || t.auth.failedProcessEmail);
       setStep("emailInput");
     } finally {
       setIsProcessing(false);
@@ -257,7 +259,7 @@ export function LoginForm() {
   // Handle login/password submission
   const handleLogin = async () => {
     if (!password || password.length < 6) {
-      error("Please enter your password (minimum 6 characters)");
+      error(t.auth.enterPasswordError);
       return;
     }
 
@@ -276,15 +278,15 @@ export function LoginForm() {
 
         if (authError) {
           if (authError.message.includes("Invalid login credentials")) {
-            throw new Error("Invalid password. Please try again.");
+            throw new Error(t.auth.invalidPasswordError);
           } else if (authError.message.includes("Email not confirmed")) {
-            throw new Error("Please verify your email address before logging in.");
+            throw new Error(t.auth.verifyEmailError);
           } else {
             throw authError;
           }
         }
 
-        success("Login successful!", { duration: 1000 });
+        success(t.auth.loginSuccess, { duration: 1000 });
         
       } else {
         // No auth account - sign up
@@ -322,9 +324,9 @@ export function LoginForm() {
           
           if (authData.user.identities && authData.user.identities.length === 0) {
             // User already existed in auth but wasn't linked
-            success("Account linked successfully!", { duration: 1000 });
+            success(t.auth.accountLinked, { duration: 1000 });
           } else {
-            success("Account created and logged in!", { duration: 1000 });
+            success(t.auth.accountCreatedLoggedIn, { duration: 1000 });
           }
         }
       }
@@ -346,7 +348,7 @@ export function LoginForm() {
 
     } catch (err: any) {
       console.error("Login error:", err);
-      error(err.message || "Login failed. Please try again.");
+      error(err.message || t.auth.loginFailed);
     } finally {
       setIsProcessing(false);
     }
@@ -417,8 +419,8 @@ export function LoginForm() {
 
       {step === "loading" && (
         <LoadingStep
-          message={isProcessing ? "Checking Your Account" : "Processing..."}
-          description="Please wait a moment"
+          message={isProcessing ? t.auth.checkingAccount : t.auth.processing}
+          description={t.auth.pleaseWait}
         />
       )}
     </div>

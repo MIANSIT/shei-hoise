@@ -25,6 +25,7 @@ import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { fbq, FbEvent } from "@/lib/utils/fbPixel";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -40,6 +41,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
   const store_slug = params.store_slug as string;
+  const t = useTranslation();
 
   const notify = useSheiNotification();
   const { clearFormData, clearAccountCreationFlags } = useCheckoutStore();
@@ -428,15 +430,15 @@ export default function CheckoutPage() {
   // ✅ SIMPLIFIED: Main checkout handler - PHONE-ONLY, NO ACCOUNT CREATION
   const handleCheckoutSubmit = useCallback(
     async (values: CustomerCheckoutFormValues) => {
-      if (cartItems.length === 0) return notify.error("Your cart is empty");
+      if (cartItems.length === 0) return notify.error(t.checkout.cartEmptyError);
       if (!selectedShipping)
-        return notify.error("Please select a shipping method");
+        return notify.error(t.checkout.selectShippingError);
 
       // Check minimum order amount WITHOUT NOTIFICATION - just validation
       if (minOrderAmount > 0 && calculations.subtotal < minOrderAmount) {
         const shortfall = minOrderAmount - calculations.subtotal;
         return notify.error(
-          `Minimum order amount is ${currency || "৳"}${minOrderAmount.toFixed(2)}. Add ${currency || "৳"}${shortfall.toFixed(2)} more to proceed.`
+          `${t.checkout.minOrderWarningPrefix} ${currency || "৳"}${minOrderAmount.toFixed(2)}. ${t.checkout.addMoreToProceed} ${currency || "৳"}${shortfall.toFixed(2)} ${t.checkout.moreToProceedError}`
         );
       }
 
@@ -513,9 +515,7 @@ export default function CheckoutPage() {
         }
 
         if (!storeCustomerId) {
-          return notify.error(
-            "Failed to create customer record. Please try again.",
-          );
+          return notify.error(t.checkout.failedCreateCustomer);
         }
 
         const result = await processOrder(
@@ -530,7 +530,7 @@ export default function CheckoutPage() {
         );
 
         if (!result.success) {
-          return notify.error(result.error || "Failed to place order");
+          return notify.error(result.error || t.checkout.failedPlaceOrder);
         }
 
         fbq(FbEvent.PURCHASE, {
@@ -546,14 +546,14 @@ export default function CheckoutPage() {
 
         // Success message - show only once
         if (isUserLoggedIn) {
-          notify.success("Order placed successfully!");
+          notify.success(t.checkout.orderPlacedSuccess);
         } else {
-          notify.success("Order placed successfully!");
+          notify.success(t.checkout.orderPlacedSuccess);
 
           // Show tracking information - only once
           setTimeout(() => {
             notify.info(
-              `📱 Use phone number ${values.phone} to track your order status`,
+              `${t.checkout.trackOrderHintPrefix} ${values.phone} ${t.checkout.trackOrderHintSuffix}`,
               { duration: 5000 },
             );
           }, 1000);
@@ -563,7 +563,7 @@ export default function CheckoutPage() {
         setTimeout(() => clearStoreCart(store_slug), 3000);
       } catch (error: any) {
         console.error("❌ Checkout error:", error);
-        notify.error(error.message || "Unexpected error. Please try again.");
+        notify.error(error.message || t.checkout.unexpectedError);
       } finally {
         setIsProcessing(false);
       }
@@ -591,6 +591,7 @@ export default function CheckoutPage() {
       createTempOrderData,
       clearStoreCart,
       findCustomerByPhone,
+      t,
     ],
   );
 
@@ -604,8 +605,8 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-          <p>The store you&apos;re looking for doesn&apos;t exist.</p>
+          <h1 className="text-2xl font-bold mb-4">{t.checkout.storeNotFound}</h1>
+          <p>{t.checkout.storeNotFoundDesc}</p>
         </div>
       </div>
     );

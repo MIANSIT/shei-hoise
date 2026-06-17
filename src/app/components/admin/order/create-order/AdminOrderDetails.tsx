@@ -37,12 +37,18 @@ interface OrderDetailsProps {
   products: ProductWithVariants[];
   orderProducts: OrderProduct[];
   setOrderProducts: React.Dispatch<React.SetStateAction<OrderProduct[]>>;
+  // Snapshot of the order's items as originally loaded from the database
+  // (edit mode only). Their quantities are already counted in each
+  // product/variant's `quantity_reserved`, so we add them back when
+  // computing how much more can be added to THIS order.
+  originalOrderProducts?: OrderProduct[];
 }
 
 export default function AdminOrderDetails({
   products,
   orderProducts,
   setOrderProducts,
+  originalOrderProducts = [],
 }: OrderDetailsProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedVariantId, setSelectedVariantId] =
@@ -95,6 +101,40 @@ export default function AdminOrderDetails({
     return Math.max(0, stock.quantity_available - stock.quantity_reserved);
   };
 
+  // How much of this exact product/variant is already reserved by THIS
+  // order, as originally loaded from the database (0 when creating a new
+  // order). Since that amount is already subtracted out of
+  // `quantity_reserved`, it needs to be added back so editing an order
+  // doesn't get capped at "stock minus what this order already has".
+  const getOriginalReservedQuantity = (productId: string, variantId?: string) => {
+    const match = originalOrderProducts.find(
+      (item) =>
+        item.product_id === productId &&
+        (item.variant_id || undefined) === (variantId || undefined),
+    );
+    return match?.quantity || 0;
+  };
+
+  // Effective available quantity = truly free stock + whatever this order
+  // already holds for that exact product/variant.
+  const getEffectiveAvailableQuantity = (
+    variant: ProductVariant | undefined,
+    productId?: string,
+  ) => {
+    if (!variant || !productId) return getAvailableQuantity(variant);
+    return getAvailableQuantity(variant) + getOriginalReservedQuantity(productId, variant.id);
+  };
+
+  const getEffectiveBaseProductAvailableQuantity = (
+    product?: ProductWithVariants,
+  ) => {
+    if (!product) return 0;
+    return (
+      getBaseProductAvailableQuantity(product) +
+      getOriginalReservedQuantity(product.id, undefined)
+    );
+  };
+
   // Get primary image for product or variant
   const getPrimaryImage = (
     product?: ProductWithVariants,
@@ -115,6 +155,16 @@ export default function AdminOrderDetails({
     return null;
   };
 
+  // Get how much of the selected product/variant is already in this order's draft
+  const getExistingDraftQuantity = () => {
+    const existingItem = orderProducts.find(
+      (item) =>
+        item.product_id === selectedProductId &&
+        (item.variant_id || "no-variant") === selectedVariantId,
+    );
+    return existingItem?.quantity || 0;
+  };
+
   // Check if we can add the product (validation)
   const canAddProduct = () => {
     if (!selectedProduct || quantity < 1) return false;
@@ -124,14 +174,15 @@ export default function AdminOrderDetails({
       return false;
     }
 
-    // Check stock availability
-    if (selectedVariantId !== "no-variant" && selectedVariant) {
-      return quantity <= getAvailableQuantity(selectedVariant);
-    } else {
-      return (
-        quantity <= (getBaseProductAvailableQuantity(selectedProduct) || 0)
-      );
-    }
+    // Check stock availability - the combined total (already in the draft
+    // for this item + the quantity about to be added) must fit within the
+    // effective available stock.
+    const maxAllowed =
+      selectedVariantId !== "no-variant" && selectedVariant
+        ? getEffectiveAvailableQuantity(selectedVariant, selectedProduct.id)
+        : getEffectiveBaseProductAvailableQuantity(selectedProduct);
+
+    return getExistingDraftQuantity() + quantity <= maxAllowed;
   };
 
   const handleAddProduct = () => {
@@ -170,8 +221,8 @@ export default function AdminOrderDetails({
         // Make sure not exceeding stock
         const maxQuantity =
           selectedVariantId !== "no-variant" && selectedVariant
-            ? getAvailableQuantity(selectedVariant)
-            : getBaseProductAvailableQuantity(selectedProduct);
+            ? getEffectiveAvailableQuantity(selectedVariant, selectedProduct.id)
+            : getEffectiveBaseProductAvailableQuantity(selectedProduct);
 
         updated[existingIndex] = {
           ...existingItem,
@@ -224,15 +275,27 @@ export default function AdminOrderDetails({
   const handleQuantityChange = (index: number, newQuantity: number) => {
     if (newQuantity < 1) return;
 
+    const item = orderProducts[index];
+    const product = products.find((p) => p.id === item.product_id);
+    const variant = product?.product_variants?.find(
+      (v) => v.id === item.variant_id,
+    );
+
+    const maxAllowed = item.variant_id
+      ? getEffectiveAvailableQuantity(variant, item.product_id)
+      : getEffectiveBaseProductAvailableQuantity(product);
+
+    const clampedQuantity = product ? Math.min(newQuantity, maxAllowed) : newQuantity;
+
     setOrderProducts((prev) =>
-      prev.map((item, i) =>
+      prev.map((it, i) =>
         i === index
           ? {
-              ...item,
-              quantity: newQuantity,
-              total_price: item.unit_price * newQuantity,
+              ...it,
+              quantity: clampedQuantity,
+              total_price: it.unit_price * clampedQuantity,
             }
-          : item,
+          : it,
       ),
     );
   };
@@ -524,9 +587,19 @@ export default function AdminOrderDetails({
                       min={1}
                       max={
                         selectedVariantId !== "no-variant" && selectedVariant
-                          ? getAvailableQuantity(selectedVariant)
-                          : getBaseProductAvailableQuantity(selectedProduct) ||
-                            100
+                          ? Math.max(
+                              1,
+                              getEffectiveAvailableQuantity(
+                                selectedVariant,
+                                selectedProduct?.id,
+                              ) - getExistingDraftQuantity(),
+                            )
+                          : Math.max(
+                              1,
+                              getEffectiveBaseProductAvailableQuantity(
+                                selectedProduct,
+                              ) - getExistingDraftQuantity(),
+                            ) || 100
                       }
                       value={quantity}
                       onChange={(value) => setQuantity(value || 1)}
@@ -546,13 +619,20 @@ export default function AdminOrderDetails({
                   </Space.Compact>
                   <Text type="secondary" style={{ fontSize: "12px" }}>
                     Max:{" "}
-                    {selectedVariantId !== "no-variant" && selectedVariant
-                      ? getAvailableQuantity(selectedVariant) > 0
-                        ? getAvailableQuantity(selectedVariant)
-                        : "All stock reserved / already ordered"
-                      : getBaseProductAvailableQuantity(selectedProduct) > 0
-                        ? getBaseProductAvailableQuantity(selectedProduct)
-                        : "All stock reserved / already ordered"}{" "}
+                    {(() => {
+                      const remaining =
+                        (selectedVariantId !== "no-variant" && selectedVariant
+                          ? getEffectiveAvailableQuantity(
+                              selectedVariant,
+                              selectedProduct?.id,
+                            )
+                          : getEffectiveBaseProductAvailableQuantity(
+                              selectedProduct,
+                            )) - getExistingDraftQuantity();
+                      return remaining > 0
+                        ? remaining
+                        : "All stock reserved / already ordered";
+                    })()}{" "}
                     available
                   </Text>
                 </Space>

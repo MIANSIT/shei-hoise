@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "./components/ui/sheiSonner/sonner"; // Import your custom Toaster
 import { CartProvider } from "@/lib/context/CartContext";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
             <Toaster position='top-right' />
           </CartProvider>
         </AntdRegistry>
+        <Analytics />
       </body>
     </html>
   );

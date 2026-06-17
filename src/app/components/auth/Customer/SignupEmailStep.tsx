@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface SignupEmailStepProps {
   email: string;
@@ -19,10 +20,11 @@ export function SignupEmailStep({
   disabled,
   error,
 }: SignupEmailStepProps) {
+  const t = useTranslation();
   return (
     <div className="space-y-3">
       <Label htmlFor="email" className="text-base font-semibold">
-        Email Address
+        {t.auth.emailAddressLabel}
       </Label>
       <div className="relative">
         <Input
@@ -31,7 +33,7 @@ export function SignupEmailStep({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyPress={onKeyPress}
-          placeholder="you@example.com"
+          placeholder={t.auth.emailPlaceholder}
           className="text-base pr-12"
           disabled={disabled}
           autoFocus
@@ -44,7 +46,7 @@ export function SignupEmailStep({
         <p className="text-sm text-red-500">{error}</p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          We&apos;ll use this for your account
+          {t.auth.weUseForAccount}
         </p>
       )}
     </div>

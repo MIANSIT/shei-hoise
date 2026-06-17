@@ -135,18 +135,13 @@ const MainOrders: React.FC = () => {
     refreshTrigger, // ✅ ADD: refresh trigger dependency
   ]);
 
-  // ✅ ADD: update handler that also triggers refresh
   const handleUpdate = useCallback(
     (id: string, changes: Partial<StoreOrder>) => {
-      // Update local state immediately for better UX
       setOrders((prev) =>
         prev.map((o) => (o.id === id ? { ...o, ...changes } : o))
       );
-
-      // Also trigger a refresh to get updated counts
-      handleRefresh();
     },
-    [handleRefresh]
+    []
   );
 
   const handleSearch = (value: string) => {

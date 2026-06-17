@@ -46,6 +46,8 @@ import { DetailedCustomer } from "@/lib/types/users";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useCreateOrderDraftStore } from "@/lib/store/orderDraftStore";
+import { supabase } from "@/lib/supabase";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -94,6 +96,7 @@ export default function CreateOrder() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
+  const [orderCount, setOrderCount] = useState(0);
   const [customerType, setCustomerType] = useState<CustomerType>("new");
   const [selectedCustomer, setSelectedCustomer] =
     useState<DetailedCustomer | null>(null);
@@ -107,6 +110,10 @@ export default function CreateOrder() {
 
   // Email validation state
   const [emailError, setEmailError] = useState<string>("");
+
+  // Draft persistence - survives tab switches / accidental reloads
+  const hasHydrated = useCreateOrderDraftStore((s) => s._hasHydrated);
+  const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
 
   // Validate email uniqueness - only validate if email is provided
   const validateEmailUniqueness = useCallback(
@@ -184,14 +191,26 @@ export default function CreateOrder() {
       }
 
       if (storeData?.store_name) {
-        const prefix = storeData.store_name
-          .replace(/\s+/g, "")
-          .substring(0, 4)
-          .toUpperCase();
+        const raw = storeData.store_name.replace(/\s+/g, "").substring(0, 3);
+        const prefix = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
         setStoreName(prefix);
       }
     } catch (error) {
       console.error("Error fetching store name:", error);
+    }
+  }, [user?.store_id]);
+
+  // Fetch total order count for sequential invoice numbering
+  const fetchOrderCount = useCallback(async () => {
+    if (!user?.store_id) return;
+    try {
+      const { count } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("store_id", user.store_id);
+      setOrderCount(count ?? 0);
+    } catch (error) {
+      console.error("Error fetching order count:", error);
     }
   }, [user?.store_id]);
 
@@ -276,6 +295,7 @@ export default function CreateOrder() {
             fetchProducts(),
             fetchCustomers(),
             fetchStoreSettings(),
+            fetchOrderCount(),
           ]);
         } catch (error) {
           console.error("Error fetching initial data:", error);
@@ -294,22 +314,94 @@ export default function CreateOrder() {
     fetchProducts,
     fetchCustomers,
     fetchStoreSettings,
+    fetchOrderCount,
   ]);
 
   // Generate order ID with store name prefix
   useEffect(() => {
+    // Keep the order ID from a restored draft instead of generating a new one
+    if (hasHydrated && useCreateOrderDraftStore.getState().draft?.orderId) {
+      return;
+    }
+
     const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
+    const year = now.getFullYear().toString();
     const month = (now.getMonth() + 1).toString().padStart(2, "0");
     const day = now.getDate().toString().padStart(2, "0");
-    const sessionCounter = Math.floor(Math.random() * 1000);
+    const nextNum = orderCount + 1;
 
-    const newOrderId = `${storeName}${year}${month}${day}${sessionCounter
-      .toString()
-      .padStart(3, "0")}`;
+    const newOrderId = `${storeName}${year}${month}${day}-${nextNum}`;
 
     setOrderId(newOrderId);
-  }, [storeName]);
+  }, [storeName, orderCount, hasHydrated]);
+
+  // Restore a saved draft once Zustand has finished reading from localStorage.
+  // This runs exactly once and must come before the "sync to draft" effect
+  // below, otherwise the still-blank initial state would overwrite the
+  // draft before it gets a chance to load.
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    const draft = useCreateOrderDraftStore.getState().draft;
+    if (draft) {
+      if (draft.orderId) setOrderId(draft.orderId);
+      setCustomerInfo(draft.customerInfo);
+      setOrderProducts(draft.orderProducts);
+      setDiscount(draft.discount);
+      setAdditionalCharges(draft.additionalCharges);
+      setDeliveryCost(draft.deliveryCost);
+      setTaxAmount(draft.taxAmount);
+      setStatus(draft.status);
+      setPaymentStatus(draft.paymentStatus);
+      setPaymentMethod(draft.paymentMethod);
+      if (draft.customerInfo.customer_id) {
+        setCustomerType("existing");
+      }
+    }
+
+    setReadyToSyncDraft(true);
+  }, [hasHydrated]);
+
+  // Re-select the matching customer card once both the customer list and
+  // the restored draft are available.
+  useEffect(() => {
+    if (!readyToSyncDraft || selectedCustomer || !customerInfo.customer_id) {
+      return;
+    }
+    const match = customers.find((c) => c.id === customerInfo.customer_id);
+    if (match) setSelectedCustomer(match);
+  }, [readyToSyncDraft, customers, customerInfo.customer_id, selectedCustomer]);
+
+  // Sync every change to the draft store so it survives tab switches and
+  // accidental reloads. Gated on readyToSyncDraft so it never fires before
+  // the restore effect above has had a chance to run.
+  useEffect(() => {
+    if (!readyToSyncDraft) return;
+    useCreateOrderDraftStore.getState().setDraft({
+      orderId,
+      customerInfo,
+      orderProducts,
+      discount,
+      additionalCharges,
+      deliveryCost,
+      taxAmount,
+      status,
+      paymentStatus,
+      paymentMethod,
+    });
+  }, [
+    readyToSyncDraft,
+    orderId,
+    customerInfo,
+    orderProducts,
+    discount,
+    additionalCharges,
+    deliveryCost,
+    taxAmount,
+    status,
+    paymentStatus,
+    paymentMethod,
+  ]);
 
   // Filter customers based on search
   useEffect(() => {
@@ -513,7 +605,7 @@ export default function CreateOrder() {
               <Text type="secondary">{t.admin.createOrderLoadingCusts}</Text>
             </div>
           </div>
-        ) : filteredCustomers.length === 0 ? (
+        ) : customers.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
@@ -538,10 +630,10 @@ export default function CreateOrder() {
               style={{ width: "100%" }}
               size="large"
               showSearch={{
-                filterOption: (input, option) => {
-                  const customer = option?.children?.[1]?.props?.children || "";
-                  return customer.toLowerCase().includes(input.toLowerCase());
-                },
+                // Filtering is already done externally via filteredCustomers
+                // (searchTerm effect above), so disable antd's own
+                // filterOption to avoid double-filtering the rendered options.
+                filterOption: false,
                 onSearch: setSearchTerm,
               }}
               notFoundContent={
@@ -861,6 +953,9 @@ export default function CreateOrder() {
                   paymentMethod={paymentMethod}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   onCustomerCreated={fetchCustomers}
+                  onOrderCreated={() =>
+                    useCreateOrderDraftStore.getState().clearDraft()
+                  }
                   emailError={emailError}
                 />
               </Col>

@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { CartProductWithDetails } from "@/lib/types/cart";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 interface CartItemsListProps {
   items?: CartProductWithDetails[];
   onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
@@ -29,6 +31,8 @@ export default function CartItemsList({
 }: CartItemsListProps) {
   const params = useParams();
   const currentStoreSlug = storeSlug || (params.store_slug as string);
+  const t = useTranslation();
+  const n = useLocalNum();
    const {
     // currency,
     icon: currencyIcon,
@@ -233,8 +237,8 @@ export default function CartItemsList({
     return (
       <div className="space-y-3">
         <div className="text-center py-8 text-muted-foreground">
-          <p>Your cart is empty</p>
-          <p className="text-sm mt-1">Add some products to get started!</p>
+          <p>{t.cart.cartEmpty}</p>
+          <p className="text-sm mt-1">{t.cart.addProductsPrompt}</p>
         </div>
       </div>
     );
@@ -245,7 +249,7 @@ export default function CartItemsList({
       {showStoreInfo && currentStoreSlug && (
         <div className="flex justify-between items-center">
           <p className="text-sm text-muted-foreground">
-            Shopping at: <span className="font-medium text-foreground">{currentStoreSlug}</span>
+            {t.cart.shoppingAt} <span className="font-medium text-foreground">{currentStoreSlug}</span>
           </p>
           {onClearCart && (
             <Button
@@ -254,7 +258,7 @@ export default function CartItemsList({
               onClick={onClearCart}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : `Clear Cart`}
+              {isClearing ? t.cart.clearing : t.cart.clearCart}
             </Button>
           )}
         </div>
@@ -301,12 +305,12 @@ export default function CartItemsList({
                     )}
                     {item.variant.color && (
                       <p className="text-sm text-muted-foreground">
-                        Color: {item.variant.color}
+                        {t.cart.color}: {item.variant.color}
                       </p>
                     )}
                   </div>
                 )}
-                
+
                 {item.product?.category?.name && (
                   <p className="text-sm text-muted-foreground">
                     {item.product.category.name}
@@ -314,10 +318,10 @@ export default function CartItemsList({
                 )}
 
                 <p className="text-sm text-muted-foreground">
-                   {displayCurrencyIconSafe}{item.displayPrice.toFixed(2)} each
+                   {displayCurrencyIconSafe}{n(item.displayPrice.toFixed(2))} {t.cart.each}
                   {item.discountPercentage > 0 && (
                     <span className="line-through text-xs ml-1">
-                       {displayCurrencyIconSafe}{item.originalPrice.toFixed(2)}
+                       {displayCurrencyIconSafe}{n(item.originalPrice.toFixed(2))}
                     </span>
                   )}
                 </p>
@@ -364,8 +368,7 @@ export default function CartItemsList({
                     exit={{ opacity: 0, y: -10 }}
                     className="text-xs text-destructive mt-1"
                   >
-                    {/* Max quantity exceeded. Set to {item.stock}. */}
-                    Max quantity exceeded. Set to max quantity in the stock.
+                    {t.cart.maxQtyExceeded}
                   </motion.p>
                 )}
               </div>
@@ -378,7 +381,7 @@ export default function CartItemsList({
                   size="icon"
                   className="group h-8 w-8 cursor-pointer hover:bg-destructive/10 transition-colors"
                   onClick={() => handleRemoveItem(item.productId, item.variantId)}
-                  aria-label="Remove item"
+                  aria-label={t.cart.removeItem}
                   disabled={isClearing}
                 >
                   <Trash2 className="h-4 w-4 text-destructive group-hover:text-destructive/80 transition-colors" />
@@ -392,7 +395,7 @@ export default function CartItemsList({
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.2 }}
               >
-                 {displayCurrencyIconSafe}{(item.displayPrice * item.quantity).toFixed(2)}
+                 {displayCurrencyIconSafe}{n((item.displayPrice * item.quantity).toFixed(2))}
               </motion.p>
             </div>
           </div>
