@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Avatar,
   Space,
@@ -82,8 +82,6 @@ const OrdersTable: React.FC<Props> = ({
   const { notification, modal } = App.useApp();
   const t = useTranslation();
   const n = useLocalNum();
-  const [searchOrderId] = useState<string>("");
-  const [filteredOrders, setFilteredOrders] = useState<StoreOrder[]>(orders);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [selectedRange, setSelectedRange] = useState<any>(null);
@@ -104,23 +102,6 @@ const OrdersTable: React.FC<Props> = ({
     // icon: currencyIcon,
     // loading: currencyLoading,
   } = useUserCurrencyIcon();
-
-  useEffect(() => {
-    const filtered = orders.filter((o) => {
-      const search = searchOrderId.toLowerCase();
-      const customerEmail = getCustomerEmail(o).toLowerCase();
-      const customerPhone = getCustomerPhone(o).toLowerCase();
-      const customerName = getCustomerName(o).toLowerCase();
-
-      return (
-        o.order_number.toLowerCase().includes(search) ||
-        customerEmail.includes(search) ||
-        customerPhone.includes(search) ||
-        customerName.includes(search)
-      );
-    });
-    setFilteredOrders(filtered);
-  }, [orders, searchOrderId]);
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
@@ -379,7 +360,7 @@ const OrdersTable: React.FC<Props> = ({
     return "Address not provided";
   };
 
-  const selectedOrderObjects = filteredOrders.filter((order) =>
+  const selectedOrderObjects = orders.filter((order) =>
     selectedRowKeys.includes(order.id),
   );
 
@@ -815,7 +796,7 @@ const OrdersTable: React.FC<Props> = ({
 
       <DataTable<StoreOrder>
         columns={columns}
-        data={filteredOrders}
+        data={orders}
         loading={loading}
         rowKey={(record) => record.id}
         rowSelection={{
@@ -826,7 +807,7 @@ const OrdersTable: React.FC<Props> = ({
               key: "all",
               text: t.admin.orderSelectAll,
               onSelect: () => {
-                setSelectedRowKeys(filteredOrders.map((order) => order.id));
+                setSelectedRowKeys(orders.map((order) => order.id));
               },
             },
             {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Alert, Spin, App } from "antd";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
@@ -11,6 +11,8 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
+  const notificationRef = useRef(notification);
+  useEffect(() => { notificationRef.current = notification; }, [notification]);
   const t = useTranslation();
   const { user, loading: userLoading } = useCurrentUser();
 
@@ -95,7 +97,7 @@ const MainOrders: React.FC = () => {
         const message =
           err instanceof Error ? err.message : t.admin.allOrdersLoadFailed;
         setError(message);
-        notification.error({
+        notificationRef.current.error({
           message: t.admin.allOrdersErrorTitle,
           description: message,
         });
@@ -103,7 +105,7 @@ const MainOrders: React.FC = () => {
         setLoading(false);
       }
     },
-    [user?.store_id, notification]
+    [user?.store_id]
   );
 
   // ✅ ADD: refresh function
