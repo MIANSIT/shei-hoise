@@ -47,6 +47,7 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useCreateOrderDraftStore } from "@/lib/store/orderDraftStore";
+import { supabase } from "@/lib/supabase";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -95,6 +96,7 @@ export default function CreateOrder() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
+  const [orderCount, setOrderCount] = useState(0);
   const [customerType, setCustomerType] = useState<CustomerType>("new");
   const [selectedCustomer, setSelectedCustomer] =
     useState<DetailedCustomer | null>(null);
@@ -189,14 +191,26 @@ export default function CreateOrder() {
       }
 
       if (storeData?.store_name) {
-        const prefix = storeData.store_name
-          .replace(/\s+/g, "")
-          .substring(0, 4)
-          .toUpperCase();
+        const raw = storeData.store_name.replace(/\s+/g, "").substring(0, 3);
+        const prefix = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
         setStoreName(prefix);
       }
     } catch (error) {
       console.error("Error fetching store name:", error);
+    }
+  }, [user?.store_id]);
+
+  // Fetch total order count for sequential invoice numbering
+  const fetchOrderCount = useCallback(async () => {
+    if (!user?.store_id) return;
+    try {
+      const { count } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("store_id", user.store_id);
+      setOrderCount(count ?? 0);
+    } catch (error) {
+      console.error("Error fetching order count:", error);
     }
   }, [user?.store_id]);
 
@@ -281,6 +295,7 @@ export default function CreateOrder() {
             fetchProducts(),
             fetchCustomers(),
             fetchStoreSettings(),
+            fetchOrderCount(),
           ]);
         } catch (error) {
           console.error("Error fetching initial data:", error);
@@ -299,6 +314,7 @@ export default function CreateOrder() {
     fetchProducts,
     fetchCustomers,
     fetchStoreSettings,
+    fetchOrderCount,
   ]);
 
   // Generate order ID with store name prefix
@@ -309,17 +325,15 @@ export default function CreateOrder() {
     }
 
     const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
+    const year = now.getFullYear().toString();
     const month = (now.getMonth() + 1).toString().padStart(2, "0");
     const day = now.getDate().toString().padStart(2, "0");
-    const sessionCounter = Math.floor(Math.random() * 1000);
+    const nextNum = orderCount + 1;
 
-    const newOrderId = `${storeName}${year}${month}${day}${sessionCounter
-      .toString()
-      .padStart(3, "0")}`;
+    const newOrderId = `${storeName}${year}${month}${day}-${nextNum}`;
 
     setOrderId(newOrderId);
-  }, [storeName, hasHydrated]);
+  }, [storeName, orderCount, hasHydrated]);
 
   // Restore a saved draft once Zustand has finished reading from localStorage.
   // This runs exactly once and must come before the "sync to draft" effect
@@ -591,7 +605,7 @@ export default function CreateOrder() {
               <Text type="secondary">{t.admin.createOrderLoadingCusts}</Text>
             </div>
           </div>
-        ) : filteredCustomers.length === 0 ? (
+        ) : customers.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
