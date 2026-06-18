@@ -34,6 +34,7 @@ interface DbVariant {
   base_price: number;
   discounted_price: number | null;
   product_inventory: DbInventory[] | null;
+  product_images: DbImage[] | null;
 }
 
 interface DbProduct {
@@ -100,7 +101,8 @@ export async function GET(
         is_active,
         base_price,
         discounted_price,
-        product_inventory(quantity_available, quantity_reserved)
+        product_inventory(quantity_available, quantity_reserved),
+        product_images(image_url, is_primary)
       )
     `,
     )
@@ -115,15 +117,39 @@ export async function GET(
   const products = (data ?? []) as DbProduct[];
 
   const items = products.map((p) => {
-    // Only use images that belong to the parent product (no variant_id)
-    const images = (p.product_images ?? []).filter((img) => img.variant_id === null);
+    // Prefer parent-level images; fall back to variant images so products
+    // that store images only on variants still appear in the catalog.
+    const parentImages = (p.product_images ?? []).filter((img) => img.variant_id === null);
+    const variantImages = (p.product_variants ?? [])
+      .filter((v) => v.is_active !== false)
+      .flatMap((v) => v.product_images ?? []);
+    const images = parentImages.length > 0 ? parentImages : variantImages;
+
     const primaryImage = images.find((i) => i.is_primary)?.image_url ?? images[0]?.image_url ?? "";
-    const additionalImages = images.filter((i) => !i.is_primary).slice(0, 9);
+    const additionalImages = images
+      .filter((img) => img.image_url !== primaryImage)
+      .slice(0, 9);
 
     const availability = isInStock(p) ? "in stock" : "out of stock";
 
-    const basePrice = Number(p.base_price);
-    const salePrice = p.discounted_price != null ? Number(p.discounted_price) : null;
+    // For variant products use the lowest active variant price so the catalog
+    // shows a real price instead of a parent placeholder that may be 0.
+    const activeVariants = (p.product_variants ?? []).filter((v) => v.is_active !== false);
+    const basePrice =
+      activeVariants.length > 0
+        ? Math.min(...activeVariants.map((v) => Number(v.base_price)))
+        : Number(p.base_price);
+    const salePrice =
+      activeVariants.length > 0
+        ? (() => {
+            const discounted = activeVariants
+              .map((v) => (v.discounted_price != null ? Number(v.discounted_price) : null))
+              .filter((v): v is number => v !== null);
+            return discounted.length > 0 ? Math.min(...discounted) : null;
+          })()
+        : p.discounted_price != null
+          ? Number(p.discounted_price)
+          : null;
 
     const category =
       Array.isArray(p.categories) && p.categories.length > 0
