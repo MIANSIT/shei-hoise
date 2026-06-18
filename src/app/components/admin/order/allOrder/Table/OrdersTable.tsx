@@ -690,33 +690,36 @@ const OrdersTable: React.FC<Props> = ({
         {/* Expanded Content */}
         {expandedRowKey === order.id && (
           <div className="mt-3 border-t pt-3">
-            <div className="mb-3">
-              <OrderProductTable
-                order={order}
-                onSaveStatus={(s: OrderStatus) =>
-                  onUpdate(order.id, { status: s })
-                }
-                onSavePaymentStatus={(s: PaymentStatus) =>
-                  onUpdate(order.id, { payment_status: s })
-                }
-                onSaveDeliveryOption={(o) =>
-                  onUpdate(order.id, { delivery_option: o })
-                }
-                onSavePaymentMethod={(m) =>
-                  onUpdate(order.id, { payment_method: m })
-                }
-                onSaveShippingFee={(fee) =>
-                  onUpdate(order.id, {
-                    shipping_fee: fee,
-                    total_amount: order.subtotal + order.tax_amount + fee,
-                  })
-                }
-                onSaveCancelNote={(note) =>
-                  onUpdate(order.id, { notes: note })
-                }
-                onRefresh={onRefresh}
-              />
-            </div>
+            {order.status !== OrderStatus.CANCELLED &&
+              !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
+              <div className="mb-3">
+                <OrderProductTable
+                  order={order}
+                  onSaveStatus={(s: OrderStatus) =>
+                    onUpdate(order.id, { status: s })
+                  }
+                  onSavePaymentStatus={(s: PaymentStatus) =>
+                    onUpdate(order.id, { payment_status: s })
+                  }
+                  onSaveDeliveryOption={(o) =>
+                    onUpdate(order.id, { delivery_option: o })
+                  }
+                  onSavePaymentMethod={(m) =>
+                    onUpdate(order.id, { payment_method: m })
+                  }
+                  onSaveShippingFee={(fee) =>
+                    onUpdate(order.id, {
+                      shipping_fee: fee,
+                      total_amount: order.subtotal + order.tax_amount + fee,
+                    })
+                  }
+                  onSaveCancelNote={(note) =>
+                    onUpdate(order.id, { notes: note })
+                  }
+                  onRefresh={onRefresh}
+                />
+              </div>
+            )}
             <MobileDetailedView
               order={order}
               selected={selectedRowKeys.includes(order.id)}
@@ -861,31 +864,34 @@ const OrdersTable: React.FC<Props> = ({
                 </div>
               </div>
 
-              <OrderProductTable
-                order={order}
-                onSaveStatus={(s: OrderStatus) =>
-                  onUpdate(order.id, { status: s })
-                }
-                onSavePaymentStatus={(s: PaymentStatus) =>
-                  onUpdate(order.id, { payment_status: s })
-                }
-                onSaveDeliveryOption={(o) =>
-                  onUpdate(order.id, { delivery_option: o })
-                }
-                onSavePaymentMethod={(m) =>
-                  onUpdate(order.id, { payment_method: m })
-                }
-                onSaveShippingFee={(fee) =>
-                  onUpdate(order.id, {
-                    shipping_fee: fee,
-                    total_amount: order.subtotal + order.tax_amount + fee,
-                  })
-                }
-                onSaveCancelNote={(note) =>
-                  onUpdate(order.id, { notes: note })
-                }
-                onRefresh={onRefresh}
-              />
+              {order.status !== OrderStatus.CANCELLED &&
+                !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
+                <OrderProductTable
+                  order={order}
+                  onSaveStatus={(s: OrderStatus) =>
+                    onUpdate(order.id, { status: s })
+                  }
+                  onSavePaymentStatus={(s: PaymentStatus) =>
+                    onUpdate(order.id, { payment_status: s })
+                  }
+                  onSaveDeliveryOption={(o) =>
+                    onUpdate(order.id, { delivery_option: o })
+                  }
+                  onSavePaymentMethod={(m) =>
+                    onUpdate(order.id, { payment_method: m })
+                  }
+                  onSaveShippingFee={(fee) =>
+                    onUpdate(order.id, {
+                      shipping_fee: fee,
+                      total_amount: order.subtotal + order.tax_amount + fee,
+                    })
+                  }
+                  onSaveCancelNote={(note) =>
+                    onUpdate(order.id, { notes: note })
+                  }
+                  onRefresh={onRefresh}
+                />
+              )}
               <DetailedOrderView order={order} />
             </div>
           ),

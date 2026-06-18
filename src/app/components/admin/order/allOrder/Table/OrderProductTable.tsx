@@ -161,6 +161,13 @@ const OrderProductTable: React.FC<Props> = ({
     setCancelNote(order.notes || "");
   };
 
+  const isFinalized =
+    order.status === OrderStatus.CANCELLED ||
+    (order.status === OrderStatus.DELIVERED &&
+      order.payment_status === PaymentStatus.PAID);
+
+  if (isFinalized) return null;
+
   return (
     <div className="p-3 sm:p-4 rounded-md space-y-3 sm:space-y-4 border">
       <h3 className="font-semibold text-base sm:text-lg">Order Management</h3>

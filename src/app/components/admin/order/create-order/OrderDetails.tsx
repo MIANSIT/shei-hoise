@@ -55,25 +55,17 @@ export default function OrderDetails({
     (v) => v.id === selectedVariantId
   );
 
-  // Filter only active variants (is_active = true) with positive stock
+  // Filter only active variants — admin sees all active variants regardless of reservation
   const availableVariants =
-    selectedProduct?.product_variants?.filter((v) => {
-      // First check if variant is active
-      if (!v.is_active) return false;
-      
-      // Then check stock availability
-      const availableStock =
-        v.product_inventory[0]?.quantity_available -
-          v.product_inventory[0]?.quantity_reserved || 0;
-      return availableStock > 0;
-    }) ?? [];
+    selectedProduct?.product_variants?.filter((v) => v.is_active) ?? [];
 
-  // Get available quantity for a variant
+  // Get available quantity for a variant — use raw quantity_available (not net of reservations)
+  // Admin can sell against physical stock; reservation deduction is for customer checkout only
   const getAvailableQuantity = (variant?: ProductVariant) => {
     if (!variant) return 0;
     const stock = variant.product_inventory[0];
     if (!stock) return 0;
-    return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+    return Math.max(0, stock.quantity_available);
   };
 
   // Get available quantity for base product
@@ -81,7 +73,7 @@ export default function OrderDetails({
     if (!product) return 0;
     const stock = product.product_inventory[0];
     if (!stock) return 0;
-    return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+    return Math.max(0, stock.quantity_available);
   };
 
   // Get primary image for product or variant

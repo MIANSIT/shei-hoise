@@ -96,7 +96,6 @@ export default function CreateOrder() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
 
   const [orderId, setOrderId] = useState("");
-  const [orderCount, setOrderCount] = useState(0);
   const [customerType, setCustomerType] = useState<CustomerType>("new");
   const [selectedCustomer, setSelectedCustomer] =
     useState<DetailedCustomer | null>(null);
@@ -191,8 +190,7 @@ export default function CreateOrder() {
       }
 
       if (storeData?.store_name) {
-        const raw = storeData.store_name.replace(/\s+/g, "").substring(0, 3);
-        const prefix = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+        const prefix = storeData.store_name.replace(/\s+/g, "").substring(0, 4).toUpperCase();
         setStoreName(prefix);
       }
     } catch (error) {
@@ -200,19 +198,7 @@ export default function CreateOrder() {
     }
   }, [user?.store_id]);
 
-  // Fetch total order count for sequential invoice numbering
-  const fetchOrderCount = useCallback(async () => {
-    if (!user?.store_id) return;
-    try {
-      const { count } = await supabase
-        .from("orders")
-        .select("*", { count: "exact", head: true })
-        .eq("store_id", user.store_id);
-      setOrderCount(count ?? 0);
-    } catch (error) {
-      console.error("Error fetching order count:", error);
-    }
-  }, [user?.store_id]);
+
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -295,7 +281,6 @@ export default function CreateOrder() {
             fetchProducts(),
             fetchCustomers(),
             fetchStoreSettings(),
-            fetchOrderCount(),
           ]);
         } catch (error) {
           console.error("Error fetching initial data:", error);
@@ -314,26 +299,21 @@ export default function CreateOrder() {
     fetchProducts,
     fetchCustomers,
     fetchStoreSettings,
-    fetchOrderCount,
   ]);
 
-  // Generate order ID with store name prefix
+  // Generate order ID: PAWF-260618-550E8
+  // First 5 chars of a UUID gives ~1M combinations/day with no count dependency
   useEffect(() => {
-    // Keep the order ID from a restored draft instead of generating a new one
-    if (hasHydrated && useCreateOrderDraftStore.getState().draft?.orderId) {
-      return;
-    }
+    if (!storeName) return;
 
     const now = new Date();
-    const year = now.getFullYear().toString();
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    const day = now.getDate().toString().padStart(2, "0");
-    const nextNum = orderCount + 1;
+    const yy = now.getFullYear().toString().slice(2);
+    const mm = (now.getMonth() + 1).toString().padStart(2, "0");
+    const dd = now.getDate().toString().padStart(2, "0");
+    const uid = crypto.randomUUID().replace(/-/g, "").substring(0, 5).toUpperCase();
 
-    const newOrderId = `${storeName}${year}${month}${day}-${nextNum}`;
-
-    setOrderId(newOrderId);
-  }, [storeName, orderCount, hasHydrated]);
+    setOrderId(`${storeName}-${yy}${mm}${dd}-${uid}`);
+  }, [storeName]);
 
   // Restore a saved draft once Zustand has finished reading from localStorage.
   // This runs exactly once and must come before the "sync to draft" effect
@@ -344,7 +324,6 @@ export default function CreateOrder() {
 
     const draft = useCreateOrderDraftStore.getState().draft;
     if (draft) {
-      if (draft.orderId) setOrderId(draft.orderId);
       setCustomerInfo(draft.customerInfo);
       setOrderProducts(draft.orderProducts);
       setDiscount(draft.discount);
