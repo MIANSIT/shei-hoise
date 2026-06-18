@@ -17,6 +17,18 @@ function esc(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+// Strip markdown so catalog descriptions show as plain readable text
+function stripMarkdown(str: string): string {
+  return str
+    .replace(/#{1,6}\s*/g, "")      // ## headings
+    .replace(/\*\*(.+?)\*\*/g, "$1") // **bold**
+    .replace(/\*(.+?)\*/g, "$1")     // *italic*
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1") // [links](url)
+    .replace(/`(.+?)`/g, "$1")       // `code`
+    .replace(/\n{3,}/g, "\n\n")      // collapse excess blank lines
+    .trim();
+}
+
 interface DbInventory {
   quantity_available: number;
   quantity_reserved: number;
@@ -72,7 +84,7 @@ export async function GET(
 
   const { data: store, error: storeError } = await supabaseAdmin
     .from("stores")
-    .select("id, store_name, store_slug")
+    .select("id, store_name, store_slug, store_settings(currency)")
     .eq("store_slug", store_slug)
     .eq("is_active", true)
     .single();
@@ -80,6 +92,9 @@ export async function GET(
   if (storeError || !store) {
     return new Response("Store not found", { status: 404 });
   }
+
+  const currency =
+    (store.store_settings as { currency?: string } | null)?.currency ?? "BDT";
 
   const { data, error } = await supabaseAdmin
     .from("products")
@@ -156,7 +171,9 @@ export async function GET(
         ? p.categories[0].name
         : null;
 
-    const description = (p.short_description || p.description || p.name).trim();
+    const rawDescription = stripMarkdown(p.short_description || p.description || p.name);
+    // Facebook catalog max description length is 5000 chars
+    const description = rawDescription.length > 5000 ? rawDescription.slice(0, 4997) + "..." : rawDescription;
     const productUrl = `${baseUrl}/${store_slug}/product/${p.slug}`;
 
     const lines: string[] = [
@@ -178,11 +195,13 @@ export async function GET(
     lines.push(
       `      <g:availability>${availability}</g:availability>`,
       `      <g:condition>new</g:condition>`,
-      `      <g:price>${basePrice.toFixed(2)} BDT</g:price>`,
+      // Declare no GTIN/MPN — prevents Facebook flagging local/handmade products
+      `      <g:identifier_exists>no</g:identifier_exists>`,
+      `      <g:price>${basePrice.toFixed(2)} ${currency}</g:price>`,
     );
 
     if (salePrice !== null && salePrice < basePrice) {
-      lines.push(`      <g:sale_price>${salePrice.toFixed(2)} BDT</g:sale_price>`);
+      lines.push(`      <g:sale_price>${salePrice.toFixed(2)} ${currency}</g:sale_price>`);
     }
 
     if (category) {

@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [taxLoaded, setTaxLoaded] = useState(false);
+  const [storeCurrency, setStoreCurrency] = useState("BDT");
   const { currency, loading: currencyLoading } = useUserCurrencyIcon();
   const params = useParams();
   const router = useRouter();
@@ -94,10 +95,12 @@ export default function CheckoutPage() {
             // Set tax amount if > 0, otherwise set to 0
             const taxRate = storeSettings.tax_rate ?? 0;
             setTaxAmount(taxRate > 0 ? taxRate : 0);
-            
+
             // Set min order amount
             const minAmount = storeSettings.min_order_amount ?? 0;
             setMinOrderAmount(minAmount);
+
+            setStoreCurrency(storeSettings.currency ?? "BDT");
           } else {
             setTaxAmount(0);
             setMinOrderAmount(0);
@@ -130,7 +133,7 @@ export default function CheckoutPage() {
         content_type: "product",
         num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
         value: calculations.subtotal,
-        currency: "BDT",
+        currency: storeCurrency,
       }, store_slug);
     }
   }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal]);
@@ -539,7 +542,7 @@ export default function CheckoutPage() {
           content_type: "product",
           num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
           value: calculations.totalPrice + shippingFee + taxAmount,
-          currency: "BDT",
+          currency: storeCurrency,
           order_id: result.orderNumber,
         }, store_slug);
 

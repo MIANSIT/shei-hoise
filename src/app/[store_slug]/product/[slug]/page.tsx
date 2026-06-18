@@ -361,10 +361,10 @@ export default function ProductPage() {
           getStoreIdBySlug(store_slug),
         ]);
 
+        let localSettings = null;
         if (storeId) {
-          getStoreSettings(storeId).then((settings) => {
-            setStoreSettings(settings);
-          });
+          localSettings = await getStoreSettings(storeId);
+          setStoreSettings(localSettings);
         }
 
         if (!productData) {
@@ -398,7 +398,7 @@ export default function ProductPage() {
           content_name: fixed.name,
           content_type: "product",
           value: fixed.discounted_price ?? fixed.base_price,
-          currency: "BDT",
+          currency: localSettings?.currency ?? "BDT",
         }, store_slug);
       } catch (e) {
         console.error(e);
@@ -433,7 +433,7 @@ export default function ProductPage() {
         content_name: product.name,
         content_type: "product",
         value: displayPrice * quantity,
-        currency: "BDT",
+        currency: storeSettings?.currency ?? "BDT",
         num_items: quantity,
       }, store_slug);
       toastSuccess(`${product.name} ${t.cart.addedSuccess}`);
@@ -462,7 +462,7 @@ export default function ProductPage() {
         content_name: product.name,
         content_type: "product",
         value: displayPrice * quantity,
-        currency: "BDT",
+        currency: storeSettings?.currency ?? "BDT",
         num_items: quantity,
       }, store_slug);
       router.push(`/${store_slug}/checkout`);

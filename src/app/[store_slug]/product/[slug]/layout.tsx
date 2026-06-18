@@ -15,7 +15,7 @@ const fetchProductData = cache(async (store_slug: string, slug: string) => {
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id, store_name")
+    .select("id, store_name, store_settings(currency)")
     .eq("store_slug", store_slug)
     .single();
 
@@ -30,7 +30,10 @@ const fetchProductData = cache(async (store_slug: string, slug: string) => {
     .eq("store_id", store.id)
     .single();
 
-  return product ? { store, product } : null;
+  const settings = store.store_settings as { currency?: string }[] | null;
+  const storeCurrency = (Array.isArray(settings) ? settings[0]?.currency : null) ?? "BDT";
+
+  return product ? { store, product, currency: storeCurrency } : null;
 });
 
 export async function generateMetadata({
@@ -90,7 +93,7 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
 
   if (!result) return <>{children}</>;
 
-  const { product } = result;
+  const { product, currency } = result;
 
   const effectivePrice = (product.discounted_price ?? product.base_price) as number;
   const inventory =
@@ -111,7 +114,7 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
       */}
       <head>
         <meta property="product:price:amount" content={String(effectivePrice)} />
-        <meta property="product:price:currency" content="BDT" />
+        <meta property="product:price:currency" content={currency} />
         <meta property="product:availability" content={availability} />
         <meta property="product:retailer_item_id" content={product.id as string} />
       </head>
