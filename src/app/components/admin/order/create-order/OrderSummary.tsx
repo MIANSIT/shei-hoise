@@ -25,6 +25,22 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+const EditedBadge = () => (
+  <span className="ml-1.5 rounded border border-amber-300 bg-amber-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+    Edited
+  </span>
+);
+
+interface OrderSummaryDirtyFields {
+  taxAmount?: boolean;
+  discount?: boolean;
+  additionalCharges?: boolean;
+  deliveryCost?: boolean;
+  status?: boolean;
+  paymentStatus?: boolean;
+  paymentMethod?: boolean;
+}
+
 interface OrderSummaryProps {
   orderProducts: OrderProduct[];
   subtotal: number;
@@ -37,14 +53,15 @@ interface OrderSummaryProps {
   deliveryCost: number;
   setDeliveryCost: (cost: number) => void;
   totalAmount: number;
-  status: OrderStatus; // ✅ Using enum
-  setStatus: (status: OrderStatus) => void; // ✅ Using enum
-  paymentStatus: PaymentStatus; // ✅ Using enum
-  setPaymentStatus: (status: PaymentStatus) => void; // ✅ Using enum
+  status: OrderStatus;
+  setStatus: (status: OrderStatus) => void;
+  paymentStatus: PaymentStatus;
+  setPaymentStatus: (status: PaymentStatus) => void;
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   shippingFees?: ShippingFee[];
   customerDeliveryOption?: string;
+  dirtyFields?: OrderSummaryDirtyFields;
 }
 
 export default function OrderSummary({
@@ -67,6 +84,7 @@ export default function OrderSummary({
   setPaymentMethod,
   shippingFees = [],
   customerDeliveryOption,
+  dirtyFields = {},
 }: OrderSummaryProps) {
   const t = useTranslation();
   const n = useLocalNum();
@@ -249,6 +267,7 @@ export default function OrderSummary({
                   label={
                     <span className="flex items-center space-x-1">
                       <span>{t.admin.orderSummaryTaxAmount} ({displayCurrency})</span>
+                      {dirtyFields.taxAmount && <EditedBadge />}
                       <Tooltip
                         title="Enter the tax amount to apply on the order. Ensure this aligns with local tax regulations."
                         placement="top"
@@ -287,6 +306,7 @@ export default function OrderSummary({
                   label={
                     <span className="flex items-center space-x-1">
                       <span>{t.admin.orderSummaryDiscount} ({displayCurrency})</span>
+                      {dirtyFields.discount && <EditedBadge />}
                       <Tooltip
                         title="Include any extra charges such as packaging, handling, or special services."
                         placement="top"
@@ -318,6 +338,7 @@ export default function OrderSummary({
                   label={
                     <span className="flex items-center space-x-1">
                       <span>{t.admin.orderSummaryAdditional} ({displayCurrency})</span>
+                      {dirtyFields.additionalCharges && <EditedBadge />}
                       <Tooltip
                         title="Include any extra charges such as packaging, handling, or special services."
                         placement="top"
@@ -352,6 +373,7 @@ export default function OrderSummary({
                   label={
                     <span className="flex items-center space-x-1">
                       <span>{t.admin.orderSummaryDeliveryCost} ({displayCurrency})</span>
+                      {dirtyFields.deliveryCost && <EditedBadge />}
                       <Tooltip
                         title="Delivery cost is automatically calculated based on the selected delivery option. For custom delivery, you can manually adjust this value."
                         placement="top"
@@ -421,7 +443,14 @@ export default function OrderSummary({
         <Space orientation="vertical" style={{ width: "100%" }} size="middle">
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label={t.admin.orderSummaryOrderStatus}>
+              <Form.Item
+                label={
+                  <span className="flex items-center gap-1">
+                    {t.admin.orderSummaryOrderStatus}
+                    {dirtyFields.status && <EditedBadge />}
+                  </span>
+                }
+              >
                 <Select
                   value={status}
                   onChange={(value: OrderStatus) => setStatus(value)}
@@ -438,7 +467,14 @@ export default function OrderSummary({
             </Col>
 
             <Col xs={24} md={12}>
-              <Form.Item label={t.admin.orderSummaryPaymentStatus}>
+              <Form.Item
+                label={
+                  <span className="flex items-center gap-1">
+                    {t.admin.orderSummaryPaymentStatus}
+                    {dirtyFields.paymentStatus && <EditedBadge />}
+                  </span>
+                }
+              >
                 <Select
                   value={paymentStatus}
                   onChange={(value: PaymentStatus) => setPaymentStatus(value)}
@@ -455,7 +491,14 @@ export default function OrderSummary({
             </Col>
           </Row>
 
-          <Form.Item label={t.admin.orderSummaryPaymentMethod}>
+          <Form.Item
+            label={
+              <span className="flex items-center gap-1">
+                {t.admin.orderSummaryPaymentMethod}
+                {dirtyFields.paymentMethod && <EditedBadge />}
+              </span>
+            }
+          >
             <Select
               value={paymentMethod}
               onChange={setPaymentMethod}

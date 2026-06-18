@@ -20,6 +20,7 @@ type BaseProps<T extends FieldValues> = {
   as?: "input" | "textarea" | "select" | "checkbox";
   type?: "text" | "email" | "password" | "number";
   options?: Option[];
+  isDirty?: boolean;
 };
 
 export type FormFieldProps<T extends FieldValues> = BaseProps<T>;
@@ -31,7 +32,15 @@ const baseInput =
 const readOnlyInput =
   "bg-muted text-muted-foreground cursor-not-allowed focus:ring-0 focus:border-border";
 
+const dirtyBorder = "border-amber-400 dark:border-amber-500";
+
 const errorText = "mt-1 text-xs text-rose-500";
+
+const EditedBadge = () => (
+  <span className="ml-1.5 rounded border border-amber-300 bg-amber-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+    Edited
+  </span>
+);
 
 const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
   const {
@@ -45,11 +54,14 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
     disabled,
     placeholder,
     className,
-    tooltip: _tooltip, // consumed upstream, not used here
+    tooltip: _tooltip,
     as = "input",
     type = "text",
     options = [],
+    isDirty = false,
   } = props;
+
+  const showDirty = isDirty && !readOnly;
 
   type FieldType = {
     value: T[Path<T>] | undefined;
@@ -74,7 +86,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             id={name}
             placeholder={placeholder}
             rows={4}
-            className={`${baseInput} resize-none ${className ?? ""}`}
+            className={`${baseInput} resize-none ${showDirty ? dirtyBorder : ""} ${className ?? ""}`}
             disabled={readOnly || disabled}
             value={inputValue as string}
             onChange={(e) => {
@@ -96,7 +108,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             id={name}
             value={inputValue as string | number}
             disabled={readOnly || disabled}
-            className={`${baseInput} ${className ?? ""}`}
+            className={`${baseInput} ${showDirty ? dirtyBorder : ""} ${className ?? ""}`}
             onChange={(e) => {
               field.onChange(e.target.value as T[Path<T>]);
               onChange?.(e.target.value as T[Path<T>]);
@@ -151,7 +163,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
           type={type}
           id={name}
           placeholder={placeholder}
-          className={`${baseInput} ${readOnly ? readOnlyInput : ""} ${className ?? ""}`}
+          className={`${baseInput} ${readOnly ? readOnlyInput : ""} ${showDirty ? dirtyBorder : ""} ${className ?? ""}`}
           readOnly={readOnly}
           disabled={disabled}
           value={inputValue as string | number}
@@ -183,10 +195,11 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
       {label && as !== "checkbox" && (
         <label
           htmlFor={name}
-          className="mb-1.5 text-sm font-medium text-foreground"
+          className="mb-1.5 flex items-center text-sm font-medium text-foreground"
         >
           {label}
           {required && <span className="ml-0.5 text-rose-500">*</span>}
+          {showDirty && <EditedBadge />}
         </label>
       )}
       {control ? (

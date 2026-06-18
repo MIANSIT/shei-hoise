@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   Row,
@@ -24,6 +24,7 @@ import {
   OrderProduct,
 } from "@/lib/types/order";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
@@ -52,6 +53,7 @@ interface EditOrderProps {
 export default function EditOrder({ orderNumber }: EditOrderProps) {
   const { notification } = App.useApp();
   const router = useRouter();
+  const t = useTranslation();
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
@@ -112,6 +114,56 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const hasHydrated = useEditOrderDraftStore((s) => s._hasHydrated);
   const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
 
+  // ── Dirty state: field-level comparison against the original DB order ────────
+  // Gated on readyToSyncDraft so comparisons only run after the order data is
+  // loaded AND any saved draft has been applied — avoiding false positives.
+  const customerDirtyFields = useMemo(() => {
+    if (!originalOrder || !readyToSyncDraft) return {};
+    const origAddr = originalOrder.shipping_address;
+    return {
+      name: customerInfo.name !== (originalOrder.customer?.name || ""),
+      email: customerInfo.email !== (originalOrder.customer?.email || ""),
+      phone: customerInfo.phone !== (originalOrder.customer?.phone || ""),
+      address: customerInfo.address !== (origAddr?.address_line_1 || origAddr?.address || ""),
+      city: customerInfo.city !== (origAddr?.city || ""),
+      postal_code: customerInfo.postal_code !== (origAddr?.postal_code || ""),
+      notes: customerInfo.notes !== (originalOrder.notes || ""),
+    };
+  }, [customerInfo, originalOrder, readyToSyncDraft]);
+
+  const financialDirtyFields = useMemo(() => {
+    if (!originalOrder || !readyToSyncDraft) return {};
+    return {
+      taxAmount: taxAmount !== Number(originalOrder.tax_amount),
+      discount: discount !== Number(originalOrder.discount_amount || 0),
+      additionalCharges: additionalCharges !== Number(originalOrder.additional_charges || 0),
+      deliveryCost: deliveryCost !== Number(originalOrder.shipping_fee),
+      status: status !== originalOrder.status,
+      paymentStatus: paymentStatus !== originalOrder.payment_status,
+      paymentMethod: paymentMethod !== (originalOrder.payment_method || "cash"),
+    };
+  }, [discount, additionalCharges, deliveryCost, taxAmount, status, paymentStatus, paymentMethod, originalOrder, readyToSyncDraft]);
+
+  const isDirtyProducts = useMemo(() => {
+    if (!originalOrder || !readyToSyncDraft) return false;
+    if (orderProducts.length !== originalOrderProducts.length) return true;
+    return orderProducts.some((p, i) => {
+      const orig = originalOrderProducts[i];
+      return (
+        !orig ||
+        p.product_id !== orig.product_id ||
+        p.variant_id !== orig.variant_id ||
+        p.quantity !== orig.quantity ||
+        p.unit_price !== orig.unit_price
+      );
+    });
+  }, [orderProducts, originalOrderProducts, originalOrder, readyToSyncDraft]);
+
+  const hasDirtyChanges =
+    Object.values(customerDirtyFields).some(Boolean) ||
+    isDirtyProducts ||
+    Object.values(financialDirtyFields).some(Boolean);
+
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
     if (!user?.store_id || settingsLoading) return;
@@ -128,8 +180,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     } catch (error) {
       console.error("Error fetching store settings:", error);
       notification.error({
-        message: "Error Loading Store Settings",
-        description: "Failed to load shipping fees and tax rates.",
+        title: t.admin.createOrderErrLoadStore,
+        description: t.admin.createOrderErrLoadStoreDesc,
       });
     } finally {
       setSettingsLoading(false);
@@ -214,8 +266,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({
-        message: "Error Loading Products",
-        description: "Failed to load products. Please try again.",
+        title: t.admin.createOrderErrLoadProducts,
+        description: t.admin.createOrderErrLoadProductsDesc,
       });
     } finally {
       setLoading(false);
@@ -301,7 +353,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     } catch (error) {
       console.error("Error fetching order data:", error);
       notification.error({
-        message: "Error Loading Order",
+        title: "Error Loading Order",
         description: "Failed to load order data. Please try again.",
       });
     } finally {
@@ -328,8 +380,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       setPaymentStatus(draft.paymentStatus);
       setPaymentMethod(draft.paymentMethod);
       notification.info({
-        message: "Unsaved Changes Restored",
-        description: "We restored your unsaved edits to this order.",
+        title: t.admin.editOrderRestoredTitle,
+        description: t.admin.editOrderRestoredDesc,
       });
     }
 
@@ -519,6 +571,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
           isExistingCustomer={true}
           shippingFees={shippingFees}
           settingsLoading={settingsLoading}
+          dirtyFields={customerDirtyFields}
         />
       </Space>
     );
@@ -591,6 +644,16 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
             <Tag color="orange">Editing</Tag>
           </div>
 
+          {hasDirtyChanges && (
+            <Alert
+              type="warning"
+              showIcon
+              title={<span className="font-medium">{t.admin.editOrderUnsavedTitle}</span>}
+              description={t.admin.editOrderUnsavedDesc}
+              className="mb-3"
+            />
+          )}
+
           <Card
             className="w-full"
             styles={{
@@ -606,12 +669,20 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
-                <AdminOrderDetails
-                  products={products}
-                  orderProducts={orderProducts}
-                  setOrderProducts={setOrderProducts}
-                  originalOrderProducts={originalOrderProducts}
-                />
+                <div className="relative">
+                  {isDirtyProducts && (
+                    <span className="absolute -top-2.5 right-0 z-10 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                      Items modified
+                    </span>
+                  )}
+                  <AdminOrderDetails
+                    products={products}
+                    orderProducts={orderProducts}
+                    setOrderProducts={setOrderProducts}
+                    originalOrderProducts={originalOrderProducts}
+                  />
+                </div>
               </Col>
 
               <Col xs={24} lg={12}>
@@ -635,6 +706,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   setPaymentMethod={setPaymentMethod}
                   shippingFees={shippingFees}
                   customerDeliveryOption={customerInfo.deliveryOption}
+                  dirtyFields={financialDirtyFields}
                 />
               </Col>
             </Row>

@@ -27,7 +27,7 @@ export async function generateMetadata({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "name, meta_title, meta_description, short_description, base_price, discounted_price, product_images(image_url, is_primary)"
+      "id, name, meta_title, meta_description, short_description, base_price, discounted_price, product_images(image_url, is_primary), product_inventory(quantity_available, quantity_reserved)"
     )
     .eq("slug", slug)
     .eq("store_id", store.id)
@@ -49,6 +49,14 @@ export async function generateMetadata({
 
   const productUrl = `${baseUrl}/${store_slug}/product/${slug}`;
 
+  const effectivePrice = (product.discounted_price ?? product.base_price) as number;
+
+  const inventory = (
+    product.product_inventory as { quantity_available: number; quantity_reserved: number }[] | null
+  ) ?? [];
+  const totalAvailable = inventory.reduce((sum, row) => sum + row.quantity_available - row.quantity_reserved, 0);
+  const availability = totalAvailable > 0 ? "instock" : "oos";
+
   return {
     title: `${title} | ${store.store_name}`,
     description,
@@ -68,6 +76,14 @@ export async function generateMetadata({
       title: `${title} | ${store.store_name}`,
       description,
       images: primaryImage ? [primaryImage] : [],
+    },
+    other: {
+      // Product microdata for Meta's catalog crawler
+      "product:price:amount": String(effectivePrice),
+      "product:price:currency": "BDT",
+      "product:availability": availability,
+      // Must match content_ids sent in ViewContent / AddToCart pixel events
+      "product:retailer_item_id": product.id as string,
     },
   };
 }

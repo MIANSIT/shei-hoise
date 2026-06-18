@@ -1250,6 +1250,11 @@ export const translations = {
       saveOrderCreatedSuccess: "has been created successfully.",
       saveOrderNewCustNote: "A new customer record was also created in store_customers.",
       saveOrderNoCustNote: "Note: No customer record was created.",
+      // Edit order — unsaved changes
+      editOrderUnsavedTitle: "Unsaved changes detected",
+      editOrderUnsavedDesc: "Some fields have been modified. Fields marked \"Edited\" contain pending changes — save the order to apply them.",
+      editOrderRestoredTitle: "Previous edits restored",
+      editOrderRestoredDesc: "We found unsaved changes from your last session and have re-applied them automatically.",
       myProfileTitle: "My Profile",
       myProfileWelcomePrefix: "Welcome back,",
       myProfileManageDesc: "Manage your account information and preferences",
@@ -2971,6 +2976,11 @@ export const translations = {
       saveOrderCreatedSuccess: "সফলভাবে তৈরি হয়েছে।",
       saveOrderNewCustNote: "স্টোর কাস্টমারেও নতুন রেকর্ড তৈরি হয়েছে।",
       saveOrderNoCustNote: "নোট: কোনো কাস্টমার রেকর্ড তৈরি হয়নি।",
+      // Edit order — unsaved changes
+      editOrderUnsavedTitle: "অসংরক্ষিত পরিবর্তন পাওয়া গেছে",
+      editOrderUnsavedDesc: "কিছু তথ্য পরিবর্তন করা হয়েছে। \"Edited\" চিহ্নিত ক্ষেত্রে অসংরক্ষিত পরিবর্তন রয়েছে — অর্ডার সংরক্ষণ করুন।",
+      editOrderRestoredTitle: "আগের পরিবর্তন পুনরুদ্ধার হয়েছে",
+      editOrderRestoredDesc: "আপনার গত সেশনের অসংরক্ষিত পরিবর্তন স্বয়ংক্রিয়ভাবে পুনরায় প্রয়োগ করা হয়েছে।",
       myProfileTitle: "আমার প্রোফাইল",
       myProfileWelcomePrefix: "স্বাগতম,",
       myProfileManageDesc: "আপনার অ্যাকাউন্টের তথ্য ও পছন্দ পরিচালনা করুন",

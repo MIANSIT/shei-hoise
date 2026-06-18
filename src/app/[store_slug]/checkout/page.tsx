@@ -127,6 +127,7 @@ export default function CheckoutPage() {
       hasTrackedCheckout.current = true;
       fbq(FbEvent.INITIATE_CHECKOUT, {
         content_ids: cartItems.map((i) => i.productId),
+        content_type: "product",
         num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
         value: calculations.subtotal,
         currency: "BDT",
@@ -535,6 +536,7 @@ export default function CheckoutPage() {
 
         fbq(FbEvent.PURCHASE, {
           content_ids: cartItems.map((i) => i.productId),
+          content_type: "product",
           num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
           value: calculations.totalPrice + shippingFee + taxAmount,
           currency: "BDT",

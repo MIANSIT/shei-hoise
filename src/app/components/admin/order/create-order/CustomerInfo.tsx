@@ -19,6 +19,7 @@ interface CustomerInfoProps {
   isExistingCustomer?: boolean;
   shippingFees?: ShippingFee[];
   settingsLoading?: boolean;
+  dirtyFields?: Partial<Record<keyof CustomerInfoType, boolean>>;
 }
 
 export default function CustomerInfo({
@@ -30,6 +31,7 @@ export default function CustomerInfo({
   isExistingCustomer = false,
   shippingFees = [],
   settingsLoading = false,
+  dirtyFields = {},
 }: CustomerInfoProps) {
   const t = useTranslation();
 
@@ -94,6 +96,7 @@ export default function CustomerInfo({
                 tooltip="Enter the full name of the customer as it appears on official documents or for delivery purposes."
                 value={customerInfo.name}
                 onChange={(val) => handleFieldChange("name", val)}
+                isDirty={dirtyFields.name}
               />
               {touchedFields.name && !customerInfo.name && (
                 <Text type="danger" style={{ fontSize: 12 }}>
@@ -109,6 +112,7 @@ export default function CustomerInfo({
                 tooltip="Enter a valid email address. Used for order confirmation and communication. Optional field."
                 value={customerInfo.email}
                 onChange={(val) => handleFieldChange("email", val)}
+                isDirty={dirtyFields.email}
               />
               {showEmailError && (
                 <Text type="danger" style={{ fontSize: 12 }}>
@@ -128,6 +132,7 @@ export default function CustomerInfo({
                 tooltip="Enter a valid phone number, e.g., 017XXXXXXXX. Include country code if necessary for international deliveries."
                 value={customerInfo.phone}
                 onChange={(val) => handleFieldChange("phone", val)}
+                isDirty={dirtyFields.phone}
               />
               {showPhoneError && (
                 <Text type="danger" style={{ fontSize: 12 }}>
@@ -146,6 +151,7 @@ export default function CustomerInfo({
                 tooltip="Enter the city where the order will be delivered, e.g., Dhaka, Chittagong."
                 value={customerInfo.city}
                 onChange={(val) => handleFieldChange("city", val)}
+                isDirty={dirtyFields.city}
               />
               {touchedFields.city && !customerInfo.city && (
                 <Text type="danger" style={{ fontSize: 12 }}>
@@ -164,6 +170,7 @@ export default function CustomerInfo({
             tooltip="Enter the complete delivery address including street, house number, and any landmarks to ensure accurate delivery."
             value={customerInfo.address}
             onChange={(val) => handleFieldChange("address", val)}
+            isDirty={dirtyFields.address}
           />
           {touchedFields.address && !customerInfo.address && (
             <Text type="danger" style={{ fontSize: 12 }}>
@@ -180,6 +187,7 @@ export default function CustomerInfo({
                 placeholder={t.admin.createOrderFieldPostalPH}
                 value={customerInfo.postal_code || ""}
                 onChange={(val) => handleFieldChange("postal_code", val)}
+                isDirty={dirtyFields.postal_code}
               />
             </Col>
             <Col xs={24} md={12}>
@@ -214,6 +222,7 @@ export default function CustomerInfo({
             placeholder={t.admin.createOrderFieldNotesPH}
             value={customerInfo.notes}
             onChange={(val) => handleFieldChange("notes", val)}
+            isDirty={dirtyFields.notes}
           />
 
           {!isExistingCustomer && emailError && (
