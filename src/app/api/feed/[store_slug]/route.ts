@@ -17,6 +17,18 @@ function esc(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+// Strip markdown so catalog descriptions show as plain readable text
+function stripMarkdown(str: string): string {
+  return str
+    .replace(/#{1,6}\s*/g, "")      // ## headings
+    .replace(/\*\*(.+?)\*\*/g, "$1") // **bold**
+    .replace(/\*(.+?)\*/g, "$1")     // *italic*
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1") // [links](url)
+    .replace(/`(.+?)`/g, "$1")       // `code`
+    .replace(/\n{3,}/g, "\n\n")      // collapse excess blank lines
+    .trim();
+}
+
 interface DbInventory {
   quantity_available: number;
   quantity_reserved: number;
@@ -34,6 +46,7 @@ interface DbVariant {
   base_price: number;
   discounted_price: number | null;
   product_inventory: DbInventory[] | null;
+  product_images: DbImage[] | null;
 }
 
 interface DbProduct {
@@ -71,7 +84,7 @@ export async function GET(
 
   const { data: store, error: storeError } = await supabaseAdmin
     .from("stores")
-    .select("id, store_name, store_slug")
+    .select("id, store_name, store_slug, store_settings(currency)")
     .eq("store_slug", store_slug)
     .eq("is_active", true)
     .single();
@@ -79,6 +92,9 @@ export async function GET(
   if (storeError || !store) {
     return new Response("Store not found", { status: 404 });
   }
+
+  const currency =
+    (store.store_settings as { currency?: string } | null)?.currency ?? "BDT";
 
   const { data, error } = await supabaseAdmin
     .from("products")
@@ -100,7 +116,8 @@ export async function GET(
         is_active,
         base_price,
         discounted_price,
-        product_inventory(quantity_available, quantity_reserved)
+        product_inventory(quantity_available, quantity_reserved),
+        product_images(image_url, is_primary)
       )
     `,
     )
@@ -115,22 +132,48 @@ export async function GET(
   const products = (data ?? []) as DbProduct[];
 
   const items = products.map((p) => {
-    // Only use images that belong to the parent product (no variant_id)
-    const images = (p.product_images ?? []).filter((img) => img.variant_id === null);
+    // Prefer parent-level images; fall back to variant images so products
+    // that store images only on variants still appear in the catalog.
+    const parentImages = (p.product_images ?? []).filter((img) => img.variant_id === null);
+    const variantImages = (p.product_variants ?? [])
+      .filter((v) => v.is_active !== false)
+      .flatMap((v) => v.product_images ?? []);
+    const images = parentImages.length > 0 ? parentImages : variantImages;
+
     const primaryImage = images.find((i) => i.is_primary)?.image_url ?? images[0]?.image_url ?? "";
-    const additionalImages = images.filter((i) => !i.is_primary).slice(0, 9);
+    const additionalImages = images
+      .filter((img) => img.image_url !== primaryImage)
+      .slice(0, 9);
 
     const availability = isInStock(p) ? "in stock" : "out of stock";
 
-    const basePrice = Number(p.base_price);
-    const salePrice = p.discounted_price != null ? Number(p.discounted_price) : null;
+    // For variant products use the lowest active variant price so the catalog
+    // shows a real price instead of a parent placeholder that may be 0.
+    const activeVariants = (p.product_variants ?? []).filter((v) => v.is_active !== false);
+    const basePrice =
+      activeVariants.length > 0
+        ? Math.min(...activeVariants.map((v) => Number(v.base_price)))
+        : Number(p.base_price);
+    const salePrice =
+      activeVariants.length > 0
+        ? (() => {
+            const discounted = activeVariants
+              .map((v) => (v.discounted_price != null ? Number(v.discounted_price) : null))
+              .filter((v): v is number => v !== null);
+            return discounted.length > 0 ? Math.min(...discounted) : null;
+          })()
+        : p.discounted_price != null
+          ? Number(p.discounted_price)
+          : null;
 
     const category =
       Array.isArray(p.categories) && p.categories.length > 0
         ? p.categories[0].name
         : null;
 
-    const description = (p.short_description || p.description || p.name).trim();
+    const rawDescription = stripMarkdown(p.short_description || p.description || p.name);
+    // Facebook catalog max description length is 5000 chars
+    const description = rawDescription.length > 5000 ? rawDescription.slice(0, 4997) + "..." : rawDescription;
     const productUrl = `${baseUrl}/${store_slug}/product/${p.slug}`;
 
     const lines: string[] = [
@@ -152,11 +195,13 @@ export async function GET(
     lines.push(
       `      <g:availability>${availability}</g:availability>`,
       `      <g:condition>new</g:condition>`,
-      `      <g:price>${basePrice.toFixed(2)} BDT</g:price>`,
+      // Declare no GTIN/MPN — prevents Facebook flagging local/handmade products
+      `      <g:identifier_exists>no</g:identifier_exists>`,
+      `      <g:price>${basePrice.toFixed(2)} ${currency}</g:price>`,
     );
 
     if (salePrice !== null && salePrice < basePrice) {
-      lines.push(`      <g:sale_price>${salePrice.toFixed(2)} BDT</g:sale_price>`);
+      lines.push(`      <g:sale_price>${salePrice.toFixed(2)} ${currency}</g:sale_price>`);
     }
 
     if (category) {

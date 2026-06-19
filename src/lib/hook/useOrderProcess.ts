@@ -102,6 +102,28 @@ export function useOrderProcess(store_slug: string) {
       const result = await createCustomerOrder(orderData);
 
       if (result.success && result.orderId) {
+        // Notify store owner via email (fire-and-forget, don't block checkout)
+        fetch("/api/order-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storeId,
+            orderNumber: orderData.orderNumber,
+            customerInfo: orderData.customerInfo,
+            orderProducts: orderData.orderProducts,
+            subtotal: orderData.subtotal,
+            discount: orderData.discount,
+            additionalCharges: orderData.additionalCharges,
+            deliveryCost: orderData.deliveryCost,
+            taxAmount: orderData.taxAmount,
+            totalAmount: orderData.totalAmount,
+            paymentMethod: orderData.paymentMethod,
+            paymentStatus: orderData.paymentStatus,
+            currency: orderData.currency,
+            deliveryOption: orderData.deliveryOption,
+          }),
+        }).catch((err) => console.error("Order notify fetch failed:", err));
+
         // Only clear cart if we're in checkout mode (not confirm mode)
         if (cartItems && cartItems.length > 0) {
           clearStoreCart(store_slug);
