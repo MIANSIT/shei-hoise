@@ -32,6 +32,45 @@ function buildVariantLabel(product: OrderProduct): string {
   return parts ? ` (${parts})` : "";
 }
 
+function buildPlainText(params: SendOrderEmailParams): string {
+  const { storeName, orderNumber, customerInfo, orderProducts, subtotal, discount, additionalCharges, deliveryCost, taxAmount, totalAmount, paymentMethod, paymentStatus, currency = "BDT", notes, deliveryOption } = params;
+
+  const lines: string[] = [
+    `NEW ORDER — ${storeName}`,
+    `Order #${orderNumber}`,
+    ``,
+    `CUSTOMER`,
+    `Name    : ${customerInfo.name}`,
+    `Phone   : ${customerInfo.phone}`,
+    customerInfo.email ? `Email   : ${customerInfo.email}` : "",
+    `Address : ${customerInfo.address || "—"}`,
+    `City    : ${customerInfo.city || "—"}`,
+    ``,
+    `PAYMENT`,
+    `Method  : ${paymentMethod || "—"}`,
+    `Status  : ${paymentStatus}`,
+    deliveryOption ? `Delivery: ${deliveryOption}` : "",
+    ``,
+    `ORDER ITEMS`,
+    ...orderProducts.map((p, i) =>
+      `${i + 1}. ${p.product_name}${buildVariantLabel(p)}  x${p.quantity}  ${formatCurrency(p.unit_price, currency)} = ${formatCurrency(p.total_price, currency)}`
+    ),
+    ``,
+    `Subtotal  : ${formatCurrency(subtotal, currency)}`,
+    discount > 0 ? `Discount  : - ${formatCurrency(discount, currency)}` : "",
+    additionalCharges > 0 ? `Extra     : ${formatCurrency(additionalCharges, currency)}` : "",
+    `Delivery  : ${deliveryCost > 0 ? formatCurrency(deliveryCost, currency) : "Free"}`,
+    taxAmount > 0 ? `Tax       : ${formatCurrency(taxAmount, currency)}` : "",
+    `TOTAL     : ${formatCurrency(totalAmount, currency)}`,
+    notes ? `\nCustomer note: ${notes}` : "",
+    ``,
+    `---`,
+    `Order alert for ${params.storeName} | Powered by Shei Hoise`,
+  ];
+
+  return lines.filter((l) => l !== undefined && l !== null).join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
 function buildEmailHTML(params: SendOrderEmailParams): string {
   const {
     storeName,
@@ -55,12 +94,12 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
     .map(
       (p, i) => `
       <tr style="background:${i % 2 === 0 ? "#f9fafb" : "#ffffff"}">
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:14px;">
           ${p.product_name}${buildVariantLabel(p)}
         </td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${p.quantity}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(p.unit_price, currency)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${formatCurrency(p.total_price, currency)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:center;font-size:14px;">${p.quantity}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;">${formatCurrency(p.unit_price, currency)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;font-weight:600;">${formatCurrency(p.total_price, currency)}</td>
       </tr>`
     )
     .join("");
@@ -110,21 +149,16 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
                     <span style="font-size:14px;text-transform:capitalize;">${paymentStatus}</span>
                   </td>
                 </tr>
-                ${
-                  deliveryOption
-                    ? `<tr>
+                ${deliveryOption ? `<tr>
                   <td colspan="2" style="padding-bottom:4px;">
                     <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Delivery Option</span><br/>
                     <span style="font-size:14px;text-transform:capitalize;">${deliveryOption}</span>
                   </td>
-                </tr>`
-                    : ""
-                }
+                </tr>` : ""}
               </table>
             </td>
           </tr>
 
-          <!-- Divider -->
           <tr><td style="padding:16px 32px 0;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"/></td></tr>
 
           <!-- Customer info -->
@@ -140,14 +174,10 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
                   <td style="padding:2px 16px 2px 0;font-size:13px;color:#6b7280;white-space:nowrap;">Phone</td>
                   <td style="padding:2px 0;font-size:14px;">${customerInfo.phone}</td>
                 </tr>
-                ${
-                  customerInfo.email
-                    ? `<tr>
+                ${customerInfo.email ? `<tr>
                   <td style="padding:2px 16px 2px 0;font-size:13px;color:#6b7280;white-space:nowrap;">Email</td>
                   <td style="padding:2px 0;font-size:14px;">${customerInfo.email}</td>
-                </tr>`
-                    : ""
-                }
+                </tr>` : ""}
                 <tr>
                   <td style="padding:2px 16px 2px 0;font-size:13px;color:#6b7280;white-space:nowrap;">Address</td>
                   <td style="padding:2px 0;font-size:14px;">${customerInfo.address || "—"}</td>
@@ -160,7 +190,6 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
             </td>
           </tr>
 
-          <!-- Divider -->
           <tr><td style="padding:16px 32px 0;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"/></td></tr>
 
           <!-- Products -->
@@ -189,34 +218,22 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
                   <td style="padding:3px 0;font-size:14px;color:#374151;">Subtotal</td>
                   <td style="padding:3px 0;font-size:14px;text-align:right;">${formatCurrency(subtotal, currency)}</td>
                 </tr>
-                ${
-                  discount > 0
-                    ? `<tr>
+                ${discount > 0 ? `<tr>
                   <td style="padding:3px 0;font-size:14px;color:#374151;">Discount</td>
                   <td style="padding:3px 0;font-size:14px;text-align:right;color:#dc2626;">- ${formatCurrency(discount, currency)}</td>
-                </tr>`
-                    : ""
-                }
-                ${
-                  additionalCharges > 0
-                    ? `<tr>
+                </tr>` : ""}
+                ${additionalCharges > 0 ? `<tr>
                   <td style="padding:3px 0;font-size:14px;color:#374151;">Additional Charges</td>
                   <td style="padding:3px 0;font-size:14px;text-align:right;">${formatCurrency(additionalCharges, currency)}</td>
-                </tr>`
-                    : ""
-                }
+                </tr>` : ""}
                 <tr>
                   <td style="padding:3px 0;font-size:14px;color:#374151;">Delivery</td>
                   <td style="padding:3px 0;font-size:14px;text-align:right;">${deliveryCost > 0 ? formatCurrency(deliveryCost, currency) : "Free"}</td>
                 </tr>
-                ${
-                  taxAmount > 0
-                    ? `<tr>
+                ${taxAmount > 0 ? `<tr>
                   <td style="padding:3px 0;font-size:14px;color:#374151;">Tax</td>
                   <td style="padding:3px 0;font-size:14px;text-align:right;">${formatCurrency(taxAmount, currency)}</td>
-                </tr>`
-                    : ""
-                }
+                </tr>` : ""}
                 <tr>
                   <td colspan="2"><hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0;"/></td>
                 </tr>
@@ -228,24 +245,21 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
             </td>
           </tr>
 
-          ${
-            notes
-              ? `<!-- Notes -->
-          <tr>
+          ${notes ? `<tr>
             <td style="padding:16px 32px 0;">
               <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;">
                 <span style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#92400e;font-weight:600;">Customer Notes</span>
                 <p style="margin:4px 0 0;font-size:14px;color:#78350f;">${notes}</p>
               </div>
             </td>
-          </tr>`
-              : ""
-          }
+          </tr>` : ""}
 
           <!-- Footer -->
           <tr>
             <td style="padding:24px 32px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;">This is an automated notification from Shei Hoise. Do not reply to this email.</p>
+              <p style="margin:0;font-size:12px;color:#9ca3af;">
+                Order alert for <strong>${storeName}</strong> &nbsp;|&nbsp; Powered by Shei Hoise
+              </p>
             </td>
           </tr>
 
@@ -265,7 +279,7 @@ export async function sendOrderEmail(
 
   if (!user || !pass) {
     console.warn(
-      "⚠️ Order email skipped: GMAIL_USER or GMAIL_APP_PASSWORD not set in environment."
+      "⚠️ Order email skipped: GMAIL_USER or GMAIL_APP_PASSWORD not set."
     );
     return;
   }
@@ -283,9 +297,16 @@ export async function sendOrderEmail(
   });
 
   await transporter.sendMail({
-    from: `"Shei Hoise" <${user}>`,
+    from: `"${params.storeName} via Shei Hoise" <${user}>`,
     to: params.toEmail,
-    subject: `New Order #${params.orderNumber} — ${params.storeName}`,
+    replyTo: params.toEmail,
+    subject: `Order #${params.orderNumber} — ${params.customerInfo.name} — ${formatCurrency(params.totalAmount, params.currency)}`,
+    text: buildPlainText(params),
     html: buildEmailHTML(params),
+    headers: {
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      "Importance": "High",
+    },
   });
 }
