@@ -221,6 +221,29 @@ export default function SaveOrderButton({
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
+        // Notify store owner via email (fire-and-forget, don't block UI)
+        fetch("/api/order-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storeId,
+            orderNumber: orderId,
+            customerInfo: finalCustomerInfo,
+            orderProducts,
+            subtotal,
+            discount,
+            additionalCharges,
+            deliveryCost,
+            taxAmount,
+            totalAmount,
+            paymentMethod,
+            paymentStatus,
+            currency: displayCurrencySafe,
+            notes: finalCustomerInfo.notes,
+            deliveryOption: finalCustomerInfo.deliveryOption,
+          }),
+        }).catch((err) => console.error("Order notify fetch failed:", err));
+
         // Clear the saved draft right away - the order now exists in the DB
         onOrderCreated?.();
 
