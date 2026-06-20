@@ -106,18 +106,11 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
 
   return (
     <>
-      {/*
-        These tags must use property= (not name=) for Facebook's crawler.
-        Next.js's `other` metadata field only renders name= so we inject
-        them directly here — Next.js App Router hoists <head> from Server
-        Components into the document <head>.
-      */}
-      <head>
-        <meta property="product:price:amount" content={String(effectivePrice)} />
-        <meta property="product:price:currency" content={currency} />
-        <meta property="product:availability" content={availability} />
-        <meta property="product:retailer_item_id" content={product.id as string} />
-      </head>
+      {/* React 19 hoists individual <meta> tags to <head> automatically. */}
+      <meta property="product:price:amount" content={String(effectivePrice)} />
+      <meta property="product:price:currency" content={currency} />
+      <meta property="product:availability" content={availability} />
+      <meta property="product:retailer_item_id" content={product.id as string} />
       {children}
     </>
   );

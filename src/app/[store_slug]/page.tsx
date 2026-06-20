@@ -591,7 +591,7 @@ function ProductCard({
       {!isHero && (
         <div className="flex items-start justify-between gap-2 px-3.5 py-3">
           <div className="flex-1 min-w-0">
-            <Link href={`/${store_slug}/product/${product.id}`}>
+            <Link href={`/${store_slug}/product/${product.slug}`}>
               <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-100 line-clamp-2 leading-snug hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150">
                 {product.name}
               </p>
