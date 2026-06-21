@@ -166,9 +166,9 @@ const StockAlert: React.FC<StockAlertProps> = ({
 
       {/* Chips — flex-wrap so they reflow naturally on any width */}
       <div className="flex flex-wrap gap-1.5">
-        {visible.map((name) => (
+        {visible.map((name, idx) => (
           <span
-            key={name}
+            key={`${name}-${idx}`}
             title={name}
             className={[
               "inline-flex items-center",
