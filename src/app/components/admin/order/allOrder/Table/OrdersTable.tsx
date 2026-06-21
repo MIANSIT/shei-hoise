@@ -991,7 +991,7 @@ const OrdersTable: React.FC<Props> = ({
           orderStatus={selectedOrderForInvoice.status}
           // ✅ FIX 2: Pass notes from order
           notes={selectedOrderForInvoice.notes ?? ""}
-          showPOSButton={false}
+          showPOSButton={true}
         />
       )}
     </div>
