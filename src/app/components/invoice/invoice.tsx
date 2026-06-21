@@ -197,6 +197,7 @@ interface InvoiceModalProps {
   paymentMethod?: string;
   orderStatus?: OrderStatus;
   notes?: string;
+  orderCreatedAt?: string;
   showPrintButton?: boolean;
   showPOSButton?: boolean;
   showPDFButton?: boolean;
@@ -222,6 +223,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     paymentMethod = "N/A",
     orderStatus = "PROCESSING",
     notes = "",
+    orderCreatedAt,
     showPrintButton = true,
     showPOSButton = true,
     showPDFButton = true,
@@ -233,13 +235,15 @@ export default function InvoiceModal(props: InvoiceModalProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPOSPrinting, setIsPOSPrinting] = useState(false);
+  const [posWidth, setPosWidth] = useState<58 | 80>(80);
   const [copied, setCopied] = useState(false);
 
   const currencyIcon = CURRENCY_ICONS[currency] || "৳";
-  const invoiceDate = new Date().toLocaleDateString("en-GB");
-  const invoiceTime = new Date().toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
+  const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
+  const invoiceDate = orderDate.toLocaleDateString("en-GB");
+  const invoiceTime = orderDate.toLocaleTimeString("en-US", {
+    hour12: true,
+    hour: "numeric",
     minute: "2-digit",
   });
 
@@ -408,8 +412,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
         <div class="invoice-footer">
           <div class="invoice-meta">
             <p><strong>Invoice Generated:</strong></p>
-            <p>Date: ${new Date().toLocaleDateString("en-GB")}</p>
-            <p>Time: ${new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}</p>
+            <p>Date: ${invoiceDate}</p>
+            <p>Time: ${invoiceTime}</p>
           </div>
           <div class="thank-you">
             <p>Thank you for choosing ${store.name}</p>
@@ -521,6 +525,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           paymentMethod,
           orderStatus,
           notes,
+          orderCreatedAt: orderCreatedAt ?? null,
           type: "A4",
         }),
       });
@@ -547,14 +552,24 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
   };
 
-  // ─── POS thermal print (Sunmi V2S 80mm) ──────────────────────────────────
+  // ─── POS thermal print (58mm / 80mm switchable) ──────────────────────────
   const printPOSReceipt = () => {
     setIsPOSPrinting(true);
     try {
+      // popup width ≈ paper CSS-pixel width (paper_mm × 3.78) + ~30px browser chrome
+      // This prevents the browser from scaling content down to fit paper
+      const popupWidth = posWidth === 58 ? 250 : 340;
+      const margin = posWidth === 58 ? 2 : 3;
+      const bodyWidth = posWidth - margin * 2; // 54mm or 74mm printable
+      const baseFontSize = posWidth === 58 ? "12pt" : "13pt";
+      const smallFontSize = posWidth === 58 ? "10pt" : "11pt";
+      const storeFontSize = posWidth === 58 ? "14pt" : "16pt";
+      const totalFontSize = posWidth === 58 ? "14pt" : "16pt";
+      const rowFontSize = posWidth === 58 ? "11pt" : "12pt";
+
       const displayCurrency = currencyIcon === "৳" ? "Tk" : currencyIcon;
-      const now = new Date();
-      const dateStr = now.toLocaleDateString("en-GB");
-      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const dateStr = invoiceDate;
+      const timeStr = invoiceTime;
 
       const additionalChargesRows = additionalCharges
         .map(
@@ -581,34 +596,31 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=80mm, initial-scale=1.0">
+  <meta name="viewport" content="width=${bodyWidth}mm, initial-scale=1.0">
   <title>Receipt #${orderId}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page {
-      size: 80mm auto;
-      margin: 4mm 4mm;
+      size: ${posWidth}mm auto;
+      margin: ${margin}mm;
     }
-    html {
-      background: #fff;
-    }
+    html, body { background: #fff; }
     body {
-      width: 72mm;
+      width: ${bodyWidth}mm;
       margin: 0 auto;
-      padding: 4px 0;
+      padding: 3px 0;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 11pt;
+      font-size: ${baseFontSize};
       color: #000;
-      background: #fff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     @media print {
-      body { padding: 0; width: 72mm; margin: 0; }
+      body { padding: 0; width: ${bodyWidth}mm; margin: 0; }
     }
     .receipt { width: 100%; }
     .store-name {
-      font-size: 15pt;
+      font-size: ${storeFontSize};
       font-weight: bold;
       text-align: center;
       text-transform: uppercase;
@@ -617,40 +629,40 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
     .center { text-align: center; }
     .bold { font-weight: bold; }
-    .small { font-size: 9pt; }
-    .divider-solid { border: none; border-top: 1px solid #000; margin: 5px 0; }
-    .divider-dashed { border: none; border-top: 1px dashed #000; margin: 5px 0; }
-    .divider-double { border: none; border-top: 3px double #000; margin: 6px 0; }
+    .small { font-size: ${smallFontSize}; }
+    .divider-solid { border: none; border-top: 1px solid #000; margin: 6px 0; }
+    .divider-dashed { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .divider-double { border: none; border-top: 3px double #000; margin: 7px 0; }
     .row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin: 2px 0;
-      font-size: 10pt;
+      margin: 3px 0;
+      font-size: ${rowFontSize};
     }
     .section-title {
       text-align: center;
       font-weight: bold;
-      font-size: 11pt;
+      font-size: ${baseFontSize};
       text-transform: uppercase;
       letter-spacing: 1px;
       margin: 4px 0 3px;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+    table { width: 100%; border-collapse: collapse; font-size: ${rowFontSize}; }
     table thead th {
       border-bottom: 1px solid #000;
       padding: 2px 1px;
       font-weight: bold;
     }
-    table tbody td { padding: 3px 1px; vertical-align: top; }
+    table tbody td { padding: 4px 2px; vertical-align: top; }
     .item-name { width: 48%; word-break: break-word; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
-    .unit-price { font-size: 8.5pt; font-weight: normal; }
+    .unit-price { font-size: ${smallFontSize}; font-weight: normal; }
     .total-row {
       display: flex;
       justify-content: space-between;
-      font-size: 14pt;
+      font-size: ${totalFontSize};
       font-weight: bold;
       margin-top: 5px;
       padding-top: 5px;
@@ -658,14 +670,11 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
     .footer {
       text-align: center;
-      font-size: 9pt;
+      font-size: ${smallFontSize};
       margin-top: 8px;
       padding-top: 6px;
       border-top: 1px dashed #000;
       line-height: 1.6;
-    }
-    @media print {
-      html, body { width: 72mm; }
     }
   </style>
 </head>
@@ -678,7 +687,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
     <div class="divider-solid"></div>
 
-    <div class="center bold" style="font-size:12pt;margin-bottom:3px">RECEIPT</div>
+    <div class="center bold" style="margin-bottom:3px">RECEIPT</div>
     <div class="row"><span>Invoice #:</span><span>${orderId}</span></div>
     <div class="row"><span>Date:</span><span>${dateStr}</span></div>
     <div class="row"><span>Time:</span><span>${timeStr}</span></div>
@@ -736,15 +745,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
   </div>
   <script>
     window.onload = function () {
-      setTimeout(function () {
-        window.print();
-      }, 400);
+      setTimeout(function () { window.print(); }, 400);
     };
   <\/script>
 </body>
 </html>`;
 
-      const pw = window.open("", "_blank", "width=400,height=750");
+      const pw = window.open("", "_blank", `width=${popupWidth},height=750`);
       if (!pw) {
         notification.error({
           title: "Popup Blocked",
@@ -1150,19 +1157,44 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 )}
 
                 {showPOSButton && (
-                  <Button
-                    variant="outline"
-                    onClick={printPOSReceipt}
-                    disabled={isPOSPrinting || isPrinting || isGeneratingPDF}
-                    className="h-9 text-sm gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
-                    {isPOSPrinting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Printer className="w-4 h-4" />
-                    )}
-                    Print POS
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {/* Paper size toggle */}
+                    <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 text-xs font-medium shrink-0">
+                      <button
+                        onClick={() => setPosWidth(58)}
+                        className={`px-2 py-1.5 transition-colors ${
+                          posWidth === 58
+                            ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
+                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        58mm
+                      </button>
+                      <button
+                        onClick={() => setPosWidth(80)}
+                        className={`px-2 py-1.5 transition-colors border-l border-gray-200 dark:border-gray-700 ${
+                          posWidth === 80
+                            ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
+                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        80mm
+                      </button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={printPOSReceipt}
+                      disabled={isPOSPrinting || isPrinting || isGeneratingPDF}
+                      className="h-9 text-sm gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      {isPOSPrinting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Printer className="w-4 h-4" />
+                      )}
+                      Print POS
+                    </Button>
+                  </div>
                 )}
 
                 {showPDFButton && (

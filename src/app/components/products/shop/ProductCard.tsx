@@ -35,8 +35,11 @@ export default function ProductCard({
 
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
-      ? variant?.discounted_price
+      ? variant.discounted_price
       : (variant?.base_price ?? product.discounted_price ?? product.base_price);
+
+  // Original (pre-discount) price: use variant's base_price when variants exist
+  const originalPrice = variant?.base_price ?? product.base_price;
 
   const displayImage =
     variant?.primary_image?.image_url ||
@@ -46,10 +49,8 @@ export default function ProductCard({
     "/placeholder.png";
 
   const calculatedDiscount =
-    product.base_price > displayPrice
-      ? Math.round(
-          ((product.base_price - displayPrice) / product.base_price) * 100,
-        )
+    originalPrice > displayPrice
+      ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
       : 0;
 
   const isInStock = (): boolean => {
@@ -229,7 +230,7 @@ export default function ProductCard({
             {calculatedDiscount > 0 && productInStock && (
               <span className="text-[11px] sm:text-sm text-gray-400 dark:text-gray-500 line-through font-normal leading-none">
                 {displayCurrencyIconSafe}
-                {n(product.base_price.toFixed(2))}
+                {n(originalPrice.toFixed(2))}
               </span>
             )}
           </div>
