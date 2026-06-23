@@ -8,6 +8,7 @@ export interface StoreData {
   //   owner_id: string;
   store_name: string;
   store_slug: string;
+  short_description?: string | null;
   description?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
