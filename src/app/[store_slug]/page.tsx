@@ -153,7 +153,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                 className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1"
               >
                 {storeData?.logo_url && (
-                  <div className="shrink-0 w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-white/25 shadow-xl">
+                  <div className="shrink-0 w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl">
                     <Image src={storeData.logo_url} alt={storeName} width={56} height={56} className="object-cover w-full h-full" />
                   </div>
                 )}
