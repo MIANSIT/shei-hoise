@@ -1,7 +1,6 @@
 // lib/queries/onboarding/store/createStoreWithSettings.ts
 "use server";
 
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   StoreType,
@@ -29,7 +28,7 @@ export async function createStoreWithSettings({
 
   try {
     // 1️⃣ Insert store
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("stores")
       .insert({
         owner_id: ownerId,
@@ -73,20 +72,20 @@ export async function createStoreWithSettings({
 
     // 4️⃣ Update store with uploaded file URLs
     if (Object.keys(uploads).length > 0) {
-      await supabase.from("stores").update(uploads).eq("id", storeId);
+      await supabaseAdmin.from("stores").update(uploads).eq("id", storeId);
     }
 
     // 5️⃣ Insert store settings
     if (settings) {
       const { store_social_media, ...restSettings } = settings;
 
-      const { error: settingsError } = await supabase
+      const { error: settingsError } = await supabaseAdmin
         .from("store_settings")
         .insert({ store_id: storeId, ...restSettings });
       if (settingsError) throw settingsError;
 
       if (store_social_media) {
-        const { error: socialError } = await supabase
+        const { error: socialError } = await supabaseAdmin
           .from("store_social_media")
           .insert({ store_id: storeId, ...store_social_media });
         if (socialError) throw socialError;

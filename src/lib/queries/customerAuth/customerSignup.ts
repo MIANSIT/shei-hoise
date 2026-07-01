@@ -3,14 +3,13 @@ import { supabase } from "@/lib/supabase";
 export const signupQueries = {
   checkEmailExists: async (email: string): Promise<boolean> => {
     try {
-      const { data: customer, error } = await supabase
-        .from("store_customers")
-        .select("email")
-        .eq("email", email.toLowerCase())
-        .limit(1);
-      
+      const { data: exists, error } = await supabase.rpc(
+        "check_customer_email_exists",
+        { p_email: email.toLowerCase() }
+      );
+
       if (error) throw error;
-      return !!customer && customer.length > 0;
+      return !!exists;
     } catch (err) {
       console.error("Error checking email:", err);
       throw err;
@@ -79,12 +78,10 @@ export const signupQueries = {
     if (error) {
       console.error("Failed to create customer:", error?.message, error?.code, error?.details);
       // If customer already exists, try to fetch existing one
-      const { data: existingCustomer } = await supabase
-        .from("store_customers")
-        .select("id")
-        .eq("email", email.toLowerCase())
-        .single();
-      
+      const { data: existingCustomer } = (await supabase
+        .rpc("find_customer_by_email", { p_email: email.toLowerCase() })
+        .single()) as { data: { id: string } | null };
+
       return existingCustomer;
     }
     

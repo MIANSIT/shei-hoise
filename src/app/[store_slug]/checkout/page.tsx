@@ -15,6 +15,7 @@ import { useOrderProcess } from "@/lib/hook/useOrderProcess";
 import { useSupabaseAuth } from "@/lib/hook/userCheckAuth";
 import { supabase } from "@/lib/supabase";
 import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
+import { getCustomerByAuthUserId } from "@/lib/queries/customers/getCustomerByEmail";
 import { AnimatePresence } from "framer-motion";
 import AnimatedInvoice from "../../components/invoice/AnimatedInvoice";
 import { StoreOrder, OrderItem } from "@/lib/types/order";
@@ -463,8 +464,13 @@ export default function CheckoutPage() {
 
         // 🔐 LOGGED IN USER FLOW (still supports logged-in users)
         if (isUserLoggedIn && session?.user) {
-          // For logged-in users, try to find by phone
-          const existing = await findCustomerByPhone(values.phone, store_slug);
+          // For logged-in users, the auth_user_id link is the authoritative
+          // "this is me" check — their store_customers row may already exist
+          // (e.g. created at signup with no phone set), so check that first
+          // before falling back to phone match / creating a new row.
+          const existing =
+            (await getCustomerByAuthUserId(session.user.id, store_slug)) ||
+            (await findCustomerByPhone(values.phone, store_slug));
 
           if (existing) {
             storeCustomerId = existing.id;

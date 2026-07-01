@@ -41,6 +41,7 @@ export interface SubscriptionInvoice {
   paid_at: string | null;
   payment_method: string | null;
   payment_reference: string | null;
+  sender_number: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -84,6 +85,25 @@ export async function getStoreSubscription(
   };
 }
 
+export async function getInvoiceById(
+  invoiceId: string,
+  storeId: string,
+): Promise<SubscriptionInvoice | null> {
+  const { data, error } = await supabase
+    .from("subscription_invoices")
+    .select(
+      `id, invoice_number, plan_name, amount, currency,
+       billing_cycle, status, period_start, period_end,
+       due_date, paid_at, payment_method, payment_reference, sender_number, notes, created_at`,
+    )
+    .eq("id", invoiceId)
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as SubscriptionInvoice;
+}
+
 export async function getStoreInvoices(
   storeId: string,
 ): Promise<SubscriptionInvoice[]> {
@@ -92,7 +112,7 @@ export async function getStoreInvoices(
     .select(
       `id, invoice_number, plan_name, amount, currency,
        billing_cycle, status, period_start, period_end,
-       due_date, paid_at, payment_method, payment_reference, notes, created_at`,
+       due_date, paid_at, payment_method, payment_reference, sender_number, notes, created_at`,
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });

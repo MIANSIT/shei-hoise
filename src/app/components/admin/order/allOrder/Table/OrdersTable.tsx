@@ -192,7 +192,7 @@ const OrdersTable: React.FC<Props> = ({
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
-        message: t.admin.orderNoOrders,
+        title: t.admin.orderNoOrders,
         description: t.admin.orderNoOrdersDate,
       });
       return;

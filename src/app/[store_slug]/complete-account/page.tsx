@@ -142,25 +142,53 @@ export default function CompleteAccountPage() {
           throw signUpError;
         }
       } else if (authData?.user) {
-        authUserId = authData.user.id;
-        
-        // Try to auto-login after sign-up
-        try {
+        const isAlreadyRegistered =
+          authData.user.identities && authData.user.identities.length === 0;
+
+        if (isAlreadyRegistered) {
+          // Supabase returned an obfuscated "fake success" response — this
+          // email already has a real, confirmed account. authData.user.id is
+          // NOT a real auth.users row; sign in for real instead of linking it.
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password: formData.password,
           });
-          
+
           if (signInError) {
-            console.warn("⚠️ Auto-login after sign-up failed:", signInError.message);
-            // User may need email confirmation
-            loginSuccess = false;
-          } else {
+            console.warn("⚠️ Sign-in failed:", signInError.message);
+            if (signInError.message.includes("Invalid login credentials")) {
+              setError("This email already has an account. Please enter the correct password or use 'Sign In Instead'.");
+              setLoading(false);
+              return;
+            }
+            throw signInError;
+          }
+
+          if (signInData.user) {
+            authUserId = signInData.user.id;
             loginSuccess = true;
           }
-        } catch (loginError) {
-          console.error("❌ Auto-login error:", loginError);
-          loginSuccess = false;
+        } else {
+          authUserId = authData.user.id;
+
+          // Try to auto-login after sign-up
+          try {
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password: formData.password,
+            });
+
+            if (signInError) {
+              console.warn("⚠️ Auto-login after sign-up failed:", signInError.message);
+              // User may need email confirmation
+              loginSuccess = false;
+            } else {
+              loginSuccess = true;
+            }
+          } catch (loginError) {
+            console.error("❌ Auto-login error:", loginError);
+            loginSuccess = false;
+          }
         }
       }
 
