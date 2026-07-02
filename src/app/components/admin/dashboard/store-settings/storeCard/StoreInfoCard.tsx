@@ -106,6 +106,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
   const t = useTranslation();
 
   const [formData, setFormData] = useState({
+    short_description: store.short_description || "",
     description: store.description || "",
     contact_email: store.contact_email || "",
     contact_phone: store.contact_phone || "",
@@ -134,6 +135,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
 
   const handleCancel = () => {
     setFormData({
+      short_description: store.short_description || "",
       description: store.description || "",
       contact_email: store.contact_email || "",
       contact_phone: store.contact_phone || "",
@@ -200,7 +202,24 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
 
       <CardContent className="p-2.5">
         <div className="space-y-0">
-          {/* Description — shown first, full width feel */}
+          {/* Short Description — shown on store banner */}
+          <div>
+            <InfoItem
+              icon={<AlignLeft className="h-4 w-4" />}
+              label={t.admin.storeMgmtShortDesc}
+              value={formData.short_description}
+              editing={editing}
+              onChange={(v) => handleChange("short_description", v.slice(0, 160))}
+              placeholder="One-line tagline shown on your store banner (max 160 chars)"
+            />
+            {editing && (
+              <p className="text-right text-[11px] text-muted-foreground pr-3 -mt-1">
+                {formData.short_description.length}/160
+              </p>
+            )}
+          </div>
+
+          {/* Full Description */}
           <InfoItem
             icon={<AlignLeft className="h-4 w-4" />}
             label={t.admin.storeMgmtStoreDesc}

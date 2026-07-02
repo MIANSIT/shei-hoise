@@ -2,7 +2,6 @@
 "use server";
 
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function createUserCore(payload: CreateUserType) {
@@ -23,7 +22,7 @@ export async function createUserCore(payload: CreateUserType) {
   const userId = data.user.id;
 
   // 2️⃣ Users table
-  const { error: userError } = await supabase.from("users").insert({
+  const { error: userError } = await supabaseAdmin.from("users").insert({
     id: userId,
     email: payload.email,
     password_hash: "AUTH_MANAGED",
@@ -39,7 +38,7 @@ export async function createUserCore(payload: CreateUserType) {
 
   // 3️⃣ Profile
   if (payload.profile) {
-    const { error } = await supabase.from("user_profiles").insert({
+    const { error } = await supabaseAdmin.from("user_profiles").insert({
       user_id: userId,
       ...payload.profile,
     });

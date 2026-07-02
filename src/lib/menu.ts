@@ -18,6 +18,7 @@ import {
   CreditCard,
   BarChart2,
   TrendingUp,
+  BadgeCheck,
 } from "lucide-react";
 import React from "react";
 
@@ -118,5 +119,10 @@ export const sideMenu: MenuItem[] = [
     title: "Pixel Analytics",
     href: "/dashboard/pixel-analytics",
     icon: TrendingUp,
+  },
+  {
+    title: "Subscription",
+    href: "/dashboard/subscription",
+    icon: BadgeCheck,
   },
 ];

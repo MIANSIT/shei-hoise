@@ -192,7 +192,7 @@ const OrdersTable: React.FC<Props> = ({
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
-        message: t.admin.orderNoOrders,
+        title: t.admin.orderNoOrders,
         description: t.admin.orderNoOrdersDate,
       });
       return;
@@ -991,6 +991,7 @@ const OrdersTable: React.FC<Props> = ({
           orderStatus={selectedOrderForInvoice.status}
           // ✅ FIX 2: Pass notes from order
           notes={selectedOrderForInvoice.notes ?? ""}
+          orderCreatedAt={selectedOrderForInvoice.created_at}
           showPOSButton={false}
         />
       )}

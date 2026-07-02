@@ -194,15 +194,8 @@ const TrustBadge = ({
 function renderDescription(description: string): React.ReactNode[] {
   const lines = description.split("\n");
   const els: React.ReactNode[] = [];
-  let list: string[] = [],
-    para: string[] = [];
+  let list: string[] = [];
 
-  const fp = (key: string) => {
-    if (para.length) {
-      els.push(<p key={key}>{para.join(" ")}</p>);
-      para = [];
-    }
-  };
   const fl = (key: string) => {
     if (list.length) {
       els.push(
@@ -222,17 +215,16 @@ function renderDescription(description: string): React.ReactNode[] {
   lines.forEach((line, idx) => {
     const t = line.trim();
     if (!t) {
-      fp(`p-${idx}`);
       fl(`ul-${idx}`);
+      els.push(<div key={`sp-${idx}`} className="h-1" />);
       return;
     }
     if (t.startsWith("•")) {
-      fp(`p-${idx}`);
       list.push(t.slice(1).trim());
       return;
     }
-    if (t === t.toUpperCase() && t.length > 2) {
-      fp(`p-${idx}`);
+    // Only treat as heading if ALL-CAPS and contains at least one Latin uppercase letter
+    if (t === t.toUpperCase() && /[A-Z]/.test(t) && t.length > 2) {
       fl(`ul-${idx}`);
       els.push(
         <p
@@ -244,9 +236,9 @@ function renderDescription(description: string): React.ReactNode[] {
       );
       return;
     }
-    para.push(t);
+    fl(`ul-${idx}`);
+    els.push(<p key={`p-${idx}`}>{t}</p>);
   });
-  fp("p-end");
   fl("ul-end");
   return els;
 }

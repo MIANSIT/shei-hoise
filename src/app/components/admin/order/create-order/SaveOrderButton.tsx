@@ -64,7 +64,7 @@ export default function SaveOrderButton({
   const showConfirm = () => {
     if (emailError) {
       notification.error({
-        message: t.admin.saveOrderCannotCreate,
+        title: t.admin.saveOrderCannotCreate,
         description: emailError,
       });
       return;
@@ -164,7 +164,7 @@ export default function SaveOrderButton({
           }
 
           notification.success({
-            message: t.admin.saveOrderCustCreatedTitle,
+            title: t.admin.saveOrderCustCreatedTitle,
             description: t.admin.saveOrderCustCreatedDesc,
           });
         } catch (customerError: any) {

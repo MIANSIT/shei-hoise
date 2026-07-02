@@ -5,7 +5,6 @@ import {
   createUserSchema,
   CreateUserType,
 } from "@/lib/schema/onboarding/user.schema";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createUserCore } from "@/lib/queries/onboarding/store/createUserCore";
 import { createStoreWithSettings } from "@/lib/queries/onboarding/store/createStoreWithSettings";
@@ -31,7 +30,7 @@ export async function createUser(data: CreateUserType) {
       });
 
       // 3️⃣ Link user → store
-      const { error: linkError } = await supabase
+      const { error: linkError } = await supabaseAdmin
         .from("users")
         .update({ store_id: storeId })
         .eq("id", userId);
@@ -46,19 +45,19 @@ export async function createUser(data: CreateUserType) {
     // 🔄 ROLLBACK: Delete everything in correct order
     try {
       if (storeId) {
-        await supabase
+        await supabaseAdmin
           .from("store_social_media")
           .delete()
           .eq("store_id", storeId);
 
-        await supabase.from("store_settings").delete().eq("store_id", storeId);
+        await supabaseAdmin.from("store_settings").delete().eq("store_id", storeId);
 
-        await supabase.from("stores").delete().eq("id", storeId);
+        await supabaseAdmin.from("stores").delete().eq("id", storeId);
       }
 
       if (userId) {
         // delete from DB
-        await supabase.from("users").delete().eq("id", userId);
+        await supabaseAdmin.from("users").delete().eq("id", userId);
 
         // delete from Auth safely
         try {

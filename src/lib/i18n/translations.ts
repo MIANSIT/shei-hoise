@@ -1417,7 +1417,8 @@ export const translations = {
       // Store management - StoreInfoCard
       storeMgmtInfoTitle: "Store Information",
       storeMgmtInfoDesc: "Contact details & business identifiers",
-      storeMgmtStoreDesc: "Store Description",
+      storeMgmtShortDesc: "Short Description",
+      storeMgmtStoreDesc: "Description",
       storeMgmtContactEmail: "Contact Email",
       storeMgmtContactPhone: "Contact Phone",
       storeMgmtBizAddr: "Business Address",
@@ -3143,7 +3144,8 @@ export const translations = {
       // Store management - StoreInfoCard
       storeMgmtInfoTitle: "স্টোর তথ্য",
       storeMgmtInfoDesc: "যোগাযোগের বিবরণ ও ব্যবসায়িক পরিচিতি",
-      storeMgmtStoreDesc: "স্টোরের বিবরণ",
+      storeMgmtShortDesc: "সংক্ষিপ্ত বিবরণ",
+      storeMgmtStoreDesc: "বিবরণ",
       storeMgmtContactEmail: "যোগাযোগ ইমেইল",
       storeMgmtContactPhone: "যোগাযোগ ফোন",
       storeMgmtBizAddr: "ব্যবসার ঠিকানা",
