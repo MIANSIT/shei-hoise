@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { PublicPlan } from "./getPublicPlans";
+import { PLAN_COLUMNS, type PublicPlan } from "./getPublicPlans";
 
 /**
  * Fetch plans based on role + current plan visibility rules:
@@ -13,9 +13,7 @@ export async function getPlansForStore(
   if (role === "super_admin") {
     const { data, error } = await supabase
       .from("subscription_plans")
-      .select(
-        "id, name, slug, description, price_monthly, price_yearly, currency, features, trial_days, is_featured, sort_order",
-      )
+      .select(PLAN_COLUMNS)
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
 
@@ -25,9 +23,7 @@ export async function getPlansForStore(
 
   const { data: publicData, error: publicErr } = await supabase
     .from("subscription_plans")
-    .select(
-      "id, name, slug, description, price_monthly, price_yearly, currency, features, trial_days, is_featured, sort_order",
-    )
+    .select(PLAN_COLUMNS)
     .eq("is_public", true)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
@@ -41,17 +37,15 @@ export async function getPlansForStore(
   const alreadyIncluded = plans.some((p) => p.id === currentPlanId);
   if (alreadyIncluded) return plans;
 
-  const { data: currentPlanData } = await supabase
-    .from("subscription_plans")
-    .select(
-      "id, name, slug, description, price_monthly, price_yearly, currency, features, trial_days, is_featured, sort_order",
-    )
-    .eq("id", currentPlanId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (currentPlanData) {
-    return [...plans, currentPlanData as PublicPlan];
+  // The plan may no longer be public (is_public only controls discoverability,
+  // not access), so it's fetched via the admin-backed route rather than the
+  // RLS-bound client, which would otherwise silently return nothing for it.
+  const res = await fetch("/api/subscription/current-plan");
+  if (res.ok) {
+    const currentPlanData = await res.json();
+    if (currentPlanData && currentPlanData.id === currentPlanId) {
+      return [...plans, currentPlanData as PublicPlan];
+    }
   }
 
   return plans;

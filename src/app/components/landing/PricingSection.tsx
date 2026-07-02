@@ -8,6 +8,7 @@ import {
   getPublicPlans,
   orderPlansWithFeaturedInMiddle,
   parseFeatures,
+  parseLimits,
   type PublicPlan,
 } from "@/lib/queries/subscription/getPublicPlans";
 import { CURRENCY_ICONS, Currency } from "@/lib/types/enums";
@@ -136,7 +137,7 @@ export default function PricingSection() {
                 key={plan.id}
                 name={plan.name}
                 description={plan.description ?? ""}
-                features={parseFeatures(plan.features)}
+                features={[...parseFeatures(plan.features), ...parseLimits(plan.limits)]}
                 months={months}
                 originalPrice={originalPrice}
                 discountedPrice={discountedPrice}

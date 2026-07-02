@@ -6,19 +6,15 @@ import { Table, Tag, Skeleton, Empty, Button, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
   CreditCard,
-  Calendar,
-  Clock,
   Package,
-  CheckCircle,
   AlertCircle,
   XCircle,
-  RefreshCw,
   Download,
   Wallet,
   CheckCircle2,
-  Sparkles,
   ShieldCheck,
   Store,
+  ArrowRight,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { downloadInvoicePdf, type StoreInfo } from "@/lib/utils/downloadInvoicePdf";
@@ -29,8 +25,6 @@ import {
   type StoreSubscription,
   type SubscriptionInvoice,
 } from "@/lib/queries/subscription/getStoreSubscription";
-import { getPlansForStore } from "@/lib/queries/subscription/getPlansForStore";
-import { parseFeatures, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
 import type { AdminInvoiceRow } from "@/lib/queries/subscription/getAdminInvoices";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -50,21 +44,72 @@ function formatAmount(amount: number, currency: string): string {
 
 const PAYABLE_STATUSES = new Set(["unpaid", "overdue"]);
 
-// ── Small UI atoms ─────────────────────────────────────────────────────────────
+const SUBSCRIPTION_STATUS_STYLES: Record<
+  string,
+  { label: string; header: string; border: string; pill: string; dot: string }
+> = {
+  active: {
+    label: "Active",
+    header: "bg-emerald-50 dark:bg-emerald-950/20",
+    border: "border-emerald-100 dark:border-emerald-900/40",
+    pill: "bg-emerald-600 text-white",
+    dot: "bg-emerald-200",
+  },
+  trial: {
+    label: "Trial",
+    header: "bg-blue-50 dark:bg-blue-950/20",
+    border: "border-blue-100 dark:border-blue-900/40",
+    pill: "bg-blue-600 text-white",
+    dot: "bg-blue-200",
+  },
+  incomplete: {
+    label: "Incomplete",
+    header: "bg-amber-50 dark:bg-amber-950/20",
+    border: "border-amber-100 dark:border-amber-900/40",
+    pill: "bg-amber-500 text-white",
+    dot: "bg-amber-100",
+  },
+  pending: {
+    label: "Pending",
+    header: "bg-amber-50 dark:bg-amber-950/20",
+    border: "border-amber-100 dark:border-amber-900/40",
+    pill: "bg-amber-500 text-white",
+    dot: "bg-amber-100",
+  },
+  past_due: {
+    label: "Past Due",
+    header: "bg-orange-50 dark:bg-orange-950/20",
+    border: "border-orange-100 dark:border-orange-900/40",
+    pill: "bg-orange-500 text-white",
+    dot: "bg-orange-100",
+  },
+  expired: {
+    label: "Expired",
+    header: "bg-gray-50 dark:bg-gray-800/40",
+    border: "border-gray-200 dark:border-gray-700",
+    pill: "bg-gray-500 text-white",
+    dot: "bg-gray-200",
+  },
+  cancelled: {
+    label: "Cancelled",
+    header: "bg-rose-50 dark:bg-rose-950/20",
+    border: "border-rose-100 dark:border-rose-900/40",
+    pill: "bg-rose-600 text-white",
+    dot: "bg-rose-200",
+  },
+};
 
-function SubscriptionStatusTag({ status }: { status: string }) {
-  const map: Record<string, { color: string; label: string }> = {
-    active: { color: "success", label: "Active" },
-    trial: { color: "processing", label: "Trial" },
-    incomplete: { color: "warning", label: "Incomplete" },
-    expired: { color: "default", label: "Expired" },
-    cancelled: { color: "error", label: "Cancelled" },
-    past_due: { color: "warning", label: "Past Due" },
-    pending: { color: "warning", label: "Pending" },
+function getSubscriptionStatusStyle(status: string) {
+  return SUBSCRIPTION_STATUS_STYLES[status] ?? {
+    label: status,
+    header: "bg-gray-50 dark:bg-gray-800/40",
+    border: "border-gray-200 dark:border-gray-700",
+    pill: "bg-gray-500 text-white",
+    dot: "bg-gray-200",
   };
-  const cfg = map[status] ?? { color: "default", label: status };
-  return <Tag color={cfg.color}>{cfg.label}</Tag>;
 }
+
+// ── Small UI atoms ─────────────────────────────────────────────────────────────
 
 function InvoiceStatusTag({ status }: { status: string }) {
   const map: Record<string, { color: string; label: string }> = {
@@ -227,167 +272,97 @@ function SubscriptionCard({
   canPay: boolean;
   onPay: (inv: SubscriptionInvoice) => void;
 }) {
-  const infoItems = [
-    {
-      icon: <Package className="w-4 h-4 text-blue-500" />,
-      label: "Plan",
-      value: sub.plan?.name ?? "—",
-    },
-    {
-      icon: <CheckCircle className="w-4 h-4 text-emerald-500" />,
-      label: "Status",
-      value: <SubscriptionStatusTag status={sub.status} />,
-    },
-    {
-      icon: <CreditCard className="w-4 h-4 text-indigo-500" />,
-      label: "Payment Status",
-      value: latestInvoice ? (
-        <InvoiceStatusTag status={latestInvoice.status} />
-      ) : (
-        <span className="text-gray-400 text-xs">—</span>
-      ),
-    },
-    {
-      icon: <RefreshCw className="w-4 h-4 text-violet-500" />,
-      label: "Billing Cycle",
-      value: <BillingCycleTag cycle={sub.billing_cycle} />,
-    },
-    {
-      icon: <Calendar className="w-4 h-4 text-orange-500" />,
-      label: "Started",
-      value: formatDate(sub.started_at ?? sub.current_period_start),
-    },
-    {
-      icon: <Calendar className="w-4 h-4 text-red-500" />,
-      label: "Expires",
-      value: formatDate(sub.expires_at ?? sub.current_period_end),
-    },
-    ...(sub.trial_ends_at
-      ? [
-          {
-            icon: <Clock className="w-4 h-4 text-amber-500" />,
-            label: "Trial Ends",
-            value: formatDate(sub.trial_ends_at),
-          },
-        ]
-      : []),
-    ...(sub.canceled_at
-      ? [
-          {
-            icon: <XCircle className="w-4 h-4 text-rose-500" />,
-            label: "Cancelled At",
-            value: formatDate(sub.canceled_at),
-          },
-        ]
-      : []),
+  const showPayBanner =
+    canPay && latestInvoice && PAYABLE_STATUSES.has(latestInvoice.status);
+  const statusStyle = getSubscriptionStatusStyle(sub.status);
+
+  const metaItems = [
+    { label: "Started", value: formatDate(sub.started_at ?? sub.current_period_start) },
+    { label: "Expires", value: formatDate(sub.expires_at ?? sub.current_period_end) },
+    ...(sub.trial_ends_at ? [{ label: "Trial ends", value: formatDate(sub.trial_ends_at) }] : []),
+    ...(sub.canceled_at ? [{ label: "Cancelled at", value: formatDate(sub.canceled_at) }] : []),
     ...(sub.payment_provider
-      ? [
-          {
-            icon: <CreditCard className="w-4 h-4 text-gray-500" />,
-            label: "Payment Provider",
-            value: (
-              <span className="capitalize">{sub.payment_provider.replace(/_/g, " ")}</span>
-            ),
-          },
-        ]
+      ? [{ label: "Payment provider", value: sub.payment_provider.replace(/_/g, " ") }]
       : []),
   ];
 
-  const showPayBanner =
-    canPay && latestInvoice && PAYABLE_STATUSES.has(latestInvoice.status);
-
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm p-6">
-      <div className="flex items-center gap-2 mb-5">
-        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950">
-          <CreditCard className="w-5 h-5 text-blue-600" />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            Current Subscription
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {sub.plan?.description ?? "Your active plan details"}
-          </p>
-        </div>
-        {showPayBanner && (
-          <Button
-            type="primary"
-            icon={<Wallet className="w-3.5 h-3.5" />}
-            onClick={() => onPay(latestInvoice!)}
-            style={{ backgroundColor: "#7c3aed", borderColor: "#7c3aed" }}
-          >
-            Pay Now
-          </Button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {infoItems.map((item, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-1 p-3 rounded-lg bg-gray-50 dark:bg-gray-800"
-          >
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
-              {item.icon}
-              {item.label}
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+      {/* Status hero */}
+      <div className={`px-6 pt-6 pb-5 ${statusStyle.header} border-b ${statusStyle.border}`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${statusStyle.pill}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                {statusStyle.label}
+              </span>
+              <BillingCycleTag cycle={sub.billing_cycle} />
             </div>
-            <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-              {item.value}
-            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {sub.plan?.name ?? "—"}
+            </h2>
+            {sub.plan?.description && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {sub.plan.description}
+              </p>
+            )}
           </div>
-        ))}
-      </div>
+          {showPayBanner && (
+            <Button
+              type="primary"
+              icon={<Wallet className="w-3.5 h-3.5" />}
+              onClick={() => onPay(latestInvoice!)}
+              style={{ backgroundColor: "#7c3aed", borderColor: "#7c3aed" }}
+            >
+              Pay Now
+            </Button>
+          )}
+        </div>
 
-      {latestInvoice && (
-        <div className="mt-5 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-              Latest Invoice
+        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-xs text-gray-600 dark:text-gray-400">
+          {metaItems.map((item) => (
+            <span key={item.label}>
+              <span className="text-gray-400 dark:text-gray-500">{item.label}:</span>{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">
+                {item.value}
+              </span>
             </span>
-            <div className="flex items-center gap-2">
-              <InvoiceStatusTag status={latestInvoice.status} />
-              <Tooltip title="Download PDF">
-                <button
-                  onClick={() => downloadInvoicePdf(latestInvoice, store)}
-                  className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
-              </Tooltip>
-            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Latest invoice strip */}
+      {latestInvoice && (
+        <div className="px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-4 flex-wrap text-sm">
+            <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
+              {latestInvoice.invoice_number}
+            </span>
+            <span className="font-semibold text-gray-800 dark:text-gray-200">
+              {formatAmount(latestInvoice.amount, latestInvoice.currency)}
+            </span>
+            <InvoiceStatusTag status={latestInvoice.status} />
+            <PaymentMethodBadge method={latestInvoice.payment_method} />
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              {latestInvoice.paid_at ? "Paid" : "Due"} {formatDate(latestInvoice.paid_at ?? latestInvoice.due_date)}
+            </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-200 dark:divide-gray-700">
-            <div className="px-4 py-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Invoice #</p>
-              <p className="text-sm font-mono font-medium text-gray-800 dark:text-gray-200 truncate">
-                {latestInvoice.invoice_number}
-              </p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Amount</p>
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                {formatAmount(latestInvoice.amount, latestInvoice.currency)}
-              </p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                {latestInvoice.paid_at ? "Paid At" : "Due Date"}
-              </p>
-              <p className="text-sm text-gray-800 dark:text-gray-200">
-                {formatDate(latestInvoice.paid_at ?? latestInvoice.due_date)}
-              </p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Payment Method</p>
-              <PaymentMethodBadge method={latestInvoice.payment_method} />
-            </div>
-          </div>
+          <Tooltip title="Download PDF">
+            <button
+              onClick={() => downloadInvoicePdf(latestInvoice, store)}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-400 dark:text-gray-500"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
         </div>
       )}
 
       {sub.cancels_at_period_end && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2.5">
+        <div className="mx-6 mb-5 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2.5">
           <AlertCircle className="w-4 h-4 shrink-0" />
           This subscription will cancel at the end of the current billing period.
         </div>
@@ -396,125 +371,6 @@ function SubscriptionCard({
   );
 }
 
-// ── PlansSection ──────────────────────────────────────────────────────────────
-
-function PlanCard({
-  plan,
-  isCurrent,
-  billingCycle,
-}: {
-  plan: PublicPlan;
-  isCurrent: boolean;
-  billingCycle: string;
-}) {
-  const features = parseFeatures(plan.features);
-  const isYearly = billingCycle === "yearly";
-  const price = isYearly ? plan.price_yearly : plan.price_monthly;
-  const perMonth = isYearly ? plan.price_yearly / 12 : plan.price_monthly;
-  const currency = plan.currency.trim();
-
-  return (
-    <div
-      className={`relative rounded-xl border p-5 flex flex-col gap-4 transition-all ${
-        isCurrent
-          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/30 shadow-md ring-2 ring-violet-300"
-          : plan.is_featured
-          ? "border-blue-300 bg-blue-50 dark:bg-blue-950/20 shadow-sm"
-          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm"
-      }`}
-    >
-      {isCurrent && (
-        <div className="absolute -top-3 left-4">
-          <span className="bg-violet-600 text-white text-xs font-semibold px-3 py-0.5 rounded-full flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Current Plan
-          </span>
-        </div>
-      )}
-      {plan.is_featured && !isCurrent && (
-        <div className="absolute -top-3 left-4">
-          <span className="bg-blue-500 text-white text-xs font-semibold px-3 py-0.5 rounded-full flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Featured
-          </span>
-        </div>
-      )}
-
-      <div>
-        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{plan.name}</h3>
-        {plan.description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{plan.description}</p>
-        )}
-      </div>
-
-      <div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {currency}{price.toLocaleString("en-BD")}
-          </span>
-          <span className="text-xs text-gray-500">
-            /{isYearly ? "year" : "month"}
-          </span>
-        </div>
-        {isYearly && (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-            ≈ {currency}{Math.round(perMonth).toLocaleString("en-BD")}/month
-          </p>
-        )}
-        {plan.trial_days > 0 && (
-          <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
-            {plan.trial_days} days free trial
-          </p>
-        )}
-      </div>
-
-      {features.length > 0 && (
-        <ul className="space-y-1.5">
-          {features.map((f) => (
-            <li key={f} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-              {f}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function PlansSection({
-  plans,
-  currentPlanId,
-  billingCycle,
-}: {
-  plans: PublicPlan[];
-  currentPlanId: string | null;
-  billingCycle: string;
-}) {
-  if (plans.length === 0) return null;
-
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-        <Package className="w-4 h-4 text-gray-500" />
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          Subscription Plans
-        </h2>
-        <span className="ml-auto text-xs text-gray-400">
-          {plans.length} plan{plans.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-      <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {plans.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            isCurrent={plan.id === currentPlanId}
-            billingCycle={billingCycle}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ── Admin payment panel ───────────────────────────────────────────────────────
 
@@ -691,7 +547,6 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([]);
   const [storeInfo, setStoreInfo] = useState<StoreInfo>({ name: "My Store" });
-  const [plans, setPlans] = useState<PublicPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isSuperAdmin = role === "super_admin";
@@ -731,13 +586,10 @@ export default function SubscriptionPage() {
 
       setSubscription(sub);
       setInvoices(invs);
-
-      const fetchedPlans = await getPlansForStore(role ?? "store_owner", sub?.plan_id ?? null);
-      setPlans(fetchedPlans);
     }
 
     load().finally(() => setLoading(false));
-  }, [storeId, userLoading, role, isSuperAdmin]);
+  }, [storeId, userLoading, isSuperAdmin]);
 
   if (userLoading || loading) {
     return (
@@ -790,14 +642,35 @@ export default function SubscriptionPage() {
       )}
 
       {/* Admin payment approvals panel */}
-      <AdminPaymentPanel />
+      {isSuperAdmin && <AdminPaymentPanel />}
 
-      {/* Plans section */}
-      <PlansSection
-        plans={plans}
-        currentPlanId={subscription?.plan_id ?? null}
-        billingCycle={subscription?.billing_cycle ?? "monthly"}
-      />
+      {/* Change plan CTA */}
+      {canPay && (
+        <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-linear-to-r from-violet-50 to-white dark:from-violet-950/30 dark:to-gray-900 p-6 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-violet-100 dark:bg-violet-900/40">
+              <Package className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                {subscription ? "Want to change your plan?" : "Choose a plan to get started"}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Compare features and pick what fits your store best.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="primary"
+            icon={<ArrowRight className="w-3.5 h-3.5" />}
+            iconPlacement="end"
+            onClick={() => router.push("/dashboard/subscription/plans")}
+            style={{ backgroundColor: "#7c3aed", borderColor: "#7c3aed" }}
+          >
+            {subscription ? "View All Plans" : "Browse Plans"}
+          </Button>
+        </div>
+      )}
 
       {/* Invoices table */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">

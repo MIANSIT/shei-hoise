@@ -49,21 +49,14 @@ export interface SubscriptionInvoice {
 export async function getStoreSubscription(
   storeId: string,
 ): Promise<StoreSubscription | null> {
-  const { data, error } = await supabase
-    .from("store_subscriptions")
-    .select(
-      `id, store_id, plan_id, status, billing_cycle,
-       started_at, expires_at, trial_ends_at, canceled_at,
-       cancels_at_period_end, current_period_start, current_period_end,
-       payment_provider, created_at,
-       subscription_plans (name, slug, description, price_monthly, price_yearly, currency)`,
-    )
-    .eq("store_id", storeId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Fetched via a server route backed by the admin client (not a direct RLS-bound
+  // query) so a store can always see its own plan's details even if that plan's
+  // is_public flag has since been turned off — see /api/subscription/my-subscription.
+  const res = await fetch("/api/subscription/my-subscription");
+  if (!res.ok) return null;
 
-  if (error || !data) return null;
+  const data = await res.json();
+  if (!data || data.store_id !== storeId) return null;
 
   const raw = data as Record<string, unknown>;
   return {

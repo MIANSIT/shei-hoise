@@ -25,10 +25,10 @@ export async function POST(req: Request) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Fetch the invoice to get subscription_id
+    // Fetch the invoice to get subscription_id and the plan being paid for
     const { data: invoice, error: fetchError } = await supabaseAdmin
       .from("subscription_invoices")
-      .select("subscription_id")
+      .select("subscription_id, plan_id, billing_cycle")
       .eq("id", invoice_id)
       .maybeSingle();
 
@@ -48,11 +48,18 @@ export async function POST(req: Request) {
       return Response.json({ error: invoiceError.message }, { status: 400 });
     }
 
-    // Activate the subscription directly — no trigger dependency
+    // Activate the subscription directly — no trigger dependency.
+    // Also apply the plan/cycle from this invoice so a plan switch takes
+    // effect only now, at approval time (the trigger handles period dates).
     if (invoice.subscription_id) {
       const { error: subError } = await supabaseAdmin
         .from("store_subscriptions")
-        .update({ status: "active", updated_at: now })
+        .update({
+          status: "active",
+          plan_id: invoice.plan_id,
+          billing_cycle: invoice.billing_cycle,
+          updated_at: now,
+        })
         .eq("id", invoice.subscription_id);
 
       if (subError) {

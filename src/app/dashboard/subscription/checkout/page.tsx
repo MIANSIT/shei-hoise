@@ -1,34 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Skeleton, message } from "antd";
-import { ArrowLeft, AlertTriangle, Send, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Send, CheckCircle2, CheckCircle } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import {
-  getInvoiceById,
-  type SubscriptionInvoice,
-} from "@/lib/queries/subscription/getStoreSubscription";
+import { getPlanById, parseFeatures, parseLimits, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
+import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { PaymentMethodPicker, type MethodType } from "@/components/subscription/PaymentMethodPicker";
 import { PaymentDetailsForm } from "@/components/subscription/PaymentDetailsForm";
+import { generateInvoiceNumber } from "@/lib/utils/generateInvoiceNumber";
 
-const PAYABLE = new Set(["unpaid", "overdue"]);
-
-function fmt(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-BD", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-export default function PayInvoicePage() {
+function CheckoutContent() {
   const router = useRouter();
-  const params = useParams<{ invoiceId: string }>();
+  const searchParams = useSearchParams();
   const { storeId, loading: userLoading } = useCurrentUser();
 
-  const [invoice, setInvoice] = useState<SubscriptionInvoice | null>(null);
+  const planId = searchParams.get("plan");
+  const cycle = searchParams.get("cycle") === "yearly" ? "yearly" : "monthly";
+
+  const [invoiceNumber] = useState(() => generateInvoiceNumber());
+  const [plan, setPlan] = useState<PublicPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -37,45 +29,69 @@ export default function PayInvoicePage() {
   const [senderNumber, setSenderNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [submittedInvoiceNumber, setSubmittedInvoiceNumber] = useState<string | null>(null);
 
   useEffect(() => {
-    if (userLoading || !storeId || !params.invoiceId) return;
+    if (!planId) { setNotFound(true); setLoading(false); return; }
+    if (userLoading) return;
 
     setLoading(true);
-    getInvoiceById(params.invoiceId, storeId)
-      .then((inv) => {
-        if (!inv) { setNotFound(true); return; }
-        setInvoice(inv);
-      })
-      .finally(() => setLoading(false));
-  }, [storeId, userLoading, params.invoiceId]);
+
+    async function load() {
+      const p = await getPlanById(planId!);
+      if (!p) { setNotFound(true); return; }
+
+      if (!p.is_public) {
+        const sub = storeId ? await getStoreSubscription(storeId) : null;
+        if (sub?.plan_id !== p.id) { setNotFound(true); return; }
+      }
+
+      setPlan(p);
+    }
+
+    load().finally(() => setLoading(false));
+  }, [planId, storeId, userLoading]);
+
+  const amount = plan ? (cycle === "yearly" ? plan.price_yearly : plan.price_monthly) : 0;
+  const currency = plan?.currency.trim() ?? "";
+  const features = plan ? [...parseFeatures(plan.features), ...parseLimits(plan.limits)] : [];
 
   async function handleSubmit() {
     if (!method) return message.warning("Select a payment method.");
     if (!reference.trim()) return message.warning("Enter your transaction reference.");
     if (!senderNumber.trim()) return message.warning("Enter your sender number.");
-    if (!storeId || !invoice) return;
+    if (!storeId || !plan) return;
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/subscription/submit-payment", {
+      const res = await fetch("/api/subscription/select-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          store_id: storeId,
-          invoice_id: invoice.id,
-          payment_method: method,
-          payment_reference: reference.trim(),
-          sender_number: senderNumber.trim(),
-          notes: notes.trim() || undefined,
+          plan_id: plan.id,
+          billing_cycle: cycle,
+          invoice_number: invoiceNumber,
+          payment: {
+            method,
+            reference: reference.trim(),
+            sender_number: senderNumber.trim(),
+            notes: notes.trim() || undefined,
+          },
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Submission failed");
 
-      setDone(true);
+      if (!res.ok) {
+        if (res.status === 409 && data.invoiceId) {
+          message.warning(data.error);
+          router.push(`/dashboard/subscription/pay/${data.invoiceId}`);
+          return;
+        }
+        throw new Error(data.error || "Submission failed");
+      }
+
+      setSubmittedInvoiceNumber(data.invoiceNumber ?? invoiceNumber);
     } catch (err) {
       message.error(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -89,15 +105,15 @@ export default function PayInvoicePage() {
     return (
       <div className="max-w-2xl mx-auto space-y-4 py-8 px-4">
         <Skeleton active paragraph={{ rows: 2 }} />
-        <Skeleton active paragraph={{ rows: 6 }} />
+        <Skeleton active paragraph={{ rows: 8 }} />
       </div>
     );
   }
 
-  if (notFound || !invoice) {
+  if (notFound || !plan) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Invoice not found.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Plan not found.</p>
         <button
           type="button"
           onClick={() => router.push("/dashboard/subscription")}
@@ -109,27 +125,9 @@ export default function PayInvoicePage() {
     );
   }
 
-  if (!PAYABLE.has(invoice.status)) {
-    return (
-      <div className="max-w-2xl mx-auto py-16 text-center space-y-2">
-        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-        <p className="text-gray-800 dark:text-gray-200 font-semibold">
-          Invoice {invoice.invoice_number} is already {invoice.status}.
-        </p>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard/subscription")}
-          className="mt-2 text-violet-600 dark:text-violet-400 text-sm font-medium hover:underline"
-        >
-          ← Back to Subscription
-        </button>
-      </div>
-    );
-  }
-
   // ── Success ──
 
-  if (done) {
+  if (submittedInvoiceNumber) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-3 px-4">
         <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center mx-auto">
@@ -139,9 +137,9 @@ export default function PayInvoicePage() {
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
           We received your payment details for{" "}
           <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">
-            {invoice.invoice_number}
+            {submittedInvoiceNumber}
           </span>
-          . We will verify and update your invoice within 1–2 business days.
+          . We will verify and activate your {plan.name} subscription within 1–2 business days.
         </p>
         <button
           type="button"
@@ -168,32 +166,43 @@ export default function PayInvoicePage() {
         Back to Subscription
       </button>
 
-      {/* Invoice summary card */}
+      {/* Plan summary card */}
       <div className="rounded-2xl bg-linear-to-br from-violet-700 to-violet-900 dark:from-violet-800 dark:to-violet-950 px-6 pt-6 pb-7 mb-5 shadow-xl shadow-violet-200 dark:shadow-violet-900/30">
-        <p className="text-xs font-semibold text-violet-300 uppercase tracking-widest mb-2">
-          Invoice Payment
-        </p>
-        <p className="text-4xl font-bold text-white font-mono tracking-tight">
-          ৳{Number(invoice.amount).toLocaleString("en-BD")}
-        </p>
-        <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
-          <span className="text-sm text-violet-200 font-mono">{invoice.invoice_number}</span>
-          <span className="text-xs text-violet-300 bg-violet-800/50 border border-violet-600/50 px-2.5 py-1 rounded-full">
-            {invoice.billing_cycle === "yearly" ? "Yearly" : "Monthly"} · {invoice.plan_name}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-xs font-semibold text-violet-300 uppercase tracking-widest">
+            Subscribe to {plan.name}
+          </p>
+          <span className="text-xs text-violet-300 bg-violet-800/50 border border-violet-600/50 px-2.5 py-1 rounded-full shrink-0">
+            {cycle === "yearly" ? "Yearly" : "Monthly"}
           </span>
         </div>
-        {invoice.due_date && (
-          <p className="text-xs text-violet-400 mt-2">Due {fmt(invoice.due_date)}</p>
+        <p className="text-4xl font-bold text-white font-mono tracking-tight">
+          {currency}{amount.toLocaleString("en-BD")}
+          <span className="text-base font-normal text-violet-300">/{cycle === "yearly" ? "year" : "month"}</span>
+        </p>
+        {plan.description && (
+          <p className="text-sm text-violet-200 mt-2">{plan.description}</p>
+        )}
+
+        {features.length > 0 && (
+          <ul className="mt-4 pt-4 border-t border-violet-600/40 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {features.map((f) => (
+              <li key={f} className="flex items-start gap-2 text-sm text-violet-100">
+                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                {f}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
-      {/* Reference warning */}
+      {/* Reference number */}
       <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-3.5 mb-5">
         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <div className="text-[12px] text-amber-700 dark:text-amber-300 leading-relaxed">
           Always use{" "}
           <span className="font-mono font-bold bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 px-1.5 py-0.5 rounded text-amber-800 dark:text-amber-200">
-            {invoice.invoice_number}
+            {invoiceNumber}
           </span>{" "}
           as the payment reference / note so we can match your payment.
         </div>
@@ -204,7 +213,7 @@ export default function PayInvoicePage() {
         <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">
           Choose Payment Method
         </p>
-        <PaymentMethodPicker method={method} onMethodChange={setMethod} amount={invoice.amount} />
+        <PaymentMethodPicker method={method} onMethodChange={setMethod} amount={amount} />
       </div>
 
       {/* Reference form — appears after method selected */}
@@ -246,9 +255,24 @@ export default function PayInvoicePage() {
             height: 44,
           }}
         >
-          Submit Payment
+          Confirm & Submit Payment
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function SubscriptionCheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-2xl mx-auto space-y-4 py-8 px-4">
+          <Skeleton active paragraph={{ rows: 2 }} />
+          <Skeleton active paragraph={{ rows: 8 }} />
+        </div>
+      }
+    >
+      <CheckoutContent />
+    </Suspense>
   );
 }
