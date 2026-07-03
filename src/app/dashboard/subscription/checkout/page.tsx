@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Skeleton, App } from "antd";
 import { ArrowLeft, AlertTriangle, Send, CheckCircle2, CheckCircle } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { getPlanById, parseFeatures, parseLimits, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
 import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { PaymentMethodPicker, type MethodType } from "@/components/subscription/PaymentMethodPicker";
@@ -14,6 +15,7 @@ import { generateInvoiceNumber } from "@/lib/utils/generateInvoiceNumber";
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslation();
   const { message } = App.useApp();
   const { storeId, loading: userLoading } = useCurrentUser();
 
@@ -58,9 +60,9 @@ function CheckoutContent() {
   const features = plan ? [...parseFeatures(plan.features), ...parseLimits(plan.limits)] : [];
 
   async function handleSubmit() {
-    if (!method) return message.warning("Select a payment method.");
-    if (!reference.trim()) return message.warning("Enter your transaction reference.");
-    if (!senderNumber.trim()) return message.warning("Enter your sender number.");
+    if (!method) return message.warning(t.admin.subWarnSelectMethod);
+    if (!reference.trim()) return message.warning(t.admin.subWarnEnterReference);
+    if (!senderNumber.trim()) return message.warning(t.admin.subWarnEnterSender);
     if (!storeId || !plan) return;
 
     setSubmitting(true);
@@ -89,12 +91,12 @@ function CheckoutContent() {
           router.push(`/dashboard/subscription/pay/${data.invoiceId}`);
           return;
         }
-        throw new Error(data.error || "Submission failed");
+        throw new Error(data.error || t.admin.subErrSubmissionFailed);
       }
 
       setSubmittedInvoiceNumber(data.invoiceNumber ?? invoiceNumber);
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "Something went wrong.");
+      message.error(err instanceof Error ? err.message : t.admin.subErrGeneric);
     } finally {
       setSubmitting(false);
     }
@@ -114,13 +116,13 @@ function CheckoutContent() {
   if (notFound || !plan) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <p className="text-gray-500 dark:text-gray-400 text-sm">Plan not found.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">{t.admin.subPlanNotFound}</p>
         <button
           type="button"
           onClick={() => router.push("/dashboard/subscription")}
           className="mt-4 text-violet-600 dark:text-violet-400 text-sm font-medium hover:underline"
         >
-          ← Back to Subscription
+          ← {t.admin.subBackToSubscription}
         </button>
       </div>
     );
@@ -134,20 +136,20 @@ function CheckoutContent() {
         <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Payment Submitted</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.admin.subPaymentSubmittedTitle}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-          We received your payment details for{" "}
+          {t.admin.subPaymentSubmittedPrefix}{" "}
           <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">
             {submittedInvoiceNumber}
           </span>
-          . We will verify and activate your {plan.name} subscription within 1–2 business days.
+          . {t.admin.subPaymentSubmittedActivateSuffix} {plan.name} {t.admin.subPaymentSubmittedActivateEnd}
         </p>
         <button
           type="button"
           onClick={() => router.push("/dashboard/subscription")}
           className="mt-4 inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
         >
-          Back to Subscription
+          {t.admin.subBackToSubscription}
         </button>
       </div>
     );
@@ -156,7 +158,7 @@ function CheckoutContent() {
   // ── Main ──
 
   return (
-    <div className="max-w-2xl mx-auto pb-12">
+    <div className="max-w-2xl mx-auto px-4 pb-12">
       {/* Back link */}
       <button
         type="button"
@@ -164,22 +166,22 @@ function CheckoutContent() {
         className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Subscription
+        {t.admin.subBackToSubscription}
       </button>
 
       {/* Plan summary card */}
       <div className="rounded-2xl bg-linear-to-br from-violet-700 to-violet-900 dark:from-violet-800 dark:to-violet-950 px-6 pt-6 pb-7 mb-5 shadow-xl shadow-violet-200 dark:shadow-violet-900/30">
         <div className="flex items-center justify-between gap-2 mb-2">
           <p className="text-xs font-semibold text-violet-300 uppercase tracking-widest">
-            Subscribe to {plan.name}
+            {t.admin.subSubscribeTo} {plan.name}
           </p>
           <span className="text-xs text-violet-300 bg-violet-800/50 border border-violet-600/50 px-2.5 py-1 rounded-full shrink-0">
-            {cycle === "yearly" ? "Yearly" : "Monthly"}
+            {cycle === "yearly" ? t.admin.subCycleYearly : t.admin.subCycleMonthly}
           </span>
         </div>
         <p className="text-4xl font-bold text-white font-mono tracking-tight">
           {currency}{amount.toLocaleString("en-BD")}
-          <span className="text-base font-normal text-violet-300">/{cycle === "yearly" ? "year" : "month"}</span>
+          <span className="text-base font-normal text-violet-300">{cycle === "yearly" ? t.admin.subPerYear : t.admin.subPerMonth}</span>
         </p>
         {plan.description && (
           <p className="text-sm text-violet-200 mt-2">{plan.description}</p>
@@ -201,20 +203,20 @@ function CheckoutContent() {
       <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-3.5 mb-5">
         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <div className="text-[12px] text-amber-700 dark:text-amber-300 leading-relaxed">
-          Always use{" "}
+          {t.admin.subAlwaysUsePrefix}{" "}
           <span className="font-mono font-bold bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 px-1.5 py-0.5 rounded text-amber-800 dark:text-amber-200">
             {invoiceNumber}
           </span>{" "}
-          as the payment reference / note so we can match your payment.
+          {t.admin.subAlwaysUseSuffix}
         </div>
       </div>
 
       {/* Method cards */}
       <div>
         <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">
-          Choose Payment Method
+          {t.admin.subChoosePaymentMethod}
         </p>
-        <PaymentMethodPicker method={method} onMethodChange={setMethod} amount={amount} />
+        <PaymentMethodPicker method={method} onMethodChange={setMethod} amount={amount} invoiceNumber={invoiceNumber} />
       </div>
 
       {/* Reference form — appears after method selected */}
@@ -238,7 +240,7 @@ function CheckoutContent() {
           onClick={() => router.push("/dashboard/subscription")}
           className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
-          Cancel
+          {t.admin.subBtnCancel}
         </button>
         <Button
           type="primary"
@@ -256,7 +258,7 @@ function CheckoutContent() {
             height: 44,
           }}
         >
-          Confirm & Submit Payment
+          {t.admin.subConfirmSubmitPayment}
         </Button>
       </div>
     </div>

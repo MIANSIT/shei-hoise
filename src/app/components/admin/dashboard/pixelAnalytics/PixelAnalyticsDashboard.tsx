@@ -433,13 +433,15 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
                     pct === null ? "neutral" : pct >= 70 ? "good" : pct >= 30 ? "warning" : "neutral";
                   const style = STATUS_STYLES[state];
                   return (
-                    <div key={meta.key} className="flex items-center gap-2 text-xs">
-                      <span className="w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
-                      <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full shrink-0 ${style.bg} ${style.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                        {pct === null ? "—" : `${pct}%`}
-                      </span>
-                      <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                    <div key={meta.key} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 sm:w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
+                        <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full shrink-0 ${style.bg} ${style.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                          {pct === null ? "—" : `${pct}% ${t.admin.pixelHealthConfirmedSuffix}`}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 sm:truncate">
                         {n(browserCount)} {t.admin.pixelHealthCoverageSeen} · {n(serverCount)} {t.admin.pixelHealthCoverageBackedUp}
                       </span>
                     </div>

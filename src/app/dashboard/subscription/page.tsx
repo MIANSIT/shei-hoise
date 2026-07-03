@@ -17,6 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { downloadInvoicePdf, type StoreInfo } from "@/lib/utils/downloadInvoicePdf";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
 import {
@@ -46,52 +47,52 @@ const PAYABLE_STATUSES = new Set(["unpaid", "overdue"]);
 
 const SUBSCRIPTION_STATUS_STYLES: Record<
   string,
-  { label: string; header: string; border: string; pill: string; dot: string }
+  { labelKey: string; header: string; border: string; pill: string; dot: string }
 > = {
   active: {
-    label: "Active",
+    labelKey: "subStatusActive",
     header: "bg-emerald-50 dark:bg-emerald-950/20",
     border: "border-emerald-100 dark:border-emerald-900/40",
     pill: "bg-emerald-600 text-white",
     dot: "bg-emerald-200",
   },
   trial: {
-    label: "Trial",
+    labelKey: "subStatusTrial",
     header: "bg-blue-50 dark:bg-blue-950/20",
     border: "border-blue-100 dark:border-blue-900/40",
     pill: "bg-blue-600 text-white",
     dot: "bg-blue-200",
   },
   incomplete: {
-    label: "Incomplete",
+    labelKey: "subStatusIncomplete",
     header: "bg-amber-50 dark:bg-amber-950/20",
     border: "border-amber-100 dark:border-amber-900/40",
     pill: "bg-amber-500 text-white",
     dot: "bg-amber-100",
   },
   pending: {
-    label: "Pending",
+    labelKey: "subStatusPending",
     header: "bg-amber-50 dark:bg-amber-950/20",
     border: "border-amber-100 dark:border-amber-900/40",
     pill: "bg-amber-500 text-white",
     dot: "bg-amber-100",
   },
   past_due: {
-    label: "Past Due",
+    labelKey: "subStatusPastDue",
     header: "bg-orange-50 dark:bg-orange-950/20",
     border: "border-orange-100 dark:border-orange-900/40",
     pill: "bg-orange-500 text-white",
     dot: "bg-orange-100",
   },
   expired: {
-    label: "Expired",
+    labelKey: "subStatusExpired",
     header: "bg-gray-50 dark:bg-gray-800/40",
     border: "border-gray-200 dark:border-gray-700",
     pill: "bg-gray-500 text-white",
     dot: "bg-gray-200",
   },
   cancelled: {
-    label: "Cancelled",
+    labelKey: "subStatusCancelled",
     header: "bg-rose-50 dark:bg-rose-950/20",
     border: "border-rose-100 dark:border-rose-900/40",
     pill: "bg-rose-600 text-white",
@@ -99,52 +100,62 @@ const SUBSCRIPTION_STATUS_STYLES: Record<
   },
 };
 
-function getSubscriptionStatusStyle(status: string) {
-  return SUBSCRIPTION_STATUS_STYLES[status] ?? {
-    label: status,
-    header: "bg-gray-50 dark:bg-gray-800/40",
-    border: "border-gray-200 dark:border-gray-700",
-    pill: "bg-gray-500 text-white",
-    dot: "bg-gray-200",
+function getSubscriptionStatusStyle(status: string, t: ReturnType<typeof useTranslation>) {
+  const style = SUBSCRIPTION_STATUS_STYLES[status];
+  const adminT = t.admin as unknown as Record<string, string>;
+  return {
+    label: style ? adminT[style.labelKey] : status,
+    header: style?.header ?? "bg-gray-50 dark:bg-gray-800/40",
+    border: style?.border ?? "border-gray-200 dark:border-gray-700",
+    pill: style?.pill ?? "bg-gray-500 text-white",
+    dot: style?.dot ?? "bg-gray-200",
   };
 }
 
 // ── Small UI atoms ─────────────────────────────────────────────────────────────
 
 function InvoiceStatusTag({ status }: { status: string }) {
+  const t = useTranslation();
   const map: Record<string, { color: string; label: string }> = {
-    unpaid: { color: "error", label: "Unpaid" },
-    submitted: { color: "blue", label: "Submitted" },
-    paid: { color: "success", label: "Paid" },
-    pending: { color: "warning", label: "Pending" },
-    failed: { color: "error", label: "Failed" },
-    cancelled: { color: "default", label: "Cancelled" },
-    refunded: { color: "purple", label: "Refunded" },
-    overdue: { color: "error", label: "Overdue" },
+    unpaid: { color: "error", label: t.admin.subInvoiceStatusUnpaid },
+    submitted: { color: "blue", label: t.admin.subInvoiceStatusSubmitted },
+    paid: { color: "success", label: t.admin.subInvoiceStatusPaid },
+    pending: { color: "warning", label: t.admin.subInvoiceStatusPending },
+    failed: { color: "error", label: t.admin.subInvoiceStatusFailed },
+    cancelled: { color: "default", label: t.admin.subInvoiceStatusCancelled },
+    refunded: { color: "purple", label: t.admin.subInvoiceStatusRefunded },
+    overdue: { color: "error", label: t.admin.subInvoiceStatusOverdue },
   };
   const cfg = map[status] ?? { color: "default", label: status };
   return <Tag color={cfg.color}>{cfg.label}</Tag>;
 }
 
 function BillingCycleTag({ cycle }: { cycle: string }) {
-  const label = cycle === "yearly" ? "Yearly" : cycle === "monthly" ? "Monthly" : cycle;
+  const t = useTranslation();
+  const label = cycle === "yearly" ? t.admin.subCycleYearly : cycle === "monthly" ? t.admin.subCycleMonthly : cycle;
   return <Tag color="blue">{label}</Tag>;
 }
 
 // ── PaymentMethodBadge ──────────────────────────────────────────────────────
 
-const METHOD_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  bkash: { bg: "bg-pink-100", text: "text-pink-700", label: "bKash" },
-  nagad: { bg: "bg-orange-100", text: "text-orange-700", label: "Nagad" },
-  bank: { bg: "bg-blue-100", text: "text-blue-700", label: "Bank Transfer" },
+const METHOD_STYLES: Record<string, { bg: string; text: string }> = {
+  bkash: { bg: "bg-pink-100", text: "text-pink-700" },
+  nagad: { bg: "bg-orange-100", text: "text-orange-700" },
+  bank: { bg: "bg-blue-100", text: "text-blue-700" },
 };
 
 function PaymentMethodBadge({ method }: { method: string | null }) {
+  const t = useTranslation();
   if (!method) return <span className="text-gray-400 text-xs">—</span>;
-  const style = METHOD_STYLES[method] ?? { bg: "bg-gray-100", text: "text-gray-700", label: method };
+  const labels: Record<string, string> = {
+    bkash: t.admin.subMethodBkash,
+    nagad: t.admin.subMethodNagad,
+    bank: t.admin.subMethodBankTransfer,
+  };
+  const style = METHOD_STYLES[method] ?? { bg: "bg-gray-100", text: "text-gray-700" };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
-      {style.label}
+      {labels[method] ?? method}
     </span>
   );
 }
@@ -155,10 +166,11 @@ function makeInvoiceColumns(
   store: StoreInfo,
   canPay: boolean,
   onPay: (inv: SubscriptionInvoice) => void,
+  t: ReturnType<typeof useTranslation>,
 ): ColumnsType<SubscriptionInvoice> {
   return [
     {
-      title: "Invoice #",
+      title: t.admin.subColInvoiceNum,
       dataIndex: "invoice_number",
       key: "invoice_number",
       render: (v: string) => (
@@ -168,24 +180,24 @@ function makeInvoiceColumns(
       ),
     },
     {
-      title: "Plan",
+      title: t.admin.subColPlan,
       dataIndex: "plan_name",
       key: "plan_name",
     },
     {
-      title: "Amount",
+      title: t.admin.subColAmount,
       key: "amount",
       render: (_: unknown, record: SubscriptionInvoice) =>
         formatAmount(record.amount, record.currency),
     },
     {
-      title: "Billing",
+      title: t.admin.subColBilling,
       dataIndex: "billing_cycle",
       key: "billing_cycle",
       render: (v: string) => <BillingCycleTag cycle={v} />,
     },
     {
-      title: "Period",
+      title: t.admin.subColPeriod,
       key: "period",
       render: (_: unknown, record: SubscriptionInvoice) => (
         <span className="text-xs text-gray-500">
@@ -194,19 +206,19 @@ function makeInvoiceColumns(
       ),
     },
     {
-      title: "Status",
+      title: t.admin.subColStatus,
       dataIndex: "status",
       key: "status",
       render: (v: string) => <InvoiceStatusTag status={v} />,
     },
     {
-      title: "Payment Method",
+      title: t.admin.subColPaymentMethod,
       dataIndex: "payment_method",
       key: "payment_method",
       render: (v: string | null) => <PaymentMethodBadge method={v} />,
     },
     {
-      title: "Paid At",
+      title: t.admin.subColPaidAt,
       dataIndex: "paid_at",
       key: "paid_at",
       render: (v: string | null) => (
@@ -214,7 +226,7 @@ function makeInvoiceColumns(
       ),
     },
     {
-      title: "Reference",
+      title: t.admin.subColReference,
       dataIndex: "payment_reference",
       key: "payment_reference",
       render: (v: string | null) =>
@@ -231,7 +243,7 @@ function makeInvoiceColumns(
       render: (_: unknown, record: SubscriptionInvoice) => (
         <div className="flex items-center gap-1">
           {canPay && PAYABLE_STATUSES.has(record.status) && (
-            <Tooltip title="Pay Now">
+            <Tooltip title={t.admin.subTooltipPayNow}>
               <Button
                 size="small"
                 type="primary"
@@ -239,11 +251,11 @@ function makeInvoiceColumns(
                 onClick={() => onPay(record)}
                 style={{ backgroundColor: "#7c3aed", borderColor: "#7c3aed", fontSize: 11 }}
               >
-                Pay
+                {t.admin.subBtnPay}
               </Button>
             </Tooltip>
           )}
-          <Tooltip title="Download PDF">
+          <Tooltip title={t.admin.subTooltipDownloadPdf}>
             <Button
               type="text"
               size="small"
@@ -272,17 +284,18 @@ function SubscriptionCard({
   canPay: boolean;
   onPay: (inv: SubscriptionInvoice) => void;
 }) {
+  const t = useTranslation();
   const showPayBanner =
     canPay && latestInvoice && PAYABLE_STATUSES.has(latestInvoice.status);
-  const statusStyle = getSubscriptionStatusStyle(sub.status);
+  const statusStyle = getSubscriptionStatusStyle(sub.status, t);
 
   const metaItems = [
-    { label: "Started", value: formatDate(sub.started_at ?? sub.current_period_start) },
-    { label: "Expires", value: formatDate(sub.expires_at ?? sub.current_period_end) },
-    ...(sub.trial_ends_at ? [{ label: "Trial ends", value: formatDate(sub.trial_ends_at) }] : []),
-    ...(sub.canceled_at ? [{ label: "Cancelled at", value: formatDate(sub.canceled_at) }] : []),
+    { label: t.admin.subMetaStarted, value: formatDate(sub.started_at ?? sub.current_period_start) },
+    { label: t.admin.subMetaExpires, value: formatDate(sub.expires_at ?? sub.current_period_end) },
+    ...(sub.trial_ends_at ? [{ label: t.admin.subMetaTrialEnds, value: formatDate(sub.trial_ends_at) }] : []),
+    ...(sub.canceled_at ? [{ label: t.admin.subMetaCancelledAt, value: formatDate(sub.canceled_at) }] : []),
     ...(sub.payment_provider
-      ? [{ label: "Payment provider", value: sub.payment_provider.replace(/_/g, " ") }]
+      ? [{ label: t.admin.subMetaPaymentProvider, value: sub.payment_provider.replace(/_/g, " ") }]
       : []),
   ];
 
@@ -317,7 +330,7 @@ function SubscriptionCard({
               onClick={() => onPay(latestInvoice!)}
               style={{ backgroundColor: "#7c3aed", borderColor: "#7c3aed" }}
             >
-              Pay Now
+              {t.admin.subTooltipPayNow}
             </Button>
           )}
         </div>
@@ -347,10 +360,10 @@ function SubscriptionCard({
             <InvoiceStatusTag status={latestInvoice.status} />
             <PaymentMethodBadge method={latestInvoice.payment_method} />
             <span className="text-xs text-gray-400 dark:text-gray-500">
-              {latestInvoice.paid_at ? "Paid" : "Due"} {formatDate(latestInvoice.paid_at ?? latestInvoice.due_date)}
+              {latestInvoice.paid_at ? t.admin.subInvoiceStatusPaid : t.admin.subDuePrefix} {formatDate(latestInvoice.paid_at ?? latestInvoice.due_date)}
             </span>
           </div>
-          <Tooltip title="Download PDF">
+          <Tooltip title={t.admin.subTooltipDownloadPdf}>
             <button
               onClick={() => downloadInvoicePdf(latestInvoice, store)}
               className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-400 dark:text-gray-500"
@@ -364,7 +377,7 @@ function SubscriptionCard({
       {sub.cancels_at_period_end && (
         <div className="mx-6 mb-5 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2.5">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          This subscription will cancel at the end of the current billing period.
+          {t.admin.subCancelAtPeriodEnd}
         </div>
       )}
     </div>
@@ -374,11 +387,6 @@ function SubscriptionCard({
 
 // ── Admin payment panel ───────────────────────────────────────────────────────
 
-const METHOD_LABEL: Record<string, string> = {
-  bkash: "bKash",
-  nagad: "Nagad",
-  bank: "Bank",
-};
 const METHOD_COLOR: Record<string, string> = {
   bkash: "bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300",
   nagad: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300",
@@ -386,6 +394,12 @@ const METHOD_COLOR: Record<string, string> = {
 };
 
 function AdminPaymentPanel() {
+  const t = useTranslation();
+  const METHOD_LABEL: Record<string, string> = {
+    bkash: t.admin.subMethodBkash,
+    nagad: t.admin.subMethodNagad,
+    bank: t.admin.subMethodBankShort,
+  };
   const [rows, setRows] = useState<AdminInvoiceRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -431,7 +445,7 @@ function AdminPaymentPanel() {
       <div className="px-6 py-4 border-b border-violet-100 dark:border-violet-800 flex items-center gap-2 bg-violet-50 dark:bg-violet-950/30">
         <ShieldCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
         <h2 className="text-base font-semibold text-violet-900 dark:text-violet-100">
-          Payment Approvals
+          {t.admin.subPaymentApprovals}
         </h2>
         {rows.length > 0 && (
           <span className="ml-1 bg-violet-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -443,7 +457,7 @@ function AdminPaymentPanel() {
       {rows.length === 0 ? (
         <div className="py-12 text-center">
           <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">No pending payments to review.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t.admin.subNoPendingPayments}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -480,7 +494,7 @@ function AdminPaymentPanel() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
                   {row.payment_method && (
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Method</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{t.admin.subFieldMethod}</p>
                       <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${METHOD_COLOR[row.payment_method] ?? "bg-gray-100 text-gray-700"}`}>
                         {METHOD_LABEL[row.payment_method] ?? row.payment_method}
                       </span>
@@ -488,20 +502,20 @@ function AdminPaymentPanel() {
                   )}
                   {row.sender_number && (
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Sender Number</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{t.admin.subFieldSenderNumber}</p>
                       <p className="text-xs font-mono font-semibold text-gray-800 dark:text-gray-200">{row.sender_number}</p>
                     </div>
                   )}
                   {row.payment_reference && (
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Reference / TxID</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{t.admin.subFieldReferenceTxid}</p>
                       <p className="text-xs font-mono font-semibold text-gray-800 dark:text-gray-200">{row.payment_reference}</p>
                     </div>
                   )}
                 </div>
 
                 {row.notes && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 italic mt-1">"{row.notes}"</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 italic mt-1">&quot;{row.notes}&quot;</p>
                 )}
               </div>
 
@@ -519,7 +533,7 @@ function AdminPaymentPanel() {
                     fontWeight: 600,
                   }}
                 >
-                  Approve
+                  {t.admin.subBtnApprove}
                 </Button>
                 <Button
                   danger
@@ -528,7 +542,7 @@ function AdminPaymentPanel() {
                   onClick={() => handleAction(row.id, "/api/subscription/cancel-payment")}
                   style={{ borderRadius: 8, fontWeight: 600 }}
                 >
-                  Cancel
+                  {t.admin.subBtnCancel}
                 </Button>
               </div>
             </div>
@@ -543,6 +557,7 @@ function AdminPaymentPanel() {
 
 export default function SubscriptionPage() {
   const router = useRouter();
+  const t = useTranslation();
   const { storeId, loading: userLoading, role } = useCurrentUser();
   const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([]);
@@ -603,7 +618,7 @@ export default function SubscriptionPage() {
   if (!storeId && !isSuperAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <Empty description="Store not found" />
+        <Empty description={t.admin.subStoreNotFound} />
       </div>
     );
   }
@@ -613,10 +628,10 @@ export default function SubscriptionPage() {
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Subscription
+          {t.admin.subPageTitle}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Manage your plan and view billing history.
+          {t.admin.subPageDesc}
         </p>
       </div>
 
@@ -633,10 +648,10 @@ export default function SubscriptionPage() {
         <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-10 text-center">
           <CreditCard className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            No active subscription found.
+            {t.admin.subNoActiveTitle}
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Contact support to set up your plan.
+            {t.admin.subNoActiveDesc}
           </p>
         </div>
       )}
@@ -653,10 +668,10 @@ export default function SubscriptionPage() {
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                {subscription ? "Want to change your plan?" : "Choose a plan to get started"}
+                {subscription ? t.admin.subChangePlanTitle : t.admin.subGetStartedTitle}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Compare features and pick what fits your store best.
+                {t.admin.subChangePlanDesc}
               </p>
             </div>
           </div>
@@ -667,7 +682,7 @@ export default function SubscriptionPage() {
             onClick={() => router.push("/dashboard/subscription/plans")}
             style={{ backgroundColor: "#7c3aed", borderColor: "#7c3aed" }}
           >
-            {subscription ? "View All Plans" : "Browse Plans"}
+            {subscription ? t.admin.subViewAllPlans : t.admin.subBrowsePlans}
           </Button>
         </div>
       )}
@@ -677,19 +692,19 @@ export default function SubscriptionPage() {
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-gray-500" />
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            Billing History
+            {t.admin.subBillingHistory}
           </h2>
           <span className="ml-auto text-xs text-gray-400">
-            {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
+            {invoices.length} {invoices.length !== 1 ? t.admin.subInvoicePlural : t.admin.subInvoiceSingular}
           </span>
         </div>
         <Table<SubscriptionInvoice>
           dataSource={invoices}
-          columns={makeInvoiceColumns(storeInfo, canPay, goToPayPage)}
+          columns={makeInvoiceColumns(storeInfo, canPay, goToPayPage, t)}
           rowKey="id"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           scroll={{ x: 1000 }}
-          locale={{ emptyText: <Empty description="No invoices yet" /> }}
+          locale={{ emptyText: <Empty description={t.admin.subNoInvoices} /> }}
           size="small"
         />
       </div>
