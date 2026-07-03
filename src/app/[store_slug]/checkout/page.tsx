@@ -534,7 +534,7 @@ export default function CheckoutPage() {
           content_type: "product",
           value: calculations.totalPrice + shippingFee + taxAmount,
           currency: storeCurrency,
-        }, store_slug);
+        }, store_slug, { phone: values.phone });
 
         const result = await processOrder(
           formDataWithShipping,
@@ -562,7 +562,7 @@ export default function CheckoutPage() {
             value: calculations.totalPrice + shippingFee + taxAmount,
             currency: storeCurrency,
             order_id: result.orderNumber,
-          }, store_slug);
+          }, store_slug, { phone: values.phone });
         }
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));

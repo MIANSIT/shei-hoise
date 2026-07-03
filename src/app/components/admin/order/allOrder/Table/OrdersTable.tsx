@@ -69,6 +69,12 @@ const RISK_STYLES: Record<string, { bg: string; text: string; label: string }> =
   high: { bg: "bg-red-50", text: "text-red-700", label: "High" },
 };
 
+const FB_STATUS_STYLES: Record<"sent" | "held" | "suppressed", { bg: string; text: string; dot: string; label: string; reason: string }> = {
+  sent: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500", label: "Sent", reason: "Sent to Facebook immediately after checkout" },
+  held: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: "Held", reason: "Held — will only be sent to Facebook once this order is marked Delivered" },
+  suppressed: { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-400", label: "Suppressed", reason: "Suppressed — this order was cancelled before the event was ever sent" },
+};
+
 const OrdersTable: React.FC<Props> = ({
   orders,
   riskByPhone,
@@ -451,6 +457,24 @@ const OrdersTable: React.FC<Props> = ({
       },
       width: 90,
       responsive: ["lg"],
+    },
+    {
+      title: t.admin.orderColFb,
+      key: "fb_status",
+      render: (_, order: StoreOrder) => {
+        const fbStatus = order.fb_purchase_event_status ?? "sent";
+        const style = FB_STATUS_STYLES[fbStatus];
+        return (
+          <Tooltip title={style.reason}>
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${style.bg} ${style.text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+              {style.label}
+            </span>
+          </Tooltip>
+        );
+      },
+      width: 70,
+      responsive: ["xl"],
     },
     {
       title: t.admin.orderColAddress,

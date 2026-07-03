@@ -12,6 +12,8 @@ interface FireServerPixelEventParams {
   fbc?: string | null;
   clientIpAddress?: string | null;
   clientUserAgent?: string | null;
+  phone?: string | null;
+  email?: string | null;
 }
 
 /**
@@ -52,6 +54,8 @@ export async function fireServerPixelEvent(params: FireServerPixelEventParams): 
         clientIpAddress: params.clientIpAddress,
         clientUserAgent: params.clientUserAgent,
         customData: params.eventParams,
+        phone: params.phone,
+        email: params.email,
       });
 
       await supabaseAdmin

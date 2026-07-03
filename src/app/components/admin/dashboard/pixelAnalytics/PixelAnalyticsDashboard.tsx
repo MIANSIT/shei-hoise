@@ -18,10 +18,7 @@ import {
   CreditCard,
   CheckCircle,
   TrendingUp,
-  DollarSign,
   RefreshCw,
-  Globe,
-  Package,
   Info,
   Lock,
   AlertTriangle,
@@ -38,11 +35,9 @@ import {
   startOf,
 } from "@/lib/queries/pixelEvents/getPixelAnalytics";
 import { getAdSpendProtectionCount } from "@/lib/queries/orders/getAdSpendProtectionCount";
-import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreCapiStatus, type StoreCapiStatus } from "@/lib/queries/stores/getStoreCapiStatus";
 import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
-import type { StoreSettings } from "@/lib/types/store/store";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -64,6 +59,44 @@ function convRate(a: number, b: number) {
 }
 
 // ── Sub-components ───────────────────────────────────────────────────────────
+
+// Status chips use a fixed, reserved palette (good/warning/critical/neutral)
+// that never doubles as the funnel's categorical blue — and always pair an
+// icon or dot with the label, since color alone never carries the meaning.
+const STATUS_STYLES = {
+  good: { bg: "bg-green-50 dark:bg-green-500/10", text: "text-green-700 dark:text-green-400", dot: "bg-green-500" },
+  warning: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  critical: { bg: "bg-red-50 dark:bg-red-500/10", text: "text-red-700 dark:text-red-400", dot: "bg-red-500" },
+  neutral: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-500 dark:text-gray-400", dot: "bg-gray-400" },
+} as const;
+
+function StatusChip({
+  label,
+  state,
+  text,
+  icon: Icon,
+  title,
+}: {
+  label: string;
+  state: keyof typeof STATUS_STYLES;
+  text: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  title?: string;
+}) {
+  const style = STATUS_STYLES[state];
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1.5 text-xs font-medium pl-2.5 pr-3 py-1.5 rounded-full ${style.bg}`}
+    >
+      <span className="text-gray-500 dark:text-gray-400">{label}</span>
+      <span className={`inline-flex items-center gap-1 font-semibold ${style.text}`}>
+        {Icon ? <Icon className="w-3 h-3" /> : <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />}
+        {text}
+      </span>
+    </span>
+  );
+}
 
 function SectionHeader({
   gradient,
@@ -173,7 +206,6 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   const [period, setPeriod] = useState<PixelPeriod>("7d");
   const [data, setData] = useState<PixelAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
   const [capiStatus, setCapiStatus] = useState<StoreCapiStatus>({ hasToken: false, testEventCode: null });
   const [adSpendProtected, setAdSpendProtected] = useState(0);
@@ -182,7 +214,6 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   const { icon: currencyIcon } = useUserCurrencyIcon();
 
   useEffect(() => {
-    getStoreSettings(storeId).then(setSettings);
     getStoreSubscription(storeId).then(setSubscription);
     getStoreCapiStatus(storeId).then(setCapiStatus);
   }, [storeId]);
@@ -195,12 +226,17 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   const capiConfigured = capiStatus.hasToken;
   const testModeActive = !!capiStatus.testEventCode;
 
+  // Funnel stages are ordinal (order carries meaning), so they share one hue
+  // stepping darker as the customer commits further — not a different color
+  // per stage. Purchase breaks the ramp on purpose: it's the outcome that
+  // means revenue, so it wears the same "good/success" green used elsewhere
+  // in the app (paid, delivered), not the next step of the funnel ramp.
   const EVENT_META = [
-    { key: "PageView", label: t.admin.pixelPageViews, icon: Eye, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-400 to-blue-600", chartColor: "#3b82f6" },
-    { key: "ViewContent", label: t.admin.pixelProductViews, icon: ShoppingBag, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-500/10", border: "border-indigo-100 dark:border-indigo-500/20", bar: "from-indigo-400 to-indigo-600", chartColor: "#6366f1" },
-    { key: "AddToCart", label: t.admin.pixelAddToCart, icon: ShoppingCart, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10", border: "border-amber-100 dark:border-amber-500/20", bar: "from-amber-400 to-amber-600", chartColor: "#f59e0b" },
-    { key: "InitiateCheckout", label: t.admin.pixelCheckoutStarted, icon: CreditCard, color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-500/10", border: "border-orange-100 dark:border-orange-500/20", bar: "from-orange-400 to-orange-600", chartColor: "#f97316" },
-    { key: "Purchase", label: t.admin.pixelPurchases, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-100 dark:border-emerald-500/20", bar: "from-emerald-400 to-emerald-600", chartColor: "#10b981" },
+    { key: "PageView", label: t.admin.pixelPageViews, icon: Eye, color: "text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-300 to-blue-400", chartColor: "#93c5fd" },
+    { key: "ViewContent", label: t.admin.pixelProductViews, icon: ShoppingBag, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-400 to-blue-500", chartColor: "#60a5fa" },
+    { key: "AddToCart", label: t.admin.pixelAddToCart, icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-500 to-blue-600", chartColor: "#3b82f6" },
+    { key: "InitiateCheckout", label: t.admin.pixelCheckoutStarted, icon: CreditCard, color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-600 to-blue-700", chartColor: "#2563eb" },
+    { key: "Purchase", label: t.admin.pixelPurchases, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-100 dark:border-emerald-500/20", bar: "from-emerald-500 to-emerald-600", chartColor: "#10b981" },
   ];
 
   const fmtBDT = (val: number) => {
@@ -292,94 +328,6 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
         </div>
       </div>
 
-      {/* ── Facebook Connection Health ── */}
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-blue-400 to-indigo-500" title={t.admin.pixelHealthTitle} />
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.admin.pixelHealthPixel}</span>
-              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${pixelId ? "text-green-700 bg-green-50 dark:bg-green-500/10" : "text-gray-500 bg-gray-100 dark:bg-gray-800"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${pixelId ? "bg-green-500" : "bg-gray-400"}`} />
-                {pixelId ? t.admin.pixelHealthConnected : t.admin.pixelHealthNotConnected}
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.admin.pixelHealthCapi}</span>
-              {!capiEntitled ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-gray-500 bg-gray-100 dark:bg-gray-800">
-                  <Lock className="w-3 h-3" /> {t.admin.pixelHealthCapiLocked}
-                </span>
-              ) : data?.lastCapiError ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-red-700 bg-red-50 dark:bg-red-500/10">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> {t.admin.pixelHealthCapiError}
-                </span>
-              ) : capiConfigured ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-green-700 bg-green-50 dark:bg-green-500/10">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> {t.admin.pixelHealthConnected}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-gray-500 bg-gray-100 dark:bg-gray-800">
-                  {t.admin.pixelHealthNotConnected}
-                </span>
-              )}
-            </div>
-            {capiEntitled && data?.lastCapiError && (
-              <p className="text-[11px] text-red-500 mt-1.5 truncate" title={data.lastCapiError}>{data.lastCapiError}</p>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.admin.pixelHealthCatalog}</span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-blue-700 bg-blue-50 dark:bg-blue-500/10">
-                {t.admin.pixelHealthCatalogAvailable}
-              </span>
-            </div>
-            <Link href="/dashboard/store-management#store-settings" className="text-[11px] text-indigo-500 hover:underline inline-flex items-center gap-1 mt-1.5">
-              {t.admin.pixelHealthCatalogCta} <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </div>
-
-        {testModeActive && (
-          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3 mb-3">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 dark:text-amber-300">{t.admin.pixelHealthTestMode}</p>
-          </div>
-        )}
-
-        {capiEntitled && capiConfigured && (
-          <div className="mb-3">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">{t.admin.pixelHealthBrowserVsServer}</p>
-            <div className="space-y-1.5">
-              {EVENT_META.map((meta) => {
-                const browserCount = totals[meta.key] ?? 0;
-                const serverCount = data?.capiDelivered?.[meta.key] ?? 0;
-                return (
-                  <div key={meta.key} className="flex items-center gap-2 text-xs">
-                    <span className="w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
-                    <span className="text-gray-400">{t.admin.pixelHealthBrowser}: <strong className="text-gray-700 dark:text-gray-300">{n(browserCount)}</strong></span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-gray-400">{t.admin.pixelHealthServer}: <strong className="text-gray-700 dark:text-gray-300">{n(serverCount)}</strong></span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="rounded-xl bg-linear-to-br from-blue-600 to-blue-700 p-4 text-white">
-          <p className="text-[10px] uppercase tracking-wide text-blue-100">{t.admin.pixelHealthAdSpendProtection}</p>
-          <p className="text-2xl font-black mt-1">{n(adSpendProtected)}</p>
-          <p className="text-xs text-blue-100 mt-1">{t.admin.pixelHealthAdSpendProtectionDesc}</p>
-        </div>
-      </div>
-
       {/* ── Revenue Hero ── */}
       <div className="relative rounded-2xl overflow-hidden bg-linear-to-br from-indigo-500 via-indigo-600 to-violet-600 p-5 sm:p-7 text-white shadow-lg shadow-indigo-500/20">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
@@ -388,7 +336,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
             <p className="text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-1">
               {t.admin.pixelTrackedRevenue}
             </p>
-            <p className="text-3xl sm:text-4xl font-black tabular-nums">
+            <p className="text-3xl sm:text-4xl font-black">
               {fmtBDT(data?.totalRevenue ?? 0)}
             </p>
             <p className="text-indigo-200 text-xs mt-1">
@@ -430,6 +378,85 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
         </div>
       </div>
 
+      {/* ── Connection Health (status colors: good/warning/critical/neutral — never the funnel's blue) ── */}
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <StatusChip
+            label={t.admin.pixelHealthPixel}
+            state={pixelId ? "good" : "neutral"}
+            text={pixelId ? t.admin.pixelHealthConnected : t.admin.pixelHealthNotConnected}
+          />
+          <StatusChip
+            label={t.admin.pixelHealthCapi}
+            state={!capiEntitled ? "neutral" : data?.lastCapiError ? "critical" : capiConfigured ? "good" : "neutral"}
+            text={
+              !capiEntitled
+                ? t.admin.pixelHealthCapiLocked
+                : data?.lastCapiError
+                  ? t.admin.pixelHealthCapiError
+                  : capiConfigured
+                    ? t.admin.pixelHealthConnected
+                    : t.admin.pixelHealthNotConnected
+            }
+            icon={!capiEntitled ? Lock : undefined}
+            title={capiEntitled && data?.lastCapiError ? data.lastCapiError : undefined}
+          />
+          <StatusChip label={t.admin.pixelHealthCatalog} state="good" text={t.admin.pixelHealthCatalogAvailable} />
+          <Link
+            href="/dashboard/store-management#store-settings"
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 ml-auto"
+          >
+            {t.admin.pixelHealthCatalogCta} <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {testModeActive && (
+          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-3 mb-4">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300">{t.admin.pixelHealthTestMode}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {capiEntitled && capiConfigured && (
+            <div>
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t.admin.pixelHealthBrowserVsServer}</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3 leading-relaxed max-w-xs">
+                {t.admin.pixelHealthBrowserVsServerDesc}
+              </p>
+              <div className="space-y-2">
+                {EVENT_META.map((meta) => {
+                  const browserCount = totals[meta.key] ?? 0;
+                  const serverCount = data?.capiDelivered?.[meta.key] ?? 0;
+                  const pct = browserCount > 0 ? Math.round((serverCount / browserCount) * 100) : null;
+                  const state: keyof typeof STATUS_STYLES =
+                    pct === null ? "neutral" : pct >= 70 ? "good" : pct >= 30 ? "warning" : "neutral";
+                  const style = STATUS_STYLES[state];
+                  return (
+                    <div key={meta.key} className="flex items-center gap-2 text-xs">
+                      <span className="w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
+                      <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full shrink-0 ${style.bg} ${style.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                        {pct === null ? "—" : `${pct}%`}
+                      </span>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                        {n(browserCount)} {t.admin.pixelHealthCoverageSeen} · {n(serverCount)} {t.admin.pixelHealthCoverageBackedUp}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 p-4">
+            <p className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 font-semibold">{t.admin.pixelHealthAdSpendProtection}</p>
+            <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">{n(adSpendProtected)}</p>
+            <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-1">{t.admin.pixelHealthAdSpendProtectionDesc}</p>
+          </div>
+        </div>
+      </div>
+
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {EVENT_META.map((meta) => {
@@ -444,7 +471,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
               <div className="w-8 h-8 rounded-xl bg-white dark:bg-gray-900/50 flex items-center justify-center mb-3 shadow-sm">
                 <Icon className={`w-4 h-4 ${meta.color}`} />
               </div>
-              <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">
+              <p className="text-2xl font-black text-gray-900 dark:text-white">
                 {loading ? "—" : n(count)}
               </p>
               <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">
@@ -457,7 +484,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
       {/* ── Conversion Funnel ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-indigo-400 to-violet-500" title={t.admin.pixelConversionFunnel} />
+        <SectionHeader gradient="from-blue-400 to-blue-600" title={t.admin.pixelConversionFunnel} />
         <div className="space-y-2">
           {EVENT_META.map((meta, i) => {
             const count = totals[meta.key] ?? 0;
@@ -492,11 +519,26 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
             );
           })}
         </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+          <div>
+            <p className="text-lg font-black text-gray-900 dark:text-white">
+              {loading ? "—" : convRate(data?.totalOrders ?? 0, totals.AddToCart ?? 0)}
+            </p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t.admin.pixelCartToBuyRate}</p>
+          </div>
+          <div>
+            <p className="text-lg font-black text-gray-900 dark:text-white">
+              {loading ? "—" : convRate(data?.totalOrders ?? 0, totals.ViewContent ?? 0)}
+            </p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t.admin.pixelViewToBuyRate}</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Daily Trend Chart ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-blue-400 to-indigo-500" title={t.admin.pixelDailyTrend} />
+        <SectionHeader gradient="from-blue-400 to-blue-600" title={t.admin.pixelDailyTrend} />
         {loading ? (
           <div className="h-52 flex items-center justify-center">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -516,7 +558,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" strokeOpacity={0.5} />
+              <CartesianGrid stroke="#e5e7eb" strokeOpacity={0.6} vertical={false} />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 10, fill: "#9ca3af" }}
@@ -550,70 +592,6 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
             </AreaChart>
           </ResponsiveContainer>
         )}
-      </div>
-
-      {/* ── Revenue + Order Stats ── */}
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
-        <SectionHeader gradient="from-emerald-400 to-teal-500" title={t.admin.pixelRevenueOrders} />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            {
-              label: t.admin.pixelTotalRevenue,
-              value: fmtBDT(data?.totalRevenue ?? 0),
-              icon: DollarSign,
-              color: "text-emerald-500",
-              bg: "bg-emerald-50 dark:bg-emerald-500/10",
-            },
-            {
-              label: t.admin.pixelTotalOrders,
-              value: n(data?.totalOrders ?? 0),
-              icon: CheckCircle,
-              color: "text-blue-500",
-              bg: "bg-blue-50 dark:bg-blue-500/10",
-            },
-            {
-              label: t.admin.pixelAvgOrderValue,
-              value: data?.avgOrderValue ? fmtBDT(Math.round(data.avgOrderValue)) : "—",
-              icon: TrendingUp,
-              color: "text-indigo-500",
-              bg: "bg-indigo-50 dark:bg-indigo-500/10",
-            },
-            {
-              label: t.admin.pixelAvgItemsPerOrder,
-              value: data?.avgItemsPerOrder ? n(data.avgItemsPerOrder.toFixed(1)) : "—",
-              icon: Package,
-              color: "text-violet-500",
-              bg: "bg-violet-50 dark:bg-violet-500/10",
-            },
-            {
-              label: t.admin.pixelCartToBuyRate,
-              value: convRate(data?.totalOrders ?? 0, totals.AddToCart ?? 0),
-              icon: ShoppingCart,
-              color: "text-amber-500",
-              bg: "bg-amber-50 dark:bg-amber-500/10",
-            },
-            {
-              label: t.admin.pixelViewToBuyRate,
-              value: convRate(data?.totalOrders ?? 0, totals.ViewContent ?? 0),
-              icon: Globe,
-              color: "text-rose-500",
-              bg: "bg-rose-50 dark:bg-rose-500/10",
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.label} className={`rounded-xl ${item.bg} p-4`}>
-                <Icon className={`w-5 h-5 ${item.color} mb-2`} />
-                <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">
-                  {loading ? "—" : item.value}
-                </p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  {item.label}
-                </p>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* ── Traffic Sources ── */}

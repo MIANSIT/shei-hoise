@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { decrypt } from "./encryption";
 
 interface SendCapiEventParams {
@@ -11,11 +12,27 @@ interface SendCapiEventParams {
   clientIpAddress?: string | null;
   clientUserAgent?: string | null;
   customData?: Record<string, unknown>;
+  /** Customer identity, hashed before it ever leaves this function — raises Meta's Event Match Quality score. */
+  phone?: string | null;
+  email?: string | null;
 }
 
 export interface SendCapiEventResult {
   delivered: boolean;
   error: string | null;
+}
+
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+// Bangladeshi numbers are stored locally as 11 digits starting with 0;
+// Meta requires E.164 (country code, no leading zero or plus) before hashing.
+function normalizeBdPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("880")) return digits;
+  if (digits.startsWith("0")) return `880${digits.slice(1)}`;
+  return digits;
 }
 
 /** Sends one event to Meta's Conversions API. Never throws — failures are returned, not raised. */
@@ -30,6 +47,8 @@ export async function sendConversionApiEvent(
     if (params.fbc) userData.fbc = params.fbc;
     if (params.clientIpAddress) userData.client_ip_address = params.clientIpAddress;
     if (params.clientUserAgent) userData.client_user_agent = params.clientUserAgent;
+    if (params.phone) userData.ph = [sha256Hex(normalizeBdPhone(params.phone))];
+    if (params.email) userData.em = [sha256Hex(params.email.trim().toLowerCase())];
 
     const payload: Record<string, unknown> = {
       data: [

@@ -26,7 +26,12 @@ function generateEventId(event: string, params?: FbqParams): string {
   return `${event}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function fbq(event: string, params?: FbqParams, storeSlug?: string): void {
+interface FbqIdentity {
+  phone?: string;
+  email?: string;
+}
+
+export function fbq(event: string, params?: FbqParams, storeSlug?: string, identity?: FbqIdentity): void {
   const eventId = generateEventId(event, params);
 
   // Send to Facebook (browser pixel) — eventID lets Meta dedup this against
@@ -53,13 +58,13 @@ export function fbq(event: string, params?: FbqParams, storeSlug?: string): void
       fetch("/api/pixel-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event, params: mergedParams, store_slug: storeSlug, eventId, fbp, fbc }),
+        body: JSON.stringify({ event, params: mergedParams, store_slug: storeSlug, eventId, fbp, fbc, phone: identity?.phone, email: identity?.email }),
       }).catch(() => {});
     } catch {
       fetch("/api/pixel-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event, params, store_slug: storeSlug, eventId, fbp, fbc }),
+        body: JSON.stringify({ event, params, store_slug: storeSlug, eventId, fbp, fbc, phone: identity?.phone, email: identity?.email }),
       }).catch(() => {});
     }
   }

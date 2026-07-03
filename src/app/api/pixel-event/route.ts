@@ -4,7 +4,7 @@ import { fireServerPixelEvent } from "@/lib/utils/pixelEventServer";
 
 export async function POST(req: NextRequest) {
   try {
-    const { event, params, store_slug, eventId, fbp, fbc } = await req.json();
+    const { event, params, store_slug, eventId, fbp, fbc, phone, email } = await req.json();
 
     if (!event || !store_slug) {
       return Response.json({ error: "Missing event or store_slug" }, { status: 400 });
@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
       fbc,
       clientIpAddress: req.headers.get("x-forwarded-for"),
       clientUserAgent: req.headers.get("user-agent"),
+      phone,
+      email,
     });
 
     return Response.json({ ok: true }, { status: 201 });
