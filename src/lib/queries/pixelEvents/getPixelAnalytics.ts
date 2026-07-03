@@ -145,7 +145,11 @@ export async function getPixelAnalytics(
       capiDelivered[row.event_name]++;
       lastCapiDeliveredAt = row.created_at;
     }
-    if (row.capi_error) lastCapiError = row.capi_error;
+    // Rows are fetched oldest-first, so this ends up reflecting the most
+    // recent row that actually attempted a CAPI send (delivered or not) —
+    // a later success correctly clears an earlier failure, instead of one
+    // old error staying stuck on screen for the rest of the period.
+    if (row.capi_delivered || row.capi_error) lastCapiError = row.capi_error;
   });
 
   // --- Campaign breakdown (utm_campaign / campaign key in metadata) ---
