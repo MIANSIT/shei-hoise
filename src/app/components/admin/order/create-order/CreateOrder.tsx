@@ -168,7 +168,7 @@ export default function CreateOrder() {
     } catch (error) {
       console.error("Error fetching store settings:", error);
       notification.error({
-        message: t.admin.createOrderErrLoadStore,
+        title: t.admin.createOrderErrLoadStore,
         description: t.admin.createOrderErrLoadStoreDesc,
       });
     } finally {
@@ -213,7 +213,7 @@ export default function CreateOrder() {
     } catch (err) {
       console.error("Error fetching products:", err);
       notification.error({
-        message: t.admin.createOrderErrLoadProducts,
+        title: t.admin.createOrderErrLoadProducts,
         description: t.admin.createOrderErrLoadProductsDesc,
       });
     } finally {
@@ -250,7 +250,7 @@ export default function CreateOrder() {
     } catch (err: any) {
       console.error("Error fetching customers:", err);
       notification.error({
-        message: t.admin.createOrderErrLoadCusts,
+        title: t.admin.createOrderErrLoadCusts,
         description: t.admin.createOrderErrLoadCustsDesc,
         duration: 4,
       });

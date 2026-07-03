@@ -277,10 +277,10 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
             </div>
           </div>
 
-          {store.description && (
+          {store.short_description && (
             <div className="mt-5 pt-4 border-t border-border/50">
               <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                {store.description}
+                {store.short_description}
               </p>
             </div>
           )}

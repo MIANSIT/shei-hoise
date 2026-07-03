@@ -12,20 +12,10 @@ export interface CustomerData {
 export const authQueries = {
   checkEmail: async (email: string): Promise<CustomerData | null> => {
     try {
-      const { data: customers, error } = await supabase
-        .from("store_customers")
-        .select(`
-          id,
-          email,
-          auth_user_id,
-          store_customer_links!inner(
-            stores!inner(
-              store_slug
-            )
-          )
-        `)
-        .eq("email", email.toLowerCase())
-        .limit(1);
+      const { data: customers, error } = await supabase.rpc(
+        "find_customer_login_info",
+        { p_email: email.toLowerCase() }
+      );
 
       if (error) throw error;
 
@@ -33,23 +23,18 @@ export const authQueries = {
         return null;
       }
 
-      const customer = customers[0];
-      
-      // Extract store slugs safely
-      const storeSlugs: string[] = [];
-      if (customer.store_customer_links && Array.isArray(customer.store_customer_links)) {
-        customer.store_customer_links.forEach((link: any) => {
-          if (link.stores?.store_slug) {
-            storeSlugs.push(link.stores.store_slug);
-          }
-        });
-      }
+      const customer = customers[0] as {
+        id: string;
+        email: string;
+        auth_user_id: string | null;
+        store_slugs: string[] | null;
+      };
 
       return {
         id: customer.id,
         email: customer.email,
         auth_user_id: customer.auth_user_id,
-        store_slugs: storeSlugs,
+        store_slugs: customer.store_slugs || [],
       };
     } catch (err) {
       console.error("Error checking email:", err);

@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -32,14 +32,14 @@ export async function generateMetadata({
       default: store.store_name,
       template: `%s | ${store.store_name}`,
     },
-    description: store.description ?? `Shop at ${store.store_name} – browse our latest products.`,
+    description: store.short_description ?? store.description ?? `Shop at ${store.store_name} – browse our latest products.`,
     metadataBase: new URL(baseUrl),
     alternates: {
       canonical: storeUrl,
     },
     openGraph: {
       title: store.store_name,
-      description: store.description ?? `Shop at ${store.store_name}`,
+      description: store.short_description ?? store.description ?? `Shop at ${store.store_name}`,
       url: storeUrl,
       siteName: store.store_name,
       images: store.banner_url
@@ -52,14 +52,14 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: store.store_name,
-      description: store.description ?? `Shop at ${store.store_name}`,
+      description: store.short_description ?? store.description ?? `Shop at ${store.store_name}`,
       images: store.banner_url ? [store.banner_url] : store.logo_url ? [store.logo_url] : [],
     },
   };
 }
 
 interface StoreLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   params: Promise<{ store_slug: string }>;
 }
 
@@ -81,9 +81,7 @@ export default async function StoreLayout({
       )}
       <StoreHeader storeSlug={store_slug} />
       <main className="grow">
-        {React.cloneElement(children as React.ReactElement<{ store: typeof storeData }>, {
-          store: storeData,
-        })}
+        {children}
       </main>
       <StoreFooter
         storeLogo={storeData.logo_url}

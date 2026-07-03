@@ -10,6 +10,7 @@ export async function updateStore(
   const {
     store_name,
     store_slug,
+    short_description,
     description,
     logo_url,
     banner_url,
@@ -27,6 +28,7 @@ export async function updateStore(
     .update({
       store_name,
       store_slug,
+      short_description,
       description,
       logo_url,
       banner_url,

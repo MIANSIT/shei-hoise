@@ -317,15 +317,33 @@ export function LoginForm() {
         }
 
         if (authData.user) {
-          // Link auth user to customer record
-          if (customerId) {
-            await linkAuthToCustomer(customerId, authData.user.id);
-          }
-          
-          if (authData.user.identities && authData.user.identities.length === 0) {
-            // User already existed in auth but wasn't linked
+          const isAlreadyRegistered =
+            authData.user.identities && authData.user.identities.length === 0;
+
+          if (isAlreadyRegistered) {
+            // Supabase returned an obfuscated "fake success" response (email
+            // confirmations are on and this email already has a real, confirmed
+            // account). authData.user.id is NOT a real auth.users row here —
+            // sign in for real to get the actual id before linking.
+            const { data: realSignIn, error: realSignInError } =
+              await supabase.auth.signInWithPassword({
+                email: email.toLowerCase(),
+                password: password,
+              });
+
+            if (realSignInError) {
+              throw new Error(t.auth.invalidPasswordError);
+            }
+
+            if (customerId && realSignIn.user) {
+              await linkAuthToCustomer(customerId, realSignIn.user.id);
+            }
+
             success(t.auth.accountLinked, { duration: 1000 });
           } else {
+            if (customerId) {
+              await linkAuthToCustomer(customerId, authData.user.id);
+            }
             success(t.auth.accountCreatedLoggedIn, { duration: 1000 });
           }
         }

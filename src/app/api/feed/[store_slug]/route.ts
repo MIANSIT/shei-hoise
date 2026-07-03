@@ -43,6 +43,8 @@ interface DbImage {
 interface DbVariant {
   id: string;
   is_active: boolean | null;
+  variant_name: string | null;
+  color: string | null;
   base_price: number;
   discounted_price: number | null;
   product_inventory: DbInventory[] | null;
@@ -114,6 +116,8 @@ export async function GET(
       product_variants(
         id,
         is_active,
+        variant_name,
+        color,
         base_price,
         discounted_price,
         product_inventory(quantity_available, quantity_reserved),
@@ -131,41 +135,78 @@ export async function GET(
 
   const products = (data ?? []) as DbProduct[];
 
-  const items = products.map((p) => {
-    // Prefer parent-level images; fall back to variant images so products
-    // that store images only on variants still appear in the catalog.
-    const parentImages = (p.product_images ?? []).filter((img) => img.variant_id === null);
-    const variantImages = (p.product_variants ?? [])
-      .filter((v) => v.is_active !== false)
-      .flatMap((v) => v.product_images ?? []);
-    const images = parentImages.length > 0 ? parentImages : variantImages;
+  // Build one XML <item> string from the given fields
+  function buildItem(fields: {
+    id: string;
+    itemGroupId?: string;
+    title: string;
+    description: string;
+    productUrl: string;
+    primaryImage: string;
+    additionalImages: string[];
+    availability: string;
+    basePrice: number;
+    salePrice: number | null;
+    category: string | null;
+    color?: string | null;
+    variantName?: string | null;
+  }): string {
+    const lines: string[] = [
+      `    <item>`,
+      `      <g:id>${esc(fields.id)}</g:id>`,
+    ];
 
-    const primaryImage = images.find((i) => i.is_primary)?.image_url ?? images[0]?.image_url ?? "";
-    const additionalImages = images
-      .filter((img) => img.image_url !== primaryImage)
-      .slice(0, 9);
+    // item_group_id links variant items back to the same parent product
+    if (fields.itemGroupId) {
+      lines.push(`      <g:item_group_id>${esc(fields.itemGroupId)}</g:item_group_id>`);
+    }
 
-    const availability = isInStock(p) ? "in stock" : "out of stock";
+    lines.push(
+      `      <g:title>${esc(fields.title)}</g:title>`,
+      `      <g:description>${esc(fields.description)}</g:description>`,
+      `      <g:link>${esc(fields.productUrl)}</g:link>`,
+    );
 
-    // For variant products use the lowest active variant price so the catalog
-    // shows a real price instead of a parent placeholder that may be 0.
-    const activeVariants = (p.product_variants ?? []).filter((v) => v.is_active !== false);
-    const basePrice =
-      activeVariants.length > 0
-        ? Math.min(...activeVariants.map((v) => Number(v.base_price)))
-        : Number(p.base_price);
-    const salePrice =
-      activeVariants.length > 0
-        ? (() => {
-            const discounted = activeVariants
-              .map((v) => (v.discounted_price != null ? Number(v.discounted_price) : null))
-              .filter((v): v is number => v !== null);
-            return discounted.length > 0 ? Math.min(...discounted) : null;
-          })()
-        : p.discounted_price != null
-          ? Number(p.discounted_price)
-          : null;
+    if (fields.primaryImage) {
+      lines.push(`      <g:image_link>${esc(fields.primaryImage)}</g:image_link>`);
+    }
+    for (const img of fields.additionalImages) {
+      lines.push(`      <g:additional_image_link>${esc(img)}</g:additional_image_link>`);
+    }
 
+    lines.push(
+      `      <g:availability>${fields.availability}</g:availability>`,
+      `      <g:condition>new</g:condition>`,
+      `      <g:identifier_exists>no</g:identifier_exists>`,
+      `      <g:price>${fields.basePrice.toFixed(2)} ${currency}</g:price>`,
+    );
+
+    if (fields.salePrice !== null && fields.salePrice < fields.basePrice) {
+      lines.push(`      <g:sale_price>${fields.salePrice.toFixed(2)} ${currency}</g:sale_price>`);
+    }
+
+    if (fields.color) {
+      lines.push(`      <g:color>${esc(fields.color)}</g:color>`);
+    }
+
+    // variant_name used as size when no separate color attribute exists
+    if (fields.variantName && !fields.color) {
+      lines.push(`      <g:size>${esc(fields.variantName)}</g:size>`);
+    }
+
+    if (fields.category) {
+      lines.push(`      <g:product_type>${esc(fields.category)}</g:product_type>`);
+    }
+
+    lines.push(
+      `      <g:brand>${esc(store!.store_name)}</g:brand>`,
+      `    </item>`,
+    );
+
+    return lines.join("\n");
+  }
+
+  const items = products.flatMap((p) => {
     const category =
       Array.isArray(p.categories) && p.categories.length > 0
         ? p.categories[0].name
@@ -176,44 +217,76 @@ export async function GET(
     const description = rawDescription.length > 5000 ? rawDescription.slice(0, 4997) + "..." : rawDescription;
     const productUrl = `${baseUrl}/${store_slug}/product/${p.slug}`;
 
-    const lines: string[] = [
-      `    <item>`,
-      // g:id must exactly match content_ids in pixel events (product.id UUID)
-      `      <g:id>${esc(p.id)}</g:id>`,
-      `      <g:title>${esc(p.name)}</g:title>`,
-      `      <g:description>${esc(description)}</g:description>`,
-      `      <g:link>${esc(productUrl)}</g:link>`,
-    ];
+    // Parent-level images (not tied to a specific variant)
+    const parentImages = (p.product_images ?? []).filter((img) => img.variant_id === null);
 
-    if (primaryImage) {
-      lines.push(`      <g:image_link>${esc(primaryImage)}</g:image_link>`);
+    const activeVariants = (p.product_variants ?? []).filter((v) => v.is_active !== false);
+
+    if (activeVariants.length > 0) {
+      // --- Products with variants: one <item> per variant ---
+      return activeVariants.map((v) => {
+        // Use variant images first, fall back to parent images
+        const vImages = (v.product_images ?? []);
+        const images = vImages.length > 0 ? vImages : parentImages;
+        const primaryImage = images.find((i) => i.is_primary)?.image_url ?? images[0]?.image_url ?? "";
+        const additionalImages = images
+          .filter((img) => img.image_url !== primaryImage)
+          .map((img) => img.image_url)
+          .slice(0, 9);
+
+        const inv = v.product_inventory?.[0];
+        const variantAvailable = inv ? inv.quantity_available - inv.quantity_reserved > 0 : false;
+        const availability = variantAvailable ? "in stock" : "out of stock";
+
+        const basePrice = Number(v.base_price);
+        const salePrice = v.discounted_price != null ? Number(v.discounted_price) : null;
+
+        // Append variant name to title so each variant is distinct in the catalog
+        const variantLabel = v.variant_name ? ` - ${v.variant_name}` : "";
+        const title = `${p.name}${variantLabel}`;
+
+        return buildItem({
+          id: v.id,
+          itemGroupId: p.id,
+          title,
+          description,
+          productUrl,
+          primaryImage,
+          additionalImages,
+          availability,
+          basePrice,
+          salePrice,
+          category,
+          color: v.color,
+          variantName: v.variant_name,
+        });
+      });
     }
-    for (const img of additionalImages) {
-      lines.push(`      <g:additional_image_link>${esc(img.image_url)}</g:additional_image_link>`);
-    }
 
-    lines.push(
-      `      <g:availability>${availability}</g:availability>`,
-      `      <g:condition>new</g:condition>`,
-      // Declare no GTIN/MPN — prevents Facebook flagging local/handmade products
-      `      <g:identifier_exists>no</g:identifier_exists>`,
-      `      <g:price>${basePrice.toFixed(2)} ${currency}</g:price>`,
-    );
+    // --- Products without variants: single <item> ---
+    const images = parentImages.length > 0 ? parentImages : (p.product_images ?? []);
+    const primaryImage = images.find((i) => i.is_primary)?.image_url ?? images[0]?.image_url ?? "";
+    const additionalImages = images
+      .filter((img) => img.image_url !== primaryImage)
+      .map((img) => img.image_url)
+      .slice(0, 9);
 
-    if (salePrice !== null && salePrice < basePrice) {
-      lines.push(`      <g:sale_price>${salePrice.toFixed(2)} ${currency}</g:sale_price>`);
-    }
+    const availability = isInStock(p) ? "in stock" : "out of stock";
+    const basePrice = Number(p.base_price);
+    const salePrice = p.discounted_price != null ? Number(p.discounted_price) : null;
 
-    if (category) {
-      lines.push(`      <g:product_type>${esc(category)}</g:product_type>`);
-    }
-
-    lines.push(
-      `      <g:brand>${esc(store.store_name)}</g:brand>`,
-      `    </item>`,
-    );
-
-    return lines.join("\n");
+    return [buildItem({
+      id: p.id,
+      title: p.name,
+      description,
+      productUrl,
+      primaryImage,
+      additionalImages,
+      availability,
+      basePrice,
+      salePrice,
+      category,
+    })];
   });
 
   const feed = [

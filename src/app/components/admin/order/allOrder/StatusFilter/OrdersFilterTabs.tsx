@@ -58,6 +58,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
     initialStatus
   );
 
+  const [localSearch, setLocalSearch] = useState(searchValue);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -87,12 +88,20 @@ const OrdersFilterTabs: React.FC<Props> = ({
     return map[status] ?? status;
   };
 
-  // Debounce input
   const handleInputChange = (value: string) => {
-    onSearchChange(value);
+    setLocalSearch(value); // update input display immediately
     setIsTyping(true);
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
-    typingTimeout.current = setTimeout(() => setIsTyping(false), 800);
+    typingTimeout.current = setTimeout(() => {
+      onSearchChange(value); // fire search only after 600ms pause
+      setIsTyping(false);
+    }, 600);
+  };
+
+  const handleSearchSubmit = () => {
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    setIsTyping(false);
+    onSearchChange(localSearch);
   };
 
   const handleStatusChange = (status: string) => {
@@ -162,10 +171,11 @@ const OrdersFilterTabs: React.FC<Props> = ({
           <Space.Compact className="w-full">
             <Input
               placeholder={t.admin.searchByOrderNum}
-              value={searchValue}
+              value={localSearch}
               onChange={(e) => handleInputChange(e.target.value)}
               allowClear
-              onPressEnter={(e) => onSearchChange(e.currentTarget.value)}
+              onClear={() => { setLocalSearch(""); onSearchChange(""); }}
+              onPressEnter={handleSearchSubmit}
               suffix={
                 isTyping ? <span className="text-xs">{t.admin.typingLabel}</span> : null
               }
@@ -173,7 +183,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
             <Button
               type="primary"
               icon={<SearchOutlined />}
-              onClick={() => onSearchChange(searchValue)}
+              onClick={handleSearchSubmit}
             />
           </Space.Compact>
         </div>

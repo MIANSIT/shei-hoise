@@ -85,7 +85,7 @@ const ProductImage: FC<ProductImageProps> = ({
         <div
           {...swipeHandlers}
           className="relative w-full rounded-2xl overflow-hidden cursor-zoom-in group"
-          style={{ aspectRatio: "4 / 3" }}
+          style={{ aspectRatio: "1 / 1" }}
           onClick={() => openLightbox(mainIndex)}
         >
           <AnimatePresence mode="wait">

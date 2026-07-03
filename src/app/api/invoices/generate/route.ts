@@ -47,6 +47,7 @@ interface InvoiceRequest {
   paymentMethod?: string;
   orderStatus?: string;
   notes?: string;
+  orderCreatedAt?: string | null;
   type?: "A4" | "POS";
 }
 
@@ -163,7 +164,16 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     paymentMethod = "N/A",
     orderStatus = "Processing",
     notes = "",
+    orderCreatedAt,
   } = body;
+
+  const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
+  const orderDateStr = orderDate.toLocaleDateString("en-GB");
+  const orderTimeStr = orderDate.toLocaleTimeString("en-US", {
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+  });
 
   if (!store || !orderId || !customer || !products?.length) {
     return NextResponse.json(
@@ -463,16 +473,8 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8);
   pdf.setTextColor(100, 100, 100);
-  pdf.text(
-    `Date: ${new Date().toLocaleDateString("en-GB")}`,
-    margin,
-    summaryY + 4,
-  );
-  pdf.text(
-    `Time: ${new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}`,
-    margin,
-    summaryY + 8,
-  );
+  pdf.text(`Date: ${orderDateStr}`, margin, summaryY + 4);
+  pdf.text(`Time: ${orderTimeStr}`, margin, summaryY + 8);
 
   summaryY += 20;
   pdf.setDrawColor(220, 220, 220);
@@ -523,7 +525,16 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     paymentMethod = "N/A",
     orderStatus = "Processing",
     notes = "",
+    orderCreatedAt,
   } = body;
+
+  const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
+  const orderDateStr = orderDate.toLocaleDateString("en-GB");
+  const orderTimeStr = orderDate.toLocaleTimeString("en-US", {
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+  });
 
   if (!store || !orderId || !customer || !products?.length) {
     return NextResponse.json(
@@ -592,9 +603,8 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   pdf.text(`#${orderId}`, pageWidth / 2, y, { align: "center" });
   y += 3;
 
-  const currentDate = new Date();
   pdf.text(
-    `${currentDate.toLocaleDateString("en-GB")} ${currentDate.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}`,
+    `${orderDateStr} ${orderTimeStr}`,
     pageWidth / 2,
     y,
     { align: "center" },

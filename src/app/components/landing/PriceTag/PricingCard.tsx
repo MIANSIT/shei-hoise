@@ -15,6 +15,8 @@ interface PricingCardProps {
   months: number;
   highlighted?: boolean;
   badge?: string | null;
+  trialDays?: number;
+  currency?: string;
 }
 
 export default function PricingCard({
@@ -26,6 +28,8 @@ export default function PricingCard({
   months,
   highlighted,
   badge,
+  trialDays = 0,
+  currency = "৳",
 }: PricingCardProps) {
   const t = useTranslation();
   const badgeColor =
@@ -34,6 +38,8 @@ export default function PricingCard({
       : badge === "Most Popular"
         ? "bg-chart-3"
         : "bg-chart-3";
+
+  const hasTrialBtn = trialDays > 0;
 
   return (
     <motion.div
@@ -77,79 +83,82 @@ export default function PricingCard({
         discountedPrice={discountedPrice}
         months={months}
         highlighted={highlighted}
+        currency={currency}
       />
 
-      {/* 7-Day Free Trial Banner */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-5 md:mb-6 ${
-          highlighted
-            ? "bg-white/15 border border-white/25"
-            : "bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
-        }`}
-      >
-        <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 ${
+      {/* Free Trial Banner — only shown when trial_days > 0 */}
+      {trialDays > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-5 md:mb-6 ${
             highlighted
-              ? "bg-white/25"
-              : "bg-emerald-100 dark:bg-emerald-900"
+              ? "bg-white/15 border border-white/25"
+              : "bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
           }`}
         >
-          <Gift
-            className={`w-4 h-4 ${
-              highlighted
-                ? "text-white"
-                : "text-emerald-600 dark:text-emerald-400"
-            }`}
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p
-            className={`text-sm font-bold leading-none mb-1 ${
-              highlighted
-                ? "text-white"
-                : "text-emerald-700 dark:text-emerald-300"
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 ${
+              highlighted ? "bg-white/25" : "bg-emerald-100 dark:bg-emerald-900"
             }`}
           >
-            {t.landing.trialDays}
-          </p>
-          <p
-            className={`text-xs leading-none ${
-              highlighted
-                ? "text-white/65"
-                : "text-emerald-600/80 dark:text-emerald-500"
-            }`}
-          >
-            {t.landing.trialNote}
-          </p>
-        </div>
-        <ArrowRight
-          className={`w-4 h-4 shrink-0 ${
-            highlighted ? "text-white/60" : "text-emerald-400"
-          }`}
-        />
-      </motion.div>
-
-      <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
-        {features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2 md:gap-3">
-            <CheckCircle
-              className={`w-4 h-4 md:w-5 md:h-5 mt-0.5 shrink-0 ${
-                highlighted ? "text-white" : "text-chart-2"
+            <Gift
+              className={`w-4 h-4 ${
+                highlighted
+                  ? "text-white"
+                  : "text-emerald-600 dark:text-emerald-400"
               }`}
             />
-            <span
-              className={`text-sm md:text-base ${
-                highlighted ? "text-white/90" : ""
+          </div>
+          <div className="flex-1 min-w-0">
+            <p
+              className={`text-sm font-bold leading-none mb-1 ${
+                highlighted
+                  ? "text-white"
+                  : "text-emerald-700 dark:text-emerald-300"
               }`}
             >
-              {feature}
-            </span>
-          </li>
-        ))}
-      </ul>
+              {trialDays} days FREE
+            </p>
+            <p
+              className={`text-xs leading-none ${
+                highlighted
+                  ? "text-white/65"
+                  : "text-emerald-600/80 dark:text-emerald-500"
+              }`}
+            >
+              then your plan starts · cancel anytime
+            </p>
+          </div>
+          <ArrowRight
+            className={`w-4 h-4 shrink-0 ${
+              highlighted ? "text-white/60" : "text-emerald-400"
+            }`}
+          />
+        </motion.div>
+      )}
+
+      {features.length > 0 && (
+        <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
+          {features.map((feature) => (
+            <li key={feature} className="flex items-start gap-2 md:gap-3">
+              <CheckCircle
+                className={`w-4 h-4 md:w-5 md:h-5 mt-0.5 shrink-0 ${
+                  highlighted ? "text-white" : "text-chart-2"
+                }`}
+              />
+              <span
+                className={`text-sm md:text-base ${
+                  highlighted ? "text-white/90" : ""
+                }`}
+              >
+                {feature}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div>
         <Button
@@ -160,15 +169,17 @@ export default function PricingCard({
           }`}
           size="lg"
         >
-          {t.landing.startFreeTrial}
+          {hasTrialBtn ? t.landing.startFreeTrial : "Get Started"}
         </Button>
-        <p
-          className={`text-center text-xs mt-2 ${
-            highlighted ? "text-white/55" : "text-muted-foreground"
-          }`}
-        >
-          {t.landing.noPayment}
-        </p>
+        {hasTrialBtn && (
+          <p
+            className={`text-center text-xs mt-2 ${
+              highlighted ? "text-white/55" : "text-muted-foreground"
+            }`}
+          >
+            {t.landing.noPayment}
+          </p>
+        )}
       </div>
     </motion.div>
   );

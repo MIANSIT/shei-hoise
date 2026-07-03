@@ -58,7 +58,7 @@ export function CustomerTable({
       async onOk() {
         if (!storeId) {
           notification.error({
-            message: t.admin.customerTableDeleteFailed,
+            title: t.admin.customerTableDeleteFailed,
             description: t.admin.customerTableStoreIdMissing,
           });
           return;
@@ -68,7 +68,7 @@ export function CustomerTable({
 
         if (!result.success) {
           notification.error({
-            message: t.admin.customerTableDeleteFailed,
+            title: t.admin.customerTableDeleteFailed,
             description: result.message,
           });
           return;

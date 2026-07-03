@@ -52,6 +52,7 @@ const StockPage = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
+    setCurrentPage(1);
     setIsTyping(true);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 800);
@@ -132,7 +133,7 @@ const StockPage = () => {
             return (
               <button
                 key={value}
-                onClick={() => setStockFilter(value)}
+                onClick={() => { setStockFilter(value); setCurrentPage(1); }}
                 className={`
                   px-3.5 py-2 rounded-xl text-xs font-semibold
                   transition-all duration-150 whitespace-nowrap
@@ -151,7 +152,7 @@ const StockPage = () => {
             value={stockFilter}
             defaultValue={StockFilter.ALL}
             options={FILTER_CONFIG.map((f) => f.value)}
-            onChange={setStockFilter}
+            onChange={(v) => { setStockFilter(v); setCurrentPage(1); }}
             getLabel={(v) =>
               FILTER_CONFIG.find((f) => f.value === v)?.label ?? v
             }

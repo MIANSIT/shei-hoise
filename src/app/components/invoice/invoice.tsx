@@ -28,7 +28,6 @@ import {
   PaymentStatus,
   OrderStatus,
 } from "@/lib/types/enums";
-import html2canvas from "html2canvas";
 import { App } from "antd";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
@@ -198,6 +197,7 @@ interface InvoiceModalProps {
   paymentMethod?: string;
   orderStatus?: OrderStatus;
   notes?: string;
+  orderCreatedAt?: string;
   showPrintButton?: boolean;
   showPOSButton?: boolean;
   showPDFButton?: boolean;
@@ -223,6 +223,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     paymentMethod = "N/A",
     orderStatus = "PROCESSING",
     notes = "",
+    orderCreatedAt,
     showPrintButton = true,
     showPOSButton = true,
     showPDFButton = true,
@@ -233,13 +234,16 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isPOSPrinting, setIsPOSPrinting] = useState(false);
+  const [posWidth, setPosWidth] = useState<58 | 80>(80);
   const [copied, setCopied] = useState(false);
 
   const currencyIcon = CURRENCY_ICONS[currency] || "৳";
-  const invoiceDate = new Date().toLocaleDateString("en-GB");
-  const invoiceTime = new Date().toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
+  const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
+  const invoiceDate = orderDate.toLocaleDateString("en-GB");
+  const invoiceTime = orderDate.toLocaleTimeString("en-US", {
+    hour12: true,
+    hour: "numeric",
     minute: "2-digit",
   });
 
@@ -408,8 +412,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
         <div class="invoice-footer">
           <div class="invoice-meta">
             <p><strong>Invoice Generated:</strong></p>
-            <p>Date: ${new Date().toLocaleDateString("en-GB")}</p>
-            <p>Time: ${new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}</p>
+            <p>Date: ${invoiceDate}</p>
+            <p>Time: ${invoiceTime}</p>
           </div>
           <div class="thank-you">
             <p>Thank you for choosing ${store.name}</p>
@@ -521,6 +525,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           paymentMethod,
           orderStatus,
           notes,
+          orderCreatedAt: orderCreatedAt ?? null,
           type: "A4",
         }),
       });
@@ -547,181 +552,225 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     }
   };
 
-  // ─── POS receipt ──────────────────────────────────────────────────────────
-  const downloadPOSImage = async () => {
-    setIsGeneratingPDF(true);
+  // ─── POS thermal print (58mm / 80mm switchable) ──────────────────────────
+  const printPOSReceipt = () => {
+    setIsPOSPrinting(true);
     try {
-      const thermalWidth = 360;
-      const iframe = document.createElement("iframe");
-      iframe.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${thermalWidth}px;height:4000px;border:none;visibility:hidden;overflow:hidden;`;
-      document.body.appendChild(iframe);
-      const doc = iframe.contentDocument;
-      if (!doc) throw new Error("Could not create iframe document");
+      // popup width ≈ paper CSS-pixel width (paper_mm × 3.78) + ~30px browser chrome
+      // This prevents the browser from scaling content down to fit paper
+      const popupWidth = posWidth === 58 ? 250 : 340;
+      const margin = posWidth === 58 ? 2 : 3;
+      const bodyWidth = posWidth - margin * 2; // 54mm or 74mm printable
+      const baseFontSize = posWidth === 58 ? "12pt" : "13pt";
+      const smallFontSize = posWidth === 58 ? "10pt" : "11pt";
+      const storeFontSize = posWidth === 58 ? "14pt" : "16pt";
+      const totalFontSize = posWidth === 58 ? "14pt" : "16pt";
+      const rowFontSize = posWidth === 58 ? "11pt" : "12pt";
+
       const displayCurrency = currencyIcon === "৳" ? "Tk" : currencyIcon;
+      const dateStr = invoiceDate;
+      const timeStr = invoiceTime;
 
-      const additionalChargesRows =
-        additionalCharges.length > 0
-          ? additionalCharges
-              .map(
-                (c) => `
-            <div class="summary-row">
-              <span>${c.label}:</span>
-              <span>${displayCurrency}${c.amount.toFixed(2)}</span>
-            </div>`,
-              )
-              .join("")
-          : "";
+      const additionalChargesRows = additionalCharges
+        .map(
+          (c) =>
+            `<div class="row"><span>${c.label}:</span><span>${displayCurrency}${c.amount.toFixed(2)}</span></div>`,
+        )
+        .join("");
 
-      doc.open();
-      doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-        *{margin:0;padding:0;border:0;box-sizing:border-box;}
-        html,body{width:${thermalWidth}px!important;max-width:${thermalWidth}px!important;margin:0!important;padding:0!important;overflow-x:hidden!important;}
-        body{font-family:'Courier New',Courier,monospace!important;font-size:13px!important;line-height:1.4!important;color:#000!important;background:#fff!important;padding:18px 0 25px 0!important;}
-        .receipt-container{width:${thermalWidth}px!important;padding:0 12px!important;box-sizing:border-box!important;}
-        .store-title{font-size:20px!important;font-weight:bold!important;text-transform:uppercase!important;text-align:center!important;margin:0 0 6px!important;letter-spacing:2px!important;}
-        .text-center{text-align:center!important;display:block!important;width:100%!important;}
-        .row{margin-bottom:4px!important;line-height:1.4!important;clear:both!important;word-wrap:break-word!important;width:100%!important;}
-        .small{font-size:11px!important;}
-        .bold{font-weight:bold!important;}
-        .divider{border:none!important;border-top:2px solid #000!important;margin:8px 0!important;}
-        .divider-thick{border:none!important;border-top:3px solid #000!important;margin:10px 0!important;}
-        .section-header{font-size:16px!important;font-weight:bold!important;text-transform:uppercase!important;text-align:center!important;margin:10px 0 6px!important;letter-spacing:2px!important;}
-        .items-table{width:100%!important;border-collapse:collapse!important;margin:8px 0!important;table-layout:fixed!important;}
-        .items-table thead th{font-weight:bold!important;padding:6px 3px!important;border-bottom:2px solid #000!important;font-size:12px!important;}
-        .items-table tbody td{padding:5px 3px!important;vertical-align:top!important;font-size:12px!important;}
-        .items-table tbody td:nth-child(1){width:42%!important;word-break:break-word!important;}
-        .items-table tbody td:nth-child(2){width:18%!important;text-align:center!important;font-weight:bold!important;}
-        .items-table tbody td:nth-child(3){width:40%!important;text-align:right!important;font-weight:bold!important;}
-        .price-small{font-size:10px!important;margin-top:2px!important;font-weight:normal!important;}
-        .summary-row{display:flex!important;justify-content:space-between!important;margin-bottom:5px!important;font-size:13px!important;}
-        .summary-row.discount{color:#dc2626!important;}
-        .summary-row.grand-total{font-size:18px!important;font-weight:bold!important;margin-top:8px!important;padding-top:8px!important;border-top:3px solid #000!important;}
-        .footer{margin-top:12px!important;padding-top:10px!important;text-align:center!important;font-size:11px!important;padding-bottom:12px!important;}
-        *{max-width:100%!important;word-wrap:break-word!important;}
-      </style></head><body>
-        <div class="receipt-container">
-          <div class="store-title">${store.name}</div>
-          ${store.address ? `<div class="row text-center small">${store.address}</div>` : ""}
-          ${store.phone ? `<div class="row text-center small">Tel: ${store.phone}</div>` : ""}
-          <div class="divider"></div>
-          <div class="row text-center bold" style="font-size:15px">INVOICE: #${orderId}</div>
-          <div class="row text-center small">DATE: ${new Date().toLocaleDateString("en-GB")}</div>
-          <div class="row text-center small">TIME: ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
-          <div class="divider"></div>
-          <div class="row"><span class="bold">CUSTOMER:</span> ${customer.name}</div>
-          ${customer.contact ? `<div class="row small">CONTACT: ${customer.contact}</div>` : ""}
-          ${customer.address ? `<div class="row small">ADDRESS: ${customer.address}</div>` : ""}
-          <div class="divider-thick"></div>
-          <div class="section-header">ITEMS</div>
-          <table class="items-table">
-            <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Amount</th></tr></thead>
-            <tbody>
-              ${products
-                .map(
-                  (p) => `
-                <tr>
-                  <td>${p.name}</td>
-                  <td style="text-align:center">${p.qty}</td>
-                  <td style="text-align:right">
-                    ${displayCurrency}${(p.qty * p.price).toFixed(2)}
-                    <div class="price-small">${p.qty} x ${displayCurrency}${p.price.toFixed(2)}</div>
-                  </td>
-                </tr>`,
-                )
-                .join("")}
-            </tbody>
-          </table>
-          <div class="divider-thick"></div>
-          <div>
-            <div class="summary-row"><span>Subtotal:</span><span>${displayCurrency}${subtotal.toFixed(2)}</span></div>
-            ${discountAmount > 0 ? `<div class="summary-row discount"><span>Discount:</span><span>-${displayCurrency}${discountAmount.toFixed(2)}</span></div>` : ""}
-            ${deliveryCharge > 0 ? `<div class="summary-row"><span>Delivery:</span><span>${displayCurrency}${deliveryCharge.toFixed(2)}</span></div>` : ""}
-            ${taxAmount > 0 ? `<div class="summary-row"><span>Tax:</span><span>${displayCurrency}${taxAmount.toFixed(2)}</span></div>` : ""}
-            ${additionalChargesRows}
-            <div class="summary-row grand-total"><span>TOTAL:</span><span>${displayCurrency}${totalDue.toFixed(2)}</span></div>
-          </div>
-          <div class="divider-thick"></div>
-          <div style="margin:10px 0;text-align:center">
-            <div class="row bold" style="font-size:14px">PAYMENT: ${paymentMethod === "cod" ? "CASH" : paymentMethod.toUpperCase()}</div>
-            <div class="row bold" style="font-size:14px">STATUS: ${formattedPaymentStatus.toUpperCase()}</div>
-            ${notes ? `<div class="row small" style="margin-top:6px;font-weight:normal">NOTE: ${notes}</div>` : ""}
-          </div>
-          <div class="divider"></div>
-          <div class="footer">
-            <div class="row">Thank you for choosing ${store.name}</div>
-            <div class="row">Please retain this receipt</div>
-          </div>
-        </div>
-      </body></html>`);
-      doc.close();
+      const itemsRows = products
+        .map(
+          (p) => `
+          <tr>
+            <td class="item-name">${p.name}</td>
+            <td class="text-center">${p.qty}</td>
+            <td class="text-right">
+              ${displayCurrency}${(p.qty * p.price).toFixed(2)}<br>
+              <span class="unit-price">${p.qty}x${displayCurrency}${p.price.toFixed(2)}</span>
+            </td>
+          </tr>`,
+        )
+        .join("");
 
-      await new Promise((r) => setTimeout(r, 1000));
-      const body = doc.body;
-      if (!body) throw new Error("No body element");
-      const contentHeight = Math.max(body.scrollHeight, body.offsetHeight) + 50;
-      iframe.style.height = `${contentHeight}px`;
-      await new Promise((r) => setTimeout(r, 400));
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=${bodyWidth}mm, initial-scale=1.0">
+  <title>Receipt #${orderId}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page {
+      size: ${posWidth}mm auto;
+      margin: ${margin}mm;
+    }
+    html, body { background: #fff; }
+    body {
+      width: ${bodyWidth}mm;
+      margin: 0 auto;
+      padding: 3px 0;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: ${baseFontSize};
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @media print {
+      body { padding: 0; width: ${bodyWidth}mm; margin: 0; }
+    }
+    .receipt { width: 100%; }
+    .store-name {
+      font-size: ${storeFontSize};
+      font-weight: bold;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 3px;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .small { font-size: ${smallFontSize}; }
+    .divider-solid { border: none; border-top: 1px solid #000; margin: 6px 0; }
+    .divider-dashed { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .divider-double { border: none; border-top: 3px double #000; margin: 7px 0; }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin: 3px 0;
+      font-size: ${rowFontSize};
+    }
+    .section-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: ${baseFontSize};
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 4px 0 3px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: ${rowFontSize}; }
+    table thead th {
+      border-bottom: 1px solid #000;
+      padding: 2px 1px;
+      font-weight: bold;
+    }
+    table tbody td { padding: 4px 2px; vertical-align: top; }
+    .item-name { width: 48%; word-break: break-word; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .unit-price { font-size: ${smallFontSize}; font-weight: normal; }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: ${totalFontSize};
+      font-weight: bold;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 2px solid #000;
+    }
+    .footer {
+      text-align: center;
+      font-size: ${smallFontSize};
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed #000;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="store-name">${store.name}</div>
+    ${store.address ? `<div class="center small">${store.address}</div>` : ""}
+    ${store.phone ? `<div class="center small">Tel: ${store.phone}</div>` : ""}
+    ${store.email ? `<div class="center small">${store.email}</div>` : ""}
 
-      const canvas = await html2canvas(body, {
-        scale: 3,
-        backgroundColor: "#ffffff",
-        logging: false,
-        useCORS: true,
-        allowTaint: false,
-        width: thermalWidth,
-        height: contentHeight,
-        windowWidth: thermalWidth,
-        windowHeight: contentHeight,
-        imageTimeout: 0,
-        removeContainer: true,
-        scrollY: 0,
-        scrollX: 0,
-        x: 0,
-        y: 0,
-        onclone: (clonedDoc) => {
-          clonedDoc.querySelectorAll<HTMLElement>("*").forEach((el) => {
-            el.style.color = "#000000";
-            el.style.backgroundColor = "#ffffff";
-          });
-          const style = clonedDoc.createElement("style");
-          style.textContent = `*{color:#000!important;background-color:#fff!important;font-family:'Courier New',Courier,monospace!important;}html,body{width:${thermalWidth}px!important;max-width:${thermalWidth}px!important;overflow-x:hidden!important;}`;
-          clonedDoc.head.appendChild(style);
-        },
-      });
+    <div class="divider-solid"></div>
 
-      // Binarize
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = imageData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
-          const v = avg < 180 ? 0 : 255;
-          d[i] = d[i + 1] = d[i + 2] = v;
-        }
-        ctx.putImageData(imageData, 0, 0);
+    <div class="center bold" style="margin-bottom:3px">RECEIPT</div>
+    <div class="row"><span>Invoice #:</span><span>${orderId}</span></div>
+    <div class="row"><span>Date:</span><span>${dateStr}</span></div>
+    <div class="row"><span>Time:</span><span>${timeStr}</span></div>
+
+    <div class="divider-dashed"></div>
+
+    <div style="margin-bottom:2px"><span class="bold">Customer: </span>${customer.name}</div>
+    ${customer.contact ? `<div class="small">Phone: ${customer.contact}</div>` : ""}
+    ${customer.address ? `<div class="small">Address: ${customer.address}</div>` : ""}
+
+    <div class="divider-double"></div>
+    <div class="section-title">Items</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:48%;text-align:left">Item</th>
+          <th style="width:14%;text-align:center">Qty</th>
+          <th style="width:38%;text-align:right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${itemsRows}</tbody>
+    </table>
+
+    <div class="divider-double"></div>
+
+    <div class="row"><span>Subtotal:</span><span>${displayCurrency}${subtotal.toFixed(2)}</span></div>
+    ${discountAmount > 0 ? `<div class="row"><span>Discount:</span><span>-${displayCurrency}${discountAmount.toFixed(2)}</span></div>` : ""}
+    ${deliveryCharge > 0 ? `<div class="row"><span>Delivery:</span><span>${displayCurrency}${deliveryCharge.toFixed(2)}</span></div>` : ""}
+    ${taxAmount > 0 ? `<div class="row"><span>Tax:</span><span>${displayCurrency}${taxAmount.toFixed(2)}</span></div>` : ""}
+    ${additionalChargesRows}
+
+    <div class="total-row">
+      <span>TOTAL:</span>
+      <span>${displayCurrency}${totalDue.toFixed(2)}</span>
+    </div>
+
+    <div class="divider-dashed"></div>
+
+    <div class="row">
+      <span class="bold">Payment:</span>
+      <span>${paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod.toUpperCase()}</span>
+    </div>
+    <div class="row">
+      <span class="bold">Status:</span>
+      <span>${formattedPaymentStatus}</span>
+    </div>
+    ${notes ? `<div class="small" style="margin-top:4px">Note: ${notes}</div>` : ""}
+
+    <div class="footer">
+      <div>Thank you for your purchase!</div>
+      <div class="bold">${store.name}</div>
+      <div>Please retain this receipt</div>
+    </div>
+  </div>
+  <script>
+    window.onload = function () {
+      setTimeout(function () { window.print(); }, 400);
+    };
+  <\/script>
+</body>
+</html>`;
+
+      const pw = window.open("", "_blank", `width=${popupWidth},height=750`);
+      if (!pw) {
+        notification.error({
+          title: "Popup Blocked",
+          description: "Allow popups for this site then try again.",
+        });
+        return;
       }
-
-      const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png", 1.0);
-      link.download = `pos_receipt_${orderId}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      document.body.removeChild(iframe);
-
-      notification.success({
-        title: "POS Receipt Downloaded",
-        description: "Receipt optimized for Sunmi 58mm printer",
-      });
-    } catch (error) {
-      console.error("POS receipt error:", error);
+      pw.document.open();
+      pw.document.write(html);
+      pw.document.close();
+      pw.focus();
+    } catch (err) {
+      console.error("POS print error:", err);
       notification.error({
-        title: "Download Failed",
-        description: "Could not generate POS receipt. Please try again.",
+        title: "Print Failed",
+        description: "Could not open POS print. Please try again.",
       });
     } finally {
-      setIsGeneratingPDF(false);
+      setIsPOSPrinting(false);
     }
   };
 
@@ -1108,19 +1157,44 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 )}
 
                 {showPOSButton && (
-                  <Button
-                    variant="outline"
-                    onClick={downloadPOSImage}
-                    disabled={isGeneratingPDF || isPrinting}
-                    className="h-9 text-sm gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
-                    {isGeneratingPDF ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4" />
-                    )}
-                    POS Receipt
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {/* Paper size toggle */}
+                    <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 text-xs font-medium shrink-0">
+                      <button
+                        onClick={() => setPosWidth(58)}
+                        className={`px-2 py-1.5 transition-colors ${
+                          posWidth === 58
+                            ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
+                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        58mm
+                      </button>
+                      <button
+                        onClick={() => setPosWidth(80)}
+                        className={`px-2 py-1.5 transition-colors border-l border-gray-200 dark:border-gray-700 ${
+                          posWidth === 80
+                            ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
+                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        80mm
+                      </button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={printPOSReceipt}
+                      disabled={isPOSPrinting || isPrinting || isGeneratingPDF}
+                      className="h-9 text-sm gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      {isPOSPrinting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Printer className="w-4 h-4" />
+                      )}
+                      Print POS
+                    </Button>
+                  </div>
                 )}
 
                 {showPDFButton && (

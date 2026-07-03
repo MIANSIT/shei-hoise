@@ -21,7 +21,6 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 interface StoreHomePageProps {
   params: Promise<{ store_slug: string }>;
-  store?: StoreFull;
 }
 
 export default function StoreHomePage({ params }: StoreHomePageProps) {
@@ -126,13 +125,17 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
       ══════════════════════════════════════════ */}
       <section className="relative w-full">
         {hasBanner && (
-          <div className="relative w-full h-36 sm:h-96 lg:h-120 overflow-hidden">
+          /* Mobile: fixed h-40 | Tablet sm: h-52 | Desktop md+: true 16:4 via aspectRatio */
+          <div
+            className="relative w-full h-40 sm:h-52 md:h-auto overflow-hidden"
+            style={{ aspectRatio: '4 / 1' } as React.CSSProperties}
+          >
             <Image
               src={storeData!.banner_url!}
               alt={`${storeName} banner`}
               fill
               priority
-              className="object-cover"
+              className="object-cover object-center"
               sizes="100vw"
             />
             <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/5 to-black/70" />
@@ -142,25 +145,25 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
 
         {hasBanner && (
           <div className="absolute bottom-0 inset-x-0">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2.5 sm:pb-7 flex items-end justify-between gap-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 sm:pb-6 flex items-end justify-between gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
-                className="flex items-center gap-2 sm:gap-3.5"
+                className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1"
               >
                 {storeData?.logo_url && (
-                  <div className="shrink-0 w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-white/25 shadow-xl">
+                  <div className="shrink-0 w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl">
                     <Image src={storeData.logo_url} alt={storeName} width={56} height={56} className="object-cover w-full h-full" />
                   </div>
                 )}
-                <div>
-                  <h1 className="text-sm sm:text-2xl font-black tracking-widest leading-none text-white drop-shadow-md">
+                <div className="min-w-0">
+                  <h1 className="text-sm sm:text-2xl font-black tracking-widest leading-none text-white drop-shadow-md truncate">
                     {storeName}
                   </h1>
-                  {storeData?.description && (
-                    <p className="hidden sm:block mt-1 text-xs text-white/60 line-clamp-1 max-w-xs font-medium">
-                      {storeData.description}
+                  {storeData?.short_description && (
+                    <p className="mt-0.5 sm:mt-1.5 text-[11px] sm:text-sm text-white/80 truncate sm:whitespace-normal sm:line-clamp-2 font-normal leading-snug drop-shadow-sm max-w-xs sm:max-w-md md:max-w-xl">
+                      {storeData.short_description}
                     </p>
                   )}
                 </div>
@@ -211,9 +214,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                 <h1 className="text-base sm:text-xl font-black tracking-widest leading-none text-gray-900 dark:text-white truncate">
                   {storeName}
                 </h1>
-                {storeData?.description && (
-                  <p className="hidden sm:block mt-1 text-xs text-gray-400 dark:text-gray-500 line-clamp-1 max-w-sm">
-                    {storeData.description}
+                {(storeData?.short_description || storeData?.description) && (
+                  <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500 truncate max-w-xs sm:max-w-sm">
+                    {storeData.short_description || storeData.description}
                   </p>
                 )}
               </div>
