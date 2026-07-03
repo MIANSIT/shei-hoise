@@ -99,7 +99,7 @@ export default function SidebarMenu({
       "Expense": t.admin.menuExpense,
       "Category": t.admin.menuCategory,
       "Pixel Analytics": t.admin.menuPixelAnalytics,
-      "Subscription": "Subscription",
+      "Subscription": t.admin.menuSubscription,
     };
     return map[title] ?? title;
   };

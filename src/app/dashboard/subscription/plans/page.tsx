@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Skeleton, Empty, App } from "antd";
 import { ArrowLeft, Package, CheckCircle, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { getPlansForStore } from "@/lib/queries/subscription/getPlansForStore";
 import { parseFeatures, parseLimits, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
@@ -26,6 +27,7 @@ function PlanCard({
   showAction: boolean;
   onSelect: (plan: PublicPlan) => void;
 }) {
+  const t = useTranslation();
   const features = [...parseFeatures(plan.features), ...parseLimits(plan.limits)];
   const isYearly = billingCycle === "yearly";
   const price = isYearly ? plan.price_yearly : plan.price_monthly;
@@ -50,14 +52,14 @@ function PlanCard({
       {isCurrent && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
           <span className="bg-violet-600 text-white text-xs font-semibold px-3.5 py-1 rounded-full flex items-center gap-1 shadow-sm whitespace-nowrap">
-            <CheckCircle2 className="w-3 h-3" /> Current Plan
+            <CheckCircle2 className="w-3 h-3" /> {t.admin.subCurrentPlan}
           </span>
         </div>
       )}
       {plan.is_featured && !isCurrent && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
           <span className="bg-blue-500 text-white text-xs font-semibold px-3.5 py-1 rounded-full flex items-center gap-1 shadow-sm whitespace-nowrap">
-            <Sparkles className="w-3 h-3" /> Most Popular
+            <Sparkles className="w-3 h-3" /> {t.admin.subMostPopular}
           </span>
         </div>
       )}
@@ -95,17 +97,17 @@ function PlanCard({
             {currency}{price.toLocaleString("en-BD")}
           </span>
           <span className="text-sm text-gray-400 dark:text-gray-500">
-            /{isYearly ? "year" : "month"}
+            {isYearly ? t.admin.subPerYear : t.admin.subPerMonth}
           </span>
         </div>
         {isYearly && (
           <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-            ≈ {currency}{Math.round(perMonth).toLocaleString("en-BD")}/month billed yearly
+            {t.admin.subApproxPrefix} {currency}{Math.round(perMonth).toLocaleString("en-BD")}{t.admin.subPerMonth} {t.admin.subBilledYearly}
           </p>
         )}
         {plan.trial_days > 0 && (
           <p className="text-xs text-violet-600 dark:text-violet-400 mt-1 font-medium">
-            {plan.trial_days} days free trial
+            {plan.trial_days} {t.admin.subFreeTrialDays}
           </p>
         )}
       </div>
@@ -128,11 +130,11 @@ function PlanCard({
             >
               {expanded ? (
                 <>
-                  Show less <ChevronUp className="w-3.5 h-3.5" />
+                  {t.admin.subShowLess} <ChevronUp className="w-3.5 h-3.5" />
                 </>
               ) : (
                 <>
-                  +{features.length - VISIBLE_LIMIT} more features <ChevronDown className="w-3.5 h-3.5" />
+                  +{features.length - VISIBLE_LIMIT} {t.admin.subMoreFeatures} <ChevronDown className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
@@ -150,7 +152,7 @@ function PlanCard({
               : "bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
           }`}
         >
-          {!hasSubscription ? "Get Started" : isCurrent ? "Renew" : "Switch to this plan"}
+          {!hasSubscription ? t.admin.subGetStarted : isCurrent ? t.admin.subRenew : t.admin.subSwitchPlan}
         </button>
       )}
     </div>
@@ -161,6 +163,7 @@ function PlanCard({
 
 export default function SubscriptionPlansPage() {
   const router = useRouter();
+  const t = useTranslation();
   const { modal } = App.useApp();
   const { storeId, loading: userLoading, role } = useCurrentUser();
 
@@ -199,11 +202,14 @@ export default function SubscriptionPlansPage() {
     const price = isYearly ? plan.price_yearly : plan.price_monthly;
     const currency = plan.currency.trim();
 
+    const cycleLabel = isYearly ? t.admin.subCycleYearly.toLowerCase() : t.admin.subCycleMonthly.toLowerCase();
+    const perLabel = isYearly ? t.admin.subPerYear : t.admin.subPerMonth;
+
     modal.confirm({
-      title: `Subscribe to ${plan.name}`,
-      content: `You're about to start a ${isYearly ? "yearly" : "monthly"} subscription for ${currency}${price.toLocaleString("en-BD")}/${isYearly ? "year" : "month"}. You'll be taken to checkout next.`,
-      okText: "Continue",
-      cancelText: "Cancel",
+      title: `${t.admin.subSubscribeTo} ${plan.name}`,
+      content: `${t.admin.subConfirmContentStart} ${cycleLabel} ${t.admin.subConfirmContentFor} ${currency}${price.toLocaleString("en-BD")}${perLabel}. ${t.admin.subConfirmContentEnd}`,
+      okText: t.admin.subContinue,
+      cancelText: t.admin.subBtnCancel,
       okButtonProps: { style: { backgroundColor: "#7c3aed", borderColor: "#7c3aed" } },
       onOk: () => {
         router.push(`/dashboard/subscription/checkout?plan=${plan.id}&cycle=${billingCycle}`);
@@ -227,7 +233,7 @@ export default function SubscriptionPlansPage() {
   if (!storeId && !isSuperAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <Empty description="Store not found" />
+        <Empty description={t.admin.subStoreNotFound} />
       </div>
     );
   }
@@ -241,16 +247,16 @@ export default function SubscriptionPlansPage() {
         className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-6 sm:mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Subscription
+        {t.admin.subBackToSubscription}
       </button>
 
       {/* Header */}
       <div className="text-center mb-8 sm:mb-10">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Choose Your Plan
+          {t.admin.subChooseYourPlan}
         </h1>
         <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
-          Simple, transparent pricing that grows with your store.
+          {t.admin.subPlansTagline}
         </p>
 
         {hasYearly && (
@@ -264,7 +270,7 @@ export default function SubscriptionPlansPage() {
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
             >
-              Monthly
+              {t.admin.subCycleMonthly}
             </button>
             <button
               type="button"
@@ -275,7 +281,7 @@ export default function SubscriptionPlansPage() {
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
             >
-              Yearly
+              {t.admin.subCycleYearly}
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   billingCycle === "yearly"
@@ -283,7 +289,7 @@ export default function SubscriptionPlansPage() {
                     : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
                 }`}
               >
-                Save
+                {t.admin.subSave}
               </span>
             </button>
           </div>
@@ -294,7 +300,7 @@ export default function SubscriptionPlansPage() {
       {visiblePlans.length === 0 ? (
         <Empty
           description={
-            billingCycle === "yearly" ? "No plans available for yearly billing" : "No plans available"
+            billingCycle === "yearly" ? t.admin.subNoPlansYearly : t.admin.subNoPlansGeneric
           }
         />
       ) : (
