@@ -34,6 +34,7 @@ ALTER TYPE "public"."billing_cycle" OWNER TO "postgres";
 
 CREATE TYPE "public"."invoice_status" AS ENUM (
     'unpaid',
+    'submitted',
     'paid',
     'overdue',
     'cancelled',
@@ -252,6 +253,28 @@ CREATE TABLE IF NOT EXISTS "public"."order_tracking" (
 ALTER TABLE "public"."order_tracking" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."customer_risk_profiles" (
+    "phone_number" "text" NOT NULL,
+    "total_orders" integer DEFAULT 0 NOT NULL,
+    "delivered_orders" integer DEFAULT 0 NOT NULL,
+    "cancelled_orders" integer DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."customer_risk_profiles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."customer_risk_store_touches" (
+    "phone_number" "text" NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."customer_risk_store_touches" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."orders" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "order_number" character varying(50) NOT NULL,
@@ -273,8 +296,10 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "delivery_option" "text",
     "discount_amount" numeric,
     "additional_charges" numeric,
+    "fb_purchase_event_status" character varying(20) DEFAULT 'sent'::character varying,
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
-    CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"])))
+    CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"]))),
+    CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
 );
 
 
@@ -290,7 +315,9 @@ CREATE TABLE IF NOT EXISTS "public"."pixel_events" (
     "store_id" "uuid" NOT NULL,
     "event_name" "text" NOT NULL,
     "metadata" "jsonb" DEFAULT '{}'::"jsonb",
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "capi_delivered" boolean DEFAULT false,
+    "capi_error" "text"
 );
 
 
@@ -457,7 +484,9 @@ CREATE TABLE IF NOT EXISTS "public"."store_settings" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "shipping_fees" "jsonb" DEFAULT '[]'::"jsonb",
-    "facebook_pixel_id" character varying
+    "facebook_pixel_id" character varying,
+    "facebook_capi_access_token" "text",
+    "facebook_test_event_code" character varying
 );
 
 
@@ -576,7 +605,8 @@ CREATE TABLE IF NOT EXISTS "public"."subscription_plans" (
     "is_public" boolean DEFAULT true NOT NULL,
     "sort_order" integer DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "is_default_trial_plan" boolean DEFAULT false NOT NULL
 );
 
 
@@ -697,6 +727,16 @@ ALTER TABLE ONLY "public"."orders"
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."customer_risk_profiles"
+    ADD CONSTRAINT "customer_risk_profiles_pkey" PRIMARY KEY ("phone_number");
+
+
+
+ALTER TABLE ONLY "public"."customer_risk_store_touches"
+    ADD CONSTRAINT "customer_risk_store_touches_pkey" PRIMARY KEY ("phone_number", "store_id");
 
 
 
@@ -887,6 +927,10 @@ CREATE INDEX "idx_pixel_events_store_created" ON "public"."pixel_events" USING "
 
 
 
+CREATE UNIQUE INDEX "one_default_trial_plan" ON "public"."subscription_plans" USING "btree" ("is_default_trial_plan") WHERE ("is_default_trial_plan" = true);
+
+
+
 CREATE INDEX "idx_store_subscriptions_expires_at" ON "public"."store_subscriptions" USING "btree" ("expires_at") WHERE ("expires_at" IS NOT NULL);
 
 
@@ -1010,6 +1054,11 @@ ALTER TABLE ONLY "public"."orders"
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."customer_risk_store_touches"
+    ADD CONSTRAINT "customer_risk_store_touches_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
 
 
@@ -1200,10 +1249,6 @@ CREATE POLICY "plans_service_write" ON "public"."subscription_plans" USING (("au
 
 
 
-CREATE POLICY "public_insert" ON "public"."pixel_events" FOR INSERT TO "authenticated", "anon" WITH CHECK (true);
-
-
-
 CREATE POLICY "stores_select_own" ON "public"."stores" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "owner_id"));
 
 
@@ -1302,6 +1347,13 @@ GRANT ALL ON TABLE "public"."orders" TO "service_role";
 GRANT ALL ON TABLE "public"."pixel_events" TO "anon";
 GRANT ALL ON TABLE "public"."pixel_events" TO "authenticated";
 GRANT ALL ON TABLE "public"."pixel_events" TO "service_role";
+
+
+
+-- Deliberately service_role only — no anon/authenticated grant at all,
+-- unlike pixel_events above. Store owners never query these directly.
+GRANT ALL ON TABLE "public"."customer_risk_profiles" TO "service_role";
+GRANT ALL ON TABLE "public"."customer_risk_store_touches" TO "service_role";
 
 
 

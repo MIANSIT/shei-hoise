@@ -8,6 +8,8 @@ import type { StoreOrder } from "@/lib/types/order";
 import OrdersTable from "./OrdersTable";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import type { RiskAssessment } from "@/lib/utils/riskScoring";
+import { getMonthlyOrderUsage, type MonthlyOrderUsage } from "@/lib/queries/orders/getMonthlyOrderUsage";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
@@ -42,6 +44,8 @@ const MainOrders: React.FC = () => {
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [riskByPhone, setRiskByPhone] = useState<Record<string, RiskAssessment>>({});
+  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyOrderUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -93,6 +97,21 @@ const MainOrders: React.FC = () => {
         setTotalOrders(result.totalOrders);
         setTotalByOrderStatus(result.totalByOrderStatus);
         setTotalByPaymentStatus(result.totalByPaymentStatus);
+
+        // Fetch COD fake-order risk levels for the phones on this page (fire-and-forget)
+        const phones = result.orders
+          .map((o) => o.shipping_address?.phone)
+          .filter((p): p is string => !!p);
+        if (phones.length > 0) {
+          fetch("/api/orders/risk-levels", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phones }),
+          })
+            .then((res) => (res.ok ? res.json() : {}))
+            .then((data) => setRiskByPhone(data))
+            .catch(() => {});
+        }
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : t.admin.allOrdersLoadFailed;
@@ -112,6 +131,11 @@ const MainOrders: React.FC = () => {
   const handleRefresh = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1);
   }, []);
+
+  useEffect(() => {
+    if (!user?.store_id) return;
+    getMonthlyOrderUsage(user.store_id).then(setMonthlyUsage);
+  }, [user?.store_id, refreshTrigger]);
 
   useEffect(() => {
     if (!userLoading && user?.store_id) {
@@ -233,10 +257,27 @@ const MainOrders: React.FC = () => {
           </p>
         </div>
         {/* ✅ ADD: Refresh button for manual refresh */}
+        {monthlyUsage && monthlyUsage.limit !== -1 && (
+          <div
+            className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+              monthlyUsage.current > monthlyUsage.limit
+                ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
+                : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+            }`}
+            title={
+              monthlyUsage.current > monthlyUsage.limit
+                ? t.admin.allOrdersMonthlyLimitExceeded
+                : t.admin.allOrdersMonthlyLimitInfo
+            }
+          >
+            {monthlyUsage.current}/{monthlyUsage.limit} {t.admin.allOrdersMonthlyLimitLabel}
+          </div>
+        )}
       </div>
 
       <OrdersTable
         orders={orders}
+        riskByPhone={riskByPhone}
         total={total}
         totalOrders={totalOrders}
         totalByOrderStatus={totalByOrderStatus}

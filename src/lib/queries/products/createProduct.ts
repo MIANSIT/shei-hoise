@@ -1,8 +1,12 @@
+"use server";
+
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
 import { ProductStatus } from "@/lib/types/enums";
+import { checkLimit } from "@/lib/utils/planFeatures";
+import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 /**
  * Fully atomic product creation with robust rollback
  * Handles single-variant inactive scenario: sets product status to inactive
@@ -17,6 +21,20 @@ export async function createProduct(product: ProductType) {
     throw new Error("❌ Product description is required");
   if (!product.base_price && (!product.variants || !product.variants.length))
     throw new Error("❌ Base price is required");
+
+  // ------------------ Plan limit check ------------------
+  const { count: currentProductCount } = await supabaseAdmin
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", product.store_id);
+
+  const subscription = await getStoreFeatureSubscription(product.store_id);
+  const limitCheck = checkLimit(subscription, "max_products", currentProductCount ?? 0);
+  if (!limitCheck.allowed) {
+    throw new Error(
+      `You've reached your plan's limit of ${limitCheck.limit} products. Upgrade your plan to add more.`,
+    );
+  }
 
   let productId: string | null = null;
   const insertedVariantIds: string[] = [];
@@ -103,6 +121,19 @@ export async function createProduct(product: ProductType) {
     let firstVariantId: string | undefined = undefined;
 
     if (product.variants?.length) {
+      // Whole-set check, same reasoning as the image limit — this creates
+      // all variants for this product at once, not one at a time.
+      const variantLimitCheck = checkLimit(
+        subscription,
+        "max_variants_per_product",
+        product.variants.length - 1,
+      );
+      if (!variantLimitCheck.allowed) {
+        throw new Error(
+          `You can add up to ${variantLimitCheck.limit} variants per product on your plan. Remove some variants and try again.`,
+        );
+      }
+
       const variantsToInsert = product.variants.map(
         (v: ProductVariantType) => ({
           product_id: productId,

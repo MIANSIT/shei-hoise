@@ -7,6 +7,8 @@ export interface SubscriptionPlanInfo {
   price_monthly: number;
   price_yearly: number;
   currency: string;
+  features: Record<string, unknown>;
+  limits: Record<string, unknown>;
 }
 
 export interface StoreSubscription {

@@ -1,7 +1,9 @@
+"use server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderProduct, CustomerInfo } from "../../types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { getPhoneRiskLevel } from "@/lib/utils/riskScoring";
 
 export interface CreateOrderData {
   storeId: string;
@@ -25,6 +27,7 @@ export interface CreateOrderResult {
   success: boolean;
   orderId?: string;
   error?: string;
+  fbPurchaseEventStatus?: "sent" | "held";
 }
 
 // Helper function to validate stock availability
@@ -548,6 +551,17 @@ export async function createCustomerOrder(
     // ✅ FIX: Use store_customer_id instead of auth user ID
     const storeCustomerId = customerInfo.customer_id || null;
 
+    // COD fake-order protection: high-risk phone numbers get their Facebook
+    // Purchase event held until the order is actually delivered, instead of
+    // firing immediately, so a fake/cancelled order never trains Facebook's
+    // ad algorithm to find more fake orders. Only relevant for COD — an
+    // already-paid order carries no such risk.
+    let fbPurchaseEventStatus: "sent" | "held" = "sent";
+    if (paymentMethod === "cod") {
+      const risk = await getPhoneRiskLevel(customerInfo.phone);
+      if (risk.level === "high") fbPurchaseEventStatus = "held";
+    }
+
     // Create order - INCLUDING additional_charges
     const orderInsertData = {
       order_number: orderNumber,
@@ -566,6 +580,7 @@ export async function createCustomerOrder(
       shipping_address: shippingAddress,
       billing_address: shippingAddress,
       delivery_option: deliveryOption,
+      fb_purchase_event_status: fbPurchaseEventStatus,
     };
 
     
@@ -636,6 +651,7 @@ export async function createCustomerOrder(
     return {
       success: true,
       orderId: order.id,
+      fbPurchaseEventStatus,
     };
   } catch (error: any) {
     console.error("❌ Error creating customer order:", error);
@@ -644,17 +660,6 @@ export async function createCustomerOrder(
       error: error.message || "Unknown error occurred",
     };
   }
-}
-
-// Order number: PAWF-260618-550E8 (first4 of slug + YYMMDD + first5 of UUID)
-export function generateCustomerOrderNumber(storeSlug: string): string {
-  const prefix = storeSlug.replace(/-/g, "").substring(0, 4).toUpperCase();
-  const now = new Date();
-  const yy = now.getFullYear().toString().slice(2);
-  const mm = (now.getMonth() + 1).toString().padStart(2, "0");
-  const dd = now.getDate().toString().padStart(2, "0");
-  const uid = crypto.randomUUID().replace(/-/g, "").substring(0, 5).toUpperCase();
-  return `${prefix}-${yy}${mm}${dd}-${uid}`;
 }
 
 // Other functions remain the same...

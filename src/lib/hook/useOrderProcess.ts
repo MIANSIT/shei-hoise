@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/hook/useOrderProcess.ts - FIXED VERSION
 import { useState } from 'react';
-import { createCustomerOrder, generateCustomerOrderNumber } from '../queries/orders/orderService';
+import { createCustomerOrder } from '../queries/orders/orderService';
+import { generateCustomerOrderNumber } from '../utils/generateCustomerOrderNumber';
 import { CustomerCheckoutFormValues } from '../schema/checkoutSchema';
 import { getStoreIdBySlug } from '../queries/stores/getStoreIdBySlug';
 import useCartStore from '../store/cartStore';
@@ -133,6 +134,7 @@ export function useOrderProcess(store_slug: string) {
           success: true,
           orderId: result.orderId,
           orderNumber: orderData.orderNumber,
+          fbPurchaseEventStatus: result.fbPurchaseEventStatus,
           message: 'Order placed successfully! Your cart has been cleared.'
         };
       } else {

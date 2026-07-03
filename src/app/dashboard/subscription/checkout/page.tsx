@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Skeleton, message } from "antd";
+import { Button, Skeleton, App } from "antd";
 import { ArrowLeft, AlertTriangle, Send, CheckCircle2, CheckCircle } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getPlanById, parseFeatures, parseLimits, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
@@ -14,6 +14,7 @@ import { generateInvoiceNumber } from "@/lib/utils/generateInvoiceNumber";
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { message } = App.useApp();
   const { storeId, loading: userLoading } = useCurrentUser();
 
   const planId = searchParams.get("plan");

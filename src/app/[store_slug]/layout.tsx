@@ -6,8 +6,10 @@ export const revalidate = 300; // cache store layout for 5 minutes on Vercel CDN
 import StoreHeader from "@/app/components/common/StoreHeader";
 import StoreFooter from "@/app/components/common/storeFooter/StoreFooter";
 import { FacebookPixelScript } from "@/app/components/common/FacebookPixelScript";
+import { StoreOffline } from "@/app/components/common/StoreOffline";
 import { footerContent } from "@/lib/store/footerContent";
 import { getStoreBySlugFull } from "@/lib/queries/stores/getStoreBySlugFull";
+import { getStoreAccessStateAdmin } from "@/lib/utils/getStoreAccessStateAdmin";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -73,6 +75,13 @@ export default async function StoreLayout({
 
   const storeData = await getStoreBySlugFull(store_slug);
   if (!storeData) notFound();
+
+  // Storefront stays live through the trial and its grace period — only goes
+  // offline once the grace period has fully lapsed with no payment.
+  const access = await getStoreAccessStateAdmin(storeData.id);
+  if (access.state === "locked") {
+    return <StoreOffline storeName={storeData.store_name} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -18,6 +18,7 @@ import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 
 interface ShopPageProps {
   params: Promise<{ store_slug: string }>;
@@ -163,7 +164,10 @@ export default function ShopPage({ params }: ShopPageProps) {
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     setActiveCategory("All Products");
-  }, []);
+    if (query.trim()) {
+      fbq(FbEvent.SEARCH, { search_string: query.trim() }, store_slug);
+    }
+  }, [store_slug]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore || isLoadingRef.current) return;

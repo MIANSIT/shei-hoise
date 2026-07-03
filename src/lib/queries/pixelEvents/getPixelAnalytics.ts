@@ -47,11 +47,14 @@ export interface PixelAnalyticsData {
   campaigns?: Record<string, CampaignStats>;
   sources?: Record<string, SourceStats>;
   topProducts?: ProductStat[];
+  capiDelivered: Record<string, number>;
+  lastCapiError: string | null;
+  lastCapiDeliveredAt: string | null;
 }
 
 const EVENTS = ["PageView", "ViewContent", "AddToCart", "InitiateCheckout", "Purchase"];
 
-function startOf(period: PixelPeriod): string {
+export function startOf(period: PixelPeriod): string {
   const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -72,7 +75,13 @@ function getSourceLabel(meta: Record<string, unknown> | null): string {
   return "Direct / Organic";
 }
 
-type PixelRow = { event_name: string; metadata: unknown; created_at: string };
+type PixelRow = {
+  event_name: string;
+  metadata: unknown;
+  created_at: string;
+  capi_delivered: boolean | null;
+  capi_error: string | null;
+};
 
 const PAGE_SIZE = 1000;
 
@@ -83,7 +92,7 @@ async function fetchAllEvents(storeId: string, since: string): Promise<PixelRow[
   while (true) {
     const { data, error } = await supabase
       .from("pixel_events")
-      .select("event_name, metadata, created_at")
+      .select("event_name, metadata, created_at, capi_delivered, capi_error")
       .eq("store_id", storeId)
       .gte("created_at", since)
       .order("created_at", { ascending: true })
@@ -107,14 +116,36 @@ export async function getPixelAnalytics(
   const data = await fetchAllEvents(storeId, since);
 
   if (data.length === 0) {
-    return { totals: {}, daily: [], totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, avgItemsPerOrder: 0, period };
+    return {
+      totals: {},
+      daily: [],
+      totalRevenue: 0,
+      totalOrders: 0,
+      avgOrderValue: 0,
+      avgItemsPerOrder: 0,
+      period,
+      capiDelivered: {},
+      lastCapiError: null,
+      lastCapiDeliveredAt: null,
+    };
   }
 
   // --- Totals ---
   const totals: Record<string, number> = {};
-  EVENTS.forEach((e) => (totals[e] = 0));
+  const capiDelivered: Record<string, number> = {};
+  EVENTS.forEach((e) => {
+    totals[e] = 0;
+    capiDelivered[e] = 0;
+  });
+  let lastCapiError: string | null = null;
+  let lastCapiDeliveredAt: string | null = null;
   data.forEach((row) => {
     if (totals[row.event_name] !== undefined) totals[row.event_name]++;
+    if (row.capi_delivered && capiDelivered[row.event_name] !== undefined) {
+      capiDelivered[row.event_name]++;
+      lastCapiDeliveredAt = row.created_at;
+    }
+    if (row.capi_error) lastCapiError = row.capi_error;
   });
 
   // --- Campaign breakdown (utm_campaign / campaign key in metadata) ---
@@ -214,5 +245,8 @@ export async function getPixelAnalytics(
     campaigns: Object.keys(campaigns).length > 0 ? campaigns : undefined,
     sources,
     topProducts: topProducts.length > 0 ? topProducts : undefined,
+    capiDelivered,
+    lastCapiError,
+    lastCapiDeliveredAt,
   };
 }

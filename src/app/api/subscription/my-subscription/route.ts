@@ -28,7 +28,7 @@ export async function GET() {
          started_at, expires_at, trial_ends_at, canceled_at,
          cancels_at_period_end, current_period_start, current_period_end,
          payment_provider, created_at,
-         subscription_plans (name, slug, description, price_monthly, price_yearly, currency)`,
+         subscription_plans (name, slug, description, price_monthly, price_yearly, currency, features, limits)`,
       )
       .eq("store_id", dbUser.store_id)
       .order("created_at", { ascending: false })
