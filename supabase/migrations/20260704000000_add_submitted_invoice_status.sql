@@ -1,0 +1,11 @@
+-- Fixes a pre-existing schema/code mismatch: the application (select-plan,
+-- submit-payment routes, and the subscription lock screen) has always used
+-- "submitted" as the invoice status meaning "payment reference submitted,
+-- awaiting admin review" — but the invoice_status enum never actually
+-- included that value, causing every plan subscription attempt to fail with
+-- "invalid input value for enum invoice_status: submitted".
+--
+-- ALTER TYPE ... ADD VALUE cannot run inside the same transaction as other
+-- statements that use the new value, but is safe on its own — apply this
+-- migration by itself.
+ALTER TYPE "public"."invoice_status" ADD VALUE IF NOT EXISTS 'submitted' AFTER 'unpaid';

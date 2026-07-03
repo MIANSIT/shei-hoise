@@ -1,5 +1,6 @@
 
 
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -12,43 +13,90 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+
+
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+CREATE TYPE "public"."billing_cycle" AS ENUM (
+    'monthly',
+    'yearly'
+);
 
 
+ALTER TYPE "public"."billing_cycle" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."invoice_status" AS ENUM (
+    'unpaid',
+    'submitted',
+    'paid',
+    'overdue',
+    'cancelled',
+    'refunded'
+);
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
+ALTER TYPE "public"."invoice_status" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."subscription_status" AS ENUM (
+    'trialing',
+    'active',
+    'past_due',
+    'canceled',
+    'expired',
+    'paused',
+    'incomplete'
+);
 
 
+ALTER TYPE "public"."subscription_status" OWNER TO "postgres";
 
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
+CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
 
 
+ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sync_subscription_on_invoice_paid"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+begin
+  if new.status = 'paid' and old.status is distinct from 'paid' then
+    if new.paid_at is null then
+      new.paid_at := now();
+    end if;
+
+    update store_subscriptions
+    set
+      status = 'active',
+      current_period_start = new.period_start,
+      current_period_end = new.period_end,
+      expires_at = new.period_end,
+      updated_at = now()
+    where id = new.subscription_id;
+  end if;
+
+  return new;
+end;
+$$;
 
 
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
-
-
-
-
+ALTER FUNCTION "public"."sync_subscription_on_invoice_paid"() OWNER TO "postgres";
 
 SET default_tablespace = '';
 
@@ -108,7 +156,8 @@ CREATE TABLE IF NOT EXISTS "public"."contact_us" (
     "message" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "source" "text" NOT NULL,
-    "is_solved" boolean DEFAULT false NOT NULL
+    "is_solved" boolean DEFAULT false NOT NULL,
+    "phone_number" character varying
 );
 
 
@@ -133,6 +182,43 @@ CREATE TABLE IF NOT EXISTS "public"."customer_profiles" (
 
 
 ALTER TABLE "public"."customer_profiles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."expense_categories" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid",
+    "name" character varying NOT NULL,
+    "description" "text",
+    "icon" character varying,
+    "color" character varying,
+    "is_default" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "is_active" boolean DEFAULT true NOT NULL
+);
+
+
+ALTER TABLE "public"."expense_categories" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."expenses" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "category_id" "uuid" NOT NULL,
+    "amount" numeric NOT NULL,
+    "title" character varying NOT NULL,
+    "description" "text",
+    "expense_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "vendor_name" character varying,
+    "payment_method" character varying,
+    "platform" character varying,
+    "notes" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."expenses" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."order_items" (
@@ -160,11 +246,33 @@ CREATE TABLE IF NOT EXISTS "public"."order_tracking" (
     "location" character varying(255),
     "updated_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    CONSTRAINT "order_tracking_status_check" CHECK ((("status")::"text" = ANY ((ARRAY['pending'::character varying, 'confirmed'::character varying, 'shipped'::character varying, 'delivered'::character varying, 'cancelled'::character varying])::"text"[])))
+    CONSTRAINT "order_tracking_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"])))
 );
 
 
 ALTER TABLE "public"."order_tracking" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."customer_risk_profiles" (
+    "phone_number" "text" NOT NULL,
+    "total_orders" integer DEFAULT 0 NOT NULL,
+    "delivered_orders" integer DEFAULT 0 NOT NULL,
+    "cancelled_orders" integer DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."customer_risk_profiles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."customer_risk_store_touches" (
+    "phone_number" "text" NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."customer_risk_store_touches" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."orders" (
@@ -188,8 +296,10 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "delivery_option" "text",
     "discount_amount" numeric,
     "additional_charges" numeric,
-    CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY ((ARRAY['pending'::character varying, 'paid'::character varying, 'failed'::character varying, 'refunded'::character varying])::"text"[]))),
-    CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY ((ARRAY['pending'::character varying, 'confirmed'::character varying, 'shipped'::character varying, 'delivered'::character varying, 'cancelled'::character varying])::"text"[])))
+    "fb_purchase_event_status" character varying(20) DEFAULT 'sent'::character varying,
+    CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
+    CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"]))),
+    CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
 );
 
 
@@ -198,6 +308,20 @@ ALTER TABLE "public"."orders" OWNER TO "postgres";
 
 COMMENT ON COLUMN "public"."orders"."delivery_option" IS 'Delivery Option Like (Pathao, Courier)';
 
+
+
+CREATE TABLE IF NOT EXISTS "public"."pixel_events" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "event_name" "text" NOT NULL,
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "capi_delivered" boolean DEFAULT false,
+    "capi_error" "text"
+);
+
+
+ALTER TABLE "public"."pixel_events" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."product_images" (
@@ -294,7 +418,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "discounted_price" numeric,
     "discount_amount" numeric,
     "tp_price" numeric,
-    CONSTRAINT "products_status_check" CHECK ((("status")::"text" = ANY ((ARRAY['draft'::character varying, 'active'::character varying, 'inactive'::character varying, 'archived'::character varying])::"text"[])))
+    CONSTRAINT "products_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('draft'::character varying)::"text", ('active'::character varying)::"text", ('inactive'::character varying)::"text", ('archived'::character varying)::"text"])))
 );
 
 
@@ -359,11 +483,55 @@ CREATE TABLE IF NOT EXISTS "public"."store_settings" (
     "privacy_policy" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "shipping_fees" "jsonb" DEFAULT '[]'::"jsonb"
+    "shipping_fees" "jsonb" DEFAULT '[]'::"jsonb",
+    "facebook_pixel_id" character varying,
+    "facebook_capi_access_token" "text",
+    "facebook_test_event_code" character varying
 );
 
 
 ALTER TABLE "public"."store_settings" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."store_social_media" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "facebook_link" "text",
+    "instagram_link" "text",
+    "twitter_link" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "youtube_link" "text",
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."store_social_media" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."store_subscriptions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "plan_id" "uuid" NOT NULL,
+    "status" "public"."subscription_status" DEFAULT 'incomplete'::"public"."subscription_status" NOT NULL,
+    "billing_cycle" "public"."billing_cycle" DEFAULT 'monthly'::"public"."billing_cycle" NOT NULL,
+    "started_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "expires_at" timestamp with time zone,
+    "trial_ends_at" timestamp with time zone,
+    "canceled_at" timestamp with time zone,
+    "cancels_at_period_end" boolean DEFAULT false NOT NULL,
+    "current_period_start" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "current_period_end" timestamp with time zone,
+    "payment_provider" character varying(50),
+    "payment_provider_customer_id" character varying(255),
+    "payment_provider_subscription_id" character varying(255),
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_subscriptions" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."stores" (
@@ -385,11 +553,64 @@ CREATE TABLE IF NOT EXISTS "public"."stores" (
     "is_active" boolean DEFAULT true,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
+    "short_description" "text",
     CONSTRAINT "stores_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('approved'::character varying)::"text", ('suspended'::character varying)::"text", ('rejected'::character varying)::"text", ('trial'::character varying)::"text"])))
 );
 
 
 ALTER TABLE "public"."stores" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."subscription_invoices" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_number" character varying(50) NOT NULL,
+    "subscription_id" "uuid" NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "plan_id" "uuid" NOT NULL,
+    "plan_name" character varying(100) NOT NULL,
+    "amount" numeric(12,2) NOT NULL,
+    "currency" character(3) DEFAULT 'BDT'::"bpchar" NOT NULL,
+    "billing_cycle" "public"."billing_cycle" NOT NULL,
+    "status" "public"."invoice_status" DEFAULT 'unpaid'::"public"."invoice_status" NOT NULL,
+    "period_start" timestamp with time zone NOT NULL,
+    "period_end" timestamp with time zone NOT NULL,
+    "due_date" timestamp with time zone NOT NULL,
+    "paid_at" timestamp with time zone,
+    "payment_method" character varying(50),
+    "payment_reference" character varying(255),
+    "notes" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "sender_number" "text"
+);
+
+
+ALTER TABLE "public"."subscription_invoices" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."subscription_plans" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" character varying(100) NOT NULL,
+    "slug" character varying(100) NOT NULL,
+    "description" "text",
+    "price_monthly" numeric(12,2) DEFAULT 0 NOT NULL,
+    "price_yearly" numeric(12,2) DEFAULT 0 NOT NULL,
+    "currency" character(3) DEFAULT 'BDT'::"bpchar" NOT NULL,
+    "features" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "limits" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "trial_days" integer DEFAULT 0 NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "is_featured" boolean DEFAULT false NOT NULL,
+    "is_public" boolean DEFAULT true NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "is_default_trial_plan" boolean DEFAULT false NOT NULL
+);
+
+
+ALTER TABLE "public"."subscription_plans" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
@@ -425,7 +646,7 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "store_id" "uuid",
-    CONSTRAINT "users_user_type_check" CHECK ((("user_type")::"text" = ANY ((ARRAY['super_admin'::character varying, 'store_owner'::character varying, 'customer'::character varying])::"text"[])))
+    CONSTRAINT "users_user_type_check" CHECK ((("user_type")::"text" = ANY (ARRAY[('super_admin'::character varying)::"text", ('store_owner'::character varying)::"text", ('customer'::character varying)::"text"])))
 );
 
 
@@ -474,6 +695,21 @@ ALTER TABLE ONLY "public"."contact_us"
 
 
 
+ALTER TABLE ONLY "public"."expense_categories"
+    ADD CONSTRAINT "expense_categories_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."expenses"
+    ADD CONSTRAINT "expenses_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."store_subscriptions"
+    ADD CONSTRAINT "one_active_per_store" UNIQUE ("store_id");
+
+
+
 ALTER TABLE ONLY "public"."order_items"
     ADD CONSTRAINT "order_items_pkey" PRIMARY KEY ("id");
 
@@ -491,6 +727,21 @@ ALTER TABLE ONLY "public"."orders"
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."customer_risk_profiles"
+    ADD CONSTRAINT "customer_risk_profiles_pkey" PRIMARY KEY ("phone_number");
+
+
+
+ALTER TABLE ONLY "public"."customer_risk_store_touches"
+    ADD CONSTRAINT "customer_risk_store_touches_pkey" PRIMARY KEY ("phone_number", "store_id");
+
+
+
+ALTER TABLE ONLY "public"."pixel_events"
+    ADD CONSTRAINT "pixel_events_pkey" PRIMARY KEY ("id");
 
 
 
@@ -574,6 +825,21 @@ ALTER TABLE ONLY "public"."store_settings"
 
 
 
+ALTER TABLE ONLY "public"."store_social_media"
+    ADD CONSTRAINT "store_social_media_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."store_social_media"
+    ADD CONSTRAINT "store_social_media_unique_store" UNIQUE ("store_id");
+
+
+
+ALTER TABLE ONLY "public"."store_subscriptions"
+    ADD CONSTRAINT "store_subscriptions_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."stores"
     ADD CONSTRAINT "stores_pkey" PRIMARY KEY ("id");
 
@@ -581,6 +847,26 @@ ALTER TABLE ONLY "public"."stores"
 
 ALTER TABLE ONLY "public"."stores"
     ADD CONSTRAINT "stores_store_slug_key" UNIQUE ("store_slug");
+
+
+
+ALTER TABLE ONLY "public"."subscription_invoices"
+    ADD CONSTRAINT "subscription_invoices_invoice_number_key" UNIQUE ("invoice_number");
+
+
+
+ALTER TABLE ONLY "public"."subscription_invoices"
+    ADD CONSTRAINT "subscription_invoices_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."subscription_plans"
+    ADD CONSTRAINT "subscription_plans_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."subscription_plans"
+    ADD CONSTRAINT "subscription_plans_slug_key" UNIQUE ("slug");
 
 
 
@@ -606,6 +892,78 @@ ALTER TABLE ONLY "public"."wishlists"
 
 ALTER TABLE ONLY "public"."wishlists"
     ADD CONSTRAINT "wishlists_user_id_product_id_variant_id_key" UNIQUE ("user_id", "product_id", "variant_id");
+
+
+
+CREATE INDEX "idx_expenses_category_id" ON "public"."expenses" USING "btree" ("category_id");
+
+
+
+CREATE INDEX "idx_expenses_date" ON "public"."expenses" USING "btree" ("expense_date");
+
+
+
+CREATE INDEX "idx_expenses_user_date" ON "public"."expenses" USING "btree" ("store_id", "expense_date");
+
+
+
+CREATE INDEX "idx_expenses_user_id" ON "public"."expenses" USING "btree" ("store_id");
+
+
+
+CREATE INDEX "idx_invoices_status" ON "public"."subscription_invoices" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_invoices_store_id" ON "public"."subscription_invoices" USING "btree" ("store_id");
+
+
+
+CREATE INDEX "idx_invoices_subscription_id" ON "public"."subscription_invoices" USING "btree" ("subscription_id");
+
+
+
+CREATE INDEX "idx_pixel_events_store_created" ON "public"."pixel_events" USING "btree" ("store_id", "created_at" DESC);
+
+
+
+CREATE UNIQUE INDEX "one_default_trial_plan" ON "public"."subscription_plans" USING "btree" ("is_default_trial_plan") WHERE ("is_default_trial_plan" = true);
+
+
+
+CREATE INDEX "idx_store_subscriptions_expires_at" ON "public"."store_subscriptions" USING "btree" ("expires_at") WHERE ("expires_at" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_store_subscriptions_plan_id" ON "public"."store_subscriptions" USING "btree" ("plan_id");
+
+
+
+CREATE INDEX "idx_store_subscriptions_status" ON "public"."store_subscriptions" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_store_subscriptions_store_id" ON "public"."store_subscriptions" USING "btree" ("store_id");
+
+
+
+CREATE INDEX "idx_store_subscriptions_user_id" ON "public"."store_subscriptions" USING "btree" ("user_id");
+
+
+
+CREATE OR REPLACE TRIGGER "trg_invoice_paid" BEFORE UPDATE ON "public"."subscription_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."sync_subscription_on_invoice_paid"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_store_subscriptions_updated_at" BEFORE UPDATE ON "public"."store_subscriptions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_subscription_invoices_updated_at" BEFORE UPDATE ON "public"."subscription_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_subscription_plans_updated_at" BEFORE UPDATE ON "public"."subscription_plans" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 
@@ -649,6 +1007,21 @@ ALTER TABLE ONLY "public"."customer_profiles"
 
 
 
+ALTER TABLE ONLY "public"."expense_categories"
+    ADD CONSTRAINT "expense_categories_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id");
+
+
+
+ALTER TABLE ONLY "public"."expenses"
+    ADD CONSTRAINT "expenses_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."expense_categories"("id");
+
+
+
+ALTER TABLE ONLY "public"."expenses"
+    ADD CONSTRAINT "expenses_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id");
+
+
+
 ALTER TABLE ONLY "public"."order_items"
     ADD CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE CASCADE;
 
@@ -681,6 +1054,16 @@ ALTER TABLE ONLY "public"."orders"
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."customer_risk_store_touches"
+    ADD CONSTRAINT "customer_risk_store_touches_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pixel_events"
+    ADD CONSTRAINT "pixel_events_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
 
 
@@ -749,11 +1132,6 @@ ALTER TABLE ONLY "public"."store_customers"
 
 
 
-ALTER TABLE ONLY "public"."store_customers"
-    ADD CONSTRAINT "store_customers_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."customer_profiles"("id") ON DELETE SET NULL;
-
-
-
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
@@ -774,6 +1152,26 @@ ALTER TABLE ONLY "public"."store_settings"
 
 
 
+ALTER TABLE ONLY "public"."store_social_media"
+    ADD CONSTRAINT "store_social_media_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."store_subscriptions"
+    ADD CONSTRAINT "store_subscriptions_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "public"."subscription_plans"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."store_subscriptions"
+    ADD CONSTRAINT "store_subscriptions_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."store_subscriptions"
+    ADD CONSTRAINT "store_subscriptions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."stores"
     ADD CONSTRAINT "stores_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "public"."users"("id");
 
@@ -781,6 +1179,26 @@ ALTER TABLE ONLY "public"."stores"
 
 ALTER TABLE ONLY "public"."stores"
     ADD CONSTRAINT "stores_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."subscription_invoices"
+    ADD CONSTRAINT "subscription_invoices_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "public"."subscription_plans"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."subscription_invoices"
+    ADD CONSTRAINT "subscription_invoices_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."subscription_invoices"
+    ADD CONSTRAINT "subscription_invoices_subscription_id_fkey" FOREIGN KEY ("subscription_id") REFERENCES "public"."store_subscriptions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."subscription_invoices"
+    ADD CONSTRAINT "subscription_invoices_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -809,9 +1227,42 @@ ALTER TABLE ONLY "public"."wishlists"
 
 
 
+CREATE POLICY "invoices_owner_read" ON "public"."subscription_invoices" FOR SELECT USING (("user_id" = "auth"."uid"()));
 
 
-ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+CREATE POLICY "invoices_service_write" ON "public"."subscription_invoices" USING (("auth"."role"() = 'service_role'::"text")) WITH CHECK (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "owner_read" ON "public"."pixel_events" FOR SELECT USING (("store_id" IN ( SELECT "users"."store_id"
+   FROM "public"."users"
+  WHERE ("users"."id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "plans_public_read" ON "public"."subscription_plans" FOR SELECT USING ((("is_public" = true) AND ("is_active" = true)));
+
+
+
+CREATE POLICY "plans_service_write" ON "public"."subscription_plans" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "stores_select_own" ON "public"."stores" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "owner_id"));
+
+
+
+CREATE POLICY "subscriptions_owner_read" ON "public"."store_subscriptions" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "subscriptions_service_write" ON "public"."store_subscriptions" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "users_select_own" ON "public"."users" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
@@ -821,168 +1272,15 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_updated_at"() TO "service_role";
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+GRANT ALL ON FUNCTION "public"."sync_subscription_on_invoice_paid"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_subscription_on_invoice_paid"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_subscription_on_invoice_paid"() TO "service_role";
 
 
 
@@ -1016,6 +1314,18 @@ GRANT ALL ON TABLE "public"."customer_profiles" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."expense_categories" TO "anon";
+GRANT ALL ON TABLE "public"."expense_categories" TO "authenticated";
+GRANT ALL ON TABLE "public"."expense_categories" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."expenses" TO "anon";
+GRANT ALL ON TABLE "public"."expenses" TO "authenticated";
+GRANT ALL ON TABLE "public"."expenses" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."order_items" TO "anon";
 GRANT ALL ON TABLE "public"."order_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."order_items" TO "service_role";
@@ -1031,6 +1341,19 @@ GRANT ALL ON TABLE "public"."order_tracking" TO "service_role";
 GRANT ALL ON TABLE "public"."orders" TO "anon";
 GRANT ALL ON TABLE "public"."orders" TO "authenticated";
 GRANT ALL ON TABLE "public"."orders" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."pixel_events" TO "anon";
+GRANT ALL ON TABLE "public"."pixel_events" TO "authenticated";
+GRANT ALL ON TABLE "public"."pixel_events" TO "service_role";
+
+
+
+-- Deliberately service_role only — no anon/authenticated grant at all,
+-- unlike pixel_events above. Store owners never query these directly.
+GRANT ALL ON TABLE "public"."customer_risk_profiles" TO "service_role";
+GRANT ALL ON TABLE "public"."customer_risk_store_touches" TO "service_role";
 
 
 
@@ -1088,9 +1411,33 @@ GRANT ALL ON TABLE "public"."store_settings" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."store_social_media" TO "anon";
+GRANT ALL ON TABLE "public"."store_social_media" TO "authenticated";
+GRANT ALL ON TABLE "public"."store_social_media" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."store_subscriptions" TO "anon";
+GRANT ALL ON TABLE "public"."store_subscriptions" TO "authenticated";
+GRANT ALL ON TABLE "public"."store_subscriptions" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."stores" TO "anon";
 GRANT ALL ON TABLE "public"."stores" TO "authenticated";
 GRANT ALL ON TABLE "public"."stores" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."subscription_invoices" TO "anon";
+GRANT ALL ON TABLE "public"."subscription_invoices" TO "authenticated";
+GRANT ALL ON TABLE "public"."subscription_invoices" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."subscription_plans" TO "anon";
+GRANT ALL ON TABLE "public"."subscription_plans" TO "authenticated";
+GRANT ALL ON TABLE "public"."subscription_plans" TO "service_role";
 
 
 
@@ -1109,12 +1456,6 @@ GRANT ALL ON TABLE "public"."users" TO "service_role";
 GRANT ALL ON TABLE "public"."wishlists" TO "anon";
 GRANT ALL ON TABLE "public"."wishlists" TO "authenticated";
 GRANT ALL ON TABLE "public"."wishlists" TO "service_role";
-
-
-
-
-
-
 
 
 
@@ -1142,29 +1483,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

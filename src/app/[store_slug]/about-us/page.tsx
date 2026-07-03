@@ -55,7 +55,7 @@ export default async function AboutPage({ params }: AboutPageProps) {
 
         {/* Store identity bar — bottom of banner */}
         <div className={`${hasBanner ? "absolute bottom-0 inset-x-0" : "relative bg-gray-900"}`}>
-          <div className="max-w-4xl mx-auto px-5 sm:px-8 pb-4 sm:pb-6 flex items-end gap-3 sm:gap-4">
+          <div className={`max-w-4xl mx-auto px-5 sm:px-8 flex gap-3 sm:gap-4 ${hasBanner ? "pb-4 sm:pb-6 items-end" : "py-4 sm:py-6 items-center"}`}>
             {store.logo_url && (
               <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl mb-0.5">
                 <Image

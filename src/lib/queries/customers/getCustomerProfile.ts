@@ -1,3 +1,4 @@
+"use server";
 // lib/queries/customers/getCustomerProfile.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { CustomerProfile } from "@/lib/types/customer";
@@ -34,14 +35,5 @@ export async function getCustomerProfileByStoreCustomerId(storeCustomerId: strin
   } catch (error) {
     console.error('❌ Error fetching customer profile by store_customer_id:', error);
     return null;
-  }
-}
-
-// Clear cache function
-export function clearProfileCache(storeCustomerId?: string) {
-  if (storeCustomerId) {
-    profileCache.delete(storeCustomerId);
-  } else {
-    profileCache.clear();
   }
 }

@@ -16,7 +16,7 @@ export default function CreateCustomerPage() {
 
   const handleCustomerCreated = (customer: CreateCustomerResponse) => {
     notification.success({
-      message: t.admin.createCustSuccessTitle,
+      title: t.admin.createCustSuccessTitle,
       description: `${customer.name} ${t.admin.createCustSuccessDesc}`,
     });
 

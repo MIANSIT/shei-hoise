@@ -55,7 +55,7 @@ const getProductImage = (record: ProductWithVariants) => {
     record.product_variants?.flatMap((v) => v.product_images || [])[0];
   return (
     img?.image_url ||
-    "https://lizjlqgrurjegmjeujki.supabase.co/storage/v1/object/public/dummyImage/logo.png"
+    "https://lizjlqgrurjegmjeujki.supabase.co/storage/v1/object/public/dummyImage/logo_beta.png"
   );
 };
 

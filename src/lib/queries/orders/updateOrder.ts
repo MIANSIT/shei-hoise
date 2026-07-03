@@ -1,6 +1,9 @@
+"use server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
+import { recordOrderOutcome } from "@/lib/utils/riskScoring";
+import { fireServerPixelEvent } from "@/lib/utils/pixelEventServer";
 
 export interface UpdateOrderData {
   status?: OrderStatus;
@@ -77,6 +80,9 @@ export async function updateOrder(
     // Handle inventory updates if status changes from/to specific states
     await handleInventoryUpdates(existingOrder, updates, orderId);
 
+    // Feed the risk profile and release/suppress any held Facebook Purchase event
+    await handleRiskAndPurchaseEvent(existingOrder, updates, orderId);
+
     return {
       success: true,
       updatedOrder
@@ -88,6 +94,63 @@ export async function updateOrder(
       success: false,
       error: error.message || 'Unknown error occurred while updating order'
     };
+  }
+}
+
+// Feeds the phone's risk profile on delivered/cancelled, and — for orders whose
+// Purchase event was held at creation because the phone looked high-risk —
+// either fires it now (delivered, so it was real) or suppresses it forever
+// (cancelled, so it never trains Facebook's ad algorithm on a fake order).
+async function handleRiskAndPurchaseEvent(
+  existingOrder: any,
+  updates: UpdateOrderData,
+  orderId: string,
+): Promise<void> {
+  try {
+    if (!updates.status || updates.status === existingOrder.status) return;
+    if (updates.status !== "delivered" && updates.status !== "cancelled") return;
+
+    const phone = existingOrder.shipping_address?.phone ?? null;
+    const outcome = updates.status === "delivered" ? "delivered" : "cancelled";
+    await recordOrderOutcome(phone, existingOrder.store_id, outcome);
+
+    if (existingOrder.fb_purchase_event_status !== "held") return;
+
+    if (outcome === "cancelled") {
+      await supabaseAdmin
+        .from("orders")
+        .update({ fb_purchase_event_status: "suppressed" })
+        .eq("id", orderId);
+      return;
+    }
+
+    const { data: orderItems } = await supabaseAdmin
+      .from("order_items")
+      .select("product_id, variant_id")
+      .eq("order_id", orderId);
+
+    const contentIds = (orderItems ?? []).map((i) => i.variant_id ?? i.product_id);
+
+    await fireServerPixelEvent({
+      storeId: existingOrder.store_id,
+      eventName: "Purchase",
+      eventId: existingOrder.order_number,
+      eventParams: {
+        content_ids: contentIds,
+        content_type: "product",
+        value: existingOrder.total_amount,
+        currency: existingOrder.currency,
+        order_id: existingOrder.order_number,
+      },
+    });
+
+    await supabaseAdmin
+      .from("orders")
+      .update({ fb_purchase_event_status: "sent" })
+      .eq("id", orderId);
+  } catch (error) {
+    console.error("Error in handleRiskAndPurchaseEvent:", error);
+    // Don't throw — the order status update itself already succeeded.
   }
 }
 

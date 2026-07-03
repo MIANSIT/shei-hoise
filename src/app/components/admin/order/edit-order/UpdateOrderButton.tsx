@@ -58,7 +58,7 @@ export default function UpdateOrderButton({
   const showConfirm = () => {
     if (emailError) {
       notification.error({
-        message: "Cannot Update Order",
+        title: "Cannot Update Order",
         description: emailError,
       });
       return;

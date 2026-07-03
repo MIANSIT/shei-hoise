@@ -1,11 +1,27 @@
+"use server";
+
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
+import { checkLimit } from "@/lib/utils/planFeatures";
+import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 
 export async function updateProduct(data: ProductUpdateType) {
   const { id, store_id, variants, images, stock, ...productData } = data;
 
   if (!store_id) throw new Error("Store ID is required");
+
+  // Whole-set check — this replaces the product's entire variant list at
+  // once (delete-then-upsert below), not one variant at a time.
+  if (variants && variants.length > 0) {
+    const subscription = await getStoreFeatureSubscription(store_id);
+    const variantLimitCheck = checkLimit(subscription, "max_variants_per_product", variants.length - 1);
+    if (!variantLimitCheck.allowed) {
+      throw new Error(
+        `You can add up to ${variantLimitCheck.limit} variants per product on your plan. Remove some variants and try again.`,
+      );
+    }
+  }
 
   // 1️⃣ Update main product (without stock)
   const { error: productError } = await supabaseAdmin

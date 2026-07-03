@@ -154,14 +154,14 @@ export default function CustomerPage() {
         setSelectedCustomer(updatedCustomer);
 
       notification.success({
-        message: t.admin.customerUpdatedTitle,
+        title: t.admin.customerUpdatedTitle,
         description: `${updatedCustomer.name} ${t.admin.customerUpdatedDesc}`,
       });
 
       return updatedCustomer;
     } catch (error) {
       notification.error({
-        message: t.admin.customerUpdateError,
+        title: t.admin.customerUpdateError,
         description: t.admin.customerUpdateErrorDesc,
       });
       throw error;
@@ -188,7 +188,7 @@ export default function CustomerPage() {
   const handleDelete = (customer: DetailedCustomer) => {
     setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
     notification.success({
-      message: t.admin.customerDeletedTitle,
+      title: t.admin.customerDeletedTitle,
       description: `${customer.name} ${t.admin.customerDeletedDesc}`,
     });
   };

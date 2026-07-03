@@ -67,7 +67,7 @@ export default function CustomerCreateForm({
   const onFinish = async (values: CustomerFormData) => {
     if (!user?.store_id) {
       notification.error({
-        message: t.admin.customerStoreRequired,
+        title: t.admin.customerStoreRequired,
         description: t.admin.customerStoreRequiredDesc,
       });
       return;
@@ -90,7 +90,7 @@ export default function CustomerCreateForm({
 
       if (showSuccessMessage) {
         notification.success({
-          message: t.admin.customerCreatedMsg,
+          title: t.admin.customerCreatedMsg,
           description: `${values.name} ${t.admin.customerCreatedDesc2}`,
         });
       }
@@ -108,7 +108,7 @@ export default function CustomerCreateForm({
           : t.admin.customerCheckInfo;
 
       notification.error({
-        message: t.admin.customerFailedMsg,
+        title: t.admin.customerFailedMsg,
         description: errorMessage.includes("already exists")
           ? t.admin.customerEmailExists
           : errorMessage,

@@ -110,6 +110,7 @@ export interface StoreOrder {
   customers: OrderCustomer | null;
   delivery_option?: DeliveryOption;
   cancel_note?: string;
+  fb_purchase_event_status?: "sent" | "held" | "suppressed" | null;
 }
 
 // ===== FORM DATA TYPES =====

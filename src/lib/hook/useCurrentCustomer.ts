@@ -92,17 +92,7 @@ async function findOrCreateCustomer(email: string, authUserId: string | null, st
 
     // Try to find customer by email
     const { data: customersByEmail, error: emailError } = await supabase
-      .from("store_customers")
-      .select(`
-        id,
-        email,
-        name,
-        phone,
-        auth_user_id,
-        profile_id
-      `)
-      .eq("email", email.toLowerCase())
-      .limit(1);
+      .rpc("find_customer_by_email", { p_email: email.toLowerCase() });
 
     if (emailError) {
       console.error('❌ Error finding customer by email:', emailError);

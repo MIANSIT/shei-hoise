@@ -8,7 +8,7 @@ export const dummyProducts = [
     rating: 4.5,
     discount: 20,
     stock: 25, // added stock
-    images: ["/dummyProduct.avif", "/logo.png", "/dummyProduct.avif"],
+    images: ["/dummyProduct.avif", "/logo_beta.png", "/dummyProduct.avif"],
     description:
       "Experience crystal-clear sound with our premium wireless headphones. Featuring active noise cancellation, 30-hour battery life, and comfortable over-ear design for all-day listening comfort.",
     features: [
