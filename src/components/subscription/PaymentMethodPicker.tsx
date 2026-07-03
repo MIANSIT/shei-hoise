@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Copy, CheckCheck, Smartphone, Landmark } from "lucide-react";
 import { BKASH, NAGAD, BANK } from "@/lib/constants/paymentMethods";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export type MethodType = "bkash" | "nagad" | "bank";
 
 // ── Copy button ───────────────────────────────────────────────────────────────
 
 function CopyBtn({ text, label }: { text: string; label?: string }) {
+  const t = useTranslation();
   const [copied, setCopied] = useState(false);
   function copy(e: React.MouseEvent) {
     e.stopPropagation(); // prevent bubbling to the card toggle
@@ -24,7 +26,7 @@ function CopyBtn({ text, label }: { text: string; label?: string }) {
       className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-500 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors shrink-0"
     >
       {copied ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-      {label ?? (copied ? "Copied" : "Copy")}
+      {label ?? (copied ? t.admin.subCopied : t.admin.subCopy)}
     </button>
   );
 }
@@ -49,11 +51,14 @@ function BkashCard({
   selected,
   onSelect,
   amount,
+  invoiceNumber,
 }: {
   selected: boolean;
   onSelect: () => void;
   amount: number;
+  invoiceNumber: string;
 }) {
+  const t = useTranslation();
   return (
     <div
       role="button"
@@ -75,8 +80,8 @@ function BkashCard({
           <Smartphone className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">bKash</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">Personal · {BKASH.number}</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{t.admin.subMethodBkash}</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.subPersonal} · {BKASH.number}</p>
         </div>
         <RadioDot selected={selected} color="pink" />
       </div>
@@ -85,7 +90,7 @@ function BkashCard({
         <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-white dark:bg-gray-900 space-y-3">
           <div className="rounded-lg bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-800 p-4">
             <p className="text-[10px] font-bold text-pink-500 dark:text-pink-400 uppercase tracking-wide mb-1.5">
-              Send Exactly
+              {t.admin.subSendExactly}
             </p>
             <p className="text-3xl font-bold text-pink-600 dark:text-pink-400 font-mono leading-none">
               ৳{amount.toLocaleString("en-BD")}
@@ -94,14 +99,22 @@ function BkashCard({
 
           <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Send to</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subSendTo}</p>
               <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{BKASH.number}</p>
             </div>
             <CopyBtn text={BKASH.number} />
           </div>
 
+          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+            <div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subColReference}</p>
+              <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{invoiceNumber}</p>
+            </div>
+            <CopyBtn text={invoiceNumber} />
+          </div>
+
           <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-            bKash app → Send Money → enter number → enter the exact amount shown → use invoice number as reference.
+            {t.admin.subBkashInstructions}
           </p>
         </div>
       )}
@@ -113,11 +126,14 @@ function NagadCard({
   selected,
   onSelect,
   amount,
+  invoiceNumber,
 }: {
   selected: boolean;
   onSelect: () => void;
   amount: number;
+  invoiceNumber: string;
 }) {
+  const t = useTranslation();
   return (
     <div
       role="button"
@@ -139,8 +155,8 @@ function NagadCard({
           <Smartphone className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Nagad</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">Personal · {NAGAD.number}</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{t.admin.subMethodNagad}</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.subPersonal} · {NAGAD.number}</p>
         </div>
         <RadioDot selected={selected} color="orange" />
       </div>
@@ -149,7 +165,7 @@ function NagadCard({
         <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-white dark:bg-gray-900 space-y-3">
           <div className="rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 p-4">
             <p className="text-[10px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wide mb-1.5">
-              Send Exactly
+              {t.admin.subSendExactly}
             </p>
             <p className="text-3xl font-bold text-orange-600 dark:text-orange-400 font-mono leading-none">
               ৳{amount.toLocaleString("en-BD")}
@@ -158,14 +174,22 @@ function NagadCard({
 
           <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Send to</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subSendTo}</p>
               <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{NAGAD.number}</p>
             </div>
             <CopyBtn text={NAGAD.number} />
           </div>
 
+          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+            <div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subColReference}</p>
+              <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{invoiceNumber}</p>
+            </div>
+            <CopyBtn text={invoiceNumber} />
+          </div>
+
           <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-            Nagad app → Send Money → enter number → enter the exact amount shown → use invoice number as reference.
+            {t.admin.subNagadInstructions}
           </p>
         </div>
       )}
@@ -173,13 +197,23 @@ function NagadCard({
   );
 }
 
-function BankCard({ selected, onSelect }: { selected: boolean; onSelect: () => void }) {
+function BankCard({
+  selected,
+  onSelect,
+  invoiceNumber,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  invoiceNumber: string;
+}) {
+  const t = useTranslation();
   const rows = [
-    { label: "Bank", value: BANK.bankName },
-    { label: "Account Name", value: BANK.accountName },
-    { label: "Account No.", value: BANK.accountNumber },
-    { label: "Branch", value: BANK.branch },
-    { label: "Routing No.", value: BANK.routingNumber },
+    { label: t.admin.subBankRowBank, value: BANK.bankName },
+    { label: t.admin.subBankRowAccountName, value: BANK.accountName },
+    { label: t.admin.subBankRowAccountNo, value: BANK.accountNumber },
+    { label: t.admin.subBankRowBranch, value: BANK.branch },
+    { label: t.admin.subBankRowRoutingNo, value: BANK.routingNumber },
+    { label: t.admin.subColReference, value: invoiceNumber },
   ];
 
   return (
@@ -203,8 +237,8 @@ function BankCard({ selected, onSelect }: { selected: boolean; onSelect: () => v
           <Landmark className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Bank Transfer</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">NRBC Bank · Rajshahi</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{t.admin.subMethodBankTransfer}</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.subBankSubLabel}</p>
         </div>
         <RadioDot selected={selected} color="blue" />
       </div>
@@ -226,7 +260,7 @@ function BankCard({ selected, onSelect }: { selected: boolean; onSelect: () => v
             </div>
           ))}
           <p className="text-[11px] text-gray-400 dark:text-gray-500 pt-2 leading-relaxed">
-            Transfer the exact amount and email the receipt with your invoice number.
+            {t.admin.subBankInstructions}
           </p>
         </div>
       )}
@@ -240,10 +274,12 @@ export function PaymentMethodPicker({
   method,
   onMethodChange,
   amount,
+  invoiceNumber,
 }: {
   method: MethodType | null;
   onMethodChange: (method: MethodType | null) => void;
   amount: number;
+  invoiceNumber: string;
 }) {
   return (
     <div className="space-y-3">
@@ -251,13 +287,19 @@ export function PaymentMethodPicker({
         selected={method === "bkash"}
         onSelect={() => onMethodChange(method === "bkash" ? null : "bkash")}
         amount={amount}
+        invoiceNumber={invoiceNumber}
       />
       <NagadCard
         selected={method === "nagad"}
         onSelect={() => onMethodChange(method === "nagad" ? null : "nagad")}
         amount={amount}
+        invoiceNumber={invoiceNumber}
       />
-      <BankCard selected={method === "bank"} onSelect={() => onMethodChange(method === "bank" ? null : "bank")} />
+      <BankCard
+        selected={method === "bank"}
+        onSelect={() => onMethodChange(method === "bank" ? null : "bank")}
+        invoiceNumber={invoiceNumber}
+      />
     </div>
   );
 }
