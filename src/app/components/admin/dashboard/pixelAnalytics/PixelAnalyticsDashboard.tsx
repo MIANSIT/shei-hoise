@@ -23,7 +23,11 @@ import {
   Globe,
   Package,
   Info,
+  Lock,
+  AlertTriangle,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import {
   getPixelAnalytics,
   PixelAnalyticsData,
@@ -31,7 +35,14 @@ import {
   CampaignStats,
   SourceStats,
   ProductStat,
+  startOf,
 } from "@/lib/queries/pixelEvents/getPixelAnalytics";
+import { getAdSpendProtectionCount } from "@/lib/queries/orders/getAdSpendProtectionCount";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getStoreCapiStatus, type StoreCapiStatus } from "@/lib/queries/stores/getStoreCapiStatus";
+import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
+import type { StoreSettings } from "@/lib/types/store/store";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -162,9 +173,27 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   const [period, setPeriod] = useState<PixelPeriod>("7d");
   const [data, setData] = useState<PixelAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
+  const [capiStatus, setCapiStatus] = useState<StoreCapiStatus>({ hasToken: false, testEventCode: null });
+  const [adSpendProtected, setAdSpendProtected] = useState(0);
   const t = useTranslation();
   const n = useLocalNum();
   const { icon: currencyIcon } = useUserCurrencyIcon();
+
+  useEffect(() => {
+    getStoreSettings(storeId).then(setSettings);
+    getStoreSubscription(storeId).then(setSubscription);
+    getStoreCapiStatus(storeId).then(setCapiStatus);
+  }, [storeId]);
+
+  useEffect(() => {
+    getAdSpendProtectionCount(storeId, startOf(period)).then(setAdSpendProtected);
+  }, [storeId, period]);
+
+  const capiEntitled = hasFeature(subscription, "conversion_api");
+  const capiConfigured = capiStatus.hasToken;
+  const testModeActive = !!capiStatus.testEventCode;
 
   const EVENT_META = [
     { key: "PageView", label: t.admin.pixelPageViews, icon: Eye, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-100 dark:border-blue-500/20", bar: "from-blue-400 to-blue-600", chartColor: "#3b82f6" },
@@ -260,6 +289,94 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
+        </div>
+      </div>
+
+      {/* ── Facebook Connection Health ── */}
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
+        <SectionHeader gradient="from-blue-400 to-indigo-500" title={t.admin.pixelHealthTitle} />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.admin.pixelHealthPixel}</span>
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${pixelId ? "text-green-700 bg-green-50 dark:bg-green-500/10" : "text-gray-500 bg-gray-100 dark:bg-gray-800"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${pixelId ? "bg-green-500" : "bg-gray-400"}`} />
+                {pixelId ? t.admin.pixelHealthConnected : t.admin.pixelHealthNotConnected}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.admin.pixelHealthCapi}</span>
+              {!capiEntitled ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-gray-500 bg-gray-100 dark:bg-gray-800">
+                  <Lock className="w-3 h-3" /> {t.admin.pixelHealthCapiLocked}
+                </span>
+              ) : data?.lastCapiError ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-red-700 bg-red-50 dark:bg-red-500/10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> {t.admin.pixelHealthCapiError}
+                </span>
+              ) : capiConfigured ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-green-700 bg-green-50 dark:bg-green-500/10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> {t.admin.pixelHealthConnected}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-gray-500 bg-gray-100 dark:bg-gray-800">
+                  {t.admin.pixelHealthNotConnected}
+                </span>
+              )}
+            </div>
+            {capiEntitled && data?.lastCapiError && (
+              <p className="text-[11px] text-red-500 mt-1.5 truncate" title={data.lastCapiError}>{data.lastCapiError}</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.admin.pixelHealthCatalog}</span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full text-blue-700 bg-blue-50 dark:bg-blue-500/10">
+                {t.admin.pixelHealthCatalogAvailable}
+              </span>
+            </div>
+            <Link href="/dashboard/store-management#store-settings" className="text-[11px] text-indigo-500 hover:underline inline-flex items-center gap-1 mt-1.5">
+              {t.admin.pixelHealthCatalogCta} <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+
+        {testModeActive && (
+          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3 mb-3">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300">{t.admin.pixelHealthTestMode}</p>
+          </div>
+        )}
+
+        {capiEntitled && capiConfigured && (
+          <div className="mb-3">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">{t.admin.pixelHealthBrowserVsServer}</p>
+            <div className="space-y-1.5">
+              {EVENT_META.map((meta) => {
+                const browserCount = totals[meta.key] ?? 0;
+                const serverCount = data?.capiDelivered?.[meta.key] ?? 0;
+                return (
+                  <div key={meta.key} className="flex items-center gap-2 text-xs">
+                    <span className="w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
+                    <span className="text-gray-400">{t.admin.pixelHealthBrowser}: <strong className="text-gray-700 dark:text-gray-300">{n(browserCount)}</strong></span>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-gray-400">{t.admin.pixelHealthServer}: <strong className="text-gray-700 dark:text-gray-300">{n(serverCount)}</strong></span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-xl bg-linear-to-br from-blue-600 to-blue-700 p-4 text-white">
+          <p className="text-[10px] uppercase tracking-wide text-blue-100">{t.admin.pixelHealthAdSpendProtection}</p>
+          <p className="text-2xl font-black mt-1">{n(adSpendProtected)}</p>
+          <p className="text-xs text-blue-100 mt-1">{t.admin.pixelHealthAdSpendProtectionDesc}</p>
         </div>
       </div>
 

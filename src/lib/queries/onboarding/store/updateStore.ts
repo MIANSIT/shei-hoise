@@ -1,7 +1,7 @@
 // lib/actions/stores/updateStore.ts
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { StoreStatus } from "@/lib/types/enums";
 
 type UpdateStoreArgs = {
@@ -15,6 +15,7 @@ export async function updateStore({
   status,
   isActive,
 }: UpdateStoreArgs) {
+  const supabase = createClient();
   try {
     // Only include the fields that are being updated
     const updates: Partial<{ status: StoreStatus; is_active: boolean }> = {};

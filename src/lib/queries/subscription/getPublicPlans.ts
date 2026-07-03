@@ -13,11 +13,12 @@ export interface PublicPlan {
   trial_days: number;
   is_featured: boolean;
   is_public: boolean;
+  is_default_trial_plan?: boolean;
   sort_order: number;
 }
 
 export const PLAN_COLUMNS =
-  "id, name, slug, description, price_monthly, price_yearly, currency, features, limits, trial_days, is_featured, is_public, sort_order";
+  "id, name, slug, description, price_monthly, price_yearly, currency, features, limits, trial_days, is_featured, is_public, is_default_trial_plan, sort_order";
 
 const ACRONYM_WORDS = new Set(["pos", "seo", "api", "pdf", "csv", "id", "url", "sms"]);
 const LOWERCASE_WORDS = new Set(["per", "and", "or", "to", "of", "in", "on", "at", "a", "an", "the"]);

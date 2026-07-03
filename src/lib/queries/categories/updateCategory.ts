@@ -1,9 +1,10 @@
 "use server";
 
 import { updateCategorySchema, type UpdateCategoryType } from "@/lib/schema/category.schema";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export async function updateCategory(data: UpdateCategoryType, store_id: string) {
+  const supabase = createClient();
   const payload = updateCategorySchema.parse(data);
 
   try {

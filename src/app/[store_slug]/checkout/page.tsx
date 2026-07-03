@@ -130,7 +130,8 @@ export default function CheckoutPage() {
     if (isMounted && !isLoadingOverall && cartItems.length > 0 && !hasTrackedCheckout.current) {
       hasTrackedCheckout.current = true;
       fbq(FbEvent.INITIATE_CHECKOUT, {
-        content_ids: cartItems.map((i) => i.productId),
+        // Variant ID when present, matching the catalog feed's g:id.
+        content_ids: cartItems.map((i) => i.variantId ?? i.productId),
         content_type: "product",
         num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
         value: calculations.subtotal,
@@ -528,6 +529,13 @@ export default function CheckoutPage() {
           return notify.error(t.checkout.failedCreateCustomer);
         }
 
+        fbq(FbEvent.ADD_PAYMENT_INFO, {
+          content_ids: cartItems.map((i) => i.variantId ?? i.productId),
+          content_type: "product",
+          value: calculations.totalPrice + shippingFee + taxAmount,
+          currency: storeCurrency,
+        }, store_slug);
+
         const result = await processOrder(
           formDataWithShipping,
           storeCustomerId,
@@ -543,14 +551,19 @@ export default function CheckoutPage() {
           return notify.error(result.error || t.checkout.failedPlaceOrder);
         }
 
-        fbq(FbEvent.PURCHASE, {
-          content_ids: cartItems.map((i) => i.productId),
-          content_type: "product",
-          num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
-          value: calculations.totalPrice + shippingFee + taxAmount,
-          currency: storeCurrency,
-          order_id: result.orderNumber,
-        }, store_slug);
+        // High-risk phone numbers have their Purchase event held (not fired
+        // here) until the order is confirmed delivered — see updateOrder.ts.
+        if (result.fbPurchaseEventStatus !== "held") {
+          fbq(FbEvent.PURCHASE, {
+            // Variant ID when present, matching the catalog feed's g:id.
+            content_ids: cartItems.map((i) => i.variantId ?? i.productId),
+            content_type: "product",
+            num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
+            value: calculations.totalPrice + shippingFee + taxAmount,
+            currency: storeCurrency,
+            order_id: result.orderNumber,
+          }, store_slug);
+        }
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);

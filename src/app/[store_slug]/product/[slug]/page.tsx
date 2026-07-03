@@ -378,15 +378,20 @@ export default function ProductPage() {
           ),
         };
         setProduct(fixed as ApiProduct);
+        let initialVariantId: string | null = null;
         if (fixed.product_variants?.length > 0) {
           const first = fixed.product_variants.find(
             (v: any) => (v.product_inventory?.[0]?.quantity_available ?? 0) > 0,
           );
-          setSelectedVariant(first?.id ?? fixed.product_variants[0].id);
+          initialVariantId = first?.id ?? fixed.product_variants[0].id;
+          setSelectedVariant(initialVariantId);
         }
 
         fbq(FbEvent.VIEW_CONTENT, {
-          content_ids: [fixed.id],
+          // Use the variant ID (matching the catalog feed's g:id) when this
+          // product has variants, so Facebook can match this event to the
+          // correct catalog item for dynamic retargeting ads.
+          content_ids: [initialVariantId ?? fixed.id],
           content_name: fixed.name,
           content_type: "product",
           value: fixed.discounted_price ?? fixed.base_price,
@@ -421,7 +426,8 @@ export default function ProductPage() {
         variantId: selectedVariantData?.id ?? null,
       } as AddToCartType);
       fbq(FbEvent.ADD_TO_CART, {
-        content_ids: [product.id],
+        // Variant ID when selected, matching the catalog feed's g:id.
+        content_ids: [selectedVariantData?.id ?? product.id],
         content_name: product.name,
         content_type: "product",
         value: displayPrice * quantity,
@@ -450,7 +456,8 @@ export default function ProductPage() {
         variantId: selectedVariantData?.id ?? null,
       } as AddToCartType);
       fbq(FbEvent.ADD_TO_CART, {
-        content_ids: [product.id],
+        // Variant ID when selected, matching the catalog feed's g:id.
+        content_ids: [selectedVariantData?.id ?? product.id],
         content_name: product.name,
         content_type: "product",
         value: displayPrice * quantity,

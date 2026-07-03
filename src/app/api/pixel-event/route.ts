@@ -1,14 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { fireServerPixelEvent } from "@/lib/utils/pixelEventServer";
 
 export async function POST(req: NextRequest) {
   try {
-    const { event, params, store_slug } = await req.json();
+    const { event, params, store_slug, eventId, fbp, fbc } = await req.json();
 
     if (!event || !store_slug) {
       return Response.json({ error: "Missing event or store_slug" }, { status: 400 });
@@ -24,10 +20,15 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Store not found" }, { status: 404 });
     }
 
-    await supabaseAdmin.from("pixel_events").insert({
-      store_id: store.id,
-      event_name: event,
-      metadata: params ?? {},
+    await fireServerPixelEvent({
+      storeId: store.id,
+      eventName: event,
+      eventId: eventId ?? crypto.randomUUID(),
+      eventParams: params ?? {},
+      fbp,
+      fbc,
+      clientIpAddress: req.headers.get("x-forwarded-for"),
+      clientUserAgent: req.headers.get("user-agent"),
     });
 
     return Response.json({ ok: true }, { status: 201 });

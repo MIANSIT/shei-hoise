@@ -1,3 +1,4 @@
+"use server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/queries/customers/getCustomerByEmail.ts - FIXED VERSION
 import { supabaseAdmin } from "@/lib/supabase/admin";

@@ -15,7 +15,7 @@ import {
   Drawer,
 } from "antd";
 import { useSupabaseAuth } from "../../lib/hook/userCheckAuth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { USERTYPE } from "@/lib/types/enums"; // ← add this
 
@@ -26,6 +26,9 @@ import {
 import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup";
 import TrialEnded from "@/app/components/admin/StoreStatus/TrialEnded";
 import AccessRestricted from "@/app/components/admin/StoreStatus/AccessRestricted";
+import SubscriptionLocked from "@/app/components/admin/StoreStatus/SubscriptionLocked";
+import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
+import { getSubscriptionAccessState } from "@/lib/utils/subscriptionAccess";
 import LanguageSwitcher from "@/app/components/common/LanguageSwitcher";
 import { useTranslation } from "@/lib/hook/useTranslation";
 // import { supabase } from "@/lib/supabase";
@@ -45,8 +48,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const { session, loading: authLoading } = useSupabaseAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const {
     role,
+    storeId,
     storeSlug,
     storeStatus,
     storeIsActive,
@@ -57,6 +62,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [storeLoading, setStoreLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
+  const [subLoading, setSubLoading] = useState(true);
   // const [, setLogoutLoading] = useState(false);
   // const notify = useSheiNotification();
 
@@ -95,6 +102,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       cancelled = true;
     };
   }, [storeSlug]);
+
+  useEffect(() => {
+    if (!storeId) {
+      setSubLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSubLoading(true);
+    getStoreSubscription(storeId)
+      .then((sub) => {
+        if (!cancelled) setSubscription(sub);
+      })
+      .finally(() => {
+        if (!cancelled) setSubLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId]);
 
   // Check if mobile and handle sidebar - only run on client
   useEffect(() => {
@@ -280,6 +306,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } else {
       return <AccessRestricted status={storeStatus ?? undefined} />;
     }
+  }
+
+  // Subscription-based lock (trial/paid period lapsed past its grace period).
+  // The subscription page itself is always reachable so the owner can pay.
+  const isSubscriptionRoute = pathname?.startsWith("/dashboard/subscription") ?? false;
+  if (subLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen flex-col gap-4">
+        <Spin size="large" />
+        <div className="text-primary">{t.admin.loading}</div>
+      </div>
+    );
+  }
+  const accessState = getSubscriptionAccessState(subscription);
+  if (!isSubscriptionRoute && accessState.state !== "open" && storeId) {
+    return (
+      <SubscriptionLocked
+        storeId={storeId}
+        state={accessState.state}
+        daysLeftInGrace={accessState.daysLeftInGrace}
+      />
+    );
   }
 
   // Handle sidebar toggle

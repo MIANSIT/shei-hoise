@@ -1,4 +1,4 @@
-"use client";
+"use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ProductStatus, StockFilter } from "@/lib/types/enums";

@@ -1,10 +1,10 @@
 // File: app/components/admin/dashboard/store-settings/storeCard/StoreSettingsCard.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, X, Check, Info } from "lucide-react";
+import { Pencil, X, Check, Info, Lock, Send } from "lucide-react";
 import type {
   StoreSettings,
   UpdatedStoreSettings,
@@ -12,6 +12,9 @@ import type {
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { Currency, CURRENCY_ICONS } from "@/lib/types/enums";
+import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
+import { getStoreCapiStatus, type StoreCapiStatus } from "@/lib/queries/stores/getStoreCapiStatus";
+import { hasFeature } from "@/lib/utils/planFeatures";
 
 interface SettingRowProps {
   label: string;
@@ -117,8 +120,50 @@ export function StoreSettingsCard({
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({ ...settings });
   const [loading, setLoading] = useState(false);
+  const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
+  const [capiStatus, setCapiStatus] = useState<StoreCapiStatus>({ hasToken: false, testEventCode: null });
+  // Write-only — never pre-filled from the stored (encrypted) value, so
+  // saving without touching this field can never re-encrypt ciphertext.
+  const [newCapiToken, setNewCapiToken] = useState("");
+  const [testEventCode, setTestEventCode] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
   const notify = useSheiNotification();
   const t = useTranslation();
+
+  const refreshCapiStatus = () => {
+    if (!settings.store_id) return;
+    getStoreCapiStatus(settings.store_id).then((status) => {
+      setCapiStatus(status);
+      setTestEventCode(status.testEventCode ?? "");
+    });
+  };
+
+  useEffect(() => {
+    if (settings.store_id) {
+      getStoreSubscription(settings.store_id).then(setSubscription);
+    }
+    refreshCapiStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.store_id]);
+
+  const capiEntitled = hasFeature(subscription, "conversion_api");
+
+  const handleSendTestEvent = async () => {
+    setSendingTest(true);
+    try {
+      const res = await fetch("/api/facebook/test-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store_id: settings.store_id }),
+      });
+      if (!res.ok) throw new Error();
+      notify.success(t.admin.storeMgmtCapiTestSent);
+    } catch {
+      notify.error(t.admin.storeMgmtCapiTestFailed);
+    } finally {
+      setSendingTest(false);
+    }
+  };
 
   const handleChange = (field: keyof StoreSettings, value: string | number | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -128,9 +173,15 @@ export function StoreSettingsCard({
     if (onUpdate) {
       try {
         setLoading(true);
-        await onUpdate(formData);
+        const payload: UpdatedStoreSettings = { ...formData, facebook_test_event_code: testEventCode || null };
+        if (newCapiToken.trim()) {
+          payload.facebook_capi_access_token = newCapiToken.trim();
+        }
+        await onUpdate(payload);
+        setNewCapiToken("");
         setEditing(false);
         notify.success(t.admin.storeMgmtSettingsOk);
+        refreshCapiStatus();
       } catch (err) {
         console.error(err);
         notify.error(t.admin.storeMgmtSettingsFail);
@@ -142,6 +193,8 @@ export function StoreSettingsCard({
 
   const handleCancel = () => {
     setFormData({ ...settings });
+    setNewCapiToken("");
+    setTestEventCode(capiStatus.testEventCode ?? "");
     setEditing(false);
   };
 
@@ -281,6 +334,58 @@ export function StoreSettingsCard({
             type="text"
             onChange={(val) => handleChange("facebook_pixel_id", String(val) || null)}
           />
+
+          {capiEntitled ? (
+            <>
+              <div className="flex items-center justify-between py-3.5 px-3">
+                <p className="text-sm font-medium text-foreground">{t.admin.storeMgmtCapiToken}</p>
+                {editing ? (
+                  <input
+                    type="password"
+                    value={newCapiToken}
+                    onChange={(e) => setNewCapiToken(e.target.value)}
+                    placeholder={
+                      capiStatus.hasToken
+                        ? t.admin.storeMgmtCapiTokenReplace
+                        : t.admin.storeMgmtCapiTokenInfo
+                    }
+                    className="bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 px-2.5 py-1.5 rounded-lg text-sm outline-none w-56 text-foreground"
+                  />
+                ) : (
+                  <span className="text-sm font-semibold text-foreground tabular-nums bg-muted/50 px-2.5 py-1 rounded-lg">
+                    {capiStatus.hasToken ? "••••••••" : "—"}
+                  </span>
+                )}
+              </div>
+              <SettingRow
+                label={t.admin.storeMgmtCapiTestCode}
+                value={testEventCode}
+                info={t.admin.storeMgmtCapiTestCodeInfo}
+                editing={editing}
+                type="text"
+                onChange={(val) => setTestEventCode(String(val))}
+              />
+              {!editing && formData.facebook_pixel_id && capiStatus.hasToken && (
+                <div className="flex justify-end px-3 py-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-3 text-xs font-medium gap-1.5"
+                    onClick={handleSendTestEvent}
+                    disabled={sendingTest}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    {sendingTest ? t.admin.storeMgmtSaving : t.admin.storeMgmtCapiSendTest}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-2 py-3.5 px-3 rounded-xl bg-muted/30">
+              <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">{t.admin.storeMgmtCapiLocked}</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

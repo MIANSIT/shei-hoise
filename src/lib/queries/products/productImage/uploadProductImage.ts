@@ -1,3 +1,4 @@
+"use server";
 // File: productImage/uploadProductImage.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 

@@ -641,7 +641,29 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                 Update order details for {customerInfo.name}
               </Text>
             </div>
-            <Tag color="orange">Editing</Tag>
+            <Space>
+              {originalOrder?.fb_purchase_event_status && (
+                <Tag
+                  color={
+                    originalOrder.fb_purchase_event_status === "sent"
+                      ? "green"
+                      : originalOrder.fb_purchase_event_status === "held"
+                        ? "gold"
+                        : "default"
+                  }
+                  title={
+                    originalOrder.fb_purchase_event_status === "sent"
+                      ? "Sent to Facebook immediately after checkout"
+                      : originalOrder.fb_purchase_event_status === "held"
+                        ? "Held — will only be sent to Facebook once this order is marked Delivered"
+                        : "Suppressed — this order was cancelled before the event was ever sent"
+                  }
+                >
+                  Facebook Purchase: {originalOrder.fb_purchase_event_status}
+                </Tag>
+              )}
+              <Tag color="orange">Editing</Tag>
+            </Space>
           </div>
 
           {hasDirtyChanges && (

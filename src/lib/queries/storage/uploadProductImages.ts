@@ -1,6 +1,10 @@
+"use server";
+
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
+import { checkLimit } from "@/lib/utils/planFeatures";
+import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 
 /**
  * Extracts the storage file path from a Supabase public URL.
@@ -33,7 +37,20 @@ export async function uploadOrUpdateProductImages(
 ) {
   if (!images || images.length === 0) return [];
 
-  const imagesToSave = images.slice(0, 5); // max 5 images
+  // This call saves the whole desired image set at once (not one-at-a-time),
+  // so we check the final count directly against the plan's per-product
+  // limit instead of the usual "existing count, about to add one more"
+  // pattern checkLimit is shaped for — passing length-1 as "current"
+  // reframes it to the same "current < limit" check correctly.
+  const subscription = await getStoreFeatureSubscription(storeId);
+  const limitCheck = checkLimit(subscription, "max_images_per_product", images.length - 1);
+  if (!limitCheck.allowed) {
+    throw new Error(
+      `You can upload up to ${limitCheck.limit} images per product on your plan. Remove some images and try again.`,
+    );
+  }
+
+  const imagesToSave = images;
 
   // 1️⃣ Fetch existing images from DB
   const { data: existingImages, error: fetchError } = await supabaseAdmin

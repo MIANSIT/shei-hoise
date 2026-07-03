@@ -1,3 +1,4 @@
+"use server";
 // File: lib/queries/products/getProductById.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 

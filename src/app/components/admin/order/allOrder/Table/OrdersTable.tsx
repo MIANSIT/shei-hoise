@@ -39,9 +39,11 @@ import dataService from "@/lib/queries/dataService";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import type { RiskAssessment } from "@/lib/utils/riskScoring";
 
 interface Props {
   orders: StoreOrder[];
+  riskByPhone?: Record<string, RiskAssessment>;
   total: number;
   page: number;
   search: string;
@@ -60,8 +62,16 @@ interface Props {
   onRefresh?: () => void;
 }
 
+const RISK_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  new: { bg: "bg-gray-100", text: "text-gray-600", label: "New" },
+  low: { bg: "bg-green-50", text: "text-green-700", label: "Low" },
+  medium: { bg: "bg-amber-50", text: "text-amber-700", label: "Medium" },
+  high: { bg: "bg-red-50", text: "text-red-700", label: "High" },
+};
+
 const OrdersTable: React.FC<Props> = ({
   orders,
+  riskByPhone,
   onUpdate,
   search,
   onSearchChange,
@@ -422,6 +432,24 @@ const OrdersTable: React.FC<Props> = ({
         </div>
       ),
       width: 120,
+      responsive: ["lg"],
+    },
+    {
+      title: t.admin.orderColRisk,
+      key: "risk",
+      render: (_, order: StoreOrder) => {
+        const phone = order.shipping_address?.phone;
+        const risk = phone ? riskByPhone?.[phone] : undefined;
+        const style = RISK_STYLES[risk?.level ?? "new"];
+        return (
+          <Tooltip title={risk?.reason ?? "No history yet"}>
+            <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${style.bg} ${style.text}`}>
+              {style.label}
+            </span>
+          </Tooltip>
+        );
+      },
+      width: 90,
       responsive: ["lg"],
     },
     {

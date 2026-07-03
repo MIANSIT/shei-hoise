@@ -1,3 +1,4 @@
+"use server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
@@ -23,6 +24,7 @@ export interface OrderWithItems {
   delivery_option: string;
   created_at: string;
   updated_at: string;
+  fb_purchase_event_status?: "sent" | "held" | "suppressed";
   customer?: {
     id: string;
     name: string;

@@ -11,6 +11,35 @@ import { createStoreWithSettings } from "@/lib/queries/onboarding/store/createSt
 import { DomainErrorCode } from "@/lib/errors/domainErrors";
 // ✅ Domain error codes for production
 
+async function assignDefaultTrialPlan(storeId: string, userId: string): Promise<void> {
+  try {
+    const { data: plan } = await supabaseAdmin
+      .from("subscription_plans")
+      .select("id, trial_days")
+      .eq("is_default_trial_plan", true)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!plan) return;
+
+    const now = new Date();
+    const trialEndsAt = new Date(now);
+    trialEndsAt.setDate(trialEndsAt.getDate() + (plan.trial_days || 0));
+
+    await supabaseAdmin.from("store_subscriptions").insert({
+      store_id: storeId,
+      user_id: userId,
+      plan_id: plan.id,
+      status: "trialing",
+      trial_ends_at: trialEndsAt.toISOString(),
+      current_period_start: now.toISOString(),
+      current_period_end: trialEndsAt.toISOString(),
+    });
+  } catch (err) {
+    console.error("assignDefaultTrialPlan failed (non-fatal):", err);
+  }
+}
+
 export async function createUser(data: CreateUserType) {
   const payload = createUserSchema.parse(data);
 
@@ -36,6 +65,12 @@ export async function createUser(data: CreateUserType) {
         .eq("id", userId);
 
       if (linkError) throw linkError;
+
+      // 4️⃣ Auto-enroll into the default free trial plan, if one is configured.
+      // Best-effort only — a store with no subscription row is treated as
+      // unrestricted access everywhere else in the app, so a failure here
+      // should never fail the whole signup.
+      await assignDefaultTrialPlan(storeId!, userId!);
     }
 
     return { success: true, userId, storeId };

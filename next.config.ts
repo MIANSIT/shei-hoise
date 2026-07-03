@@ -6,12 +6,17 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "tzmrxxtrkwehdgzeyhgq.supabase.co", // Production
+        hostname: "sqvvtaejcfarmxcdvgrz.supabase.co", // Current active project
         pathname: "/**",
       },
       {
         protocol: "https",
-        hostname: "lizjlqgrurjegmjeujki.supabase.co", // Development
+        hostname: "tzmrxxtrkwehdgzeyhgq.supabase.co", // Old project (kept in case any stored image URLs still reference it)
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "lizjlqgrurjegmjeujki.supabase.co", // Old project (kept in case any stored image URLs still reference it)
         pathname: "/**",
       },
       // Add any other Supabase project URLs you might use

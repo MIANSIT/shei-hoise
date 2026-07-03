@@ -1,3 +1,4 @@
+"use server";
 // lib/queries/orders/bulkUpdateOrders.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Skeleton, Empty, Modal } from "antd";
+import { Skeleton, Empty, App } from "antd";
 import { ArrowLeft, Package, CheckCircle, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
@@ -161,6 +161,7 @@ function PlanCard({
 
 export default function SubscriptionPlansPage() {
   const router = useRouter();
+  const { modal } = App.useApp();
   const { storeId, loading: userLoading, role } = useCurrentUser();
 
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
@@ -198,7 +199,7 @@ export default function SubscriptionPlansPage() {
     const price = isYearly ? plan.price_yearly : plan.price_monthly;
     const currency = plan.currency.trim();
 
-    Modal.confirm({
+    modal.confirm({
       title: `Subscribe to ${plan.name}`,
       content: `You're about to start a ${isYearly ? "yearly" : "monthly"} subscription for ${currency}${price.toLocaleString("en-BD")}/${isYearly ? "year" : "month"}. You'll be taken to checkout next.`,
       okText: "Continue",

@@ -9,6 +9,7 @@ import type { UpdatedStoreSocialMedia } from "@/lib/types/store/store";
 import { StoreHeader } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreHeader";
 import { StoreInfoCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreInfoCard";
 import { StoreSettingsCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSettingsCard";
+import { FacebookCatalogCard } from "@/app/components/admin/dashboard/store-settings/storeCard/FacebookCatalogCard";
 import { ShippingFeesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/ShippingFeesCard";
 import { PoliciesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PoliciesCard";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
@@ -195,13 +196,14 @@ export default function StorePage() {
           />
         </div>
         {settings && (
-          <div id="store-settings">
+          <div id="store-settings" className="space-y-5">
             <StoreSettingsCard
               settings={settings}
               onUpdate={async (updatedSettings) => {
                 await handleUpdateStore({}, updatedSettings);
               }}
             />
+            <FacebookCatalogCard storeSlug={store.store_slug} />
           </div>
         )}
       </div>

@@ -1,7 +1,8 @@
 "use server";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export async function getVariants(productId: string) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("product_variants")
     .select("*")

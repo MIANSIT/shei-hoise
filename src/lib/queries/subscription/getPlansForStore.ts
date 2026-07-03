@@ -43,7 +43,14 @@ export async function getPlansForStore(
   const res = await fetch("/api/subscription/current-plan");
   if (res.ok) {
     const currentPlanData = await res.json();
-    if (currentPlanData && currentPlanData.id === currentPlanId) {
+    // The auto-assigned default trial plan is never shown as a browsable/
+    // selectable option, even for the store currently on it — it's an
+    // internal bootstrap plan, not something anyone picks or switches back to.
+    if (
+      currentPlanData &&
+      currentPlanData.id === currentPlanId &&
+      !currentPlanData.is_default_trial_plan
+    ) {
       return [...plans, currentPlanData as PublicPlan];
     }
   }
