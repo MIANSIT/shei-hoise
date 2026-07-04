@@ -18,6 +18,8 @@ import { StoreLoadingSkeleton } from "../../components/skeletons/StoreLoadingSke
 import { supabase } from "@/lib/supabase";
 // import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
+import { createCustomer } from "@/lib/queries/customers/createCustomer";
+import { updateCheckoutCustomerProfile, createCheckoutCustomerProfile } from "@/lib/queries/customers/checkoutCustomerProfile";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 // Memoized API call function
@@ -578,109 +580,6 @@ export default function ConfirmOrderPage() {
     [],
   );
 
-  // Create customer profile and links
-  const createProfileAndLinks = useCallback(
-    async (
-      customerId: string,
-      storeId: string,
-      values: CustomerCheckoutFormValues,
-    ) => {
-      const { data: profile } = await supabase
-        .from("customer_profiles")
-        .insert({
-          store_customer_id: customerId,
-          address: values.shippingAddress,
-          city: values.city,
-          postal_code: values.postCode || "",
-          country: values.country,
-        })
-        .select("id")
-        .single();
-
-      if (profile) {
-        await supabase
-          .from("store_customers")
-          .update({ profile_id: profile.id })
-          .eq("id", customerId);
-      }
-
-      await supabase
-        .from("store_customer_links")
-        .upsert(
-          { customer_id: customerId, store_id: storeId },
-          { onConflict: "customer_id,store_id" },
-        );
-    },
-    [],
-  );
-
-  // Create guest customer (no email, no auth)
-  const createGuestCustomer = useCallback(
-    async (
-      values: CustomerCheckoutFormValues,
-      storeSlug: string,
-    ): Promise<string> => {
-      const storeId = await getStoreId(storeSlug);
-      if (!storeId) throw new Error("Store not found");
-
-      // Email is always empty for guest customers
-      const { data: customer, error } = await supabase
-        .from("store_customers")
-        .insert({
-          name: values.name,
-          email: null, // Empty email for guest
-          phone: values.phone,
-          auth_user_id: null,
-        })
-        .select("id")
-        .single();
-
-      if (error)
-        throw new Error(`Failed to create guest customer: ${error.message}`);
-
-      await createProfileAndLinks(customer.id, storeId, values);
-      return customer.id;
-    },
-    [getStoreId, createProfileAndLinks],
-  );
-
-  // Update customer profile
-  const updateCustomerProfile = useCallback(
-    async (profileId: string, values: CustomerCheckoutFormValues) => {
-      return supabase
-        .from("customer_profiles")
-        .update({
-          address: values.shippingAddress,
-          city: values.city,
-          postal_code: values.postCode || "",
-          country: values.country,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", profileId);
-    },
-    [],
-  );
-
-  // Create customer profile
-  const createCustomerProfile = useCallback(
-    async (storeCustomerId: string, values: CustomerCheckoutFormValues) => {
-      const profileData = {
-        store_customer_id: storeCustomerId,
-        address: values.shippingAddress,
-        city: values.city,
-        postal_code: values.postCode || "",
-        country: values.country,
-      };
-
-      return supabase
-        .from("customer_profiles")
-        .insert([profileData])
-        .select("id")
-        .single();
-    },
-    [],
-  );
-
   // Find customer by phone only
   const findCustomerByPhone = useCallback(
     async (phone: string, storeSlug: string) => {
@@ -710,6 +609,8 @@ export default function ConfirmOrderPage() {
 
         let storeCustomerId: string = "";
         const isUserLoggedIn = Boolean(session?.user);
+        const storeId = await getStoreId(storeSlug);
+        if (!storeId) throw new Error("Store not found");
 
         // 🔐 LOGGED IN USER FLOW
         if (isUserLoggedIn && session?.user) {
@@ -720,31 +621,25 @@ export default function ConfirmOrderPage() {
             storeCustomerId = existing.id;
 
             if (existing.profile_id) {
-              await updateCustomerProfile(existing.profile_id, values);
+              await updateCheckoutCustomerProfile(existing.profile_id, values);
             } else {
-              await createCustomerProfile(existing.id, values);
+              await createCheckoutCustomerProfile(existing.id, storeId, values);
             }
           } else {
             // Create new customer for logged-in user
-            const storeId = await getStoreId(storeSlug);
-            if (!storeId) throw new Error("Store not found");
-
-            const { data: newCustomer, error } = await supabase
-              .from("store_customers")
-              .insert({
-                name: values.name,
-                email: session.user.email || null,
-                phone: values.phone,
-                auth_user_id: session.user.id,
-              })
-              .select("id")
-              .single();
-
-            if (error)
-              throw new Error(`Failed to create customer: ${error.message}`);
+            const newCustomer = await createCustomer({
+              store_id: storeId,
+              first_name: values.name,
+              email: session.user.email ?? undefined,
+              phone: values.phone,
+              auth_user_id: session.user.id,
+              address_line_1: values.shippingAddress,
+              city: values.city,
+              postal_code: values.postCode,
+              country: values.country,
+            });
 
             storeCustomerId = newCustomer.id;
-            await createProfileAndLinks(storeCustomerId, storeId, values);
           }
         } else {
           // 🧑‍🧾 GUEST / NON-LOGGED USER (SIMPLE PHONE-ONLY CHECKOUT)
@@ -754,9 +649,9 @@ export default function ConfirmOrderPage() {
             storeCustomerId = existing.id;
 
             if (existing.profile_id) {
-              await updateCustomerProfile(existing.profile_id, values);
+              await updateCheckoutCustomerProfile(existing.profile_id, values);
             } else {
-              await createCustomerProfile(existing.id, values);
+              await createCheckoutCustomerProfile(existing.id, storeId, values);
             }
 
             // Simple notification
@@ -765,7 +660,17 @@ export default function ConfirmOrderPage() {
             );
           } else {
             // Guest checkout without account
-            storeCustomerId = await createGuestCustomer(values, storeSlug);
+            const newCustomer = await createCustomer({
+              store_id: storeId,
+              first_name: values.name,
+              phone: values.phone,
+              address_line_1: values.shippingAddress,
+              city: values.city,
+              postal_code: values.postCode,
+              country: values.country,
+            });
+
+            storeCustomerId = newCustomer.id;
           }
         }
 
@@ -824,10 +729,6 @@ export default function ConfirmOrderPage() {
       session,
       storeSlug,
       getStoreId,
-      updateCustomerProfile,
-      createCustomerProfile,
-      createProfileAndLinks,
-      createGuestCustomer,
       processOrder,
       calculations,
       buildInvoiceData,

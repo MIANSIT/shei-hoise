@@ -27,6 +27,7 @@ import { StoreStatusPopup } from "@/app/components/admin/common/StoreStatusPopup
 import TrialEnded from "@/app/components/admin/StoreStatus/TrialEnded";
 import AccessRestricted from "@/app/components/admin/StoreStatus/AccessRestricted";
 import SubscriptionLocked from "@/app/components/admin/StoreStatus/SubscriptionLocked";
+import GracePeriodBanner from "@/app/components/admin/StoreStatus/GracePeriodBanner";
 import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { getSubscriptionAccessState } from "@/lib/utils/subscriptionAccess";
 import LanguageSwitcher from "@/app/components/common/LanguageSwitcher";
@@ -320,7 +321,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
   const accessState = getSubscriptionAccessState(subscription);
-  if (!isSubscriptionRoute && accessState.state !== "open" && storeId) {
+  if (!isSubscriptionRoute && accessState.state === "locked" && storeId) {
     return (
       <SubscriptionLocked
         storeId={storeId}
@@ -479,6 +480,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Toaster position="top-right" />
 
+              {accessState.state === "grace" && (
+                <GracePeriodBanner daysLeftInGrace={accessState.daysLeftInGrace} />
+              )}
+
               <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
                 <Breadcrumb />
                 {store && storeStatus && (
@@ -486,6 +491,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     status={storeStatus}
                     isActive={storeIsActive}
                     createdAt={store.created_at}
+                    trialEndsAt={subscription?.trial_ends_at}
                   />
                 )}
               </div>

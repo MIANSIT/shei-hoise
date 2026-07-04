@@ -223,6 +223,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   }, [storeId, period]);
 
   const capiEntitled = hasFeature(subscription, "conversion_api");
+  const pixelEntitled = hasFeature(subscription, "meta_pixel");
   const capiConfigured = capiStatus.hasToken;
   const testModeActive = !!capiStatus.testEventCode;
 
@@ -258,8 +259,32 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
   const totals = data?.totals ?? {};
   const daily = data?.daily ?? [];
 
-  // ── No pixel configured ──────────────────────────────────────────────────────
+  // ── No pixel configured — locked (plan doesn't include it) vs. just not set up yet ──
   if (!pixelId) {
+    if (!pixelEntitled) {
+      return (
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              {t.admin.pixelLockedTitle}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+              {t.admin.pixelLockedHint}
+            </p>
+            <Link
+              href="/dashboard/subscription/plans"
+              className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            >
+              {t.admin.pixelUpgradePlan} <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center max-w-sm">

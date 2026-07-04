@@ -26,6 +26,9 @@ interface SettingRowProps {
   options?: { label: string; value: string | number }[];
   onChange?: (val: string | number) => void;
   suffix?: string;
+  /** Feature not on the store's plan — show the field disabled with a lock icon + upgrade message, instead of hiding it entirely, so the owner can see what the upgrade unlocks. */
+  locked?: boolean;
+  lockedMessage?: string;
 }
 
 function SettingRow({
@@ -38,8 +41,30 @@ function SettingRow({
   readOnly,
   suffix,
   type = "number",
+  locked,
+  lockedMessage,
 }: SettingRowProps) {
   const [showInfo, setShowInfo] = useState(false);
+
+  if (locked) {
+    return (
+      <div className="flex items-center justify-between py-3.5 px-3 rounded-xl">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        </div>
+        <input
+          type="text"
+          value=""
+          disabled
+          readOnly
+          placeholder={lockedMessage}
+          title={lockedMessage}
+          className="ml-4 shrink-0 bg-muted/30 border border-border px-2.5 py-1.5 rounded-lg text-xs italic text-muted-foreground outline-none w-44 cursor-not-allowed truncate placeholder:text-muted-foreground"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-between py-3.5 px-3 rounded-xl hover:bg-muted/30 transition-colors group">
@@ -147,6 +172,7 @@ export function StoreSettingsCard({
   }, [settings.store_id]);
 
   const capiEntitled = hasFeature(subscription, "conversion_api");
+  const pixelEntitled = hasFeature(subscription, "meta_pixel");
 
   const handleSendTestEvent = async () => {
     setSendingTest(true);
@@ -333,6 +359,8 @@ export function StoreSettingsCard({
             editing={editing}
             type="text"
             onChange={(val) => handleChange("facebook_pixel_id", String(val) || null)}
+            locked={!pixelEntitled}
+            lockedMessage={t.admin.storeMgmtPixelLocked}
           />
 
           {capiEntitled ? (
@@ -381,10 +409,22 @@ export function StoreSettingsCard({
               )}
             </>
           ) : (
-            <div className="flex items-center gap-2 py-3.5 px-3 rounded-xl bg-muted/30">
-              <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <p className="text-xs text-muted-foreground">{t.admin.storeMgmtCapiLocked}</p>
-            </div>
+            <>
+              <SettingRow
+                label={t.admin.storeMgmtCapiToken}
+                editing={editing}
+                type="text"
+                locked
+                lockedMessage={t.admin.storeMgmtCapiLocked}
+              />
+              <SettingRow
+                label={t.admin.storeMgmtCapiTestCode}
+                editing={editing}
+                type="text"
+                locked
+                lockedMessage={t.admin.storeMgmtCapiLocked}
+              />
+            </>
           )}
         </div>
       </CardContent>

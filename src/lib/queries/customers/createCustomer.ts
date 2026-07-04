@@ -11,6 +11,7 @@ export interface CreateCustomerData {
   city?: string;
   country?: string;
   postal_code?: string;
+  auth_user_id?: string;
 }
 
 export async function createCustomer(customerData: CreateCustomerData) {
@@ -41,6 +42,7 @@ export async function createCustomer(customerData: CreateCustomerData) {
       name: customerData.first_name,
       email: customerData.email || null, // Allow null email
       phone: customerData.phone || null,
+      auth_user_id: customerData.auth_user_id || null,
     };
 
     const { data: customerDataResult, error: customerError } =
