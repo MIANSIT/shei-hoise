@@ -9,6 +9,10 @@ interface StoreStatusPopupProps {
   status: string | null;
   isActive: boolean | null;
   createdAt: string; // ISO date from DB
+  /** Real trial end date from store_subscriptions.trial_ends_at — takes
+   * priority over the createdAt+7-day fallback below, which only exists for
+   * stores that predate the subscription system and have no such record. */
+  trialEndsAt?: string | null;
 }
 
 const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
@@ -22,6 +26,7 @@ export function StoreStatusPopup({
   status,
   // isActive,
   createdAt,
+  trialEndsAt,
 }: StoreStatusPopupProps) {
   const [show, setShow] = useState(false);
   const [countdown, setCountdown] = useState<number>(0);
@@ -48,10 +53,13 @@ export function StoreStatusPopup({
 
     // For TRIAL status, handle countdown
     if (statusEnum === StoreStatus.TRIAL) {
-      const createdTime = new Date(createdAt).getTime();
       const now = Date.now();
-      const secondsElapsed = Math.floor((now - createdTime) / 1000);
-      const remaining = SEVEN_DAYS - secondsElapsed;
+      // Prefer the real subscription record; only fall back to the
+      // created_at+7-day guess for stores with no store_subscriptions row.
+      const endTime = trialEndsAt
+        ? new Date(trialEndsAt).getTime()
+        : new Date(createdAt).getTime() + SEVEN_DAYS * 1000;
+      const remaining = Math.floor((endTime - now) / 1000);
 
       if (remaining > 0) {
         setCountdown(remaining);
@@ -66,7 +74,7 @@ export function StoreStatusPopup({
       // For other statuses (PENDING, REJECTED), just show the popup
       setShow(true);
     }
-  }, [statusEnum, createdAt, SEVEN_DAYS]);
+  }, [statusEnum, createdAt, trialEndsAt, SEVEN_DAYS]);
 
   // Countdown timer (only for TRIAL)
   useEffect(() => {
