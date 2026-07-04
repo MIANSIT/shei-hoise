@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { createSignupCustomer, linkSignupCustomerToStore } from "./customerSignupServer";
 
 export const signupQueries = {
   checkEmailExists: async (email: string): Promise<boolean> => {
@@ -64,38 +65,10 @@ export const signupQueries = {
   },
 
   createCustomer: async (email: string, authUserId?: string, phone?: string) => {
-    const { data: customer, error } = await supabase
-      .from("store_customers")
-      .insert({
-        email: email.toLowerCase(),
-        auth_user_id: authUserId,
-        name: email.split("@")[0],
-        phone: phone || "",
-      })
-      .select("id")
-      .single();
-
-    if (error) {
-      console.error("Failed to create customer:", error?.message, error?.code, error?.details);
-      // If customer already exists, try to fetch existing one
-      const { data: existingCustomer } = (await supabase
-        .rpc("find_customer_by_email", { p_email: email.toLowerCase() })
-        .single()) as { data: { id: string } | null };
-
-      return existingCustomer;
-    }
-    
-    return customer;
+    return createSignupCustomer(email, authUserId, phone);
   },
 
   createStoreCustomerLink: async (customerId: string, storeId: string) => {
-    const { error } = await supabase
-      .from("store_customer_links")
-      .insert({ customer_id: customerId, store_id: storeId });
-
-    if (error) {
-      console.error("Failed to create store-customer link:", error);
-      // Link might already exist, which is fine
-    }
+    return linkSignupCustomerToStore(customerId, storeId);
   },
 };
