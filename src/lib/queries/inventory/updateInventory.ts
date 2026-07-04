@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+"use server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function updateInventory({
   product_id,
@@ -9,7 +10,7 @@ export async function updateInventory({
   variant_id?: string | null;
   quantity_available: number;
 }) {
-  let query = supabase
+  let query = supabaseAdmin
     .from("product_inventory")
     .update({ quantity_available, updated_at: new Date().toISOString() })
     .eq("product_id", product_id);

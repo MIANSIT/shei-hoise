@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+"use server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { UpdatedStoreData, StoreData } from "@/lib/types/store/store";
 
 export async function updateStore(
@@ -23,7 +24,7 @@ export async function updateStore(
     business_license,
   } = payload;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("stores")
     .update({
       store_name,

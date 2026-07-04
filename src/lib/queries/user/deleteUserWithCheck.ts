@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+"use server";
+import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 interface DeleteResult {
   success: boolean;
@@ -10,7 +12,8 @@ export async function deleteUserWithCheck(
   storeId: string
 ): Promise<DeleteResult> {
   try {
-    // 1. Must be logged in
+    // 1. Must be logged in (real session, not the admin client)
+    const supabase = createClient();
     const {
       data: { session },
       error: sessionError,
@@ -19,7 +22,7 @@ export async function deleteUserWithCheck(
     if (!session) return { success: false, message: "You must be logged in." };
 
     // 2. Check if customer exists
-    const { data: customer, error: customerError } = await supabase
+    const { data: customer, error: customerError } = await supabaseAdmin
       .from("store_customers")
       .select("id")
       .eq("id", customerId)
@@ -30,7 +33,7 @@ export async function deleteUserWithCheck(
     }
 
     // 3. Must be linked to this store
-    const { data: link, error: linkError } = await supabase
+    const { data: link, error: linkError } = await supabaseAdmin
       .from("store_customer_links")
       .select("id")
       .eq("customer_id", customerId)
@@ -46,7 +49,7 @@ export async function deleteUserWithCheck(
     }
 
     // 4. Check if customer has existing orders
-    const { data: orders, error: orderError } = await supabase
+    const { data: orders, error: orderError } = await supabaseAdmin
       .from("orders")
       .select("id")
       .eq("customer_id", customerId)
@@ -66,20 +69,20 @@ export async function deleteUserWithCheck(
     }
 
     // 5. Delete profile
-    await supabase
+    await supabaseAdmin
       .from("customer_profiles")
       .delete()
       .eq("store_customer_id", customerId);
 
     // 6. Delete customer-store link
-    await supabase
+    await supabaseAdmin
       .from("store_customer_links")
       .delete()
       .eq("customer_id", customerId)
       .eq("store_id", storeId);
 
     // 7. Delete customer
-    await supabase.from("store_customers").delete().eq("id", customerId);
+    await supabaseAdmin.from("store_customers").delete().eq("id", customerId);
 
     return { success: true, message: "Customer deleted successfully." };
   } catch (error) {

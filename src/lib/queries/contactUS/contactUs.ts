@@ -1,5 +1,6 @@
 // lib/queries/ContactUS.ts
-import { supabase } from "@/lib/supabase";
+"use server";
+import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 
 export interface ContactUSPayload {
   full_name: string;

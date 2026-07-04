@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+"use server";
+import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import {
   ExpenseCategory,
   UpdateCategoryInput,

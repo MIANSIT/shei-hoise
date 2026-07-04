@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+"use server";
+import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 export async function deleteCategoryQuery(categoryId: string, storeId: string) {
   const { data: existingCategory, error: fetchError } = await supabase
     .from("categories")
