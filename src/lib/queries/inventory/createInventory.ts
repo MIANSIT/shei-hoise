@@ -1,5 +1,7 @@
 // lib/queries/inventory/createInventory.ts
-import { supabase } from "@/lib/supabase";
+"use server";
+
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 interface InventoryType {
   product_id: string;
@@ -14,7 +16,7 @@ export async function createInventory(inventory: InventoryType) {
   // Determine if this inventory is for a variant or main product
   const isVariant = !!inventory.variant_id;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("product_inventory")
     .insert([
       {

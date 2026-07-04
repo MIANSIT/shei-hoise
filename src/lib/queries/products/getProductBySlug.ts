@@ -127,8 +127,12 @@ export async function getProductBySlug(
       ? { id: p.categories.id, name: p.categories.name }
       : undefined;
 
-  // Filter main product images (not variant-specific)
-  const productImages = p.product_images ?? [];
+  // Filter main product images (not variant-specific) — Supabase doesn't
+  // guarantee row order on embedded selects, so the saved reorder/primary
+  // choice only shows correctly if we sort by sort_order ourselves here.
+  const productImages = (p.product_images ?? [])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   return {
     id: p.id,

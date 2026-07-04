@@ -166,7 +166,11 @@ export async function getProductById(
         : null,
     stock: productStock,
     is_low_stock: isProductLowStock,
-    images: (p.product_images ?? []).filter((img) => img.variant_id === null),
+    // Supabase doesn't guarantee row order on embedded selects, so the saved
+    // reorder/primary choice only shows correctly if sorted by sort_order here.
+    images: (p.product_images ?? [])
+      .filter((img) => img.variant_id === null)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     variants,
   };
 }

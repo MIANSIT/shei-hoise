@@ -1,5 +1,5 @@
-"use client";
-import { supabase } from "@/lib/supabase";
+"use server";
+import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 
 interface InventoryRecord {
   product_id: string;

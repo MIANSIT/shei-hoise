@@ -1,5 +1,6 @@
 // queries/shipping/createShippingFees.ts
-import { supabase } from '@/lib/supabase';
+"use server";
+import { supabaseAdmin as supabase } from '@/lib/supabase/admin';
 import { ShippingOption } from './getShippingFees';
 
 export async function createShippingFees(

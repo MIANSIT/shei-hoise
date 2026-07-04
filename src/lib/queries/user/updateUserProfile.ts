@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+"use server";
+import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 interface UpdateUserData {
   first_name: string;
@@ -43,7 +45,8 @@ export async function updateUserProfile(
   profileData: UpdateProfileData
 ) {
   try {
-    // 🔐 SECURITY FIX: Get current authenticated user
+    // 🔐 SECURITY FIX: Get current authenticated user (real session, not the admin client)
+    const supabase = createClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -58,7 +61,7 @@ export async function updateUserProfile(
     }
 
     // 🔐 SECURITY FIX: Server-side role validation
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await supabaseAdmin
       .from("users")
       .select("user_type")
       .eq("id", userId)
@@ -85,7 +88,7 @@ export async function updateUserProfile(
       throw new Error("First name and last name are required");
     }
 
-    const { data: userUpdate, error: userError } = await supabase
+    const { data: userUpdate, error: userError } = await supabaseAdmin
       .from("users")
       .update(processedUserData)
       .eq("id", userId)
@@ -111,7 +114,7 @@ export async function updateUserProfile(
     };
 
     // Check if profile exists - only update if it exists
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile } = await supabaseAdmin
       .from("user_profiles")
       .select("id")
       .eq("user_id", userId)
@@ -121,7 +124,7 @@ export async function updateUserProfile(
 
     if (existingProfile) {
       // Only update existing profile, never create new one
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from("user_profiles")
         .update(processedProfileData)
         .eq("user_id", userId)

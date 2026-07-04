@@ -40,6 +40,7 @@ import {
   BulkUpdateResult,
 } from "./orders/bulkUpdateOrders";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import { deleteOrder } from "@/lib/queries/orders/deleteOrder";
 import { DetailedCustomer } from "@/lib/types/users";
 import { CustomerProfile } from "@/lib/types/customer";
 import { supabase } from "@/lib/supabase";
@@ -152,42 +153,7 @@ const updateOrderByNumberImpl = async (
   }
 };
 
-const deleteOrderImpl = async (
-  orderId: string
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    const { data: order, error: fetchError } = await supabase
-      .from("orders")
-      .select("id, order_number")
-      .eq("id", orderId)
-      .single();
-
-    if (fetchError || !order)
-      return { success: false, error: "Order not found" };
-
-    const { error: itemsError } = await supabase
-      .from("order_items")
-      .delete()
-      .eq("order_id", orderId);
-    if (itemsError)
-      return { success: false, error: "Failed to delete order items" };
-
-    const { error: deleteError } = await supabase
-      .from("orders")
-      .delete()
-      .eq("id", orderId);
-    if (deleteError) return { success: false, error: "Failed to delete order" };
-
-    
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error in dataService.deleteOrder:", error);
-    return {
-      success: false,
-      error: error.message || "An unexpected error occurred",
-    };
-  }
-};
+const deleteOrderImpl = deleteOrder;
 
 // --- Our custom wrapper for getStoreOrders with search + pagination ---
 const getStoreOrdersImpl = async (
