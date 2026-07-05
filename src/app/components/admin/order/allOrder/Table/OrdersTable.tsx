@@ -11,6 +11,7 @@ import {
   Button,
   Pagination,
   DatePicker,
+  Dropdown,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
@@ -60,6 +61,7 @@ interface Props {
   totalByOrderStatus?: Record<string, number>; // <--- add this
   totalByPaymentStatus?: Record<string, number>;
   onRefresh?: () => void;
+  onExportOrders?: () => Promise<StoreOrder[]>;
 }
 
 const RISK_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -94,6 +96,7 @@ const OrdersTable: React.FC<Props> = ({
   totalByOrderStatus, // <--- add this
   totalByPaymentStatus,
   onRefresh,
+  onExportOrders,
 }) => {
   const { notification, modal } = App.useApp();
   const t = useTranslation();
@@ -104,6 +107,7 @@ const OrdersTable: React.FC<Props> = ({
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   // const { icon: currencyIcon } = useUserCurrencyIcon();
 
@@ -185,7 +189,36 @@ const OrdersTable: React.FC<Props> = ({
     setSelectedRowKeys([]);
   };
 
-  const handleDownloadCsv = () => {
+  const ORDER_EXPORT_HEADER = [
+    "Order #",
+    "Created At",
+    "Customer",
+    "Email",
+    "Phone",
+    "Address",
+    "Total",
+    "Currency",
+    "Status",
+    "Payment Status",
+  ];
+
+  const buildOrderExportRows = (targetOrders: StoreOrder[]) =>
+    targetOrders.map((o) => [
+      o.order_number,
+      new Date(o.created_at).toLocaleString(),
+      (o.shipping_address?.customer_name || o.customers?.first_name || ""),
+      o.customers?.email || o.shipping_address?.email || "",
+      o.shipping_address?.phone || o.customers?.phone || "",
+      (o.shipping_address?.address_line_1 || o.shipping_address?.address || "") + (o.shipping_address?.city ? (", " + o.shipping_address.city) : ""),
+      o.total_amount,
+      o.currency || "",
+      o.status,
+      o.payment_status,
+    ]);
+
+  const handleExport = async (format: "csv" | "xlsx") => {
+    if (exportingCsv) return;
+
     let startDate: Date | null = null;
     let endDate: Date | null = null;
 
@@ -199,72 +232,83 @@ const OrdersTable: React.FC<Props> = ({
       if (endDate) endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
     }
 
+    setExportingCsv(true);
+    let sourceOrders: StoreOrder[];
+    try {
+      // Fetch every order matching the current filters — not just the page
+      // currently on screen — so the export isn't silently truncated.
+      sourceOrders = onExportOrders ? await onExportOrders() : orders;
+    } catch (err) {
+      console.error("Error fetching orders for export:", err);
+      notification.error({
+        title: t.admin.orderExportFailed,
+        description: err instanceof Error ? err.message : String(err),
+      });
+      setExportingCsv(false);
+      return;
+    }
+
     const targetOrders = startDate && endDate
-      ? orders.filter((o) => {
+      ? sourceOrders.filter((o) => {
           const d = new Date(o.created_at);
           return d >= startDate! && d <= endDate!;
         })
-      : orders;
+      : sourceOrders;
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
         title: t.admin.orderNoOrders,
         description: t.admin.orderNoOrdersDate,
       });
+      setExportingCsv(false);
       return;
     }
 
-    const header = [
-      "Order #",
-      "Created At",
-      "Customer",
-      "Email",
-      "Phone",
-      "Address",
-      "Total",
-      "Currency",
-      "Status",
-      "Payment Status",
-    ];
-
-    const escape = (v: any) => {
-      if (v == null) return "";
-      const s = String(v).replace(/"/g, '""');
-      return `"${s}"`;
-    };
-
-    const rows = targetOrders.map((o) => [
-      o.order_number,
-      new Date(o.created_at).toLocaleString(),
-      (o.shipping_address?.customer_name || o.customers?.first_name || ""),
-      o.customers?.email || o.shipping_address?.email || "",
-      o.shipping_address?.phone || o.customers?.phone || "",
-      (o.shipping_address?.address_line_1 || o.shipping_address?.address || "") + (o.shipping_address?.city ? (", " + o.shipping_address.city) : ""),
-      o.total_amount,
-      o.currency || "",
-      o.status,
-      o.payment_status,
-    ]);
-
-    const csvContent = [header, ...rows]
-      .map((r) => r.map(escape).join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
     let datePart = "all-dates";
     if (startDate && endDate) {
       const s = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
       const e = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
       datePart = `${s}_to_${e}`;
     }
-    a.href = url;
-    a.download = `orders_${datePart}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+
+    try {
+      if (format === "xlsx") {
+        // .xlsx has no text-encoding ambiguity — unlike CSV, it can't be
+        // misread as the wrong charset by Excel regardless of Windows locale.
+        const XLSX = await import("xlsx");
+        const ws = XLSX.utils.aoa_to_sheet([
+          ORDER_EXPORT_HEADER,
+          ...buildOrderExportRows(targetOrders),
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Orders");
+        XLSX.writeFile(wb, `orders_${datePart}.xlsx`);
+      } else {
+        const escape = (v: any) => {
+          if (v == null) return "";
+          const s = String(v).replace(/"/g, '""');
+          return `"${s}"`;
+        };
+
+        const csvContent = [ORDER_EXPORT_HEADER, ...buildOrderExportRows(targetOrders)]
+          .map((r) => r.map(escape).join(","))
+          .join("\n");
+
+        // Prefix a UTF-8 BOM — without it, Excel misreads non-ASCII text (e.g.
+        // Bengali addresses) as a different encoding and shows garbled characters.
+        const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `orders_${datePart}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -843,9 +887,20 @@ const OrdersTable: React.FC<Props> = ({
             allowClear
             className="w-80"
           />
-          <Button type="primary" onClick={handleDownloadCsv}>
-            {t.admin.orderDownloadCsv}
-          </Button>
+          <Dropdown
+            menu={{
+              items: [
+                { key: "csv", label: t.admin.orderExportAsCsv, onClick: () => handleExport("csv") },
+                { key: "xlsx", label: t.admin.orderExportAsExcel, onClick: () => handleExport("xlsx") },
+              ],
+              disabled: exportingCsv,
+            }}
+            trigger={["click"]}
+          >
+            <Button type="primary" loading={exportingCsv}>
+              {exportingCsv ? t.admin.orderExporting : t.admin.orderDownloadCsv}
+            </Button>
+          </Dropdown>
         </div>
       </div>
 

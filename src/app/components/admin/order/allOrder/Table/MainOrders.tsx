@@ -132,6 +132,33 @@ const MainOrders: React.FC = () => {
     setRefreshTrigger((prev) => prev + 1);
   }, []);
 
+  // Fetches every order matching the current search/status/payment filters —
+  // not just the currently loaded page — so CSV export covers the full result
+  // set (further narrowed by date range client-side), not only what's on screen.
+  const handleExportOrders = useCallback(async (): Promise<StoreOrder[]> => {
+    if (!user?.store_id) return [];
+
+    const filters: { status?: string; payment_status?: string } = {};
+    if (category === "order" && statusFilter && statusFilter !== "all")
+      filters.status = statusFilter;
+    else if (
+      category === "payment" &&
+      paymentStatusFilter &&
+      paymentStatusFilter !== "all"
+    )
+      filters.payment_status = paymentStatusFilter;
+
+    const result = await dataService.getStoreOrders({
+      storeId: user.store_id,
+      page: 1,
+      pageSize: 1_000_000,
+      search,
+      filters,
+    });
+
+    return result.orders;
+  }, [user?.store_id, search, category, statusFilter, paymentStatusFilter]);
+
   useEffect(() => {
     if (!user?.store_id) return;
     getMonthlyOrderUsage(user.store_id).then(setMonthlyUsage);
@@ -295,6 +322,7 @@ const MainOrders: React.FC = () => {
         initialStatus={getInitialStatus()}
         // ✅ PASS the refresh function
         onRefresh={handleRefresh}
+        onExportOrders={handleExportOrders}
       />
     </div>
   );
