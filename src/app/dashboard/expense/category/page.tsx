@@ -18,12 +18,31 @@ import { CategoryHeader } from "@/app/components/admin/dashboard/expense/categor
 import { CategoryGrid } from "@/app/components/admin/dashboard/expense/category/CategoryGrid";
 import { CategoryFormModal } from "@/app/components/admin/dashboard/expense/category/CategoryFormModal";
 import { DeleteConfirmModal } from "@/app/components/admin/dashboard/expense/category/DeleteConfirmModal";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import {
+  getStoreSubscription,
+  type StoreSubscription,
+} from "@/lib/queries/subscription/getStoreSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
 
 export default function CategoriesPage() {
   const { success, error } = useSheiNotification();
   const t = useTranslation();
   const n = useLocalNum();
   const { storeId, loading: userLoading } = useCurrentUser();
+
+  const [subscription, setSubscription] = useState<StoreSubscription | null>(
+    null,
+  );
+  const [subLoading, setSubLoading] = useState(true);
+
+  useEffect(() => {
+    if (!storeId) return;
+    setSubLoading(true);
+    getStoreSubscription(storeId)
+      .then(setSubscription)
+      .finally(() => setSubLoading(false));
+  }, [storeId]);
 
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,6 +253,18 @@ export default function CategoriesPage() {
   };
 
   const showLoading = loading || userLoading;
+
+  if (userLoading || subLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!hasFeature(subscription, "expense_tracking")) {
+    return <FeatureLocked />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
