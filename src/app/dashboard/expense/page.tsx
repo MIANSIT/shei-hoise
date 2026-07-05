@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Button, Pagination } from "antd";
+import { Button, Pagination, Spin } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { Receipt } from "lucide-react";
 import dayjs from "dayjs";
@@ -36,6 +36,12 @@ import ExpenseFilters from "@/app/components/admin/dashboard/expense/ExpenseFilt
 import ExpenseTable from "@/app/components/admin/dashboard/expense/ExpenseTable";
 import ExpenseFormModal from "@/app/components/admin/dashboard/expense/ExpenseFormModal";
 import ExpenseExportButton from "@/app/components/admin/dashboard/expense/ExpenseExportButton";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import {
+  getStoreSubscription,
+  type StoreSubscription,
+} from "@/lib/queries/subscription/getStoreSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
 
 dayjs.extend(relativeTime);
 
@@ -54,6 +60,12 @@ export default function ExpensesPage() {
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ── Plan entitlement ──
+  const [subscription, setSubscription] = useState<StoreSubscription | null>(
+    null,
+  );
+  const [subLoading, setSubLoading] = useState(true);
 
   // ── Filters ──
   const [search, setSearch] = useState("");
@@ -118,6 +130,25 @@ export default function ExpensesPage() {
     error,
   ]);
 
+  // Fetches every expense matching the current filters — not just the
+  // currently loaded page — so export isn't silently truncated to one page.
+  const fetchAllExpensesForExport = useCallback(async (): Promise<
+    Expense[]
+  > => {
+    if (!storeId) return [];
+    const result = await getExpensesWithCategory({
+      storeId,
+      search: debouncedSearch || undefined,
+      categoryId: categoryFilter,
+      paymentMethod: paymentFilter,
+      dateFrom: dateRange ? dateRange[0].format("YYYY-MM-DD") : null,
+      dateTo: dateRange ? dateRange[1].format("YYYY-MM-DD") : null,
+      page: 1,
+      pageSize: 1_000_000,
+    });
+    return result.data;
+  }, [storeId, debouncedSearch, categoryFilter, paymentFilter, dateRange]);
+
   // ── Fetch categories once ──
   const fetchCategories = useCallback(async () => {
     if (!storeId) return;
@@ -144,6 +175,14 @@ export default function ExpensesPage() {
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    setSubLoading(true);
+    getStoreSubscription(storeId)
+      .then(setSubscription)
+      .finally(() => setSubLoading(false));
+  }, [storeId]);
 
   // ── Filter handlers (all reset page to 1) ──
   const handleCategoryChange = useCallback((v: string | null) => {
@@ -285,6 +324,18 @@ export default function ExpensesPage() {
     [success, error, fetchExpenses],
   );
 
+  if (userLoading || subLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!hasFeature(subscription, "expense_tracking")) {
+    return <FeatureLocked />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -305,7 +356,7 @@ export default function ExpensesPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ExpenseExportButton
-              expenses={expenses}
+              fetchExpenses={fetchAllExpensesForExport}
               storeSlug={storeSlug ?? undefined}
             />
             <Button

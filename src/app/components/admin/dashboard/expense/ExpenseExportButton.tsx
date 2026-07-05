@@ -14,7 +14,8 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface ExpenseExportButtonProps {
-  expenses: Expense[];
+  /** Fetches every expense matching the current filters (not just the on-screen page) at export time. */
+  fetchExpenses: () => Promise<Expense[]>;
   storeSlug?: string;
   disabled?: boolean;
 }
@@ -49,7 +50,7 @@ const FORMAT_META: Record<
 };
 
 function ExpenseExportButton({
-  expenses,
+  fetchExpenses,
   storeSlug,
   disabled = false,
 }: ExpenseExportButtonProps) {
@@ -71,12 +72,13 @@ function ExpenseExportButton({
     : "$";
 
   const handleExport = async (format: ExportFormat) => {
-    if (!expenses.length) {
-      info("No expenses to export. Try adjusting your filters.");
-      return;
-    }
     setExporting(format);
     try {
+      const expenses = await fetchExpenses();
+      if (!expenses.length) {
+        info("No expenses to export. Try adjusting your filters.");
+        return;
+      }
       await exportExpenses(format, expenses, storeSlug, currencySymbol);
       success(
         `${expenses.length} expense${expenses.length !== 1 ? "s" : ""} exported as ${FORMAT_META[format].label}.`,

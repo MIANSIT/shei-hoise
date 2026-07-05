@@ -700,6 +700,10 @@ export const translations = {
       subLockedAwaitingReview: "Payment submitted — we're reviewing it, usually confirmed within a few hours.",
       subLockedDataSafe: "Your data is safe and untouched.",
       subLockedCta: "Go to Subscription page",
+      // Feature locked (plan doesn't include this feature)
+      featureLockedTitle: "Upgrade required",
+      featureLockedHint: "This feature isn't included in your current plan. Upgrade to unlock it.",
+      featureLockedCta: "View Plans",
       // Access restricted
       accessRestrictedTitle: "Dashboard Access Temporarily Restricted",
       accessRestrictedP1: "Your dashboard access has been temporarily restricted due to a pending payment or subscription issue.",
@@ -786,6 +790,10 @@ export const translations = {
       orderHideDetails: "Hide Details",
       orderInvoiceBtn: "Invoice",
       orderDownloadCsv: "Download CSV",
+      orderExporting: "Exporting...",
+      orderExportFailed: "Export failed",
+      orderExportAsCsv: "Export as CSV (.csv)",
+      orderExportAsExcel: "Export as Excel (.xlsx)",
       orderPrevBtn: "← Previous",
       orderNextBtn: "Next →",
       orderClearSelection: "Clear Selection",
@@ -2618,6 +2626,10 @@ export const translations = {
       subLockedAwaitingReview: "পেমেন্ট জমা দেওয়া হয়েছে — আমরা যাচাই করছি, সাধারণত কয়েক ঘণ্টার মধ্যে নিশ্চিত হয়।",
       subLockedDataSafe: "আপনার ডেটা নিরাপদ এবং অক্ষত আছে।",
       subLockedCta: "সাবস্ক্রিপশন পেজে যান",
+      // Feature locked (plan doesn't include this feature)
+      featureLockedTitle: "আপগ্রেড প্রয়োজন",
+      featureLockedHint: "এই ফিচারটি আপনার বর্তমান প্ল্যানে নেই। আনলক করতে আপগ্রেড করুন।",
+      featureLockedCta: "প্ল্যান দেখুন",
       // Access restricted
       accessRestrictedTitle: "ড্যাশবোর্ড অ্যাক্সেস সাময়িকভাবে সীমিত",
       accessRestrictedP1: "পেন্ডিং পেমেন্ট বা সাবস্ক্রিপশন সমস্যার কারণে আপনার ড্যাশবোর্ড অ্যাক্সেস সাময়িকভাবে সীমিত।",
@@ -2704,6 +2716,10 @@ export const translations = {
       orderHideDetails: "বিবরণ লুকান",
       orderInvoiceBtn: "ইনভয়েস",
       orderDownloadCsv: "CSV ডাউনলোড",
+      orderExporting: "এক্সপোর্ট হচ্ছে...",
+      orderExportFailed: "এক্সপোর্ট ব্যর্থ হয়েছে",
+      orderExportAsCsv: "CSV (.csv) হিসেবে এক্সপোর্ট করুন",
+      orderExportAsExcel: "Excel (.xlsx) হিসেবে এক্সপোর্ট করুন",
       orderPrevBtn: "← পূর্ববর্তী",
       orderNextBtn: "পরবর্তী →",
       orderClearSelection: "নির্বাচন বাতিল",
