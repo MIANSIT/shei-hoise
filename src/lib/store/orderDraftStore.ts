@@ -18,6 +18,7 @@ export interface OrderDraftData {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: string;
+  courier: string;
 }
 
 /* =======================

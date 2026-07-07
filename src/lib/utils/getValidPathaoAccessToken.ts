@@ -21,9 +21,10 @@ export async function getValidPathaoAccessToken(
   credentialId: string,
 ): Promise<ValidTokenResult> {
   const { data: row, error } = await supabaseAdmin
-    .from("store_pathao_credentials")
+    .from("store_courier_credentials")
     .select("environment, client_id, client_secret, access_token, refresh_token, token_expires_at")
     .eq("id", credentialId)
+    .eq("courier", "pathao")
     .maybeSingle();
 
   if (error || !row || !row.access_token || !row.refresh_token) {
@@ -51,7 +52,7 @@ export async function getValidPathaoAccessToken(
   const newExpiresAt = new Date(Date.now() + result.data.expires_in * 1000).toISOString();
 
   await supabaseAdmin
-    .from("store_pathao_credentials")
+    .from("store_courier_credentials")
     .update({
       access_token: encrypt(result.data.access_token),
       refresh_token: encrypt(result.data.refresh_token),

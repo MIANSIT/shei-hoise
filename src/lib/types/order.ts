@@ -111,9 +111,14 @@ export interface StoreOrder {
   delivery_option?: DeliveryOption;
   cancel_note?: string;
   fb_purchase_event_status?: "sent" | "held" | "suppressed" | null;
-  pathao_consignment_id?: string | null;
-  pathao_order_status?: string | null;
-  pathao_credential_id?: string | null;
+  // Sourced from courier_tracking's active row for this order, not native
+  // columns on `orders` — see attachActiveCourierTracking.ts. The field
+  // names stay flattened here so every UI reading a StoreOrder is unaffected
+  // by where the data actually comes from.
+  courier?: string | null;
+  courier_consignment_id?: string | null;
+  courier_order_status?: string | null;
+  courier_credential_id?: string | null;
 }
 
 // ===== FORM DATA TYPES =====

@@ -32,7 +32,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
-import BulkPathaoShipmentAction from "./BulkPathaoShipmentAction";
+import BulkCourierShipmentAction from "./BulkCourierShipmentAction";
 import { Check } from "lucide-react";
 // import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import InvoiceModal from "@/app/components/invoice/invoice";
@@ -804,6 +804,9 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveCourier={(c) =>
+                    onUpdate(order.id, { courier: c })
+                  }
                   onSaveShippingFee={(fee) =>
                     onUpdate(order.id, {
                       shipping_fee: fee,
@@ -815,8 +818,8 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSavePathaoShipment={(consignmentId, orderStatus) =>
                     onUpdate(order.id, {
-                      pathao_consignment_id: consignmentId,
-                      pathao_order_status: orderStatus,
+                      courier_consignment_id: consignmentId,
+                      courier_order_status: orderStatus,
                     })
                   }
                   onRefresh={onRefresh}
@@ -860,7 +863,7 @@ const OrdersTable: React.FC<Props> = ({
                 }}
                 onClearSelection={() => setSelectedRowKeys([])}
               />
-              <BulkPathaoShipmentAction
+              <BulkCourierShipmentAction
                 selectedOrders={selectedOrderObjects}
                 onSuccess={() => onRefresh?.()}
                 onClearSelection={() => setSelectedRowKeys([])}
@@ -950,7 +953,7 @@ const OrdersTable: React.FC<Props> = ({
           expandedRowRender: (order: StoreOrder) => (
             <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {/* Show backend values at the top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
                 <div>
                   <span className="text-sm font-medium text-gray-300">
                     {t.admin.orderDeliveryOption}
@@ -981,6 +984,14 @@ const OrdersTable: React.FC<Props> = ({
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-300">
+                    {t.admin.orderDeliveryCourierOption}
+                  </span>
+                  <div className="font-medium capitalize">
+                    {order.courier || t.admin.orderNotSet}
+                  </div>
+                </div>
               </div>
 
               {order.status !== OrderStatus.CANCELLED &&
@@ -999,6 +1010,9 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveCourier={(c) =>
+                    onUpdate(order.id, { courier: c })
+                  }
                   onSaveShippingFee={(fee) =>
                     onUpdate(order.id, {
                       shipping_fee: fee,
@@ -1010,8 +1024,8 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSavePathaoShipment={(consignmentId, orderStatus) =>
                     onUpdate(order.id, {
-                      pathao_consignment_id: consignmentId,
-                      pathao_order_status: orderStatus,
+                      courier_consignment_id: consignmentId,
+                      courier_order_status: orderStatus,
                     })
                   }
                   onRefresh={onRefresh}

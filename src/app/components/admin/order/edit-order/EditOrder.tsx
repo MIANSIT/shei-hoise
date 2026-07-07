@@ -24,11 +24,12 @@ import {
   OrderProduct,
 } from "@/lib/types/order";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
-import type { ShippingFee } from "@/lib/types/store/store";
+import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 import { useEditOrderDraftStore } from "@/lib/store/orderDraftStore";
@@ -60,6 +61,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const [loading, setLoading] = useState(false);
   const [orderLoading, setOrderLoading] = useState(true);
   const { user, loading: userLoading } = useCurrentUser();
+  const { allowed: courierTrackingAllowed } = useFeatureGate(user?.store_id, "courier_tracking");
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfoType>({
     name: "",
@@ -86,6 +88,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     PaymentStatus.PENDING
   ); // ✅ Using enum
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [courier, setCourier] = useState("");
+  const [deliveryCouriers, setDeliveryCouriers] = useState<DeliveryCourier[]>([]);
 
   const [orderId, setOrderId] = useState("");
   // const [customerProfile, setCustomerProfile] =
@@ -141,8 +145,9 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       status: status !== originalOrder.status,
       paymentStatus: paymentStatus !== originalOrder.payment_status,
       paymentMethod: paymentMethod !== (originalOrder.payment_method || "cash"),
+      courier: courier !== (originalOrder.courier || ""),
     };
-  }, [discount, additionalCharges, deliveryCost, taxAmount, status, paymentStatus, paymentMethod, originalOrder, readyToSyncDraft]);
+  }, [discount, additionalCharges, deliveryCost, taxAmount, status, paymentStatus, paymentMethod, courier, originalOrder, readyToSyncDraft]);
 
   const isDirtyProducts = useMemo(() => {
     if (!originalOrder || !readyToSyncDraft) return false;
@@ -173,6 +178,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       const settings = await getStoreSettings(user.store_id);
       if (settings) {
         setShippingFees(settings.shipping_fees || []);
+        setDeliveryCouriers(settings.delivery_couriers || []);
         if (settings.tax_rate) {
           setTaxAmount(settings.tax_rate);
         }
@@ -292,6 +298,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
         setStatus(order.status as OrderStatus); // ✅ Type casting
         setPaymentStatus(order.payment_status as PaymentStatus); // ✅ Type casting
         setPaymentMethod(order.payment_method || "cash");
+        setCourier(order.courier || "");
 
         // Set financial data - INCLUDING discount_amount AND additional_charges
         setSubtotal(Number(order.subtotal));
@@ -379,6 +386,13 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       setStatus(draft.status);
       setPaymentStatus(draft.paymentStatus);
       setPaymentMethod(draft.paymentMethod);
+      // Drafts saved before Delivery Courier existed have no `courier` key —
+      // leave the value the order-load effect above already set rather than
+      // wiping it to "", which would look like a courier change on save and
+      // incorrectly clear that order's real shipment data.
+      if (draft.courier !== undefined) {
+        setCourier(draft.courier);
+      }
       notification.info({
         title: t.admin.editOrderRestoredTitle,
         description: t.admin.editOrderRestoredDesc,
@@ -404,6 +418,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       status,
       paymentStatus,
       paymentMethod,
+      courier,
     });
   }, [
     readyToSyncDraft,
@@ -417,6 +432,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     taxAmount,
     status,
     paymentStatus,
+    courier,
     paymentMethod,
   ]);
 
@@ -726,6 +742,12 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   setPaymentStatus={setPaymentStatus}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
+                  courier={courier}
+                  setCourier={setCourier}
+                  deliveryCouriers={deliveryCouriers}
+                  courierTrackingAllowed={courierTrackingAllowed}
+                  courierConsignmentId={originalOrder?.courier_consignment_id}
+                  courierOrderStatus={originalOrder?.courier_order_status}
                   shippingFees={shippingFees}
                   customerDeliveryOption={customerInfo.deliveryOption}
                   dirtyFields={financialDirtyFields}
@@ -752,6 +774,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   status={status}
                   paymentStatus={paymentStatus}
                   paymentMethod={paymentMethod}
+                  courier={courier}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   emailError={emailError}
                   onOrderUpdated={() =>

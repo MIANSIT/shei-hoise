@@ -8,7 +8,7 @@ export async function selectPathaoStore(
   pathaoStoreName: string,
 ): Promise<{ success: boolean; error?: string }> {
   const { error } = await supabaseAdmin
-    .from("store_pathao_credentials")
+    .from("store_courier_credentials")
     .update({
       pathao_store_id: pathaoStoreId,
       pathao_store_name: pathaoStoreName,

@@ -10,7 +10,7 @@ import {
 } from "@/lib/types/enums";
 import { StoreOrder } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
-import PathaoShipmentPanel from "@/app/components/admin/order/allOrder/Table/PathaoShipmentPanel";
+import CourierShipmentPanel from "@/app/components/admin/order/allOrder/Table/CourierShipmentPanel";
 import dataService from "@/lib/queries/dataService";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification"; // Adjust the import path
 
@@ -20,6 +20,7 @@ interface Props {
   onSavePaymentStatus: (newStatus: PaymentStatus) => void;
   onSaveDeliveryOption?: (newOption: DeliveryOption) => void;
   onSavePaymentMethod?: (newMethod: PaymentMethod) => void;
+  onSaveCourier?: (newCourier: string) => void;
   onSaveCancelNote?: (note: string) => void;
   onSaveShippingFee?: (fee: number) => void;
   onSavePathaoShipment?: (consignmentId: string, orderStatus: string) => void;
@@ -32,6 +33,7 @@ const OrderProductTable: React.FC<Props> = ({
   onSavePaymentStatus,
   onSaveDeliveryOption,
   onSavePaymentMethod,
+  onSaveCourier,
   onSaveCancelNote,
   onSaveShippingFee,
   onSavePathaoShipment,
@@ -47,6 +49,7 @@ const OrderProductTable: React.FC<Props> = ({
     useState<DeliveryOption>(order.delivery_option ?? DeliveryOption.COURIER);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>((order.payment_method as PaymentMethod) || "cod");
+  const [selectedCourier, setSelectedCourier] = useState<string>(order.courier || "");
   const [selectedShippingFee, setSelectedShippingFee] = useState<number>(
     order.shipping_fee
   );
@@ -83,6 +86,10 @@ const OrderProductTable: React.FC<Props> = ({
         onSavePaymentMethod
       ) {
         updateData.payment_method = selectedPaymentMethod;
+      }
+
+      if (selectedCourier !== (order.courier || "") && onSaveCourier) {
+        updateData.courier = selectedCourier || null;
       }
 
       if (selectedShippingFee !== order.shipping_fee && onSaveShippingFee) {
@@ -123,6 +130,9 @@ const OrderProductTable: React.FC<Props> = ({
           ) {
             onSavePaymentMethod(selectedPaymentMethod);
           }
+          if (selectedCourier !== (order.courier || "") && onSaveCourier) {
+            onSaveCourier(selectedCourier);
+          }
           if (selectedShippingFee !== order.shipping_fee && onSaveShippingFee) {
             onSaveShippingFee(selectedShippingFee);
           }
@@ -160,6 +170,7 @@ const OrderProductTable: React.FC<Props> = ({
     setSelectedPaymentStatus(order.payment_status);
     setSelectedDeliveryOption(order.delivery_option ?? DeliveryOption.COURIER);
     setSelectedPaymentMethod((order.payment_method as PaymentMethod) || "cod");
+    setSelectedCourier(order.courier || "");
     setSelectedShippingFee(order.shipping_fee);
     setCancelNote(order.notes || "");
   };
@@ -187,13 +198,19 @@ const OrderProductTable: React.FC<Props> = ({
         paymentMethod={(order.payment_method as PaymentMethod) || "cod"}
         selectedPaymentMethod={selectedPaymentMethod}
         onSelectPaymentMethod={setSelectedPaymentMethod}
+        courier={order.courier || ""}
+        selectedCourier={selectedCourier}
+        onSelectCourier={setSelectedCourier}
+        storeId={order.store_id}
+        courierConsignmentId={order.courier_consignment_id}
+        courierOrderStatus={order.courier_order_status}
         cancelNote={cancelNote}
         onSelectCancelNote={setCancelNote}
         isLocked={isLocked}
         onSaveAll={handleSaveAll}
         saving={saving}
       />
-      <PathaoShipmentPanel
+      <CourierShipmentPanel
         order={order}
         onShipped={(consignmentId, orderStatus) =>
           onSavePathaoShipment?.(consignmentId, orderStatus)

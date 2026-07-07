@@ -297,9 +297,7 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "discount_amount" numeric,
     "additional_charges" numeric,
     "fb_purchase_event_status" character varying(20) DEFAULT 'sent'::character varying,
-    "pathao_consignment_id" "text",
-    "pathao_order_status" character varying(50),
-    "pathao_credential_id" "uuid",
+    "courier" character varying(20),
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
     CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"]))),
     CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
@@ -489,7 +487,8 @@ CREATE TABLE IF NOT EXISTS "public"."store_settings" (
     "shipping_fees" "jsonb" DEFAULT '[]'::"jsonb",
     "facebook_pixel_id" character varying,
     "facebook_capi_access_token" "text",
-    "facebook_test_event_code" character varying
+    "facebook_test_event_code" character varying,
+    "delivery_couriers" "jsonb" DEFAULT '[{"id":"pathao","name":"Pathao","type":"pathao","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"},{"id":"steadfast","name":"Steadfast","type":"steadfast","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"}]'::"jsonb"
 );
 
 
@@ -564,26 +563,48 @@ CREATE TABLE IF NOT EXISTS "public"."stores" (
 ALTER TABLE "public"."stores" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."store_pathao_credentials" (
+CREATE TABLE IF NOT EXISTS "public"."store_courier_credentials" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "store_id" "uuid" NOT NULL,
+    "courier" character varying(20) NOT NULL,
     "label" character varying(100) DEFAULT 'Pathao Account'::character varying NOT NULL,
     "environment" character varying(10) DEFAULT 'sandbox'::character varying NOT NULL,
-    "client_id" "text" NOT NULL,
-    "client_secret" "text" NOT NULL,
+    "client_id" "text",
+    "client_secret" "text",
     "access_token" "text",
     "refresh_token" "text",
     "token_expires_at" timestamp with time zone,
     "pathao_store_id" integer,
     "pathao_store_name" character varying(255),
+    "api_key" "text",
+    "secret_key" "text",
     "connected_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "store_pathao_credentials_environment_check" CHECK ((("environment")::"text" = ANY (ARRAY[('sandbox'::character varying)::"text", ('live'::character varying)::"text"])))
+    CONSTRAINT "store_courier_credentials_courier_check" CHECK ((("courier")::"text" = ANY (ARRAY[('pathao'::character varying)::"text", ('steadfast'::character varying)::"text"]))),
+    CONSTRAINT "store_courier_credentials_environment_check" CHECK ((("environment")::"text" = ANY (ARRAY[('sandbox'::character varying)::"text", ('live'::character varying)::"text"])))
 );
 
 
-ALTER TABLE "public"."store_pathao_credentials" OWNER TO "postgres";
+ALTER TABLE "public"."store_courier_credentials" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."courier_tracking" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "order_id" "uuid" NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "courier" character varying(20) NOT NULL,
+    "courier_credential_id" "uuid",
+    "consignment_id" "text" NOT NULL,
+    "status" character varying(100),
+    "shipment_details" "jsonb",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."courier_tracking" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."subscription_invoices" (
@@ -850,8 +871,25 @@ ALTER TABLE ONLY "public"."store_settings"
 
 
 
-ALTER TABLE ONLY "public"."store_pathao_credentials"
-    ADD CONSTRAINT "store_pathao_credentials_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."store_courier_credentials"
+    ADD CONSTRAINT "store_courier_credentials_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."courier_tracking"
+    ADD CONSTRAINT "courier_tracking_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE UNIQUE INDEX "courier_tracking_one_active_per_order" ON "public"."courier_tracking" USING "btree" ("order_id") WHERE "is_active";
+
+
+
+CREATE INDEX "courier_tracking_order_id_idx" ON "public"."courier_tracking" USING "btree" ("order_id");
+
+
+
+CREATE INDEX "courier_tracking_store_courier_idx" ON "public"."courier_tracking" USING "btree" ("store_id", "courier");
 
 
 
@@ -1177,13 +1215,23 @@ ALTER TABLE ONLY "public"."store_reviews"
 
 
 
-ALTER TABLE ONLY "public"."store_pathao_credentials"
-    ADD CONSTRAINT "store_pathao_credentials_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+ALTER TABLE ONLY "public"."store_courier_credentials"
+    ADD CONSTRAINT "store_courier_credentials_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
 
 
-ALTER TABLE ONLY "public"."orders"
-    ADD CONSTRAINT "orders_pathao_credential_id_fkey" FOREIGN KEY ("pathao_credential_id") REFERENCES "public"."store_pathao_credentials"("id") ON DELETE SET NULL;
+ALTER TABLE ONLY "public"."courier_tracking"
+    ADD CONSTRAINT "courier_tracking_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."courier_tracking"
+    ADD CONSTRAINT "courier_tracking_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."courier_tracking"
+    ADD CONSTRAINT "courier_tracking_credential_id_fkey" FOREIGN KEY ("courier_credential_id") REFERENCES "public"."store_courier_credentials"("id") ON DELETE SET NULL;
 
 
 
@@ -1396,7 +1444,11 @@ GRANT ALL ON TABLE "public"."customer_risk_profiles" TO "service_role";
 GRANT ALL ON TABLE "public"."customer_risk_store_touches" TO "service_role";
 
 -- Holds encrypted OAuth secrets — service_role only, same treatment as above.
-GRANT ALL ON TABLE "public"."store_pathao_credentials" TO "service_role";
+GRANT ALL ON TABLE "public"."store_courier_credentials" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."courier_tracking" TO "service_role";
 
 
 

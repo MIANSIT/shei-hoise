@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { StoreOrder as StoreOrderType } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { getActiveCourierTrackingByOrderIds } from "@/lib/queries/courier/attachActiveCourierTracking";
 
 export interface GetStoreOrdersOptions {
   storeId: string;
@@ -83,6 +84,13 @@ export async function getStoreOrders(
 
     if (totalError) throw totalError;
 
+    // courier_consignment_id/courier_order_status/courier_credential_id are no
+    // longer native columns on orders — sourced from each order's active
+    // courier_tracking row instead (service-role only, hence the server action).
+    const trackingByOrderId = await getActiveCourierTrackingByOrderIds(
+      (orders || []).map((o) => o.id),
+    );
+
     // Transform orders for frontend
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const transformedOrders: StoreOrder[] = (orders || []).map((order: any) => {
@@ -121,6 +129,8 @@ export async function getStoreOrders(
         };
       });
 
+      const tracking = trackingByOrderId[order.id];
+
       return {
         ...order,
         customers: customer,
@@ -133,6 +143,9 @@ export async function getStoreOrders(
         },
         billing_address: order.billing_address || null,
         order_items: orderItems,
+        courier_consignment_id: tracking?.courier_consignment_id ?? null,
+        courier_order_status: tracking?.courier_order_status ?? null,
+        courier_credential_id: tracking?.courier_credential_id ?? null,
       };
     });
 

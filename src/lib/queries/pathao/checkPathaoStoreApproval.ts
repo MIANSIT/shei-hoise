@@ -38,7 +38,7 @@ export async function checkPathaoStoreApproval(
   }
 
   const { error } = await supabaseAdmin
-    .from("store_pathao_credentials")
+    .from("store_courier_credentials")
     .update({
       pathao_store_id: match.store_id,
       pathao_store_name: match.store_name,

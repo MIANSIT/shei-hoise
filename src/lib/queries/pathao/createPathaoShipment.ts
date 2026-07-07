@@ -22,15 +22,29 @@ export interface CreatePathaoShipmentResult {
   orderStatus?: string;
 }
 
+/** Everything about a shipment that Shei Hoise already knows itself — no Pathao ledger data (COD fee, discounts, etc.), since that's never exposed by their Merchant API. */
+export interface PathaoShipmentDetails {
+  courier: "pathao";
+  deliveryFee: number;
+  productType: string;
+  deliveryType: string;
+  weight: number;
+  quantity: number;
+  description: string | null;
+  specialInstruction: string | null;
+  amountToCollect: number;
+}
+
 /** Turns one Shei Hoise order into one Pathao shipment via a specific connected account. */
 export async function createPathaoShipment(
   credentialId: string,
   orderId: string,
+  storeId: string,
   merchantOrderNumber: string,
   input: CreatePathaoShipmentInput,
 ): Promise<CreatePathaoShipmentResult> {
   const { data: credentials } = await supabaseAdmin
-    .from("store_pathao_credentials")
+    .from("store_courier_credentials")
     .select("pathao_store_id")
     .eq("id", credentialId)
     .maybeSingle();
@@ -63,22 +77,44 @@ export async function createPathaoShipment(
     return { success: false, error: result.error };
   }
 
-  const { consignment_id, order_status } = result.data.data;
+  const { consignment_id, order_status, delivery_fee } = result.data.data;
+
+  const shipmentDetails: PathaoShipmentDetails = {
+    courier: "pathao",
+    deliveryFee: delivery_fee,
+    productType: "Parcel",
+    deliveryType: "Normal (48 hours)",
+    weight: input.itemWeight,
+    quantity: input.itemQuantity,
+    description: input.itemDescription ?? null,
+    specialInstruction: input.specialInstruction ?? null,
+    amountToCollect: input.amountToCollect,
+  };
+
+  const { error: trackingError } = await supabaseAdmin.from("courier_tracking").insert({
+    order_id: orderId,
+    store_id: storeId,
+    courier: "pathao",
+    courier_credential_id: credentialId,
+    consignment_id: consignment_id,
+    status: order_status,
+    shipment_details: shipmentDetails,
+    is_active: true,
+  });
+
+  if (trackingError) {
+    console.error("Error saving Pathao shipment tracking:", trackingError);
+    // The shipment itself was created successfully on Pathao's side — don't
+    // report failure to the caller, just log it for follow-up.
+  }
 
   const { error: updateError } = await supabaseAdmin
     .from("orders")
-    .update({
-      pathao_consignment_id: consignment_id,
-      pathao_order_status: order_status,
-      pathao_credential_id: credentialId,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ courier: "pathao", updated_at: new Date().toISOString() })
     .eq("id", orderId);
 
   if (updateError) {
-    console.error("Error saving Pathao shipment on order:", updateError);
-    // The shipment itself was created successfully on Pathao's side — don't
-    // report failure to the caller, just log it for follow-up.
+    console.error("Error saving Pathao courier selection on order:", updateError);
   }
 
   return { success: true, consignmentId: consignment_id, orderStatus: order_status };

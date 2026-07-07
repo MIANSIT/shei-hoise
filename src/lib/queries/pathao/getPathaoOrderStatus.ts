@@ -29,9 +29,10 @@ export async function refreshPathaoOrderStatus(
   const orderStatus = result.data.data.order_status_slug;
 
   await supabaseAdmin
-    .from("orders")
-    .update({ pathao_order_status: orderStatus, updated_at: new Date().toISOString() })
-    .eq("id", orderId);
+    .from("courier_tracking")
+    .update({ status: orderStatus, updated_at: new Date().toISOString() })
+    .eq("order_id", orderId)
+    .eq("is_active", true);
 
   return { success: true, orderStatus };
 }

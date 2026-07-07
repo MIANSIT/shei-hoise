@@ -15,12 +15,14 @@ import {
 } from "antd";
 import { InfoCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
-import type { ShippingFee } from "@/lib/types/store/store";
+import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { isCourierLocked } from "@/lib/utils/courierStatus";
+import Link from "next/link";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -39,6 +41,7 @@ interface OrderSummaryDirtyFields {
   status?: boolean;
   paymentStatus?: boolean;
   paymentMethod?: boolean;
+  courier?: boolean;
 }
 
 interface OrderSummaryProps {
@@ -59,6 +62,12 @@ interface OrderSummaryProps {
   setPaymentStatus: (status: PaymentStatus) => void;
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
+  courier: string;
+  setCourier: (courier: string) => void;
+  deliveryCouriers?: DeliveryCourier[];
+  courierTrackingAllowed?: boolean;
+  courierConsignmentId?: string | null;
+  courierOrderStatus?: string | null;
   shippingFees?: ShippingFee[];
   customerDeliveryOption?: string;
   dirtyFields?: OrderSummaryDirtyFields;
@@ -82,6 +91,12 @@ export default function OrderSummary({
   setPaymentStatus,
   paymentMethod,
   setPaymentMethod,
+  courier,
+  setCourier,
+  deliveryCouriers = [],
+  courierTrackingAllowed = false,
+  courierConsignmentId,
+  courierOrderStatus,
   shippingFees = [],
   customerDeliveryOption,
   dirtyFields = {},
@@ -114,6 +129,19 @@ export default function OrderSummary({
     { value: "bkash", label: t.admin.orderPayBkash },
     { value: "nagad", label: t.admin.orderPayNagad },
   ];
+
+  // Pathao/Steadfast only stay selectable if the plan includes courier
+  // tracking — except the order's current value, which always stays visible
+  // even if the plan has since lost that feature, so the field never shows
+  // a value with no matching option.
+  const courierOptions = deliveryCouriers
+    .filter((c) => c.type === "manual" || courierTrackingAllowed || c.type === courier)
+    .map((c) => ({
+      value: c.type === "manual" ? c.name : c.type,
+      label: c.name,
+    }));
+
+  const courierLocked = isCourierLocked(courierConsignmentId, courierOrderStatus, status);
 
   const {
     currency,
@@ -512,6 +540,52 @@ export default function OrderSummary({
                 </Option>
               ))}
             </Select>
+          </Form.Item>
+
+          <Form.Item
+            label={
+              <span className="flex items-center gap-1">
+                {t.admin.orderSummaryDeliveryCourier}
+                {dirtyFields.courier && <EditedBadge />}
+              </span>
+            }
+          >
+            {courierOptions.length === 0 ? (
+              <Text type="secondary" style={{ fontSize: "13px" }}>
+                {t.admin.orderSummaryNoCourierOptions}{" "}
+                <Link href="/dashboard/courier/manage" className="text-blue-600 hover:underline">
+                  {t.admin.orderSummaryAddCourierCta}
+                </Link>
+              </Text>
+            ) : (
+              <Select
+                value={courier || undefined}
+                onChange={setCourier}
+                style={{ width: "100%" }}
+                size="large"
+                placeholder={t.admin.orderSummarySelectCourier}
+                allowClear
+                disabled={courierLocked}
+              >
+                {courierOptions.map((option) => (
+                  <Option key={option.value} value={option.value}>
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
+            )}
+            {courierLocked && (
+              <Text type="secondary" style={{ fontSize: "12px" }}>
+                {status === "delivered" || status === "cancelled"
+                  ? t.admin.orderSummaryCourierLockedFinalized
+                  : t.admin.orderSummaryCourierLocked}
+              </Text>
+            )}
+            {!courierLocked && courierConsignmentId && (
+              <Text type="warning" style={{ fontSize: "12px" }}>
+                {t.admin.orderSummaryCourierWillArchive}
+              </Text>
+            )}
           </Form.Item>
         </Space>
 

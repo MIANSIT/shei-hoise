@@ -52,9 +52,10 @@ export async function connectPathaoAccount(
   const tokenExpiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
 
   const { data: inserted, error: insertError } = await supabaseAdmin
-    .from("store_pathao_credentials")
+    .from("store_courier_credentials")
     .insert({
       store_id: storeId,
+      courier: "pathao",
       label: input.label,
       environment,
       client_id: input.client_id,

@@ -6,12 +6,15 @@ import EditableOrderStatus from "./EditableOrderStatus";
 import EditablePaymentStatus from "./EditablePaymentStatus";
 // import EditableDeliveryOption from "./EditableDeliveryOption";
 import EditablePaymentMethod from "./EditablePaymentMethod";
+import EditableCourier from "./EditableCourier";
 import {
   OrderStatus,
   PaymentStatus,
   DeliveryOption,
   PaymentMethod,
 } from "@/lib/types/enums";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { isCourierLocked } from "@/lib/utils/courierStatus";
 
 interface Props {
   status: OrderStatus;
@@ -29,6 +32,13 @@ interface Props {
   paymentMethod: PaymentMethod;
   selectedPaymentMethod: PaymentMethod;
   onSelectPaymentMethod: (v: PaymentMethod) => void;
+
+  courier: string;
+  selectedCourier: string;
+  onSelectCourier: (v: string) => void;
+  storeId: string;
+  courierConsignmentId?: string | null;
+  courierOrderStatus?: string | null;
 
   cancelNote?: string;
   onSelectCancelNote?: (note: string) => void;
@@ -51,12 +61,19 @@ const OrderControls: React.FC<Props> = ({
   paymentMethod,
   selectedPaymentMethod,
   onSelectPaymentMethod,
+  courier,
+  selectedCourier,
+  onSelectCourier,
+  storeId,
+  courierConsignmentId,
+  courierOrderStatus,
   cancelNote,
   onSelectCancelNote,
   isLocked,
   onSaveAll,
   saving = false,
 }) => {
+  const t = useTranslation();
   const [note, setNote] = useState(cancelNote || "");
 
   useEffect(() => {
@@ -64,12 +81,14 @@ const OrderControls: React.FC<Props> = ({
   }, [note, onSelectCancelNote]);
 
   const isCancelled = selectedStatus === "cancelled";
+  const courierLocked = isCourierLocked(courierConsignmentId, courierOrderStatus, status);
 
   const hasChanges =
     selectedStatus !== status ||
     selectedPaymentStatus !== paymentStatus ||
     selectedDeliveryOption !== deliveryOption ||
     selectedPaymentMethod !== paymentMethod ||
+    selectedCourier !== courier ||
     note !== (cancelNote || "");
 
   return (
@@ -162,6 +181,36 @@ const OrderControls: React.FC<Props> = ({
           />
           {selectedPaymentMethod !== paymentMethod && (
             <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+          )}
+        </div>
+      )}
+
+      {/* Delivery Courier */}
+      {!isCancelled && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <span className="font-medium text-sm sm:text-base whitespace-nowrap">
+            {t.admin.orderSummaryDeliveryCourier}:
+          </span>
+          <EditableCourier
+            courier={selectedCourier}
+            storeId={storeId}
+            onSave={onSelectCourier}
+            disabled={courierLocked}
+          />
+          {selectedCourier !== courier && (
+            <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+          )}
+          {courierLocked && (
+            <span className="text-xs text-muted-foreground">
+              {status === "delivered" || status === "cancelled"
+                ? t.admin.orderSummaryCourierLockedFinalized
+                : t.admin.orderSummaryCourierLocked}
+            </span>
+          )}
+          {!courierLocked && courierConsignmentId && (
+            <span className="text-xs text-amber-600">
+              {t.admin.orderSummaryCourierWillArchive}
+            </span>
           )}
         </div>
       )}

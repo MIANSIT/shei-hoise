@@ -1,15 +1,19 @@
 "use client";
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { PathaoConnectCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PathaoConnectCard";
-import { Truck } from "lucide-react";
+import { CourierShipmentsList } from "@/app/components/admin/dashboard/store-settings/storeCard/CourierShipmentsList";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { Truck, ExternalLink } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
-export default function CourierPage() {
+export default function PathaoCourierPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
+  const { loading: featureLoading, allowed } = useFeatureGate(storeId, "courier_tracking");
   const t = useTranslation();
 
-  if (userLoading) {
+  if (userLoading || featureLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500" />
@@ -25,6 +29,10 @@ export default function CourierPage() {
     );
   }
 
+  if (!allowed) {
+    return <FeatureLocked title={t.admin.pathaoCardTitle} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
@@ -34,7 +42,7 @@ export default function CourierPage() {
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
-              {t.admin.courierPageTitle}
+              {t.admin.pathaoCardTitle}
             </h1>
             <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
               {t.admin.courierPageSubtitle}
@@ -46,13 +54,22 @@ export default function CourierPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-5 sm:py-7 space-y-5">
         <PathaoConnectCard storeId={storeId} />
 
-        <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-center">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {t.admin.courierShipmentsComingTitle}
-          </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            {t.admin.courierShipmentsComingHint}
-          </p>
+        <div>
+          <div className="flex items-center justify-between mb-2.5">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+              {t.admin.pathaoShipmentsTitle}
+            </h2>
+            <a
+              href="https://merchant.pathao.com/courier/orders/list"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700"
+            >
+              {t.admin.pathaoOpenDashboard}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          <CourierShipmentsList storeId={storeId} courier="pathao" />
         </div>
       </div>
     </div>

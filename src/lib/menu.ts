@@ -117,9 +117,14 @@ export const sideMenu: MenuItem[] = [
     ],
   },
   {
-    title: "Pathao Courier",
-    href: "/dashboard/courier",
+    // Children are entirely DB-driven (Pathao, Steadfast, and any custom
+    // couriers) — see SidebarMenu.tsx, which builds them from
+    // getDeliveryCouriers() rather than hardcoding courier names here.
+    title: "Courier",
     icon: PackageCheck,
+    children: [
+      { title: "Delivery Courier", href: "/dashboard/courier/manage", icon: PackageCheck },
+    ],
   },
   {
     title: "Pixel Analytics",

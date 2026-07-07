@@ -25,9 +25,10 @@ import { Truck, CheckCircle2, Clock, Plus } from "lucide-react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import {
-  getPathaoConnectedAccounts,
-  type PathaoAccountStatus,
-} from "@/lib/queries/pathao/getPathaoConnectedAccounts";
+  getConnectedCourierAccounts,
+  type CourierAccountStatus,
+} from "@/lib/queries/courier/getConnectedCourierAccounts";
+import { disconnectCourierAccount } from "@/lib/queries/courier/disconnectCourierAccount";
 import { connectPathaoAccount } from "@/lib/queries/pathao/connectPathao";
 import { selectPathaoStore } from "@/lib/queries/pathao/selectPathaoStore";
 import { createPathaoStore } from "@/lib/queries/pathao/createPathaoStore";
@@ -37,7 +38,6 @@ import {
   getPathaoZones,
   getPathaoAreas,
 } from "@/lib/queries/pathao/getPathaoLocations";
-import { disconnectPathao } from "@/lib/queries/pathao/disconnectPathao";
 import type { PathaoStore, PathaoCity, PathaoZone, PathaoArea } from "@/lib/utils/pathaoApi";
 
 type WizardStep =
@@ -54,7 +54,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const notify = useSheiNotification();
   const t = useTranslation();
 
-  const [accounts, setAccounts] = useState<PathaoAccountStatus[]>([]);
+  const [accounts, setAccounts] = useState<CourierAccountStatus[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [step, setStep] = useState<WizardStep>("credentials");
@@ -93,8 +93,8 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
 
   const refreshAccounts = () => {
     setLoadingAccounts(true);
-    getPathaoConnectedAccounts(storeId)
-      .then(setAccounts)
+    getConnectedCourierAccounts(storeId)
+      .then((all) => setAccounts(all.filter((a) => a.courier === "pathao")))
       .finally(() => setLoadingAccounts(false));
   };
 
@@ -266,7 +266,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const handleDisconnect = async (id: string) => {
     setDisconnectingId(id);
     try {
-      const result = await disconnectPathao(id);
+      const result = await disconnectCourierAccount(id);
       if (!result.success) {
         notify.error(result.error ?? t.admin.pathaoConnectFailed);
         return;
