@@ -297,6 +297,9 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "discount_amount" numeric,
     "additional_charges" numeric,
     "fb_purchase_event_status" character varying(20) DEFAULT 'sent'::character varying,
+    "pathao_consignment_id" "text",
+    "pathao_order_status" character varying(50),
+    "pathao_credential_id" "uuid",
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
     CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"]))),
     CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
@@ -561,6 +564,28 @@ CREATE TABLE IF NOT EXISTS "public"."stores" (
 ALTER TABLE "public"."stores" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."store_pathao_credentials" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "label" character varying(100) DEFAULT 'Pathao Account'::character varying NOT NULL,
+    "environment" character varying(10) DEFAULT 'sandbox'::character varying NOT NULL,
+    "client_id" "text" NOT NULL,
+    "client_secret" "text" NOT NULL,
+    "access_token" "text",
+    "refresh_token" "text",
+    "token_expires_at" timestamp with time zone,
+    "pathao_store_id" integer,
+    "pathao_store_name" character varying(255),
+    "connected_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "store_pathao_credentials_environment_check" CHECK ((("environment")::"text" = ANY (ARRAY[('sandbox'::character varying)::"text", ('live'::character varying)::"text"])))
+);
+
+
+ALTER TABLE "public"."store_pathao_credentials" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."subscription_invoices" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "invoice_number" character varying(50) NOT NULL,
@@ -822,6 +847,11 @@ ALTER TABLE ONLY "public"."store_reviews"
 
 ALTER TABLE ONLY "public"."store_settings"
     ADD CONSTRAINT "store_settings_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."store_pathao_credentials"
+    ADD CONSTRAINT "store_pathao_credentials_pkey" PRIMARY KEY ("id");
 
 
 
@@ -1147,6 +1177,16 @@ ALTER TABLE ONLY "public"."store_reviews"
 
 
 
+ALTER TABLE ONLY "public"."store_pathao_credentials"
+    ADD CONSTRAINT "store_pathao_credentials_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_pathao_credential_id_fkey" FOREIGN KEY ("pathao_credential_id") REFERENCES "public"."store_pathao_credentials"("id") ON DELETE SET NULL;
+
+
+
 ALTER TABLE ONLY "public"."store_settings"
     ADD CONSTRAINT "store_settings_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
@@ -1354,6 +1394,9 @@ GRANT ALL ON TABLE "public"."pixel_events" TO "service_role";
 -- unlike pixel_events above. Store owners never query these directly.
 GRANT ALL ON TABLE "public"."customer_risk_profiles" TO "service_role";
 GRANT ALL ON TABLE "public"."customer_risk_store_touches" TO "service_role";
+
+-- Holds encrypted OAuth secrets — service_role only, same treatment as above.
+GRANT ALL ON TABLE "public"."store_pathao_credentials" TO "service_role";
 
 
 

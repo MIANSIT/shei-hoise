@@ -19,6 +19,7 @@ import {
   BarChart2,
   TrendingUp,
   BadgeCheck,
+  PackageCheck,
 } from "lucide-react";
 import React from "react";
 
@@ -114,6 +115,11 @@ export const sideMenu: MenuItem[] = [
       { title: "Expense", href: "/dashboard/expense", icon: CreditCard },
       { title: "Category", href: "/dashboard/expense/category", icon: BarChart2 },
     ],
+  },
+  {
+    title: "Pathao Courier",
+    href: "/dashboard/courier",
+    icon: PackageCheck,
   },
   {
     title: "Pixel Analytics",

@@ -111,6 +111,9 @@ export interface StoreOrder {
   delivery_option?: DeliveryOption;
   cancel_note?: string;
   fb_purchase_event_status?: "sent" | "held" | "suppressed" | null;
+  pathao_consignment_id?: string | null;
+  pathao_order_status?: string | null;
+  pathao_credential_id?: string | null;
 }
 
 // ===== FORM DATA TYPES =====

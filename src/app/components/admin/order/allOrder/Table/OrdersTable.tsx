@@ -32,6 +32,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
+import BulkPathaoShipmentAction from "./BulkPathaoShipmentAction";
 import { Check } from "lucide-react";
 // import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import InvoiceModal from "@/app/components/invoice/invoice";
@@ -812,6 +813,12 @@ const OrdersTable: React.FC<Props> = ({
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
                   }
+                  onSavePathaoShipment={(consignmentId, orderStatus) =>
+                    onUpdate(order.id, {
+                      pathao_consignment_id: consignmentId,
+                      pathao_order_status: orderStatus,
+                    })
+                  }
                   onRefresh={onRefresh}
                 />
               </div>
@@ -851,6 +858,11 @@ const OrdersTable: React.FC<Props> = ({
                   handleBulkUpdateSuccess();
                   onRefresh?.(); // ✅ TRIGGER REFRESH
                 }}
+                onClearSelection={() => setSelectedRowKeys([])}
+              />
+              <BulkPathaoShipmentAction
+                selectedOrders={selectedOrderObjects}
+                onSuccess={() => onRefresh?.()}
                 onClearSelection={() => setSelectedRowKeys([])}
               />
               <Button
@@ -995,6 +1007,12 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
+                  }
+                  onSavePathaoShipment={(consignmentId, orderStatus) =>
+                    onUpdate(order.id, {
+                      pathao_consignment_id: consignmentId,
+                      pathao_order_status: orderStatus,
+                    })
                   }
                   onRefresh={onRefresh}
                 />

@@ -100,6 +100,7 @@ export default function SidebarMenu({
       "Category": t.admin.menuCategory,
       "Pixel Analytics": t.admin.menuPixelAnalytics,
       "Subscription": t.admin.menuSubscription,
+      "Pathao Courier": t.admin.menuPathaoCourier,
     };
     return map[title] ?? title;
   };

@@ -10,6 +10,7 @@ import {
 } from "@/lib/types/enums";
 import { StoreOrder } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
+import PathaoShipmentPanel from "@/app/components/admin/order/allOrder/Table/PathaoShipmentPanel";
 import dataService from "@/lib/queries/dataService";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification"; // Adjust the import path
 
@@ -21,6 +22,7 @@ interface Props {
   onSavePaymentMethod?: (newMethod: PaymentMethod) => void;
   onSaveCancelNote?: (note: string) => void;
   onSaveShippingFee?: (fee: number) => void;
+  onSavePathaoShipment?: (consignmentId: string, orderStatus: string) => void;
   onRefresh?: () => void;
 }
 
@@ -32,6 +34,7 @@ const OrderProductTable: React.FC<Props> = ({
   onSavePaymentMethod,
   onSaveCancelNote,
   onSaveShippingFee,
+  onSavePathaoShipment,
   onRefresh,
 }) => {
   const notify = useSheiNotification(); // ✅ Using custom notification hook
@@ -189,6 +192,12 @@ const OrderProductTable: React.FC<Props> = ({
         isLocked={isLocked}
         onSaveAll={handleSaveAll}
         saving={saving}
+      />
+      <PathaoShipmentPanel
+        order={order}
+        onShipped={(consignmentId, orderStatus) =>
+          onSavePathaoShipment?.(consignmentId, orderStatus)
+        }
       />
     </div>
   );
