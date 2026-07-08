@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { encrypt } from "@/lib/utils/encryption";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getBalance } from "@/lib/utils/steadfastApi";
 
 export interface ConnectSteadfastInput {
@@ -22,9 +23,14 @@ export interface ConnectSteadfastResult {
  * check (the cheapest authenticated call available) before saving.
  */
 export async function connectSteadfastAccount(
-  storeId: string,
   input: ConnectSteadfastInput,
 ): Promise<ConnectSteadfastResult> {
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    return { success: false, error: storeResult.error };
+  }
+  const storeId = storeResult.storeId;
+
   const balanceResult = await getBalance(input.apiKey, input.secretKey);
   if (!balanceResult.ok) {
     return { success: false, error: balanceResult.error };

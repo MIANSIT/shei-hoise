@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import {
   getCityList,
@@ -19,7 +20,10 @@ export interface LocationResult<T> {
 export async function getPathaoCities(
   credentialId: string,
 ): Promise<LocationResult<PathaoCity>> {
-  const tokenResult = await getValidPathaoAccessToken(credentialId);
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) return { success: false, data: [], error: storeResult.error };
+
+  const tokenResult = await getValidPathaoAccessToken(credentialId, storeResult.storeId);
   if (!tokenResult.ok) return { success: false, data: [], error: tokenResult.error };
 
   const result = await getCityList(tokenResult.environment, tokenResult.accessToken);
@@ -32,7 +36,10 @@ export async function getPathaoZones(
   credentialId: string,
   cityId: number,
 ): Promise<LocationResult<PathaoZone>> {
-  const tokenResult = await getValidPathaoAccessToken(credentialId);
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) return { success: false, data: [], error: storeResult.error };
+
+  const tokenResult = await getValidPathaoAccessToken(credentialId, storeResult.storeId);
   if (!tokenResult.ok) return { success: false, data: [], error: tokenResult.error };
 
   const result = await getZoneList(tokenResult.environment, tokenResult.accessToken, cityId);
@@ -45,7 +52,10 @@ export async function getPathaoAreas(
   credentialId: string,
   zoneId: number,
 ): Promise<LocationResult<PathaoArea>> {
-  const tokenResult = await getValidPathaoAccessToken(credentialId);
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) return { success: false, data: [], error: storeResult.error };
+
+  const tokenResult = await getValidPathaoAccessToken(credentialId, storeResult.storeId);
   if (!tokenResult.ok) return { success: false, data: [], error: tokenResult.error };
 
   const result = await getAreaList(tokenResult.environment, tokenResult.accessToken, zoneId);

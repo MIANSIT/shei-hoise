@@ -1,12 +1,18 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export async function selectPathaoStore(
   credentialId: string,
   pathaoStoreId: number,
   pathaoStoreName: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    return { success: false, error: storeResult.error };
+  }
+
   const { error } = await supabaseAdmin
     .from("store_courier_credentials")
     .update({
@@ -15,7 +21,8 @@ export async function selectPathaoStore(
       connected_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", credentialId);
+    .eq("id", credentialId)
+    .eq("store_id", storeResult.storeId);
 
   if (error) {
     console.error("Error selecting Pathao store:", error);

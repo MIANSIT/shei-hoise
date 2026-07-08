@@ -33,6 +33,7 @@ import { connectPathaoAccount } from "@/lib/queries/pathao/connectPathao";
 import { selectPathaoStore } from "@/lib/queries/pathao/selectPathaoStore";
 import { createPathaoStore } from "@/lib/queries/pathao/createPathaoStore";
 import { checkPathaoStoreApproval } from "@/lib/queries/pathao/checkPathaoStoreApproval";
+import { getPathaoWebhookConfig } from "@/lib/queries/pathao/getPathaoWebhookConfig";
 import {
   getPathaoCities,
   getPathaoZones,
@@ -60,6 +61,11 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const [step, setStep] = useState<WizardStep>("credentials");
   const [submitting, setSubmitting] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+
+  // Webhook setup dialog — shows the callback URL + secret for one connected account
+  const [webhookModalOpen, setWebhookModalOpen] = useState(false);
+  const [loadingWebhook, setLoadingWebhook] = useState(false);
+  const [webhookConfig, setWebhookConfig] = useState<{ callbackUrl: string; secret: string } | null>(null);
 
   // Step 1 — label + credentials
   const [label, setLabel] = useState("");
@@ -134,7 +140,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const handleConnect = async () => {
     setSubmitting(true);
     try {
-      const result = await connectPathaoAccount(storeId, {
+      const result = await connectPathaoAccount({
         label: label.trim(),
         client_id: clientId.trim(),
         client_secret: clientSecret.trim(),
@@ -263,6 +269,27 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
     }
   };
 
+  const handleShowWebhook = async (id: string) => {
+    setWebhookModalOpen(true);
+    setWebhookConfig(null);
+    setLoadingWebhook(true);
+    try {
+      const result = await getPathaoWebhookConfig(id);
+      if (!result.success || !result.callbackUrl || !result.secret) {
+        notify.error(result.error ?? t.admin.pathaoWebhookLoadFailed);
+        return;
+      }
+      setWebhookConfig({ callbackUrl: result.callbackUrl, secret: result.secret });
+    } finally {
+      setLoadingWebhook(false);
+    }
+  };
+
+  const copyToClipboard = async (value: string) => {
+    await navigator.clipboard.writeText(value);
+    notify.success(t.admin.pathaoWebhookCopyOk);
+  };
+
   const handleDisconnect = async (id: string) => {
     setDisconnectingId(id);
     try {
@@ -328,14 +355,25 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDisconnect(account.id)}
-                  disabled={disconnectingId === account.id}
-                >
-                  {t.admin.pathaoDisconnect}
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  {account.connected && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShowWebhook(account.id)}
+                    >
+                      {t.admin.pathaoWebhookBtn}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDisconnect(account.id)}
+                    disabled={disconnectingId === account.id}
+                  >
+                    {t.admin.pathaoDisconnect}
+                  </Button>
+                </div>
               </div>
             ))
           )}
@@ -545,6 +583,51 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={webhookModalOpen} onOpenChange={setWebhookModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t.admin.pathaoWebhookTitle}</DialogTitle>
+          </DialogHeader>
+          {loadingWebhook ? (
+            <p className="text-sm text-muted-foreground">{t.admin.loading}</p>
+          ) : webhookConfig ? (
+            <div className="space-y-3.5">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {t.admin.pathaoWebhookHint}
+              </p>
+              <div className="space-y-1.5">
+                <Label>{t.admin.pathaoWebhookUrlLabel}</Label>
+                <div className="flex gap-1.5">
+                  <Input readOnly value={webhookConfig.callbackUrl} className="font-mono text-xs" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(webhookConfig.callbackUrl)}
+                  >
+                    {t.admin.pathaoWebhookCopyBtn}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t.admin.pathaoWebhookSecretLabel}</Label>
+                <div className="flex gap-1.5">
+                  <Input readOnly value={webhookConfig.secret} className="font-mono text-xs" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(webhookConfig.secret)}
+                  >
+                    {t.admin.pathaoWebhookCopyBtn}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

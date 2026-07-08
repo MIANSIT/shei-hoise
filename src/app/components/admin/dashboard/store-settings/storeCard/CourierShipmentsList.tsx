@@ -13,6 +13,7 @@ import {
 import type { CourierType } from "@/lib/queries/courier/getConnectedCourierAccounts";
 import { refreshPathaoOrderStatus } from "@/lib/queries/pathao/getPathaoOrderStatus";
 import { refreshSteadfastOrderStatus } from "@/lib/queries/steadfast/getSteadfastOrderStatus";
+import { getCourierStatusStyle, prettifyCourierStatus } from "@/lib/utils/courierStatusDisplay";
 
 interface CourierShipmentsListProps {
   storeId: string;
@@ -87,15 +88,16 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
       {shipments.map((s) => {
         const isExpanded = expandedId === s.trackingId;
         const d = s.details;
+        const statusStyle = s.isActive
+          ? getCourierStatusStyle(s.orderStatus)
+          : getCourierStatusStyle(null); // inactive/replaced shipments always read as neutral, regardless of their last real status
 
         return (
           <div
             key={s.trackingId}
-            className={`rounded-xl border bg-white dark:bg-gray-800 overflow-hidden ${
-              s.isActive
-                ? "border-gray-200 dark:border-gray-700"
-                : "border-gray-200 dark:border-gray-700 opacity-70"
-            }`}
+            className={`rounded-xl border border-l-4 bg-white dark:bg-gray-800 overflow-hidden ${
+              statusStyle.border
+            } ${s.isActive ? "border-gray-200 dark:border-gray-700" : "border-gray-200 dark:border-gray-700 opacity-70"}`}
           >
             <div className="flex flex-wrap items-center gap-3 px-4 py-3">
               <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -118,8 +120,11 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
                 </span>
               )}
 
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                {s.orderStatus || "—"}
+              <span className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${statusStyle.dot}`} />
+                <span className={`text-sm font-semibold ${statusStyle.text}`}>
+                  {prettifyCourierStatus(s.orderStatus)}
+                </span>
               </span>
 
               <div className="ml-auto flex items-center gap-2">
@@ -173,6 +178,9 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
                     <DetailField label={t.admin.pathaoProductType} value={d.productType} />
                     <DetailField label={t.admin.pathaoDeliveryTypeLabel} value={d.deliveryType} />
                     <DetailField label={t.admin.pathaoWeightLabel} value={`${d.weight} kg`} />
+                    {d.paymentStatus && (
+                      <DetailField label={t.admin.pathaoPaymentStatus} value={d.paymentStatus} />
+                    )}
                     {d.description && (
                       <DetailField
                         label={t.admin.pathaoProductDescription}

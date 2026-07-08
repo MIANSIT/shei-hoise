@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { createStore, type CreateStorePayload } from "@/lib/utils/pathaoApi";
 
@@ -19,7 +20,12 @@ export async function createPathaoStore(
   credentialId: string,
   payload: CreateStorePayload,
 ): Promise<CreatePathaoStoreResult> {
-  const tokenResult = await getValidPathaoAccessToken(credentialId);
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    return { success: false, error: storeResult.error };
+  }
+
+  const tokenResult = await getValidPathaoAccessToken(credentialId, storeResult.storeId);
   if (!tokenResult.ok) {
     return { success: false, error: tokenResult.error };
   }

@@ -5,6 +5,8 @@ import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { SteadfastConnectCard } from "@/app/components/admin/dashboard/store-settings/storeCard/SteadfastConnectCard";
 import { CourierShipmentsList } from "@/app/components/admin/dashboard/store-settings/storeCard/CourierShipmentsList";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import ComingSoon from "@/app/components/admin/common/ComingSoon";
+import { STEADFAST_LIVE } from "@/lib/config/courierAvailability";
 import { Truck } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
@@ -31,6 +33,15 @@ export default function SteadfastCourierPage() {
 
   if (!allowed) {
     return <FeatureLocked title={t.admin.steadfastCardTitle} />;
+  }
+
+  if (!STEADFAST_LIVE) {
+    return (
+      <ComingSoon
+        title={t.admin.steadfastComingSoonTitle}
+        hint={t.admin.steadfastComingSoonHint}
+      />
+    );
   }
 
   return (

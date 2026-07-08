@@ -24,31 +24,67 @@ export type PathaoResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 300;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Pulls the most specific message out of whatever shape Pathao's error body happens to be. */
+function extractPathaoErrorMessage(body: unknown, fallback: string): string {
+  if (body && typeof body === "object") {
+    const anyBody = body as Record<string, unknown>;
+    if (typeof anyBody.message === "string") return anyBody.message;
+    if (anyBody.errors && typeof anyBody.errors === "object") {
+      const firstError = Object.values(anyBody.errors as Record<string, unknown>)[0];
+      if (Array.isArray(firstError) && typeof firstError[0] === "string") return firstError[0];
+      if (typeof firstError === "string") return firstError;
+    }
+  }
+  return fallback;
+}
+
 async function pathaoFetch<T>(
   environment: PathaoEnvironment,
   path: string,
   init: RequestInit,
 ): Promise<PathaoResult<T>> {
-  try {
-    const baseUrl = resolveBaseUrl(environment);
-    const res = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init.headers },
-    });
+  const baseUrl = resolveBaseUrl(environment);
 
-    const body = await res.json().catch(() => null);
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: { "Content-Type": "application/json", ...init.headers },
+      });
 
-    if (!res.ok) {
-      const message =
-        (body?.message as string | undefined) ?? `Pathao API returned ${res.status}`;
+      const body = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        // Only 5xx is worth retrying — a 4xx means the request itself was
+        // wrong (bad input, expired token) and trying again won't help.
+        if (res.status >= 500 && attempt < MAX_ATTEMPTS) {
+          await sleep(RETRY_BASE_DELAY_MS * attempt);
+          continue;
+        }
+        console.error(`Pathao API ${res.status} on ${path}:`, body);
+        const message = extractPathaoErrorMessage(body, `Pathao API returned ${res.status}`);
+        return { ok: false, error: message };
+      }
+
+      return { ok: true, data: body as T };
+    } catch (err) {
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(RETRY_BASE_DELAY_MS * attempt);
+        continue;
+      }
+      const message = err instanceof Error ? err.message : "Unknown error calling Pathao API";
       return { ok: false, error: message };
     }
-
-    return { ok: true, data: body as T };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error calling Pathao API";
-    return { ok: false, error: message };
   }
+
+  return { ok: false, error: "Pathao API request failed after retrying" };
 }
 
 function authHeader(accessToken: string): Record<string, string> {

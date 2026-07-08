@@ -41,11 +41,13 @@ export async function getStoreOrders(
           *,
           products (
             id,
-            sku
+            sku,
+            weight
           ),
           product_variants (
             id,
-            sku
+            sku,
+            weight
           )
         ),
         store_customers!customer_id (
@@ -122,10 +124,22 @@ export async function getStoreOrders(
           ? item.product_variants[0]?.sku || ""
           : item.product_variants?.sku || "";
 
+        // Per-unit weight (kg) — variant's own weight wins when the line has
+        // one, since a variant (e.g. a specific size) can weigh differently
+        // than the base product record.
+        const productWeight = Array.isArray(item.products)
+          ? item.products[0]?.weight
+          : item.products?.weight;
+        const variantWeight = Array.isArray(item.product_variants)
+          ? item.product_variants[0]?.weight
+          : item.product_variants?.weight;
+        const weight = variantWeight ?? productWeight ?? null;
+
         return {
           ...item,
           product_sku: productSku,
           variant_sku: variantSku,
+          weight,
         };
       });
 

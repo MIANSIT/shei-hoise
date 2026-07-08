@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { getMerchantStores } from "@/lib/utils/pathaoApi";
 
@@ -19,7 +20,12 @@ export async function checkPathaoStoreApproval(
   credentialId: string,
   expectedStoreName: string,
 ): Promise<CheckApprovalResult> {
-  const tokenResult = await getValidPathaoAccessToken(credentialId);
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    return { success: false, connected: false, error: storeResult.error };
+  }
+
+  const tokenResult = await getValidPathaoAccessToken(credentialId, storeResult.storeId);
   if (!tokenResult.ok) {
     return { success: false, connected: false, error: tokenResult.error };
   }
@@ -45,7 +51,8 @@ export async function checkPathaoStoreApproval(
       connected_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", credentialId);
+    .eq("id", credentialId)
+    .eq("store_id", storeResult.storeId);
 
   if (error) {
     console.error("Error saving approved Pathao store:", error);

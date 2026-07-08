@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -35,6 +36,7 @@ import {
   type OrderShipmentHistoryEntry,
 } from "@/lib/queries/courier/getOrderShipmentHistory";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import { getCourierStatusStyle, prettifyCourierStatus } from "@/lib/utils/courierStatusDisplay";
 import type { StoreOrder } from "@/lib/types/order";
 
 interface CourierShipmentPanelProps {
@@ -84,13 +86,27 @@ export default function CourierShipmentPanel({
     (order.shipping_address?.address_line_1 || order.shipping_address?.address || "") +
     (order.shipping_address?.city ? `, ${order.shipping_address.city}` : "");
 
+  // Sum of every line's quantity, not the number of distinct product
+  // lines — an order with one line at quantity 3 is 3 items, not 1.
+  const totalItemQuantity =
+    order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 1;
+
+  // Sum of (per-unit weight × quantity) across every line, clamped to
+  // Pathao's accepted 0.5–10kg range. Falls back to 0.5 when no product in
+  // the order has a weight recorded yet, same as the old static default.
+  const calculatedWeight =
+    order.order_items?.reduce((sum, item) => sum + (item.weight ?? 0) * item.quantity, 0) || 0;
+  const defaultWeight = calculatedWeight > 0 ? Math.min(10, Math.max(0.5, calculatedWeight)) : 0.5;
+
   const [name, setName] = useState(recipientName);
   const [phone, setPhone] = useState(recipientPhone);
   const [address, setAddress] = useState(recipientAddress);
-  const [weight, setWeight] = useState("0.5");
-  const [amountToCollect, setAmountToCollect] = useState(
-    order.payment_status === "paid" ? 0 : order.total_amount,
-  );
+  const [weight, setWeight] = useState(String(defaultWeight));
+  const [instruction, setInstruction] = useState("");
+  // Defaults to the order's full total — staff can still edit this down
+  // (e.g. to 0) for an order that was genuinely paid in full up front, but
+  // it should never be silently assumed on their behalf.
+  const [amountToCollect, setAmountToCollect] = useState(order.total_amount);
 
   const accountsForCourier = (accounts ?? []).filter(
     (a) => a.courier === order.courier && a.connected,
@@ -120,20 +136,22 @@ export default function CourierShipmentPanel({
     setSubmitting(true);
     try {
       const result = isPathao
-        ? await createPathaoShipment(selectedAccountId, order.id, order.store_id, order.order_number, {
+        ? await createPathaoShipment(selectedAccountId, order.id, order.order_number, {
             recipientName: name.trim(),
             recipientPhone: phone.trim(),
             recipientAddress: address.trim(),
             itemWeight: Number(weight),
-            itemQuantity: order.order_items?.length || 1,
+            itemQuantity: totalItemQuantity,
             itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
+            specialInstruction: instruction.trim() || undefined,
             amountToCollect: Number(amountToCollect),
           })
-        : await createSteadfastShipment(selectedAccountId, order.id, order.store_id, order.order_number, {
+        : await createSteadfastShipment(selectedAccountId, order.id, order.order_number, {
             recipientName: name.trim(),
             recipientPhone: phone.trim(),
             recipientAddress: address.trim(),
             codAmount: Number(amountToCollect),
+            note: instruction.trim() || undefined,
             itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
           });
 
@@ -179,34 +197,46 @@ export default function CourierShipmentPanel({
 
   if (isPathao || isSteadfast) {
     if (order.courier_consignment_id) {
+      const statusStyle = getCourierStatusStyle(order.courier_order_status);
       activeContent = (
-        <div className="flex flex-wrap items-center gap-2.5 p-3 sm:p-4 rounded-md border">
-          <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="text-sm font-medium">{courierLabel}:</span>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-            {order.courier_order_status ?? "—"}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleRefreshStatus}
-            disabled={refreshing || !order.courier_credential_id}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          </Button>
-          {isPathao && (
-            <a
-              href={buildPathaoTrackingUrl(order.courier_consignment_id, recipientPhone)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto"
+        <div className={`rounded-lg border border-l-4 ${statusStyle.border} pl-3.5 pr-3 sm:pr-4 py-3`}>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-medium">{courierLabel}</span>
+            <span className="text-xs text-muted-foreground font-mono">
+              {order.courier_consignment_id}
+            </span>
+            <span className="ml-auto flex items-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${statusStyle.dot}`} />
+              <span className={`text-sm font-semibold ${statusStyle.text}`}>
+                {prettifyCourierStatus(order.courier_order_status)}
+              </span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2"
+              onClick={handleRefreshStatus}
+              disabled={refreshing || !order.courier_credential_id}
             >
-              <Button size="sm" variant="outline">
-                {t.admin.pathaoTrackOnPathao}
-                <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-              </Button>
-            </a>
-          )}
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            </Button>
+            {isPathao && (
+              <a
+                href={buildPathaoTrackingUrl(order.courier_consignment_id, recipientPhone)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto"
+              >
+                <Button size="sm" variant="outline" className="h-7">
+                  {t.admin.pathaoTrackOnPathao}
+                  <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+                </Button>
+              </a>
+            )}
+          </div>
         </div>
       );
     } else if (!courierTrackingAllowed) {
@@ -340,6 +370,26 @@ export default function CourierShipmentPanel({
                   onChange={(e) => setAmountToCollect(Number(e.target.value))}
                 />
               </div>
+            </div>
+            {isPathao && (
+              <div className="grid grid-cols-2 gap-2.5 text-xs text-muted-foreground">
+                <p>
+                  {t.admin.pathaoItemQuantity}: <span className="font-medium text-foreground">{totalItemQuantity}</span>
+                </p>
+                <p>
+                  {t.admin.pathaoDeliveryTypeLabel}:{" "}
+                  <span className="font-medium text-foreground">{t.admin.pathaoParcelType}</span>
+                </p>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>{t.admin.pathaoSpecialInstructionLabel}</Label>
+              <Textarea
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder={t.admin.pathaoSpecialInstructionPlaceholder}
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter>

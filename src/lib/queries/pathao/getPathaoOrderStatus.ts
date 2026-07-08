@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { getOrderInfo } from "@/lib/utils/pathaoApi";
 
@@ -16,7 +17,12 @@ export async function refreshPathaoOrderStatus(
   orderId: string,
   consignmentId: string,
 ): Promise<RefreshPathaoStatusResult> {
-  const tokenResult = await getValidPathaoAccessToken(credentialId);
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    return { success: false, error: storeResult.error };
+  }
+
+  const tokenResult = await getValidPathaoAccessToken(credentialId, storeResult.storeId);
   if (!tokenResult.ok) {
     return { success: false, error: tokenResult.error };
   }
@@ -32,6 +38,7 @@ export async function refreshPathaoOrderStatus(
     .from("courier_tracking")
     .update({ status: orderStatus, updated_at: new Date().toISOString() })
     .eq("order_id", orderId)
+    .eq("store_id", storeResult.storeId)
     .eq("is_active", true);
 
   return { success: true, orderStatus };

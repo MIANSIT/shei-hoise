@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Card,
   Row,
@@ -117,6 +117,12 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   // Draft persistence - survives tab switches / accidental reloads
   const hasHydrated = useEditOrderDraftStore((s) => s._hasHydrated);
   const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
+  // True for the entire duration of the post-save refetch — suppresses the
+  // draft-sync effect from immediately recreating a fresh "mirror" draft
+  // out of the just-saved data, which would otherwise look restorable
+  // (and show the "restored" notification) on the next reload despite
+  // there being nothing actually unsaved.
+  const justSavedRef = useRef(false);
 
   // ── Dirty state: field-level comparison against the original DB order ────────
   // Gated on readyToSyncDraft so comparisons only run after the order data is
@@ -239,7 +245,14 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     [validateEmailUniqueness]
   );
 
-  // Fetch customer profile
+  // Fetch customer profile — a gap-filler only. When editing an existing
+  // order, its own shipping_address (already applied to customerInfo just
+  // before this runs) is the real, saved value and must win; the customer's
+  // current profile address is only used for whatever the order itself
+  // didn't have. Previously this ran the other way around and silently
+  // replaced the order's real address with the customer's (possibly since-
+  // changed) profile address, permanently marking Address as "Edited" with
+  // no actual edit having happened.
   const fetchCustomerProfile = useCallback(async (customerId: string) => {
     try {
       const profile = await dataService.getCustomerProfileByStoreCustomerId(
@@ -248,9 +261,9 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       if (profile) {
         setCustomerInfo((prev) => ({
           ...prev,
-          address: profile.address || profile.address_line_1 || prev.address,
-          city: profile.city || prev.city,
-          postal_code: profile.postal_code || prev.postal_code,
+          address: prev.address || profile.address || profile.address_line_1 || "",
+          city: prev.city || profile.city || "",
+          postal_code: prev.postal_code || profile.postal_code || "",
         }));
       }
     } catch (error) {
@@ -376,7 +389,18 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     if (!hasHydrated || !originalOrder || readyToSyncDraft) return;
 
     const draft = useEditOrderDraftStore.getState().getDraft(orderNumber);
-    if (draft) {
+    // A draft saved before orderUpdatedAt existed (undefined) is treated as
+    // safe to restore once, same as before this check was added. Otherwise,
+    // if the order's real updated_at has moved on since the draft was
+    // captured — another admin edited it, a courier webhook updated its
+    // status, etc. — restoring it would silently revert real data, so it's
+    // discarded instead of reapplied.
+    const isStale =
+      draft?.orderUpdatedAt !== undefined && draft.orderUpdatedAt !== originalOrder.updated_at;
+
+    if (draft && isStale) {
+      useEditOrderDraftStore.getState().clearDraft(orderNumber);
+    } else if (draft) {
       setCustomerInfo(draft.customerInfo);
       setOrderProducts(draft.orderProducts);
       setDiscount(draft.discount);
@@ -406,9 +430,10 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   // accidental reloads. Gated on readyToSyncDraft so it never fires before
   // the restore effect above has had a chance to run.
   useEffect(() => {
-    if (!readyToSyncDraft) return;
+    if (!readyToSyncDraft || justSavedRef.current) return;
     useEditOrderDraftStore.getState().setDraft(orderNumber, {
       orderId,
+      orderUpdatedAt: originalOrder?.updated_at,
       customerInfo,
       orderProducts,
       discount,
@@ -424,6 +449,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     readyToSyncDraft,
     orderNumber,
     orderId,
+    originalOrder?.updated_at,
     customerInfo,
     orderProducts,
     discount,
@@ -777,9 +803,20 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   courier={courier}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   emailError={emailError}
-                  onOrderUpdated={() =>
-                    useEditOrderDraftStore.getState().clearDraft(orderNumber)
-                  }
+                  onOrderUpdated={async () => {
+                    useEditOrderDraftStore.getState().clearDraft(orderNumber);
+                    // Re-sync originalOrder/originalOrderProducts to the
+                    // just-saved values — otherwise hasDirtyChanges keeps
+                    // comparing the form against the pre-save snapshot
+                    // forever, showing "Unsaved changes" even right after
+                    // a successful save. justSavedRef suppresses the
+                    // draft-sync effect for the duration, so this refetch
+                    // doesn't immediately recreate a "restorable" draft
+                    // out of data that was just saved successfully.
+                    justSavedRef.current = true;
+                    await fetchOrderData();
+                    justSavedRef.current = false;
+                  }}
                 />
               </Col>
             </Row>

@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { encrypt } from "@/lib/utils/encryption";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   issueToken,
   getMerchantStores,
@@ -32,9 +33,14 @@ export interface ConnectPathaoResult {
  * Sandbox vs live is resolved automatically, never chosen by the store owner.
  */
 export async function connectPathaoAccount(
-  storeId: string,
   input: ConnectPathaoInput,
 ): Promise<ConnectPathaoResult> {
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    return { success: false, error: storeResult.error };
+  }
+  const storeId = storeResult.storeId;
+
   const environment = getResolvedPathaoEnvironment();
 
   const tokenResult = await issueToken(environment, {

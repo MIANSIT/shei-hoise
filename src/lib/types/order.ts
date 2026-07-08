@@ -66,6 +66,8 @@ export interface OrderItem {
   discounted_price?: number;
   product_sku?: string;
   variant_sku?: string;
+  /** Per-unit weight in kg (variant's own weight if set, else the product's) — null if neither has one recorded. */
+  weight?: number | null;
 }
 
 // ===== SUPABASE DATABASE TYPES =====

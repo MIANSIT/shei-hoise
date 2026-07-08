@@ -7,6 +7,7 @@ import { getDeliveryCouriers } from "@/lib/queries/deliveryCouriers/getDeliveryC
 import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { STEADFAST_LIVE } from "@/lib/config/courierAvailability";
 import type { DeliveryCourier } from "@/lib/types/store/store";
 
 interface Props {
@@ -18,7 +19,7 @@ interface Props {
 
 const CourierSelect: React.FC<{
   value: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; disabled?: boolean }[];
   onChange: (v: string) => void;
   disabled?: boolean;
 }> = ({ value, options, onChange, disabled }) => {
@@ -55,10 +56,18 @@ const EditableCourier: React.FC<Props> = ({ courier, storeId, onSave, disabled }
   // so the field never shows a value with no matching option.
   const options = couriers
     .filter((c) => c.type === "manual" || courierTrackingAllowed || c.type === courier)
-    .map((c) => ({
-      value: c.type === "manual" ? c.name : c.type,
-      label: c.name,
-    }));
+    .map((c) => {
+      // Steadfast is built but not yet verified live — shown so it's not a
+      // surprise once it launches, but not selectable for new orders. An
+      // order that already has it set (from before this flag existed)
+      // keeps working normally rather than getting silently locked.
+      const isComingSoon = c.type === "steadfast" && !STEADFAST_LIVE && courier !== "steadfast";
+      return {
+        value: c.type === "manual" ? c.name : c.type,
+        label: isComingSoon ? `${c.name} (${t.admin.comingSoon})` : c.name,
+        disabled: isComingSoon,
+      };
+    });
 
   if (options.length === 0) {
     return (

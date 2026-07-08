@@ -63,7 +63,7 @@ export function SteadfastConnectCard({ storeId }: SteadfastConnectCardProps) {
   const handleConnect = async () => {
     setSubmitting(true);
     try {
-      const result = await connectSteadfastAccount(storeId, {
+      const result = await connectSteadfastAccount({
         label: label.trim(),
         apiKey: apiKey.trim(),
         secretKey: secretKey.trim(),

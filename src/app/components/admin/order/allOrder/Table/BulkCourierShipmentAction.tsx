@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button, Modal, Alert, Progress, Select } from "antd";
 import { StoreOrder } from "@/lib/types/order";
 import { createPathaoShipment } from "@/lib/queries/pathao/createPathaoShipment";
@@ -55,33 +55,73 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
   const [pathaoName, setPathaoName] = useState("");
   const [steadfastName, setSteadfastName] = useState("");
 
-  const notYetShipped = selectedOrders.filter((o) => !o.courier_consignment_id);
-  const alreadyShipped = selectedOrders.length - notYetShipped.length;
+  // Selection can run into the hundreds, and this whole chain re-filters/
+  // re-maps every one of them — memoized so it only recomputes when the
+  // selection, the connected accounts, or the feature gate actually change.
+  const {
+    notYetShipped,
+    alreadyShipped,
+    pathaoOrders,
+    steadfastOrders,
+    skipped,
+    pathaoAccounts,
+    steadfastAccounts,
+    eligible,
+    unreachable,
+    needsPathaoPicker,
+    needsSteadfastPicker,
+  } = useMemo(() => {
+    const notYetShipped = selectedOrders.filter((o) => !o.courier_consignment_id);
+    const alreadyShipped = selectedOrders.length - notYetShipped.length;
 
-  const pathaoOrders = notYetShipped.filter((o) => o.courier === "pathao");
-  const steadfastOrders = notYetShipped.filter((o) => o.courier === "steadfast");
-  const skipped = notYetShipped.length - pathaoOrders.length - steadfastOrders.length;
+    const pathaoOrders = notYetShipped.filter((o) => o.courier === "pathao");
+    const steadfastOrders = notYetShipped.filter((o) => o.courier === "steadfast");
+    const skipped = notYetShipped.length - pathaoOrders.length - steadfastOrders.length;
 
-  // Treated as having zero accounts (never just disabling the button) so the
-  // same "unreachable" messaging path below applies — courierTrackingAllowed
-  // just swaps in the correct explanation for why.
-  const pathaoAccounts = courierTrackingAllowed
-    ? (accounts ?? []).filter((a) => a.courier === "pathao" && a.connected)
-    : [];
-  const steadfastAccounts = courierTrackingAllowed
-    ? (accounts ?? []).filter((a) => a.courier === "steadfast" && a.connected)
-    : [];
+    // Treated as having zero accounts (never just disabling the button) so
+    // the same "unreachable" messaging path below applies —
+    // courierTrackingAllowed just swaps in the correct explanation for why.
+    const pathaoAccounts = courierTrackingAllowed
+      ? (accounts ?? []).filter((a) => a.courier === "pathao" && a.connected)
+      : [];
+    const steadfastAccounts = courierTrackingAllowed
+      ? (accounts ?? []).filter((a) => a.courier === "steadfast" && a.connected)
+      : [];
 
-  const eligible = [
-    ...(pathaoAccounts.length > 0 ? pathaoOrders : []),
-    ...(steadfastAccounts.length > 0 ? steadfastOrders : []),
-  ];
-  const unreachable =
-    (pathaoOrders.length > 0 && pathaoAccounts.length === 0 ? pathaoOrders.length : 0) +
-    (steadfastOrders.length > 0 && steadfastAccounts.length === 0 ? steadfastOrders.length : 0);
+    const eligible = [
+      ...(pathaoAccounts.length > 0 ? pathaoOrders : []),
+      ...(steadfastAccounts.length > 0 ? steadfastOrders : []),
+    ];
+    const unreachable =
+      (pathaoOrders.length > 0 && pathaoAccounts.length === 0 ? pathaoOrders.length : 0) +
+      (steadfastOrders.length > 0 && steadfastAccounts.length === 0 ? steadfastOrders.length : 0);
 
-  const needsPathaoPicker = pathaoOrders.length > 0 && pathaoAccounts.length > 1;
-  const needsSteadfastPicker = steadfastOrders.length > 0 && steadfastAccounts.length > 1;
+    const needsPathaoPicker = pathaoOrders.length > 0 && pathaoAccounts.length > 1;
+    const needsSteadfastPicker = steadfastOrders.length > 0 && steadfastAccounts.length > 1;
+
+    return {
+      notYetShipped,
+      alreadyShipped,
+      pathaoOrders,
+      steadfastOrders,
+      skipped,
+      pathaoAccounts,
+      steadfastAccounts,
+      eligible,
+      unreachable,
+      needsPathaoPicker,
+      needsSteadfastPicker,
+    };
+  }, [selectedOrders, accounts, courierTrackingAllowed]);
+
+  const pathaoAccountOptions = useMemo(
+    () => pathaoAccounts.map((a) => ({ value: a.id, label: a.label })),
+    [pathaoAccounts],
+  );
+  const steadfastAccountOptions = useMemo(
+    () => steadfastAccounts.map((a) => ({ value: a.id, label: a.label })),
+    [steadfastAccounts],
+  );
 
   const canShip =
     eligible.length > 0 &&
@@ -126,19 +166,28 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
         (order.shipping_address?.city ? `, ${order.shipping_address.city}` : "");
       const codAmount = order.payment_status === "paid" ? 0 : order.total_amount;
 
+      // Sum of every line's quantity, not the number of distinct lines.
+      const itemQuantity = order.order_items?.reduce((sum, it) => sum + it.quantity, 0) || 1;
+      // Sum of (per-unit weight × quantity), clamped to Pathao's 0.5–10kg
+      // range, falling back to 0.5 when nothing in the order has a
+      // recorded weight yet — same default as the single-shipment panel.
+      const calculatedWeight =
+        order.order_items?.reduce((sum, it) => sum + (it.weight ?? 0) * it.quantity, 0) || 0;
+      const itemWeight = calculatedWeight > 0 ? Math.min(10, Math.max(0.5, calculatedWeight)) : 0.5;
+
       try {
         const result =
           order.courier === "pathao"
-            ? await createPathaoShipment(pathaoAccountId!, order.id, order.store_id, order.order_number, {
+            ? await createPathaoShipment(pathaoAccountId!, order.id, order.order_number, {
                 recipientName,
                 recipientPhone,
                 recipientAddress,
-                itemWeight: 0.5,
-                itemQuantity: order.order_items?.length || 1,
+                itemWeight,
+                itemQuantity,
                 itemDescription: order.order_items?.map((it) => it.product_name).join(", "),
                 amountToCollect: codAmount,
               })
-            : await createSteadfastShipment(steadfastAccountId!, order.id, order.store_id, order.order_number, {
+            : await createSteadfastShipment(steadfastAccountId!, order.id, order.order_number, {
                 recipientName,
                 recipientPhone,
                 recipientAddress,
@@ -237,7 +286,7 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
                       placeholder={t.admin.pathaoSelectAccount}
                       value={pathaoAccountId}
                       onChange={setPathaoAccountId}
-                      options={pathaoAccounts.map((a) => ({ value: a.id, label: a.label }))}
+                      options={pathaoAccountOptions}
                     />
                   </div>
                 )}
@@ -251,7 +300,7 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
                       placeholder={t.admin.pathaoSelectAccount}
                       value={steadfastAccountId}
                       onChange={setSteadfastAccountId}
-                      options={steadfastAccounts.map((a) => ({ value: a.id, label: a.label }))}
+                      options={steadfastAccountOptions}
                     />
                   </div>
                 )}

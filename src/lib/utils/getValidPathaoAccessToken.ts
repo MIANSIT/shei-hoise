@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
 import { refreshAccessToken, type PathaoEnvironment } from "@/lib/utils/pathaoApi";
 
-const REFRESH_MARGIN_MS = 30 * 60 * 1000; // refresh if expiring within 30 minutes
+const REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh if expiring within 5 minutes
 
 export type ValidTokenResult =
   | { ok: true; accessToken: string; environment: PathaoEnvironment }
@@ -13,17 +13,21 @@ export type ValidTokenResult =
  * an authenticated Pathao request goes through this first — replaces a
  * scheduled refresh job with a lazy check-and-refresh right before use, and
  * tells the caller which environment (sandbox/live) this account is
- * connected to, so the actual API call routes to the right host. Keyed by
- * the specific credential row's id, not storeId, since a store can now have
- * more than one connected Pathao account.
+ * connected to, so the actual API call routes to the right host. `storeId`
+ * must come from the caller's verified session (getAuthenticatedStoreId),
+ * never a client-supplied value — this table has no RLS policy of its own,
+ * so this is the only thing stopping one store from using another store's
+ * connected Pathao account.
  */
 export async function getValidPathaoAccessToken(
   credentialId: string,
+  storeId: string,
 ): Promise<ValidTokenResult> {
   const { data: row, error } = await supabaseAdmin
     .from("store_courier_credentials")
     .select("environment, client_id, client_secret, access_token, refresh_token, token_expires_at")
     .eq("id", credentialId)
+    .eq("store_id", storeId)
     .eq("courier", "pathao")
     .maybeSingle();
 

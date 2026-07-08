@@ -9,6 +9,16 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
  */
 export interface OrderDraftData {
   orderId: string;
+  /**
+   * The order's own `updated_at` at the moment this draft was captured —
+   * edit drafts only (a brand-new create-order draft has no server record
+   * to compare against). Lets a stale draft be told apart from one that's
+   * still safe to restore: if the real order's `updated_at` has since
+   * moved on (another admin edited it, a courier webhook updated its
+   * status, etc.), restoring this draft would silently revert real data,
+   * so it should be discarded instead of reapplied.
+   */
+  orderUpdatedAt?: string;
   customerInfo: CustomerInfo;
   orderProducts: OrderProduct[];
   discount: number;
@@ -94,6 +104,16 @@ export const useEditOrderDraftStore = create<EditOrderDraftState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },
+      // Bumped once to wipe every existing stored draft — drafts saved
+      // before the fetchCustomerProfile-overwrite fix could contain a
+      // customer's profile address instead of the order's real one, and
+      // would otherwise still restore silently for any order that hasn't
+      // changed since. Without an explicit migrate function, a version
+      // mismatch alone doesn't discard anything — zustand just logs a
+      // warning and keeps the old stored data — so this migrate function
+      // is what actually does the wipe.
+      version: 1,
+      migrate: () => ({ drafts: {} }),
     },
   ),
 );
