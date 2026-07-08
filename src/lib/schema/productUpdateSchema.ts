@@ -40,7 +40,38 @@ export const productUpdateSchema = z
   .superRefine((data, ctx) => {
     const hasVariants = data.variants && data.variants.length > 0;
 
-    if (!hasVariants) {
+    if (hasVariants) {
+      data.variants?.forEach((variant, index) => {
+        if (!variant.base_price) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Base price is required for each variant.",
+            path: ["variants", index, "base_price"],
+          });
+        }
+        if (!variant.tp_price) {
+          ctx.addIssue({
+            code: "custom",
+            message: "TP price is required for each variant.",
+            path: ["variants", index, "tp_price"],
+          });
+        }
+        if (variant.stock === undefined || variant.stock < 0) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Stock cannot be negative.",
+            path: ["variants", index, "stock"],
+          });
+        }
+        if (!variant.sku) {
+          ctx.addIssue({
+            code: "custom",
+            message: "SKU is required for each variant.",
+            path: ["variants", index, "sku"],
+          });
+        }
+      });
+    } else {
       if (!data.base_price)
         ctx.addIssue({
           code: "custom",

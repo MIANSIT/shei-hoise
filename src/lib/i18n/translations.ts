@@ -584,7 +584,7 @@ export const translations = {
       // Orders filter tabs
       orderStatusTab: "Order Status",
       paymentStatusTab: "Payment Status",
-      searchByOrderNum: "Search by Order #",
+      searchByOrderNum: "Search by Order # or Phone",
       typingLabel: "Typing...",
       statusAll: "All",
       statusPaid: "Paid",
@@ -2646,7 +2646,7 @@ export const translations = {
       // Orders filter tabs
       orderStatusTab: "অর্ডার স্ট্যাটাস",
       paymentStatusTab: "পেমেন্ট স্ট্যাটাস",
-      searchByOrderNum: "অর্ডার নম্বর দিয়ে খুঁজুন",
+      searchByOrderNum: "অর্ডার নম্বর বা ফোন নম্বর দিয়ে খুঁজুন",
       typingLabel: "টাইপ করছেন...",
       statusAll: "সব",
       statusPaid: "পেইড",

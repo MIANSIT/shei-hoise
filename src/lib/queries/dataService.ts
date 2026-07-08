@@ -173,12 +173,29 @@ const getStoreOrdersImpl = async (
 
   let filteredOrders = allOrders;
 
-  // Apply search
+  // Apply search — matches order number, or the customer's phone number
+  // (from either the linked customer record or the shipping address).
+  // Phone comparison is digits-only and checked both directions so a
+  // +880/dash/space-formatted number on either side of the search still
+  // matches (e.g. searching "01712345678" finds a stored "+880 1712-345678").
   if (search?.trim()) {
     const searchTerm = search.trim().toLowerCase();
-    filteredOrders = filteredOrders.filter((o) =>
-      o.order_number?.toLowerCase().includes(searchTerm)
-    );
+    const searchDigits = search.replace(/\D/g, "");
+
+    const phoneMatches = (phone?: string | null) => {
+      if (!phone) return false;
+      const digits = phone.replace(/\D/g, "");
+      if (!digits) return false;
+      return digits.includes(searchDigits) || searchDigits.includes(digits);
+    };
+
+    filteredOrders = filteredOrders.filter((o) => {
+      if (o.order_number?.toLowerCase().includes(searchTerm)) return true;
+      if (searchDigits.length < 3) return false;
+      return (
+        phoneMatches(o.customers?.phone) || phoneMatches(o.shipping_address?.phone)
+      );
+    });
   }
 
   // Apply filters

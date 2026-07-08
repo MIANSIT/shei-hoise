@@ -48,6 +48,7 @@ export interface ProductWithVariants {
   slug: string;
   sku: string | null;
   base_price: number | null;
+  tp_price: number | null;
   discounted_price: number | null;
   featured: boolean;
   category_id: string | null;
@@ -92,6 +93,7 @@ export async function getProductsWithVariants({
       slug,
       sku,
       base_price,
+      tp_price,
       status,
       featured,
       discounted_price,
@@ -158,6 +160,7 @@ export async function getProductsWithVariants({
     slug: p.slug,
     sku: p.sku,
     base_price: p.base_price,
+    tp_price: p.tp_price,
     status: p.status ?? ProductStatus.INACTIVE,
     featured: p.featured ?? false,
     discounted_price: p.discounted_price,

@@ -78,13 +78,23 @@ interface DatabaseProduct {
   stores: Array<{ id: string; store_slug: string }>;
 }
 
+export interface StockAggregateStats {
+  productsCount: number;
+  trackedSkuCount: number;
+  stockValueTp: number;
+  counts: { all: number; in: number; low: number; out: number };
+}
+
+export type StockSort = "asc" | "desc" | null;
+
 export async function getProductWithStock(
   storeSlug: string,
   searchText?: string,
   stockFilter: StockFilter = StockFilter.ALL,
   page: number = 1,
   pageSize: number = 10,
-): Promise<{ data: ProductWithStock[]; total: number }> {
+  stockSort: StockSort = null,
+): Promise<{ data: ProductWithStock[]; total: number; stats: StockAggregateStats }> {
   let query = supabaseAdmin
     .from("products")
     .select(
@@ -123,7 +133,17 @@ export async function getProductWithStock(
 
   const { data, error } = await query;
   if (error) throw new Error(`Error fetching products: ${error.message}`);
-  if (!data) return { data: [], total: 0 };
+  if (!data)
+    return {
+      data: [],
+      total: 0,
+      stats: {
+        productsCount: 0,
+        trackedSkuCount: 0,
+        stockValueTp: 0,
+        counts: { all: 0, in: 0, low: 0, out: 0 },
+      },
+    };
 
   const products = data as unknown as DatabaseProduct[];
 
@@ -174,24 +194,25 @@ export async function getProductWithStock(
     };
   });
 
-  // --- Stock filtering ---
-  const filtered = mapped.filter((product) => {
+  // --- Shared bucket predicate, reused for both the active filter and the
+  // per-bucket counts shown on the filter pills ---
+  function matchesFilter(product: ProductWithStock, filter: StockFilter): boolean {
     const productStock = product.stock?.quantity_available ?? 0;
     const productThreshold = product.stock?.low_stock_threshold ?? 10;
 
-    const variantLowStock = product.variants.some((v) => {
-      const qty = v.stock.quantity_available;
-      const th = v.stock.low_stock_threshold ?? productThreshold;
-      return qty > 0 && qty <= th;
-    });
-
-    switch (stockFilter) {
+    switch (filter) {
       case StockFilter.ALL:
         return true;
-      case StockFilter.LOW:
+      case StockFilter.LOW: {
         const productLow = productStock > 0 && productStock <= productThreshold;
-        return productLow || variantLowStock;
-      case StockFilter.IN:
+        const variantLow = product.variants.some((v) => {
+          const qty = v.stock.quantity_available;
+          const th = v.stock.low_stock_threshold ?? productThreshold;
+          return qty > 0 && qty <= th;
+        });
+        return productLow || variantLow;
+      }
+      case StockFilter.IN: {
         const productIn = productStock > (productThreshold ?? 0);
         const variantIn = product.variants.some(
           (v) =>
@@ -199,19 +220,67 @@ export async function getProductWithStock(
             (v.stock.low_stock_threshold ?? productThreshold),
         );
         return productIn || variantIn;
-      case StockFilter.OUT:
+      }
+      case StockFilter.OUT: {
         const productOut = productStock === 0;
         const variantOut = product.variants.some(
           (v) => v.stock.quantity_available === 0,
         );
         return productOut || variantOut;
+      }
       default:
         return true;
     }
-  });
+  }
+
+  // --- Aggregate stats across every product matching the search text, not
+  // just the currently selected stock filter or page — this is what powers
+  // the KPI tiles and the per-pill counts ---
+  const stats: StockAggregateStats = {
+    productsCount: mapped.length,
+    trackedSkuCount: mapped.reduce(
+      (sum, p) => sum + (p.variants.length || 1),
+      0,
+    ),
+    stockValueTp: mapped.reduce((sum, p) => {
+      if (p.variants.length) {
+        return (
+          sum +
+          p.variants.reduce(
+            (vSum, v) =>
+              vSum + v.stock.quantity_available * (v.tp_price ?? 0),
+            0,
+          )
+        );
+      }
+      return sum + (p.stock?.quantity_available ?? 0) * (p.tp_price ?? 0);
+    }, 0),
+    counts: {
+      all: mapped.length,
+      in: mapped.filter((p) => matchesFilter(p, StockFilter.IN)).length,
+      low: mapped.filter((p) => matchesFilter(p, StockFilter.LOW)).length,
+      out: mapped.filter((p) => matchesFilter(p, StockFilter.OUT)).length,
+    },
+  };
+
+  // --- Stock filtering ---
+  const filtered = mapped.filter((product) => matchesFilter(product, stockFilter));
+
+  // --- Optional sort by stock level — variant products sort by their worst
+  // (lowest) variant, so a product needing attention surfaces even though it
+  // has no stock of its own ---
+  if (stockSort) {
+    const stockKey = (p: ProductWithStock) =>
+      p.variants.length
+        ? Math.min(...p.variants.map((v) => v.stock.quantity_available))
+        : (p.stock?.quantity_available ?? 0);
+    filtered.sort((a, b) =>
+      stockSort === "asc" ? stockKey(a) - stockKey(b) : stockKey(b) - stockKey(a),
+    );
+  }
 
   const total = filtered.length;
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  return { data: paginated, total };
+  return { data: paginated, total, stats };
 }

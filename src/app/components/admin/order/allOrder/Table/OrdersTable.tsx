@@ -12,6 +12,7 @@ import {
   Pagination,
   DatePicker,
   Dropdown,
+  Popover,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
@@ -41,6 +42,10 @@ import dataService from "@/lib/queries/dataService";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
+import { LockOutlined } from "@ant-design/icons";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
 
 interface Props {
@@ -123,6 +128,9 @@ const OrdersTable: React.FC<Props> = ({
     // icon: currencyIcon,
     // loading: currencyLoading,
   } = useUserCurrencyIcon();
+
+  const { storeId } = useCurrentUser();
+  const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
@@ -902,20 +910,33 @@ const OrdersTable: React.FC<Props> = ({
             allowClear
             className="w-80"
           />
-          <Dropdown
-            menu={{
-              items: [
-                { key: "csv", label: t.admin.orderExportAsCsv, onClick: () => handleExport("csv") },
-                { key: "xlsx", label: t.admin.orderExportAsExcel, onClick: () => handleExport("xlsx") },
-              ],
-              disabled: exportingCsv,
-            }}
-            trigger={["click"]}
-          >
-            <Button type="primary" loading={exportingCsv}>
-              {exportingCsv ? t.admin.orderExporting : t.admin.orderDownloadCsv}
-            </Button>
-          </Dropdown>
+          {exportAllowed ? (
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "csv", label: t.admin.orderExportAsCsv, onClick: () => handleExport("csv") },
+                  { key: "xlsx", label: t.admin.orderExportAsExcel, onClick: () => handleExport("xlsx") },
+                ],
+                disabled: exportingCsv,
+              }}
+              trigger={["click"]}
+            >
+              <Button type="primary" loading={exportingCsv}>
+                {exportingCsv ? t.admin.orderExporting : t.admin.orderDownloadCsv}
+              </Button>
+            </Dropdown>
+          ) : (
+            <Popover
+              content={<ExportUpsell />}
+              trigger="click"
+              placement="bottomRight"
+              styles={{ container: { padding: 12, borderRadius: 14 } }}
+            >
+              <Button icon={<LockOutlined />} className="text-gray-400 dark:text-gray-500">
+                {t.admin.orderDownloadCsv}
+              </Button>
+            </Popover>
+          )}
         </div>
       </div>
 
