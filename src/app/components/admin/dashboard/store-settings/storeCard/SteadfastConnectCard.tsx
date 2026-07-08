@@ -119,22 +119,26 @@ export function SteadfastConnectCard({ storeId }: SteadfastConnectCardProps) {
             accounts.map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between border border-border rounded-lg px-3.5 py-2.5"
+                className="flex flex-col gap-2.5 border border-border rounded-lg px-3.5 py-3"
               >
-                <div className="flex items-center gap-2">
+                {/* Row 1: title + badge */}
+                <div className="flex items-center gap-1.5 min-w-0">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {account.label}
-                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
-                      {t.admin.pathaoLive}
-                    </span>
-                  </p>
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 shrink-0">
+                    {t.admin.pathaoLive}
+                  </span>
                 </div>
+
+                {/* Row 2: actions */}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleDisconnect(account.id)}
                   disabled={disconnectingId === account.id}
+                  className="w-full"
                 >
                   {t.admin.pathaoDisconnect}
                 </Button>

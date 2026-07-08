@@ -123,24 +123,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, [storeId]);
 
-  // Check if mobile and handle sidebar - only run on client
+  // Mark mounted and resolve the real screen size in the same effect (rather
+  // than a `mounted`-gated follow-up effect) so mobile devices only get one
+  // extra render pass instead of two before the sidebar/drawer split is
+  // correct — cuts down the visible desktop-sidebar flash on phone loads.
   useEffect(() => {
-    if (!mounted) return;
+    setMounted(true);
 
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setIsSidebarOpen(false); // Hide sidebar on mobile by default
-      } else {
-        setIsSidebarOpen(true); // Show sidebar on desktop
-      }
+      setIsSidebarOpen(!mobile); // Hidden on mobile by default, open on desktop
     };
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
-  }, [mounted]);
+  }, []);
 
   // Load saved theme - only run on client
   useEffect(() => {
@@ -377,23 +376,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           getContainer: () => document.body,
         }}
       >
-        <div className="min-h-screen flex flex-col ">
+        <div className="h-screen flex flex-col overflow-x-hidden">
           {/* Header */}
           <header
-            className="flex items-center justify-between p-1 shadow-md sticky top-0 z-50"
+            className="flex flex-wrap items-center justify-between gap-2 p-1 shadow-md sticky top-0 z-50 shrink-0"
             style={{
               background: "var(--card)",
               color: "var(--card-foreground)",
             }}
           >
-            <div className="flex items-center gap-2 px-2 ">
-              <h1 className="text-lg font-bold">
+            <div className="flex items-center gap-2 px-2 min-w-0">
+              <h1 className="text-lg font-bold truncate max-w-[45vw] sm:max-w-[50vw]">
                 {store?.store_name ? `${store.store_name} ` : t.admin.dashboardFallback}
               </h1>
 
               <button
                 onClick={handleSidebarToggle}
-                className="p-2 rounded hover:opacity-70 transition-transform duration-300"
+                className="p-2 rounded hover:opacity-70 transition-transform duration-300 shrink-0"
                 style={{ background: "var(--muted)" }}
               >
                 <PanelLeft
@@ -404,7 +403,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
               <LanguageSwitcher />
               {/* Theme toggle button */}
               <button
@@ -417,7 +416,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     newTheme === "dark",
                   );
                 }}
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition shrink-0"
               >
                 {theme === "light" ? (
                   <Moon className="w-5 h-5" />
@@ -431,13 +430,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          <div className="flex flex-1">
+          <div className="flex flex-1 min-h-0">
             {/* Desktop Sidebar - Hidden on mobile */}
             {!isMobile && (
               <div
-                className={`sticky top-0 h-screen shadow-md transition-all duration-300 ${
-                  isSidebarOpen
-                }`}
+                className="sticky top-0 h-full shadow-md transition-all duration-300"
                 style={{ background: "var(--sidebar)" }}
               >
                 <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
@@ -472,7 +469,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Main content */}
             <main
-              className="flex-1 flex flex-col overflow-auto min-h-[calc(100vh-73px)] relative"
+              className="flex-1 flex flex-col overflow-auto min-h-0 min-w-0 relative"
               style={{
                 background: "var(--background)",
                 color: "var(--foreground)",

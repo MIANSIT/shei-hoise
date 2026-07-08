@@ -327,40 +327,44 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
             accounts.map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between border border-border rounded-lg px-3.5 py-2.5"
+                className="flex flex-col gap-2.5 border border-border rounded-lg px-3.5 py-3"
               >
-                <div className="flex items-center gap-2">
-                  {account.connected ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                {/* Row 1: title + badge on the left, store name on the right */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {account.connected ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-foreground truncate">
                       {account.label}
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-                          account.environment === "live"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {account.environment === "live" ? t.admin.pathaoLive : t.admin.pathaoSandbox}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {account.connected
-                        ? account.pathaoStoreName
-                        : t.admin.pathaoStillPending}
-                    </p>
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0 ${
+                        account.environment === "live"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {account.environment === "live" ? t.admin.pathaoLive : t.admin.pathaoSandbox}
+                    </span>
                   </div>
+                  <span className="text-xs text-muted-foreground truncate shrink-0 max-w-[40%]">
+                    {account.connected
+                      ? account.pathaoStoreName
+                      : t.admin.pathaoStillPending}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5">
+
+                {/* Row 2: actions */}
+                <div className="flex items-center gap-2">
                   {account.connected && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleShowWebhook(account.id)}
+                      className="flex-1"
                     >
                       {t.admin.pathaoWebhookBtn}
                     </Button>
@@ -370,6 +374,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
                     size="sm"
                     onClick={() => handleDisconnect(account.id)}
                     disabled={disconnectingId === account.id}
+                    className="flex-1"
                   >
                     {t.admin.pathaoDisconnect}
                   </Button>
@@ -495,7 +500,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
                 <Input value={address} onChange={(e) => setAddress(e.target.value)} />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
                 <div className="space-y-1.5">
                   <Label>{t.admin.pathaoCity}</Label>
                   <Select value={cityId} onValueChange={handleCityChange}>

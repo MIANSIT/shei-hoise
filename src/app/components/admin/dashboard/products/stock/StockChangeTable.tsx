@@ -20,7 +20,6 @@ import {
 } from "@/lib/queries/inventory/updateInventory";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { App } from "antd";
 import { StockFilter } from "@/lib/types/enums";
@@ -329,7 +328,6 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-muted-foreground">No products found.</p>
       ) : (
         <>
-          <LowStockSummary products={products} />
           <BulkStockUpdate
             selectedCount={selectedRowKeys.length}
             onUpdate={handleBulkUpdate}

@@ -561,9 +561,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                       label={t.admin.addProductMarkupCalcLabel}
                       tooltip={t.admin.addProductMarkupTooltip}
                     />
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <select
-                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted sm:w-auto"
                         value={priceMode}
                         onChange={(e) => {
                           setPriceMode(

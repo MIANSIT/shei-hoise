@@ -188,6 +188,8 @@ export default function SidebarMenu({
       onClick={handleClick}
       style={{
         flex: 1,
+        minHeight: 0,
+        overflowY: "auto",
         borderRight: 0,
         background: "transparent",
       }}

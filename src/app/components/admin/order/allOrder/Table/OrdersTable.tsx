@@ -903,12 +903,12 @@ const OrdersTable: React.FC<Props> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DatePicker.RangePicker
             value={selectedRange}
             onChange={(d) => setSelectedRange(d)}
             allowClear
-            className="w-80"
+            className="w-full sm:w-80"
           />
           {exportAllowed ? (
             <Dropdown

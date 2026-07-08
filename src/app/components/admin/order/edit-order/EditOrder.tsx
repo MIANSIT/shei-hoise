@@ -667,8 +667,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     <div className="h-full overflow-auto">
       <div className="max-w-full mx-auto">
         <Space orientation="vertical" size="large" className="w-full">
-          <div className="flex justify-between items-center">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => router.back()}
@@ -676,14 +676,14 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
               >
                 Back
               </Button>
-              <Title level={2} className="m-0">
+              <Title level={2} className="m-0! wrap-break-word">
                 Edit Order: {orderNumber}
               </Title>
               <Text type="secondary">
                 Update order details for {customerInfo.name}
               </Text>
             </div>
-            <Space>
+            <Space wrap>
               {originalOrder?.fb_purchase_event_status && (
                 <Tag
                   color={

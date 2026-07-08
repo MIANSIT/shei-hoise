@@ -9,6 +9,10 @@
 @tailwind utilities;
 
 @theme inline {
+  /* xs: is referenced across the admin panel (e.g. ShippingManager.tsx,
+     CategoryTopBar.tsx) but was never defined, so it silently compiled to
+     nothing — those responsive rules never applied at any screen size. */
+  --breakpoint-xs: 30rem;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -125,8 +129,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 
   h1 {
@@ -205,22 +211,27 @@
 .ant-steps-item:hover .ant-steps-item-icon {
   border-color: var(--ring) !important;
 }
+
+/* Move antd message to top-left */
+.ant-message {
+  left: 24px !important;
+  transform: none !important;
+}
+
+/* Keeps the Sider full-width inside the mobile Drawer body (and defends
+   against the brief pre-hydration flash where the desktop-width Sider can
+   render before the mobile check resolves) rather than AntD's fixed
+   200px/80px default. */
 @media (max-width: 768px) {
   .ant-layout-sider {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 100% !important;
   }
-  
+
   .ant-menu {
     width: 100% !important;
   }
-}
-
-/* Move antd message to top-left */
-.ant-message {
-  left: 24px !important;
-  transform: none !important;
 }
 
 .ant-message-notice-wrapper {

@@ -197,6 +197,12 @@ export async function getProductWithStock(
   // --- Shared bucket predicate, reused for both the active filter and the
   // per-bucket counts shown on the filter pills ---
   function matchesFilter(product: ProductWithStock, filter: StockFilter): boolean {
+    // Once a product has variants, stock lives on the variants — the
+    // parent's own `stock` is a meaningless placeholder (always 0), so it
+    // must never be evaluated as if it were a real quantity. Without this
+    // guard every variant-parent product falsely matches "out of stock"
+    // (0 === 0) regardless of what its actual variants show.
+    const hasVariants = product.variants.length > 0;
     const productStock = product.stock?.quantity_available ?? 0;
     const productThreshold = product.stock?.low_stock_threshold ?? 10;
 
@@ -204,7 +210,8 @@ export async function getProductWithStock(
       case StockFilter.ALL:
         return true;
       case StockFilter.LOW: {
-        const productLow = productStock > 0 && productStock <= productThreshold;
+        const productLow =
+          !hasVariants && productStock > 0 && productStock <= productThreshold;
         const variantLow = product.variants.some((v) => {
           const qty = v.stock.quantity_available;
           const th = v.stock.low_stock_threshold ?? productThreshold;
@@ -213,7 +220,7 @@ export async function getProductWithStock(
         return productLow || variantLow;
       }
       case StockFilter.IN: {
-        const productIn = productStock > (productThreshold ?? 0);
+        const productIn = !hasVariants && productStock > (productThreshold ?? 0);
         const variantIn = product.variants.some(
           (v) =>
             v.stock.quantity_available >
@@ -222,7 +229,7 @@ export async function getProductWithStock(
         return productIn || variantIn;
       }
       case StockFilter.OUT: {
-        const productOut = productStock === 0;
+        const productOut = !hasVariants && productStock === 0;
         const variantOut = product.variants.some(
           (v) => v.stock.quantity_available === 0,
         );
