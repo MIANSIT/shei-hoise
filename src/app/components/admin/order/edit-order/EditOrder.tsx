@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   Row,
@@ -12,8 +12,11 @@ import {
   Typography,
   Space,
   App,
+  Select,
+  Avatar,
+  Empty,
 } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, UserOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import CustomerInfo from "../create-order/CustomerInfo";
 import AdminOrderDetails from "../create-order/AdminOrderDetails";
@@ -29,10 +32,12 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
+import type { DetailedCustomer } from "@/lib/types/users";
 import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
-import { useEditOrderDraftStore } from "@/lib/store/orderDraftStore";
+const { Option } = Select;
 
 const { Title, Text } = Typography;
 
@@ -76,6 +81,15 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     customer_id: "",
   });
 
+  // Reassigning the order to a different existing customer — see
+  // handleCustomerSelect. Off by default: the page normally just shows the
+  // linked customer's details as editable text, same as before this existed.
+  const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<DetailedCustomer[]>([]);
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
@@ -114,66 +128,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   // Email validation state
   const [emailError, setEmailError] = useState<string>("");
 
-  // Draft persistence - survives tab switches / accidental reloads
-  const hasHydrated = useEditOrderDraftStore((s) => s._hasHydrated);
-  const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
-  // True for the entire duration of the post-save refetch — suppresses the
-  // draft-sync effect from immediately recreating a fresh "mirror" draft
-  // out of the just-saved data, which would otherwise look restorable
-  // (and show the "restored" notification) on the next reload despite
-  // there being nothing actually unsaved.
-  const justSavedRef = useRef(false);
-
-  // ── Dirty state: field-level comparison against the original DB order ────────
-  // Gated on readyToSyncDraft so comparisons only run after the order data is
-  // loaded AND any saved draft has been applied — avoiding false positives.
-  const customerDirtyFields = useMemo(() => {
-    if (!originalOrder || !readyToSyncDraft) return {};
-    const origAddr = originalOrder.shipping_address;
-    return {
-      name: customerInfo.name !== (originalOrder.customer?.name || ""),
-      email: customerInfo.email !== (originalOrder.customer?.email || ""),
-      phone: customerInfo.phone !== (originalOrder.customer?.phone || ""),
-      address: customerInfo.address !== (origAddr?.address_line_1 || origAddr?.address || ""),
-      city: customerInfo.city !== (origAddr?.city || ""),
-      postal_code: customerInfo.postal_code !== (origAddr?.postal_code || ""),
-      notes: customerInfo.notes !== (originalOrder.notes || ""),
-    };
-  }, [customerInfo, originalOrder, readyToSyncDraft]);
-
-  const financialDirtyFields = useMemo(() => {
-    if (!originalOrder || !readyToSyncDraft) return {};
-    return {
-      taxAmount: taxAmount !== Number(originalOrder.tax_amount),
-      discount: discount !== Number(originalOrder.discount_amount || 0),
-      additionalCharges: additionalCharges !== Number(originalOrder.additional_charges || 0),
-      deliveryCost: deliveryCost !== Number(originalOrder.shipping_fee),
-      status: status !== originalOrder.status,
-      paymentStatus: paymentStatus !== originalOrder.payment_status,
-      paymentMethod: paymentMethod !== (originalOrder.payment_method || "cash"),
-      courier: courier !== (originalOrder.courier || ""),
-    };
-  }, [discount, additionalCharges, deliveryCost, taxAmount, status, paymentStatus, paymentMethod, courier, originalOrder, readyToSyncDraft]);
-
-  const isDirtyProducts = useMemo(() => {
-    if (!originalOrder || !readyToSyncDraft) return false;
-    if (orderProducts.length !== originalOrderProducts.length) return true;
-    return orderProducts.some((p, i) => {
-      const orig = originalOrderProducts[i];
-      return (
-        !orig ||
-        p.product_id !== orig.product_id ||
-        p.variant_id !== orig.variant_id ||
-        p.quantity !== orig.quantity ||
-        p.unit_price !== orig.unit_price
-      );
-    });
-  }, [orderProducts, originalOrderProducts, originalOrder, readyToSyncDraft]);
-
-  const hasDirtyChanges =
-    Object.values(customerDirtyFields).some(Boolean) ||
-    isDirtyProducts ||
-    Object.values(financialDirtyFields).some(Boolean);
 
   // Fetch store settings with shipping fees
   const fetchStoreSettings = useCallback(async () => {
@@ -293,6 +247,91 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     }
   }, [user?.store_id, loading, notification]);
 
+  // Fetch store customers, for the "change customer" search below — lets a
+  // wrong customer picked at order-creation time actually be reassigned,
+  // instead of only ever editing the (still wrong) linked customer's text fields.
+  const fetchCustomers = useCallback(async () => {
+    if (!user?.store_id || customerLoading) return;
+
+    setCustomerLoading(true);
+    try {
+      const res = await getAllStoreCustomers(user.store_id);
+      let customerArray: DetailedCustomer[] = [];
+
+      if (Array.isArray(res)) {
+        customerArray = res;
+      } else if (res && typeof res === "object" && "customers" in res) {
+        customerArray = res.customers;
+      }
+
+      setCustomers(customerArray);
+      setFilteredCustomers(customerArray);
+    } catch (err) {
+      console.error("Error fetching customers:", err);
+    } finally {
+      setCustomerLoading(false);
+    }
+  }, [user?.store_id, customerLoading]);
+
+  // Filter customers based on search
+  useEffect(() => {
+    if (!customerSearchTerm.trim()) {
+      setFilteredCustomers(customers);
+    } else {
+      const term = customerSearchTerm.toLowerCase();
+      setFilteredCustomers(
+        customers.filter(
+          (customer) =>
+            (customer.name?.toLowerCase() || "").includes(term) ||
+            (customer.email?.toLowerCase() || "").includes(term) ||
+            (customer.phone?.toLowerCase() || "").includes(term)
+        )
+      );
+    }
+  }, [customerSearchTerm, customers]);
+
+  // Reassign the order to a different existing customer
+  const handleCustomerSelect = (customerId: string) => {
+    const customer = customers.find((c) => c.id === customerId);
+    if (!customer) return;
+
+    setCustomerInfo((prev) => ({
+      ...prev,
+      name: customer.name || "",
+      phone: customer.phone || "",
+      email: customer.email || "",
+      customer_id: customer.id,
+      address:
+        customer.profile_details?.address ||
+        customer.profile_details?.address_line_1 ||
+        prev.address,
+      city: customer.profile_details?.city || prev.city,
+      postal_code: customer.profile_details?.postal_code || prev.postal_code,
+    }));
+    setEmailError("");
+    setShowCustomerSearch(false);
+  };
+
+  // Detach the order from its currently linked customer so the fields below
+  // can be filled in for someone who doesn't have a customer record yet.
+  // customer_id stays blank until save — UpdateOrderButton creates the real
+  // customer record at that point (same as SaveOrderButton does on create),
+  // then links the order to it.
+  const handleNewCustomer = () => {
+    setCustomerInfo((prev) => ({
+      ...prev,
+      customer_id: "",
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      city: "",
+      postal_code: "",
+    }));
+    setEmailError("");
+    setShowCustomerSearch(false);
+  };
+
   // Fetch order data
   const fetchOrderData = useCallback(async () => {
     if (!user?.store_id || !orderNumber) return;
@@ -380,87 +419,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
       setOrderLoading(false);
     }
   }, [user?.store_id, orderNumber, fetchCustomerProfile, notification]);
-
-  // Restore a saved draft (if any) for THIS order, once the original data
-  // has been fetched from the DB and Zustand has finished reading from
-  // localStorage. Must run before the "sync to draft" effect below, or the
-  // freshly-fetched DB values would overwrite the draft before it loads.
-  useEffect(() => {
-    if (!hasHydrated || !originalOrder || readyToSyncDraft) return;
-
-    const draft = useEditOrderDraftStore.getState().getDraft(orderNumber);
-    // A draft saved before orderUpdatedAt existed (undefined) is treated as
-    // safe to restore once, same as before this check was added. Otherwise,
-    // if the order's real updated_at has moved on since the draft was
-    // captured — another admin edited it, a courier webhook updated its
-    // status, etc. — restoring it would silently revert real data, so it's
-    // discarded instead of reapplied.
-    const isStale =
-      draft?.orderUpdatedAt !== undefined && draft.orderUpdatedAt !== originalOrder.updated_at;
-
-    if (draft && isStale) {
-      useEditOrderDraftStore.getState().clearDraft(orderNumber);
-    } else if (draft) {
-      setCustomerInfo(draft.customerInfo);
-      setOrderProducts(draft.orderProducts);
-      setDiscount(draft.discount);
-      setAdditionalCharges(draft.additionalCharges);
-      setDeliveryCost(draft.deliveryCost);
-      setTaxAmount(draft.taxAmount);
-      setStatus(draft.status);
-      setPaymentStatus(draft.paymentStatus);
-      setPaymentMethod(draft.paymentMethod);
-      // Drafts saved before Delivery Courier existed have no `courier` key —
-      // leave the value the order-load effect above already set rather than
-      // wiping it to "", which would look like a courier change on save and
-      // incorrectly clear that order's real shipment data.
-      if (draft.courier !== undefined) {
-        setCourier(draft.courier);
-      }
-      notification.info({
-        title: t.admin.editOrderRestoredTitle,
-        description: t.admin.editOrderRestoredDesc,
-      });
-    }
-
-    setReadyToSyncDraft(true);
-  }, [hasHydrated, originalOrder, readyToSyncDraft, orderNumber, notification]);
-
-  // Sync every change to this order's draft so it survives tab switches and
-  // accidental reloads. Gated on readyToSyncDraft so it never fires before
-  // the restore effect above has had a chance to run.
-  useEffect(() => {
-    if (!readyToSyncDraft || justSavedRef.current) return;
-    useEditOrderDraftStore.getState().setDraft(orderNumber, {
-      orderId,
-      orderUpdatedAt: originalOrder?.updated_at,
-      customerInfo,
-      orderProducts,
-      discount,
-      additionalCharges,
-      deliveryCost,
-      taxAmount,
-      status,
-      paymentStatus,
-      paymentMethod,
-      courier,
-    });
-  }, [
-    readyToSyncDraft,
-    orderNumber,
-    orderId,
-    originalOrder?.updated_at,
-    customerInfo,
-    orderProducts,
-    discount,
-    additionalCharges,
-    deliveryCost,
-    taxAmount,
-    status,
-    paymentStatus,
-    courier,
-    paymentMethod,
-  ]);
 
   // Auto-select delivery option based on shipping fee from backend
   useEffect(() => {
@@ -558,6 +516,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
             fetchProducts(),
             fetchStoreSettings(),
             fetchOrderData(),
+            fetchCustomers(),
           ]);
         } catch (error) {
           console.error("Error initializing data:", error);
@@ -573,6 +532,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
     fetchProducts,
     fetchStoreSettings,
     fetchOrderData,
+    fetchCustomers,
   ]);
 
   // Calculate totals INCLUDING additional charges
@@ -604,6 +564,94 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   const renderCustomerInfo = () => {
     return (
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
+        <Card size="small">
+          <Row gutter={[16, 12]} align="middle">
+            <Col flex="auto">
+              <Text strong>Linked Customer</Text>
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Editing the name/phone/email below corrects this
+                  customer&apos;s record everywhere, not just this order. If
+                  this order was placed under the <strong>wrong person</strong>,
+                  don&apos;t retype over their details — use one of the
+                  actions on the right instead.
+                </Text>
+              </div>
+            </Col>
+            <Col>
+              <Space>
+                <Button
+                  type="default"
+                  onClick={() => setShowCustomerSearch((prev) => !prev)}
+                  title="Link this order to a different customer who already exists in your system"
+                >
+                  {showCustomerSearch ? "Cancel" : "Change Customer"}
+                </Button>
+                <Button
+                  type="default"
+                  onClick={handleNewCustomer}
+                  title="This order belongs to someone with no customer record yet — clear the fields and create one"
+                >
+                  New Customer
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+
+          {!customerInfo.customer_id && (
+            <Alert
+              style={{ marginTop: 12 }}
+              type="info"
+              showIcon
+              title="No customer linked"
+              description="Fill in the details below for a customer who doesn't have a record yet — saving will create their customer record and link this order to it."
+            />
+          )}
+
+          {showCustomerSearch && (
+            <div style={{ marginTop: 12 }}>
+              {customerLoading ? (
+                <div style={{ textAlign: "center", padding: "12px" }}>
+                  <Spin />
+                </div>
+              ) : customers.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No other customers found for this store."
+                />
+              ) : (
+                <Select
+                  placeholder="Search by name, email, or phone"
+                  value={undefined}
+                  onChange={handleCustomerSelect}
+                  style={{ width: "100%" }}
+                  size="large"
+                  showSearch={{
+                    filterOption: false,
+                    onSearch: setCustomerSearchTerm,
+                  }}
+                  notFoundContent={
+                    customerSearchTerm ? "No matching customers" : "Type to search"
+                  }
+                >
+                  {filteredCustomers.map((customer) => (
+                    <Option key={customer.id} value={customer.id}>
+                      <Space>
+                        <Avatar icon={<UserOutlined />} size="small" />
+                        <span>
+                          {customer.name || "Unnamed Customer"}
+                          {customer.email && ` - ${customer.email}`}
+                          {customer.phone && ` - ${customer.phone}`}
+                        </span>
+                      </Space>
+                    </Option>
+                  ))}
+                </Select>
+              )}
+            </div>
+          )}
+        </Card>
+
         <CustomerInfo
           customerInfo={customerInfo}
           setCustomerInfo={setCustomerInfo}
@@ -613,7 +661,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
           isExistingCustomer={true}
           shippingFees={shippingFees}
           settingsLoading={settingsLoading}
-          dirtyFields={customerDirtyFields}
         />
       </Space>
     );
@@ -708,16 +755,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
             </Space>
           </div>
 
-          {hasDirtyChanges && (
-            <Alert
-              type="warning"
-              showIcon
-              title={<span className="font-medium">{t.admin.editOrderUnsavedTitle}</span>}
-              description={t.admin.editOrderUnsavedDesc}
-              className="mb-3"
-            />
-          )}
-
           <Card
             className="w-full"
             styles={{
@@ -733,20 +770,12 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
 
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
-                <div className="relative">
-                  {isDirtyProducts && (
-                    <span className="absolute -top-2.5 right-0 z-10 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-                      Items modified
-                    </span>
-                  )}
-                  <AdminOrderDetails
-                    products={products}
-                    orderProducts={orderProducts}
-                    setOrderProducts={setOrderProducts}
-                    originalOrderProducts={originalOrderProducts}
-                  />
-                </div>
+                <AdminOrderDetails
+                  products={products}
+                  orderProducts={orderProducts}
+                  setOrderProducts={setOrderProducts}
+                  originalOrderProducts={originalOrderProducts}
+                />
               </Col>
 
               <Col xs={24} lg={12}>
@@ -776,7 +805,6 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   courierOrderStatus={originalOrder?.courier_order_status}
                   shippingFees={shippingFees}
                   customerDeliveryOption={customerInfo.deliveryOption}
-                  dirtyFields={financialDirtyFields}
                 />
               </Col>
             </Row>
@@ -804,18 +832,8 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   emailError={emailError}
                   onOrderUpdated={async () => {
-                    useEditOrderDraftStore.getState().clearDraft(orderNumber);
-                    // Re-sync originalOrder/originalOrderProducts to the
-                    // just-saved values — otherwise hasDirtyChanges keeps
-                    // comparing the form against the pre-save snapshot
-                    // forever, showing "Unsaved changes" even right after
-                    // a successful save. justSavedRef suppresses the
-                    // draft-sync effect for the duration, so this refetch
-                    // doesn't immediately recreate a "restorable" draft
-                    // out of data that was just saved successfully.
-                    justSavedRef.current = true;
+                    // Re-sync the form to the just-saved values from the DB.
                     await fetchOrderData();
-                    justSavedRef.current = false;
                   }}
                 />
               </Col>

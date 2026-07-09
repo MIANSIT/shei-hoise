@@ -1,8 +1,8 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
-import { Table, Dropdown, Button, Popconfirm, Spin } from "antd";
-import { EditOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
+import { Table, Dropdown, Button, Spin, App } from "antd";
+import { EditOutlined, DeleteOutlined, MoreOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { ReceiptText } from "lucide-react";
 import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
@@ -77,9 +77,30 @@ function ExpenseTable({
   onDelete,
 }: ExpenseTableProps) {
   const t = useTranslation();
+  const { modal } = App.useApp();
   const { icon: currencyIcon } = useUserCurrencyIcon();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Which row's "..." menu is open. Dropdown's own open/close-on-item-click
+  // behavior isn't enough on its own — closed explicitly on every action
+  // below so nothing is ever left open once its row disappears from the
+  // table on the following refetch.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const confirmDelete = useCallback(
+    (record: Expense) => {
+      modal.confirm({
+        title: t.admin.expenseDeleteTitle,
+        icon: <ExclamationCircleOutlined />,
+        content: t.admin.expenseDeleteDesc,
+        okText: t.admin.expenseDeleteOkText,
+        cancelText: t.admin.expenseDeleteCancelText,
+        okButtonProps: { danger: true },
+        onOk: () => onDelete(record.id),
+      });
+    },
+    [modal, onDelete, t],
+  );
 
   const openDrawer = useCallback((record: Expense) => {
     setSelectedExpense(record);
@@ -100,6 +121,7 @@ function ExpenseTable({
         ),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
+          setOpenMenuId(null);
           openDrawer(record);
         },
       },
@@ -111,6 +133,7 @@ function ExpenseTable({
         ),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
+          setOpenMenuId(null);
           onEdit(record);
         },
       },
@@ -121,25 +144,16 @@ function ExpenseTable({
         icon:
           deletingId === record.id ? <Spin size="small" /> : <DeleteOutlined />,
         label: (
-          <Popconfirm
-            title={t.admin.expenseDeleteTitle}
-            description={t.admin.expenseDeleteDesc}
-            onConfirm={(e) => {
-              e?.stopPropagation();
-              onDelete(record.id);
-            }}
-            onCancel={(e) => e?.stopPropagation()}
-            okText={t.admin.expenseDeleteOkText}
-            cancelText={t.admin.expenseDeleteCancelText}
-            okButtonProps={{ danger: true }}
-          >
-            <span onClick={(e) => e.stopPropagation()}>{t.admin.expenseDeleteAction}</span>
-          </Popconfirm>
+          <span className="text-sm">{t.admin.expenseDeleteAction}</span>
         ),
-        onClick: ({ domEvent }) => domEvent.stopPropagation(),
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          setOpenMenuId(null);
+          confirmDelete(record);
+        },
       },
     ],
-    [deletingId, onEdit, onDelete, openDrawer],
+    [deletingId, onEdit, openDrawer, confirmDelete],
   );
 
   const columns: ColumnsType<Expense> = [
@@ -191,6 +205,8 @@ function ExpenseTable({
           menu={{ items: getRowMenuItems(record) }}
           trigger={["click"]}
           placement="bottomRight"
+          open={openMenuId === record.id}
+          onOpenChange={(next) => setOpenMenuId(next ? record.id : null)}
         >
           <Button
             type="text"

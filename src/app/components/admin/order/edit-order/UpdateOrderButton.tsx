@@ -109,6 +109,12 @@ export default function UpdateOrderButton({
             This will update all order details including products, pricing, and
             customer information.
           </Text>
+          {!customerInfo.customer_id && (
+            <Text type="warning">
+              No customer is linked — a new customer record will be created
+              and this order will be linked to it.
+            </Text>
+          )}
         </Space>
       ),
       okText: "Yes, Update Order",
@@ -127,6 +133,41 @@ export default function UpdateOrderButton({
 
     setIsLoading(true);
     try {
+      // No customer linked (either the order never had one, or "New
+      // Customer" was clicked on the edit page) — create the customer
+      // record first, same as SaveOrderButton does on order creation, then
+      // link the order to it below.
+      let customerId = customerInfo.customer_id;
+      if (!customerId) {
+        if (!customerInfo.name || !customerInfo.phone) {
+          throw new Error(
+            "Customer name and phone are required to create a customer record"
+          );
+        }
+
+        const newCustomer = await dataService.createCustomer({
+          store_id: storeId,
+          email: customerInfo.email || undefined,
+          first_name: customerInfo.name,
+          phone: customerInfo.phone,
+          address_line_1: customerInfo.address,
+          city: customerInfo.city,
+          country: "Bangladesh",
+          postal_code: customerInfo.postal_code,
+        });
+
+        if (!newCustomer || !newCustomer.id) {
+          throw new Error("Customer creation failed - no customer ID returned");
+        }
+
+        customerId = newCustomer.id;
+
+        notification.success({
+          title: "Customer Created",
+          description: `A new customer record was created for ${customerInfo.name}.`,
+        });
+      }
+
       // Prepare the update data with COMPLETE shipping address
       const updateData = {
         storeId,
@@ -142,7 +183,7 @@ export default function UpdateOrderButton({
           email: customerInfo.email || "",
           notes: customerInfo.notes || "",
           postal_code: customerInfo.postal_code || "",
-          customer_id: customerInfo.customer_id,
+          customer_id: customerId,
           country: customerInfo.country || "Bangladesh",
         },
         orderProducts: orderProducts.map((product) => ({
