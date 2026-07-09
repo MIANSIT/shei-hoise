@@ -461,6 +461,16 @@ export default function CheckoutPage() {
           fbq(FbEvent.PURCHASE, {
             // Variant ID when present, matching the catalog feed's g:id.
             content_ids: cartItems.map((i) => i.variantId ?? i.productId),
+            // Per-item breakdown so the pixel-analytics "Top Products" table
+            // can attribute revenue per product — a single order can contain
+            // several different products, so the flat content_name/value
+            // fields don't say which product the money belongs to.
+            contents: cartItems.map((i) => ({
+              id: i.variantId ?? i.productId,
+              name: i.productName,
+              quantity: i.quantity,
+              item_price: i.displayPrice,
+            })),
             content_type: "product",
             num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
             value: calculations.totalPrice + shippingFee + taxAmount,
