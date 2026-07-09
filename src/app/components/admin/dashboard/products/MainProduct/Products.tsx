@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, Input, Space, Pagination } from "antd";
+import { Button, Input, Space, Pagination, notification } from "antd";
 import { useRouter } from "next/navigation";
-import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, DownloadOutlined } from "@ant-design/icons";
 import { Star } from "lucide-react";
 import ProductTable from "./ProductTable";
 import {
@@ -52,6 +52,7 @@ const Products: React.FC = () => {
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [counts, setCounts] = useState<Record<ProductStatus | "ALL", number>>({
     [ProductStatus.ACTIVE]: 0,
     [ProductStatus.INACTIVE]: 0,
@@ -96,6 +97,156 @@ const Products: React.FC = () => {
     }, 100);
     return () => clearTimeout(handler);
   }, [localSearch, search, setSearch, setPage]);
+
+  const handleDownloadProductsCsv = async () => {
+    if (!user?.store_id) return;
+
+    setExporting(true);
+    try {
+      const res = await getProductsWithVariants({
+        storeId: user.store_id,
+        search,
+        status: status === "ALL" ? undefined : status,
+        featured: featuredOnly ? true : undefined,
+      });
+
+      const productsToExport = res.data;
+      if (!productsToExport?.length) {
+        notification.info({
+          message: t.admin.noProductsFound,
+          description: t.admin.productNoProductsForDownload,
+        });
+        return;
+      }
+
+      const escape = (value: unknown): string => {
+        if (value === null || value === undefined) return '""';
+        const text = String(value).trim();
+        if (!text) return '""';
+        return `"${text.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+      };
+
+      const rows: (string | number)[][] = [];
+
+      for (const product of productsToExport) {
+        const productAvailable =
+          product.product_inventory?.reduce(
+            (sum, item) => sum + (item.quantity_available ?? 0),
+            0,
+          ) ?? 0;
+        const productReserved =
+          product.product_inventory?.reduce(
+            (sum, item) => sum + (item.quantity_reserved ?? 0),
+            0,
+          ) ?? 0;
+
+        const baseRow = [
+          product.id,
+          product.name,
+          product.slug,
+          product.sku ?? "",
+          product.category?.name ?? "",
+          product.status,
+          product.featured ? "Yes" : "No",
+          product.base_price ?? 0,
+          product.discounted_price ?? 0,
+          productAvailable,
+          productReserved,
+        ];
+
+        if (!product.product_variants?.length) {
+          rows.push([...baseRow, "", "", "", "", "", "", "", "", "", "", ""]);
+          continue;
+        }
+
+        for (const variant of product.product_variants) {
+          const variantAvailable =
+            variant.product_inventory?.reduce(
+              (sum, item) => sum + (item.quantity_available ?? 0),
+              0,
+            ) ?? 0;
+          const variantReserved =
+            variant.product_inventory?.reduce(
+              (sum, item) => sum + (item.quantity_reserved ?? 0),
+              0,
+            ) ?? 0;
+
+          rows.push([
+            ...baseRow,
+            variant.id,
+            variant.variant_name ?? "",
+            variant.sku ?? "",
+            variant.base_price ?? 0,
+            variant.discounted_price ?? 0,
+            variant.discount_amount ?? 0,
+            variant.tp_price ?? 0,
+            variant.weight ?? 0,
+            variant.color ?? "",
+            variant.is_active ? "Yes" : "No",
+            variantAvailable,
+            variantReserved,
+          ]);
+        }
+      }
+
+      const header = [
+        "Product ID",
+        "Name",
+        "Slug",
+        "Product SKU",
+        "Category",
+        "Status",
+        "Featured",
+        "Base Price",
+        "Discounted Price",
+        "Product Stock Available",
+        "Product Stock Reserved",
+        "Variant ID",
+        "Variant Name",
+        "Variant SKU",
+        "Variant Base Price",
+        "Variant Discounted Price",
+        "Variant Discount Amount",
+        "Variant TP Price",
+        "Variant Weight",
+        "Variant Color",
+        "Variant Active",
+        "Variant Stock Available",
+        "Variant Stock Reserved",
+      ];
+
+      const csvContent = [header, ...rows]
+        .map((row) => {
+          return row.map((cell) => escape(cell)).join(",");
+        })
+        .join("\r\n");
+
+      const blob = new Blob([csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `products_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      notification.success({
+        message: "Products downloaded",
+        description: `CSV file downloaded successfully with ${rows.length} records.`,
+      });
+    } catch (error: any) {
+      console.error("Failed to download products:", error);
+      notification.error({
+        message: t.admin.productDownloadFailed,
+        description: error?.message || t.admin.productDownloadFailedDesc,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleAddProduct = () => router.push("/dashboard/products/add-product");
 
@@ -150,92 +301,103 @@ const Products: React.FC = () => {
           </Space.Compact>
         </div>
 
-        {/* Status pills — desktop */}
-        <div className="hidden md:flex items-center gap-1.5 flex-wrap">
-          {statusConfig.map(({ key, label }) => {
-            const isActive = status === key && !featuredOnly;
-            return (
-              <button
-                key={key}
-                onClick={() => {
-                  setStatus(key as ProductStatus | "ALL");
-                  setFeaturedOnly(false);
-                  setPage(1);
-                }}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
-                  ${
-                    isActive
-                      ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/25"
-                      : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
-                  }`}
-              >
-                {label}
-                <span
-                  className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
-                  ${
-                    isActive
-                      ? "bg-white/20 text-white"
-                      : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
-                  }`}
-                >
-                  {n(counts[key as ProductStatus | "ALL"] ?? 0)}
-                </span>
-              </button>
-            );
-          })}
-
-          {/* Featured pill */}
-          <button
-            onClick={() => {
-              setFeaturedOnly(!featuredOnly);
-              setPage(1);
-            }}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
-              ${
-                featuredOnly
-                  ? "bg-amber-400 border-amber-400 text-white shadow-md shadow-amber-400/25"
-                  : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-amber-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
-              }`}
+        {/* Download button */}
+        <div className="flex items-center gap-2">
+          <Button
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            onClick={handleDownloadProductsCsv}
           >
-            <Star
-              className="w-3 h-3"
-              fill={featuredOnly ? "currentColor" : "none"}
-            />
-            {t.admin.featuredFilter}
-            <span
-              className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
-              ${
-                featuredOnly
-                  ? "bg-white/20 text-white"
-                  : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
-              }`}
-            >
-              {n(featuredCount)}
-            </span>
-          </button>
+            {t.admin.productDownloadCsv}
+          </Button>
         </div>
+      </div>
 
-        {/* Status — mobile dropdown */}
-        <div className="md:hidden">
-          <MobileFilter<ProductStatus | "ALL">
-            value={status}
-            defaultValue="ALL"
-            options={[
-              "ALL",
-              ProductStatus.ACTIVE,
-              ProductStatus.INACTIVE,
-              ProductStatus.DRAFT,
-            ]}
-            onChange={(v) => {
-              setStatus(v);
-              setFeaturedOnly(false);
-              setPage(1);
-            }}
-            getLabel={(s) =>
-              `${statusConfig.find((c) => c.key === s)?.label ?? s} (${n(counts[s as ProductStatus | "ALL"] ?? 0)})`
-            }
+      {/* Status filters — visible on desktop, hidden on mobile */}
+      <div className="hidden md:flex items-center gap-1.5 flex-wrap">
+        {statusConfig.map(({ key, label }) => {
+          const isActive = status === key && !featuredOnly;
+          return (
+            <button
+              key={key}
+              onClick={() => {
+                setStatus(key as ProductStatus | "ALL");
+                setFeaturedOnly(false);
+                setPage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
+                ${
+                  isActive
+                    ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/25"
+                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                }`}
+            >
+              {label}
+              <span
+                className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
+                ${
+                  isActive
+                    ? "bg-white/20 text-white"
+                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
+                }`}
+              >
+                {n(counts[key as ProductStatus | "ALL"] ?? 0)}
+              </span>
+            </button>
+          );
+        })}
+
+        {/* Featured pill */}
+        <button
+          onClick={() => {
+            setFeaturedOnly(!featuredOnly);
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer
+            ${
+              featuredOnly
+                ? "bg-amber-400 border-amber-400 text-white shadow-md shadow-amber-400/25"
+                : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-amber-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+            }`}
+        >
+          <Star
+            className="w-3 h-3"
+            fill={featuredOnly ? "currentColor" : "none"}
           />
-        </div>
+          {t.admin.featuredFilter}
+          <span
+            className={`inline-flex items-center justify-center min-w-5 h-4.5 px-1.5 rounded-full text-[10px] font-bold
+            ${
+              featuredOnly
+                ? "bg-white/20 text-white"
+                : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
+            }`}
+          >
+            {n(featuredCount)}
+          </span>
+        </button>
+      </div>
+
+      {/* Status — mobile dropdown */}
+      <div className="md:hidden">
+        <MobileFilter<ProductStatus | "ALL">
+          value={status}
+          defaultValue="ALL"
+          options={[
+            "ALL",
+            ProductStatus.ACTIVE,
+            ProductStatus.INACTIVE,
+            ProductStatus.DRAFT,
+          ]}
+          onChange={(v) => {
+            setStatus(v);
+            setFeaturedOnly(false);
+            setPage(1);
+          }}
+          getLabel={(s) =>
+            `${statusConfig.find((c) => c.key === s)?.label ?? s} (${n(counts[s as ProductStatus | "ALL"] ?? 0)})`
+          }
+        />
       </div>
 
       {/* ── Table Card ── */}

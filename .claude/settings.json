@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=l9S3Xo8Q679qDFeZ /opt/homebrew/opt/libpq/bin/pg_dump postgresql://postgres.tzmrxxtrkwehdgzeyhgq@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres --data-only --no-owner --no-privileges --column-inserts --rows-per-insert=1000 -t public.store_settings -t public.contact_us -t public.pixel_events -t public.expense_categories -t public.expenses -t public.store_social_media -F p -f migration_dump/missing_tables_data.sql)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(PGPASSWORD='T$.ZStCARy8j.tA' /opt/homebrew/opt/libpq/bin/psql postgresql://postgres.sqvvtaejcfarmxcdvgrz@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres -f migration_dump/schema_fixup.sql)",
+      "Bash(PGPASSWORD='T$.ZStCARy8j.tA' /opt/homebrew/opt/libpq/bin/psql postgresql://postgres.sqvvtaejcfarmxcdvgrz@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres -c 'SET session_replication_role = replica;' -f migration_dump/missing_tables_data.sql -c 'SET session_replication_role = DEFAULT;' -c 'SELECT table_name, *)",
+      "Bash(NEW_URL=https://sqvvtaejcfarmxcdvgrz.supabase.co NEW_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxdnZ0YWVqY2Zhcm14Y2R2Z3J6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjQwOTQ2MSwiZXhwIjoyMDk3OTg1NDYxfQ.krHZOx-zrSX0rcMYpTzw0RxSXKYUv5Vl4Sa_Wh83hn0 node migration_dump/fix-auth-id-references.mjs)"
+    ]
+  }
+}
