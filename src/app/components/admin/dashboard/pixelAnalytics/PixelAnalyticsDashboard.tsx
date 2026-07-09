@@ -482,9 +482,14 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await getPixelAnalytics(storeId, period);
-    setData(result);
-    setLoading(false);
+    try {
+      const result = await getPixelAnalytics(storeId, period);
+      setData(result);
+    } catch (error) {
+      console.error("Failed to load pixel analytics:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [storeId, period]);
 
   useEffect(() => {
