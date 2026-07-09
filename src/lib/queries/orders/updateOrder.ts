@@ -141,10 +141,19 @@ async function handleRiskAndPurchaseEvent(
 
     const { data: orderItems } = await supabaseAdmin
       .from("order_items")
-      .select("product_id, variant_id")
+      .select("product_id, variant_id, quantity, product_name, unit_price")
       .eq("order_id", orderId);
 
     const contentIds = (orderItems ?? []).map((i) => i.variant_id ?? i.product_id);
+    const numItems = (orderItems ?? []).reduce((sum, i) => sum + (i.quantity || 1), 0);
+    // Per-item breakdown — see checkout.tsx's Purchase event for why this is
+    // needed instead of a single content_name/value pair.
+    const contents = (orderItems ?? []).map((i) => ({
+      id: i.variant_id ?? i.product_id,
+      name: i.product_name,
+      quantity: i.quantity,
+      item_price: i.unit_price,
+    }));
 
     await fireServerPixelEvent({
       storeId: existingOrder.store_id,
@@ -152,10 +161,12 @@ async function handleRiskAndPurchaseEvent(
       eventId: existingOrder.order_number,
       eventParams: {
         content_ids: contentIds,
+        contents,
         content_type: "product",
         value: existingOrder.total_amount,
         currency: existingOrder.currency,
         order_id: existingOrder.order_number,
+        num_items: numItems,
       },
     });
 

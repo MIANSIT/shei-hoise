@@ -68,10 +68,33 @@ function makeEventMap(): Record<string, number> {
   return m;
 }
 
+// utm_source is free text set by whoever built the ad link, so the same
+// platform shows up under several spellings ("fb", "Facebook", "FB Ads") if
+// we display it verbatim. Known aliases fold into one canonical label per
+// platform; anything unrecognized is just title-cased so casing alone
+// ("google" vs "Google") doesn't split a source into two rows.
+const SOURCE_ALIASES: Record<string, string> = {
+  fb: "Facebook (Ad)",
+  facebook: "Facebook (Ad)",
+  fb_ads: "Facebook (Ad)",
+  facebook_ads: "Facebook (Ad)",
+  meta: "Facebook (Ad)",
+  ig: "Instagram (Ad)",
+  instagram: "Instagram (Ad)",
+  instagram_ads: "Instagram (Ad)",
+};
+
 function getSourceLabel(meta: Record<string, unknown> | null): string {
-  if (!meta) return "Direct / Organic";
-  if (meta.utm_source) return String(meta.utm_source);
-  if (meta.fbclid) return "Facebook (Ad)";
+  const rawSource = meta?.utm_source ? String(meta.utm_source).trim() : "";
+  if (rawSource) {
+    const key = rawSource.toLowerCase();
+    if (SOURCE_ALIASES[key]) return SOURCE_ALIASES[key];
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+  // No utm_source, but Meta still auto-appended a click id — same "Facebook
+  // (Ad)" bucket as an explicitly tagged fb/facebook link, since it's the
+  // same traffic, just missing manual UTM tagging.
+  if (meta?.fbclid) return "Facebook (Ad)";
   return "Direct / Organic";
 }
 
@@ -168,8 +191,10 @@ export async function getPixelAnalytics(
   data.forEach((row) => {
     const meta = row.metadata as Record<string, unknown> | null;
 
-    // Campaign
-    const campaignName = (meta && (meta["utm_campaign"] || meta["campaign"])) as string | undefined;
+    // Campaign — trimmed so trailing/leading whitespace on a UTM tag doesn't
+    // silently split one campaign into two rows.
+    const rawCampaignName = (meta && (meta["utm_campaign"] || meta["campaign"])) as string | undefined;
+    const campaignName = rawCampaignName?.trim() || undefined;
     if (campaignName) {
       if (!campaigns[campaignName]) {
         campaigns[campaignName] = { total: 0, events: makeEventMap(), revenue: 0 };
@@ -196,18 +221,33 @@ export async function getPixelAnalytics(
       sources[sourceLabel].revenue += Number(meta?.value) || 0;
     }
 
-    // Products
+    // Products — ViewContent/AddToCart are single-product events tagged with
+    // content_name directly.
     const productName = meta?.content_name as string | undefined;
-    if (productName && ["ViewContent", "AddToCart", "Purchase"].includes(row.event_name)) {
+    if (productName && (row.event_name === "ViewContent" || row.event_name === "AddToCart")) {
       if (!productMap[productName]) {
         productMap[productName] = { name: productName, views: 0, cartAdds: 0, purchases: 0, revenue: 0 };
       }
       if (row.event_name === "ViewContent") productMap[productName].views++;
       if (row.event_name === "AddToCart") productMap[productName].cartAdds++;
-      if (row.event_name === "Purchase") {
-        productMap[productName].purchases++;
-        productMap[productName].revenue += Number(meta?.value) || 0;
-      }
+    }
+
+    // Purchase covers a whole order, which can span several different
+    // products, so a single content_name/value pair can't say which product
+    // the money belongs to — it carries a `contents` breakdown instead
+    // (one entry per line item), and revenue/purchases are attributed from that.
+    if (row.event_name === "Purchase" && Array.isArray(meta?.contents)) {
+      (meta.contents as Record<string, unknown>[]).forEach((item) => {
+        const name = item?.name as string | undefined;
+        if (!name) return;
+        if (!productMap[name]) {
+          productMap[name] = { name, views: 0, cartAdds: 0, purchases: 0, revenue: 0 };
+        }
+        const quantity = Number(item.quantity) || 1;
+        const itemPrice = Number(item.item_price) || 0;
+        productMap[name].purchases++;
+        productMap[name].revenue += itemPrice * quantity;
+      });
     }
 
     // Order stats

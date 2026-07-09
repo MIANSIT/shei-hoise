@@ -19,10 +19,13 @@ import {
   CheckCircle,
   TrendingUp,
   RefreshCw,
-  Info,
   Lock,
   AlertTriangle,
   ArrowRight,
+  Server,
+  Sparkles,
+  Copy,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -196,6 +199,238 @@ function StatTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── Campaign UTM tagging tip ─────────────────────────────────────────────────
+// Facebook lets a URL parameter use a dynamic macro ({{campaign.name}}) that
+// it substitutes per-ad at serve time — so this exact string, unmodified,
+// works on every ad. Surfaced with a one-click copy since store owners paste
+// it into Ads Manager, not into this app.
+const CAMPAIGN_UTM_SNIPPET = "utm_source=facebook&utm_medium=cpc&utm_campaign={{campaign.name}}";
+
+function CampaignTagTip({ t }: { t: ReturnType<typeof useTranslation> }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(CAMPAIGN_UTM_SNIPPET);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable (e.g. insecure context) — the snippet is
+      // still visible on screen to select and copy manually.
+    }
+  };
+
+  return (
+    <div className="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl p-3.5 mb-4">
+      <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center shrink-0">
+        <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+          {t.admin.pixelCampaignTagTipTitle}
+        </p>
+        <p className="text-[11px] text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed">
+          {t.admin.pixelCampaignTagTipDesc}
+        </p>
+        <div className="mt-2 flex flex-col sm:flex-row sm:items-stretch gap-2">
+          <code className="flex-1 min-w-0 text-[11px] bg-white dark:bg-gray-900 border border-indigo-200 dark:border-indigo-500/30 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 font-mono leading-relaxed break-all">
+            {CAMPAIGN_UTM_SNIPPET}
+          </code>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 rounded-lg px-3 py-2 transition-colors"
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? t.admin.pixelCopied : t.admin.pixelCopyBtn}
+          </button>
+        </div>
+        <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-2 font-medium">
+          {t.admin.pixelCampaignTagTipPath}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Conversions API section ──────────────────────────────────────────────────
+// Kept visually distinct (violet accent, its own card) from the Meta Pixel
+// data above it, since CAPI is the paid upsell: store owners need to see at a
+// glance what's included for free vs. what the subscription adds.
+
+function CapiLockedCard({ t }: { t: ReturnType<typeof useTranslation> }) {
+  return (
+    <div className="relative rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 bg-linear-to-br from-violet-50 to-white dark:from-violet-500/5 dark:to-gray-900 p-5 sm:p-6">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t.admin.pixelCapiSectionTitle}</h2>
+            <span className="text-[10px] font-bold uppercase tracking-wide bg-violet-600 text-white px-2 py-0.5 rounded-full">
+              {t.admin.pixelCapiBadgeLocked}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-lg leading-relaxed">
+            {t.admin.pixelCapiLockedDesc}
+          </p>
+        </div>
+      </div>
+
+      <ul className="space-y-2 mb-5">
+        {[t.admin.pixelCapiBenefit1, t.admin.pixelCapiBenefit2, t.admin.pixelCapiBenefit3].map((benefit) => (
+          <li key={benefit} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
+            <CheckCircle className="w-3.5 h-3.5 text-violet-500 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{benefit}</span>
+          </li>
+        ))}
+      </ul>
+
+      <Link
+        href="/dashboard/subscription/plans"
+        className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+      >
+        {t.admin.pixelCapiUnlockCta} <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
+  );
+}
+
+function CapiConnectPrompt({ t }: { t: ReturnType<typeof useTranslation> }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-4">
+      <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
+        <AlertTriangle className="w-4 h-4 text-amber-600" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t.admin.pixelCapiConnectPromptTitle}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.admin.pixelCapiConnectPromptDesc}</p>
+      </div>
+      <Link
+        href="/dashboard/store-management#store-settings"
+        className="shrink-0 inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+      >
+        {t.admin.pixelCapiConnectPromptCta} <ArrowRight className="w-3 h-3" />
+      </Link>
+    </div>
+  );
+}
+
+function CapiSection({
+  capiEntitled,
+  capiConfigured,
+  testModeActive,
+  lastCapiError,
+  totals,
+  capiDelivered,
+  eventMeta,
+  n,
+  t,
+}: {
+  capiEntitled: boolean;
+  capiConfigured: boolean;
+  testModeActive: boolean;
+  lastCapiError: string | null | undefined;
+  totals: Record<string, number>;
+  capiDelivered: Record<string, number> | undefined;
+  eventMeta: { key: string; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[];
+  n: (v: number | string) => string;
+  t: ReturnType<typeof useTranslation>;
+}) {
+  if (!capiEntitled) return <CapiLockedCard t={t} />;
+
+  const totalBrowser = eventMeta.reduce((sum, m) => sum + (totals[m.key] ?? 0), 0);
+  const totalServer = eventMeta.reduce((sum, m) => sum + (capiDelivered?.[m.key] ?? 0), 0);
+  const reliabilityPct = totalBrowser > 0 ? Math.round((totalServer / totalBrowser) * 100) : null;
+
+  return (
+    <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-500/30 bg-linear-to-br from-violet-50/60 via-white to-white dark:from-violet-500/5 dark:via-gray-900 dark:to-gray-900 p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
+          <Server className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+        </div>
+        <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t.admin.pixelCapiSectionTitle}</h2>
+        <StatusChip
+          label=""
+          state={lastCapiError ? "critical" : capiConfigured ? "good" : "warning"}
+          text={
+            lastCapiError
+              ? t.admin.pixelHealthCapiError
+              : capiConfigured
+                ? t.admin.pixelCapiBadgeActive
+                : t.admin.pixelCapiSetupNeeded
+          }
+          title={lastCapiError ?? undefined}
+        />
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-lg leading-relaxed">
+        {t.admin.pixelCapiSectionSubtitle}
+      </p>
+
+      {!capiConfigured ? (
+        <CapiConnectPrompt t={t} />
+      ) : (
+        <>
+          {testModeActive && (
+            <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-3 mb-4">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 dark:text-amber-300">{t.admin.pixelHealthTestMode}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                {t.admin.pixelHealthBrowserVsServer}
+              </p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3 leading-relaxed">
+                {t.admin.pixelHealthBrowserVsServerDesc}
+              </p>
+              <div className="space-y-2">
+                {eventMeta.map((meta) => {
+                  const browserCount = totals[meta.key] ?? 0;
+                  const serverCount = capiDelivered?.[meta.key] ?? 0;
+                  const pct = browserCount > 0 ? Math.round((serverCount / browserCount) * 100) : null;
+                  const state: keyof typeof STATUS_STYLES =
+                    pct === null ? "neutral" : pct >= 70 ? "good" : pct >= 30 ? "warning" : "neutral";
+                  const style = STATUS_STYLES[state];
+                  return (
+                    <div key={meta.key} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 sm:w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
+                        <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full shrink-0 ${style.bg} ${style.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                          {pct === null ? "—" : `${pct}% ${t.admin.pixelHealthConfirmedSuffix}`}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 sm:truncate">
+                        {n(browserCount)} {t.admin.pixelHealthCoverageSeen} · {n(serverCount)} {t.admin.pixelHealthCoverageBackedUp}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-violet-100/60 dark:bg-violet-500/10 p-4 flex flex-col justify-center">
+              <p className="text-[10px] uppercase tracking-wide text-violet-700 dark:text-violet-400 font-semibold">
+                {t.admin.pixelCapiReliability}
+              </p>
+              <p className="text-2xl font-black text-violet-700 dark:text-violet-400 mt-1">
+                {reliabilityPct === null ? "—" : `${reliabilityPct}%`}
+              </p>
+              <p className="text-xs text-violet-700/80 dark:text-violet-400/80 mt-1">
+                {n(totalServer)} / {n(totalBrowser)} {t.admin.pixelCapiEventsConfirmed}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -411,21 +646,6 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
             state={pixelId ? "good" : "neutral"}
             text={pixelId ? t.admin.pixelHealthConnected : t.admin.pixelHealthNotConnected}
           />
-          <StatusChip
-            label={t.admin.pixelHealthCapi}
-            state={!capiEntitled ? "neutral" : data?.lastCapiError ? "critical" : capiConfigured ? "good" : "neutral"}
-            text={
-              !capiEntitled
-                ? t.admin.pixelHealthCapiLocked
-                : data?.lastCapiError
-                  ? t.admin.pixelHealthCapiError
-                  : capiConfigured
-                    ? t.admin.pixelHealthConnected
-                    : t.admin.pixelHealthNotConnected
-            }
-            icon={!capiEntitled ? Lock : undefined}
-            title={capiEntitled && data?.lastCapiError ? data.lastCapiError : undefined}
-          />
           <StatusChip label={t.admin.pixelHealthCatalog} state="good" text={t.admin.pixelHealthCatalogAvailable} />
           <Link
             href="/dashboard/store-management#store-settings"
@@ -435,53 +655,31 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
           </Link>
         </div>
 
-        {testModeActive && (
-          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-3 mb-4">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 dark:text-amber-300">{t.admin.pixelHealthTestMode}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {capiEntitled && capiConfigured && (
-            <div>
-              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t.admin.pixelHealthBrowserVsServer}</p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3 leading-relaxed max-w-xs">
-                {t.admin.pixelHealthBrowserVsServerDesc}
-              </p>
-              <div className="space-y-2">
-                {EVENT_META.map((meta) => {
-                  const browserCount = totals[meta.key] ?? 0;
-                  const serverCount = data?.capiDelivered?.[meta.key] ?? 0;
-                  const pct = browserCount > 0 ? Math.round((serverCount / browserCount) * 100) : null;
-                  const state: keyof typeof STATUS_STYLES =
-                    pct === null ? "neutral" : pct >= 70 ? "good" : pct >= 30 ? "warning" : "neutral";
-                  const style = STATUS_STYLES[state];
-                  return (
-                    <div key={meta.key} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-24 sm:w-28 shrink-0 text-gray-600 dark:text-gray-400 truncate">{meta.label}</span>
-                        <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full shrink-0 ${style.bg} ${style.text}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                          {pct === null ? "—" : `${pct}% ${t.admin.pixelHealthConfirmedSuffix}`}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-gray-400 dark:text-gray-500 sm:truncate">
-                        {n(browserCount)} {t.admin.pixelHealthCoverageSeen} · {n(serverCount)} {t.admin.pixelHealthCoverageBackedUp}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 p-4">
-            <p className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 font-semibold">{t.admin.pixelHealthAdSpendProtection}</p>
-            <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">{n(adSpendProtected)}</p>
-            <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-1">{t.admin.pixelHealthAdSpendProtectionDesc}</p>
-          </div>
+        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 p-4">
+          <p className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 font-semibold">{t.admin.pixelHealthAdSpendProtection}</p>
+          <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">{n(adSpendProtected)}</p>
+          <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-1">{t.admin.pixelHealthAdSpendProtectionDesc}</p>
         </div>
+      </div>
+
+      {/* ── Conversions API (separated on purpose: this is the paid upsell, distinct from Meta Pixel below) ── */}
+      <CapiSection
+        capiEntitled={capiEntitled}
+        capiConfigured={capiConfigured}
+        testModeActive={testModeActive}
+        lastCapiError={data?.lastCapiError}
+        totals={totals}
+        capiDelivered={data?.capiDelivered}
+        eventMeta={EVENT_META}
+        n={n}
+        t={t}
+      />
+
+      {/* ── Meta Pixel section divider ── */}
+      <div className="flex items-center gap-2 pt-2">
+        <div className="w-1 h-5 rounded-full bg-linear-to-b from-blue-400 to-blue-600" />
+        <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t.admin.pixelSectionMetaPixelTitle}</h2>
+        <span className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.pixelSectionMetaPixelSubtitle}</span>
       </div>
 
       {/* ── KPI Cards ── */}
@@ -722,27 +920,16 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
               </span>
             }
           />
+          <CampaignTagTip t={t} />
           <StatTable rows={sorted_campaigns} loading={loading} accentColor="bg-rose-400" eventMeta={EVENT_META} n={n} fmtBDT={fmtBDT} t={t} />
         </div>
       ) : (
         !loading && (
           <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Info className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                  {t.admin.pixelNoCampaignTitle}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {t.admin.pixelNoCampaignHint}
-                </p>
-                <code className="mt-2 block text-[11px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 font-mono leading-relaxed break-all">
-                  ?utm_source=facebook&amp;utm_medium=cpc&amp;utm_campaign=YOUR_CAMPAIGN_NAME
-                </code>
-              </div>
-            </div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+              {t.admin.pixelNoCampaignTitle}
+            </p>
+            <CampaignTagTip t={t} />
           </div>
         )
       )}
