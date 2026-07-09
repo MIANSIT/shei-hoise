@@ -11,6 +11,8 @@ import {
   Button,
   Pagination,
   DatePicker,
+  Dropdown,
+  Popover,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
@@ -31,6 +33,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
+import BulkCourierShipmentAction from "./BulkCourierShipmentAction";
 import { Check } from "lucide-react";
 // import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import InvoiceModal from "@/app/components/invoice/invoice";
@@ -39,6 +42,10 @@ import dataService from "@/lib/queries/dataService";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
+import { LockOutlined } from "@ant-design/icons";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
 
 interface Props {
@@ -60,6 +67,7 @@ interface Props {
   totalByOrderStatus?: Record<string, number>; // <--- add this
   totalByPaymentStatus?: Record<string, number>;
   onRefresh?: () => void;
+  onExportOrders?: () => Promise<StoreOrder[]>;
 }
 
 const RISK_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -94,6 +102,7 @@ const OrdersTable: React.FC<Props> = ({
   totalByOrderStatus, // <--- add this
   totalByPaymentStatus,
   onRefresh,
+  onExportOrders,
 }) => {
   const { notification, modal } = App.useApp();
   const t = useTranslation();
@@ -104,6 +113,7 @@ const OrdersTable: React.FC<Props> = ({
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   // const { icon: currencyIcon } = useUserCurrencyIcon();
 
@@ -118,6 +128,9 @@ const OrdersTable: React.FC<Props> = ({
     // icon: currencyIcon,
     // loading: currencyLoading,
   } = useUserCurrencyIcon();
+
+  const { storeId } = useCurrentUser();
+  const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
@@ -185,7 +198,36 @@ const OrdersTable: React.FC<Props> = ({
     setSelectedRowKeys([]);
   };
 
-  const handleDownloadCsv = () => {
+  const ORDER_EXPORT_HEADER = [
+    "Order #",
+    "Created At",
+    "Customer",
+    "Email",
+    "Phone",
+    "Address",
+    "Total",
+    "Currency",
+    "Status",
+    "Payment Status",
+  ];
+
+  const buildOrderExportRows = (targetOrders: StoreOrder[]) =>
+    targetOrders.map((o) => [
+      o.order_number,
+      new Date(o.created_at).toLocaleString(),
+      (o.shipping_address?.customer_name || o.customers?.first_name || ""),
+      o.customers?.email || o.shipping_address?.email || "",
+      o.shipping_address?.phone || o.customers?.phone || "",
+      (o.shipping_address?.address_line_1 || o.shipping_address?.address || "") + (o.shipping_address?.city ? (", " + o.shipping_address.city) : ""),
+      o.total_amount,
+      o.currency || "",
+      o.status,
+      o.payment_status,
+    ]);
+
+  const handleExport = async (format: "csv" | "xlsx") => {
+    if (exportingCsv) return;
+
     let startDate: Date | null = null;
     let endDate: Date | null = null;
 
@@ -199,72 +241,83 @@ const OrdersTable: React.FC<Props> = ({
       if (endDate) endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
     }
 
+    setExportingCsv(true);
+    let sourceOrders: StoreOrder[];
+    try {
+      // Fetch every order matching the current filters — not just the page
+      // currently on screen — so the export isn't silently truncated.
+      sourceOrders = onExportOrders ? await onExportOrders() : orders;
+    } catch (err) {
+      console.error("Error fetching orders for export:", err);
+      notification.error({
+        title: t.admin.orderExportFailed,
+        description: err instanceof Error ? err.message : String(err),
+      });
+      setExportingCsv(false);
+      return;
+    }
+
     const targetOrders = startDate && endDate
-      ? orders.filter((o) => {
+      ? sourceOrders.filter((o) => {
           const d = new Date(o.created_at);
           return d >= startDate! && d <= endDate!;
         })
-      : orders;
+      : sourceOrders;
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
         title: t.admin.orderNoOrders,
         description: t.admin.orderNoOrdersDate,
       });
+      setExportingCsv(false);
       return;
     }
 
-    const header = [
-      "Order #",
-      "Created At",
-      "Customer",
-      "Email",
-      "Phone",
-      "Address",
-      "Total",
-      "Currency",
-      "Status",
-      "Payment Status",
-    ];
-
-    const escape = (v: any) => {
-      if (v == null) return "";
-      const s = String(v).replace(/"/g, '""');
-      return `"${s}"`;
-    };
-
-    const rows = targetOrders.map((o) => [
-      o.order_number,
-      new Date(o.created_at).toLocaleString(),
-      (o.shipping_address?.customer_name || o.customers?.first_name || ""),
-      o.customers?.email || o.shipping_address?.email || "",
-      o.shipping_address?.phone || o.customers?.phone || "",
-      (o.shipping_address?.address_line_1 || o.shipping_address?.address || "") + (o.shipping_address?.city ? (", " + o.shipping_address.city) : ""),
-      o.total_amount,
-      o.currency || "",
-      o.status,
-      o.payment_status,
-    ]);
-
-    const csvContent = [header, ...rows]
-      .map((r) => r.map(escape).join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
     let datePart = "all-dates";
     if (startDate && endDate) {
       const s = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
       const e = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
       datePart = `${s}_to_${e}`;
     }
-    a.href = url;
-    a.download = `orders_${datePart}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+
+    try {
+      if (format === "xlsx") {
+        // .xlsx has no text-encoding ambiguity — unlike CSV, it can't be
+        // misread as the wrong charset by Excel regardless of Windows locale.
+        const XLSX = await import("xlsx");
+        const ws = XLSX.utils.aoa_to_sheet([
+          ORDER_EXPORT_HEADER,
+          ...buildOrderExportRows(targetOrders),
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Orders");
+        XLSX.writeFile(wb, `orders_${datePart}.xlsx`);
+      } else {
+        const escape = (v: any) => {
+          if (v == null) return "";
+          const s = String(v).replace(/"/g, '""');
+          return `"${s}"`;
+        };
+
+        const csvContent = [ORDER_EXPORT_HEADER, ...buildOrderExportRows(targetOrders)]
+          .map((r) => r.map(escape).join(","))
+          .join("\n");
+
+        // Prefix a UTF-8 BOM — without it, Excel misreads non-ASCII text (e.g.
+        // Bengali addresses) as a different encoding and shows garbled characters.
+        const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `orders_${datePart}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -759,6 +812,9 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveCourier={(c) =>
+                    onUpdate(order.id, { courier: c })
+                  }
                   onSaveShippingFee={(fee) =>
                     onUpdate(order.id, {
                       shipping_fee: fee,
@@ -767,6 +823,12 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
+                  }
+                  onSavePathaoShipment={(consignmentId, orderStatus) =>
+                    onUpdate(order.id, {
+                      courier_consignment_id: consignmentId,
+                      courier_order_status: orderStatus,
+                    })
                   }
                   onRefresh={onRefresh}
                 />
@@ -809,6 +871,11 @@ const OrdersTable: React.FC<Props> = ({
                 }}
                 onClearSelection={() => setSelectedRowKeys([])}
               />
+              <BulkCourierShipmentAction
+                selectedOrders={selectedOrderObjects}
+                onSuccess={() => onRefresh?.()}
+                onClearSelection={() => setSelectedRowKeys([])}
+              />
               <Button
                 onClick={() => setSelectedRowKeys([])}
                 className="w-full sm:w-auto"
@@ -836,16 +903,40 @@ const OrdersTable: React.FC<Props> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DatePicker.RangePicker
             value={selectedRange}
             onChange={(d) => setSelectedRange(d)}
             allowClear
-            className="w-80"
+            className="w-full sm:w-80"
           />
-          <Button type="primary" onClick={handleDownloadCsv}>
-            {t.admin.orderDownloadCsv}
-          </Button>
+          {exportAllowed ? (
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "csv", label: t.admin.orderExportAsCsv, onClick: () => handleExport("csv") },
+                  { key: "xlsx", label: t.admin.orderExportAsExcel, onClick: () => handleExport("xlsx") },
+                ],
+                disabled: exportingCsv,
+              }}
+              trigger={["click"]}
+            >
+              <Button type="primary" loading={exportingCsv}>
+                {exportingCsv ? t.admin.orderExporting : t.admin.orderDownloadCsv}
+              </Button>
+            </Dropdown>
+          ) : (
+            <Popover
+              content={<ExportUpsell />}
+              trigger="click"
+              placement="bottomRight"
+              styles={{ container: { padding: 12, borderRadius: 14 } }}
+            >
+              <Button icon={<LockOutlined />} className="text-gray-400 dark:text-gray-500">
+                {t.admin.orderDownloadCsv}
+              </Button>
+            </Popover>
+          )}
         </div>
       </div>
 
@@ -883,7 +974,7 @@ const OrdersTable: React.FC<Props> = ({
           expandedRowRender: (order: StoreOrder) => (
             <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {/* Show backend values at the top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
                 <div>
                   <span className="text-sm font-medium text-gray-300">
                     {t.admin.orderDeliveryOption}
@@ -914,6 +1005,14 @@ const OrdersTable: React.FC<Props> = ({
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-300">
+                    {t.admin.orderDeliveryCourierOption}
+                  </span>
+                  <div className="font-medium capitalize">
+                    {order.courier || t.admin.orderNotSet}
+                  </div>
+                </div>
               </div>
 
               {order.status !== OrderStatus.CANCELLED &&
@@ -932,6 +1031,9 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveCourier={(c) =>
+                    onUpdate(order.id, { courier: c })
+                  }
                   onSaveShippingFee={(fee) =>
                     onUpdate(order.id, {
                       shipping_fee: fee,
@@ -940,6 +1042,12 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
+                  }
+                  onSavePathaoShipment={(consignmentId, orderStatus) =>
+                    onUpdate(order.id, {
+                      courier_consignment_id: consignmentId,
+                      courier_order_status: orderStatus,
+                    })
                   }
                   onRefresh={onRefresh}
                 />

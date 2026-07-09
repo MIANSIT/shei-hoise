@@ -15,6 +15,9 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { ProductStatus } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import type { StockSort } from "@/lib/queries/products/getProductWithStock";
+import { CaretDownOutlined } from "@ant-design/icons";
+import StockHistoryPopover from "./StockHistoryPopover";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -32,6 +35,15 @@ interface StockTableProps {
   rowSelection?: TableRowSelection<ProductRow | VariantRow>;
   loading?: boolean;
   bulkActive?: boolean;
+  stockSort?: StockSort;
+  onSortChange?: (sort: StockSort) => void;
+}
+
+/** Fraction of a "healthy" reference level (3x the low-stock threshold), capped at 100%. */
+export function stockLevelPct(stock: number, threshold: number): number {
+  if (stock <= 0) return 0;
+  const healthy = Math.max(threshold * 3, 1);
+  return Math.min(100, Math.round((stock / healthy) * 100));
 }
 
 /* ── Shared badge component ── */
@@ -67,6 +79,8 @@ const StockTable: React.FC<StockTableProps> = ({
   rowSelection,
   loading,
   bulkActive = false,
+  stockSort = null,
+  onSortChange,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -256,9 +270,62 @@ const StockTable: React.FC<StockTableProps> = ({
       },
     },
 
+    /* ── TP Price ── */
+    {
+      title: "TP Price",
+      dataIndex: "tpPrice",
+      key: "tpPrice",
+      render: (_price, record) => {
+        if ("variants" in record && record.variants?.length) {
+          return (
+            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+              {t.admin.stockVaries}
+            </span>
+          );
+        }
+        if (record.tpPrice == null) {
+          return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
+        }
+        return (
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-gray-400 dark:text-gray-500 text-xs mr-0.5">
+              {symbol}
+            </span>
+            {n(record.tpPrice.toFixed(2))}
+          </span>
+        );
+      },
+    },
+
     /* ── Stock ── */
     {
-      title: t.admin.stockStock,
+      title: onSortChange ? (
+        <button
+          type="button"
+          onClick={() =>
+            onSortChange(
+              stockSort === "asc"
+                ? "desc"
+                : stockSort === "desc"
+                  ? null
+                  : "asc",
+            )
+          }
+          className="inline-flex items-center gap-1 bg-transparent border-none p-0 font-inherit text-inherit cursor-pointer"
+        >
+          {t.admin.stockStock}
+          <CaretDownOutlined
+            style={{
+              fontSize: 10,
+              opacity: stockSort ? 1 : 0.45,
+              transform: stockSort === "asc" ? "rotate(180deg)" : undefined,
+              transition: "transform .15s ease",
+            }}
+          />
+        </button>
+      ) : (
+        t.admin.stockStock
+      ),
       key: "stock",
       render: (_v, record) => {
         const isProduct = "variants" in record;
@@ -278,12 +345,26 @@ const StockTable: React.FC<StockTableProps> = ({
         const key = record.id;
         const editedValue = editedStocks[key] ?? record.stock;
         const showSave = key in editedStocks && !bulkActive;
+        const delta = editedValue - record.stock;
+        const levelPct = stockLevelPct(record.stock, record.lowStockThreshold);
+        const gaugeTone = record.isOutOfStock
+          ? "bg-red-400 dark:bg-red-500"
+          : record.isLowStock
+            ? "bg-amber-400 dark:bg-amber-500"
+            : "bg-emerald-500 dark:bg-emerald-400";
 
         return (
           <div
-            className="flex items-center gap-2"
+            className="flex flex-col gap-1.5"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="h-1 w-22 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${gaugeTone}`}
+                style={{ width: `${levelPct}%` }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
             <InputNumber
               min={0}
               value={editedValue}
@@ -304,6 +385,21 @@ const StockTable: React.FC<StockTableProps> = ({
               `}
             />
 
+            {showSave && delta !== 0 && (
+              <span
+                className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+                  delta > 0
+                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    : "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400"
+                }`}
+              >
+                {delta > 0 ? "+" : ""}
+                {delta}
+              </span>
+            )}
+
+            <StockHistoryPopover productId={parentId} variantId={variantId} />
+
             {showSave && (
               <SheiButton
                 size="small"
@@ -315,6 +411,7 @@ const StockTable: React.FC<StockTableProps> = ({
                 {t.admin.stockSave}
               </SheiButton>
             )}
+            </div>
           </div>
         );
       },

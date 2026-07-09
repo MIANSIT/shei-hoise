@@ -6,6 +6,9 @@ import Image from "next/image";
 import { ProductRow } from "@/lib/hook/products/stock/mapProductsForTable";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { ProductStatus } from "@/lib/types/enums";
+import { stockLevelPct } from "./StockTable";
+import StockHistoryPopover from "./StockHistoryPopover";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
 interface StockTableMobileProps {
   products: ProductRow[];
@@ -58,39 +61,89 @@ const SkuChip = ({ sku }: { sku?: string | null }) => {
   );
 };
 
+const TpPriceChip = ({
+  tpPrice,
+  symbol,
+}: {
+  tpPrice: number | null;
+  symbol: string;
+}) => {
+  if (tpPrice == null) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 leading-none">
+      TP {symbol}
+      {tpPrice.toFixed(2)}
+    </span>
+  );
+};
+
+const DeltaChip = ({ delta }: { delta: number }) => {
+  if (delta === 0) return null;
+  return (
+    <span
+      className={`text-[10.5px] font-bold px-1.5 py-0.5 rounded-md ${
+        delta > 0
+          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+          : "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400"
+      }`}
+    >
+      {delta > 0 ? "+" : ""}
+      {delta}
+    </span>
+  );
+};
+
 const StockInput = ({
   value,
+  stock,
   isOut,
   isLow,
   threshold,
   onChange,
 }: {
   value: number;
+  stock: number;
   isOut: boolean;
   isLow: boolean;
   threshold?: number;
   onChange: (v: number) => void;
-}) => (
-  <Tooltip title={isLow && threshold ? `Threshold: ${threshold}` : undefined}>
-    <InputNumber
-      min={0}
-      value={value}
-      onChange={(v) => onChange(Number(v ?? 0))}
-      controls={false}
-      className={`
-        w-20! rounded-lg!
-        [&_input]:text-center! [&_input]:font-semibold! [&_input]:text-sm!
-        ${
-          isOut
-            ? "bg-gray-50! dark:bg-gray-800/60! [&_input]:text-gray-400! dark:[&_input]:text-gray-500!"
-            : isLow
-              ? "bg-amber-50! dark:bg-amber-950/30! [&_input]:text-amber-700! dark:[&_input]:text-amber-400! border-amber-300! dark:border-amber-700/60!"
-              : "dark:[&_input]:text-gray-200!"
-        }
-      `}
-    />
-  </Tooltip>
-);
+}) => {
+  const gaugeTone = isOut
+    ? "bg-red-400 dark:bg-red-500"
+    : isLow
+      ? "bg-amber-400 dark:bg-amber-500"
+      : "bg-emerald-500 dark:bg-emerald-400";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="h-1 w-20 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div
+          className={`h-full rounded-full ${gaugeTone}`}
+          style={{ width: `${stockLevelPct(stock, threshold ?? 0)}%` }}
+        />
+      </div>
+      <Tooltip title={isLow && threshold ? `Threshold: ${threshold}` : undefined}>
+        <InputNumber
+          min={0}
+          value={value}
+          onChange={(v) => onChange(Number(v ?? 0))}
+          controls={false}
+          className={`
+            w-20! rounded-lg!
+            [&_input]:text-center! [&_input]:font-semibold! [&_input]:text-sm!
+            ${
+              isOut
+                ? "bg-gray-50! dark:bg-gray-800/60! [&_input]:text-gray-400! dark:[&_input]:text-gray-500!"
+                : isLow
+                  ? "bg-amber-50! dark:bg-amber-950/30! [&_input]:text-amber-700! dark:[&_input]:text-amber-400! border-amber-300! dark:border-amber-700/60!"
+                  : "dark:[&_input]:text-gray-200!"
+            }
+          `}
+        />
+      </Tooltip>
+    </div>
+  );
+};
 
 const StockTableMobile: React.FC<StockTableMobileProps> = ({
   products,
@@ -101,6 +154,9 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
   onSelectChange,
   bulkActive = false,
 }) => {
+  const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
+  const symbol = currencyLoading ? "৳" : ((currencyIcon as string) ?? "৳");
+
   const toggleKey = (id: string) => {
     const newKeys = selectedRowKeys.includes(id)
       ? selectedRowKeys.filter((k) => k !== id)
@@ -215,7 +271,12 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                   {product.title}
                 </span>
 
-                {!hasVariants && product.sku && <SkuChip sku={product.sku} />}
+                {!hasVariants && (product.sku || product.tpPrice != null) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <SkuChip sku={product.sku} />
+                    <TpPriceChip tpPrice={product.tpPrice} symbol={symbol} />
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-1">
                   {/* Simple product: out of stock */}
@@ -260,6 +321,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
               <div className="px-3 pb-3 flex items-center gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
                 <StockInput
                   value={editedStocks[product.id] ?? product.stock}
+                  stock={product.stock}
                   isOut={product.isOutOfStock}
                   isLow={product.isLowStock}
                   threshold={product.lowStockThreshold}
@@ -268,6 +330,10 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                 <span className="text-xs text-gray-400 dark:text-gray-500">
                   units
                 </span>
+                <DeltaChip
+                  delta={(editedStocks[product.id] ?? product.stock) - product.stock}
+                />
+                <StockHistoryPopover productId={product.id} variantId={null} />
                 {product.id in editedStocks && !bulkActive && (
                   <SheiButton
                     size="small"
@@ -322,7 +388,12 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                             {variant.title}
                           </span>
-                          {variant.sku && <SkuChip sku={variant.sku} />}
+                          {(variant.sku || variant.tpPrice != null) && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <SkuChip sku={variant.sku} />
+                              <TpPriceChip tpPrice={variant.tpPrice} symbol={symbol} />
+                            </div>
+                          )}
                           <div className="flex gap-1 flex-wrap">
                             {!variant.isActive && (
                               <StatusBadge variant="inactive">
@@ -343,12 +414,22 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                       <div className="flex items-center gap-2 shrink-0">
                         <StockInput
                           value={editedStocks[variant.id] ?? variant.stock}
+                          stock={variant.stock}
                           isOut={variant.isOutOfStock}
                           isLow={variant.isLowStock}
                           threshold={variant.lowStockThreshold}
                           onChange={(v) =>
                             onStockChange(product.id, variant.id, v)
                           }
+                        />
+                        <DeltaChip
+                          delta={
+                            (editedStocks[variant.id] ?? variant.stock) - variant.stock
+                          }
+                        />
+                        <StockHistoryPopover
+                          productId={product.id}
+                          variantId={variant.id}
                         />
                         {variant.id in editedStocks && !bulkActive && (
                           <SheiButton

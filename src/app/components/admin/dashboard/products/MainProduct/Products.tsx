@@ -402,12 +402,14 @@ const Products: React.FC = () => {
 
       {/* ── Table Card ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
-        <ProductTable
-          products={products}
-          loading={loading}
-          pagination={undefined}
-          onDeleteSuccess={fetchProducts}
-        />
+        <div className="overflow-x-auto">
+          <ProductTable
+            products={products}
+            loading={loading}
+            pagination={undefined}
+            onDeleteSuccess={fetchProducts}
+          />
+        </div>
       </div>
 
       {/* ── Mobile Pagination ── */}

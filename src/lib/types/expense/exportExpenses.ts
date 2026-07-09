@@ -72,7 +72,9 @@ export function exportCSV(
     ...getRows(expenses).map((row) => row.map(escape).join(",")),
   ];
 
-  const blob = new Blob([lines.join("\r\n")], {
+  // Prefix a UTF-8 BOM — without it, Excel misreads non-ASCII text (e.g.
+  // Bengali vendor names/notes) as a different encoding and shows garbled characters.
+  const blob = new Blob(["﻿" + lines.join("\r\n")], {
     type: "text/csv;charset=utf-8;",
   });
   triggerDownload(blob, `${filename}.csv`);

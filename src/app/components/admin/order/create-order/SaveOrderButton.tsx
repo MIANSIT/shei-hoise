@@ -26,6 +26,7 @@ interface SaveOrderButtonProps {
   status: OrderStatus; // ✅ CHANGED: Use enum
   paymentStatus: PaymentStatus; // ✅ CHANGED: Use enum
   paymentMethod: string;
+  courier?: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
   onOrderCreated?: () => void;
@@ -46,6 +47,7 @@ export default function SaveOrderButton({
   status,
   paymentStatus,
   paymentMethod,
+  courier,
   disabled = false,
   onCustomerCreated,
   onOrderCreated,
@@ -214,6 +216,7 @@ export default function SaveOrderButton({
         status,
         paymentStatus,
         paymentMethod,
+        courier,
         currency: displayCurrencySafe,
         deliveryOption: finalCustomerInfo.deliveryOption,
       };

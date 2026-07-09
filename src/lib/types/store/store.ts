@@ -40,6 +40,16 @@ export interface ShippingFee {
 
 export type ShippingFees = ShippingFee[];
 
+export interface DeliveryCourier {
+  id: string;
+  name: string;
+  /** "pathao"/"steadfast" are the real API integrations; "manual" is a store-defined courier with no integration. */
+  type: "pathao" | "steadfast" | "manual";
+  /** false for the built-in Pathao/Steadfast entries — every store gets them and can't remove them. */
+  deletable: boolean;
+  created_at: string;
+}
+
 export interface StoreSettings {
   id: string;
   store_id: string;
@@ -52,6 +62,7 @@ export interface StoreSettings {
   terms_and_conditions?: string | null;
   privacy_policy?: string | null;
   shipping_fees?: ShippingFees | null;
+  delivery_couriers?: DeliveryCourier[] | null;
   facebook_pixel_id?: string | null;
   facebook_capi_access_token?: string | null;
   facebook_test_event_code?: string | null;

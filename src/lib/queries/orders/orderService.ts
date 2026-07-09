@@ -19,6 +19,7 @@ export interface CreateOrderData {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: string;
+  courier?: string;
   currency?: string;
   deliveryOption: string;
 }
@@ -411,6 +412,7 @@ export async function createOrder(
       billing_address: shippingAddress,
       notes: customerInfo.notes,
       delivery_option: orderData.deliveryOption,
+      courier: orderData.courier || null,
     };
 
 

@@ -31,6 +31,7 @@ export interface UpdateOrderByNumberData {
   paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   deliveryOption: string;
+  courier?: string;
   currency?: string;
   shippingAddress?: {
     customer_name: string;
@@ -72,6 +73,7 @@ export async function updateOrderByNumber(
       paymentStatus,
       paymentMethod,
       deliveryOption,
+      courier,
       currency = "BDT",
       shippingAddress,
     } = updateData;
@@ -122,6 +124,11 @@ export async function updateOrderByNumber(
     };
 
 
+    // Switching the Delivery Courier deactivates (never deletes) the
+    // previous courier's courier_tracking row — see updateOrder.ts for the
+    // same logic on the inline-editor save path.
+    const courierChanged = courier !== undefined && (courier || null) !== (existingOrder.courier || null);
+
     // Update the order with COMPLETE shipping address
     const updateOrderData = {
       status,
@@ -134,6 +141,7 @@ export async function updateOrderByNumber(
       payment_status: paymentStatus,
       payment_method: paymentMethod,
       delivery_option: deliveryOption,
+      courier: courier || null,
       shipping_address: shippingAddressUpdate,
       billing_address: shippingAddressUpdate,
       notes: customerInfo.notes,
@@ -167,6 +175,14 @@ export async function updateOrderByNumber(
         success: false,
         error: `Failed to update order: ${updateError.message}`,
       };
+    }
+
+    if (courierChanged) {
+      await supabaseAdmin
+        .from("courier_tracking")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("order_id", orderId)
+        .eq("is_active", true);
     }
 
     // Update order items intelligently

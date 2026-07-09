@@ -14,7 +14,7 @@ export function PageHeader({ onAddCustomer, onSearchChange }: PageHeaderProps) {
     <div className="mb-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         {/* Left Title Section */}
-        <div className="w-80">
+        <div className="w-full sm:w-80">
           <Space.Compact className="w-full ">
             <Input
               placeholder={t.admin.customerSearchPlaceholder}
