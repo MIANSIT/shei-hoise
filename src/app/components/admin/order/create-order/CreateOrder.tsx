@@ -36,11 +36,12 @@ import {
   OrderProduct,
 } from "@/lib/types/order";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import dataService from "@/lib/queries/dataService";
 import type { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import type { CustomerProfile } from "@/lib/types/customer";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
-import type { ShippingFee } from "@/lib/types/store/store";
+import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
@@ -69,6 +70,7 @@ export default function CreateOrder() {
   const [searchTerm, setSearchTerm] = useState("");
   // const { user, loading: userLoading, storeSlug } = useCurrentUser();
   const { user, loading: userLoading } = useCurrentUser();
+  const { allowed: courierTrackingAllowed } = useFeatureGate(user?.store_id, "courier_tracking");
   const [storeName, setStoreName] = useState<string>("");
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfoType>({
@@ -94,6 +96,8 @@ export default function CreateOrder() {
     PaymentStatus.PENDING,
   );
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [courier, setCourier] = useState("");
+  const [deliveryCouriers, setDeliveryCouriers] = useState<DeliveryCourier[]>([]);
 
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
@@ -161,6 +165,7 @@ export default function CreateOrder() {
       const settings = await getStoreSettings(user.store_id);
       if (settings) {
         setShippingFees(settings.shipping_fees || []);
+        setDeliveryCouriers(settings.delivery_couriers || []);
         if (settings.tax_rate) {
           setTaxAmount(settings.tax_rate);
         }
@@ -333,6 +338,9 @@ export default function CreateOrder() {
       setStatus(draft.status);
       setPaymentStatus(draft.paymentStatus);
       setPaymentMethod(draft.paymentMethod);
+      if (draft.courier !== undefined) {
+        setCourier(draft.courier);
+      }
       if (draft.customerInfo.customer_id) {
         setCustomerType("existing");
       }
@@ -367,6 +375,7 @@ export default function CreateOrder() {
       status,
       paymentStatus,
       paymentMethod,
+      courier,
     });
   }, [
     readyToSyncDraft,
@@ -380,6 +389,7 @@ export default function CreateOrder() {
     status,
     paymentStatus,
     paymentMethod,
+    courier,
   ]);
 
   // Filter customers based on search
@@ -906,6 +916,10 @@ export default function CreateOrder() {
                   setPaymentStatus={setPaymentStatus}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
+                  courier={courier}
+                  setCourier={setCourier}
+                  deliveryCouriers={deliveryCouriers}
+                  courierTrackingAllowed={courierTrackingAllowed}
                   shippingFees={shippingFees}
                   customerDeliveryOption={customerInfo.deliveryOption}
                 />
@@ -930,6 +944,7 @@ export default function CreateOrder() {
                   status={status}
                   paymentStatus={paymentStatus}
                   paymentMethod={paymentMethod}
+                  courier={courier}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   onCustomerCreated={fetchCustomers}
                   onOrderCreated={() =>

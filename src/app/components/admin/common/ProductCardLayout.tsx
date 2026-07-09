@@ -21,7 +21,7 @@ const ProductCardLayout: React.FC<MobileCardProps> = ({
     <div className="border rounded-xl p-4 flex flex-col gap-3 shadow-sm">
       {/* Top row: image, title/subtitle, actions */}
       <div className="flex justify-between items-center flex-wrap">
-        <div className="flex gap-4 flex-1 items-center">
+        <div className="flex gap-4 flex-1 items-center min-w-0">
           {image && (
             <div
               className="w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0"
@@ -32,9 +32,9 @@ const ProductCardLayout: React.FC<MobileCardProps> = ({
               {image}
             </div>
           )}
-          <div className="flex flex-col justify-center">
-            {title && <h3 className="font-semibold">{title}</h3>}
-            {subtitle && <p className="text-sm">{subtitle}</p>}
+          <div className="flex flex-col justify-center min-w-0">
+            {title && <h3 className="font-semibold truncate">{title}</h3>}
+            {subtitle && <p className="text-sm truncate">{subtitle}</p>}
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 import dataService from "@/lib/queries/dataService";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
@@ -24,6 +25,7 @@ interface UpdateOrderButtonProps {
   status: OrderStatus; // ✅ Using enum
   paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
+  courier?: string;
   disabled?: boolean;
   onOrderUpdated?: () => void;
   emailError?: string;
@@ -44,11 +46,13 @@ export default function UpdateOrderButton({
   status,
   paymentStatus,
   paymentMethod,
+  courier,
   disabled = false,
   onOrderUpdated,
   emailError,
 }: UpdateOrderButtonProps) {
   const { modal, notification } = App.useApp();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const {
     currency,
@@ -159,6 +163,7 @@ export default function UpdateOrderButton({
         status: status, // ✅ Already using enum
         paymentStatus: paymentStatus, // ✅ Already using enum
         paymentMethod: paymentMethod,
+        courier: courier,
         currency: displayCurrencySafe,
         deliveryOption: customerInfo.deliveryOption || "",
         // ✅ ADDED: Shipping address object for the backend
@@ -188,6 +193,8 @@ export default function UpdateOrderButton({
         if (onOrderUpdated) {
           onOrderUpdated();
         }
+
+        router.push("/dashboard/orders");
       } else {
         console.error("❌ Order update failed:", result.error);
         throw new Error(result.error || "Failed to update order");

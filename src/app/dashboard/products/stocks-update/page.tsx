@@ -3,11 +3,21 @@ import React, { useState, useRef } from "react";
 import { Pagination } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable";
+import StockExportButton from "@/app/components/admin/dashboard/products/stock/StockExportButton";
+import StockStats from "@/app/components/admin/dashboard/products/stock/StockStats";
 import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import {
+  getProductWithStock,
+  type StockAggregateStats,
+  type StockSort,
+} from "@/lib/queries/products/getProductWithStock";
 
 const activeClass = {
   gray: "bg-gray-900  dark:bg-gray-100  text-white  dark:text-gray-900",
@@ -22,6 +32,19 @@ const inactiveClass =
 const StockPage = () => {
   const t = useTranslation();
   const n = useLocalNum();
+  const { storeId, storeSlug } = useCurrentUser();
+  const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
+  const { currency } = useUserCurrencyIcon();
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    BDT: "৳",
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    JPY: "¥",
+  };
+  const currencySymbol = currency
+    ? (CURRENCY_SYMBOLS[currency.toUpperCase()] ?? currency)
+    : "৳";
 
   const FILTER_CONFIG: { value: StockFilter; label: string; color: string }[] = [
     { value: StockFilter.ALL, label: t.admin.stockAll, color: "gray" },
@@ -46,7 +69,13 @@ const StockPage = () => {
     10,
     (v) => Number(v) || 10,
   );
+  const [stockSort, setStockSort] = useUrlSync<StockSort>(
+    "sort",
+    null,
+    (v) => (v === "asc" || v === "desc" ? v : null),
+  );
   const [totalProducts, setTotalProducts] = React.useState(0);
+  const [stats, setStats] = React.useState<StockAggregateStats | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -72,20 +101,39 @@ const StockPage = () => {
             {t.admin.stockSubtitle}
           </p>
         </div>
-        {totalProducts > 0 && (
-          <span
-            className="
-            self-start sm:self-auto
-            text-xs font-medium px-2.5 py-1 rounded-full
-            bg-gray-100 dark:bg-gray-800
-            text-gray-500 dark:text-gray-400
-            border border-gray-200 dark:border-gray-700
-          "
-          >
-            {n(totalProducts)} {t.admin.stockProducts}
-          </span>
-        )}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {totalProducts > 0 && (
+            <span
+              className="
+              text-xs font-medium px-2.5 py-1 rounded-full
+              bg-gray-100 dark:bg-gray-800
+              text-gray-500 dark:text-gray-400
+              border border-gray-200 dark:border-gray-700
+            "
+            >
+              {n(totalProducts)} {t.admin.stockProducts}
+            </span>
+          )}
+          <StockExportButton
+            storeSlug={storeSlug ?? undefined}
+            locked={!exportAllowed}
+            fetchAllProducts={async () => {
+              if (!storeSlug) return [];
+              const result = await getProductWithStock(
+                storeSlug,
+                searchText,
+                stockFilter,
+                1,
+                Number.MAX_SAFE_INTEGER,
+              );
+              return result.data;
+            }}
+          />
+        </div>
       </div>
+
+      {/* ── KPI stats ── */}
+      <StockStats stats={stats} currencySymbol={currencySymbol} />
 
       {/* ── Search + Filters ── */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -130,6 +178,15 @@ const StockPage = () => {
         <div className="hidden md:flex items-center gap-1.5 flex-wrap">
           {FILTER_CONFIG.map(({ value, label, color }) => {
             const isActive = stockFilter === value;
+            const count = stats
+              ? value === StockFilter.ALL
+                ? stats.counts.all
+                : value === StockFilter.IN
+                  ? stats.counts.in
+                  : value === StockFilter.LOW
+                    ? stats.counts.low
+                    : stats.counts.out
+              : null;
             return (
               <button
                 key={value}
@@ -141,6 +198,9 @@ const StockPage = () => {
                 `}
               >
                 {label}
+                {count !== null && (
+                  <span className={isActive ? "opacity-85" : "opacity-60"}> {n(count)}</span>
+                )}
               </button>
             );
           })}
@@ -166,7 +226,10 @@ const StockPage = () => {
         stockFilter={stockFilter}
         currentPage={currentPage}
         pageSize={pageSize}
+        stockSort={stockSort}
+        onSortChange={setStockSort}
         onTotalChange={setTotalProducts}
+        onStatsChange={setStats}
       />
 
       {/* ── Pagination ── */}

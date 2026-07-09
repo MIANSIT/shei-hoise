@@ -12,6 +12,7 @@ import {
   Pagination,
   DatePicker,
   Dropdown,
+  Popover,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
@@ -32,6 +33,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import BulkActions from "./BulkActions";
+import BulkCourierShipmentAction from "./BulkCourierShipmentAction";
 import { Check } from "lucide-react";
 // import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import InvoiceModal from "@/app/components/invoice/invoice";
@@ -40,6 +42,10 @@ import dataService from "@/lib/queries/dataService";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
+import { LockOutlined } from "@ant-design/icons";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
 
 interface Props {
@@ -122,6 +128,9 @@ const OrdersTable: React.FC<Props> = ({
     // icon: currencyIcon,
     // loading: currencyLoading,
   } = useUserCurrencyIcon();
+
+  const { storeId } = useCurrentUser();
+  const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
@@ -803,6 +812,9 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveCourier={(c) =>
+                    onUpdate(order.id, { courier: c })
+                  }
                   onSaveShippingFee={(fee) =>
                     onUpdate(order.id, {
                       shipping_fee: fee,
@@ -811,6 +823,12 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
+                  }
+                  onSavePathaoShipment={(consignmentId, orderStatus) =>
+                    onUpdate(order.id, {
+                      courier_consignment_id: consignmentId,
+                      courier_order_status: orderStatus,
+                    })
                   }
                   onRefresh={onRefresh}
                 />
@@ -853,6 +871,11 @@ const OrdersTable: React.FC<Props> = ({
                 }}
                 onClearSelection={() => setSelectedRowKeys([])}
               />
+              <BulkCourierShipmentAction
+                selectedOrders={selectedOrderObjects}
+                onSuccess={() => onRefresh?.()}
+                onClearSelection={() => setSelectedRowKeys([])}
+              />
               <Button
                 onClick={() => setSelectedRowKeys([])}
                 className="w-full sm:w-auto"
@@ -880,27 +903,40 @@ const OrdersTable: React.FC<Props> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DatePicker.RangePicker
             value={selectedRange}
             onChange={(d) => setSelectedRange(d)}
             allowClear
-            className="w-80"
+            className="w-full sm:w-80"
           />
-          <Dropdown
-            menu={{
-              items: [
-                { key: "csv", label: t.admin.orderExportAsCsv, onClick: () => handleExport("csv") },
-                { key: "xlsx", label: t.admin.orderExportAsExcel, onClick: () => handleExport("xlsx") },
-              ],
-              disabled: exportingCsv,
-            }}
-            trigger={["click"]}
-          >
-            <Button type="primary" loading={exportingCsv}>
-              {exportingCsv ? t.admin.orderExporting : t.admin.orderDownloadCsv}
-            </Button>
-          </Dropdown>
+          {exportAllowed ? (
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "csv", label: t.admin.orderExportAsCsv, onClick: () => handleExport("csv") },
+                  { key: "xlsx", label: t.admin.orderExportAsExcel, onClick: () => handleExport("xlsx") },
+                ],
+                disabled: exportingCsv,
+              }}
+              trigger={["click"]}
+            >
+              <Button type="primary" loading={exportingCsv}>
+                {exportingCsv ? t.admin.orderExporting : t.admin.orderDownloadCsv}
+              </Button>
+            </Dropdown>
+          ) : (
+            <Popover
+              content={<ExportUpsell />}
+              trigger="click"
+              placement="bottomRight"
+              styles={{ container: { padding: 12, borderRadius: 14 } }}
+            >
+              <Button icon={<LockOutlined />} className="text-gray-400 dark:text-gray-500">
+                {t.admin.orderDownloadCsv}
+              </Button>
+            </Popover>
+          )}
         </div>
       </div>
 
@@ -938,7 +974,7 @@ const OrdersTable: React.FC<Props> = ({
           expandedRowRender: (order: StoreOrder) => (
             <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {/* Show backend values at the top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
                 <div>
                   <span className="text-sm font-medium text-gray-300">
                     {t.admin.orderDeliveryOption}
@@ -969,6 +1005,14 @@ const OrdersTable: React.FC<Props> = ({
                   </span>
                   <StatusTag status={order.payment_status as PaymentStatus} />
                 </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-300">
+                    {t.admin.orderDeliveryCourierOption}
+                  </span>
+                  <div className="font-medium capitalize">
+                    {order.courier || t.admin.orderNotSet}
+                  </div>
+                </div>
               </div>
 
               {order.status !== OrderStatus.CANCELLED &&
@@ -987,6 +1031,9 @@ const OrdersTable: React.FC<Props> = ({
                   onSavePaymentMethod={(m) =>
                     onUpdate(order.id, { payment_method: m })
                   }
+                  onSaveCourier={(c) =>
+                    onUpdate(order.id, { courier: c })
+                  }
                   onSaveShippingFee={(fee) =>
                     onUpdate(order.id, {
                       shipping_fee: fee,
@@ -995,6 +1042,12 @@ const OrdersTable: React.FC<Props> = ({
                   }
                   onSaveCancelNote={(note) =>
                     onUpdate(order.id, { notes: note })
+                  }
+                  onSavePathaoShipment={(consignmentId, orderStatus) =>
+                    onUpdate(order.id, {
+                      courier_consignment_id: consignmentId,
+                      courier_order_status: orderStatus,
+                    })
                   }
                   onRefresh={onRefresh}
                 />

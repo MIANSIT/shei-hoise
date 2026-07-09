@@ -10,6 +10,7 @@ export interface UpdateOrderData {
   payment_status?: PaymentStatus;
   delivery_option?: DeliveryOption;
   payment_method?: string;
+  courier?: string;
   notes?: string;
   shipping_fee?: number;
   tax_amount?: number;
@@ -45,13 +46,11 @@ export async function updateOrder(
     }
 
     // Prepare update data with timestamp
-    const updateData = {
+    const updateData: UpdateOrderData & Record<string, any> = {
       ...updates,
       updated_at: new Date().toISOString(),
     };
 
-
-    // ✅ FIXED: Remove comments from the query string
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('orders')
       .update(updateData)
@@ -70,10 +69,26 @@ export async function updateOrder(
 
     if (updateError) {
       console.error('Error updating order:', updateError);
-      return { 
-        success: false, 
-        error: `Failed to update order: ${updateError.message}` 
+      return {
+        success: false,
+        error: `Failed to update order: ${updateError.message}`
       };
+    }
+
+    // Switching the Delivery Courier deactivates (never deletes) the
+    // previous courier's courier_tracking row — it stays in the table as a
+    // permanent historical record, just no longer the "active" one, so the
+    // shipment panel correctly shows "not shipped" for the newly selected
+    // courier instead of a stale/mismatched status. Done only after the
+    // order's own courier field write above succeeds — otherwise a failed
+    // order update could leave a real, active shipment deactivated while
+    // the order still claims to be shipped via it.
+    if (updates.courier !== undefined && updates.courier !== existingOrder.courier) {
+      await supabaseAdmin
+        .from("courier_tracking")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("order_id", orderId)
+        .eq("is_active", true);
     }
 
 

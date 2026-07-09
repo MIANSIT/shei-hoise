@@ -66,6 +66,8 @@ export interface OrderItem {
   discounted_price?: number;
   product_sku?: string;
   variant_sku?: string;
+  /** Per-unit weight in kg (variant's own weight if set, else the product's) — null if neither has one recorded. */
+  weight?: number | null;
 }
 
 // ===== SUPABASE DATABASE TYPES =====
@@ -111,6 +113,14 @@ export interface StoreOrder {
   delivery_option?: DeliveryOption;
   cancel_note?: string;
   fb_purchase_event_status?: "sent" | "held" | "suppressed" | null;
+  // Sourced from courier_tracking's active row for this order, not native
+  // columns on `orders` — see attachActiveCourierTracking.ts. The field
+  // names stay flattened here so every UI reading a StoreOrder is unaffected
+  // by where the data actually comes from.
+  courier?: string | null;
+  courier_consignment_id?: string | null;
+  courier_order_status?: string | null;
+  courier_credential_id?: string | null;
 }
 
 // ===== FORM DATA TYPES =====

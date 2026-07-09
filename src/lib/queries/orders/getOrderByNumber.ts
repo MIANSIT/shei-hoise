@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { getActiveCourierTrackingByOrderIds } from "@/lib/queries/courier/attachActiveCourierTracking";
 
 export interface OrderWithItems {
   id: string;
@@ -22,6 +23,9 @@ export interface OrderWithItems {
   billing_address: any;
   notes: string;
   delivery_option: string;
+  courier?: string | null;
+  courier_consignment_id?: string | null;
+  courier_order_status?: string | null;
   created_at: string;
   updated_at: string;
   fb_purchase_event_status?: "sent" | "held" | "suppressed";
@@ -162,6 +166,11 @@ export async function getOrderByNumber(
       };
     }
 
+    // courier_consignment_id/courier_order_status are no longer native
+    // columns on orders — sourced from this order's active courier_tracking row.
+    const trackingByOrderId = await getActiveCourierTrackingByOrderIds([order.id]);
+    const tracking = trackingByOrderId[order.id];
+
     // Combine order, customer data, customer profile, and items
     const orderWithItems: OrderWithItems = {
       ...order,
@@ -170,6 +179,9 @@ export async function getOrderByNumber(
       customer: customer,
       customer_profile: customerProfile,
       order_items: orderItems || [],
+      courier_consignment_id: tracking?.courier_consignment_id ?? null,
+      courier_order_status: tracking?.courier_order_status ?? null,
+      courier_credential_id: tracking?.courier_credential_id ?? null,
     };
 
     

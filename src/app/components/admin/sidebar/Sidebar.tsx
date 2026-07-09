@@ -63,9 +63,10 @@ export default function Sidebar({
       className="flex flex-col"
       style={{
         background: "var(--sidebar)",
+        height: "100%",
       }}
     >
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 h-full min-h-0">
         {/* Middle: Menu */}
         <SidebarMenu
           themeMode={themeMode}

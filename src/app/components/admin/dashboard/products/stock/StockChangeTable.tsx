@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getProductWithStock } from "@/lib/queries/products/getProductWithStock";
+import {
+  getProductWithStock,
+  type StockAggregateStats,
+  type StockSort,
+} from "@/lib/queries/products/getProductWithStock";
 import StockTableMobile from "./StockTableMobile";
 import StockTable from "./StockTable";
 import BulkStockUpdate from "./BulkStockUpdate";
@@ -10,10 +14,12 @@ import {
   ProductRow,
   VariantRow,
 } from "@/lib/hook/products/stock/mapProductsForTable";
-import { updateInventory } from "@/lib/queries/inventory/updateInventory";
+import {
+  updateInventory,
+  adjustInventory,
+} from "@/lib/queries/inventory/updateInventory";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import LowStockSummary from "@/app/components/admin/dashboard/products/stock/LowStockSummary";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { App } from "antd";
 import { StockFilter } from "@/lib/types/enums";
@@ -23,7 +29,10 @@ interface StockChangeTableProps {
   stockFilter: StockFilter;
   currentPage: number;
   pageSize: number;
+  stockSort?: StockSort;
   onTotalChange?: (total: number) => void;
+  onStatsChange?: (stats: StockAggregateStats) => void;
+  onSortChange?: (sort: StockSort) => void;
 }
 
 const StockChangeTable: React.FC<StockChangeTableProps> = ({
@@ -31,7 +40,10 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   stockFilter,
   currentPage,
   pageSize,
+  stockSort = null,
   onTotalChange,
+  onStatsChange,
+  onSortChange,
 }) => {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
@@ -39,7 +51,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   const [loading, setLoading] = useState(true);
   const [bulkActive, setBulkActive] = useState(false);
 
-  const { storeSlug, loading: userLoading } = useCurrentUser();
+  const { user, storeSlug, loading: userLoading } = useCurrentUser();
   const notify = useSheiNotification();
   const { modal } = App.useApp();
 
@@ -55,11 +67,13 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
           stockFilter,
           currentPage,
           pageSize,
+          stockSort,
         );
 
         const mapped: ProductRow[] = mapProductsForModernTable(result.data);
         setProducts(mapped);
         if (onTotalChange) onTotalChange(result.total);
+        if (onStatsChange) onStatsChange(result.stats);
       } catch (err) {
         console.error(err);
         notify.error("Failed to fetch products");
@@ -77,7 +91,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     stockFilter,
     currentPage,
     pageSize,
+    stockSort,
     onTotalChange,
+    onStatsChange,
   ]);
 
   const refreshProducts = async () => {
@@ -89,9 +105,11 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         stockFilter,
         currentPage,
         pageSize,
+        stockSort,
       );
       setProducts(mapProductsForModernTable(result.data));
       if (onTotalChange) onTotalChange(result.total);
+      if (onStatsChange) onStatsChange(result.stats);
     } catch (err) {
       console.error(err);
       notify.error("Failed to fetch products");
@@ -116,11 +134,31 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     if (!product) return notify.error("Product not found");
     if (quantity < 0) return notify.error("Stock cannot be negative");
 
+    // The input shows/edits the running total, but we never send that total
+    // as a blind overwrite. Instead we send the *difference* from what was
+    // last loaded, and the server applies it atomically on top of whatever
+    // the real current value is (e.g. after a sale changed it meanwhile) —
+    // so "2 in stock, type 4" is always applied as "+2", not "force to 4".
+    const currentStock = variantId
+      ? (product.variants?.find((v) => v.id === variantId)?.stock ?? 0)
+      : product.stock;
+    const delta = quantity - currentStock;
+
+    if (delta === 0) {
+      setEditedStocks((prev) => {
+        const copy = { ...prev };
+        delete copy[variantId ?? productId];
+        return copy;
+      });
+      return;
+    }
+
     try {
-      await updateInventory({
+      await adjustInventory({
         product_id: productId,
         ...(variantId ? { variant_id: variantId } : {}),
-        quantity_available: quantity,
+        delta,
+        created_by: user?.id ?? null,
       });
 
       setEditedStocks((prev) => {
@@ -133,7 +171,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       await refreshProducts();
     } catch (err) {
       console.error(err);
-      notify.error("Failed to update stock");
+      notify.error(
+        err instanceof Error ? err.message : "Failed to update stock",
+      );
     }
   };
 
@@ -144,11 +184,10 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   const bulkUpdate = async (value: number) => {
     setBulkActive(true);
 
-    // Build a flat list of { productId, variantId | null, currentStock } to update
+    // Build a flat list of { productId, variantId | null } to update
     type UpdateTarget = {
       productId: string;
       variantId: string | null;
-      currentStock: number;
     };
 
     const targets: UpdateTarget[] = [];
@@ -162,19 +201,11 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         if (product.variants?.length) {
           // Desktop path: product with variants → update all active variants
           for (const v of product.variants.filter((v) => v.isActive)) {
-            targets.push({
-              productId: product.id,
-              variantId: v.id,
-              currentStock: v.stock,
-            });
+            targets.push({ productId: product.id, variantId: v.id });
           }
         } else if (!product.isInactiveProduct) {
           // Simple product without variants
-          targets.push({
-            productId: product.id,
-            variantId: null,
-            currentStock: product.stock,
-          });
+          targets.push({ productId: product.id, variantId: null });
         }
         continue;
       }
@@ -183,11 +214,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       for (const p of products) {
         const variant = p.variants?.find((v) => v.id === keyStr);
         if (variant && variant.isActive) {
-          targets.push({
-            productId: p.id,
-            variantId: variant.id,
-            currentStock: variant.stock,
-          });
+          targets.push({ productId: p.id, variantId: variant.id });
           break;
         }
       }
@@ -202,16 +229,40 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       return true;
     });
 
-    for (const { productId, variantId, currentStock } of uniqueTargets) {
+    // Each target is written atomically server-side (row-locked +/- for
+    // adjustments, row-locked absolute set for "set to 0") — no client-side
+    // "read current, compute new, overwrite" step, so this is race-safe even
+    // if stock is changing concurrently (e.g. a sale coming through).
+    let failures = 0;
+    for (const { productId, variantId } of uniqueTargets) {
       try {
-        await updateInventory({
-          product_id: productId,
-          ...(variantId ? { variant_id: variantId } : {}),
-          quantity_available: value === 0 ? 0 : currentStock + value,
-        });
+        if (value === 0) {
+          await updateInventory({
+            product_id: productId,
+            ...(variantId ? { variant_id: variantId } : {}),
+            quantity_available: 0,
+            reason: "bulk_set_zero",
+            created_by: user?.id ?? null,
+          });
+        } else {
+          await adjustInventory({
+            product_id: productId,
+            ...(variantId ? { variant_id: variantId } : {}),
+            delta: value,
+            reason: "bulk_adjustment",
+            created_by: user?.id ?? null,
+          });
+        }
       } catch (err) {
+        failures++;
         console.error(`Failed to update ${productId}/${variantId}:`, err);
       }
+    }
+
+    if (failures > 0) {
+      notify.error(
+        `${failures} item${failures !== 1 ? "s" : ""} failed to update (e.g. insufficient stock).`,
+      );
     }
 
     setEditedStocks({});
@@ -277,7 +328,6 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-muted-foreground">No products found.</p>
       ) : (
         <>
-          <LowStockSummary products={products} />
           <BulkStockUpdate
             selectedCount={selectedRowKeys.length}
             onUpdate={handleBulkUpdate}
@@ -303,6 +353,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               rowSelection={rowSelection}
               loading={loading}
               bulkActive={bulkActive}
+              stockSort={stockSort}
+              onSortChange={onSortChange}
             />
           </div>
         </>

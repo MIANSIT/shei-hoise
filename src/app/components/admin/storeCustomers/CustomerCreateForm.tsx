@@ -268,7 +268,7 @@ export default function CustomerCreateForm({
               size="large"
               loading={loading}
               block={compact}
-              style={!compact ? { width: "200px" } : {}}
+              className={!compact ? "w-full sm:w-50" : undefined}
             >
               {buttonText ?? t.admin.customerCreateBtn}
             </Button>

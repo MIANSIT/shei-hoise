@@ -81,7 +81,7 @@ function DataTable<T extends object>({
         size={size}
         expandable={expandable}
         rowClassName={rowClassName}
-        scroll={scroll}
+        scroll={scroll ?? { x: "max-content" }}
       />
     </div>
   );

@@ -33,7 +33,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-8 gap-2">
+      <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
         {COLOR_PALETTE.map(({ hex, label }) => {
           const isSelected = selected === hex;
           return (

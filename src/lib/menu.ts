@@ -19,6 +19,7 @@ import {
   BarChart2,
   TrendingUp,
   BadgeCheck,
+  PackageCheck,
 } from "lucide-react";
 import React from "react";
 
@@ -113,6 +114,16 @@ export const sideMenu: MenuItem[] = [
     children: [
       { title: "Expense", href: "/dashboard/expense", icon: CreditCard },
       { title: "Category", href: "/dashboard/expense/category", icon: BarChart2 },
+    ],
+  },
+  {
+    // Children are entirely DB-driven (Pathao, Steadfast, and any custom
+    // couriers) — see SidebarMenu.tsx, which builds them from
+    // getDeliveryCouriers() rather than hardcoding courier names here.
+    title: "Courier",
+    icon: PackageCheck,
+    children: [
+      { title: "Delivery Courier", href: "/dashboard/courier/manage", icon: PackageCheck },
     ],
   },
   {

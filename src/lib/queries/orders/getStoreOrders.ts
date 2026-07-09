@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { StoreOrder as StoreOrderType } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { getActiveCourierTrackingByOrderIds } from "@/lib/queries/courier/attachActiveCourierTracking";
 
 export interface GetStoreOrdersOptions {
   storeId: string;
@@ -40,11 +41,13 @@ export async function getStoreOrders(
           *,
           products (
             id,
-            sku
+            sku,
+            weight
           ),
           product_variants (
             id,
-            sku
+            sku,
+            weight
           )
         ),
         store_customers!customer_id (
@@ -83,6 +86,13 @@ export async function getStoreOrders(
 
     if (totalError) throw totalError;
 
+    // courier_consignment_id/courier_order_status/courier_credential_id are no
+    // longer native columns on orders — sourced from each order's active
+    // courier_tracking row instead (service-role only, hence the server action).
+    const trackingByOrderId = await getActiveCourierTrackingByOrderIds(
+      (orders || []).map((o) => o.id),
+    );
+
     // Transform orders for frontend
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const transformedOrders: StoreOrder[] = (orders || []).map((order: any) => {
@@ -114,12 +124,26 @@ export async function getStoreOrders(
           ? item.product_variants[0]?.sku || ""
           : item.product_variants?.sku || "";
 
+        // Per-unit weight (kg) — variant's own weight wins when the line has
+        // one, since a variant (e.g. a specific size) can weigh differently
+        // than the base product record.
+        const productWeight = Array.isArray(item.products)
+          ? item.products[0]?.weight
+          : item.products?.weight;
+        const variantWeight = Array.isArray(item.product_variants)
+          ? item.product_variants[0]?.weight
+          : item.product_variants?.weight;
+        const weight = variantWeight ?? productWeight ?? null;
+
         return {
           ...item,
           product_sku: productSku,
           variant_sku: variantSku,
+          weight,
         };
       });
+
+      const tracking = trackingByOrderId[order.id];
 
       return {
         ...order,
@@ -133,6 +157,9 @@ export async function getStoreOrders(
         },
         billing_address: order.billing_address || null,
         order_items: orderItems,
+        courier_consignment_id: tracking?.courier_consignment_id ?? null,
+        courier_order_status: tracking?.courier_order_status ?? null,
+        courier_credential_id: tracking?.courier_credential_id ?? null,
       };
     });
 
