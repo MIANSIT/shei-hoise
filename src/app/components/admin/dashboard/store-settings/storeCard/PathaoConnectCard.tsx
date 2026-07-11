@@ -32,6 +32,7 @@ import { disconnectCourierAccount } from "@/lib/queries/courier/disconnectCourie
 import { connectPathaoAccount } from "@/lib/queries/pathao/connectPathao";
 import { selectPathaoStore } from "@/lib/queries/pathao/selectPathaoStore";
 import { createPathaoStore } from "@/lib/queries/pathao/createPathaoStore";
+import { getPathaoExistingStores } from "@/lib/queries/pathao/getPathaoExistingStores";
 import { checkPathaoStoreApproval } from "@/lib/queries/pathao/checkPathaoStoreApproval";
 import { getPathaoWebhookConfig } from "@/lib/queries/pathao/getPathaoWebhookConfig";
 import {
@@ -61,6 +62,8 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const [step, setStep] = useState<WizardStep>("credentials");
   const [submitting, setSubmitting] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [disconnectTarget, setDisconnectTarget] = useState<CourierAccountStatus | null>(null);
+  const [resumingId, setResumingId] = useState<string | null>(null);
 
   // Webhook setup dialog — shows the callback URL + secret for one connected account
   const [webhookModalOpen, setWebhookModalOpen] = useState(false);
@@ -96,6 +99,16 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [pendingStoreName, setPendingStoreName] = useState<string | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
+
+  // Pathao stores already linked to a different connected account here —
+  // picking one again would 409 server-side (selectPathaoStore's duplicate
+  // check), so disable it up front instead of letting them click through
+  // to a rejection.
+  const connectedStoreIds = new Set(
+    accounts
+      .filter((a) => a.connected && a.pathaoStoreId != null && a.id !== credentialId)
+      .map((a) => a.pathaoStoreId),
+  );
 
   const refreshAccounts = () => {
     setLoadingAccounts(true);
@@ -137,6 +150,22 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
     setModalOpen(true);
   };
 
+  // Shared by a fresh login (handleConnect) and resuming a saved-but-unfinished
+  // one (handleResumeSetup) — both end up needing the same "does this Pathao
+  // account already have stores?" branch once a credentialId is in hand.
+  const proceedToStoreStep = async (credId: string, existingStores: PathaoStore[]) => {
+    setCredentialId(credId);
+    if (existingStores.length > 0) {
+      setExistingStores(existingStores);
+      setStep("select-store");
+    } else {
+      const cityResult = await getPathaoCities(credId);
+      if (cityResult.success) setCities(cityResult.data);
+      setStep("create-store");
+    }
+    setModalOpen(true);
+  };
+
   const handleConnect = async () => {
     setSubmitting(true);
     try {
@@ -153,21 +182,28 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
         return;
       }
 
-      setCredentialId(result.credentialId);
-
-      if (result.existingStores && result.existingStores.length > 0) {
-        setExistingStores(result.existingStores);
-        setStep("select-store");
-      } else {
-        const cityResult = await getPathaoCities(result.credentialId);
-        if (cityResult.success) setCities(cityResult.data);
-        setStep("create-store");
-      }
+      await proceedToStoreStep(result.credentialId, result.existingStores ?? []);
     } catch (err) {
       console.error(err);
       notify.error(t.admin.pathaoConnectFailed);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleResumeSetup = async (account: CourierAccountStatus) => {
+    setResumingId(account.id);
+    try {
+      const result = await getPathaoExistingStores(account.id);
+      if (!result.success) {
+        notify.error(result.error ?? t.admin.pathaoConnectFailed);
+        return;
+      }
+
+      resetWizard();
+      await proceedToStoreStep(account.id, result.stores);
+    } finally {
+      setResumingId(null);
     }
   };
 
@@ -302,6 +338,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
       refreshAccounts();
     } finally {
       setDisconnectingId(null);
+      setDisconnectTarget(null);
     }
   };
 
@@ -353,7 +390,7 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
                   <span className="text-xs text-muted-foreground truncate shrink-0 max-w-[40%]">
                     {account.connected
                       ? account.pathaoStoreName
-                      : t.admin.pathaoStillPending}
+                      : t.admin.pathaoSetupIncomplete}
                   </span>
                 </div>
 
@@ -369,10 +406,23 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
                       {t.admin.pathaoWebhookBtn}
                     </Button>
                   )}
+                  {!account.connected && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResumeSetup(account)}
+                      disabled={resumingId === account.id}
+                      className="flex-1"
+                    >
+                      {resumingId === account.id
+                        ? t.admin.pathaoChecking
+                        : t.admin.pathaoResumeSetup}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDisconnect(account.id)}
+                    onClick={() => setDisconnectTarget(account)}
                     disabled={disconnectingId === account.id}
                     className="flex-1"
                   >
@@ -450,25 +500,48 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
             <div className="space-y-3.5">
               <p className="text-xs text-muted-foreground">{t.admin.pathaoSelectStoreHint}</p>
               <RadioGroup value={selectedStoreId} onValueChange={setSelectedStoreId}>
-                {existingStores.map((s) => (
-                  <div
-                    key={s.store_id}
-                    className="flex items-center gap-2.5 border border-border rounded-lg px-3 py-2.5"
-                  >
-                    <RadioGroupItem value={String(s.store_id)} id={`store-${s.store_id}`} />
-                    <Label htmlFor={`store-${s.store_id}`} className="flex-1 cursor-pointer">
-                      <span className="block text-sm font-medium">{s.store_name}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {s.store_address}
-                      </span>
-                    </Label>
-                  </div>
-                ))}
+                {existingStores.map((s) => {
+                  const alreadyConnected = connectedStoreIds.has(s.store_id);
+                  return (
+                    <div
+                      key={s.store_id}
+                      className={`flex items-center gap-2.5 border border-border rounded-lg px-3 py-2.5 ${
+                        alreadyConnected ? "opacity-50" : ""
+                      }`}
+                    >
+                      <RadioGroupItem
+                        value={String(s.store_id)}
+                        id={`store-${s.store_id}`}
+                        disabled={alreadyConnected}
+                      />
+                      <Label
+                        htmlFor={`store-${s.store_id}`}
+                        className={`flex-1 ${alreadyConnected ? "cursor-not-allowed" : "cursor-pointer"}`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium">{s.store_name}</span>
+                          {alreadyConnected && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                              {t.admin.pathaoStoreAlreadyConnected}
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {s.store_address}
+                        </span>
+                      </Label>
+                    </div>
+                  );
+                })}
               </RadioGroup>
               <DialogFooter>
                 <Button
                   onClick={handleUseExistingStore}
-                  disabled={submitting || !selectedStoreId}
+                  disabled={
+                    submitting ||
+                    !selectedStoreId ||
+                    connectedStoreIds.has(Number(selectedStoreId))
+                  }
                 >
                   {t.admin.pathaoUseThisStore}
                 </Button>
@@ -633,6 +706,39 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
               </div>
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!disconnectTarget}
+        onOpenChange={(open) => !open && setDisconnectTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t.admin.courierDisconnectConfirmTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t.admin.courierDisconnectConfirmBody.replace(
+              "{label}",
+              disconnectTarget?.label ?? "",
+            )}
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDisconnectTarget(null)}
+              disabled={!!disconnectingId}
+            >
+              {t.admin.courierDisconnectCancelBtn}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => disconnectTarget && handleDisconnect(disconnectTarget.id)}
+              disabled={!!disconnectingId}
+            >
+              {t.admin.courierDisconnectConfirmBtn}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

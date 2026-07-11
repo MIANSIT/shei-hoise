@@ -13,6 +13,25 @@ export async function selectPathaoStore(
     return { success: false, error: storeResult.error };
   }
 
+  // Same Pathao store already linked under a different connected account here
+  // — picking it again would just create two credentials pointing at the same
+  // pickup location, which only confuses "Ship from" selection later.
+  const { data: duplicate } = await supabaseAdmin
+    .from("store_courier_credentials")
+    .select("id")
+    .eq("store_id", storeResult.storeId)
+    .eq("courier", "pathao")
+    .eq("pathao_store_id", pathaoStoreId)
+    .neq("id", credentialId)
+    .maybeSingle();
+
+  if (duplicate) {
+    return {
+      success: false,
+      error: "This Pathao store is already connected under another account here.",
+    };
+  }
+
   const { error } = await supabaseAdmin
     .from("store_courier_credentials")
     .update({
