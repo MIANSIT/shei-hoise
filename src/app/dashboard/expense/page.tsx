@@ -97,9 +97,14 @@ export default function ExpensesPage() {
   }, []);
 
   // ── Fetch expenses ──
-  const fetchExpenses = useCallback(async () => {
+  // `silent` skips the loading flag entirely — used to refresh the list
+  // after a create/edit/delete already succeeded. Without it, the Table's
+  // `loading` prop flips on for this background refetch and its overlay
+  // blocks clicks on the rest of the table for that window, which is what
+  // made an immediate second delete look like it silently did nothing.
+  const fetchExpenses = useCallback(async (opts?: { silent?: boolean }) => {
     if (!storeId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const params: ExpenseQueryParams = {
         storeId,
@@ -118,7 +123,7 @@ export default function ExpensesPage() {
       console.error("[ExpensesPage] fetchExpenses failed:", err);
       error(t.admin.expenseLoadFailed);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [
     storeId,
@@ -259,7 +264,7 @@ export default function ExpensesPage() {
           if (created) {
             success(t.admin.expenseAddedOk);
             closeModal();
-            fetchExpenses();
+            fetchExpenses({ silent: true });
           } else {
             error(t.admin.expenseAddFailed);
           }
@@ -280,7 +285,7 @@ export default function ExpensesPage() {
           if (updated) {
             success(t.admin.expenseUpdatedOk);
             closeModal();
-            fetchExpenses();
+            fetchExpenses({ silent: true });
           } else {
             error(t.admin.expenseUpdateFailed);
           }
@@ -305,12 +310,13 @@ export default function ExpensesPage() {
 
   const handleDelete = useCallback(
     async (id: string) => {
+      if (!storeId) return;
       setDeletingId(id);
       try {
-        const deleted = await deleteExpense(id);
+        const deleted = await deleteExpense(id, storeId);
         if (deleted) {
           success(t.admin.expenseDeletedOk);
-          fetchExpenses();
+          fetchExpenses({ silent: true });
         } else {
           error(t.admin.expenseDeleteFailed2);
         }
@@ -321,7 +327,7 @@ export default function ExpensesPage() {
         setDeletingId(null);
       }
     },
-    [success, error, fetchExpenses],
+    [storeId, success, error, fetchExpenses],
   );
 
   if (userLoading || subLoading) {

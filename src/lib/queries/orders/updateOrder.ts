@@ -83,7 +83,19 @@ export async function updateOrder(
     // order's own courier field write above succeeds — otherwise a failed
     // order update could leave a real, active shipment deactivated while
     // the order still claims to be shipped via it.
-    if (updates.courier !== undefined && updates.courier !== existingOrder.courier) {
+    //
+    // Cancelling the order deactivates it too, even without touching the
+    // courier field — once the order is cancelled (or delivered), the
+    // courier picker locks (see isCourierLocked), so a courier change can
+    // never happen afterward to trigger this; without this check the
+    // shipment would stay "active" forever on a cancelled order.
+    const courierChanged = updates.courier !== undefined && updates.courier !== existingOrder.courier;
+    const justCancelled =
+      updates.status !== undefined &&
+      updates.status !== existingOrder.status &&
+      updates.status === OrderStatus.CANCELLED;
+
+    if (courierChanged || justCancelled) {
       await supabaseAdmin
         .from("courier_tracking")
         .update({ is_active: false, updated_at: new Date().toISOString() })

@@ -94,6 +94,21 @@ export async function bulkUpdateOrders(
     if (payment_method) updatePayload.payment_method = payment_method;
     if (notes) updatePayload.notes = notes;
 
+    // Capture each order's status BEFORE overwriting it — needed to work out
+    // which orders are actually changing status (and from what), so a mixed
+    // batch that includes already-cancelled/already-delivered orders doesn't
+    // get their stock reversed/deducted a second time.
+    let previousStatusByOrderId: Record<string, string> = {};
+    if (status) {
+      const { data: existingOrders } = await supabaseAdmin
+        .from("orders")
+        .select("id, status")
+        .in("id", updateData.orderIds);
+
+      previousStatusByOrderId = Object.fromEntries(
+        (existingOrders || []).map((o) => [o.id, o.status])
+      );
+    }
 
     // Perform bulk update
     const {
@@ -120,9 +135,32 @@ export async function bulkUpdateOrders(
     const updatedCount = updatedOrders?.length || 0;
 
 
-    // Handle inventory updates for status changes if needed
+    // Handle inventory updates for status changes if needed — only for
+    // orders whose status is actually changing, not ones already sitting in
+    // the target status.
     if (status) {
-      await handleBulkInventoryUpdates(updateData.orderIds, status);
+      const changedOrderIds = updateData.orderIds.filter(
+        (id) => previousStatusByOrderId[id] !== status
+      );
+      if (changedOrderIds.length > 0) {
+        await handleBulkInventoryUpdates(changedOrderIds, status);
+
+        // Same reasoning as the single-order update paths: cancelling
+        // deactivates any still-active shipment, since the courier picker
+        // locks once cancelled/delivered and there's no other way to
+        // trigger this afterward.
+        if (status === "cancelled") {
+          const { error: shipmentError } = await supabaseAdmin
+            .from("courier_tracking")
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .in("order_id", changedOrderIds)
+            .eq("is_active", true);
+
+          if (shipmentError) {
+            console.error("Error deactivating shipments in bulk cancel:", shipmentError);
+          }
+        }
+      }
     }
 
     return {

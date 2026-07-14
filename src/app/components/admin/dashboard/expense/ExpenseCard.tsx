@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Drawer, Button, Popconfirm, Spin } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Drawer, Button, Spin, App } from "antd";
+import { EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { Receipt, Store, Calendar } from "lucide-react";
 import dayjs from "dayjs";
 import type { Expense } from "@/lib/types/expense/type";
@@ -28,6 +28,22 @@ export function ExpenseCard({
 }: ExpenseCardProps) {
   const color = record.category ? getCategoryColor(record.category) : "#6366f1";
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { modal } = App.useApp();
+
+  const confirmDelete = () => {
+    modal.confirm({
+      title: "Delete expense?",
+      icon: <ExclamationCircleOutlined />,
+      content: "This action cannot be undone.",
+      okText: "Delete",
+      cancelText: "Cancel",
+      okButtonProps: { danger: true },
+      onOk: () => {
+        onDelete(record.id);
+        setDrawerOpen(false);
+      },
+    });
+  };
 
   return (
     <>
@@ -143,32 +159,21 @@ export function ExpenseCard({
           >
             Edit
           </Button>
-          <Popconfirm
-            title="Delete expense?"
-            description="This action cannot be undone."
-            onConfirm={() => {
-              onDelete(record.id);
-              setDrawerOpen(false);
-            }}
-            okText="Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
+          <Button
+            block
+            danger
+            onClick={confirmDelete}
+            icon={
+              deletingId === record.id ? (
+                <Spin size="small" />
+              ) : (
+                <DeleteOutlined />
+              )
+            }
+            className="rounded-xl h-10 font-semibold"
           >
-            <Button
-              block
-              danger
-              icon={
-                deletingId === record.id ? (
-                  <Spin size="small" />
-                ) : (
-                  <DeleteOutlined />
-                )
-              }
-              className="rounded-xl h-10 font-semibold"
-            >
-              Delete
-            </Button>
-          </Popconfirm>
+            Delete
+          </Button>
         </div>
       </Drawer>
     </>

@@ -36,6 +36,7 @@ export function SteadfastConnectCard({ storeId }: SteadfastConnectCardProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [disconnectTarget, setDisconnectTarget] = useState<CourierAccountStatus | null>(null);
 
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -94,6 +95,7 @@ export function SteadfastConnectCard({ storeId }: SteadfastConnectCardProps) {
       refreshAccounts();
     } finally {
       setDisconnectingId(null);
+      setDisconnectTarget(null);
     }
   };
 
@@ -136,7 +138,7 @@ export function SteadfastConnectCard({ storeId }: SteadfastConnectCardProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDisconnect(account.id)}
+                  onClick={() => setDisconnectTarget(account)}
                   disabled={disconnectingId === account.id}
                   className="w-full"
                 >
@@ -184,6 +186,39 @@ export function SteadfastConnectCard({ storeId }: SteadfastConnectCardProps) {
               disabled={submitting || !label.trim() || !apiKey.trim() || !secretKey.trim()}
             >
               {submitting ? t.admin.steadfastConnecting : t.admin.steadfastConnectBtn}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!disconnectTarget}
+        onOpenChange={(open) => !open && setDisconnectTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t.admin.courierDisconnectConfirmTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t.admin.courierDisconnectConfirmBody.replace(
+              "{label}",
+              disconnectTarget?.label ?? "",
+            )}
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDisconnectTarget(null)}
+              disabled={!!disconnectingId}
+            >
+              {t.admin.courierDisconnectCancelBtn}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => disconnectTarget && handleDisconnect(disconnectTarget.id)}
+              disabled={!!disconnectingId}
+            >
+              {t.admin.courierDisconnectConfirmBtn}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Drawer, Popconfirm, Spin } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button, Drawer, Spin, App } from "antd";
+import { EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import type { Expense } from "@/lib/types/expense/type";
 import { ExpenseDetailContent } from "./ExpenseDetailContent";
 // import { ReceiptText } from "lucide-react";
@@ -28,7 +28,24 @@ export function ExpenseDetailDrawer({
   onDelete,
   deletingId,
 }: ExpenseDetailDrawerProps) {
+  const { modal } = App.useApp();
+
   if (!expense) return null;
+
+  const confirmDelete = () => {
+    modal.confirm({
+      title: "Delete expense?",
+      icon: <ExclamationCircleOutlined />,
+      content: "This action cannot be undone.",
+      okText: "Delete",
+      cancelText: "Cancel",
+      okButtonProps: { danger: true },
+      onOk: () => {
+        onDelete(expense.id);
+        onClose();
+      },
+    });
+  };
 
   return (
     <Drawer
@@ -68,23 +85,15 @@ export function ExpenseDetailDrawer({
         >
           Edit
         </Button>
-        <Popconfirm
-          title="Delete expense?"
-          description="This action cannot be undone."
-          onConfirm={() => { onDelete(expense.id); onClose(); }}
-          okText="Delete"
-          cancelText="Cancel"
-          okButtonProps={{ danger: true }}
+        <Button
+          block
+          danger
+          onClick={confirmDelete}
+          icon={deletingId === expense.id ? <Spin size="small" /> : <DeleteOutlined />}
+          className="rounded-xl h-9 font-semibold"
         >
-          <Button
-            block
-            danger
-            icon={deletingId === expense.id ? <Spin size="small" /> : <DeleteOutlined />}
-            className="rounded-xl h-9 font-semibold"
-          >
-            Delete
-          </Button>
-        </Popconfirm>
+          Delete
+        </Button>
       </div>
     </Drawer>
   );

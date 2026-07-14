@@ -20,6 +20,7 @@ import {
   TrendingUp,
   BadgeCheck,
   PackageCheck,
+  Warehouse,
 } from "lucide-react";
 import React from "react";
 
@@ -84,6 +85,23 @@ export const sideMenu: MenuItem[] = [
         title: "Generate Order Link",
         href: "/generate-orders-link",
         icon: Link2,
+      },
+    ],
+  },
+  {
+    title: "Vendors",
+    icon: Warehouse,
+    children: [
+      { title: "All Vendors", href: "/dashboard/vendors", icon: User },
+      {
+        title: "New Vendor Order",
+        href: "/dashboard/vendor-orders/create",
+        icon: PlusCircle,
+      },
+      {
+        title: "All Vendor Orders",
+        href: "/dashboard/vendor-orders",
+        icon: Clipboard,
       },
     ],
   },

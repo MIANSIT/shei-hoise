@@ -43,7 +43,55 @@ function formatAmount(amount: number, currency: string): string {
   return `${currency.trim()} ${Number(amount).toLocaleString("en-BD", { minimumFractionDigits: 2 })}`;
 }
 
+// Truncates to local midnight so period boundaries compare by calendar day,
+// not exact instant — period_start/end are stored at UTC midnight while
+// current_period_start is the exact wall-clock time a payment was approved,
+// so the same displayed day can differ by a couple of hours as raw instants.
+function startOfLocalDay(iso: string): number {
+  const d = new Date(iso);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
 const PAYABLE_STATUSES = new Set(["unpaid", "overdue"]);
+
+const NEEDS_ATTENTION_STATUSES = new Set(["unpaid", "overdue", "submitted"]);
+
+function selectLatestInvoice(
+  invoices: SubscriptionInvoice[],
+  sub: StoreSubscription,
+): SubscriptionInvoice | null {
+  const serviceSecured =
+    sub.status === "active" || sub.status === "trialing";
+
+  // A historical catch-up bill: service is already secured for the current
+  // period, and this invoice's period ended on/before the current period
+  // began, so it can't be the thing keeping (or threatening) current access.
+  // Strict `<=` on calendar day because a period ending the same day the
+  // current one starts is the prior, already-superseded period (billing
+  // periods are contiguous).
+  const isHistorical = (inv: SubscriptionInvoice): boolean => {
+    if (!serviceSecured) return false;
+    if (!inv.period_end || !sub.current_period_start) return false;
+    return startOfLocalDay(inv.period_end) <= startOfLocalDay(sub.current_period_start);
+  };
+
+  const outstanding = invoices.filter(
+    (inv) => NEEDS_ATTENTION_STATUSES.has(inv.status) && !isHistorical(inv),
+  );
+
+  if (outstanding.length > 0) {
+    return outstanding.reduce((oldest, inv) => {
+      if (!inv.due_date) return oldest;
+      if (!oldest.due_date) return inv;
+      return inv.due_date < oldest.due_date ? inv : oldest;
+    });
+  }
+
+  // Nothing currently relevant needs attention — fall back to the most
+  // recently created invoice, but skip historical catch-up bills so one
+  // created after the current period's invoice doesn't reclaim the slot.
+  return invoices.find((inv) => !isHistorical(inv)) ?? invoices[0] ?? null;
+}
 
 const SUBSCRIPTION_STATUS_STYLES: Record<
   string,
@@ -639,7 +687,7 @@ export default function SubscriptionPage() {
       {subscription ? (
         <SubscriptionCard
           sub={subscription}
-          latestInvoice={invoices[0] ?? null}
+          latestInvoice={selectLatestInvoice(invoices, subscription)}
           store={storeInfo}
           canPay={canPay}
           onPay={goToPayPage}

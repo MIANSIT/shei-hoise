@@ -126,8 +126,12 @@ export async function updateOrderByNumber(
 
     // Switching the Delivery Courier deactivates (never deletes) the
     // previous courier's courier_tracking row — see updateOrder.ts for the
-    // same logic on the inline-editor save path.
+    // same logic on the inline-editor save path. Cancelling the order does
+    // the same thing even if the courier field itself isn't touched —
+    // otherwise the shipment sits "active" forever once cancelled/delivered
+    // locks the courier picker and there's no other way to trigger this.
     const courierChanged = courier !== undefined && (courier || null) !== (existingOrder.courier || null);
+    const justCancelled = status !== existingOrder.status && status === OrderStatus.CANCELLED;
 
     // Update the order with COMPLETE shipping address
     const updateOrderData = {
@@ -142,6 +146,7 @@ export async function updateOrderByNumber(
       payment_method: paymentMethod,
       delivery_option: deliveryOption,
       courier: courier || null,
+      customer_id: customerInfo.customer_id || null,
       shipping_address: shippingAddressUpdate,
       billing_address: shippingAddressUpdate,
       notes: customerInfo.notes,
@@ -177,7 +182,30 @@ export async function updateOrderByNumber(
       };
     }
 
-    if (courierChanged) {
+    // Keep the customer's own record in sync with whatever name/phone/email
+    // was just saved on this order — otherwise a corrected typo only ever
+    // shows up on this one order while the customer list, their other
+    // orders, etc. keep showing the old (wrong) value forever. Address/city
+    // deliberately stay order-only: a single delivery can legitimately go
+    // somewhere other than the customer's saved default address, and that
+    // shouldn't overwrite their profile. Never fails the order update itself.
+    if (customerInfo.customer_id) {
+      const { error: customerSyncError } = await supabaseAdmin
+        .from("store_customers")
+        .update({
+          name: customerInfo.name || undefined,
+          phone: customerInfo.phone || undefined,
+          email: customerInfo.email || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customerInfo.customer_id);
+
+      if (customerSyncError) {
+        console.error("Error syncing customer record:", customerSyncError);
+      }
+    }
+
+    if (courierChanged || justCancelled) {
       await supabaseAdmin
         .from("courier_tracking")
         .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -458,9 +486,12 @@ async function handleStatusChangeInventory(
 ): Promise<void> {
   try {
 
-    // From pending/confirmed to cancelled - return stock
+    // Any non-cancelled status (pending, confirmed, shipped, or even delivered —
+    // a delivered-then-returned order) moving to cancelled returns stock.
+    // returnReservedStockToAvailable clamps quantity_reserved at 0, so it's
+    // safe to call regardless of which status this came from.
     if (
-      (oldStatus === OrderStatus.PENDING || oldStatus === OrderStatus.CONFIRMED) &&
+      oldStatus !== OrderStatus.CANCELLED &&
       newStatus === OrderStatus.CANCELLED
     ) {
       await returnReservedStockToAvailable(orderItems);
