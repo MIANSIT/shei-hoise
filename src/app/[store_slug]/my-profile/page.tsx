@@ -59,6 +59,7 @@ export default function UserProfilePage() {
           {
             name: formData.name,
             phone: formData.phone,
+            email: formData.email,
           },
           {
             date_of_birth: formData.date_of_birth,
@@ -76,6 +77,7 @@ export default function UserProfilePage() {
         ...currentUser,
         name: formData.name,
         phone: formData.phone,
+        email: formData.email,
         profile: profileUpdate
           ? {
               ...currentUser.profile,

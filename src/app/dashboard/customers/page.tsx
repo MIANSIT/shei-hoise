@@ -105,6 +105,7 @@ export default function CustomerPage() {
         {
           name: data.name,
           phone: data.phone,
+          email: data.email,
         },
         {
           date_of_birth: data.date_of_birth,

@@ -11,6 +11,11 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { getDeliveryCouriers } from "@/lib/queries/deliveryCouriers/getDeliveryCouriers";
 import type { DeliveryCourier } from "@/lib/types/store/store";
+import {
+  getStoreSubscription,
+  type StoreSubscription,
+} from "@/lib/queries/subscription/getStoreSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
 
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
@@ -84,10 +89,12 @@ export default function SidebarMenu({
   const { storeId } = useCurrentUser();
 
   const [couriers, setCouriers] = useState<DeliveryCourier[]>([]);
+  const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
 
   useEffect(() => {
     if (!storeId) return;
     getDeliveryCouriers(storeId).then(setCouriers);
+    getStoreSubscription(storeId).then(setSubscription);
   }, [storeId]);
 
   const courierHref = (courier: DeliveryCourier): string => {
@@ -98,26 +105,30 @@ export default function SidebarMenu({
 
   // Same static sideMenu, except the "Courier" node's Pathao/Steadfast/custom
   // children are DB-driven — no courier name is hardcoded here, only the
-  // fixed "Delivery Courier" management link stays static. The nav item
-  // itself always shows regardless of plan, same as Pixel Analytics/Financial
-  // — entitlement is enforced by each page (FeatureLocked), not by hiding
-  // the link.
+  // fixed "Delivery Courier" management link stays static. Most gated
+  // features (Pixel Analytics, Financial, Courier) keep their nav link
+  // visible regardless of plan — entitlement is enforced by each page
+  // (FeatureLocked), not by hiding the link. "Vendors" is the one exception:
+  // items with requiredFeature set are filtered out of the sidebar entirely
+  // when the store's plan doesn't include that feature.
   const resolvedMenu = useMemo<MenuItem[]>(() => {
-    return sideMenu.map((item) => {
-      if (item.title !== "Courier" || !item.children) return item;
-      return {
-        ...item,
-        children: [
-          ...couriers.map((courier) => ({
-            title: courier.name,
-            href: courierHref(courier),
-            icon: Truck,
-          })),
-          ...item.children,
-        ],
-      };
-    });
-  }, [couriers]);
+    return sideMenu
+      .filter((item) => !item.requiredFeature || hasFeature(subscription, item.requiredFeature))
+      .map((item) => {
+        if (item.title !== "Courier" || !item.children) return item;
+        return {
+          ...item,
+          children: [
+            ...couriers.map((courier) => ({
+              title: courier.name,
+              href: courierHref(courier),
+              icon: Truck,
+            })),
+            ...item.children,
+          ],
+        };
+      });
+  }, [couriers, subscription]);
 
   const translateTitle = (title: string): string => {
     const map: Record<string, string> = {

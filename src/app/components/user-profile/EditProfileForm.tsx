@@ -22,7 +22,10 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string(),
-  email: z.string().email("Invalid email address"),
+  // Customers can exist without an email (see CustomerCreateForm), and this
+  // field is rendered disabled/read-only below — so an empty value here just
+  // means "this customer has no email," not an invalid submission.
+  email: z.union([z.literal(""), z.string().email("Invalid email address")]),
   date_of_birth: z.string(),
   gender: z.string(),
   address: z.string(),
@@ -145,11 +148,12 @@ export function EditProfileForm({
                   type="email"
                   {...register("email")}
                   placeholder={t.admin.myProfileEmailPlaceholder}
-                  disabled
                 />
-                <div className="text-xs text-gray-500">
-                  {t.admin.myProfileEmailCannotChange}
-                </div>
+                {errors.email && (
+                  <div className="text-sm text-red-600">
+                    {errors.email.message}
+                  </div>
+                )}
               </div>
             </div>
 
