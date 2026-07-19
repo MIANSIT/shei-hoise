@@ -16,8 +16,10 @@ import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboard
 import { getVendorLedger } from "@/lib/queries/vendor/getVendorLedger";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
 import { recordVendorSettlement } from "@/lib/queries/vendorSettlement/recordVendorSettlement";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import VendorSettlementModal from "@/app/components/admin/dashboard/vendors/VendorSettlementModal";
 import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorStatCard";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import type {
   Vendor,
   VendorStockRow,
@@ -64,6 +66,7 @@ export default function VendorDetailPage() {
   const vendorId = params.id as string;
   const router = useRouter();
   const { storeId, user } = useCurrentUser();
+  const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const { icon: currencyIcon } = useUserCurrencyIcon();
   const currencySymbol = typeof currencyIcon === "string" ? currencyIcon : "";
@@ -304,12 +307,16 @@ export default function VendorDetailPage() {
     },
   ];
 
-  if (loading || !vendor) {
+  if (loading || featureLoading || !vendor) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
         <Spin size="large" />
       </div>
     );
+  }
+
+  if (!allowed) {
+    return <FeatureLocked />;
   }
 
   return (

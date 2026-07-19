@@ -237,11 +237,14 @@ const Products: React.FC = () => {
         message: "Products downloaded",
         description: `CSV file downloaded successfully with ${rows.length} records.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to download products:", error);
       notification.error({
         message: t.admin.productDownloadFailed,
-        description: error?.message || t.admin.productDownloadFailedDesc,
+        description:
+          error instanceof Error
+            ? error.message
+            : t.admin.productDownloadFailedDesc,
       });
     } finally {
       setExporting(false);
@@ -402,7 +405,7 @@ const Products: React.FC = () => {
 
       {/* ── Table Card ── */}
       <div className="rounded-2xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="">
           <ProductTable
             products={products}
             loading={loading}

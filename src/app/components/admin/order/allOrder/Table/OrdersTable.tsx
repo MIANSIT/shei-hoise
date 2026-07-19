@@ -31,7 +31,7 @@ import {
   ExclamationCircleOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import BulkActions from "./BulkActions";
 import BulkCourierShipmentAction from "./BulkCourierShipmentAction";
 import { Check } from "lucide-react";
@@ -123,6 +123,8 @@ const OrdersTable: React.FC<Props> = ({
 
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     currency: storeCurrency,
     // icon: currencyIcon,
@@ -135,7 +137,11 @@ const OrdersTable: React.FC<Props> = ({
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
   const handleEdit = (order: StoreOrder) => {
-    router.push(`/dashboard/orders/edit-order/${order.order_number}`);
+    const params = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${params.toString()}`;
+    router.push(
+      `/dashboard/orders/edit-order/${order.order_number}?returnUrl=${encodeURIComponent(returnUrl)}`,
+    );
   };
 
   const handleDelete = async (order: StoreOrder) => {

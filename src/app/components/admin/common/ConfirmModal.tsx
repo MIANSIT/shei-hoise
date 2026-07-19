@@ -15,6 +15,7 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   type?: "warning" | "danger" | "info";
+  confirmLoading?: boolean;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -26,6 +27,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmText = "Continue",
   cancelText = "Cancel",
   type = "warning",
+  confirmLoading = false,
 }) => {
   const getTypeStyles = () => {
     switch (type) {
@@ -71,10 +73,22 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           )}
         </div>
         <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={onClose} className="flex-1">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={confirmLoading}
+            className="flex-1"
+          >
             {cancelText}
           </Button>
-          <Button onClick={onConfirm} className={`${styles.confirmButton} flex-1`}>
+          <Button
+            onClick={onConfirm}
+            disabled={confirmLoading}
+            className={`${styles.confirmButton} flex-1`}
+          >
+            {confirmLoading && (
+              <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            )}
             {confirmText}
           </Button>
         </DialogFooter>

@@ -29,6 +29,7 @@ interface UpdateOrderButtonProps {
   disabled?: boolean;
   onOrderUpdated?: () => void;
   emailError?: string;
+  returnUrl?: string;
 }
 
 export default function UpdateOrderButton({
@@ -50,6 +51,7 @@ export default function UpdateOrderButton({
   disabled = false,
   onOrderUpdated,
   emailError,
+  returnUrl,
 }: UpdateOrderButtonProps) {
   const { modal, notification } = App.useApp();
   const router = useRouter();
@@ -235,7 +237,7 @@ export default function UpdateOrderButton({
           onOrderUpdated();
         }
 
-        router.push("/dashboard/orders");
+        router.push(returnUrl || "/dashboard/orders");
       } else {
         console.error("❌ Order update failed:", result.error);
         throw new Error(result.error || "Failed to update order");

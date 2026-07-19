@@ -10,6 +10,7 @@ import {
   Table,
   Modal,
   Alert,
+  Spin,
 } from "antd";
 import { DeleteOutlined, PlusOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { PackagePlus } from "lucide-react";
@@ -19,6 +20,7 @@ import { useRouter } from "next/navigation";
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getVendors } from "@/lib/queries/vendor/getVendors";
 import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboardStats";
 import { getVendorOrderableProducts } from "@/lib/queries/vendorOrder/getVendorOrderableProducts";
@@ -28,6 +30,7 @@ import type {
   VendorOrderableProduct,
   VendorOrderItemInput,
 } from "@/lib/types/vendor/type";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 interface DraftLineItem extends VendorOrderItemInput {
   key: string;
@@ -39,7 +42,8 @@ function round2(n: number): number {
 }
 
 export default function CreateVendorOrderPage() {
-  const { storeId, user } = useCurrentUser();
+  const { storeId, user, loading: userLoading } = useCurrentUser();
+  const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const router = useRouter();
 
@@ -353,6 +357,18 @@ export default function CreateVendorOrderPage() {
     value: `${p.product_id}::${p.variant_id ?? ""}`,
     label: p.variant_name ? `${p.product_name} — ${p.variant_name}` : p.product_name,
   }));
+
+  if (userLoading || featureLoading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!allowed) {
+    return <FeatureLocked />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">

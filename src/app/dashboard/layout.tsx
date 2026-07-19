@@ -494,7 +494,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
 
               <div
-                className="flex-1 overflow-auto p-3 bg-gray-50 dark:bg-gray-950"
+                className="flex-1 p-3 bg-gray-50 dark:bg-gray-950"
                 ref={mainContentRef}
               >
                 {children}

@@ -9,8 +9,10 @@ import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getVendorOrders } from "@/lib/queries/vendorOrder/getVendorOrders";
 import type { VendorOrder, VendorOrderStatus } from "@/lib/types/vendor/type";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +24,7 @@ const STATUS_COLORS: Record<VendorOrderStatus, string> = {
 
 export default function VendorOrdersPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
+  const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const router = useRouter();
 
   const [orders, setOrders] = useState<VendorOrder[]>([]);
@@ -99,12 +102,16 @@ export default function VendorOrdersPage() {
     },
   ];
 
-  if (userLoading) {
+  if (userLoading || featureLoading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
         <Spin size="large" />
       </div>
     );
+  }
+
+  if (!allowed) {
+    return <FeatureLocked />;
   }
 
   return (
