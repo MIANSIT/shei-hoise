@@ -13,6 +13,8 @@ export interface OrderProduct {
   unit_price: number;
   total_price: number;
   variant_name?: string | null;
+  /** The product/variant's tp_price at the moment it was added to the order — snapshot, not looked up live at report time. */
+  cost_price?: number | null;
 }
 
 export interface AddressJSON {
@@ -61,6 +63,8 @@ export interface OrderItem {
   total_price: number;
   product_name: string;
   variant_details: any;
+  /** Cost at the moment of sale — null for orders placed before this was tracked. */
+  cost_price?: number | null;
   products?: OrderItemProduct | null;
   product_variants?: OrderItemVariant | null;
   discounted_price?: number;

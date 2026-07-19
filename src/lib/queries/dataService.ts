@@ -155,7 +155,9 @@ const updateOrderByNumberImpl = async (
 
 const deleteOrderImpl = deleteOrder;
 
-// --- Our custom wrapper for getStoreOrders with search + pagination ---
+// --- Wrapper for getStoreOrders — delegates search/filter/pagination to the
+// database (see getStoreOrders.ts) instead of fetching the store's entire
+// order history and slicing it in memory on every page/search/filter change. ---
 const getStoreOrdersImpl = async (
   options: GetStoreOrdersOptions
 ): Promise<{
@@ -167,76 +169,19 @@ const getStoreOrdersImpl = async (
 }> => {
   const { storeId, search, page = 1, pageSize = 10, filters } = options;
 
-  const { orders: allOrders, totalOrders } = await originalGetStoreOrders(
-    storeId
+  const normalizedFilters: { status?: string; payment_status?: string } = {};
+  if (filters?.status && filters.status !== "all")
+    normalizedFilters.status = filters.status;
+  if (filters?.payment_status && filters.payment_status !== "all")
+    normalizedFilters.payment_status = filters.payment_status;
+
+  return originalGetStoreOrders(
+    storeId,
+    search,
+    page,
+    pageSize,
+    normalizedFilters
   );
-
-  let filteredOrders = allOrders;
-
-  // Apply search — matches order number, or the customer's phone number
-  // (from either the linked customer record or the shipping address).
-  // Phone comparison is digits-only and checked both directions so a
-  // +880/dash/space-formatted number on either side of the search still
-  // matches (e.g. searching "01712345678" finds a stored "+880 1712-345678").
-  if (search?.trim()) {
-    const searchTerm = search.trim().toLowerCase();
-    const searchDigits = search.replace(/\D/g, "");
-
-    const phoneMatches = (phone?: string | null) => {
-      if (!phone) return false;
-      const digits = phone.replace(/\D/g, "");
-      if (!digits) return false;
-      return digits.includes(searchDigits) || searchDigits.includes(digits);
-    };
-
-    filteredOrders = filteredOrders.filter((o) => {
-      if (o.order_number?.toLowerCase().includes(searchTerm)) return true;
-      if (searchDigits.length < 3) return false;
-      return (
-        phoneMatches(o.customers?.phone) || phoneMatches(o.shipping_address?.phone)
-      );
-    });
-  }
-
-  // Apply filters
-  if (filters) {
-    if (filters.status && filters.status !== "all") {
-      filteredOrders = filteredOrders.filter(
-        (o) => o.status === filters.status
-      );
-    }
-    if (filters.payment_status && filters.payment_status !== "all") {
-      filteredOrders = filteredOrders.filter(
-        (o) => o.payment_status === filters.payment_status
-      );
-    }
-  }
-
-  const total = filteredOrders.length;
-
-  // Pagination
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize;
-  const paginatedOrders = filteredOrders.slice(from, to);
-
-  // Calculate totals by status
-  const totalByOrderStatus: Record<string, number> = {};
-  const totalByPaymentStatus: Record<string, number> = {};
-
-  allOrders.forEach((order) => {
-    totalByOrderStatus[order.status] =
-      (totalByOrderStatus[order.status] || 0) + 1;
-    totalByPaymentStatus[order.payment_status] =
-      (totalByPaymentStatus[order.payment_status] || 0) + 1;
-  });
-
-  return {
-    orders: paginatedOrders,
-    total,
-    totalOrders,
-    totalByOrderStatus,
-    totalByPaymentStatus,
-  };
 };
 
 // --- Wrapper for getAllStoreCustomers to maintain backward compatibility ---

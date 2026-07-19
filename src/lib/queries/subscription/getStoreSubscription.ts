@@ -48,36 +48,66 @@ export interface SubscriptionInvoice {
   created_at: string;
 }
 
+// useFeatureGate() calls this once per gated feature check, so a screen with
+// several feature gates (or several gated components mounted at once) would
+// otherwise fire the same /api/subscription/my-subscription request that
+// many times. Cached briefly per store so simultaneous callers share one
+// in-flight request — same pattern as getStoreSettings.ts.
+const CACHE_DURATION = 30 * 1000; // 30 seconds
+const cache = new Map<
+  string,
+  { promise: Promise<StoreSubscription | null>; timestamp: number }
+>();
+
 export async function getStoreSubscription(
   storeId: string,
 ): Promise<StoreSubscription | null> {
+  const cached = cache.get(storeId);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.promise;
+  }
+
   // Fetched via a server route backed by the admin client (not a direct RLS-bound
   // query) so a store can always see its own plan's details even if that plan's
   // is_public flag has since been turned off — see /api/subscription/my-subscription.
-  const res = await fetch("/api/subscription/my-subscription");
-  if (!res.ok) return null;
+  const promise = fetch("/api/subscription/my-subscription")
+    .then(async (res) => {
+      if (!res.ok) return null;
 
-  const data = await res.json();
-  if (!data || data.store_id !== storeId) return null;
+      const data = await res.json();
+      if (!data || data.store_id !== storeId) return null;
 
-  const raw = data as Record<string, unknown>;
-  return {
-    id: raw.id as string,
-    store_id: raw.store_id as string,
-    plan_id: raw.plan_id as string,
-    status: raw.status as string,
-    billing_cycle: raw.billing_cycle as string,
-    started_at: raw.started_at as string | null,
-    expires_at: raw.expires_at as string | null,
-    trial_ends_at: raw.trial_ends_at as string | null,
-    canceled_at: raw.canceled_at as string | null,
-    cancels_at_period_end: raw.cancels_at_period_end as boolean,
-    current_period_start: raw.current_period_start as string | null,
-    current_period_end: raw.current_period_end as string | null,
-    payment_provider: raw.payment_provider as string | null,
-    created_at: raw.created_at as string,
-    plan: (raw.subscription_plans as SubscriptionPlanInfo) ?? null,
-  };
+      const raw = data as Record<string, unknown>;
+      return {
+        id: raw.id as string,
+        store_id: raw.store_id as string,
+        plan_id: raw.plan_id as string,
+        status: raw.status as string,
+        billing_cycle: raw.billing_cycle as string,
+        started_at: raw.started_at as string | null,
+        expires_at: raw.expires_at as string | null,
+        trial_ends_at: raw.trial_ends_at as string | null,
+        canceled_at: raw.canceled_at as string | null,
+        cancels_at_period_end: raw.cancels_at_period_end as boolean,
+        current_period_start: raw.current_period_start as string | null,
+        current_period_end: raw.current_period_end as string | null,
+        payment_provider: raw.payment_provider as string | null,
+        created_at: raw.created_at as string,
+        plan: (raw.subscription_plans as SubscriptionPlanInfo) ?? null,
+      };
+    })
+    .catch((err) => {
+      cache.delete(storeId);
+      throw err;
+    });
+
+  cache.set(storeId, { promise, timestamp: Date.now() });
+  return promise;
+}
+
+/** Call after a subscription change (upgrade/cancel/renew) so the next read isn't served stale data from the cache above. */
+export function invalidateStoreSubscriptionCache(storeId: string) {
+  cache.delete(storeId);
 }
 
 export async function getInvoiceById(

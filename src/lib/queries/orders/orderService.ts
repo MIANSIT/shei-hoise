@@ -438,6 +438,7 @@ export async function createOrder(
       total_price: item.total_price,
       product_name: item.product_name,
       variant_details: item.variant_details || null,
+      cost_price: item.cost_price ?? null,
     }));
 
 
@@ -598,7 +599,32 @@ export async function createCustomerOrder(
       throw new Error(`Failed to create order: ${orderError.message}`);
     }
 
-    // Create order items
+    // Create order items. Storefront cart data never carries tp_price (it's
+    // not fetched for the customer-facing product query), so the sale cost
+    // is looked up here — server-side only — right before insert. This is
+    // still "cost at time of sale," just resolved on the server instead of
+    // carried from the client like the admin-created-order path does.
+    const productIds = [...new Set(orderProducts.map((item: any) => item.product_id))];
+    const variantIds = [
+      ...new Set(
+        orderProducts
+          .map((item: any) => item.variant_id)
+          .filter((id: string | null | undefined): id is string => !!id)
+      ),
+    ];
+
+    const [{ data: costProducts }, { data: costVariants }] = await Promise.all([
+      productIds.length
+        ? supabaseAdmin.from("products").select("id, tp_price").in("id", productIds)
+        : Promise.resolve({ data: [] as { id: string; tp_price: number | null }[] }),
+      variantIds.length
+        ? supabaseAdmin.from("product_variants").select("id, tp_price").in("id", variantIds)
+        : Promise.resolve({ data: [] as { id: string; tp_price: number | null }[] }),
+    ]);
+
+    const productCostMap = new Map((costProducts || []).map((p) => [p.id, p.tp_price]));
+    const variantCostMap = new Map((costVariants || []).map((v) => [v.id, v.tp_price]));
+
     const orderItemsData = orderProducts.map((item: any) => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -608,6 +634,9 @@ export async function createCustomerOrder(
       total_price: item.total_price,
       product_name: item.product_name,
       variant_details: item.variant_details || null,
+      cost_price: item.variant_id
+        ? (variantCostMap.get(item.variant_id) ?? null)
+        : (productCostMap.get(item.product_id) ?? null),
     }));
 
     const { error: itemsError } = await supabaseAdmin

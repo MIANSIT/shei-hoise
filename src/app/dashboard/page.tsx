@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import MainDashboard from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
-import { useStoreOrders } from "@/lib/hook/useStoreOrders";
-import { getProducts, Product } from "@/lib/queries/products/getProducts";
-import { getExpensesWithCategory } from "@/lib/queries//expense/getExpensesWithCategory";
-import type { Expense } from "@/lib/types/expense/type";
+import {
+  getDashboardSummary,
+  DashboardSummaryPayload,
+} from "@/lib/queries/dashboard/getDashboardSummary";
+import { getDashboardPeriodRange } from "@/lib/utils/dashboardPeriods";
 import {
   DollarOutlined,
   ShoppingCartOutlined,
@@ -29,38 +30,13 @@ import {
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 
-interface ProductVariant {
-  id: string;
-  variant_name: string;
-  base_price: number;
-  sale_price?: number;
-  cost_price?: number;
-  profit_margin?: number;
-  tp_price?: number;
-  stock: {
-    quantity_available: number;
-    low_stock_threshold?: number;
-    track_inventory?: boolean;
-    is_low_stock: boolean;
-  };
-  is_low_stock: boolean;
-}
-
-type DashboardProduct = Product & { variants: ProductVariant[] };
-
 export default function DashboardPage() {
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
-  const {
-    orders,
-    loading: ordersLoading,
-    error: ordersError,
-  } = useStoreOrders(storeId || "");
 
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("monthly");
-  const [rawProducts, setRawProducts] = useState<DashboardProduct[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [rawExpenses, setRawExpenses] = useState<Expense[]>([]);
-  const [loadingExpenses, setLoadingExpenses] = useState(true);
+  const [summary, setSummary] = useState<DashboardSummaryPayload | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [summaryError, setSummaryError] = useState<Error | null>(null);
 
   const t = useTranslation();
   const n = useLocalNum();
@@ -81,54 +57,36 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!storeId) return;
-    const fetchProducts = async () => {
+    const fetchSummary = async () => {
       try {
-        setLoadingProducts(true);
-        const productsFetched = await getProducts(storeId);
-        setRawProducts(productsFetched as DashboardProduct[]);
-      } catch (err) {
-        console.error("Error fetching products:", err);
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-    fetchProducts();
-  }, [storeId]);
-
-  useEffect(() => {
-    if (!storeId) return;
-    const fetchExpenses = async () => {
-      try {
-        setLoadingExpenses(true);
-        const result = await getExpensesWithCategory({
+        setLoadingSummary(true);
+        setSummaryError(null);
+        const { periodStart, periodEnd, prevPeriodStart, prevPeriodEnd } =
+          getDashboardPeriodRange(timePeriod);
+        const result = await getDashboardSummary(
           storeId,
-          pageSize: 10000,
-          page: 1,
-        });
-        setRawExpenses(result.data);
+          periodStart,
+          periodEnd,
+          prevPeriodStart,
+          prevPeriodEnd,
+        );
+        setSummary(result);
       } catch (err) {
-        console.error("Error fetching expenses:", err);
+        console.error("Error fetching dashboard summary:", err);
+        setSummaryError(
+          err instanceof Error ? err : new Error("Failed to load dashboard"),
+        );
       } finally {
-        setLoadingExpenses(false);
+        setLoadingSummary(false);
       }
     };
-    fetchExpenses();
-  }, [storeId]);
+    fetchSummary();
+  }, [storeId, timePeriod]);
 
-  const memoizedOrders = useMemo(() => orders, [orders]);
-  const memoizedProducts = useMemo(() => rawProducts, [rawProducts]);
-  const memoizedExpenses = useMemo(() => rawExpenses, [rawExpenses]);
-
-  const metrics = useDashboardMetrics(
-    storeId,
-    memoizedOrders,
-    memoizedProducts,
-    memoizedExpenses,
-    timePeriod,
-  );
+  const metrics = useDashboardMetrics(summary);
 
   // ── Loading ──────────────────────────────────────────────────────────────────
-  if (userLoading || ordersLoading || loadingProducts || loadingExpenses) {
+  if (userLoading || loadingSummary) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
@@ -154,12 +112,15 @@ export default function DashboardPage() {
       </div>
     );
 
-  if (ordersError)
+  if (summaryError)
     return (
       <div className="p-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg">
         <h2 className="text-red-700 dark:text-red-400 font-semibold">
           {t.admin.errorFetchingOrders}
         </h2>
+        <p className="text-red-600 dark:text-red-300 mt-2">
+          {summaryError.message}
+        </p>
       </div>
     );
 
@@ -191,7 +152,7 @@ export default function DashboardPage() {
       icon: <DollarOutlined className="text-emerald-500" />,
       change: `${fmt(metrics.changePercentage.revenue)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.revenue),
-      description: `${n(metrics.paidOrders.length)} ${t.admin.fromPaidOrders}`,
+      description: `${n(metrics.paidOrdersCount)} ${t.admin.fromPaidOrders}`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.ordersAll}`,
@@ -199,7 +160,7 @@ export default function DashboardPage() {
       icon: <ShoppingCartOutlined className="text-blue-500" />,
       change: `${fmt(metrics.changePercentage.orders)} ${getComparisonText(timePeriod)}`,
       changeType: getChangeType(metrics.changePercentage.orders),
-      description: `${t.admin.totalOrdersOf} (${n(metrics.paidOrders.length)} ${t.admin.paid})`,
+      description: `${t.admin.totalOrdersOf} (${n(metrics.paidOrdersCount)} ${t.admin.paid})`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.avgOrderValue}`,
