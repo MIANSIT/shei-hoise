@@ -43,6 +43,7 @@ const { Title, Text } = Typography;
 
 interface EditOrderProps {
   orderNumber: string;
+  returnUrl?: string;
 }
 
 // interface OrderItemData {
@@ -56,7 +57,7 @@ interface EditOrderProps {
 //   total_price: number;
 // }
 
-export default function EditOrder({ orderNumber }: EditOrderProps) {
+export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   const { notification } = App.useApp();
   const router = useRouter();
   const t = useTranslation();
@@ -207,24 +208,33 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
   // replaced the order's real address with the customer's (possibly since-
   // changed) profile address, permanently marking Address as "Edited" with
   // no actual edit having happened.
-  const fetchCustomerProfile = useCallback(async (customerId: string) => {
-    try {
-      const profile = await dataService.getCustomerProfileByStoreCustomerId(
-        customerId
-      );
-      if (profile) {
-        setCustomerInfo((prev) => ({
-          ...prev,
-          address: prev.address || profile.address || profile.address_line_1 || "",
-          city: prev.city || profile.city || "",
-          postal_code: prev.postal_code || profile.postal_code || "",
-        }));
+  const fetchCustomerProfile = useCallback(
+    async (customerId: string, hasShippingAddress: boolean) => {
+      try {
+        const profile = await dataService.getCustomerProfileByStoreCustomerId(
+          customerId
+        );
+        if (profile) {
+          // If the order already has its own shipping_address, every field on
+          // it — even an intentionally-cleared empty one — is the real saved
+          // value and must win. Only gap-fill from the customer's profile for
+          // legacy orders that never had a shipping_address at all; otherwise
+          // clearing a field (e.g. postal code) and saving would silently
+          // bring the old profile value right back on the next edit.
+          if (hasShippingAddress) return;
+          setCustomerInfo((prev) => ({
+            ...prev,
+            address: prev.address || profile.address || profile.address_line_1 || "",
+            city: prev.city || profile.city || "",
+            postal_code: prev.postal_code || profile.postal_code || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching customer profile:", error);
       }
-    } catch (error) {
-      console.error("Error fetching customer profile:", error);
-    } finally {
-    }
-  }, []);
+    },
+    []
+  );
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -370,17 +380,19 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
             customer_id: order.customer_id,
           }));
 
-          // Set shipping address info
+          // Set shipping address info. `??` (not `||`) so an intentionally
+          // cleared field (empty string) is kept as-is instead of falling
+          // back — only a genuinely missing (null/undefined) field does.
           if (order.shipping_address) {
             setCustomerInfo((prev) => ({
               ...prev,
               address:
-                order.shipping_address.address_line_1 ||
-                order.shipping_address.address ||
+                order.shipping_address.address_line_1 ??
+                order.shipping_address.address ??
                 prev.address,
-              city: order.shipping_address.city || prev.city,
+              city: order.shipping_address.city ?? prev.city,
               postal_code:
-                order.shipping_address.postal_code || prev.postal_code,
+                order.shipping_address.postal_code ?? prev.postal_code,
               deliveryMethod: order.delivery_option || prev.deliveryMethod,
               deliveryOption:
                 order.shipping_address.deliveryOption || prev.deliveryOption,
@@ -388,8 +400,9 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
             }));
           }
 
-          // Fetch customer profile
-          await fetchCustomerProfile(order.customer_id);
+          // Fetch customer profile (gap-fills only if the order itself has
+          // no shipping_address at all — see fetchCustomerProfile).
+          await fetchCustomerProfile(order.customer_id, !!order.shipping_address);
         }
 
         // Convert order items to OrderProduct format
@@ -831,6 +844,7 @@ export default function EditOrder({ orderNumber }: EditOrderProps) {
                   courier={courier}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   emailError={emailError}
+                  returnUrl={returnUrl}
                   onOrderUpdated={async () => {
                     // Re-sync the form to the just-saved values from the DB.
                     await fetchOrderData();

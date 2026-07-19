@@ -29,6 +29,11 @@ export interface MenuItem {
   href?: string;
   icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   children?: MenuItem[];
+  // Plan feature-flag key (see src/lib/utils/planFeatures.ts). When set,
+  // SidebarMenu hides this node entirely unless the store's plan has this
+  // feature enabled — unlike every other gated feature in this app, which
+  // keeps its nav link visible and only locks the page itself.
+  requiredFeature?: string;
 }
 
 export const sideMenu: MenuItem[] = [
@@ -91,6 +96,7 @@ export const sideMenu: MenuItem[] = [
   {
     title: "Vendors",
     icon: Warehouse,
+    requiredFeature: "vendor_flow",
     children: [
       { title: "All Vendors", href: "/dashboard/vendors", icon: User },
       {

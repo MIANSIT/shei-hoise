@@ -5,6 +5,7 @@ import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 interface UpdateCustomerData {
   name: string;
   phone: string;
+  email?: string;
 }
 
 interface UpdateCustomerProfileData {
@@ -28,12 +29,33 @@ export async function updateCustomerProfile(
       throw new Error("Name is required");
     }
 
+    const email = customerData.email?.trim() || null;
+
+    // Guard against linking this customer to an email another customer
+    // already uses (mirrors the check in createCustomer.ts).
+    if (email) {
+      const { data: existingCustomer, error: checkError } = await supabase
+        .from("store_customers")
+        .select("id")
+        .eq("email", email)
+        .neq("id", customerId)
+        .maybeSingle();
+
+      if (checkError) {
+        throw new Error("Failed to verify existing customer");
+      }
+      if (existingCustomer) {
+        throw new Error(`A customer with email ${email} already exists`);
+      }
+    }
+
     // Update store_customers table
     const { data: updatedCustomer, error: customerError } = await supabase
       .from("store_customers")
       .update({
         name: customerData.name.trim(),
         phone: customerData.phone?.trim() || null,
+        email,
         updated_at: new Date().toISOString(),
       })
       .eq("id", customerId)

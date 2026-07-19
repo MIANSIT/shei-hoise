@@ -15,6 +15,7 @@ import { deleteVendor } from "@/lib/queries/vendor/deleteVendor";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type {
   Vendor,
   VendorFormValues,
@@ -25,12 +26,14 @@ import type {
 import VendorTable from "@/app/components/admin/dashboard/vendors/VendorTable";
 import VendorFormModal from "@/app/components/admin/dashboard/vendors/VendorFormModal";
 import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorStatCard";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 type ModalMode = "create" | "edit";
 const PAGE_SIZE = 10;
 
 export default function VendorsPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
+  const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const router = useRouter();
   const { icon: currencyIcon } = useUserCurrencyIcon();
@@ -172,12 +175,16 @@ export default function VendorsPage() {
     }
   };
 
-  if (userLoading) {
+  if (userLoading || featureLoading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
         <Spin size="large" />
       </div>
     );
+  }
+
+  if (!allowed) {
+    return <FeatureLocked />;
   }
 
   return (

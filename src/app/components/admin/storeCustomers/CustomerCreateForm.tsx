@@ -163,7 +163,6 @@ export default function CustomerCreateForm({
                 name="email"
                 label={t.admin.customerEmailLabel}
                 rules={[
-                  { required: true, message: t.admin.customerEmailRequired },
                   { type: "email", message: t.admin.customerValidEmail },
                 ]}
               >

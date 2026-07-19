@@ -13,7 +13,9 @@ import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById
 import { confirmVendorOrder } from "@/lib/queries/vendorOrder/confirmVendorOrder";
 import { deleteVendorOrder } from "@/lib/queries/vendorOrder/deleteVendorOrder";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type { VendorOrder, VendorOrderItem, VendorOrderStatus } from "@/lib/types/vendor/type";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 const STATUS_COLORS: Record<VendorOrderStatus, string> = {
   draft: "gold",
@@ -26,6 +28,7 @@ export default function VendorOrderDetailPage() {
   const orderId = params.id as string;
   const router = useRouter();
   const { storeId, user } = useCurrentUser();
+  const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const { modal } = App.useApp();
 
@@ -198,12 +201,16 @@ export default function VendorOrderDetailPage() {
     },
   ];
 
-  if (loading) {
+  if (loading || featureLoading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
         <Spin size="large" />
       </div>
     );
+  }
+
+  if (!allowed) {
+    return <FeatureLocked />;
   }
 
   if (!order) {

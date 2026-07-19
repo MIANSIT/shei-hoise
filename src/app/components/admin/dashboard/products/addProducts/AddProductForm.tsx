@@ -34,7 +34,10 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 interface AddProductFormProps {
   product?: ProductType;
   storeId: string;
-  onSubmit: (product: ProductType, formMethods: AddProductFormRef) => void;
+  onSubmit: (
+    product: ProductType,
+    formMethods: AddProductFormRef,
+  ) => void | Promise<void>;
 }
 
 export interface AddProductFormRef {
@@ -108,6 +111,16 @@ const PriceCard = ({
   </div>
 );
 
+// Ensures the loading state stays visible for at least `ms` — otherwise a
+// fast request can resolve before the browser ever paints the pending frame.
+const withMinDuration = async <T,>(promise: Promise<T>, ms = 350): Promise<T> => {
+  const [result] = await Promise.all([
+    promise,
+    new Promise((resolve) => setTimeout(resolve, ms)),
+  ]);
+  return result;
+};
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
   ({ product, storeId, onSubmit }, ref) => {
@@ -124,9 +137,10 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const [mrpTouched, setMrpTouched] = useState(false);
     const [statusOpen, setStatusOpen] = useState(false);
     const [showWarningModal, setShowWarningModal] = useState(false);
-    const [pendingSubmit, setPendingSubmit] = useState<(() => void) | null>(
-      null,
-    );
+    const [pendingSubmit, setPendingSubmit] = useState<
+      (() => void | Promise<void>) | null
+    >(null);
+    const [confirmSubmitting, setConfirmSubmitting] = useState(false);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
     const initialValues = React.useMemo<ProductType>(
@@ -336,7 +350,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       return errors;
     };
 
-    const handleFormSubmit = (data: ProductType) => {
+    const handleFormSubmit = async (data: ProductType) => {
       const pricingErrors = validatePricing(data);
       if (pricingErrors.length > 0) {
         setValidationErrors(pricingErrors);
@@ -350,15 +364,24 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         setShowWarningModal(true);
         return;
       }
-      onSubmit(data, {
-        reset: () => form.reset(initialValues),
-        formValues: () => form.getValues(),
-      });
+      await withMinDuration(
+        Promise.resolve(
+          onSubmit(data, {
+            reset: () => form.reset(initialValues),
+            formValues: () => form.getValues(),
+          }),
+        ),
+      );
     };
 
-    const handleConfirmSubmit = () => {
+    const handleConfirmSubmit = async () => {
       if (pendingSubmit) {
-        pendingSubmit();
+        setConfirmSubmitting(true);
+        try {
+          await withMinDuration(Promise.resolve(pendingSubmit()));
+        } finally {
+          setConfirmSubmitting(false);
+        }
         setShowWarningModal(false);
         setPendingSubmit(null);
         setValidationErrors([]);
@@ -369,7 +392,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const hasCategories = activeCategories.length > 0;
 
     return (
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <ConfirmModal
           isOpen={showWarningModal}
           onClose={() => {
@@ -403,6 +426,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           confirmText={t.admin.addProductContinueAnyway}
           cancelText={t.admin.addProductReviewPricing}
           type="warning"
+          confirmLoading={confirmSubmitting}
         />
 
         {/* Inactive variant toast */}
@@ -773,6 +797,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
               disabled={isSubmitting}
               className="min-w-35 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition-colors"
             >
+              {isSubmitting && (
+                <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              )}
               {isSubmitting
                 ? product
                   ? t.admin.addProductUpdatingLabel
