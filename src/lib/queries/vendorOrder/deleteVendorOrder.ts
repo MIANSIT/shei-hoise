@@ -1,8 +1,10 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-// Only draft orders can be deleted — a confirmed order already moved real
-// stock, so removing it would silently desync warehouse/vendor inventory.
+// Draft and cancelled orders can be deleted safely:
+// - Draft: no stock was ever moved.
+// - Cancelled: stock was already reversed by cancel_vendor_order RPC.
+// Confirmed orders must be cancelled first before they can be deleted.
 export async function deleteVendorOrder(
   id: string,
   storeId: string,
@@ -13,7 +15,7 @@ export async function deleteVendorOrder(
       .delete()
       .eq("id", id)
       .eq("store_id", storeId)
-      .eq("status", "draft")
+      .in("status", ["draft", "cancelled"])
       .select("id");
 
     if (error) {

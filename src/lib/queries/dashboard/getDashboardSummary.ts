@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
 
 export interface DashboardSummaryPayload {
   revenue: number;
@@ -44,6 +45,8 @@ export interface DashboardSummaryPayload {
     top_expense_category: { name: string; amount: number };
     expense_category_breakdown: { name: string; amount: number }[];
   };
+  vendor_profit: number;
+  prev_vendor_profit: number;
 }
 
 /**
@@ -60,14 +63,27 @@ export async function getDashboardSummary(
   prevPeriodStart: string,
   prevPeriodEnd: string,
 ): Promise<DashboardSummaryPayload> {
-  const { data, error } = await supabase.rpc("get_dashboard_summary", {
-    p_store_id: storeId,
-    p_period_start: periodStart,
-    p_period_end: periodEnd,
-    p_prev_period_start: prevPeriodStart,
-    p_prev_period_end: prevPeriodEnd,
-  });
+  const [{ data, error }, vendorProfit] = await Promise.all([
+    supabase.rpc("get_dashboard_summary", {
+      p_store_id: storeId,
+      p_period_start: periodStart,
+      p_period_end: periodEnd,
+      p_prev_period_start: prevPeriodStart,
+      p_prev_period_end: prevPeriodEnd,
+    }),
+    getVendorStoreProfitForPeriod(
+      storeId,
+      periodStart,
+      periodEnd,
+      prevPeriodStart,
+      prevPeriodEnd,
+    ),
+  ]);
 
   if (error) throw new Error(error.message);
-  return data as DashboardSummaryPayload;
+  return {
+    ...(data as DashboardSummaryPayload),
+    vendor_profit: vendorProfit.vendor_profit,
+    prev_vendor_profit: vendorProfit.prev_vendor_profit,
+  };
 }

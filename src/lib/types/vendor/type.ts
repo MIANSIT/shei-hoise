@@ -226,13 +226,11 @@ export interface VendorDashboardStats {
   total_paid: number;
   current_due: number;
   last_payment_date: string | null;
-  // Margin built into confirmed dispatches: qty * (vendor_tp - original_tp).
-  // This is margin on stock sent out, not margin confirmed-realized on what
-  // actually sold — original_tp isn't tracked at settlement time, so a
-  // precise "realized" figure isn't available from current data.
+  // Potential margin on all confirmed dispatches: sum(qty * (vendor_tp - original_tp)).
   margin_dispatched: number;
-  // Count of vendor_stock rows with quantity_available > 0 that haven't
-  // moved (no dispatch/settlement touching them) in over 30 days.
+  // Realized margin on actually settled (sold) items:
+  // sum(receivable_amount - sold_qty * weighted_avg_original_tp).
+  margin_realized: number;
   slow_moving_count: number;
 }
 

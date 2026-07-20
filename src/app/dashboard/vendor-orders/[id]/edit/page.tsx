@@ -13,25 +13,20 @@ import {
   Alert,
   Spin,
 } from "antd";
-import { DeleteOutlined, PlusOutlined, ExclamationCircleOutlined, HistoryOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { PackagePlus } from "lucide-react";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
-import { useLocalDraft } from "@/lib/hook/useLocalDraft";
-import { getVendors } from "@/lib/queries/vendor/getVendors";
 import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboardStats";
 import { getVendorOrderableProducts } from "@/lib/queries/vendorOrder/getVendorOrderableProducts";
-import { createVendorOrder } from "@/lib/queries/vendorOrder/createVendorOrder";
-import type {
-  Vendor,
-  VendorOrderableProduct,
-  VendorOrderItemInput,
-} from "@/lib/types/vendor/type";
+import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById";
+import { updateVendorOrder } from "@/lib/queries/vendorOrder/updateVendorOrder";
+import type { VendorOrderableProduct, VendorOrderItemInput } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 interface DraftLineItem extends VendorOrderItemInput {
@@ -43,60 +38,31 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-export default function CreateVendorOrderPage() {
-  const { storeId, user, loading: userLoading } = useCurrentUser();
+export default function EditVendorOrderPage() {
+  const params = useParams();
+  const orderId = params.id as string;
+  const router = useRouter();
+
+  const { storeId, loading: userLoading } = useCurrentUser();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const preselectedVendorId = searchParams.get("vendor_id");
 
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [vendorName, setVendorName] = useState("");
+  const [vendorId, setVendorId] = useState<string | null>(null);
   const [vendorCurrentDue, setVendorCurrentDue] = useState(0);
+  const [orderDate, setOrderDate] = useState<Dayjs>(dayjs());
+  const [invoiceDate, setInvoiceDate] = useState<Dayjs | null>(null);
+  const [deliveryDate, setDeliveryDate] = useState<Dayjs | null>(null);
+  const [deliveryPerson, setDeliveryPerson] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [notes, setNotes] = useState("");
+  const [deliveryCost, setDeliveryCost] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [paidAmount, setPaidAmount] = useState(0);
 
-  // Persisted draft — restored from localStorage on refresh
-  const DRAFT_KEY = `vendor_order_create_${storeId ?? "pending"}`;
-  const [draft, setDraft, clearDraft, hasDraft] = useLocalDraft(DRAFT_KEY, {
-    vendorId: null as string | null,
-    orderDate: dayjs().format("YYYY-MM-DD"),
-    invoiceDate: null as string | null,
-    deliveryDate: null as string | null,
-    deliveryPerson: "",
-    vehicleNumber: "",
-    referenceNumber: "",
-    notes: "",
-    deliveryCost: 0,
-    discountAmount: 0,
-    paidAmount: 0,
-    items: [] as DraftLineItem[],
-  });
-
-  // Convenience aliases
-  const vendorId = draft.vendorId;
-  const setVendorId = (v: string | null) => setDraft((d) => ({ ...d, vendorId: v }));
-  const orderDate: Dayjs = dayjs(draft.orderDate);
-  const setOrderDate = (d: Dayjs) => setDraft((prev) => ({ ...prev, orderDate: d.format("YYYY-MM-DD") }));
-  const invoiceDate: Dayjs | null = draft.invoiceDate ? dayjs(draft.invoiceDate) : null;
-  const setInvoiceDate = (d: Dayjs | null) => setDraft((prev) => ({ ...prev, invoiceDate: d ? d.format("YYYY-MM-DD") : null }));
-  const deliveryDate: Dayjs | null = draft.deliveryDate ? dayjs(draft.deliveryDate) : null;
-  const setDeliveryDate = (d: Dayjs | null) => setDraft((prev) => ({ ...prev, deliveryDate: d ? d.format("YYYY-MM-DD") : null }));
-  const deliveryPerson = draft.deliveryPerson;
-  const setDeliveryPerson = (v: string) => setDraft((d) => ({ ...d, deliveryPerson: v }));
-  const vehicleNumber = draft.vehicleNumber;
-  const setVehicleNumber = (v: string) => setDraft((d) => ({ ...d, vehicleNumber: v }));
-  const referenceNumber = draft.referenceNumber;
-  const setReferenceNumber = (v: string) => setDraft((d) => ({ ...d, referenceNumber: v }));
-  const notes = draft.notes;
-  const setNotes = (v: string) => setDraft((d) => ({ ...d, notes: v }));
-  const deliveryCost = draft.deliveryCost;
-  const setDeliveryCost = (v: number) => setDraft((d) => ({ ...d, deliveryCost: v }));
-  const discountAmount = draft.discountAmount;
-  const setDiscountAmount = (v: number) => setDraft((d) => ({ ...d, discountAmount: v }));
-  const paidAmount = draft.paidAmount;
-  const setPaidAmount = (v: number) => setDraft((d) => ({ ...d, paidAmount: v }));
-  const items = draft.items;
-  const setItems = (updater: DraftLineItem[] | ((prev: DraftLineItem[]) => DraftLineItem[])) =>
-    setDraft((d) => ({ ...d, items: typeof updater === "function" ? updater(d.items) : updater }));
+  const [items, setItems] = useState<DraftLineItem[]>([]);
   const [productOptions, setProductOptions] = useState<VendorOrderableProduct[]>([]);
   const [productSearchLoading, setProductSearchLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,21 +70,82 @@ export default function CreateVendorOrderPage() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRequestIdRef = useRef(0);
 
+  // Load existing order on mount
   useEffect(() => {
-    if (!storeId) return;
-    getVendors({ storeId, status: "active", pageSize: 1000 }).then((res) => {
-      setVendors(res.data);
-      if (preselectedVendorId) setVendorId(preselectedVendorId);
-    });
-  }, [storeId, preselectedVendorId]);
+    if (!storeId || userLoading) return;
 
-  useEffect(() => {
-    if (!vendorId) {
-      setVendorCurrentDue(0);
-      return;
-    }
-    getVendorDashboardStats(vendorId).then((stats) => setVendorCurrentDue(stats.current_due));
-  }, [vendorId]);
+    const load = async () => {
+      setPageLoading(true);
+      try {
+        const order = await getVendorOrderById(orderId, storeId);
+
+        if (!order) {
+          error("Vendor order not found");
+          router.push("/dashboard/vendor-orders");
+          return;
+        }
+
+        if (order.status !== "draft") {
+          error("Only draft orders can be edited");
+          router.push(`/dashboard/vendor-orders/${orderId}`);
+          return;
+        }
+
+        const products = await getVendorOrderableProducts(storeId, "");
+
+        setProductOptions(products);
+        setVendorId(order.vendor_id);
+        setVendorName(order.vendor?.name ?? "");
+        setOrderDate(dayjs(order.order_date));
+        setInvoiceDate(order.invoice_date ? dayjs(order.invoice_date) : null);
+        setDeliveryDate(order.delivery_date ? dayjs(order.delivery_date) : null);
+        setDeliveryPerson(order.delivery_person ?? "");
+        setVehicleNumber(order.vehicle_number ?? "");
+        setReferenceNumber(order.reference_number ?? "");
+        setNotes(order.notes ?? "");
+        setDeliveryCost(Number(order.delivery_cost) || 0);
+        setDiscountAmount(Number(order.discount_amount) || 0);
+        setPaidAmount(Number(order.paid_amount) || 0);
+
+        // Build warehouse_stock map from product options
+        const stockMap = new Map(
+          products.map((p) => [`${p.product_id}::${p.variant_id ?? ""}`, p.warehouse_stock]),
+        );
+
+        const draftItems: DraftLineItem[] = (order.items ?? []).map((item) => {
+          const key = `${item.product_id}::${item.variant_id ?? ""}`;
+          return {
+            key,
+            product_id: item.product_id,
+            variant_id: item.variant_id,
+            product_name: item.product_name,
+            sku: item.sku,
+            quantity: item.quantity,
+            original_tp: Number(item.original_tp),
+            increase_percent: Number(item.increase_percent),
+            vendor_tp: Number(item.vendor_tp),
+            mrp: item.mrp != null ? Number(item.mrp) : null,
+            warehouse_stock: stockMap.get(key) ?? 0,
+          };
+        });
+
+        setItems(draftItems);
+
+        if (order.vendor_id) {
+          getVendorDashboardStats(order.vendor_id).then((stats) =>
+            setVendorCurrentDue(stats.current_due - Number(order.due_amount)),
+          );
+        }
+      } catch (err) {
+        error(err instanceof Error ? err.message : "Failed to load order");
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, userLoading, orderId]);
 
   const searchProducts = useCallback(
     async (term: string) => {
@@ -127,9 +154,6 @@ export default function CreateVendorOrderPage() {
       setProductSearchLoading(true);
       try {
         const rows = await getVendorOrderableProducts(storeId, term);
-        // A newer keystroke may have fired its own request while this one
-        // was in flight — ignore this response if it's no longer the latest,
-        // otherwise a slow older search can overwrite a faster newer one.
         if (requestId !== searchRequestIdRef.current) return;
         setProductOptions(rows);
       } finally {
@@ -146,10 +170,6 @@ export default function CreateVendorOrderPage() {
     },
     [searchProducts],
   );
-
-  useEffect(() => {
-    searchProducts("");
-  }, [searchProducts]);
 
   const addProduct = (value: string) => {
     const [productId, variantId] = value.split("::");
@@ -194,8 +214,6 @@ export default function CreateVendorOrderPage() {
       prev.map((item) => {
         if (item.key !== key) return item;
         const next = { ...item, ...patch };
-        // Keep vendor_tp derived from original_tp + increase% unless the
-        // caller is explicitly overriding vendor_tp itself.
         if (patch.increase_percent !== undefined) {
           next.vendor_tp = round2(
             next.original_tp + (next.original_tp * next.increase_percent) / 100,
@@ -226,17 +244,10 @@ export default function CreateVendorOrderPage() {
     () => round2(grandTotal - (paidAmount || 0)),
     [grandTotal, paidAmount],
   );
-
-  const selectedVendor = useMemo(
-    () => vendors.find((v) => v.id === vendorId) ?? null,
-    [vendors, vendorId],
-  );
   const projectedVendorDue = useMemo(
     () => round2(vendorCurrentDue + dueAmount),
     [vendorCurrentDue, dueAmount],
   );
-  const creditLimitExceeded =
-    !!selectedVendor && selectedVendor.credit_limit > 0 && projectedVendorDue > selectedVendor.credit_limit;
 
   const columns: ColumnsType<DraftLineItem> = [
     {
@@ -337,22 +348,8 @@ export default function CreateVendorOrderPage() {
   ];
 
   const handleSave = () => {
-    if (!vendorId) {
-      error("Please select a vendor");
-      return;
-    }
     if (items.length === 0) {
       error("Add at least one product");
-      return;
-    }
-    if (creditLimitExceeded) {
-      Modal.confirm({
-        title: "Credit limit exceeded",
-        icon: <ExclamationCircleOutlined />,
-        content: `${selectedVendor?.name} would owe ${projectedVendorDue.toFixed(2)} after this order, over their credit limit of ${selectedVendor?.credit_limit.toFixed(2)}. Dispatch anyway?`,
-        okText: "Dispatch Anyway",
-        onOk: performSave,
-      });
       return;
     }
     performSave();
@@ -362,10 +359,9 @@ export default function CreateVendorOrderPage() {
     if (!storeId || !vendorId) return;
     setSaving(true);
     try {
-      clearDraft();
-      const order = await createVendorOrder({
+      await updateVendorOrder({
+        order_id: orderId,
         store_id: storeId,
-        vendor_id: vendorId,
         order_date: orderDate.format("YYYY-MM-DD"),
         invoice_date: invoiceDate ? invoiceDate.format("YYYY-MM-DD") : null,
         delivery_date: deliveryDate ? deliveryDate.format("YYYY-MM-DD") : null,
@@ -376,17 +372,12 @@ export default function CreateVendorOrderPage() {
         delivery_cost: deliveryCost,
         discount_amount: discountAmount,
         paid_amount: paidAmount,
-        created_by: user?.id ?? null,
         items: items.map(({ key: _key, warehouse_stock: _stock, ...rest }) => rest),
       });
-      if (order) {
-        success("Vendor order saved as draft");
-        router.push(`/dashboard/vendor-orders/${order.id}`);
-      } else {
-        error("Failed to save vendor order");
-      }
+      success("Vendor order updated");
+      router.push(`/dashboard/vendor-orders/${orderId}`);
     } catch (err) {
-      error(err instanceof Error ? err.message : "Failed to save vendor order");
+      error(err instanceof Error ? err.message : "Failed to update vendor order");
     } finally {
       setSaving(false);
     }
@@ -397,7 +388,7 @@ export default function CreateVendorOrderPage() {
     label: p.variant_name ? `${p.product_name} — ${p.variant_name}` : p.product_name,
   }));
 
-  if (userLoading || featureLoading) {
+  if (userLoading || featureLoading || pageLoading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
         <Spin size="large" />
@@ -405,9 +396,7 @@ export default function CreateVendorOrderPage() {
     );
   }
 
-  if (!allowed) {
-    return <FeatureLocked />;
-  }
+  if (!allowed) return <FeatureLocked />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
@@ -417,44 +406,23 @@ export default function CreateVendorOrderPage() {
             <PackagePlus size={20} color="white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">New Vendor Order</h1>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">Edit Vendor Order</h1>
             <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
-              Dispatch stock to a vendor — saved as a draft until confirmed
+              {vendorName} · Draft — changes will not move stock until confirmed
             </p>
           </div>
         </div>
       </div>
 
       <div className="px-4 sm:px-8 py-6 space-y-6 max-w-5xl mx-auto">
-        {hasDraft && items.length > 0 && (
-          <Alert
-            type="info"
-            icon={<HistoryOutlined />}
-            showIcon
-            message="Draft restored"
-            description="Your unsaved progress was recovered. You can continue where you left off, or clear the draft to start fresh."
-            action={
-              <Button size="small" danger onClick={clearDraft}>
-                Clear draft
-              </Button>
-            }
-            className="rounded-xl"
-          />
-        )}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4">
           <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Order Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Vendor</label>
-              <Select
-                value={vendorId ?? undefined}
-                onChange={setVendorId}
-                placeholder="Select vendor"
-                showSearch
-                optionFilterProp="label"
-                options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-                className="w-full mt-1"
-              />
+              <div className="mt-1 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                {vendorName}
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Order Date</label>
@@ -475,20 +443,18 @@ export default function CreateVendorOrderPage() {
           </div>
         </div>
 
-        {creditLimitExceeded && (
+        {projectedVendorDue < 0 && (
           <Alert
-            type="warning"
+            type="info"
             showIcon
-            message="Credit limit will be exceeded"
-            description={`${selectedVendor?.name} currently owes ${vendorCurrentDue.toFixed(2)}. After this order they'd owe ${projectedVendorDue.toFixed(2)}, over their credit limit of ${selectedVendor?.credit_limit.toFixed(2)}. You can still dispatch — you'll be asked to confirm on save.`}
+            message="Vendor credit balance"
+            description={`This vendor has a credit balance of ${Math.abs(projectedVendorDue).toFixed(2)} after this update.`}
             className="rounded-xl"
           />
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Products</h2>
-          </div>
+          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Products</h2>
           <Select
             showSearch
             value={null}
@@ -585,7 +551,7 @@ export default function CreateVendorOrderPage() {
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          <Button onClick={() => router.back()} className="rounded-xl h-10">
+          <Button onClick={() => router.push(`/dashboard/vendor-orders/${orderId}`)} className="rounded-xl h-10">
             Cancel
           </Button>
           <Button
@@ -598,7 +564,7 @@ export default function CreateVendorOrderPage() {
               boxShadow: "0 4px 14px rgba(102,126,234,0.4)",
             }}
           >
-            Save Draft
+            Save Changes
           </Button>
         </div>
       </div>
