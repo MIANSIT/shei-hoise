@@ -133,9 +133,12 @@ export const useDashboardMetrics = (
         ? summary.prev_order_value_sum / summary.prev_order_count
         : 0;
 
-    const netProfit = summary.gross_profit - summary.expense_metrics.total_expenses;
+    const vendorProfit = summary.vendor_profit ?? 0;
+    const prevVendorProfit = summary.prev_vendor_profit ?? 0;
+    const netProfit =
+      summary.gross_profit + vendorProfit - summary.expense_metrics.total_expenses;
     const prevNetProfit =
-      summary.prev_gross_profit - summary.expense_metrics.prev_total_expenses;
+      summary.prev_gross_profit + prevVendorProfit - summary.expense_metrics.prev_total_expenses;
 
     const expenseToRevenueRatio =
       summary.revenue > 0

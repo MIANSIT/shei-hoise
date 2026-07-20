@@ -225,7 +225,7 @@ export default function DashboardPage() {
         expenseMetrics.netProfit < 0
           ? "negative"
           : getChangeType(expenseMetrics.changePercentage.netProfit),
-      description: t.admin.grossProfitMinus,
+      description: `${t.admin.grossProfitMinus} + vendor profit`,
     },
     {
       title: t.admin.expenseRevenueRatio,

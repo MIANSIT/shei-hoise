@@ -85,6 +85,7 @@ export default function VendorDetailPage() {
   const [ledgerPeriod, setLedgerPeriod] = useState<LedgerPeriod>("all");
   const [statementDownloading, setStatementDownloading] = useState(false);
 
+
   const fetchAll = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
@@ -413,9 +414,9 @@ export default function VendorDetailPage() {
           />
           <VendorStatCard
             icon={<TrendingUp size={18} color="white" />}
-            label="Margin Dispatched"
-            value={fmtMoney(stats?.margin_dispatched ?? 0)}
-            hint="On confirmed dispatches"
+            label="Realized Profit"
+            value={fmtMoney(stats?.margin_realized ?? 0)}
+            hint={`Potential: ${fmtMoney(stats?.margin_dispatched ?? 0)}`}
             accent="linear-gradient(135deg,#0ea5e9,#0284c7)"
           />
           <VendorStatCard
