@@ -31,6 +31,11 @@ export async function getStoreOrders(
 }> {
   try {
     const searchTerm = (search || "").trim();
+    // Sanitize characters that would otherwise break the raw PostgREST
+    // .or() filter string (its own field separator/grouping syntax) — order
+    // numbers and phone numbers never legitimately contain these.
+    const safeSearchTerm = searchTerm.replace(/[,()]/g, "");
+    const searchDigits = searchTerm.replace(/\D/g, "");
 
     let query = supabase
       .from("orders")
@@ -62,7 +67,30 @@ export async function getStoreOrders(
       .eq("store_id", storeId)
       .order("created_at", { ascending: false });
 
-    if (searchTerm) query = query.ilike("order_number", `%${searchTerm}%`);
+    if (safeSearchTerm) {
+      // Matches order number directly, plus the shipping address's own phone
+      // field, plus (via a customer_id lookup below) the phone on the
+      // customer record — mirrors the search that used to run client-side
+      // over the entire fetched order history.
+      const orConditions = [`order_number.ilike.%${safeSearchTerm}%`];
+
+      if (searchDigits.length >= 3) {
+        orConditions.push(`shipping_address->>phone.ilike.%${searchDigits}%`);
+
+        const { data: matchingCustomers } = await supabase
+          .from("store_customers")
+          .select("id")
+          .ilike("phone", `%${searchDigits}%`);
+
+        const customerIds = (matchingCustomers ?? []).map((c) => c.id);
+        if (customerIds.length > 0) {
+          orConditions.push(`customer_id.in.(${customerIds.join(",")})`);
+        }
+      }
+
+      query = query.or(orConditions.join(","));
+    }
+
     if (filters) {
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.payment_status)
@@ -78,13 +106,19 @@ export async function getStoreOrders(
     const { data: orders, error, count } = await query;
     if (error) throw error;
 
-    // Total orders without filters (all)
-    const { count: totalOrders, error: totalError } = await supabase
+    // Store-wide status/payment tallies + total order count — always
+    // unfiltered (independent of the current search/status/payment filter
+    // above), so status tabs keep showing the full picture regardless of
+    // what's currently being searched for. Selecting just these two columns
+    // (no joins, no order_items) keeps this cheap even with a large order
+    // history — this single query replaces what used to be a full refetch
+    // of every order + line item on every page/search/filter change.
+    const { data: statusRows, error: statusError } = await supabase
       .from("orders")
-      .select("*", { count: "exact", head: true })
+      .select("status, payment_status")
       .eq("store_id", storeId);
 
-    if (totalError) throw totalError;
+    if (statusError) throw statusError;
 
     // courier_consignment_id/courier_order_status/courier_credential_id are no
     // longer native columns on orders — sourced from each order's active
@@ -180,10 +214,10 @@ export async function getStoreOrders(
       [OrderStatus.CANCELLED]: 0,
     };
 
-    // Count totals from transformed orders
-    transformedOrders.forEach((order) => {
-      const paymentStatus = order.payment_status as PaymentStatus;
-      const orderStatus = order.status as OrderStatus;
+    // Count totals from the full (unfiltered) store-wide status/payment rows
+    (statusRows ?? []).forEach((row) => {
+      const paymentStatus = row.payment_status as PaymentStatus;
+      const orderStatus = row.status as OrderStatus;
 
       if (paymentStatus && totalByPaymentStatus[paymentStatus] !== undefined) {
         totalByPaymentStatus[paymentStatus]++;
@@ -197,7 +231,7 @@ export async function getStoreOrders(
     return {
       orders: transformedOrders,
       total: count || 0,
-      totalOrders: totalOrders || 0,
+      totalOrders: statusRows?.length || 0,
       totalByPaymentStatus,
       totalByOrderStatus,
     };

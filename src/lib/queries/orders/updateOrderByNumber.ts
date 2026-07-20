@@ -302,7 +302,28 @@ async function updateOrderItems(
         // Remove from existing map to track what's left
         existingItemsMap.delete(key);
       } else {
-        // Insert new item
+        // Insert new item. The edit form already carries cost_price from the
+        // product/variant's tp_price at the moment it was added to the
+        // order — fall back to a fresh lookup only if that's missing.
+        let costPrice = newItem.cost_price ?? null;
+        if (costPrice == null) {
+          costPrice = newItem.variant_id
+            ? (
+                await supabaseAdmin
+                  .from("product_variants")
+                  .select("tp_price")
+                  .eq("id", newItem.variant_id)
+                  .maybeSingle()
+              ).data?.tp_price ?? null
+            : (
+                await supabaseAdmin
+                  .from("products")
+                  .select("tp_price")
+                  .eq("id", newItem.product_id)
+                  .maybeSingle()
+              ).data?.tp_price ?? null;
+        }
+
         const { error: insertError } = await supabaseAdmin
           .from("order_items")
           .insert({
@@ -314,6 +335,7 @@ async function updateOrderItems(
             quantity: newItem.quantity,
             unit_price: newItem.unit_price,
             total_price: newItem.total_price,
+            cost_price: costPrice,
             created_at: new Date().toISOString(),
           });
 

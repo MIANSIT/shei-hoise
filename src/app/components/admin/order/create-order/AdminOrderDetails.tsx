@@ -190,6 +190,10 @@ export default function AdminOrderDetails({
 
     const unitPrice = getEffectivePrice(selectedProduct, selectedVariant);
     const totalPrice = unitPrice * quantity;
+    const costPrice =
+      selectedVariantId !== "no-variant" && selectedVariant
+        ? (selectedVariant.tp_price ?? null)
+        : (selectedProduct.tp_price ?? null);
 
     const variantDetails =
       selectedVariantId !== "no-variant" && selectedVariant
@@ -245,6 +249,7 @@ export default function AdminOrderDetails({
           quantity: quantity,
           unit_price: unitPrice,
           total_price: totalPrice,
+          cost_price: costPrice,
           variant_name:
             selectedVariantId !== "no-variant"
               ? selectedVariant?.variant_name || undefined
