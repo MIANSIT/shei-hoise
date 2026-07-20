@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Tag, Table, Spin, App } from "antd";
-import { ExclamationCircleOutlined, DownloadOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { ExclamationCircleOutlined, DownloadOutlined, CheckCircleOutlined, EditOutlined, StopOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 
@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById";
 import { confirmVendorOrder } from "@/lib/queries/vendorOrder/confirmVendorOrder";
+import { cancelVendorOrder } from "@/lib/queries/vendorOrder/cancelVendorOrder";
 import { deleteVendorOrder } from "@/lib/queries/vendorOrder/deleteVendorOrder";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -35,6 +36,7 @@ export default function VendorOrderDetailPage() {
   const [order, setOrder] = useState<VendorOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -75,11 +77,37 @@ export default function VendorOrderDetailPage() {
     });
   };
 
+  const handleCancel = () => {
+    modal.confirm({
+      title: "Cancel this confirmed order?",
+      icon: <ExclamationCircleOutlined />,
+      content:
+        "This will return all dispatched stock from the vendor back to the warehouse. Only cancel if the goods were not received or the order was a mistake.",
+      okText: "Yes, Cancel Order",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setCancelling(true);
+        try {
+          await cancelVendorOrder(orderId, user?.id ?? null);
+          success("Order cancelled — stock returned to warehouse");
+          fetchOrder();
+        } catch (err) {
+          error(err instanceof Error ? err.message : "Failed to cancel order");
+        } finally {
+          setCancelling(false);
+        }
+      },
+    });
+  };
+
   const handleDelete = () => {
     modal.confirm({
       title: "Delete this draft order?",
       icon: <ExclamationCircleOutlined />,
-      content: "This draft has not moved any stock yet. This cannot be undone.",
+      content:
+        order?.status === "draft"
+          ? "This draft has not moved any stock yet. This cannot be undone."
+          : "This cancelled order's stock has already been returned to the warehouse. Deleting removes the record permanently.",
       okText: "Delete",
       okButtonProps: { danger: true },
       onOk: async () => {
@@ -249,6 +277,13 @@ export default function VendorOrderDetailPage() {
             </Button>
             {order.status === "draft" && (
               <>
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={() => router.push(`/dashboard/vendor-orders/${orderId}/edit`)}
+                  className="rounded-xl h-9"
+                >
+                  Edit Draft
+                </Button>
                 <Button danger loading={deleting} onClick={handleDelete} className="rounded-xl h-9">
                   Delete Draft
                 </Button>
@@ -266,6 +301,39 @@ export default function VendorOrderDetailPage() {
                   Confirm & Dispatch
                 </Button>
               </>
+            )}
+            {order.status === "confirmed" && (
+              <>
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={() =>
+                    router.push(`/dashboard/vendor-orders/${orderId}/add-items`)
+                  }
+                  className="rounded-xl h-9"
+                >
+                  Dispatch More
+                </Button>
+                <Button
+                  danger
+                  icon={<StopOutlined />}
+                  loading={cancelling}
+                  onClick={handleCancel}
+                  className="rounded-xl h-9"
+                >
+                  Cancel Order
+                </Button>
+              </>
+            )}
+            {order.status === "cancelled" && (
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                loading={deleting}
+                onClick={handleDelete}
+                className="rounded-xl h-9"
+              >
+                Delete
+              </Button>
             )}
           </div>
         </div>
