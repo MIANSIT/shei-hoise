@@ -6,7 +6,6 @@ import { CurrentUser, userSchema } from "../types/users";
 import { USERTYPE } from "@/lib/types/enums"; // ← add this
 
 import { CustomerProfile } from "../types/customer";
-import { useCheckoutStore } from "../store/userInformationStore";
 import { User } from "@supabase/supabase-js";
 
 export interface CurrentUserWithProfile extends CurrentUser {
@@ -28,6 +27,39 @@ let globalUserCache: {
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 /* =======================
+   SHARED AUTH-USER FETCH
+   This hook mounts in ~39 places across the app (sidebar, layout, page,
+   currency icon, etc.) — several of them simultaneously on one screen.
+   Without this, every mount fired its own supabase.auth.getUser() call
+   even though they all want the same answer. Caching the promise itself
+   (not just the DB lookup below) means concurrent mounts share one
+   in-flight request, and mounts within the cache window skip the network
+   entirely.
+======================= */
+let cachedAuthUserPromise: Promise<User | null> | null = null;
+let authUserCacheTimestamp = 0;
+
+function getSharedAuthUser(): Promise<User | null> {
+  const isFresh =
+    cachedAuthUserPromise && Date.now() - authUserCacheTimestamp < CACHE_DURATION;
+  if (isFresh) return cachedAuthUserPromise!;
+
+  authUserCacheTimestamp = Date.now();
+  cachedAuthUserPromise = supabase.auth
+    .getUser()
+    .then(({ data }) => data.user)
+    .catch((err) => {
+      cachedAuthUserPromise = null;
+      throw err;
+    });
+  return cachedAuthUserPromise;
+}
+
+function invalidateSharedAuthUser() {
+  cachedAuthUserPromise = null;
+}
+
+/* =======================
    HOOK
 ======================= */
 export function useCurrentUser() {
@@ -38,8 +70,6 @@ export function useCurrentUser() {
   const [storeIsActive, setStoreIsActive] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-
-  const { formData } = useCheckoutStore();
 
   useEffect(() => {
     let mounted = true;
@@ -61,6 +91,7 @@ export function useCurrentUser() {
           setStoreIsActive(null);
           setLoading(false);
           globalUserCache = null;
+          invalidateSharedAuthUser();
           return;
         }
 
@@ -186,15 +217,15 @@ export function useCurrentUser() {
         setStoreIsActive(null);
         setLoading(false);
         globalUserCache = null;
+        invalidateSharedAuthUser();
       }
     };
 
     /* =======================
        INITIAL LOAD
     ======================= */
-    supabase.auth
-      .getUser()
-      .then(({ data: { user } }) => fetchUser(user))
+    getSharedAuthUser()
+      .then((user) => fetchUser(user))
       .catch((err) => {
         setError(err);
         setLoading(false);
@@ -208,6 +239,7 @@ export function useCurrentUser() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (currentAuthUser && session?.user?.id !== currentAuthUser.id) {
         globalUserCache = null;
+        invalidateSharedAuthUser();
       }
       fetchUser(session?.user ?? null);
     });
@@ -216,7 +248,7 @@ export function useCurrentUser() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [formData]);
+  }, []);
 
   /* =======================
      RETURN
@@ -239,4 +271,5 @@ export function useCurrentUser() {
 ======================= */
 export function clearUserCache() {
   globalUserCache = null;
+  invalidateSharedAuthUser();
 }

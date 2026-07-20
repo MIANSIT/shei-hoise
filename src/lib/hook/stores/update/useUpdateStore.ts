@@ -7,6 +7,7 @@ import {
   deleteStoreMedia,
 } from "@/lib/queries/stores/update/storeMedia";
 import { updateStoreSettings } from "@/lib/queries/stores/update/updateStoreSettings";
+import { invalidateStoreSettingsCache } from "@/lib/queries/stores/getStoreSettings";
 import { updateStoreSocialMedia } from "@/lib/queries/stores/update/updateStoreSocialMedia";
 import type {
   UpdatedStoreData,
@@ -87,6 +88,7 @@ export function useUpdateStore(storeId: string) {
       const updatedSettings = settingsData
         ? await updateStoreSettings(storeId, settingsData)
         : null;
+      if (updatedSettings) invalidateStoreSettingsCache(storeId);
 
       // Update social media
       const updatedSocialMedia = socialMediaData

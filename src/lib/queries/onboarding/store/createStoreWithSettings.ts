@@ -6,6 +6,7 @@ import {
   StoreType,
   StoreSettingsType,
 } from "@/lib/schema/onboarding/user.schema";
+import { DEFAULT_EXPENSE_CATEGORIES } from "@/lib/constants/defaultExpenseCategories";
 
 type CreateStoreArgs = {
   ownerId: string;
@@ -75,7 +76,27 @@ export async function createStoreWithSettings({
       await supabaseAdmin.from("stores").update(uploads).eq("id", storeId);
     }
 
-    // 5️⃣ Insert store settings
+    // 5️⃣ Seed the standard expense categories — see defaultExpenseCategories.ts.
+    // Non-fatal: a store shouldn't fail to create over this, categories can
+    // always be added manually if this insert has a problem.
+    const { error: categoriesError } = await supabaseAdmin
+      .from("expense_categories")
+      .insert(
+        DEFAULT_EXPENSE_CATEGORIES.map((cat) => ({
+          store_id: storeId,
+          name: cat.name,
+          description: cat.description,
+          icon: cat.icon,
+          color: cat.color,
+          is_default: true,
+          is_active: true,
+        })),
+      );
+    if (categoriesError) {
+      console.error("Failed to seed default expense categories:", categoriesError);
+    }
+
+    // 6️⃣ Insert store settings
     if (settings) {
       const { store_social_media, ...restSettings } = settings;
 
