@@ -29,8 +29,17 @@ interface UnifiedCheckoutLayoutProps {
   minOrderAmount?: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
-  onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
-  onRemoveItem?: (productId: string, variantId: string | null) => void;
+  onQuantityChange?: (
+    productId: string,
+    variantId: string | null,
+    newQuantity: number,
+    bundleSelections?: Record<string, string> | null
+  ) => void;
+  onRemoveItem?: (
+    productId: string,
+    variantId: string | null,
+    bundleSelections?: Record<string, string> | null
+  ) => void;
 }
 
 export default function UnifiedCheckoutLayout({
@@ -71,20 +80,25 @@ export default function UnifiedCheckoutLayout({
   const handleQuantityChange = (
     productId: string,
     variantId: string | null,
-    newQuantity: number
+    newQuantity: number,
+    bundleSelections?: Record<string, string> | null
   ) => {
     if (mode === "checkout") {
-      updateQuantity(productId, variantId, newQuantity);
+      updateQuantity(productId, variantId, newQuantity, bundleSelections);
     } else if (mode === "confirm" && onQuantityChange) {
-      onQuantityChange(productId, variantId, newQuantity);
+      onQuantityChange(productId, variantId, newQuantity, bundleSelections);
     }
   };
 
-  const handleRemoveItem = (productId: string, variantId: string | null) => {
+  const handleRemoveItem = (
+    productId: string,
+    variantId: string | null,
+    bundleSelections?: Record<string, string> | null
+  ) => {
     if (mode === "checkout") {
-      removeItem(productId, variantId);
+      removeItem(productId, variantId, bundleSelections);
     } else if (mode === "confirm" && onRemoveItem) {
-      onRemoveItem(productId, variantId);
+      onRemoveItem(productId, variantId, bundleSelections);
     }
   };
 

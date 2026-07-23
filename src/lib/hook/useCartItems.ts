@@ -10,6 +10,20 @@ import {
   CartItem,
 } from "../../lib/types/cart";
 
+// Two lines for the same product can carry different bundle choice-group
+// picks (e.g. Adult vs Kitten flavor) — they must stay separate lines, so
+// the selections are part of the grouping/matching key everywhere below.
+const selectionsKey = (selections?: Record<string, string> | null) =>
+  selections && Object.keys(selections).length > 0
+    ? JSON.stringify(Object.entries(selections).sort())
+    : "none";
+
+const cartLineKey = (item: {
+  productId: string;
+  variantId?: string | null;
+  bundleSelections?: Record<string, string> | null;
+}) => `${item.productId}-${item.variantId || "no-variant"}-${selectionsKey(item.bundleSelections)}`;
+
 // ✅ FIX: Group duplicate items and sum quantities
 const groupAndSumCartItems = (
   items: CartProductWithDetails[]
@@ -17,7 +31,7 @@ const groupAndSumCartItems = (
   const groupedMap = new Map();
 
   items.forEach((item) => {
-    const key = `${item.productId}-${item.variantId || "no-variant"}`;
+    const key = cartLineKey(item);
 
     if (groupedMap.has(key)) {
       // If item already exists, sum the quantities
@@ -68,11 +82,11 @@ export function useCartItems(storeSlug?: string) {
 
     // Check if new products were added (not just quantity changes)
     const currentKeys = targetCart
-      .map((item) => `${item.productId}-${item.variantId}`)
+      .map((item) => cartLineKey(item))
       .sort()
       .join(",");
     const previousKeys = previousCartRef.current
-      .map((item) => `${item.productId}-${item.variantId}`)
+      .map((item) => cartLineKey(item))
       .sort()
       .join(",");
 
@@ -139,11 +153,9 @@ export function useCartItems(storeSlug?: string) {
           }
         }
 
-        // ✅ FIX: First group the raw cart items by productId and variantId
+        // ✅ FIX: First group the raw cart items by productId/variantId/bundleSelections
         const groupedRawCart = targetCart.reduce((acc, cartItem) => {
-          const key = `${cartItem.productId}-${
-            cartItem.variantId || "no-variant"
-          }`;
+          const key = cartLineKey(cartItem);
           if (acc.has(key)) {
             const existing = acc.get(key);
             acc.set(key, {
@@ -216,6 +228,7 @@ export function useCartItems(storeSlug?: string) {
             variantId: cartItem.variantId,
             quantity: cartItem.quantity,
             storeSlug: cartItem.storeSlug,
+            bundleSelections: cartItem.bundleSelections ?? null,
             product,
             variant,
             displayPrice,
@@ -255,13 +268,9 @@ export function useCartItems(storeSlug?: string) {
   useEffect(() => {
     if (!hasLoadedRef.current || loading) return;
 
-    const currentKeys = new Set(
-      targetCart.map((item) => `${item.productId}-${item.variantId}`)
-    );
+    const currentKeys = new Set(targetCart.map((item) => cartLineKey(item)));
     const previousKeys = new Set(
-      previousCartRef.current.map(
-        (item) => `${item.productId}-${item.variantId}`
-      )
+      previousCartRef.current.map((item) => cartLineKey(item))
     );
 
     // Check if items were removed
@@ -270,9 +279,7 @@ export function useCartItems(storeSlug?: string) {
     // Check if quantities changed
     const quantitiesChanged = previousCartRef.current.some((prevItem) => {
       const currentItem = targetCart.find(
-        (item) =>
-          item.productId === prevItem.productId &&
-          item.variantId === prevItem.variantId
+        (item) => cartLineKey(item) === cartLineKey(prevItem)
       );
       return currentItem && currentItem.quantity !== prevItem.quantity;
     });
@@ -283,11 +290,7 @@ export function useCartItems(storeSlug?: string) {
       // Handle removals
       if (itemsRemoved) {
         updatedItems = updatedItems.filter((item) =>
-          targetCart.some(
-            (cartItem) =>
-              cartItem.productId === item.productId &&
-              cartItem.variantId === item.variantId
-          )
+          targetCart.some((cartItem) => cartLineKey(cartItem) === cartLineKey(item))
         );
       }
 
@@ -295,9 +298,7 @@ export function useCartItems(storeSlug?: string) {
       if (quantitiesChanged) {
         // ✅ FIX: Group the target cart first to get correct quantities
         const groupedTargetCart = targetCart.reduce((acc, cartItem) => {
-          const key = `${cartItem.productId}-${
-            cartItem.variantId || "no-variant"
-          }`;
+          const key = cartLineKey(cartItem);
           if (acc.has(key)) {
             const existing = acc.get(key);
             acc.set(key, {
@@ -311,7 +312,7 @@ export function useCartItems(storeSlug?: string) {
         }, new Map());
 
         updatedItems = updatedItems.map((item) => {
-          const key = `${item.productId}-${item.variantId || "no-variant"}`;
+          const key = cartLineKey(item);
           const currentCartItem = groupedTargetCart.get(key);
 
           if (currentCartItem && currentCartItem.quantity !== item.quantity) {

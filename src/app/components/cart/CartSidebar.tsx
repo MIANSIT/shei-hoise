@@ -58,12 +58,21 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     router.push(`/${store_slug}`);
   };
 
-  const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
-    updateQuantity(productId, variantId, newQuantity);
+  const handleQuantityChange = (
+    productId: string,
+    variantId: string | null,
+    newQuantity: number,
+    bundleSelections?: Record<string, string> | null
+  ) => {
+    updateQuantity(productId, variantId, newQuantity, bundleSelections);
   };
 
-  const handleRemoveItem = (productId: string, variantId: string | null) => {
-    removeItem(productId, variantId);
+  const handleRemoveItem = (
+    productId: string,
+    variantId: string | null,
+    bundleSelections?: Record<string, string> | null
+  ) => {
+    removeItem(productId, variantId, bundleSelections);
   };
 
   const handleClearCart = () => {

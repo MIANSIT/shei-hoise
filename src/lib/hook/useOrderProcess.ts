@@ -82,6 +82,7 @@ export function useOrderProcess(store_slug: string) {
               base_price: item.variant.base_price,
               discounted_price: item.variant.discounted_price,
             } : null,
+            bundle_selections: item.bundleSelections ?? null,
           };
         }),
         subtotal: subtotal,

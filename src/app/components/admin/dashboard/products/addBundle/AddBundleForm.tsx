@@ -4,6 +4,7 @@ import React, { forwardRef, useImperativeHandle, useEffect, useState } from "rea
 import { useForm, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { bundleSchema, BundleType } from "@/lib/schema/bundleSchema";
+import { useAddBundleDraftStore } from "@/lib/store/addBundleDraftStore";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
 import ProductImages from "@/app/components/admin/dashboard/products/addProducts/ProductImages";
 import BundleComponentsInline from "./BundleComponentsInline";
@@ -62,6 +63,10 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
   ({ bundle, storeId, onSubmit }, ref) => {
     const { currency, loading: currencyLoading } = useUserCurrencyIcon();
     const displayCurrency = currencyLoading ? "" : currency ?? "";
+    const isAddMode = !bundle;
+
+    // Subscribe to hydration flag — fires once after localStorage is read
+    const hasHydrated = useAddBundleDraftStore((s) => s._hasHydrated);
 
     const initialValues = React.useMemo<BundleType>(
       () => ({
@@ -119,6 +124,32 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
       });
     }, [storeId]);
 
+    // ── Draft persistence (add mode only) ───────────────────────────────────
+    // Restore the draft once Zustand has finished reading from localStorage.
+    // We must wait for _hasHydrated because getState() returns initial values
+    // synchronously before the persist middleware has loaded from storage.
+    useEffect(() => {
+      if (!isAddMode || !hasHydrated) return;
+      const draft = useAddBundleDraftStore.getState();
+      if (draft.formValues) {
+        form.reset({
+          ...initialValues,
+          ...draft.formValues,
+          store_id: storeId, // always enforce current store
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasHydrated]);
+
+    // Sync all form value changes → draft store (no re-renders)
+    useEffect(() => {
+      if (!isAddMode) return;
+      const subscription = watch((values) => {
+        useAddBundleDraftStore.getState().setFormValues(values as Partial<BundleType>);
+      });
+      return () => subscription.unsubscribe();
+    }, [isAddMode, watch]);
+
     const handleNameChange = (value: unknown) => {
       if (typeof value !== "string") return;
       form.setValue("name", value);
@@ -132,7 +163,10 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
     };
 
     useImperativeHandle(ref, () => ({
-      reset: () => form.reset(initialValues),
+      reset: () => {
+        form.reset(initialValues);
+        if (isAddMode) useAddBundleDraftStore.getState().clearDraft();
+      },
       formValues: () => form.getValues(),
     }));
 
@@ -148,7 +182,13 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
     return (
       <div className="bg-background">
         <form
-          onSubmit={handleSubmit((data) => onSubmit(data, { reset: () => form.reset(initialValues), formValues: () => form.getValues() }), scrollToFirstError)}
+          onSubmit={handleSubmit((data) => onSubmit(data, {
+            reset: () => {
+              form.reset(initialValues);
+              if (isAddMode) useAddBundleDraftStore.getState().clearDraft();
+            },
+            formValues: () => form.getValues(),
+          }), scrollToFirstError)}
           className="mx-auto max-w-7xl space-y-6 p-4 pb-16 lg:p-8 xl:p-10"
         >
           <div className="mb-2">

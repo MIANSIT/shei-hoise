@@ -64,10 +64,15 @@ export interface BundleItem {
   component_product_id: string;
   component_variant_id: string | null;
   quantity_needed: number;
+  /** Rows sharing this id are alternatives for one slot — the customer picks one. */
+  option_group_id: string | null;
+  /** Shared across every row in a group; the label shown to the customer. */
+  option_group_label: string | null;
   component?: {
     id: string;
     name: string;
     base_price: number;
     primary_image?: ProductImage | null;
+    available_stock?: number;
   };
 }

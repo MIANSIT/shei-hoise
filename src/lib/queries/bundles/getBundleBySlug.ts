@@ -8,6 +8,8 @@ interface DbBundleItem {
   component_product_id: string;
   component_variant_id: string | null;
   quantity_needed: number;
+  option_group_id: string | null;
+  option_group_label: string | null;
 }
 
 interface DbProductImage {
@@ -40,7 +42,7 @@ export async function getBundleBySlug(
       status,
       category_id,
       product_images(id, image_url, alt_text, sort_order, is_primary),
-      bundle_items!bundle_items_bundle_product_id_fkey(id, component_product_id, component_variant_id, quantity_needed)
+      bundle_items!bundle_items_bundle_product_id_fkey(id, component_product_id, component_variant_id, quantity_needed, option_group_id, option_group_label)
     `
     )
     .eq("store_id", storeId)
@@ -78,6 +80,8 @@ export async function getBundleBySlug(
       component_product_id: item.component_product_id,
       component_variant_id: item.component_variant_id,
       quantity_needed: item.quantity_needed,
+      option_group_id: item.option_group_id,
+      option_group_label: item.option_group_label,
     })),
   };
 }
