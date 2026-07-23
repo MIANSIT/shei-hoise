@@ -36,8 +36,9 @@ export interface CartProductWithDetails {
       image_url: string;
       is_primary: boolean;
     }>;
+    product_type?: "simple" | "bundle";
   };
-  
+
   // Allow null for variant to explicitly indicate no variant
   variant?: {
     id: string;

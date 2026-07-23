@@ -72,6 +72,7 @@ const Products: React.FC = () => {
         pageSize,
         status: status === "ALL" ? undefined : status,
         featured: featuredOnly ? true : undefined,
+        excludeBundles: true,
       });
       setProducts(res.data);
       setTotal(res.total);
@@ -108,6 +109,7 @@ const Products: React.FC = () => {
         search,
         status: status === "ALL" ? undefined : status,
         featured: featuredOnly ? true : undefined,
+        excludeBundles: true,
       });
 
       const productsToExport = res.data;

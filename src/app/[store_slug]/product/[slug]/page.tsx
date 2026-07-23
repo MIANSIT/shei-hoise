@@ -46,6 +46,17 @@ interface ApiProduct {
     quantity_available: number;
     quantity_reserved: number;
   }>;
+  product_type?: "simple" | "bundle";
+  component_value?: number;
+  bundle_items?: Array<{
+    id: string;
+    quantity_needed: number;
+    component?: {
+      id: string;
+      name: string;
+      primary_image?: { image_url: string } | null;
+    };
+  }>;
   product_variants: Array<{
     primary_image: any;
     id: string;
@@ -579,6 +590,14 @@ export default function ProductPage() {
                 price={displayPrice}
                 originalPrice={originalPrice}
               />
+              {product.product_type === "bundle" &&
+                (product.component_value ?? 0) > displayPrice && (
+                  <p className="mt-1.5 text-[13px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    Worth {curr}
+                    {n(product.component_value!.toFixed(2))} bought separately — save {curr}
+                    {n((product.component_value! - displayPrice).toFixed(2))}
+                  </p>
+                )}
             </div>
 
             {/* Short desc */}
@@ -589,6 +608,38 @@ export default function ProductPage() {
             )}
 
             <div className="border-t border-gray-100 dark:border-gray-800 mb-5" />
+
+            {/* Bundle contents */}
+            {product.product_type === "bundle" &&
+              (product.bundle_items?.length ?? 0) > 0 && (
+                <div className="mb-5">
+                  <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-gray-300">
+                    This bundle includes
+                  </span>
+                  <ul className="space-y-2">
+                    {product.bundle_items!.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2"
+                      >
+                        {item.component?.primary_image?.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.component.primary_image.image_url}
+                            alt={item.component?.name ?? ""}
+                            className="h-8 w-8 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <span className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
+                        )}
+                        <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">
+                          {item.quantity_needed}× {item.component?.name ?? "Product"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
             {/* Variants */}
             {hasVariants && (

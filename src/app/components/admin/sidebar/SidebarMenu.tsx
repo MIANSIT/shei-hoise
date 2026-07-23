@@ -140,6 +140,7 @@ export default function SidebarMenu({
       "Add Product": t.admin.menuAddProduct,
       "Stock Update": t.admin.menuStockUpdate,
       "All Products": t.admin.menuAllProducts,
+      "Bundles": t.admin.menuBundles,
       "All Categories": t.admin.menuAllCategories,
       "Orders": t.admin.menuOrders,
       "Create Order": t.admin.menuCreateOrder,

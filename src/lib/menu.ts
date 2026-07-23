@@ -21,6 +21,7 @@ import {
   BadgeCheck,
   PackageCheck,
   Warehouse,
+  Boxes,
 } from "lucide-react";
 import React from "react";
 
@@ -65,6 +66,11 @@ export const sideMenu: MenuItem[] = [
         icon: Edit,
       },
       { title: "All Products", href: "/dashboard/products", icon: List },
+      {
+        title: "Bundles",
+        href: "/dashboard/products/bundles",
+        icon: Boxes,
+      },
       {
         title: "All Categories",
         href: "/dashboard/products/category",

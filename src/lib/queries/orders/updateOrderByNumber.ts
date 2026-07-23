@@ -95,10 +95,10 @@ export async function updateOrderByNumber(
     }
 
     // Get existing order items to compare
-    const { data: existingOrderItems, error: itemsFetchError } =
+    const { data: existingOrderItemsRaw, error: itemsFetchError } =
       await supabaseAdmin
         .from("order_items")
-        .select("*")
+        .select("*, products(product_type)")
         .eq("order_id", orderId);
 
     if (itemsFetchError) {
@@ -108,6 +108,34 @@ export async function updateOrderByNumber(
         error: `Failed to fetch order items: ${itemsFetchError.message}`,
       };
     }
+
+    // Bundle header rows aren't editable through this generic line-item
+    // diff (see plan: bundle recipes can't be changed after order creation)
+    // — hide them from both sides of the comparison so they're never
+    // duplicated, deleted, or mistaken for a plain product needing
+    // inventory. Their component rows (ordinary products) are untouched
+    // and keep flowing through normally.
+    const existingOrderItems = (existingOrderItemsRaw ?? []).filter(
+      (item: any) => item.products?.product_type !== "bundle"
+    );
+
+    const { data: newItemProducts } = orderProducts.length
+      ? await supabaseAdmin
+          .from("products")
+          .select("id, product_type")
+          .in(
+            "id",
+            [...new Set(orderProducts.map((item: any) => item.product_id))]
+          )
+      : { data: [] as { id: string; product_type: string }[] };
+    const bundleProductIds = new Set(
+      (newItemProducts ?? [])
+        .filter((p) => p.product_type === "bundle")
+        .map((p) => p.id)
+    );
+    const nonBundleOrderProducts = orderProducts.filter(
+      (item: any) => !bundleProductIds.has(item.product_id)
+    );
 
     // ✅ FIXED: Create complete shipping address object
     const shippingAddressUpdate = shippingAddress || {
@@ -214,14 +242,14 @@ export async function updateOrderByNumber(
     }
 
     // Update order items intelligently
-    await updateOrderItems(orderId, existingOrderItems || [], orderProducts);
+    await updateOrderItems(orderId, existingOrderItems, nonBundleOrderProducts);
 
     // Handle inventory updates based on status and quantity changes
     await handleInventoryUpdates(
       existingOrder,
       updateData,
-      existingOrderItems || [],
-      orderProducts
+      existingOrderItems,
+      nonBundleOrderProducts
     );
 
 

@@ -21,6 +21,7 @@ import { getCustomerByPhone } from "@/lib/queries/customers/getCustomerByPhone";
 import { createCustomer } from "@/lib/queries/customers/createCustomer";
 import { updateCheckoutCustomerProfile, createCheckoutCustomerProfile } from "@/lib/queries/customers/checkoutCustomerProfile";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
 
 // Memoized API call function
 const getConfirmOrderToken = async (token: string) => {
@@ -215,6 +216,26 @@ export default function ConfirmOrderPage() {
           console.error("❌ Error fetching product inventory:", inventoryError);
         }
 
+        // Bundles have no product_inventory row of their own — patch in the
+        // computed availability so the stock lookup below finds it exactly
+        // like a normal product's inventory row.
+        const bundleProductIds = (products || [])
+          .filter((p: any) => p.product_type === "bundle")
+          .map((p: any) => p.id);
+        let mergedProductInventory = productInventory || [];
+        if (bundleProductIds.length > 0) {
+          const availabilityMap = await getBundleAvailabilityMap(bundleProductIds);
+          mergedProductInventory = [
+            ...mergedProductInventory,
+            ...bundleProductIds.map((id: string) => ({
+              product_id: id,
+              variant_id: null,
+              quantity_available: availabilityMap.get(id) ?? 0,
+              quantity_reserved: 0,
+            })),
+          ];
+        }
+
         // Get all variant IDs
         const variantIds = tokenData.products
           .filter((p: any) => p.variant_id)
@@ -274,7 +295,7 @@ export default function ConfirmOrderPage() {
           );
 
           // Get product inventory
-          const prodInventory = (productInventory || []).filter(
+          const prodInventory = mergedProductInventory.filter(
             (inv: any) => inv.product_id === product.id && (!inv.variant_id || inv.variant_id === null)
           );
 

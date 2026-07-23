@@ -10,6 +10,8 @@ import { CartProductWithDetails } from "@/lib/types/cart";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { getBundleContentsMap } from "@/lib/queries/bundles/getBundleContentsMap";
+import { BundleItem } from "@/lib/types/product";
 interface CartItemsListProps {
   items?: CartProductWithDetails[];
   onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
@@ -43,6 +45,21 @@ export default function CartItemsList({
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [showMaxQuantityError, setShowMaxQuantityError] = useState<string | null>(null);
   const debounceRefs = useRef<Record<string, NodeJS.Timeout>>({});
+  const [bundleContents, setBundleContents] = useState<Map<string, BundleItem[]>>(new Map());
+
+  const bundleProductIds = items
+    .filter((item) => item.product?.product_type === "bundle")
+    .map((item) => item.productId)
+    .sort()
+    .join(",");
+
+  useEffect(() => {
+    if (!bundleProductIds) {
+      setBundleContents(new Map());
+      return;
+    }
+    getBundleContentsMap(bundleProductIds.split(",")).then(setBundleContents);
+  }, [bundleProductIds]);
 
   // Cleanup debounce timeouts on unmount
   useEffect(() => {
@@ -310,6 +327,17 @@ export default function CartItemsList({
                     )}
                   </div>
                 )}
+
+                {item.product?.product_type === "bundle" &&
+                  (bundleContents.get(item.productId)?.length ?? 0) > 0 && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Contains:{" "}
+                      {bundleContents
+                        .get(item.productId)!
+                        .map((c) => `${c.quantity_needed}× ${c.component?.name ?? "Product"}`)
+                        .join(", ")}
+                    </p>
+                  )}
 
                 {item.product?.category?.name && (
                   <p className="text-sm text-muted-foreground">

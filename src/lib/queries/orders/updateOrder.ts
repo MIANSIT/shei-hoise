@@ -204,10 +204,17 @@ async function handleInventoryUpdates(
       return;
     }
 
-    const { data: orderItems } = await supabaseAdmin
+    const { data: fetchedItems } = await supabaseAdmin
       .from('order_items')
-      .select('*')
+      .select('*, products(product_type)')
       .eq('order_id', orderId);
+
+    // Bundle header rows carry no product_inventory of their own — the real
+    // stock lives on their exploded component rows, which pass through
+    // untouched (they look like ordinary line items to the code below).
+    const orderItems = (fetchedItems || []).filter(
+      (item: any) => item.products?.product_type !== 'bundle'
+    );
 
     if (!orderItems || orderItems.length === 0) {
       return;

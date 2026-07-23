@@ -1,6 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
+import { getBundleContentsMap } from "@/lib/queries/bundles/getBundleContentsMap";
+import { getBundleComponentValueMap } from "@/lib/queries/bundles/getBundleComponentValueMap";
+import { BundleItem } from "@/lib/types/product";
 
 interface ProductVariant {
   id: string;
@@ -42,6 +46,11 @@ interface Product {
     quantity_reserved: number;
   }[];
   product_variants: ProductVariant[];
+  product_type: "simple" | "bundle";
+  /** Populated only for product_type === "bundle" — what's inside. */
+  bundle_items?: BundleItem[];
+  /** Populated only for product_type === "bundle" — what the components cost bought separately. */
+  component_value?: number;
 }
 
 export async function getClientProductBySlug(
@@ -60,6 +69,7 @@ export async function getClientProductBySlug(
       base_price,
       discounted_price,
       discount_amount,
+      product_type,
       categories(id, name),
       product_images(id, image_url, is_primary),
       product_inventory(quantity_available, quantity_reserved),
@@ -95,5 +105,25 @@ export async function getClientProductBySlug(
     (variant: ProductVariant) => variant.is_active !== false,
   );
 
-  return data as Product;
+  const product = data as Product;
+
+  // Bundles have no product_inventory row of their own, and need their
+  // recipe resolved for the "what's inside" section on the product page.
+  if (product.product_type === "bundle") {
+    const [availabilityMap, contentsMap, valueMap] = await Promise.all([
+      getBundleAvailabilityMap([product.id]),
+      getBundleContentsMap([product.id]),
+      getBundleComponentValueMap([product.id]),
+    ]);
+    product.product_inventory = [
+      {
+        quantity_available: availabilityMap.get(product.id) ?? 0,
+        quantity_reserved: 0,
+      },
+    ];
+    product.bundle_items = contentsMap.get(product.id) ?? [];
+    product.component_value = valueMap.get(product.id) ?? 0;
+  }
+
+  return product;
 }
