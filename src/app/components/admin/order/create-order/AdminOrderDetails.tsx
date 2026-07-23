@@ -1,6 +1,6 @@
 // app/components/admin/order/create-order/OrderDetails.tsx
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Card,
   Button,
@@ -29,11 +29,20 @@ import {
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
+import dataService from "@/lib/queries/dataService";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+// How many products the "Add Product" search returns per query — keeps the
+// picker fast for stores with large catalogs instead of loading everything.
+const PICKER_PAGE_SIZE = 30;
+const PICKER_SEARCH_DEBOUNCE_MS = 300;
+
 interface OrderDetailsProps {
+  storeId: string;
+  // Products already known to the parent (e.g. items already on the order
+  // being edited). Merged with whatever the picker search turns up below.
   products: ProductWithVariants[];
   orderProducts: OrderProduct[];
   setOrderProducts: React.Dispatch<React.SetStateAction<OrderProduct[]>>;
@@ -42,13 +51,19 @@ interface OrderDetailsProps {
   // product/variant's `quantity_reserved`, so we add them back when
   // computing how much more can be added to THIS order.
   originalOrderProducts?: OrderProduct[];
+  // Lets the parent accumulate every product the picker has fetched, so
+  // lookups for already-added order items keep working even after the
+  // picker's own search results have moved on to a different query.
+  onProductsFetched?: (products: ProductWithVariants[]) => void;
 }
 
 export default function AdminOrderDetails({
+  storeId,
   products,
   orderProducts,
   setOrderProducts,
   originalOrderProducts = [],
+  onProductsFetched,
 }: OrderDetailsProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedVariantId, setSelectedVariantId] =
@@ -57,6 +72,55 @@ export default function AdminOrderDetails({
   const [api, contextHolder] = notification.useNotification();
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
+
+  // Product picker — searches the server instead of holding the whole
+  // catalog in memory, since a store's product list can be huge.
+  const [pickerResults, setPickerResults] = useState<ProductWithVariants[]>(
+    [],
+  );
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const runPickerSearch = async (search: string) => {
+    if (!storeId) return;
+    setPickerLoading(true);
+    try {
+      const res = await dataService.getProductsWithVariants({
+        storeId,
+        search: search.trim() || undefined,
+        page: 1,
+        pageSize: PICKER_PAGE_SIZE,
+        withCounts: false,
+      });
+      setPickerResults(res.data);
+      onProductsFetched?.(res.data);
+    } catch (err) {
+      console.error("Error searching products:", err);
+    } finally {
+      setPickerLoading(false);
+    }
+  };
+
+  // Load a default page so the dropdown isn't empty before the user types.
+  useEffect(() => {
+    runPickerSearch("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId]);
+
+  const handlePickerSearch = (value: string) => {
+    if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);
+    pickerDebounceRef.current = setTimeout(() => {
+      runPickerSearch(value);
+    }, PICKER_SEARCH_DEBOUNCE_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);
+    };
+  }, []);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const selectedVariant = selectedProduct?.product_variants?.find(
@@ -369,8 +433,9 @@ export default function AdminOrderDetails({
     return <Text>{displayCurrencyIconSafe} 0</Text>;
   };
 
-  // Filter products that have available stock
-  const availableProducts = products.filter((product) => {
+  // Products currently offered in the "Add Product" dropdown — the current
+  // search page, filtered down to non-draft/inactive ones.
+  const availableProducts = pickerResults.filter((product) => {
     // Hide only draft or inactive products
     if (
       product.status === ProductStatus.DRAFT ||
@@ -411,7 +476,7 @@ export default function AdminOrderDetails({
                 >
                   <Text strong>Product</Text>
                   <Select
-                    placeholder="Select product"
+                    placeholder="Search product by name"
                     value={selectedProductId || undefined}
                     onChange={(value) => {
                       setSelectedProductId(value);
@@ -421,17 +486,12 @@ export default function AdminOrderDetails({
                     style={{ width: "100%" }}
                     size="large"
                     showSearch
-                    optionFilterProp="children"
-                    filterOption={(input, option) => {
-                      const product = availableProducts.find(
-                        (p) => p.id === option?.value,
-                      );
-                      return (
-                        product?.name
-                          ?.toLowerCase()
-                          .includes(input.toLowerCase()) ?? false
-                      );
-                    }}
+                    filterOption={false}
+                    onSearch={handlePickerSearch}
+                    loading={pickerLoading}
+                    notFoundContent={
+                      pickerLoading ? "Searching..." : "No products found"
+                    }
                   >
                     {availableProducts.map((product) => {
                       const primaryImage = getPrimaryImage(product);
