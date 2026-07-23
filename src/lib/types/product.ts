@@ -51,4 +51,28 @@ export interface Product {
   stock?: ProductStock | null;
   product_inventory?: ProductInventory[];
   variants?: ProductVariant[];
+  /** 'bundle' products have no product_inventory row of their own — see BundleItem. */
+  product_type?: "simple" | "bundle";
+  /** 'bundle' products only — what the components would cost bought separately. */
+  component_value?: number;
+}
+
+/** One recipe line of a bundle product: how many of a real product/variant it takes. */
+export interface BundleItem {
+  id: string;
+  bundle_product_id: string;
+  component_product_id: string;
+  component_variant_id: string | null;
+  quantity_needed: number;
+  /** Rows sharing this id are alternatives for one slot — the customer picks one. */
+  option_group_id: string | null;
+  /** Shared across every row in a group; the label shown to the customer. */
+  option_group_label: string | null;
+  component?: {
+    id: string;
+    name: string;
+    base_price: number;
+    primary_image?: ProductImage | null;
+    available_stock?: number;
+  };
 }

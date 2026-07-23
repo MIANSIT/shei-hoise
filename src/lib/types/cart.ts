@@ -5,8 +5,17 @@ export type CartItem = AddToCartType;
 export interface CartState {
   cart: CartItem[];
   addToCart: (product: AddToCartType) => void;
-  removeItem: (productId: string, variantId?: string | null) => void; // Updated
-  updateQuantity: (productId: string, variantId: string | null | undefined, quantity: number) => void;
+  removeItem: (
+    productId: string,
+    variantId?: string | null,
+    bundleSelections?: Record<string, string> | null
+  ) => void;
+  updateQuantity: (
+    productId: string,
+    variantId: string | null | undefined,
+    quantity: number,
+    bundleSelections?: Record<string, string> | null
+  ) => void;
   clearCart: () => void;
   clearStoreCart: (store_slug: string) => void;
   totalItems: () => number;
@@ -19,7 +28,9 @@ export interface CartProductWithDetails {
   variantId: string | null | undefined;
   quantity: number;
   storeSlug: string;
-  
+  /** For bundles with choice groups: option_group_id -> chosen bundle_item id. */
+  bundleSelections?: Record<string, string> | null;
+
   // Freshly fetched data
   product?: {
     id: string;
@@ -36,8 +47,9 @@ export interface CartProductWithDetails {
       image_url: string;
       is_primary: boolean;
     }>;
+    product_type?: "simple" | "bundle";
   };
-  
+
   // Allow null for variant to explicitly indicate no variant
   variant?: {
     id: string;

@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderProduct, CustomerInfo } from "../../types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { getPhoneRiskLevel } from "@/lib/utils/riskScoring";
+import { explodeBundleOrderProducts } from "./bundleExplosion";
+import { bundleItemKey } from "./bundleItemKey";
 
 export interface CreateOrderData {
   storeId: string;
@@ -375,8 +377,13 @@ export async function createOrder(
       throw new Error("At least one product is required");
     }
 
-    // Step 0: Validate stock availability before creating order
-    const stockValidation = await validateStockAvailability(orderProducts);
+    // Step 0: Resolve any bundle lines into their component purchases, then
+    // validate stock against the resolved (bundle-header-free) list — a
+    // bundle header has no product_inventory row of its own.
+    const { stockRelevantItems, componentsByHeaderKey } =
+      await explodeBundleOrderProducts(orderProducts);
+
+    const stockValidation = await validateStockAvailability(stockRelevantItems);
     if (!stockValidation.success) {
       throw new Error(`Insufficient stock: ${stockValidation.error}`);
     }
@@ -428,7 +435,9 @@ export async function createOrder(
     }
 
 
-    // Step 2: Insert order items
+    // Step 2: Insert order items — headers + simple lines first, so bundle
+    // component rows can be linked back via parent_order_item_id once the
+    // header's real id comes back from the insert.
     const orderItemsData = orderProducts.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -442,9 +451,10 @@ export async function createOrder(
     }));
 
 
-    const { error: itemsError } = await supabaseAdmin
+    const { data: insertedItems, error: itemsError } = await supabaseAdmin
       .from("order_items")
-      .insert(orderItemsData);
+      .insert(orderItemsData)
+      .select("id, product_id, variant_id");
 
     if (itemsError) {
       console.error("❌ Order items insertion error:", itemsError);
@@ -455,10 +465,47 @@ export async function createOrder(
       throw new Error(`Failed to create order items: ${itemsError.message}`);
     }
 
+    if (componentsByHeaderKey.size > 0) {
+      const componentRowsToInsert = (insertedItems ?? []).flatMap((header) => {
+        const components = componentsByHeaderKey.get(
+          bundleItemKey(header.product_id, header.variant_id)
+        );
+        if (!components) return [];
+        return components.map((c) => ({
+          order_id: order.id,
+          product_id: c.product_id,
+          variant_id: c.variant_id || null,
+          quantity: c.quantity,
+          unit_price: c.unit_price,
+          total_price: c.total_price,
+          product_name: c.product_name,
+          variant_details: null,
+          cost_price: c.cost_price ?? null,
+          parent_order_item_id: header.id,
+        }));
+      });
+
+      if (componentRowsToInsert.length > 0) {
+        const { error: componentsError } = await supabaseAdmin
+          .from("order_items")
+          .insert(componentRowsToInsert);
+        if (componentsError) {
+          console.error(
+            "❌ Bundle component items insertion error:",
+            componentsError
+          );
+          await supabaseAdmin.from("orders").delete().eq("id", order.id);
+          throw new Error(
+            `Failed to create bundle component items: ${componentsError.message}`
+          );
+        }
+      }
+    }
+
 
     // Step 3: Update inventory quantities - RESERVE STOCK
     const inventoryUpdateResult = await updateInventoryForOrder(
-      orderProducts,
+      stockRelevantItems,
       "reserve"
     );
 
@@ -478,7 +525,7 @@ export async function createOrder(
     // clear the reservation hold right away or it would stay stuck forever.
     if (status === OrderStatus.DELIVERED) {
       const finalizeResult = await updateInventoryForOrder(
-        orderProducts,
+        stockRelevantItems,
         "finalize"
       );
       if (!finalizeResult.success) {
@@ -533,8 +580,12 @@ export async function createCustomerOrder(
       throw new Error("At least one product is required");
     }
 
-    // ✅ INVENTORY VALIDATION
-    const stockValidation = await validateStockAvailability(orderProducts);
+    // ✅ INVENTORY VALIDATION — resolve bundle lines into their component
+    // purchases first (see createOrder above for why).
+    const { stockRelevantItems, componentsByHeaderKey } =
+      await explodeBundleOrderProducts(orderProducts);
+
+    const stockValidation = await validateStockAvailability(stockRelevantItems);
     if (!stockValidation.success) {
       throw new Error(`Insufficient stock: ${stockValidation.error}`);
     }
@@ -639,9 +690,10 @@ export async function createCustomerOrder(
         : (productCostMap.get(item.product_id) ?? null),
     }));
 
-    const { error: itemsError } = await supabaseAdmin
+    const { data: insertedItems, error: itemsError } = await supabaseAdmin
       .from("order_items")
-      .insert(orderItemsData);
+      .insert(orderItemsData)
+      .select("id, product_id, variant_id");
 
     if (itemsError) {
       console.error("❌ Customer order items error:", itemsError);
@@ -649,9 +701,46 @@ export async function createCustomerOrder(
       throw new Error(`Failed to create order items: ${itemsError.message}`);
     }
 
+    if (componentsByHeaderKey.size > 0) {
+      const componentRowsToInsert = (insertedItems ?? []).flatMap((header) => {
+        const components = componentsByHeaderKey.get(
+          bundleItemKey(header.product_id, header.variant_id)
+        );
+        if (!components) return [];
+        return components.map((c) => ({
+          order_id: order.id,
+          product_id: c.product_id,
+          variant_id: c.variant_id || null,
+          quantity: c.quantity,
+          unit_price: c.unit_price,
+          total_price: c.total_price,
+          product_name: c.product_name,
+          variant_details: null,
+          cost_price: c.cost_price ?? null,
+          parent_order_item_id: header.id,
+        }));
+      });
+
+      if (componentRowsToInsert.length > 0) {
+        const { error: componentsError } = await supabaseAdmin
+          .from("order_items")
+          .insert(componentRowsToInsert);
+        if (componentsError) {
+          console.error(
+            "❌ Bundle component items insertion error:",
+            componentsError
+          );
+          await supabaseAdmin.from("orders").delete().eq("id", order.id);
+          throw new Error(
+            `Failed to create bundle component items: ${componentsError.message}`
+          );
+        }
+      }
+    }
+
     // ✅ INVENTORY UPDATE
     const inventoryUpdateResult = await updateInventoryForOrder(
-      orderProducts,
+      stockRelevantItems,
       "reserve"
     );
 
@@ -668,7 +757,7 @@ export async function createCustomerOrder(
     // Same direct-delivery safeguard as createOrder() above.
     if (status === OrderStatus.DELIVERED) {
       const finalizeResult = await updateInventoryForOrder(
-        orderProducts,
+        stockRelevantItems,
         "finalize"
       );
       if (!finalizeResult.success) {

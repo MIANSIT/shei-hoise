@@ -10,10 +10,35 @@ import { CartProductWithDetails } from "@/lib/types/cart";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { getBundleContentsMap } from "@/lib/queries/bundles/getBundleContentsMap";
+import { BundleItem } from "@/lib/types/product";
+
+// Two cart lines for the same bundle can carry different choice-group picks
+// (e.g. Adult vs Kitten flavor) — bundleSelections must be part of the key
+// used for local UI state and for identifying which line to update/remove.
+const selectionsKey = (selections?: Record<string, string> | null) =>
+  selections && Object.keys(selections).length > 0
+    ? JSON.stringify(Object.entries(selections).sort())
+    : "none";
+const lineKey = (
+  productId: string,
+  variantId: string | null | undefined,
+  bundleSelections?: Record<string, string> | null
+) => `${productId}-${variantId || "no-variant"}-${selectionsKey(bundleSelections)}`;
+
 interface CartItemsListProps {
   items?: CartProductWithDetails[];
-  onQuantityChange?: (productId: string, variantId: string | null, newQuantity: number) => void;
-  onRemoveItem?: (productId: string, variantId: string | null) => void;
+  onQuantityChange?: (
+    productId: string,
+    variantId: string | null,
+    newQuantity: number,
+    bundleSelections?: Record<string, string> | null
+  ) => void;
+  onRemoveItem?: (
+    productId: string,
+    variantId: string | null,
+    bundleSelections?: Record<string, string> | null
+  ) => void;
   onClearCart?: () => void;
   isClearing?: boolean;
   showStoreInfo?: boolean;
@@ -43,6 +68,21 @@ export default function CartItemsList({
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [showMaxQuantityError, setShowMaxQuantityError] = useState<string | null>(null);
   const debounceRefs = useRef<Record<string, NodeJS.Timeout>>({});
+  const [bundleContents, setBundleContents] = useState<Map<string, BundleItem[]>>(new Map());
+
+  const bundleProductIds = items
+    .filter((item) => item.product?.product_type === "bundle")
+    .map((item) => item.productId)
+    .sort()
+    .join(",");
+
+  useEffect(() => {
+    if (!bundleProductIds) {
+      setBundleContents(new Map());
+      return;
+    }
+    getBundleContentsMap(bundleProductIds.split(",")).then(setBundleContents);
+  }, [bundleProductIds]);
 
   // Cleanup debounce timeouts on unmount
   useEffect(() => {
@@ -61,19 +101,19 @@ export default function CartItemsList({
     }
   }, [showMaxQuantityError]);
 
-  const handleQuantityChange = (productId: string, variantId: string | null | undefined, currentQuantity: number, newQuantity: number) => {
+  const handleQuantityChange = (productId: string, variantId: string | null | undefined, bundleSelections: Record<string, string> | null | undefined, currentQuantity: number, newQuantity: number) => {
     if (newQuantity < 1) return;
-    
-    const itemKey = `${productId}-${variantId || 'no-variant'}`;
-    const item = items.find(item => 
-      `${item.productId}-${item.variantId || 'no-variant'}` === itemKey
+
+    const itemKey = lineKey(productId, variantId, bundleSelections);
+    const item = items.find(item =>
+      lineKey(item.productId, item.variantId, item.bundleSelections) === itemKey
     );
-    
+
     // Check stock limit
     if (item && newQuantity > item.stock) {
       newQuantity = item.stock;
     }
-    
+
     // Limit maximum quantity to 999
     if (newQuantity > 999) {
       newQuantity = 999;
@@ -83,7 +123,7 @@ export default function CartItemsList({
     setChangingQuantities((prev) => ({ ...prev, [itemKey]: direction }));
 
     if (onQuantityChange) {
-      onQuantityChange(productId, variantId ?? null, newQuantity);
+      onQuantityChange(productId, variantId ?? null, newQuantity, bundleSelections ?? null);
     }
     
     // Clear input value when changing via buttons
@@ -107,12 +147,12 @@ export default function CartItemsList({
   // const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳"; // fallback
 
-  const handleInputChange = (productId: string, variantId: string | null | undefined, value: string) => {
-    const itemKey = `${productId}-${variantId || 'no-variant'}`;
-    const item = items.find(item => 
-      `${item.productId}-${item.variantId || 'no-variant'}` === itemKey
+  const handleInputChange = (productId: string, variantId: string | null | undefined, bundleSelections: Record<string, string> | null | undefined, value: string) => {
+    const itemKey = lineKey(productId, variantId, bundleSelections);
+    const item = items.find(item =>
+      lineKey(item.productId, item.variantId, item.bundleSelections) === itemKey
     );
-    
+
     if (!item) return;
 
     // Only allow numbers
@@ -165,17 +205,17 @@ export default function CartItemsList({
     // Debounce the quantity update to avoid too many rapid API calls
     debounceRefs.current[itemKey] = setTimeout(() => {
       if (onQuantityChange) {
-        const currentItem = items.find(item => 
-          `${item.productId}-${item.variantId || 'no-variant'}` === itemKey
+        const currentItem = items.find(item =>
+          lineKey(item.productId, item.variantId, item.bundleSelections) === itemKey
         );
-        
+
         // Only update if quantity actually changed from the current value
         if (currentItem && newQuantity !== currentItem.quantity) {
           const direction = newQuantity > currentItem.quantity ? "up" : "down";
           setChangingQuantities((prev) => ({ ...prev, [itemKey]: direction }));
-          
-          onQuantityChange(productId, variantId ?? null, newQuantity);
-          
+
+          onQuantityChange(productId, variantId ?? null, newQuantity, bundleSelections ?? null);
+
           setTimeout(() => {
             setChangingQuantities((prev) => {
               const newState = { ...prev };
@@ -188,8 +228,8 @@ export default function CartItemsList({
     }, 500);
   };
 
-  const handleInputBlur = (productId: string, variantId: string | null | undefined) => {
-    const itemKey = `${productId}-${variantId || 'no-variant'}`;
+  const handleInputBlur = (productId: string, variantId: string | null | undefined, bundleSelections: Record<string, string> | null | undefined) => {
+    const itemKey = lineKey(productId, variantId, bundleSelections);
     const inputValue = inputValues[itemKey];
     
     if (!inputValue || inputValue === '0') {
@@ -202,10 +242,10 @@ export default function CartItemsList({
     }
   };
 
-  const handleRemoveItem = (productId: string, variantId: string | null | undefined) => {
-    const itemKey = `${productId}-${variantId || 'no-variant'}`;
+  const handleRemoveItem = (productId: string, variantId: string | null | undefined, bundleSelections: Record<string, string> | null | undefined) => {
+    const itemKey = lineKey(productId, variantId, bundleSelections);
     setRemovingIds(prev => new Set(prev).add(itemKey));
-    
+
     // Clear input value when removing
     setInputValues(prev => {
       const newValues = { ...prev };
@@ -218,9 +258,9 @@ export default function CartItemsList({
       clearTimeout(debounceRefs.current[itemKey]);
       delete debounceRefs.current[itemKey];
     }
-    
+
     if (onRemoveItem) {
-      onRemoveItem(productId, variantId ?? null);
+      onRemoveItem(productId, variantId ?? null, bundleSelections ?? null);
     }
     
     setTimeout(() => {
@@ -265,7 +305,7 @@ export default function CartItemsList({
       )}
 
       {items.map((item) => {
-        const itemKey = `${item.productId}-${item.variantId || 'no-variant'}`;
+        const itemKey = lineKey(item.productId, item.variantId, item.bundleSelections);
         const isRemoving = removingIds.has(itemKey);
         const isChangingQuantity = changingQuantities[itemKey];
         const inputValue = inputValues[itemKey];
@@ -311,6 +351,24 @@ export default function CartItemsList({
                   </div>
                 )}
 
+                {item.product?.product_type === "bundle" &&
+                  (bundleContents.get(item.productId)?.length ?? 0) > 0 && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Contains:{" "}
+                      {bundleContents
+                        .get(item.productId)!
+                        .filter((c) => {
+                          // Fixed items always show; for a choice group, show
+                          // only the option the customer actually picked.
+                          if (!c.option_group_id) return true;
+                          const pickedId = item.bundleSelections?.[c.option_group_id];
+                          return pickedId ? pickedId === c.id : false;
+                        })
+                        .map((c) => `${c.quantity_needed}× ${c.component?.name ?? "Product"}`)
+                        .join(", ")}
+                    </p>
+                  )}
+
                 {item.product?.category?.name && (
                   <p className="text-sm text-muted-foreground">
                     {item.product.category.name}
@@ -331,7 +389,7 @@ export default function CartItemsList({
                     variant="outline"
                     size="icon"
                     className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
-                    onClick={() => handleQuantityChange(item.productId, item.variantId, item.quantity, item.quantity - 1)}
+                    onClick={() => handleQuantityChange(item.productId, item.variantId, item.bundleSelections, item.quantity, item.quantity - 1)}
                     disabled={item.quantity <= 1 || isClearing || item.isOutOfStock}
                   >
                     <Minus className="h-3 w-3" />
@@ -341,8 +399,8 @@ export default function CartItemsList({
                     <input
                       type="text"
                       value={inputValue !== undefined ? inputValue : item.quantity}
-                      onChange={(e) => handleInputChange(item.productId, item.variantId, e.target.value)}
-                      onBlur={() => handleInputBlur(item.productId, item.variantId)}
+                      onChange={(e) => handleInputChange(item.productId, item.variantId, item.bundleSelections, e.target.value)}
+                      onBlur={() => handleInputBlur(item.productId, item.variantId, item.bundleSelections)}
                       className="w-full h-full text-center border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                       disabled={isClearing || item.isOutOfStock}
                       maxLength={3}
@@ -353,7 +411,7 @@ export default function CartItemsList({
                     variant="outline"
                     size="icon"
                     className="h-7 w-7 rounded-md cursor-pointer hover:bg-accent"
-                    onClick={() => handleQuantityChange(item.productId, item.variantId, item.quantity, item.quantity + 1)}
+                    onClick={() => handleQuantityChange(item.productId, item.variantId, item.bundleSelections, item.quantity, item.quantity + 1)}
                     disabled={isClearing || item.isOutOfStock || item.quantity >= item.stock}
                   >
                     <Plus className="h-3 w-3" />
@@ -380,7 +438,7 @@ export default function CartItemsList({
                   variant="ghost"
                   size="icon"
                   className="group h-8 w-8 cursor-pointer hover:bg-destructive/10 transition-colors"
-                  onClick={() => handleRemoveItem(item.productId, item.variantId)}
+                  onClick={() => handleRemoveItem(item.productId, item.variantId, item.bundleSelections)}
                   aria-label={t.cart.removeItem}
                   disabled={isClearing}
                 >

@@ -3,6 +3,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { ProductStatus } from "@/lib/types/enums";
+import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
 
 /* =========================
    Types
@@ -57,6 +58,7 @@ export interface ProductWithVariants {
   product_variants: ProductVariant[];
   product_inventory: ProductStock[];
   status: string;
+  product_type: "simple" | "bundle";
 }
 
 /* =========================
@@ -70,6 +72,7 @@ export async function getProductsWithVariants({
   pageSize,
   status,
   featured,
+  excludeBundles,
 }: {
   storeId: string;
   search?: string;
@@ -77,6 +80,8 @@ export async function getProductsWithVariants({
   pageSize?: number;
   status?: ProductStatus;
   featured?: boolean;
+  /** True for the plain product list/picker — bundles get their own list page. */
+  excludeBundles?: boolean;
 }): Promise<{
   data: ProductWithVariants[];
   total: number;
@@ -98,6 +103,7 @@ export async function getProductsWithVariants({
       featured,
       discounted_price,
       category_id,
+      product_type,
       categories (id, name),
       product_images (
         id,
@@ -144,6 +150,7 @@ export async function getProductsWithVariants({
   if (search?.trim()) query.ilike("name", `%${search.trim()}%`);
   if (status) query.eq("status", status);
   if (featured !== undefined) query.eq("featured", featured);
+  if (excludeBundles) query.neq("product_type", "bundle");
 
   if (page !== undefined && pageSize !== undefined) {
     const from = (page - 1) * pageSize;
@@ -184,7 +191,29 @@ export async function getProductsWithVariants({
       product_inventory: v.product_inventory ?? [],
     })),
     product_inventory: p.product_inventory ?? [],
+    product_type: p.product_type ?? "simple",
   })) as ProductWithVariants[];
+
+  // Bundles have no product_inventory row of their own — patch in the
+  // computed "how many can I sell right now" so every downstream consumer
+  // (stock badges, cart quantity clamping) reads it exactly like a normal
+  // product's inventory row, with zero further changes.
+  const bundleIds = products
+    .filter((p) => p.product_type === "bundle")
+    .map((p) => p.id);
+  if (bundleIds.length > 0) {
+    const availabilityMap = await getBundleAvailabilityMap(bundleIds);
+    for (const product of products) {
+      if (product.product_type === "bundle") {
+        product.product_inventory = [
+          {
+            quantity_available: availabilityMap.get(product.id) ?? 0,
+            quantity_reserved: 0,
+          },
+        ];
+      }
+    }
+  }
 
   // ------------------ 2️⃣ Fetch counts per status + featured ------------------
   const { data: countData, error: countError } = await supabase
