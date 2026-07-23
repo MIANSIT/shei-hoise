@@ -65,7 +65,6 @@ export default function CreateOrder() {
   >([]);
 
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
-  const [loading, setLoading] = useState(false);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   // const { user, loading: userLoading, storeSlug } = useCurrentUser();
@@ -205,26 +204,17 @@ export default function CreateOrder() {
 
 
 
-  // Fetch products
-  const fetchProducts = useCallback(async () => {
-    if (!user?.store_id || loading) return;
-
-    setLoading(true);
-    try {
-      const res = await dataService.getProductsWithVariants({
-        storeId: user.store_id,
-      });
-      setProducts(res.data);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-      notification.error({
-        title: t.admin.createOrderErrLoadProducts,
-        description: t.admin.createOrderErrLoadProductsDesc,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.store_id, loading, notification]);
+  // Products are no longer preloaded in bulk here — AdminOrderDetails fetches
+  // them itself via a search picker (bounded, debounced) since a store's
+  // catalog can be too large to load upfront. This just accumulates whatever
+  // it has fetched so far, so already-added order items keep resolving.
+  const mergeProducts = useCallback((fetched: ProductWithVariants[]) => {
+    setProducts((prev) => {
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      for (const p of fetched) byId.set(p.id, p);
+      return Array.from(byId.values());
+    });
+  }, []);
 
   // Fetch customers from orders
   const fetchCustomers = useCallback(async () => {
@@ -279,14 +269,16 @@ export default function CreateOrder() {
     if (user?.store_id && !userLoading && !hasFetchedData) {
       setHasFetchedData(true);
 
+      // Customers (with their order history) can be a large, slow fetch for
+      // stores with a long history. It's only needed once the user switches
+      // to "Existing Customer" — which already has its own `customerLoading`
+      // spinner — so it runs independently instead of blocking the whole
+      // page (including the default "New Customer" form) behind a spinner.
+      fetchCustomers();
+
       const fetchAll = async () => {
         try {
-          await Promise.allSettled([
-            fetchStoreName(),
-            fetchProducts(),
-            fetchCustomers(),
-            fetchStoreSettings(),
-          ]);
+          await Promise.allSettled([fetchStoreName(), fetchStoreSettings()]);
         } catch (error) {
           console.error("Error fetching initial data:", error);
         } finally {
@@ -301,7 +293,6 @@ export default function CreateOrder() {
     userLoading,
     hasFetchedData,
     fetchStoreName,
-    fetchProducts,
     fetchCustomers,
     fetchStoreSettings,
   ]);
@@ -891,9 +882,11 @@ export default function CreateOrder() {
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
                 <AdminOrderDetails
+                  storeId={user?.store_id || ""}
                   products={products}
                   orderProducts={orderProducts}
                   setOrderProducts={setOrderProducts}
+                  onProductsFetched={mergeProducts}
                 />
               </Col>
 

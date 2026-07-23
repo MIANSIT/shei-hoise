@@ -64,7 +64,6 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
-  const [loading, setLoading] = useState(false);
   const [orderLoading, setOrderLoading] = useState(true);
   const { user, loading: userLoading } = useCurrentUser();
   const { allowed: courierTrackingAllowed } = useFeatureGate(user?.store_id, "courier_tracking");
@@ -236,26 +235,48 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
     []
   );
 
-  // Fetch products
-  const fetchProducts = useCallback(async () => {
-    if (!user?.store_id || loading) return;
+  // Products are no longer preloaded in bulk here — the store's full catalog
+  // can be too large. AdminOrderDetails' "Add Product" picker fetches its own
+  // search results lazily; this just resolves the products already on the
+  // order being edited (needed for stock/quantity checks) and accumulates
+  // whatever else the picker fetches, so lookups always find their product.
+  const mergeProducts = useCallback((fetched: ProductWithVariants[]) => {
+    setProducts((prev) => {
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      for (const p of fetched) byId.set(p.id, p);
+      return Array.from(byId.values());
+    });
+  }, []);
 
-    setLoading(true);
-    try {
-      const res = await dataService.getProductsWithVariants({
+  useEffect(() => {
+    if (!user?.store_id || originalOrderProducts.length === 0) return;
+
+    const ids = Array.from(
+      new Set(originalOrderProducts.map((item) => item.product_id)),
+    );
+
+    dataService
+      .getProductsWithVariants({
         storeId: user.store_id,
+        productIds: ids,
+        withCounts: false,
+      })
+      .then((res) => mergeProducts(res.data))
+      .catch((err) => {
+        console.error("Error fetching order's existing products:", err);
+        notification.error({
+          title: t.admin.createOrderErrLoadProducts,
+          description: t.admin.createOrderErrLoadProductsDesc,
+        });
       });
-      setProducts(res.data);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-      notification.error({
-        title: t.admin.createOrderErrLoadProducts,
-        description: t.admin.createOrderErrLoadProductsDesc,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.store_id, loading, notification]);
+  }, [
+    user?.store_id,
+    originalOrderProducts,
+    mergeProducts,
+    notification,
+    t.admin.createOrderErrLoadProducts,
+    t.admin.createOrderErrLoadProductsDesc,
+  ]);
 
   // Fetch store customers, for the "change customer" search below — lets a
   // wrong customer picked at order-creation time actually be reassigned,
@@ -526,7 +547,6 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
         try {
           // Fetch all data in parallel
           await Promise.all([
-            fetchProducts(),
             fetchStoreSettings(),
             fetchOrderData(),
             fetchCustomers(),
@@ -542,7 +562,6 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
     user?.store_id,
     userLoading,
     hasFetchedData,
-    fetchProducts,
     fetchStoreSettings,
     fetchOrderData,
     fetchCustomers,
@@ -692,17 +711,6 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-64 flex-col">
-        <Spin size="large" />
-        <Text type="secondary" className="mt-4">
-          Loading products...
-        </Text>
-      </div>
-    );
-  }
-
   if (!originalOrder) {
     return (
       <div className="flex justify-center items-center min-h-64 flex-col">
@@ -784,10 +792,12 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
                 <AdminOrderDetails
+                  storeId={user?.store_id || ""}
                   products={products}
                   orderProducts={orderProducts}
                   setOrderProducts={setOrderProducts}
                   originalOrderProducts={originalOrderProducts}
+                  onProductsFetched={mergeProducts}
                 />
               </Col>
 
