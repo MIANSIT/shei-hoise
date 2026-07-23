@@ -57,6 +57,9 @@ export interface DataService {
     search?: string;
     page?: number;
     pageSize?: number;
+    excludeBundles?: boolean;
+    withCounts?: boolean;
+    productIds?: string[];
   }) => Promise<{ data: ProductWithVariants[]; total: number }>;
   createCustomer: (customerData: CreateCustomerData) => Promise<any>;
   getCustomerProfileByStoreCustomerId: (
