@@ -291,12 +291,12 @@ export default function CartItemsList({
         return (
           <div
             key={itemKey}
-            className={`relative flex items-center justify-between rounded-lg bg-card/50 p-3 transition-all duration-300 ease-in-out border border-border ${
+            className={`relative flex items-start justify-between gap-3 rounded-lg bg-card/50 p-3 transition-all duration-300 ease-in-out border border-border ${
               isRemoving || isClearing ? "opacity-0 -translate-x-10" : "opacity-100 translate-x-0"
             }`}
           >
-            <div className="flex items-center gap-4">
-              <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
                 <Image
                   src={item.imageUrl}
                   alt={item.productName}
@@ -308,7 +308,7 @@ export default function CartItemsList({
                   }}
                 />
               </div>
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <h3 className="font-medium text-foreground md:text-xs text-sm">
                   {item.productName}
                 </h3>
@@ -402,7 +402,7 @@ export default function CartItemsList({
               </div>
             </div>
 
-            <div className="flex items-end flex-col gap-8">
+            <div className="flex items-end flex-col gap-8 shrink-0">
               {onRemoveItem && (
                 <Button
                   variant="ghost"

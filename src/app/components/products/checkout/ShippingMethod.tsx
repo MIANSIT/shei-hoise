@@ -30,6 +30,7 @@ export default function ShippingMethod({
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [storeMinOrderAmount, setStoreMinOrderAmount] = useState<number>(0);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(0);
 
   const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
   const displayCurrencyIcon = currencyLoading ? "৳" : (currencyIcon ?? "৳");
@@ -49,6 +50,16 @@ export default function ShippingMethod({
     return effectiveMinAmount <= 0 || subtotal >= effectiveMinAmount;
   }, [minOrderAmount, storeMinOrderAmount, subtotal]);
 
+  // Subtotal qualifies for free shipping when a threshold is configured and met
+  const qualifiesForFreeShipping = useMemo(() => {
+    return freeShippingThreshold > 0 && subtotal >= freeShippingThreshold;
+  }, [freeShippingThreshold, subtotal]);
+
+  const getEffectiveFee = useCallback(
+    (price: number) => (qualifiesForFreeShipping ? 0 : price),
+    [qualifiesForFreeShipping],
+  );
+
   // Fetch store settings once
   useEffect(() => {
     const fetchShippingOptions = async () => {
@@ -63,6 +74,7 @@ export default function ShippingMethod({
 
         setShippingOptions(options);
         setTaxAmount(storeSettings.tax_rate || 0);
+        setFreeShippingThreshold(storeSettings.free_shipping_threshold || 0);
 
         if (!minOrderAmount) {
           setStoreMinOrderAmount(storeSettings.min_order_amount || 0);
@@ -76,8 +88,10 @@ export default function ShippingMethod({
 
           if (visible.length > 0) {
             const defaultOption = visible[0];
-            // Always use the original price – no free shipping threshold
-            onShippingChange(defaultOption.name, defaultOption.price);
+            const threshold = storeSettings.free_shipping_threshold || 0;
+            const fee =
+              threshold > 0 && subtotal >= threshold ? 0 : defaultOption.price;
+            onShippingChange(defaultOption.name, fee);
           }
         }
       } catch (error) {
@@ -86,6 +100,10 @@ export default function ShippingMethod({
     };
 
     fetchShippingOptions();
+    // subtotal is read for the initial fee only; later changes are handled by
+    // the qualifiesForFreeShipping effect below, so it's intentionally omitted
+    // here to avoid refetching shipping options on every quantity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeSlug, minOrderAmount, selectedShipping, onShippingChange]);
 
   const handleShippingChange = useCallback(
@@ -98,11 +116,24 @@ export default function ShippingMethod({
 
       if (!selectedOption) return;
 
-      // Always pass the option's original price
-      onShippingChange(value, selectedOption.price);
+      onShippingChange(value, getEffectiveFee(selectedOption.price));
     },
-    [visibleShippingOptions, onShippingChange, meetsMinOrderAmount]
+    [visibleShippingOptions, onShippingChange, meetsMinOrderAmount, getEffectiveFee]
   );
+
+  // Re-evaluate the currently selected option's fee when the subtotal crosses
+  // the free-shipping threshold (e.g. customer adjusts quantity on this page)
+  useEffect(() => {
+    if (!selectedShipping) return;
+
+    const currentOption = visibleShippingOptions.find(
+      (option) => option.name === selectedShipping
+    );
+    if (!currentOption) return;
+
+    onShippingChange(selectedShipping, getEffectiveFee(currentOption.price));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qualifiesForFreeShipping]);
 
   if (visibleShippingOptions.length === 0) return null;
 
@@ -160,8 +191,22 @@ export default function ShippingMethod({
                 </div>
 
                 <span className="font-semibold text-foreground">
-                  {displayCurrencyIcon}
-                  {n(option.price.toFixed(2))}
+                  {qualifiesForFreeShipping && option.price > 0 ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="line-through text-muted-foreground text-xs font-normal">
+                        {displayCurrencyIcon}
+                        {n(option.price.toFixed(2))}
+                      </span>
+                      <span className="text-green-600">
+                        {t.checkout.freeShippingLabel}
+                      </span>
+                    </span>
+                  ) : (
+                    <>
+                      {displayCurrencyIcon}
+                      {n(option.price.toFixed(2))}
+                    </>
+                  )}
                 </span>
               </Label>
             </div>
