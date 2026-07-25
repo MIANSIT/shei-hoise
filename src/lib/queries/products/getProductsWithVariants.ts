@@ -73,6 +73,8 @@ export async function getProductsWithVariants({
   status,
   featured,
   excludeBundles,
+  withCounts = true,
+  productIds,
 }: {
   storeId: string;
   search?: string;
@@ -82,12 +84,30 @@ export async function getProductsWithVariants({
   featured?: boolean;
   /** True for the plain product list/picker — bundles get their own list page. */
   excludeBundles?: boolean;
+  /** Set false to skip the extra per-status/featured count query (e.g. order product pickers that only need `data`). */
+  withCounts?: boolean;
+  /** Fetch exactly these product IDs instead of paging through the store's catalog — e.g. resolving an existing order's line items without loading everything else. Ignores search/page/pageSize/status/featured/excludeBundles. */
+  productIds?: string[];
 }): Promise<{
   data: ProductWithVariants[];
   total: number;
   counts: Record<ProductStatus | "ALL", number>;
   featuredCount: number;
 }> {
+  if (productIds && productIds.length === 0) {
+    return {
+      data: [],
+      total: 0,
+      counts: {
+        [ProductStatus.ACTIVE]: 0,
+        [ProductStatus.INACTIVE]: 0,
+        [ProductStatus.DRAFT]: 0,
+        ALL: 0,
+      },
+      featuredCount: 0,
+    };
+  }
+
   // ------------------ 1️⃣ Fetch products ------------------
   const query = supabase
     .from("products")
@@ -144,18 +164,23 @@ export async function getProductsWithVariants({
       `,
       { count: "exact" },
     )
-    .eq("store_id", storeId)
-    .order("created_at", { ascending: false });
+    .eq("store_id", storeId);
 
-  if (search?.trim()) query.ilike("name", `%${search.trim()}%`);
-  if (status) query.eq("status", status);
-  if (featured !== undefined) query.eq("featured", featured);
-  if (excludeBundles) query.neq("product_type", "bundle");
+  if (productIds && productIds.length > 0) {
+    query.in("id", productIds);
+  } else {
+    query.order("created_at", { ascending: false });
 
-  if (page !== undefined && pageSize !== undefined) {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query.range(from, to);
+    if (search?.trim()) query.ilike("name", `%${search.trim()}%`);
+    if (status) query.eq("status", status);
+    if (featured !== undefined) query.eq("featured", featured);
+    if (excludeBundles) query.neq("product_type", "bundle");
+
+    if (page !== undefined && pageSize !== undefined) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query.range(from, to);
+    }
   }
 
   const { data, error, count } = await query;
@@ -216,13 +241,6 @@ export async function getProductsWithVariants({
   }
 
   // ------------------ 2️⃣ Fetch counts per status + featured ------------------
-  const { data: countData, error: countError } = await supabase
-    .from("products")
-    .select("status, featured")
-    .eq("store_id", storeId);
-
-  if (countError) throw countError;
-
   const counts: Record<ProductStatus | "ALL", number> = {
     [ProductStatus.ACTIVE]: 0,
     [ProductStatus.INACTIVE]: 0,
@@ -232,12 +250,21 @@ export async function getProductsWithVariants({
 
   let featuredCount = 0;
 
-  countData?.forEach((p: any) => {
-    const s = p.status as ProductStatus;
-    if (s in counts) counts[s] += 1;
-    counts.ALL += 1;
-    if (p.featured) featuredCount += 1;
-  });
+  if (withCounts) {
+    const { data: countData, error: countError } = await supabase
+      .from("products")
+      .select("status, featured")
+      .eq("store_id", storeId);
+
+    if (countError) throw countError;
+
+    countData?.forEach((p: any) => {
+      const s = p.status as ProductStatus;
+      if (s in counts) counts[s] += 1;
+      counts.ALL += 1;
+      if (p.featured) featuredCount += 1;
+    });
+  }
 
   return {
     data: products,

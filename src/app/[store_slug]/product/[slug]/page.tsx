@@ -51,10 +51,13 @@ interface ApiProduct {
   bundle_items?: Array<{
     id: string;
     quantity_needed: number;
+    option_group_id: string | null;
+    option_group_label: string | null;
     component?: {
       id: string;
       name: string;
       primary_image?: { image_url: string } | null;
+      available_stock?: number;
     };
   }>;
   product_variants: Array<{
@@ -273,6 +276,9 @@ export default function ProductPage() {
   const [inputValue, setInputValue] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [showMaxErr, setShowMaxErr] = useState(false);
+  const [selectedBundleOptions, setSelectedBundleOptions] = useState<
+    Record<string, string>
+  >({});
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { icon: currencyIcon, loading: currencyLoading } =
@@ -330,6 +336,29 @@ export default function ProductPage() {
         : availableStock <= 10
           ? "low"
           : "in";
+  // Bundle choice groups: rows sharing an option_group_id are alternatives
+  // for one slot, the customer must pick exactly one before checkout.
+  const bundleFixedItems =
+    product?.bundle_items?.filter((item) => !item.option_group_id) ?? [];
+  const bundleGroups = (() => {
+    if (!product?.bundle_items) return [];
+    const map = new Map<string, NonNullable<typeof product.bundle_items>>();
+    for (const item of product.bundle_items) {
+      if (!item.option_group_id) continue;
+      const arr = map.get(item.option_group_id) ?? [];
+      arr.push(item);
+      map.set(item.option_group_id, arr);
+    }
+    return [...map.entries()].map(([groupId, options]) => ({
+      groupId,
+      label: options[0].option_group_label || "Choose one",
+      options,
+    }));
+  })();
+  const bundleSelectionIncomplete =
+    product?.product_type === "bundle" &&
+    bundleGroups.some((g) => !selectedBundleOptions[g.groupId]);
+
   const hasLowStockVariant = product?.product_variants?.some(
     (v) =>
       (v.product_inventory?.[0]?.quantity_available ?? 0) > 0 &&
@@ -389,6 +418,7 @@ export default function ProductPage() {
           ),
         };
         setProduct(fixed as ApiProduct);
+        setSelectedBundleOptions({});
         let initialVariantId: string | null = null;
         if (fixed.product_variants?.length > 0) {
           const first = fixed.product_variants.find(
@@ -428,6 +458,10 @@ export default function ProductPage() {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleAddToCart = async () => {
     if (!product || isOutOfStock || quantity > remaining) return;
+    if (bundleSelectionIncomplete) {
+      toastError("Please choose your options for this bundle");
+      return;
+    }
     setIsAdding(true);
     try {
       addToCart({
@@ -435,6 +469,10 @@ export default function ProductPage() {
         storeSlug: store_slug,
         quantity,
         variantId: selectedVariantData?.id ?? null,
+        bundleSelections:
+          product.product_type === "bundle" && bundleGroups.length > 0
+            ? selectedBundleOptions
+            : null,
       } as AddToCartType);
       fbq(FbEvent.ADD_TO_CART, {
         // Variant ID when selected, matching the catalog feed's g:id.
@@ -458,6 +496,10 @@ export default function ProductPage() {
 
   const handleBuyNow = async () => {
     if (!product || isOutOfStock || quantity > remaining) return;
+    if (bundleSelectionIncomplete) {
+      toastError("Please choose your options for this bundle");
+      return;
+    }
     setIsBuyingNow(true);
     try {
       addToCart({
@@ -465,6 +507,10 @@ export default function ProductPage() {
         storeSlug: store_slug,
         quantity,
         variantId: selectedVariantData?.id ?? null,
+        bundleSelections:
+          product.product_type === "bundle" && bundleGroups.length > 0
+            ? selectedBundleOptions
+            : null,
       } as AddToCartType);
       fbq(FbEvent.ADD_TO_CART, {
         // Variant ID when selected, matching the catalog feed's g:id.
@@ -609,37 +655,90 @@ export default function ProductPage() {
 
             <div className="border-t border-gray-100 dark:border-gray-800 mb-5" />
 
-            {/* Bundle contents */}
+            {/* Bundle contents — fixed items */}
+            {product.product_type === "bundle" && bundleFixedItems.length > 0 && (
+              <div className="mb-5">
+                <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-gray-300">
+                  This bundle includes
+                </span>
+                <ul className="space-y-2">
+                  {bundleFixedItems.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2"
+                    >
+                      {item.component?.primary_image?.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.component.primary_image.image_url}
+                          alt={item.component?.name ?? ""}
+                          className="h-8 w-8 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <span className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
+                      )}
+                      <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">
+                        {item.quantity_needed}× {item.component?.name ?? "Product"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Bundle contents — choice groups: customer picks one alternative per slot */}
             {product.product_type === "bundle" &&
-              (product.bundle_items?.length ?? 0) > 0 && (
-                <div className="mb-5">
+              bundleGroups.map((group) => (
+                <div key={group.groupId} className="mb-5">
                   <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-gray-300">
-                    This bundle includes
+                    {group.label}
                   </span>
-                  <ul className="space-y-2">
-                    {product.bundle_items!.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2"
-                      >
-                        {item.component?.primary_image?.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={item.component.primary_image.image_url}
-                            alt={item.component?.name ?? ""}
-                            className="h-8 w-8 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <span className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
-                        )}
-                        <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">
-                          {item.quantity_needed}× {item.component?.name ?? "Product"}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="space-y-2">
+                    {group.options.map((option) => {
+                      const outOfStock = (option.component?.available_stock ?? 0) <= 0;
+                      const isSelected =
+                        selectedBundleOptions[group.groupId] === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={outOfStock}
+                          onClick={() =>
+                            setSelectedBundleOptions((prev) => ({
+                              ...prev,
+                              [group.groupId]: option.id,
+                            }))
+                          }
+                          className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                            isSelected
+                              ? "border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-800/50"
+                              : "border-gray-100 dark:border-gray-800"
+                          } ${outOfStock ? "opacity-50 cursor-not-allowed" : "hover:border-gray-300 dark:hover:border-gray-600"}`}
+                        >
+                          {option.component?.primary_image?.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={option.component.primary_image.image_url}
+                              alt={option.component?.name ?? ""}
+                              className="h-8 w-8 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <span className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
+                          )}
+                          <span className="flex-1 text-[13px] font-medium text-gray-700 dark:text-gray-200">
+                            {option.quantity_needed}× {option.component?.name ?? "Product"}
+                          </span>
+                          {outOfStock && (
+                            <span className="text-[11px] font-semibold text-gray-400">
+                              Out of stock
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
+              ))}
 
             {/* Variants */}
             {hasVariants && (
@@ -833,12 +932,17 @@ export default function ProductPage() {
             </div>
 
             {/* CTA */}
+            {bundleSelectionIncomplete && (
+              <p className="mb-2 text-[12px] font-medium text-amber-600 dark:text-amber-400">
+                Choose your options above to continue
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <AddToCartButton
                 onClick={handleAddToCart}
                 isLoading={isAdding}
                 showSuccess={addedSuccess}
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || bundleSelectionIncomplete}
                 isMaxInCart={stockStatus === "maxed"}
                 currentCartQuantity={cartQty}
                 className="sm:flex-1"
@@ -846,7 +950,7 @@ export default function ProductPage() {
               <BuyNowButton
                 onClick={handleBuyNow}
                 isLoading={isBuyingNow}
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || bundleSelectionIncomplete}
                 className="sm:flex-1"
               />
             </div>

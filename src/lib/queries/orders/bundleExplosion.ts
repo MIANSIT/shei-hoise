@@ -48,7 +48,7 @@ export async function explodeBundleOrderProducts(
     const { data: recipeRows, error: recipeError } = await supabaseAdmin
       .from("bundle_items")
       .select(
-        "bundle_product_id, component_product_id, component_variant_id, quantity_needed"
+        "id, bundle_product_id, component_product_id, component_variant_id, quantity_needed, option_group_id"
       )
       .in("bundle_product_id", bundleIds);
     if (recipeError) throw new Error(recipeError.message);
@@ -100,7 +100,32 @@ export async function explodeBundleOrderProducts(
 
     for (const line of bundleLines) {
       const recipe = recipeByBundle.get(line.product_id) ?? [];
-      const components: OrderProduct[] = recipe.map((r) => {
+
+      // Rows sharing an option_group_id are alternatives for one slot — the
+      // customer's pick (carried on the cart/order line) decides which one
+      // actually ships. Ungrouped rows are fixed, unchanged from before.
+      const ungrouped = recipe.filter((r) => !r.option_group_id);
+      const groups = new Map<string, typeof recipe>();
+      for (const r of recipe) {
+        if (!r.option_group_id) continue;
+        const list = groups.get(r.option_group_id) ?? [];
+        list.push(r);
+        groups.set(r.option_group_id, list);
+      }
+
+      const resolvedRecipe = [...ungrouped];
+      for (const [groupId, options] of groups) {
+        const pickedId = line.bundle_selections?.[groupId];
+        const picked = pickedId ? options.find((o) => o.id === pickedId) : undefined;
+        if (!picked) {
+          throw new Error(
+            `Bundle "${line.product_name}" requires a selection for one of its options`
+          );
+        }
+        resolvedRecipe.push(picked);
+      }
+
+      const components: OrderProduct[] = resolvedRecipe.map((r) => {
         const product = productMap.get(r.component_product_id);
         const variant = r.component_variant_id
           ? variantMap.get(r.component_variant_id)

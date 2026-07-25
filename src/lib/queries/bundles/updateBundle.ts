@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { BundleType } from "@/lib/schema/bundleSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
+import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
 
 /**
  * Updates a bundle's own fields and replaces its bundle_items recipe
@@ -15,6 +16,8 @@ export async function updateBundle(data: BundleType) {
   if (!store_id) throw new Error("Store ID is required");
   if (!bundle_items?.length)
     throw new Error("❌ Add at least one product to the bundle");
+
+  validateBundleOptionGroups(bundle_items);
 
   const componentIds = [
     ...new Set(bundle_items.map((i) => i.component_product_id)),
@@ -80,6 +83,8 @@ export async function updateBundle(data: BundleType) {
         component_product_id: item.component_product_id,
         component_variant_id: item.component_variant_id || null,
         quantity_needed: item.quantity_needed,
+        option_group_id: item.option_group_id || null,
+        option_group_label: item.option_group_label || null,
       }))
     );
     if (error) throw error;
@@ -88,7 +93,11 @@ export async function updateBundle(data: BundleType) {
   for (const item of toUpdate) {
     let query = supabaseAdmin
       .from("bundle_items")
-      .update({ quantity_needed: item.quantity_needed })
+      .update({
+        quantity_needed: item.quantity_needed,
+        option_group_id: item.option_group_id || null,
+        option_group_label: item.option_group_label || null,
+      })
       .eq("bundle_product_id", id)
       .eq("component_product_id", item.component_product_id);
     query = item.component_variant_id

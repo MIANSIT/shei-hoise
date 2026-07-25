@@ -7,6 +7,10 @@ export const bundleItemSchema = z.object({
     .number({ message: "Quantity is required" })
     .int("Quantity must be a whole number")
     .min(1, "Quantity must be at least 1"),
+  // Rows sharing the same option_group_id are alternatives for one slot —
+  // the customer picks exactly one. Null means fixed/required, as before.
+  option_group_id: z.string().nullable().optional(),
+  option_group_label: z.string().nullable().optional(),
 });
 
 export const bundleSchema = z.object({
@@ -45,6 +49,40 @@ export const bundleSchema = z.object({
   bundle_items: z
     .array(bundleItemSchema)
     .min(1, "Add at least one product to the bundle"),
+}).superRefine((bundle, ctx) => {
+  const groups = new Map<string, typeof bundle.bundle_items>();
+  bundle.bundle_items.forEach((item) => {
+    if (!item.option_group_id) return;
+    const group = groups.get(item.option_group_id) ?? [];
+    group.push(item);
+    groups.set(item.option_group_id, group);
+  });
+
+  groups.forEach((group) => {
+    if (group.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["bundle_items"],
+        message: "A choice group needs at least 2 alternatives",
+      });
+      return;
+    }
+    const [first, ...rest] = group;
+    if (rest.some((item) => item.quantity_needed !== first.quantity_needed)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["bundle_items"],
+        message: "All alternatives in a choice group must share the same quantity",
+      });
+    }
+    if (rest.some((item) => (item.option_group_label || "") !== (first.option_group_label || ""))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["bundle_items"],
+        message: "All alternatives in a choice group must share the same label",
+      });
+    }
+  });
 });
 
 export type BundleItemType = z.infer<typeof bundleItemSchema>;

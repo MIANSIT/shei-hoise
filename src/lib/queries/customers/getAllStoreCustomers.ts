@@ -69,9 +69,24 @@ export async function getAllStoreCustomers(
     // Apply ordering
     query = query.order("created_at", { ascending: false });
 
-    const { data: customers, error: customerError, count } = await query;
+    // Step 3: Fetch orders for all linked customers in parallel with step 2 —
+    // this only depends on storeId/customerIds from step 1, not on step 2's
+    // result, so there's no need to wait for it.
+    const [
+      { data: customers, error: customerError, count },
+      { data: orders, error: ordersError },
+    ] = await Promise.all([
+      query,
+      supabase
+        .from("orders")
+        .select("id, customer_id, created_at")
+        .in("customer_id", customerIds)
+        .eq("store_id", storeId)
+        .order("created_at", { ascending: false }),
+    ]);
 
     if (customerError) throw customerError;
+    if (ordersError) throw ordersError;
     if (!customers) {
       if (page !== undefined && pageSize !== undefined) {
         return {
@@ -84,16 +99,6 @@ export async function getAllStoreCustomers(
       }
       return [];
     }
-
-    // Step 3: Fetch orders for all customers in this store
-    const { data: orders, error: ordersError } = await supabase
-      .from("orders")
-      .select("id, customer_id, created_at")
-      .in("customer_id", customerIds)
-      .eq("store_id", storeId)
-      .order("created_at", { ascending: false });
-
-    if (ordersError) throw ordersError;
 
     // Step 4: Transform to DetailedCustomer
     const detailedCustomers: DetailedCustomer[] = customers.map((c) => {

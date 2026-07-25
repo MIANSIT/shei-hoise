@@ -19,7 +19,7 @@ export async function getBundleContentsMap(
   const { data: items, error: itemsError } = await supabaseAdmin
     .from("bundle_items")
     .select(
-      "id, bundle_product_id, component_product_id, component_variant_id, quantity_needed"
+      "id, bundle_product_id, component_product_id, component_variant_id, quantity_needed, option_group_id, option_group_label"
     )
     .in("bundle_product_id", ids);
   if (itemsError) throw new Error(itemsError.message);
@@ -36,6 +36,24 @@ export async function getBundleContentsMap(
     .in("id", componentProductIds);
   if (productsError) throw new Error(productsError.message);
 
+  // Per-option stock, so a storefront picker can grey out sold-out
+  // alternatives inside a choice group — same batched pattern as
+  // getBundleAvailabilityMap.ts, never N+1.
+  const { data: inventoryRows, error: invError } = await supabaseAdmin
+    .from("product_inventory")
+    .select("product_id, variant_id, quantity_available")
+    .in("product_id", componentProductIds);
+  if (invError) throw new Error(invError.message);
+
+  const inventoryKey = (productId: string, variantId: string | null) =>
+    `${productId}-${variantId || "none"}`;
+  const inventoryMap = new Map(
+    (inventoryRows ?? []).map((row) => [
+      inventoryKey(row.product_id, row.variant_id),
+      row.quantity_available ?? 0,
+    ])
+  );
+
   const componentMap = new Map((components ?? []).map((c) => [c.id, c]));
 
   for (const item of items) {
@@ -51,6 +69,8 @@ export async function getBundleContentsMap(
       component_product_id: item.component_product_id,
       component_variant_id: item.component_variant_id,
       quantity_needed: item.quantity_needed,
+      option_group_id: item.option_group_id,
+      option_group_label: item.option_group_label,
       component: product
         ? {
             id: product.id,
@@ -66,6 +86,10 @@ export async function getBundleContentsMap(
                   is_primary: primaryImage.is_primary,
                 }
               : null,
+            available_stock:
+              inventoryMap.get(
+                inventoryKey(item.component_product_id, item.component_variant_id)
+              ) ?? 0,
           }
         : undefined,
     };

@@ -6,6 +6,7 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
 
 /**
  * Creates a bundle: a products row (product_type = "bundle") with no
@@ -23,6 +24,8 @@ export async function createBundle(bundle: BundleType) {
     throw new Error("❌ Description is required");
   if (!bundle.bundle_items?.length)
     throw new Error("❌ Add at least one product to the bundle");
+
+  validateBundleOptionGroups(bundle.bundle_items);
 
   // Plan limit check — a bundle still counts as a product against the quota.
   const { count: currentProductCount } = await supabaseAdmin
@@ -120,6 +123,8 @@ export async function createBundle(bundle: BundleType) {
           component_product_id: item.component_product_id,
           component_variant_id: item.component_variant_id || null,
           quantity_needed: item.quantity_needed,
+          option_group_id: item.option_group_id || null,
+          option_group_label: item.option_group_label || null,
         }))
       );
     if (itemsError) throw itemsError;

@@ -8,6 +8,11 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
  * base_price) times the quantity the recipe needs. This is a reference
  * "worth" figure, distinct from the bundle's own base_price/discounted_price
  * (what's actually charged). Two batched queries total, never N+1.
+ *
+ * Rows sharing an option_group_id are alternatives for one slot — only the
+ * first option per group counts (same convention as the admin bundle
+ * editor's "worth separately" estimate), so the figure isn't inflated by
+ * summing every alternative.
  */
 export async function getBundleComponentValueMap(
   bundleProductIds: string[]
@@ -18,7 +23,7 @@ export async function getBundleComponentValueMap(
 
   const { data: items, error: itemsError } = await supabaseAdmin
     .from("bundle_items")
-    .select("bundle_product_id, component_product_id, component_variant_id, quantity_needed")
+    .select("bundle_product_id, component_product_id, component_variant_id, quantity_needed, option_group_id")
     .in("bundle_product_id", ids);
   if (itemsError) throw new Error(itemsError.message);
   if (!items || items.length === 0) {
@@ -53,7 +58,13 @@ export async function getBundleComponentValueMap(
     (variants ?? []).map((v) => [v.id, v.discounted_price ?? v.base_price ?? 0])
   );
 
+  const seenGroups = new Set<string>();
   for (const item of items) {
+    if (item.option_group_id) {
+      const groupKey = `${item.bundle_product_id}-${item.option_group_id}`;
+      if (seenGroups.has(groupKey)) continue;
+      seenGroups.add(groupKey);
+    }
     const unitPrice = item.component_variant_id
       ? (variantPriceMap.get(item.component_variant_id) ?? 0)
       : (productPriceMap.get(item.component_product_id) ?? 0);

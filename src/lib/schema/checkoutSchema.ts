@@ -80,6 +80,8 @@ export const addToCartSchema = z.object({
   variantId: z.string().nullable().optional(),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   storeSlug: z.string().min(1, "Store slug is required"),
+  // For bundles with choice groups: option_group_id -> chosen bundle_item id.
+  bundleSelections: z.record(z.string(), z.string()).nullable().optional(),
 });
 
 // ✅ UPDATED: Make email and password optional in the type

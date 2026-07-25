@@ -15,6 +15,8 @@ export interface OrderProduct {
   variant_name?: string | null;
   /** The product/variant's tp_price at the moment it was added to the order — snapshot, not looked up live at report time. */
   cost_price?: number | null;
+  /** Bundle lines only: option_group_id -> chosen bundle_item id, resolved during bundle explosion. */
+  bundle_selections?: Record<string, string> | null;
 }
 
 export interface AddressJSON {

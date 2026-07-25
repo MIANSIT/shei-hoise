@@ -59,13 +59,22 @@ export default function CartBottomBar({ isOpen, onClose }: CartBottomBarProps) {
   };
 
   // Handle quantity changes in cart
-  const handleQuantityChange = (productId: string, variantId: string | null, newQuantity: number) => {
-    updateQuantity(productId, variantId, newQuantity);
+  const handleQuantityChange = (
+    productId: string,
+    variantId: string | null,
+    newQuantity: number,
+    bundleSelections?: Record<string, string> | null
+  ) => {
+    updateQuantity(productId, variantId, newQuantity, bundleSelections);
   };
 
   // Handle item removal from cart
-  const handleRemoveItem = (productId: string, variantId: string | null) => {
-    removeItem(productId, variantId);
+  const handleRemoveItem = (
+    productId: string,
+    variantId: string | null,
+    bundleSelections?: Record<string, string> | null
+  ) => {
+    removeItem(productId, variantId, bundleSelections);
   };
 
   // Handle clearing entire cart for this store
