@@ -2,8 +2,11 @@ import { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 
 function getSitemapClient() {
+  // Always server-only. Prefer SUPABASE_INTERNAL_URL when set — see the
+  // comment in src/lib/supabase/client.ts for why the browser-reachable URL
+  // isn't necessarily reachable from the server in a containerized deployment.
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }

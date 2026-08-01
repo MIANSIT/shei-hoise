@@ -17,8 +17,11 @@ export const supabaseAdmin = new Proxy({} as SupabaseClient, {
           "SUPABASE_SERVICE_ROLE_KEY is not set in .env.local",
         );
       }
+      // Always server-only. Prefer SUPABASE_INTERNAL_URL when set — see the
+      // comment in client.ts for why the browser-reachable URL isn't
+      // necessarily reachable from the server in a containerized deployment.
       _adminClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
         key,
       );
     }

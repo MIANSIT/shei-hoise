@@ -6,8 +6,11 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  // Always server-only (Edge middleware). Prefer SUPABASE_INTERNAL_URL when
+  // set — see the comment in client.ts for why the browser-reachable URL
+  // isn't necessarily reachable from the server in a containerized deployment.
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {

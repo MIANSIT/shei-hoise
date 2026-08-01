@@ -30,10 +30,10 @@ Browser
                                                   │
                                           shei-hoise-storage also writes files to:
                                                   ▼
-                                          shei-hoise-minio  (local stand-in for Cloudflare R2)
+                                          shei-hoise-minio  (dev only — real R2 in prod)
 ```
 
-Every one of these is a separate Docker container, defined in `docker/docker-compose.yml`. None of it is Vercel or Supabase Cloud anymore in the local/VPS setup — it's the same open-source components Supabase Cloud itself is built from, self-hosted.
+Every one of these is a separate Docker container, defined in `docker/docker-compose.yml` (`minio` comes from `docker-compose.dev.yml`, dev-only — see "Dev vs. prod" below). None of it is Vercel or Supabase Cloud anymore — it's the same open-source components Supabase Cloud itself is built from, self-hosted.
 
 ## What each piece actually does
 
@@ -41,10 +41,10 @@ Every one of these is a separate Docker container, defined in `docker/docker-com
 - **`kong` (API gateway)** — the single door everything goes through. The app's Supabase client is configured with exactly one URL (`NEXT_PUBLIC_SUPABASE_URL`, pointing at Kong), and Kong internally routes `/auth/*` → GoTrue, `/rest/*` → PostgREST, `/storage/*` → Storage API, everything else → Studio. This is exactly how Supabase Cloud's own edge works, just running locally.
 - **`auth` (GoTrue)** — issues and verifies the JWTs behind every login/session. Same auth flow the app already used against Supabase Cloud; only the backing service moved.
 - **`rest` (PostgREST)** — auto-generates the REST API the app's `supabase-js` `.from(...)` calls hit. It enforces the same Row-Level Security policies that live in Postgres, unchanged.
-- **`storage` (Storage API)** — backs every product photo, store logo, and store banner. It's configured in **S3 mode**, currently pointed at the `minio` container; on the VPS this same configuration points at Cloudflare R2 instead — the app never knows the difference.
+- **`storage` (Storage API)** — backs every product photo, store logo, and store banner. It's configured in **S3 mode** always; in dev it's pointed at the local `minio` container, in prod it's pointed directly at a real Cloudflare R2 bucket — the app never knows the difference either way.
 - **`db` (Postgres 17)** — the actual database, running Supabase's own Postgres image (not vanilla Postgres) so it has the extensions and internal schemas Auth/Storage/REST expect.
 - **`studio` + `meta`** — the admin dashboard for browsing tables and running SQL directly, reachable at `http://localhost:8000` through Kong (basic-auth protected).
-- **`minio`** — a local, S3-compatible object store standing in for Cloudflare R2, so the storage code path is genuinely exercised locally instead of silently using a different (disk-based) mode that wouldn't catch R2-specific issues later.
+- **`minio`** — dev-only (added by `docker-compose.dev.yml`): a local, S3-compatible object store standing in for Cloudflare R2, so the storage code path is genuinely exercised locally instead of silently using a different (disk-based) mode that wouldn't catch R2-specific issues later. Prod skips this container entirely and talks to R2 directly.
 
 ## How a request actually flows
 
@@ -72,7 +72,17 @@ Practical consequence: moving from local → VPS means rebuilding the `app` imag
 1. Load `schema.sql` (a full schema snapshot as of 2026-07-09) — this brings in everything the tracked migrations alone would miss.
 2. Replay every migration in `supabase/migrations` on top. They're all written defensively (`IF NOT EXISTS`/`IF EXISTS` throughout), so anything already reflected in `schema.sql` just no-ops, and anything added after 2026-07-09 (courier tracking, vendor tables, product bundles, dashboard summaries, etc.) actually applies.
 
-This is a one-time step per fresh database (local, and later the VPS) — not something that runs on every app deploy.
+This is a one-time step per fresh database (dev, prod, and later the VPS) — not something that runs on every app deploy.
+
+## Dev vs. prod (still local, for now)
+
+`docker-compose.yml` is written prod-shaped from the start (real R2 env vars,
+no dev-only services). Two thin layers select which environment actually runs:
+
+- **dev** — `docker-compose.yml` + `docker-compose.dev.yml` (adds `minio`/`minio-createbucket`), reading `docker/.env`.
+- **prod** — `docker-compose.yml` alone, reading `docker/.env.prod` (real R2 credentials, stricter auth defaults like `ENABLE_EMAIL_AUTOCONFIRM=false`).
+
+"Prod" currently still runs on this machine, as a full rehearsal — same containers, same schema bootstrap, optionally the *actual* current production data pulled in via `docker/scripts/migrate-data/` (auth users through GoTrue's Admin API, every public-schema table via `pg_dump`/`pg_restore`, storage files copied bucket-by-bucket). Moving that same `docker/.env.prod`-driven stack onto a real VPS later is a swap of `SITE_URL`/`SUPABASE_PUBLIC_URL`/`API_EXTERNAL_URL` to a real domain, not a rebuild of the setup itself. The two environments share container names and ports (same compose file), so only one runs at a time.
 
 ## What's genuinely different from before, and what isn't
 

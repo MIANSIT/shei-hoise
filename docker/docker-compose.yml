@@ -1,22 +1,21 @@
-# Shei Hoise — local & VPS Docker stack
+# Shei Hoise — base Docker stack (dev AND prod both start here)
 #
 # A trimmed copy of Supabase's official self-hosted docker-compose
 # (https://github.com/supabase/supabase/tree/master/docker), plus the
-# Next.js app and MinIO (a local stand-in for Cloudflare R2).
+# Next.js app. This base file is production-shaped: `storage` talks to
+# real Cloudflare R2 via plain env vars, no local-only services included.
 #
 # Omitted vs. the official stack, all confirmed unused by this app:
 #   realtime, imgproxy, functions (edge runtime), analytics/logflare, supavisor (pooler)
 #
-# This file is meant to be identical between local dev and the VPS —
-# only docker/.env values (and the app image's build args) should differ.
+# Two environments, two thin layers on top of this same file:
+#   dev:  docker compose -f docker-compose.yml -f docker-compose.dev.yml  --env-file .env      ...
+#         (adds a local MinIO container standing in for R2 — see docker-compose.dev.yml)
+#   prod: docker compose -f docker-compose.yml                            --env-file .env.prod  ...
+#         (talks directly to a real R2 bucket — see .env.prod.example)
 #
-# Usage:
-#   See docker/README.md for the full bring-up order. Short version:
-#     docker compose -f docker/docker-compose.yml up -d db
-#     docker compose -f docker/docker-compose.yml up -d auth storage rest minio minio-createbucket
-#     ./docker/scripts/apply-migrations.sh
-#     ./docker/scripts/create-buckets.sh
-#     docker compose -f docker/docker-compose.yml up -d kong studio meta app
+# See docker/README.md for the full bring-up order and docker/scripts/*.sh
+# for the automated version of it.
 
 name: shei-hoise
 
@@ -37,8 +36,12 @@ services:
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       # Initialize the database settings with JWT_SECRET and JWT_EXP
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
-      # PGDATA directory is persisted between restarts
-      - ./volumes/db/data:/var/lib/postgresql/data:Z
+      # PGDATA directory is persisted between restarts. Postgres only runs its
+      # init scripts (roles/jwt/webhooks above) on an EMPTY data directory, so
+      # dev and prod must use separate paths — otherwise prod's different
+      # POSTGRES_PASSWORD would never actually get set inside Postgres once
+      # dev has already initialized this directory.
+      - ${POSTGRES_DATA_DIR:-./volumes/db/data}:/var/lib/postgresql/data:Z
       # Use named volume to persist pgsodium decryption key between restarts
       - db-config:/etc/postgresql-custom
     healthcheck:
@@ -140,38 +143,6 @@ services:
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
     command: ["postgrest"]
 
-  # --- S3-compatible storage, standing in for Cloudflare R2 (see docker/README.md) ---
-  minio:
-    container_name: shei-hoise-minio
-    image: cgr.dev/chainguard/minio
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    command: server --console-address ":9001" /data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 2s
-      timeout: 10s
-      retries: 5
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
-
-  minio-createbucket:
-    container_name: shei-hoise-minio-createbucket
-    image: cgr.dev/chainguard/minio-client:latest-dev
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -ec "
-      mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
-      mc mb --ignore-existing supa-minio/${GLOBAL_S3_BUCKET}
-      "
-
   storage:
     container_name: shei-hoise-storage
     image: supabase/storage-api:v1.60.4
@@ -181,10 +152,9 @@ services:
         condition: service_healthy
       rest:
         condition: service_started
-      minio-createbucket:
-        condition: service_completed_successfully
-      minio:
-        condition: service_healthy
+      # dev adds minio/minio-createbucket dependencies on top of these — see
+      # docker-compose.dev.yml. In prod, storage talks directly to real R2,
+      # nothing else needs to come up first.
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
       timeout: 5s
@@ -204,8 +174,8 @@ services:
       REGION: ${REGION}
       # No imgproxy in this trimmed stack — the app already serves images unoptimized.
       ENABLE_IMAGE_TRANSFORMATION: "false"
-      # S3-mode backend — points at MinIO locally, at Cloudflare R2 on the VPS.
-      # Only these five values change between environments; everything else stays.
+      # S3-mode backend — real Cloudflare R2 in this base file (prod-shaped).
+      # docker-compose.dev.yml overrides these 5 values to point at local MinIO instead.
       STORAGE_BACKEND: s3
       GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
       GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT}
@@ -322,6 +292,11 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      # Server-side code (server components, middleware, route handlers,
+      # supabaseAdmin) needs to reach Kong over the Docker network, not via
+      # the browser-facing SUPABASE_PUBLIC_URL — "kong" resolves correctly to
+      # this compose network's Kong container regardless of dev/prod/VPS.
+      SUPABASE_INTERNAL_URL: http://kong:8000
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ENCRYPTION_KEY_VERSION: ${ENCRYPTION_KEY_VERSION}
@@ -333,4 +308,3 @@ services:
 
 volumes:
   db-config:
-  minio-data:

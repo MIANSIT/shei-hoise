@@ -2,13 +2,18 @@
 # Creates the storage buckets the app expects — nothing in supabase/migrations
 # does this (it was done via Studio/dashboard on the cloud project originally).
 # Idempotent: safe to re-run.
+#
+# Usage: create-buckets.sh [dev|prod]  (default: dev)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+. "$SCRIPT_DIR/lib-env.sh" "$1"
+echo "Target: $ENV_NAME ($ENV_FILE)"
+
 set -a
-. "$DOCKER_DIR/.env"
+. "$ENV_FILE"
 set +a
 
 BASE_URL="${SUPABASE_PUBLIC_URL:-http://localhost:${KONG_HTTP_PORT}}"

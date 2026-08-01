@@ -1,6 +1,14 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// This factory is also called from server components (e.g. via
+// getStoreBySlugFull), not just real browser code. NEXT_PUBLIC_SUPABASE_URL
+// is the browser-reachable URL (e.g. the self-hosted stack's published Kong
+// port); on the server it may not be reachable at all (different Docker
+// network namespace), so prefer SUPABASE_INTERNAL_URL there when set.
+const SUPABASE_URL =
+  typeof window === "undefined"
+    ? process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!
+    : process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export function createNormalClient() {

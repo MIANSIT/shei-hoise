@@ -12,14 +12,19 @@
 # a guard), so replaying all of them on top of schema.sql is safe: migrations
 # already reflected in schema.sql's July 9 snapshot no-op, and everything after
 # that date applies for real.
+#
+# Usage: apply-migrations.sh [dev|prod]  (default: dev)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$DOCKER_DIR/.." && pwd)"
 
+. "$SCRIPT_DIR/lib-env.sh" "$1"
+echo "Target: $ENV_NAME ($ENV_FILE)"
+
 set -a
-. "$DOCKER_DIR/.env"
+. "$ENV_FILE"
 set +a
 
 if ! command -v supabase >/dev/null 2>&1; then
@@ -27,6 +32,8 @@ if ! command -v supabase >/dev/null 2>&1; then
   exit 1
 fi
 
+# Both dev and prod containers are named shei-hoise-db (only one stack runs
+# at a time — see docker/README.md), so this needs no per-environment change.
 DB_URL="postgresql://postgres:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}"
 # The Supabase CLI's Postgres driver defaults to attempting SSL and hard-fails
 # ("server refused TLS connection") against this plain-TCP local Postgres —
