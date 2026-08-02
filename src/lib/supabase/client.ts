@@ -11,6 +11,18 @@ const SUPABASE_URL =
     : process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+// @supabase/ssr auto-derives its session cookie name from the Supabase URL
+// unless told otherwise. Server-side code prefers SUPABASE_INTERNAL_URL
+// (http://kong:8000) for reachability, while the browser always uses
+// NEXT_PUBLIC_SUPABASE_URL (https://api.sheihoise.com) — two different URLs
+// would auto-derive two different cookie names, so the server would never
+// find the session cookie the browser actually set. Pinning an explicit,
+// shared name here keeps client/server/middleware all reading and writing
+// the exact same cookie regardless of which URL each one talks to.
+const AUTH_COOKIE_NAME = "sb-shei-hoise-auth-token";
+
 export function createNormalClient() {
-  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    cookieOptions: { name: AUTH_COOKIE_NAME },
+  });
 }

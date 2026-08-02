@@ -26,6 +26,11 @@ export async function GET(request: Request) {
       process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        // Must match the browser client's explicit cookie name (see
+        // src/lib/supabase/client.ts) — otherwise this derives its own name
+        // from SUPABASE_INTERNAL_URL and never finds the session cookie the
+        // browser actually set.
+        cookieOptions: { name: "sb-shei-hoise-auth-token" },
         cookies: {
           getAll() {
             return cookieStore.getAll();
