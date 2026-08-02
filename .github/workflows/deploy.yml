@@ -133,8 +133,12 @@ jobs:
             # (e.g. a previous host), giving a false pass.
             curl -skf --resolve "$SITE_DOMAIN:443:${{ secrets.VPS_HOST }}" \
               -o /dev/null -w "app  (direct, via $SITE_DOMAIN) HTTP %{http_code}\n" "https://$SITE_DOMAIN/"
+            # /auth/v1/health requires an apikey header via Kong (like almost
+            # every other route) — jwks.json is one of the few genuinely open
+            # routes, so it doesn't need a secret just to prove Kong/GoTrue
+            # are up.
             curl -skf --resolve "$API_DOMAIN:443:${{ secrets.VPS_HOST }}" \
-              -o /dev/null -w "kong (direct, via $API_DOMAIN)  HTTP %{http_code}\n" "https://$API_DOMAIN/auth/v1/health"
+              -o /dev/null -w "kong (direct, via $API_DOMAIN)  HTTP %{http_code}\n" "https://$API_DOMAIN/auth/v1/.well-known/jwks.json"
 
             # Best-effort, non-fatal: also try the real public URL. Fails
             # until DNS for $SITE_DOMAIN actually points at this VPS — once
