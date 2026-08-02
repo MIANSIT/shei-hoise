@@ -52,6 +52,7 @@ const client = createClient(NEW_URL, NEW_KEY, { auth: { persistSession: false } 
 const TARGETS = [
   { table: 'store_customers', column: 'auth_user_id' },
   { table: 'store_subscriptions', column: 'user_id' },
+  { table: 'subscription_invoices', column: 'user_id' },
 ];
 
 async function fixTable(table, column) {

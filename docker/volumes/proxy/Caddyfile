@@ -1,0 +1,11 @@
+# Two site blocks — the app and Kong each need their own public HTTPS
+# hostname since browsers call Kong directly (NEXT_PUBLIC_SUPABASE_URL).
+# Caddy issues/renews Let's Encrypt certs for both automatically.
+
+{$SITE_DOMAIN} {
+	reverse_proxy app:3000
+}
+
+{$API_DOMAIN} {
+	reverse_proxy kong:8000
+}

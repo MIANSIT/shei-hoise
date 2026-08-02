@@ -111,18 +111,31 @@ webhook delivery (needs a public HTTPS URL), TLS.
 
 ## Local → VPS: what actually changes
 
-Once an actual VPS exists, only `docker/.env.prod` values change, plus a
-rebuild of the `app` image with the VPS's build args. `docker-compose.yml`,
-`volumes/api/kong.yml`, and the DB init scripts stay identical:
+**Full step-by-step runbook: [`docker/VPS_DEPLOYMENT.md`](VPS_DEPLOYMENT.md).**
+Short version — only `docker/.env.prod` values change, plus a rebuild of the
+`app` image with the VPS's build args and a new `docker-compose.proxy.yml`
+overlay for TLS (Caddy). `docker-compose.yml`, `volumes/api/kong.yml`, and
+the DB init scripts stay identical:
 
 | Changes on the VPS | Stays identical |
 |---|---|
 | Fresh `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY`/`POSTGRES_PASSWORD`/`DASHBOARD_PASSWORD` (never reuse the local-rehearsal prod secrets either) | `docker-compose.yml` (services, images, healthchecks, dependency graph) |
-| `SITE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` → real domain instead of `localhost` | `volumes/api/kong.yml`, `kong-entrypoint.sh` |
+| `SITE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` → real domain instead of `localhost`; new `SITE_DOMAIN`/`API_DOMAIN` for Caddy | `volumes/api/kong.yml`, `kong-entrypoint.sh` |
 | `db`'s port binding tightened to `127.0.0.1:5432:5432` or removed (use an SSH tunnel for migrations) | `volumes/db/{roles,jwt,webhooks}.sql` |
-| Real `ADMIN_API_URL`, `GMAIL_*`, `UPSTASH_*`, `ENCRYPTION_KEY`, real Pathao/Meta secrets in the app's own settings | `Dockerfile` |
-| A reverse proxy in front of Kong for TLS (nginx/Caddy — an *additional* compose file, not a change to this one) | `docker-compose.dev.yml` (still only used for local dev) |
-| Rebuild `app` with the VPS's `NEXT_PUBLIC_*` build-args (baked in at `next build` time — see Dockerfile comments) | Bucket names, R2 config shape, everything about how the app talks to Supabase |
+| Real `ADMIN_API_URL`, `GMAIL_*`, `UPSTASH_*`, real Pathao/Meta secrets in the app's own settings | `Dockerfile` |
+| A `docker-compose.proxy.yml` overlay (Caddy) added in front of Kong + the app for TLS — an *additional* compose file, not a change to `docker-compose.yml` | `docker-compose.dev.yml` (still only used for local dev) |
+| Rebuild `app` with the VPS's `NEXT_PUBLIC_*` build-args (baked in at `next build` time — see Dockerfile comments) | Bucket names, everything about how the app talks to Supabase |
+
+**`ENCRYPTION_KEY` and the R2 credentials (`GLOBAL_S3_*`, `AWS_ACCESS_KEY_ID/SECRET`)
+must be copied byte-for-byte from local prod to the VPS, NOT regenerated** —
+unlike the other secrets above, they're not purely infra-internal.
+`ENCRYPTION_KEY` decrypts values already stored in the database being cloned
+onto the VPS; a fresh key silently breaks decryption for every store's saved
+credentials. The R2 values must stay identical because the cloned database's
+image URLs already point at that exact bucket. See `VPS_DEPLOYMENT.md` for
+the full reasoning and the database-cloning approach (dumping the
+already-migrated local prod database directly, not re-running
+`docker/scripts/migrate-data/` against Supabase Cloud again).
 
 ## Notes
 

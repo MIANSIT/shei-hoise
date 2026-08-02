@@ -1,0 +1,149 @@
+name: Deploy to VPS
+
+# Pushing to main syncs the repo to the VPS, updates the domain/URL settings
+# in docker/.env.prod from the secrets below, then reconciles the stack and
+# rebuilds the `app` container. It deliberately does NOT touch the database,
+# run migrations, or regenerate the rest of docker/.env.prod — those stay
+# manual, careful steps (see docker/VPS_DEPLOYMENT.md and
+# docker/scripts/migrate-data/) since they're exactly the kind of thing that
+# shouldn't happen unattended on every push. Real secrets (ENCRYPTION_KEY, R2
+# credentials, JWT_SECRET, etc.) live only in docker/.env.prod on the VPS
+# itself and are never touched by this workflow or seen by CI.
+#
+# Changing the domain later is just: update the SITE_URL/SUPABASE_PUBLIC_URL
+# secrets below (and flip the USE_PROXY repo variable to "true" once DNS +
+# Caddy are ready), then push or re-run this workflow.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Ensure swap exists (safety net — next build can spike memory)
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+            set -e
+            if [ ! -f /swapfile ]; then
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+              echo "swap created"
+            else
+              echo "swapfile already present"
+            fi
+          '
+
+      - name: Sync repo to the VPS
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .git \
+            --exclude .github \
+            --exclude migration_dump \
+            --exclude docker/volumes/db/data \
+            --exclude docker/volumes/db/data-prod \
+            --exclude docker/.env \
+            --exclude docker/.env.prod \
+            --exclude docker/full-prod.dump \
+            --exclude .env.local \
+            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/"
+
+      - name: Update domain/URL settings in docker/.env.prod
+        run: |
+          SITE_URL="${{ secrets.SITE_URL }}"
+          SUPABASE_PUBLIC_URL="${{ secrets.SUPABASE_PUBLIC_URL }}"
+          API_EXTERNAL_URL="${SUPABASE_PUBLIC_URL}/auth/v1"
+          # Strip scheme and any :port/path, leaving just the hostname —
+          # only used by Caddy (docker-compose.proxy.yml) once USE_PROXY=true.
+          SITE_DOMAIN=$(echo "$SITE_URL" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
+          API_DOMAIN=$(echo "$SUPABASE_PUBLIC_URL" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
+
+          # These 6 keys already exist in docker/.env.prod (from .env.prod.example),
+          # so a plain sed replace is enough — no conditional append needed. The
+          # values are substituted here on the runner before the string is sent
+          # over SSH, so no remote-side escaping is required.
+          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
+            set -e
+            cd '${{ secrets.VPS_DEPLOY_PATH }}'
+            sed -i 's|^SITE_URL=.*|SITE_URL=${SITE_URL}|' docker/.env.prod
+            sed -i 's|^SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL}|' docker/.env.prod
+            sed -i 's|^API_EXTERNAL_URL=.*|API_EXTERNAL_URL=${API_EXTERNAL_URL}|' docker/.env.prod
+            sed -i 's|^ADMIN_API_URL=.*|ADMIN_API_URL=${SITE_URL}|' docker/.env.prod
+            sed -i 's|^SITE_DOMAIN=.*|SITE_DOMAIN=${SITE_DOMAIN}|' docker/.env.prod
+            sed -i 's|^API_DOMAIN=.*|API_DOMAIN=${API_DOMAIN}|' docker/.env.prod
+            echo Updated SITE_URL=${SITE_URL} SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL}
+          "
+
+      - name: Open 80/443 in ufw when the proxy is enabled
+        if: vars.USE_PROXY == 'true'
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+            sudo ufw allow 80/tcp
+            sudo ufw allow 443/tcp
+          '
+
+      - name: Reconcile the stack and rebuild the app
+        run: |
+          if [ "${{ vars.USE_PROXY }}" = "true" ]; then
+            COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.proxy.yml"
+          else
+            COMPOSE_FILES="-f docker/docker-compose.yml"
+          fi
+          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
+            set -e
+            cd '${{ secrets.VPS_DEPLOY_PATH }}'
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --build app
+          "
+
+      - name: Verify the app responds
+        run: |
+          sleep 5
+          if [ "${{ vars.USE_PROXY }}" = "true" ]; then
+            SITE_DOMAIN=$(echo "${{ secrets.SITE_URL }}" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
+            API_DOMAIN=$(echo "${{ secrets.SUPABASE_PUBLIC_URL }}" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
+
+            # Talk to Caddy on the VPS directly (IP + SNI override), so this
+            # verifies OUR deployment even before public DNS for $SITE_DOMAIN
+            # is cut over to this VPS — curling the real public URL would
+            # silently test whatever server DNS currently points at instead
+            # (e.g. a previous host), giving a false pass.
+            curl -skf --resolve "$SITE_DOMAIN:443:${{ secrets.VPS_HOST }}" \
+              -o /dev/null -w "app  (direct, via $SITE_DOMAIN) HTTP %{http_code}\n" "https://$SITE_DOMAIN/"
+            curl -skf --resolve "$API_DOMAIN:443:${{ secrets.VPS_HOST }}" \
+              -o /dev/null -w "kong (direct, via $API_DOMAIN)  HTTP %{http_code}\n" "https://$API_DOMAIN/auth/v1/health"
+
+            # Best-effort, non-fatal: also try the real public URL. Fails
+            # until DNS for $SITE_DOMAIN actually points at this VPS — once
+            # it does, this line starts reporting a real 200 with a valid
+            # cert, confirming the cutover, with no redeploy needed.
+            curl -sf -o /dev/null -w "app  (public DNS)             HTTP %{http_code}\n" "${{ secrets.SITE_URL }}/" \
+              || echo "note: public DNS for $SITE_DOMAIN doesn't reach this VPS yet (expected until the A record is cut over)"
+          else
+            ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+              curl -sf -o /dev/null -w "app HTTP %{http_code}\n" http://localhost:3000/
+            '
+          fi

@@ -48,3 +48,5 @@ next-env.d.ts
 docker/volumes/db/data/
 docker/volumes/db/data-prod/
 docker/scripts/migrate-data/auth-id-mapping.json
+docker/full-prod.dump
+docker/SERVICE_CREDENTIALS.md
