@@ -18,7 +18,10 @@
     "docker:prod:up": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod up -d",
     "docker:prod:build": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod up -d --build app",
     "docker:prod:down": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod down",
-    "docker:prod:logs": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod logs -f"
+    "docker:prod:logs": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod logs -f",
+    "docker:local-vps:build": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.local-vps-backend.yml --env-file docker/.env.local-vps-backend up -d --build --no-deps app",
+    "docker:local-vps:down": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.local-vps-backend.yml --env-file docker/.env.local-vps-backend stop app",
+    "docker:local-vps:logs": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.local-vps-backend.yml --env-file docker/.env.local-vps-backend logs -f app"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

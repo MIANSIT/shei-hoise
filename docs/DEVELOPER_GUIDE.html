@@ -1,0 +1,968 @@
+<title>Shei Hoise — Engineering Reference</title>
+<meta name="description" content="How Shei Hoise is built, deployed, and migrated — architecture, project structure, dependencies, CI/CD, and the data migration playbook." />
+<style>
+  :root {
+    --paper: #f6f7f3;
+    --paper-raised: #ffffff;
+    --ink: #16211c;
+    --ink-soft: #4b5b52;
+    --ink-faint: #7c8a80;
+    --line: #dde3dc;
+    --line-strong: #c3ccc1;
+    --accent: #16a34a;
+    --accent-ink: #ffffff;
+    --accent-soft-bg: #e7f6ec;
+    --accent-soft-line: #bfe6ca;
+    --code-bg: #eef1ea;
+    --code-ink: #26362d;
+    --warn: #92400e;
+    --warn-bg: #fdf1e0;
+    --warn-line: #edd2a4;
+    --danger: #9f1c1c;
+    --danger-bg: #fbeaea;
+    --danger-line: #eac5c5;
+    --shadow: 0 1px 2px rgba(22, 33, 28, 0.06);
+    --serif: "New York", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #10140f;
+      --paper-raised: #161d16;
+      --ink: #eef2ec;
+      --ink-soft: #a9b6ac;
+      --ink-faint: #718073;
+      --line: #29332a;
+      --line-strong: #3a463b;
+      --accent: #34d371;
+      --accent-ink: #06170d;
+      --accent-soft-bg: #14261a;
+      --accent-soft-line: #26492f;
+      --code-bg: #131a12;
+      --code-ink: #d7e3d9;
+      --warn: #f0b866;
+      --warn-bg: #2a2013;
+      --warn-line: #4a3a1e;
+      --danger: #f19b9b;
+      --danger-bg: #2a1414;
+      --danger-line: #4a2222;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #10140f;
+    --paper-raised: #161d16;
+    --ink: #eef2ec;
+    --ink-soft: #a9b6ac;
+    --ink-faint: #718073;
+    --line: #29332a;
+    --line-strong: #3a463b;
+    --accent: #34d371;
+    --accent-ink: #06170d;
+    --accent-soft-bg: #14261a;
+    --accent-soft-line: #26492f;
+    --code-bg: #131a12;
+    --code-ink: #d7e3d9;
+    --warn: #f0b866;
+    --warn-bg: #2a2013;
+    --warn-line: #4a3a1e;
+    --danger: #f19b9b;
+    --danger-bg: #2a1414;
+    --danger-line: #4a2222;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  :root[data-theme="light"] {
+    --paper: #f6f7f3;
+    --paper-raised: #ffffff;
+    --ink: #16211c;
+    --ink-soft: #4b5b52;
+    --ink-faint: #7c8a80;
+    --line: #dde3dc;
+    --line-strong: #c3ccc1;
+    --accent: #16a34a;
+    --accent-ink: #ffffff;
+    --accent-soft-bg: #e7f6ec;
+    --accent-soft-line: #bfe6ca;
+    --code-bg: #eef1ea;
+    --code-ink: #26362d;
+    --warn: #92400e;
+    --warn-bg: #fdf1e0;
+    --warn-line: #edd2a4;
+    --danger: #9f1c1c;
+    --danger-bg: #fbeaea;
+    --danger-line: #eac5c5;
+    --shadow: 0 1px 2px rgba(22, 33, 28, 0.06);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--serif);
+    font-weight: 600;
+    color: var(--ink);
+    text-wrap: balance;
+    line-height: 1.25;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 272px minmax(0, 1fr);
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 20px 40px 28px;
+    border-right: 1px solid var(--line);
+  }
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand-mark {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+  .brand-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .toc-group { margin-bottom: 18px; }
+  .toc-group-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 6px 2px;
+  }
+  .toc-group ul { list-style: none; margin: 0; padding: 0; }
+  .toc-group a {
+    display: block;
+    padding: 5px 8px;
+    margin: 1px 0;
+    border-radius: 5px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .toc-group a:hover { background: var(--accent-soft-bg); color: var(--ink); }
+
+  /* ---------- Main content ---------- */
+  main { padding: 44px 40px 120px; min-width: 0; }
+  .doc-header { margin-bottom: 48px; }
+  .doc-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  .doc-header h1 { font-size: 2.5rem; margin: 0 0 14px; }
+  .doc-header p { max-width: 62ch; color: var(--ink-soft); font-size: 1.08rem; margin: 0; }
+
+  section { margin-bottom: 56px; scroll-margin-top: 20px; }
+  section > h2 {
+    font-size: 1.55rem;
+    padding-bottom: 12px;
+    margin: 0 0 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 1.15rem; margin: 28px 0 10px; }
+  h4 {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: var(--ink-soft);
+    margin: 20px 0 8px;
+  }
+
+  p { max-width: 72ch; margin: 0 0 14px; }
+  .prose-wide p { max-width: none; }
+  ul, ol { max-width: 72ch; padding-left: 1.3em; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  ol.sequence { padding-left: 1.6em; }
+  ol.sequence li { margin-bottom: 14px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 0.12em 0.4em;
+    border-radius: 4px;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    line-height: 1.6;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    overflow-x: auto;
+    margin: 0 0 18px;
+  }
+  pre code { background: none; padding: 0; border-radius: 0; }
+
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--paper-raised);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--accent-soft-bg); }
+  td code, th code { white-space: nowrap; }
+
+  .callout {
+    max-width: none;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ink-faint);
+    background: var(--paper-raised);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 0 0 20px;
+    font-size: 0.94rem;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ink-faint);
+  }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+  .callout.warn .callout-label { color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); background: var(--danger-bg); border-color: var(--danger-line); }
+  .callout.danger .callout-label { color: var(--danger); }
+  .callout.accent { border-left-color: var(--accent); background: var(--accent-soft-bg); border-color: var(--accent-soft-line); }
+  .callout.accent .callout-label { color: var(--accent); }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent-soft-bg);
+    color: var(--accent);
+    border: 1px solid var(--accent-soft-line);
+  }
+
+  .tree {
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    line-height: 1.75;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    color: var(--code-ink);
+    max-width: none;
+  }
+  .tree .c { color: var(--ink-faint); }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin: 0 0 20px;
+  }
+  .card {
+    border: 1px solid var(--line);
+    background: var(--paper-raised);
+    border-radius: 8px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h4 { margin: 0 0 6px; color: var(--ink); }
+  .card p { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
+
+  .diagram-caption { font-size: 0.85rem; color: var(--ink-faint); margin-top: -10px; }
+
+  hr.rule { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+
+  footer {
+    max-width: 72ch;
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 32px 20px 100px; }
+  }
+</style>
+
+<div class="shell">
+  <nav class="sidebar" aria-label="Table of contents">
+    <div class="brand">
+      <span class="brand-mark">Shei Hoise</span>
+      <span class="brand-tag">Engineering Reference</span>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">The Product</p>
+      <ul>
+        <li><a href="#what-it-is">What Shei Hoise is</a></li>
+        <li><a href="#pixel-capi">Meta Pixel &amp; CAPI</a></li>
+        <li><a href="#pathao">Pathao courier</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">The System</p>
+      <ul>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#structure">Project structure</a></li>
+        <li><a href="#stack">Stack &amp; dependencies</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Running It</p>
+      <ul>
+        <li><a href="#running-locally">Running locally</a></li>
+        <li><a href="#pnpm-scripts">pnpm scripts</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Shipping It</p>
+      <ul>
+        <li><a href="#deployment">GitHub Actions deploy</a></li>
+        <li><a href="#secrets">Required secrets</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Moving Data</p>
+      <ul>
+        <li><a href="#migration-pipeline">Cloud → self-hosted pipeline</a></li>
+        <li><a href="#new-vps">Migrating to a new VPS</a></li>
+      </ul>
+    </div>
+
+    <div class="toc-group">
+      <p class="toc-group-label">Institutional Knowledge</p>
+      <ul>
+        <li><a href="#known-bugs">Bugs found &amp; fixed</a></li>
+        <li><a href="#reference">Tools &amp; reference links</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <header class="doc-header">
+      <p class="doc-eyebrow">Internal · engineering</p>
+      <h1>How Shei Hoise is built, shipped, and moved</h1>
+      <p>A working reference for the development team: what the platform does, how the containerized system fits together, how a deploy actually happens, and — because it will come up again — exactly how to move all of this to a fresh VPS without losing a row of data.</p>
+    </header>
+
+    <!-- ============================================================ -->
+    <section id="what-it-is">
+      <h2>What Shei Hoise is</h2>
+      <p>Shei Hoise is a <strong>multi-tenant e-commerce platform</strong> built for f-commerce sellers — merchants who sell primarily through Facebook and Instagram — as well as standalone online stores. Each store is a fully isolated tenant with its own storefront, products, orders, customers, courier connections, and marketing configuration, all served from one Next.js codebase and one Postgres database using row-level security for tenant isolation.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Choice</th></tr></thead>
+          <tbody>
+            <tr><td>Framework</td><td>Next.js 16 (App Router)</td></tr>
+            <tr><td>Database &amp; auth</td><td>Supabase — Postgres with row-level security, JWT-based multi-tenant auth</td></tr>
+            <tr><td>State</td><td>Zustand (client) + React Query (server) + React Context</td></tr>
+            <tr><td>Forms &amp; validation</td><td>React Hook Form + Zod</td></tr>
+            <tr><td>Styling</td><td>Tailwind CSS 4</td></tr>
+            <tr><td>Package manager</td><td>pnpm</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Storefront — <code>/[store_slug]/...</code></h3>
+      <p>Each merchant gets a public storefront reachable by its own slug: shop and product-detail pages, cart and checkout, order confirmation and status tracking, customer login/signup, and standard policy pages.</p>
+
+      <h3>Merchant dashboard — <code>/dashboard/...</code></h3>
+      <ul>
+        <li>Product management — add/edit, bundles, categories, stock</li>
+        <li>Order management — create/edit orders, vendor orders</li>
+        <li>Customer management</li>
+        <li>Courier/shipping management (Pathao, Steadfast, manual)</li>
+        <li>Expense tracking</li>
+        <li>Pixel/marketing analytics</li>
+        <li>Store settings, store management, subscription &amp; billing</li>
+      </ul>
+
+      <h3>Platform level</h3>
+      <p>Tenant onboarding and provisioning (<code>/onboarding</code>, <code>/stores</code>), platform authentication, and internal API routes for product feeds, invoices, subscriptions, and order notifications.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="pixel-capi">
+      <h2>Meta Pixel &amp; Conversions API</h2>
+      <p>F-commerce sellers acquire nearly all of their customers through Facebook and Instagram ads. Without accurate pixel data, ad platforms can't learn who converts, which drives up customer acquisition cost. Shei Hoise builds Meta Pixel tracking directly into the platform so every merchant gets ad-optimization data without touching any code.</p>
+
+      <ul>
+        <li><strong>Per-store configuration</strong> — each store has its own Facebook Pixel ID and, optionally, an encrypted Conversions API access token, set by the merchant in <code>StoreSettingsCard</code> and stored on that store's settings row. The pixel script mounts per-store in the storefront layout — no tenant ever shares another's pixel.</li>
+        <li><strong>Client-side (<code>fbq</code>)</strong> — the standard Meta Pixel snippet fires <code>PageView</code> on every route change, capturing UTM parameters and Facebook's <code>fbclid</code> for attribution.</li>
+        <li><strong>Events tracked</strong> — <code>PageView</code>, <code>ViewContent</code>, <code>AddToCart</code>, <code>InitiateCheckout</code>, <code>AddPaymentInfo</code>, <code>Purchase</code>, <code>Search</code> — exactly the set Meta's algorithms use to optimize campaigns.</li>
+        <li><strong>Server-side CAPI</strong> — matching events are also sent directly to Meta's Graph API, with phone/email hashed (SHA-256) first. This matters because iOS/browser tracking prevention silently drops a large share of browser-only events; sending the same event from both sides (deduplicated via a shared <code>eventID</code>) gives Meta a far more complete signal. CAPI is gated by subscription plan (<code>hasFeature(subscription, "conversion_api")</code>) and only activates once a store has both a Pixel ID and an encrypted CAPI token on file.</li>
+        <li><strong>Merchant-facing analytics</strong> — the <code>pixel-analytics</code> dashboard page lets merchants verify their own pixel is firing without needing Meta's Events Manager.</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="pathao">
+      <h2>Pathao courier integration</h2>
+      <p>Pathao is one of Bangladesh's largest courier services, integrated alongside Steadfast and manual handling so merchants can fulfill orders without leaving the dashboard.</p>
+      <ul>
+        <li><strong>Connection</strong> — merchants connect their Pathao account via OAuth from <code>/dashboard/courier/pathao</code>; tokens refresh automatically, credentials are stored per store.</li>
+        <li><strong>Location cascade</strong> — City → Zone → Area lookups from Pathao's API, required for Pathao's delivery routing.</li>
+        <li><strong>Shipment creation</strong> — converts a Shei Hoise order into a Pathao consignment, recording the consignment ID, delivery fee, COD amount, and weight against the order.</li>
+        <li><strong>Status tracking</strong> — refreshable on demand, plus a signed webhook (one callback URL per connected merchant) that updates delivery status and reconciles COD settlement automatically.</li>
+        <li><strong>Unified hub</strong> — Pathao, Steadfast, and manual couriers sit in one "Manage Couriers" screen with consistent status displays.</li>
+      </ul>
+      <p>Most Bangladeshi f-commerce sellers rely on COD and third-party dispatch rather than self-delivery — automating shipment creation, tracking, and COD reconciliation removes a large share of manual, error-prone per-order admin work.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="architecture">
+      <h2>Architecture</h2>
+      <p>Nothing about the application code changed when the project containerized. What changed is <em>how the backend is hosted</em>: instead of Vercel-hosted Next.js talking to Supabase Cloud, everything — the app and its own self-hosted copy of Supabase — runs as Docker containers wired through a single gateway. The same containers run on the production VPS.</p>
+
+      <div class="table-wrap">
+        <pre>Browser
+  │
+  ├──────────────────────────────► shei-hoise-app  (Next.js, :3000)
+  │                                     │
+  │                                     │  supabase-js client, one base URL
+  │                                     ▼
+  └──────────────────────────────► shei-hoise-kong (API gateway, :8000)
+                                        │
+                    ┌───────────────────┼────────────────────┬───────────────┐
+                    ▼                   ▼                    ▼               ▼
+              shei-hoise-auth    shei-hoise-rest      shei-hoise-storage   shei-hoise-studio
+              (GoTrue)           (PostgREST)          (Storage API)       (admin dashboard)
+                    │                   │                    │                    │
+                    └───────────────────┴────────┬───────────┘                   │
+                                                  ▼                               ▼
+                                          shei-hoise-db                   shei-hoise-meta
+                                          (Postgres 17)                   (postgres-meta,
+                                                                           powers Studio)
+                                                  │
+                                          shei-hoise-storage also writes files to:
+                                                  ▼
+                                          R2 (prod/VPS) or shei-hoise-minio (dev only)</pre>
+      </div>
+      <p class="diagram-caption">Every box is a separate container defined in <code>docker/docker-compose.yml</code>. None of it is Vercel or Supabase Cloud — it's the same open-source components Supabase Cloud is built from, self-hosted.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Container</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>app</code></td><td>Next.js — storefronts, dashboard, all <code>/api/*</code> routes. Built via <code>docker/Dockerfile</code> using <code>output: "standalone"</code>.</td></tr>
+            <tr><td><code>kong</code></td><td>The single door everything goes through. The app's Supabase client has exactly one URL (<code>NEXT_PUBLIC_SUPABASE_URL</code>, pointing at Kong); Kong routes <code>/auth/*</code> → GoTrue, <code>/rest/*</code> → PostgREST, <code>/storage/*</code> → Storage API, everything else → Studio.</td></tr>
+            <tr><td><code>auth</code> (GoTrue)</td><td>Issues and verifies every session JWT. Same flow the app always used against Supabase Cloud — only the backing service moved.</td></tr>
+            <tr><td><code>rest</code> (PostgREST)</td><td>Auto-generates the REST API behind every <code>supabase-js</code> <code>.from(...)</code> call, enforcing the same RLS policies.</td></tr>
+            <tr><td><code>storage</code></td><td>Backs every product photo, logo, and banner. Always runs in S3 mode — MinIO locally in dev, real Cloudflare R2 everywhere else. The app never knows the difference.</td></tr>
+            <tr><td><code>db</code></td><td>Postgres 17, using Supabase's own image (not vanilla Postgres) for the extensions and internal schemas Auth/Storage/REST expect.</td></tr>
+            <tr><td><code>studio</code> + <code>meta</code></td><td>The admin dashboard for browsing tables and running SQL, reachable through Kong (basic-auth protected).</td></tr>
+            <tr><td><code>minio</code></td><td>Dev-only, added by <code>docker-compose.dev.yml</code> — a local S3-compatible stand-in for R2, so the storage code path is genuinely exercised locally.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>How a request actually flows</h3>
+      <ol class="sequence">
+        <li>A merchant opens the dashboard, or a customer opens a storefront — hits <code>app</code>.</li>
+        <li>The app's Supabase client (browser or server) calls Kong.</li>
+        <li>Kong authenticates the request (API key / JWT) and forwards it to <code>auth</code>, <code>rest</code>, or <code>storage</code> over the internal Docker network.</li>
+        <li>That service talks to <code>db</code> to do the actual work, enforcing RLS the whole way.</li>
+        <li>For file uploads/downloads, <code>storage</code> additionally talks to R2 (or MinIO) to store/retrieve bytes; Postgres only tracks bucket/object metadata.</li>
+        <li>The response returns through Kong to the app — identical to how it worked against Supabase Cloud.</li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="callout-label">The one real gotcha — build-time vs runtime config</span>
+        <p>Next.js bakes every <code>NEXT_PUBLIC_*</code> variable into the compiled JavaScript <strong>at <code>docker build</code> time</strong>, not at container startup. <code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, and <code>NEXT_PUBLIC_SITE_URL</code> are passed as Docker build arguments, sourced from the active env file. <code>UPSTASH_REDIS_REST_URL</code>/<code>TOKEN</code> also had to become build args, because <code>src/lib/redis/redis.ts</code> constructs its client the moment the module is imported. Everything else (<code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>ENCRYPTION_KEY</code>, <code>GMAIL_*</code>, Pathao/Meta secrets) is read lazily inside request handlers, so it's supplied at container <em>runtime</em> — changing those just needs a restart, not a rebuild.</p>
+        <p>Practical consequence: moving environments means rebuilding the <code>app</code> image (Kong URL and keys differ), but <code>db</code>/<code>auth</code>/<code>rest</code>/<code>storage</code> need no rebuild at all.</p>
+      </div>
+
+      <h3>Server-side code has to prefer the internal URL — and that has a sharp edge</h3>
+      <p>Server-only code (server components, middleware, route handlers, <code>supabaseAdmin</code>) reaches Kong over the Docker network at <code>SUPABASE_INTERNAL_URL</code> (<code>http://kong:8000</code>) rather than the browser-facing <code>NEXT_PUBLIC_SUPABASE_URL</code>, since the two are only reachable from different network contexts in a containerized deployment. See <a href="#known-bugs">Bugs found &amp; fixed</a> for the real incident this caused with session cookies — anyone adding a new server-side Supabase client must reuse the shared, explicit cookie name, not rely on the library's default derivation.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="structure">
+      <h2>Project structure</h2>
+
+      <h3><code>src/app</code> — routes</h3>
+      <div class="tree">
+<span class="c">src/app/</span>
+├── [store_slug]/         <span class="c"># public storefront: shop, product, checkout, login…</span>
+├── dashboard/            <span class="c"># merchant admin: products, orders, customers, courier…</span>
+├── admin-login/          <span class="c"># store-owner auth (+ forgot/update password)</span>
+├── auth/                 <span class="c"># callback, reset-password, update-password</span>
+├── api/                  <span class="c"># route handlers — auth, pathao, subscription, pixel-event…</span>
+├── onboarding/  stores/  <span class="c"># tenant provisioning &amp; store directory</span>
+└── components/           <span class="c"># admin/, auth/, cart/, products/, ui/, layout/…</span>
+      </div>
+
+      <h3><code>src/lib</code> — shared logic</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Folder</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>supabase/</code></td><td><code>client.ts</code> (browser), <code>server.ts</code> (server components/routes), <code>middleware.ts</code>, <code>admin.ts</code> (service-role) — the four places a Supabase client gets constructed.</td></tr>
+            <tr><td><code>queries/</code></td><td>Data-fetching functions organized by feature (customers, subscription, onboarding…), called from components or React Query hooks.</td></tr>
+            <tr><td><code>hook/</code></td><td>Shared React hooks — <code>useCurrentUser</code>, <code>useCustomerFormData</code>, URL-synced filters, translations.</td></tr>
+            <tr><td><code>schema/</code></td><td>Zod schemas — the single source of truth for form and API-payload validation.</td></tr>
+            <tr><td><code>types/</code></td><td>Shared TypeScript types/interfaces.</td></tr>
+            <tr><td><code>store/</code></td><td>Zustand stores for client-side global state.</td></tr>
+            <tr><td><code>utils/</code></td><td>Encryption, password-reset tokens, formatting helpers.</td></tr>
+            <tr><td><code>email/</code></td><td>Transactional email templates (password reset, etc.) sent via <code>nodemailer</code>.</td></tr>
+            <tr><td><code>redis/</code></td><td>Upstash Redis client, used for order-token/rate-limit style state.</td></tr>
+            <tr><td><code>pdf/</code>, <code>i18n/</code></td><td>Invoice/PDF generation; translation strings.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Database schema</h3>
+      <p><code>supabase/migrations/</code> holds 36 tracked migration files, but does <strong>not</strong> reconstruct the schema from an empty Postgres by itself. A handful of core tables (like <code>store_settings</code>) were created through a one-time manual project migration before this repo's migration history started being tracked, and only live in <code>schema.sql</code> — a full schema snapshot. The bootstrap script (<code>docker/scripts/apply-migrations.sh</code>) always runs both, in order:</p>
+      <ol class="sequence">
+        <li>Load <code>schema.sql</code> — brings in everything the tracked migrations alone would miss.</li>
+        <li>Replay every migration in <code>supabase/migrations</code> on top. All are written defensively (<code>IF NOT EXISTS</code>/<code>IF EXISTS</code>), so anything already in the snapshot no-ops, and anything added after the snapshot date applies for real.</li>
+      </ol>
+      <p>This is a one-time step per fresh database — not something that runs on every deploy.</p>
+
+      <h3><code>docker/</code> layout</h3>
+      <div class="tree">
+<span class="c">docker/</span>
+├── docker-compose.yml               <span class="c"># base — prod-shaped, real R2 by default</span>
+├── docker-compose.dev.yml           <span class="c"># overlay: adds local MinIO</span>
+├── docker-compose.proxy.yml         <span class="c"># overlay: adds Caddy (VPS TLS)</span>
+├── docker-compose.local-vps-backend.yml <span class="c"># overlay: app only, talks to the live VPS</span>
+├── Dockerfile
+├── .env.example  .env.prod.example  .env.local-vps-backend.example
+├── scripts/
+│   ├── bootstrap.sh  apply-migrations.sh  create-buckets.sh
+│   ├── generate-keys.sh  generate-keys-for.sh  lib-env.sh
+│   └── migrate-data/     <span class="c"># Cloud → self-hosted data migration tooling</span>
+├── volumes/
+│   ├── api/kong.yml  kong-entrypoint.sh
+│   ├── db/{roles,jwt,webhooks}.sql
+│   └── proxy/Caddyfile
+└── README.md  VPS_DEPLOYMENT.md  KONG_API_GUIDE.md  SERVICE_CREDENTIALS.md
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="stack">
+      <h2>Stack &amp; dependencies</h2>
+      <p>The dependency list is large but falls into a small number of clear roles. Grouped below with what each one is actually for.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Role</th><th>Packages</th></tr></thead>
+          <tbody>
+            <tr><td>Framework</td><td><code>next</code>, <code>react</code>, <code>react-dom</code></td></tr>
+            <tr><td>Backend / auth</td><td><code>@supabase/supabase-js</code>, <code>@supabase/ssr</code></td></tr>
+            <tr><td>Server state</td><td><code>@tanstack/react-query</code></td></tr>
+            <tr><td>Client state</td><td><code>zustand</code></td></tr>
+            <tr><td>Forms &amp; validation</td><td><code>react-hook-form</code>, <code>@hookform/resolvers</code>, <code>zod</code></td></tr>
+            <tr><td>UI components</td><td><code>antd</code>, <code>@ant-design/icons</code>, <code>@ant-design/nextjs-registry</code>, <code>@radix-ui/*</code> (dialog, dropdown, select, tooltip…), <code>@shadcn/ui</code>, <code>lucide-react</code>, <code>react-icons</code></td></tr>
+            <tr><td>Styling utilities</td><td><code>tailwind-merge</code>, <code>class-variance-authority</code>, <code>clsx</code>, <code>@tailwindcss/typography</code></td></tr>
+            <tr><td>Drag &amp; drop</td><td><code>@dnd-kit/core</code>, <code>@dnd-kit/sortable</code>, <code>@dnd-kit/utilities</code></td></tr>
+            <tr><td>Rich text</td><td><code>jodit-react</code></td></tr>
+            <tr><td>Documents &amp; export</td><td><code>jspdf</code>, <code>jspdf-autotable</code>, <code>html2canvas</code>, <code>xlsx</code></td></tr>
+            <tr><td>Email</td><td><code>nodemailer</code></td></tr>
+            <tr><td>Caching / rate limiting</td><td><code>@upstash/redis</code></td></tr>
+            <tr><td>Dates, numbers, misc</td><td><code>dayjs</code>, <code>lz-string</code>, <code>react-country-flag</code>, <code>react-swipeable</code>, <code>recharts</code>, <code>framer-motion</code>, <code>sonner</code> (toasts), <code>next-themes</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="running-locally">
+      <h2>Running it locally</h2>
+      <p>There are three distinct ways to run the app locally, for three different purposes. They share one <code>docker-compose.yml</code>; overlays and env files select which one you get.</p>
+
+      <div class="cards">
+        <div class="card">
+          <h4>dev</h4>
+          <p><code>docker-compose.yml</code> + <code>docker-compose.dev.yml</code>, <code>docker/.env</code>. Adds local MinIO standing in for R2. Day-to-day feature work.</p>
+        </div>
+        <div class="card">
+          <h4>prod (rehearsal)</h4>
+          <p><code>docker-compose.yml</code> alone, <code>docker/.env.prod</code>. Real R2 bucket, stricter auth defaults, optionally a full copy of real production data. A dress rehearsal of the exact stack the VPS runs.</p>
+        </div>
+        <div class="card">
+          <h4>local-vps-backend <span class="chip">new</span></h4>
+          <p><code>docker-compose.yml</code> + <code>docker-compose.local-vps-backend.yml</code>. Runs only the <code>app</code> container — no local Postgres/Auth/Kong at all — pointed straight at the live VPS's Kong. One database, nothing to keep in sync.</p>
+        </div>
+      </div>
+
+      <div class="callout accent">
+        <span class="callout-label">Why local-vps-backend exists</span>
+        <p>The "prod rehearsal" mode keeps its own full copy of the database, which drifts from the live VPS the moment either one changes — every drift incident in this project's history came from exactly that gap. Pointing the local <code>app</code> straight at the VPS's public API removes the second database entirely: reads are always current, and there's nothing to resync. It talks to real production data, so writes (creating orders, editing customers, connecting Pathao) happen for real — treat it accordingly.</p>
+      </div>
+
+      <h3>First-time setup — dev</h3>
+      <ol class="sequence">
+        <li><code>cp docker/.env.example docker/.env</code></li>
+        <li><code>./docker/scripts/generate-keys-for.sh docker/.env</code> — generates JWT secret, ANON/SERVICE_ROLE keys, Postgres password, etc. Fill in app-specific values (<code>GMAIL_*</code>, <code>UPSTASH_*</code>, <code>ENCRYPTION_KEY</code>) yourself.</li>
+        <li><code>./docker/scripts/bootstrap.sh dev</code> — required on first boot: GoTrue and Storage-API create their own Postgres schemas on startup, and this project's migrations reference <code>auth.users</code>/<code>auth.uid()</code>, so bring-up order matters (<code>db</code> → <code>auth</code>/<code>storage</code>/<code>rest</code>/<code>minio</code> → schema/migrations → storage buckets → <code>kong</code>/<code>studio</code>/<code>meta</code>/<code>app</code>).</li>
+      </ol>
+
+      <h3>First-time setup — prod rehearsal</h3>
+      <ol class="sequence">
+        <li>Create a Cloudflare R2 bucket + API token (Access Key ID + Secret) if you don't have one.</li>
+        <li><code>cp docker/.env.prod.example docker/.env.prod</code>, then <code>./docker/scripts/generate-keys-for.sh docker/.env.prod</code>. Fill in the R2 section and app-specific values. <strong>Every secret here must differ from dev's</strong> — never reuse.</li>
+        <li><code>./docker/scripts/bootstrap.sh prod</code> — same ordering as dev, minus the MinIO step.</li>
+        <li>Optional, once: pull real Cloud data in via <code>docker/scripts/migrate-data/</code> — see <a href="#migration-pipeline">the migration pipeline</a>.</li>
+      </ol>
+
+      <h3>First-time setup — local-vps-backend</h3>
+      <ol class="sequence">
+        <li><code>cp docker/.env.local-vps-backend.example docker/.env.local-vps-backend</code>.</li>
+        <li>Fill in <code>SUPABASE_PUBLIC_URL</code>, <code>ANON_KEY</code>, <code>SERVICE_ROLE_KEY</code>, and <code>ENCRYPTION_KEY</code> with the VPS's <em>real, current</em> values (see <code>docker/SERVICE_CREDENTIALS.md</code>, or fetch them directly from the VPS's own <code>docker/.env.prod</code>). A mismatched <code>ENCRYPTION_KEY</code> doesn't error loudly — it just silently fails to decrypt real stored credentials.</li>
+        <li><code>pnpm docker:local-vps:build</code>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="callout-label">Compose merge gotcha</span>
+        <p><code>depends_on</code> is <em>merged</em> across compose files, not replaced — an override file can't simply clear a base file's <code>depends_on: kong: condition: service_healthy</code> by setting an empty list. That's why the <code>docker:local-vps:*</code> scripts pass <code>--no-deps</code> explicitly, rather than relying on the override alone. If you ever swap env files mid-session for the base stack's other services (kong, studio, etc.) without also using <code>--no-deps</code>/targeting them precisely, they'll recompute their config against whatever env file you passed and may get recreated with the wrong values — always bring the base stack back up with its own real env file (<code>docker/.env.prod</code>) afterward if that happens.</p>
+      </div>
+
+      <h3>Verifying it actually works</h3>
+      <ul>
+        <li>Sign in through the real login flow at <code>localhost:3000</code> — confirms GoTrue is reachable through Kong.</li>
+        <li>Load a public storefront page — confirms PostgREST + RLS against the migrated schema.</li>
+        <li>Open Studio through Kong (basic-auth) and browse the Table Editor — confirms <code>meta</code> is wired.</li>
+        <li>Upload a store logo/product image and confirm the returned URL loads — then check it landed in MinIO's console (dev) or the R2 bucket dashboard (prod).</li>
+      </ul>
+      <p>Not testable until a real domain exists: live Pathao webhook delivery (needs a public HTTPS URL), TLS.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="pnpm-scripts">
+      <h2>pnpm scripts</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Script</th><th>Does</th></tr></thead>
+          <tbody>
+            <tr><td><code>dev</code> / <code>build</code> / <code>start</code> / <code>lint</code></td><td>Plain Next.js — no Docker involved.</td></tr>
+            <tr><td><code>docker:dev:bootstrap</code></td><td>First-time dev stack bring-up, correct order.</td></tr>
+            <tr><td><code>docker:dev:up</code> / <code>build</code> / <code>down</code> / <code>logs</code></td><td>Day-to-day dev stack control. <code>build</code> rebuilds just <code>app</code>.</td></tr>
+            <tr><td><code>docker:prod:bootstrap</code></td><td>First-time prod-rehearsal stack bring-up.</td></tr>
+            <tr><td><code>docker:prod:up</code> / <code>build</code> / <code>down</code> / <code>logs</code></td><td>Day-to-day prod-rehearsal control.</td></tr>
+            <tr><td><code>docker:local-vps:build</code></td><td>Build and start <code>app</code> only, against the live VPS's Kong.</td></tr>
+            <tr><td><code>docker:local-vps:down</code> / <code>logs</code></td><td>Stop / tail just that <code>app</code> instance.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="deployment">
+      <h2>Deployment — GitHub Actions</h2>
+      <p><code>.github/workflows/deploy.yml</code> runs on every push to <code>main</code> (or manually via <code>workflow_dispatch</code>). It deliberately does a small, safe set of things — and just as deliberately <strong>doesn't</strong> do several others.</p>
+
+      <div class="callout danger">
+        <span class="callout-label">What this workflow never does</span>
+        <p>It never touches the database, runs migrations, or regenerates most of <code>docker/.env.prod</code>. Real secrets — <code>ENCRYPTION_KEY</code>, R2 credentials, <code>JWT_SECRET</code>, <code>POSTGRES_PASSWORD</code> — live only in <code>docker/.env.prod</code> on the VPS itself and are never seen by CI. Those stay manual, deliberate steps (see <a href="#new-vps">Migrating to a new VPS</a>) — exactly the kind of thing that shouldn't happen unattended on every push.</p>
+      </div>
+
+      <ol class="sequence">
+        <li><strong>Checkout</strong> the pushed commit.</li>
+        <li><strong>Set up SSH</strong> using the <code>VPS_SSH_KEY</code> secret.</li>
+        <li><strong>Ensure swap exists</strong> — idempotent 2 GB swapfile creation, a safety net since <code>next build</code> can spike memory on a small VPS.</li>
+        <li><strong>Sync the repo</strong> to the VPS via <code>rsync</code>, excluding <code>node_modules</code>, <code>.next</code>, <code>.git</code>, the Postgres data directories, and every real env file.</li>
+        <li><strong>Patch domain/URL settings</strong> in the VPS's existing <code>docker/.env.prod</code> — <code>SITE_URL</code>, <code>SUPABASE_PUBLIC_URL</code>, <code>API_EXTERNAL_URL</code>, <code>ADMIN_API_URL</code>, <code>SITE_DOMAIN</code>, <code>API_DOMAIN</code> — derived from secrets and applied with <code>sed</code>, values substituted on the runner before the command is sent over SSH (so no remote-side escaping is needed).</li>
+        <li><strong>Open 80/443 in <code>ufw</code></strong>, only when the <code>USE_PROXY</code> repo variable is <code>"true"</code>.</li>
+        <li><strong>Reconcile the stack and rebuild <code>app</code></strong> — <code>docker compose up -d</code>, then <code>up -d --build app</code> specifically, so the new code's build-time env values actually take effect. Includes the Caddy overlay only when <code>USE_PROXY</code> is on.</li>
+        <li><strong>Verify</strong> — talks to Caddy directly by IP + SNI override (<code>--resolve</code>) rather than the public hostname, so the check is accurate even before DNS is cut over; a genuinely open endpoint (<code>/auth/v1/.well-known/jwks.json</code>, not <code>/auth/v1/health</code>, which requires an API key) proves Kong/GoTrue are actually serving. A best-effort, non-fatal check against the real public URL reports once DNS is live too.</li>
+      </ol>
+
+      <p>Changing the domain later is just updating the <code>SITE_URL</code>/<code>SUPABASE_PUBLIC_URL</code> secrets (and flipping <code>USE_PROXY</code> to <code>"true"</code> once DNS + Caddy are ready), then pushing or re-running the workflow.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="secrets">
+      <h2>Required GitHub configuration</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Kind</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>VPS_SSH_KEY</code></td><td>Secret</td><td>Full contents of the VPS's private key.</td></tr>
+            <tr><td><code>VPS_HOST</code></td><td>Secret</td><td>The VPS's IP or hostname.</td></tr>
+            <tr><td><code>VPS_USER</code></td><td>Secret</td><td>SSH user on the VPS.</td></tr>
+            <tr><td><code>VPS_DEPLOY_PATH</code></td><td>Secret</td><td>Absolute path to the repo checkout on the VPS.</td></tr>
+            <tr><td><code>SITE_URL</code></td><td>Secret</td><td><code>https://sheihoise.com</code> — the app's public URL.</td></tr>
+            <tr><td><code>SUPABASE_PUBLIC_URL</code></td><td>Secret</td><td><code>https://api.sheihoise.com</code> — Kong's public URL.</td></tr>
+            <tr><td><code>USE_PROXY</code></td><td>Repo variable</td><td><code>"true"</code> once DNS + Caddy TLS are ready; <code>"false"</code>/unset to reach the app directly by IP/port during initial bring-up.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="migration-pipeline">
+      <h2>Cloud → self-hosted data migration</h2>
+      <p><code>docker/scripts/migrate-data/</code> is one-time tooling to pull the live Supabase Cloud project's real data — auth users, every public-schema table, storage files — into a self-hosted stack. Not part of regular dev/prod bring-up; run once against a freshly-bootstrapped target (or re-run in full to re-sync, see the callout below).</p>
+
+      <div class="callout">
+        <span class="callout-label">Three secrets, never stored in this repo</span>
+        <p><code>OLD_URL</code> (source project's API URL), <code>OLD_KEY</code> (source <code>service_role</code> key), and <code>SOURCE_DB_URL</code> — a direct Postgres connection string from Supabase's dashboard. Use the <strong>session pooler</strong> connection string, not the direct one: Supabase's direct-connection hostname is IPv6-only unless the project has the IPv4 add-on, and most local/CI networks can't reach it.</p>
+      </div>
+
+      <h3>Order (matters)</h3>
+      <ol class="sequence">
+        <li><strong><code>migrate-auth.mjs</code></strong> — recreates every user in the target via the GoTrue Admin API. Passwords can't be carried over (not exposed by any API); users get a random password and use "Forgot Password". Builds <code>auth-id-mapping.json</code> (old id → new id) — idempotent, skips users already mapped on re-run.</li>
+        <li><strong><code>migrate-public-data.sh</code></strong> — <code>pg_dump --data-only --schema=public</code> from the source, <code>pg_restore</code> into the target, run inside the <code>shei-hoise-db</code> container. Copies every table's rows as-is, still referencing the old auth ids and old storage hostname.</li>
+        <li><strong><code>fix-image-urls.sh</code></strong> — rewrites the source project's hostname to the target's storage hostname across every stored image/avatar URL. Storage-API keeps the same URL shape regardless of backend, so this is a pure hostname swap.</li>
+        <li><strong><code>fix-auth-id-references.mjs</code></strong> — walks the id mapping and updates every foreign key that references the old auth ids (<code>store_customers.auth_user_id</code>, <code>store_subscriptions.user_id</code>, <code>subscription_invoices.user_id</code>).</li>
+        <li><strong><code>migrate-storage.mjs</code></strong> — copies every bucket's files from source to target, <code>upsert: true</code>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="callout-label">One more step this list misses</span>
+        <p><code>public.users</code> is a companion/profile table keyed 1:1 with <code>auth.users</code> by id. Since GoTrue assigns brand-new ids and the data-only restore copies <code>public.users</code> rows with their <em>old</em> ids, the two drift apart the moment steps 1–2 finish — breaking every "which store does this logged-in user own" check. <code>fix-public-users-ids.sh</code> (not part of the original five-script list, added after finding this bug) adds <code>ON UPDATE CASCADE</code> to all 13 foreign keys pointing at <code>public.users(id)</code>, then remaps every id — run it right after step 4.</p>
+      </div>
+
+      <h3>Running it</h3>
+      <pre>OLD_URL='https://&lt;source-ref&gt;.supabase.co' \
+OLD_KEY='&lt;source service_role key&gt;' \
+SOURCE_DB_URL='postgresql://postgres.&lt;ref&gt;:&lt;password&gt;@&lt;pooler-host&gt;:5432/postgres' \
+docker/scripts/migrate-data/run-all.sh prod</pre>
+      <p>Or run each script individually (necessary if you also need the <code>public.users</code> fix, or want to inspect between steps).</p>
+
+      <h3>Re-syncing later (closing drift)</h3>
+      <p>Cloud stays a live, moving target for as long as anything still writes to it. To pull a fresh, complete copy rather than a delta: <code>TRUNCATE</code> every public-schema table (respecting <code>CASCADE</code>), then re-run the full pipeline above in order. All five scripts (plus the <code>public.users</code> fix) are safe to re-run against a freshly truncated target.</p>
+
+      <div class="callout danger">
+        <span class="callout-label">Real incident — wait for storage to fully finish</span>
+        <p><code>migrate-storage.mjs</code> re-uploads every file on every run (no skip-if-unchanged logic) and can take well over ten minutes for a thousand-file bucket. If the database dump is taken <em>before</em> that finishes, files re-uploaded afterward get a new internal <code>storage.objects.version</code> that the already-taken dump doesn't know about — the restored target then points at a version id that's been superseded, and Storage-API returns 404/400 for those files even though the metadata row exists. Always let storage migration finish completely before dumping the database for a restore.</p>
+      </div>
+
+      <div class="callout danger">
+        <span class="callout-label">Real incident — the customer list breaks above a URL-length threshold</span>
+        <p>An unrelated app bug, found while investigating a "data is missing" report during migration testing: <code>getAllStoreCustomers</code> used to fetch every linked customer id, then pass the entire list to a single <code>.in(customerIds)</code> filter. For a store with ~900 customers that built a 33 KB+ URL, which Kong rejects outright with <code>414 URI too long</code> — the customer list came back empty for any sufficiently active store, on <em>any</em> backend, including the original Vercel deployment. Fixed by querying from <code>store_customer_links</code> scoped by <code>store_id</code> directly, embedding the related <code>store_customers</code> row through the foreign key instead of ever building a giant id list. Worth remembering as a pattern to avoid elsewhere: never build an <code>.in()</code> filter from an unbounded, previously-fetched id list — embed through the relationship instead.</p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="new-vps">
+      <h2>Migrating to a new VPS</h2>
+      <p>This is the condensed, battle-tested version of <code>docker/VPS_DEPLOYMENT.md</code> — the exact sequence that's actually been run successfully, including everything that went wrong the first few times.</p>
+
+      <h3>0. Prerequisites</h3>
+      <ul>
+        <li>A real domain, with access to add DNS records.</li>
+        <li>A working local "prod" rehearsal — confirm with <code>docker compose -f docker/docker-compose.yml --env-file docker/.env.prod ps</code> showing everything healthy.</li>
+      </ul>
+
+      <h3>1. Provision the VPS</h3>
+      <ul>
+        <li>2 vCPU / 4 GB is enough for this workload (a small B-series/CPX-class instance).</li>
+        <li>SSH key auth only; disable password auth.</li>
+        <li><code>ufw allow 22 &amp;&amp; ufw allow 80 &amp;&amp; ufw allow 443 &amp;&amp; ufw enable</code>.</li>
+        <li>Install Docker Engine + the Compose plugin.</li>
+      </ul>
+
+      <div class="callout danger">
+        <span class="callout-label">If the VPS is on a cloud provider with its own network firewall (Azure NSG, AWS security groups, GCP firewall rules) — this is not optional</span>
+        <p><code>ufw</code> is not the only firewall in the path. A cloud-level network security group sits in front of the VM entirely separately, and a port can be open in <code>ufw</code> while still being silently dropped upstream — the connection just hangs (no refusal, no error), which is the exact signature to watch for. This bit twice in one deployment: once for SSH itself after a reboot, once for ports 80/443 during the domain cutover. Both times the actual cause was <strong>rule priority ordering</strong> — a lower-priority-number "Deny" rule silently overrode a newly added "Allow" rule. When adding a port, always: (1) add it to <code>ufw</code>, (2) add the matching rule in the cloud provider's own NSG/security-group console, and (3) give that rule a priority/order number lower than any blanket deny.</p>
+      </div>
+
+      <h3>2. DNS</h3>
+      <p>Two records, both pointed at the VPS's IP — the browser calls Kong directly (<code>NEXT_PUBLIC_SUPABASE_URL</code>), not just the app, so both need their own public hostname:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Record</th><th>Points to</th></tr></thead>
+          <tbody>
+            <tr><td><code>sheihoise.com</code> (A)</td><td>the app, via Caddy</td></tr>
+            <tr><td><code>api.sheihoise.com</code> (A)</td><td>Kong, via Caddy</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Let DNS propagate before bringing up Caddy — Let's Encrypt issuance fails if the domain doesn't resolve to the VPS yet. If a root/apex domain was previously hosted elsewhere (e.g. Vercel), double-check the <em>exact</em> A record actually changed — some registrars keep a separate ALIAS/ANAME record for the apex that silently overrides a new plain A record, and editing in place can fail; delete the old record and add a fresh one instead.</p>
+
+      <h3>3. Copy the repo, build <code>docker/.env.prod</code></h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Regenerate fresh</th><th>Copy byte-for-byte, never regenerate</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>JWT_SECRET</code>, <code>POSTGRES_PASSWORD</code>, <code>ANON_KEY</code>, <code>SERVICE_ROLE_KEY</code>, <code>DASHBOARD_PASSWORD</code></td>
+              <td><code>ENCRYPTION_KEY</code> (+version), R2 credentials (<code>GLOBAL_S3_*</code>, <code>AWS_ACCESS_KEY_ID/SECRET</code>)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>ENCRYPTION_KEY</code> decrypts values already stored in the database being cloned — a fresh key silently breaks decryption for every store's saved credentials. R2 values must stay identical because the restored database's image URLs already point at that exact bucket.</p>
+      <p>New real values: <code>SITE_URL</code>, <code>SUPABASE_PUBLIC_URL</code>, <code>API_EXTERNAL_URL</code>, <code>SITE_DOMAIN</code>, <code>API_DOMAIN</code>, a fresh <code>POSTGRES_DATA_DIR</code>. Don't publish Postgres's port at all on the VPS — use an SSH tunnel for ad-hoc access.</p>
+
+      <h3>4. Clone the database — a direct dump/restore, not a re-migration</h3>
+      <p>Since the local prod rehearsal already has every fix applied, the fastest, most reliable path is cloning its Postgres directly rather than re-running the Cloud migration scripts against the new VPS.</p>
+      <ol class="sequence">
+        <li><code>docker/scripts/migrate-data/dump-local-prod-db.sh</code> — full, all-schema dump (not just <code>public</code>) of the working local prod database.</li>
+        <li><code>scp</code> the dump to the VPS.</li>
+        <li>Stop the whole stack, wipe <code>docker/volumes/db/data</code> completely, bring up only <code>db</code> fresh.</li>
+        <li>
+          Restore:
+          <pre>docker exec shei-hoise-db pg_restore \
+  -U supabase_admin -d postgres \
+  --clean --if-exists --single-transaction \
+  full-prod.dump</pre>
+          <div class="callout danger" style="margin-top:10px;">
+            <span class="callout-label">Must be <code>supabase_admin</code>, not <code>postgres</code></span>
+            <p>Despite the name, <code>postgres</code> is a <em>restricted</em> role on this image — it mirrors Supabase Cloud's own role model, and lacks the privileges to touch event triggers or other full-cluster objects. <code>--clean --if-exists</code> is required even against a freshly emptied data directory, since the base image's own bootstrap already creates some schema objects that need cleaning before the restore's copies land.</p>
+          </div>
+        </li>
+        <li>Bring up <code>auth</code>, <code>rest</code>, <code>storage</code> — expect "migrations already up to date, nothing to apply" in the auth logs, confirming a clean restore against matching versions, not a fresh self-migration.</li>
+        <li>Bring up <code>studio</code>, <code>meta</code>, <code>kong</code>, then <code>app</code> (rebuild, for the new domain's build args), then <code>caddy</code> once DNS has propagated.</li>
+      </ol>
+
+      <h3>5. Image URLs need rewriting — potentially twice</h3>
+      <p>Stored image URLs carry whatever hostname was active <em>when the data was migrated</em>. Moving hosts means running the same <code>old_host → new_host</code> rewrite pattern again (across <code>product_images.image_url</code>, <code>stores.logo_url</code>/<code>banner_url</code>, <code>categories.image_url</code>, <code>customer_profiles.avatar_url</code>, <code>user_profiles.avatar_url</code>) — first from the local rehearsal's hostname to the VPS's IP (so the site works immediately while DNS propagates), then again from the IP to the final real domain once DNS and TLS are confirmed working. Storage-API keeps the same URL shape regardless of backend, so it's always a pure hostname swap.</p>
+
+      <h3>6. Caddy &amp; TLS</h3>
+      <p>Two site blocks, since the browser calls Kong directly and not just the app:</p>
+      <pre>{$SITE_DOMAIN} {
+	reverse_proxy app:3000
+}
+{$API_DOMAIN} {
+	reverse_proxy kong:8000
+}</pre>
+      <div class="callout">
+        <span class="callout-label">Caddy's staging-CA fallback is a feature, not a bug</span>
+        <p>If Caddy repeatedly fails to obtain a certificate against the real Let's Encrypt endpoint (DNS not ready yet, port 80/443 blocked upstream), it automatically falls back to Let's Encrypt's <em>staging</em> CA — which issues untrusted certificates, but has far more forgiving rate limits — so it can keep retrying without burning through the real, limited quota. Once the real blocker (DNS, firewall) is fixed and a challenge actually succeeds, it switches back to the production CA automatically on its next retry. Restarting the <code>caddy</code> container forces an immediate retry instead of waiting for its backoff timer.</p>
+      </div>
+
+      <h3>Post-deploy</h3>
+      <ul>
+        <li>GoTrue's <code>ADDITIONAL_REDIRECT_URLS</code> and the password-reset system's site URL now point at the real domain automatically, from <code>docker/.env.prod</code> — no separate dashboard config needed.</li>
+        <li>Re-register the Pathao webhook URL if it was previously registered against a different host.</li>
+        <li>Add the GitHub Actions secrets (see <a href="#secrets">Required GitHub configuration</a>) so future deploys work without manual SSH.</li>
+      </ul>
+
+      <h3>Verification checklist</h3>
+      <ol class="sequence">
+        <li><code>docker compose ... ps</code> — everything healthy.</li>
+        <li><code>curl -I https://api.&lt;domain&gt;/auth/v1/.well-known/jwks.json</code> and <code>curl -I https://&lt;domain&gt;/</code> — valid certs, 200s.</li>
+        <li>Sign in as a real migrated store owner — the single most important check, since this is exactly the class of bug (<code>public.users</code> id sync) found and fixed during the original migration.</li>
+        <li>Load a real storefront page, confirm product images render straight from R2.</li>
+        <li>Request a password reset through the real UI end to end, confirm the emailed link uses the real domain.</li>
+        <li>Confirm the Pathao webhook endpoint is genuinely reachable now that a public HTTPS URL exists.</li>
+        <li>Diff row counts for the core tables (<code>orders</code>, <code>store_customers</code>, <code>products</code>, <code>stores</code>, <code>store_subscriptions</code>) against whatever was live immediately before cutover, to catch any last-minute drift.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="known-bugs">
+      <h2>Bugs found &amp; fixed — read before touching auth or list queries</h2>
+
+      <h3>Session cookie name mismatch (auth silently appeared broken everywhere)</h3>
+      <p><code>@supabase/ssr</code> auto-derives its session cookie name from whichever Supabase URL it's given, unless told otherwise. The browser client uses <code>NEXT_PUBLIC_SUPABASE_URL</code> (the public domain); several server-side clients prefer <code>SUPABASE_INTERNAL_URL</code> (<code>http://kong:8000</code>) for reachability inside Docker. Two different URLs auto-derive two different cookie names — the server was reading a session cookie that literally didn't exist under the name it was looking for, so every server-rendered auth check (subscription status, and anything else server-side) always looked logged out, regardless of whether the user actually was.</p>
+      <p><strong>Fix</strong>: every client construction site (<code>src/lib/supabase/client.ts</code>, <code>server.ts</code>, <code>middleware.ts</code>, <code>src/app/auth/callback/route.ts</code>) now passes an explicit, identical <code>cookieOptions: {'{'} name: "sb-shei-hoise-auth-token" {'}'}</code>, decoupling the cookie name entirely from which URL each one happens to talk to.</p>
+      <div class="callout accent">
+        <span class="callout-label">Rule going forward</span>
+        <p>Any new place that constructs a Supabase client with <code>createBrowserClient</code> or <code>createServerClient</code> must pass the same explicit <code>cookieOptions.name</code>. Never let it fall back to the library's default derivation.</p>
+      </div>
+
+      <h3>Customer list 414 "URI too long" for active stores</h3>
+      <p>See <a href="#migration-pipeline">the migration pipeline section</a> above — same bug, same fix, kept there since it was found while investigating a migration-adjacent report.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="reference">
+      <h2>Tools &amp; reference links</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Docs</th></tr></thead>
+          <tbody>
+            <tr><td>Next.js</td><td><a href="https://nextjs.org/docs" target="_blank" rel="noopener">nextjs.org/docs</a></td></tr>
+            <tr><td>Supabase (self-hosting)</td><td><a href="https://supabase.com/docs/guides/self-hosting" target="_blank" rel="noopener">supabase.com/docs/guides/self-hosting</a></td></tr>
+            <tr><td>PostgREST</td><td><a href="https://docs.postgrest.org/" target="_blank" rel="noopener">docs.postgrest.org</a></td></tr>
+            <tr><td>GoTrue (Auth)</td><td><a href="https://github.com/supabase/auth" target="_blank" rel="noopener">github.com/supabase/auth</a></td></tr>
+            <tr><td>Docker Compose</td><td><a href="https://docs.docker.com/compose/" target="_blank" rel="noopener">docs.docker.com/compose</a></td></tr>
+            <tr><td>Kong Gateway</td><td><a href="https://docs.konghq.com/gateway/" target="_blank" rel="noopener">docs.konghq.com/gateway</a></td></tr>
+            <tr><td>Caddy</td><td><a href="https://caddyserver.com/docs/" target="_blank" rel="noopener">caddyserver.com/docs</a></td></tr>
+            <tr><td>Let's Encrypt</td><td><a href="https://letsencrypt.org/docs/" target="_blank" rel="noopener">letsencrypt.org/docs</a></td></tr>
+            <tr><td>GitHub Actions</td><td><a href="https://docs.github.com/actions" target="_blank" rel="noopener">docs.github.com/actions</a></td></tr>
+            <tr><td>TanStack Query</td><td><a href="https://tanstack.com/query/latest" target="_blank" rel="noopener">tanstack.com/query</a></td></tr>
+            <tr><td>Zustand</td><td><a href="https://zustand.docs.pmnd.rs/" target="_blank" rel="noopener">zustand.docs.pmnd.rs</a></td></tr>
+            <tr><td>Zod</td><td><a href="https://zod.dev/" target="_blank" rel="noopener">zod.dev</a></td></tr>
+            <tr><td>React Hook Form</td><td><a href="https://react-hook-form.com/" target="_blank" rel="noopener">react-hook-form.com</a></td></tr>
+            <tr><td>Ant Design</td><td><a href="https://ant.design/" target="_blank" rel="noopener">ant.design</a></td></tr>
+            <tr><td>Radix UI</td><td><a href="https://www.radix-ui.com/" target="_blank" rel="noopener">radix-ui.com</a></td></tr>
+            <tr><td>Tailwind CSS</td><td><a href="https://tailwindcss.com/docs" target="_blank" rel="noopener">tailwindcss.com/docs</a></td></tr>
+            <tr><td>pnpm</td><td><a href="https://pnpm.io/" target="_blank" rel="noopener">pnpm.io</a></td></tr>
+            <tr><td>Meta Conversions API</td><td><a href="https://developers.facebook.com/docs/marketing-api/conversions-api" target="_blank" rel="noopener">developers.facebook.com/.../conversions-api</a></td></tr>
+            <tr><td>Pathao Merchant API</td><td><a href="https://merchant.pathao.com/" target="_blank" rel="noopener">merchant.pathao.com</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      Internal engineering reference for the Shei Hoise development team. Reflects the containerized architecture, the GitHub Actions deploy pipeline, and the VPS migration playbook as actually run — including the bugs found and fixed along the way. Keep this in sync with <code>docker/README.md</code>, <code>docker/VPS_DEPLOYMENT.md</code>, and <code>ARCHITECTURE.md</code> when any of them change.
+    </footer>
+  </main>
+</div>

@@ -1,0 +1,29 @@
+# Run just the `app` container locally, built against the LIVE VPS's Kong
+# instead of a local self-hosted Supabase stack. No local db/auth/rest/
+# storage/kong needed or started — this is for testing app code changes
+# against real production data without keeping a second database in sync
+# (the exact class of problem repeated data-drift incidents came from).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local-vps-backend.yml \
+#     --env-file .env.local-vps-backend up -d --build app
+#
+# This talks directly to production data through the VPS's public API —
+# there is no local rehearsal copy here. Be careful with anything that
+# writes (creating orders, editing customers, etc.) since it happens for
+# real. Safe for read-heavy UI/code testing.
+services:
+  app:
+    # No local kong/studio/etc. exist in this mode — bring this service up
+    # with `--no-deps` (already baked into the `docker:local-vps:*` pnpm
+    # scripts) so compose doesn't try to start/health-check them too.
+    # Overriding depends_on here isn't enough on its own: Compose merges
+    # depends_on across files rather than replacing it, so the base file's
+    # `kong: condition: service_healthy` would still apply.
+    environment:
+      # No local Kong exists in this mode — fall back to the public URL for
+      # server-side code too (empty string is falsy, so the
+      # `SUPABASE_INTERNAL_URL || NEXT_PUBLIC_SUPABASE_URL` pattern in
+      # client.ts/server.ts/middleware.ts naturally uses the VPS's real
+      # public URL instead of trying to reach a nonexistent "kong" host).
+      SUPABASE_INTERNAL_URL: ""

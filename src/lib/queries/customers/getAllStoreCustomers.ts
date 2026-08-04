@@ -102,15 +102,17 @@ export async function getAllStoreCustomers(
       return [];
     }
 
-    const customerIds = customers.map((c) => c.id);
-
-    // Orders for just this page's customers — bounded by pageSize, not the
-    // store's full customer list, so this .in() never hits the URL-length
-    // problem the customer query above used to.
+    // Scoped by store_id only, not .in("customer_id", customerIds) — a
+    // customerIds list built from `customers` is only bounded when
+    // page/pageSize are supplied (see .range() above). Callers like
+    // create-order/edit-order call this with no pagination to get every
+    // customer at once, which made that list the store's entire customer
+    // set and rebuilt the exact URL-length problem the customer query above
+    // was fixed for. Per-customer filtering below (customerOrders) already
+    // narrows this down after the fetch.
     const { data: orders, error: ordersError } = await supabase
       .from("orders")
       .select("id, customer_id, created_at")
-      .in("customer_id", customerIds)
       .eq("store_id", storeId)
       .order("created_at", { ascending: false });
 
