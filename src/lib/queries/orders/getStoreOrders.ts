@@ -109,16 +109,48 @@ export async function getStoreOrders(
     // Store-wide status/payment tallies + total order count — always
     // unfiltered (independent of the current search/status/payment filter
     // above), so status tabs keep showing the full picture regardless of
-    // what's currently being searched for. Selecting just these two columns
-    // (no joins, no order_items) keeps this cheap even with a large order
-    // history — this single query replaces what used to be a full refetch
-    // of every order + line item on every page/search/filter change.
-    const { data: statusRows, error: statusError } = await supabase
-      .from("orders")
-      .select("status, payment_status")
-      .eq("store_id", storeId);
+    // what's currently being searched for. Uses exact head-only counts
+    // (COUNT(*) computed in Postgres, no rows returned) rather than fetching
+    // every row and tallying in JS — a plain unpaginated .select() is capped
+    // at PGRST_DB_MAX_ROWS (1000, see docker-compose.yml), which silently
+    // undercounted stores once they passed that many orders.
+    const orderStatusValues = Object.values(OrderStatus);
+    const paymentStatusValues = Object.values(PaymentStatus);
 
+    const [totalOrdersResult, ...statusCountResults] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("store_id", storeId),
+      ...orderStatusValues.map((status) =>
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("store_id", storeId)
+          .eq("status", status),
+      ),
+      ...paymentStatusValues.map((paymentStatus) =>
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("store_id", storeId)
+          .eq("payment_status", paymentStatus),
+      ),
+    ]);
+
+    const statusError =
+      totalOrdersResult.error ||
+      statusCountResults.find((r) => r.error)?.error ||
+      null;
     if (statusError) throw statusError;
+
+    const orderStatusCounts = statusCountResults.slice(
+      0,
+      orderStatusValues.length,
+    );
+    const paymentStatusCounts = statusCountResults.slice(
+      orderStatusValues.length,
+    );
 
     // courier_consignment_id/courier_order_status/courier_credential_id are no
     // longer native columns on orders — sourced from each order's active
@@ -197,41 +229,28 @@ export async function getStoreOrders(
       };
     });
 
-    // Totals by payment status
-    const totalByPaymentStatus: Record<PaymentStatus, number> = {
-      [PaymentStatus.PENDING]: 0,
-      [PaymentStatus.PAID]: 0,
-      [PaymentStatus.FAILED]: 0,
-      [PaymentStatus.REFUNDED]: 0,
-    };
+    // Totals by payment status — each entry backed by its own exact COUNT(*)
+    const totalByPaymentStatus = paymentStatusValues.reduce(
+      (acc, status, i) => {
+        acc[status] = paymentStatusCounts[i].count || 0;
+        return acc;
+      },
+      {} as Record<PaymentStatus, number>,
+    );
 
-    // Totals by order status
-    const totalByOrderStatus: Record<OrderStatus, number> = {
-      [OrderStatus.PENDING]: 0,
-      [OrderStatus.CONFIRMED]: 0,
-      [OrderStatus.SHIPPED]: 0,
-      [OrderStatus.DELIVERED]: 0,
-      [OrderStatus.CANCELLED]: 0,
-    };
-
-    // Count totals from the full (unfiltered) store-wide status/payment rows
-    (statusRows ?? []).forEach((row) => {
-      const paymentStatus = row.payment_status as PaymentStatus;
-      const orderStatus = row.status as OrderStatus;
-
-      if (paymentStatus && totalByPaymentStatus[paymentStatus] !== undefined) {
-        totalByPaymentStatus[paymentStatus]++;
-      }
-
-      if (orderStatus && totalByOrderStatus[orderStatus] !== undefined) {
-        totalByOrderStatus[orderStatus]++;
-      }
-    });
+    // Totals by order status — each entry backed by its own exact COUNT(*)
+    const totalByOrderStatus = orderStatusValues.reduce(
+      (acc, status, i) => {
+        acc[status] = orderStatusCounts[i].count || 0;
+        return acc;
+      },
+      {} as Record<OrderStatus, number>,
+    );
 
     return {
       orders: transformedOrders,
       total: count || 0,
-      totalOrders: statusRows?.length || 0,
+      totalOrders: totalOrdersResult.count || 0,
       totalByPaymentStatus,
       totalByOrderStatus,
     };
