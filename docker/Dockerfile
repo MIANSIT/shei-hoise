@@ -34,9 +34,10 @@ RUN echo "Build environment:" && \
     echo "NEXT_PUBLIC_SUPABASE_URL: $NEXT_PUBLIC_SUPABASE_URL" && \
     echo "SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:0:20}..." && \
     echo "Starting pnpm build..." && \
-    pnpm build && \
-    echo "Build completed, checking .next directory:" && \
-    ls -la /app/.next/ 2>&1 || echo ".next directory missing!"
+    pnpm build
+    
+RUN test -f /app/.next/standalone/server.js || \
+    (echo "ERROR: .next/standalone/server.js missing — build did not produce standalone output" && exit 1)
 
 FROM node:20-alpine AS runner
 WORKDIR /app
