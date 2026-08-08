@@ -1,83 +1,42 @@
 name: Deploy to VPS
 
-# Pushing to main syncs the repo to the VPS, updates the domain/URL settings
-# in docker/.env.prod from the secrets below, then reconciles the stack and
-# rebuilds the `app` container. It deliberately does NOT touch the database,
-# run migrations, or regenerate the rest of docker/.env.prod — those stay
-# manual, careful steps (see docker/VPS_DEPLOYMENT.md and
-# docker/scripts/migrate-data/) since they're exactly the kind of thing that
-# shouldn't happen unattended on every push. Real secrets (ENCRYPTION_KEY, R2
-# credentials, JWT_SECRET, etc.) live only in docker/.env.prod on the VPS
-# itself and are never touched by this workflow or seen by CI.
+# Deploys the `app` service only. SSHes to the VPS, git-pulls main, builds a
+# new image there (NEXT_PUBLIC_* values are baked in from docker/.env.prod,
+# which lives only on the VPS and is never seen by this workflow), boots it
+# as a throwaway candidate container alongside the still-running production
+# app, health-checks it, and only swaps production over once the candidate
+# is proven healthy. If anything fails, production app is left untouched.
 #
-# Changing the domain later is just: update the SITE_URL/SUPABASE_PUBLIC_URL
-# secrets below (and flip the USE_PROXY repo variable to "true" once DNS +
-# Caddy are ready), then push or re-run this workflow.
+# This workflow NEVER touches: db, auth, rest, storage, studio, meta, kong,
+# caddy, migrations, or docker/.env.prod's contents. Those are the manual,
+# careful steps in docker/VPS_DEPLOYMENT.md — provisioning, DNS, secrets
+# regeneration, and the DB restore only happen once, by hand.
+#
+# Rollback: re-run this workflow via workflow_dispatch with "rollback"
+# checked to swap the app service back to the image that was running before
+# the last successful deploy.
 
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: "Roll back the app service to the previous image instead of deploying"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-production
+  # Never cancel mid-deploy — interrupting the swap could leave the VPS
+  # with no running app container.
   cancel-in-progress: false
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    environment: production
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/shei-hoise-app
-          tags: |
-            type=raw,value=latest
-            type=sha,prefix={{branch}}-
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_PUBLIC_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.ANON_KEY }}
-            NEXT_PUBLIC_SITE_URL=${{ secrets.SITE_URL }}
-            UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}
-            UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-
   deploy:
-    needs: build-and-push
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -85,117 +44,95 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Ensure swap exists (safety net — next build can spike memory)
+      - name: Roll back app service to previous image
+        if: ${{ github.event.inputs.rollback == 'true' }}
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
             set -e
-            if [ ! -f /swapfile ]; then
-              sudo fallocate -l 2G /swapfile
-              sudo chmod 600 /swapfile
-              sudo mkswap /swapfile
-              sudo swapon /swapfile
-              echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
-              echo "swap created"
-            else
-              echo "swapfile already present"
+            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+            if ! docker image inspect shei-hoise-app:previous >/dev/null 2>&1; then
+              echo "No shei-hoise-app:previous image found — nothing to roll back to"
+              exit 1
             fi
+            COMPOSE_FILES="-f docker/docker-compose.yml"
+            [ "${{ vars.USE_PROXY }}" = "true" ] && COMPOSE_FILES="$COMPOSE_FILES -f docker/docker-compose.proxy.yml"
+
+            docker tag shei-hoise-app:previous shei-hoise-app:latest
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --no-deps app
+            echo "Rolled back app service to previous image"
           '
 
-      - name: Sync repo to the VPS
-        run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key" \
-            --exclude node_modules \
-            --exclude .next \
-            --exclude .git \
-            --exclude .github \
-            --exclude migration_dump \
-            --exclude docker/volumes/db/data \
-            --exclude docker/volumes/db/data-prod \
-            --exclude docker/.env \
-            --exclude docker/.env.prod \
-            --exclude docker/full-prod.dump \
-            --exclude .env.local \
-            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/"
-
-      - name: Update domain/URL settings in docker/.env.prod
-        run: |
-          SITE_URL="${{ secrets.SITE_URL }}"
-          SUPABASE_PUBLIC_URL="${{ secrets.SUPABASE_PUBLIC_URL }}"
-          API_EXTERNAL_URL="${SUPABASE_PUBLIC_URL}/auth/v1"
-          # Strip scheme and any :port/path, leaving just the hostname —
-          # only used by Caddy (docker-compose.proxy.yml) once USE_PROXY=true.
-          SITE_DOMAIN=$(echo "$SITE_URL" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
-          API_DOMAIN=$(echo "$SUPABASE_PUBLIC_URL" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
-
-          # These 6 keys already exist in docker/.env.prod (from .env.prod.example),
-          # so a plain sed replace is enough — no conditional append needed. The
-          # values are substituted here on the runner before the string is sent
-          # over SSH, so no remote-side escaping is required.
-          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
-            set -e
-            cd '${{ secrets.VPS_DEPLOY_PATH }}'
-            sed -i 's|^SITE_URL=.*|SITE_URL=${SITE_URL}|' docker/.env.prod
-            sed -i 's|^SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL}|' docker/.env.prod
-            sed -i 's|^API_EXTERNAL_URL=.*|API_EXTERNAL_URL=${API_EXTERNAL_URL}|' docker/.env.prod
-            sed -i 's|^ADMIN_API_URL=.*|ADMIN_API_URL=${SITE_URL}|' docker/.env.prod
-            sed -i 's|^SITE_DOMAIN=.*|SITE_DOMAIN=${SITE_DOMAIN}|' docker/.env.prod
-            sed -i 's|^API_DOMAIN=.*|API_DOMAIN=${API_DOMAIN}|' docker/.env.prod
-            echo Updated SITE_URL=${SITE_URL} SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL}
-          "
-
-      - name: Open 80/443 in ufw when the proxy is enabled
-        if: vars.USE_PROXY == 'true'
+      - name: Deploy latest main
+        if: ${{ github.event.inputs.rollback != 'true' }}
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
-            sudo ufw allow 80/tcp
-            sudo ufw allow 443/tcp
-          '
-
-      - name: Deploy pre-built image to VPS
-        run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
             set -e
-            cd '${{ secrets.VPS_DEPLOY_PATH }}'
-            
-            # Log in to GHCR on VPS
-            echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Pull the latest image
-            docker pull ghcr.io/${{ github.repository_owner }}/shei-hoise-app:latest
-            
-            # Determine compose files
-            if [ \"${{ vars.USE_PROXY }}\" = \"true\" ]; then
-              COMPOSE_FILES=\"-f docker/docker-compose.yml -f docker/docker-compose.proxy.yml\"
-            else
-              COMPOSE_FILES=\"-f docker/docker-compose.yml\"
+            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+
+            COMPOSE_FILES="-f docker/docker-compose.yml"
+            [ "${{ vars.USE_PROXY }}" = "true" ] && COMPOSE_FILES="$COMPOSE_FILES -f docker/docker-compose.proxy.yml"
+
+            echo "==> Fetching latest main"
+            git fetch origin main
+            NEW_SHA=$(git rev-parse origin/main)
+            OLD_SHA=$(git rev-parse HEAD)
+
+            if [ "$NEW_SHA" = "$OLD_SHA" ]; then
+              echo "Already up to date at $OLD_SHA — nothing to deploy"
+              exit 0
             fi
-            
-            # Start services with the pre-built image (no build step)
-            export APP_IMAGE=\"ghcr.io/${{ github.repository_owner }}/shei-hoise-app:latest\"
-            docker compose \$COMPOSE_FILES --env-file docker/.env.prod up -d
-            
-            echo 'Deployment complete - app container recreated with pre-built image'
-          "
 
-      - name: Verify the app is healthy (zero-downtime deployment)
-        run: |
-          echo "Waiting for app container to be healthy..."
-          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
-            set -e
-            max_attempts=30
+            echo "==> Updating working tree to $NEW_SHA"
+            echo "    (docker/.env.prod is gitignored and untouched by this reset;"
+            echo "     db/auth/storage/etc keep running throughout)"
+            git reset --hard "$NEW_SHA"
+
+            echo "==> Building candidate app image — production app keeps serving on the old image"
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod build app
+            docker tag shei-hoise-app:latest shei-hoise-app:candidate
+
+            echo "==> Booting candidate as a throwaway container on the same network"
+            docker rm -f shei-hoise-app-candidate >/dev/null 2>&1 || true
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod \
+              run -d --rm --no-deps --name shei-hoise-app-candidate app
+
+            echo "==> Waiting for candidate health check"
             attempt=0
-            while [ $attempt -lt $max_attempts ]; do
-              health=$(docker inspect --format="{{.State.Health.Status}}" shei-hoise-app 2>/dev/null || echo "none")
-              if [ "$health" = "healthy" ]; then
-                echo "✓ App container is healthy"
-                exit 0
-              fi
-              echo "App health check: $health (attempt $((attempt+1))/$max_attempts)"
-              sleep 2
+            max_attempts=30
+            until [ "$(docker inspect -f "{{.State.Health.Status}}" shei-hoise-app-candidate 2>/dev/null)" = "healthy" ]; do
               attempt=$((attempt+1))
+              if [ $attempt -ge $max_attempts ]; then
+                echo "✗ Candidate failed to become healthy — aborting, production app untouched"
+                docker logs shei-hoise-app-candidate | tail -50
+                docker rm -f shei-hoise-app-candidate >/dev/null 2>&1 || true
+                echo "==> Reverting working tree to $OLD_SHA so it matches what is still running"
+                git reset --hard "$OLD_SHA"
+                exit 1
+              fi
+              echo "  (attempt $attempt/$max_attempts)"
+              sleep 2
             done
-            echo "✗ App container did not become healthy within 60 seconds"
-            docker logs shei-hoise-app | tail -20
-            exit 1
+            echo "✓ Candidate is healthy"
+            docker rm -f shei-hoise-app-candidate
+
+            echo "==> Candidate verified — swapping production app to the new image"
+            docker tag shei-hoise-app:latest shei-hoise-app:previous
+            docker tag shei-hoise-app:candidate shei-hoise-app:latest
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --no-deps app
+
+            echo "==> Confirming swapped-in production app is healthy"
+            attempt=0
+            until [ "$(docker inspect -f "{{.State.Health.Status}}" shei-hoise-app 2>/dev/null)" = "healthy" ]; do
+              attempt=$((attempt+1))
+              if [ $attempt -ge $max_attempts ]; then
+                echo "✗ Production app unhealthy after swap — rolling back to previous image"
+                docker tag shei-hoise-app:previous shei-hoise-app:latest
+                docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --no-deps app
+                docker logs shei-hoise-app | tail -50
+                exit 1
+              fi
+              sleep 2
+            done
+
+            echo "✓ Deployed $NEW_SHA successfully"
           '
