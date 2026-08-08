@@ -68,6 +68,7 @@ jobs:
             NEXT_PUBLIC_SITE_URL=${{ secrets.SITE_URL }}
             UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}
             UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
   deploy:
     needs: build-and-push
