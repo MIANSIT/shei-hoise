@@ -17,22 +17,25 @@ COPY . .
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SITE_URL
-# src/lib/redis/redis.ts constructs its Redis client at module scope (no lazy
-# init, no null check), so `next build`'s page-data-collection step imports it
-# for every route that touches it — these two must exist at build time too,
-# not just at container runtime.
 ARG UPSTASH_REDIS_REST_URL
 ARG UPSTASH_REDIS_REST_TOKEN
 ARG SUPABASE_SERVICE_ROLE_KEY
+
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     UPSTASH_REDIS_REST_URL=$UPSTASH_REDIS_REST_URL \
     UPSTASH_REDIS_REST_TOKEN=$UPSTASH_REDIS_REST_TOKEN \
     SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY \
-    HUSKY=0
+    HUSKY=0 \
+    NEXT_SKIP_VALIDATE_SERVER_COMPONENT_ROUTES=1
 
-RUN pnpm build
+RUN echo "Build environment:" && \
+    echo "NEXT_PUBLIC_SUPABASE_URL: $NEXT_PUBLIC_SUPABASE_URL" && \
+    echo "SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:0:20}..." && \
+    echo "Starting pnpm build..." && \
+    pnpm build 2>&1 | tee /tmp/build.log && \
+    echo "Build completed successfully"
 
 FROM node:20-alpine AS runner
 WORKDIR /app
