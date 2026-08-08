@@ -161,7 +161,8 @@ export default function CheckoutPage() {
       isMounted &&
       cartItems.length === 0 &&
       !isLoadingOverall &&
-      !showInvoice
+      !showInvoice &&
+      hasAttemptedCheckout.current
     ) {
       const redirectTimer = setTimeout(() => {
         router.push(`/${store_slug}/order-status`);
@@ -177,6 +178,9 @@ export default function CheckoutPage() {
     isLoadingOverall,
     showInvoice,
   ]);
+
+  // Only process orders after checkout form submission, not on initial page load
+  const hasAttemptedCheckout = useRef(false);
 
   const displayCurrency = currencyLoading ? "" : (currency ?? "");
   const displayCurrencyIconSafe = displayCurrency || "BDT";
@@ -481,6 +485,7 @@ export default function CheckoutPage() {
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);
+        hasAttemptedCheckout.current = true;
 
         // Success message - show only once
         if (isUserLoggedIn) {

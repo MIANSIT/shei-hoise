@@ -272,6 +272,12 @@ services:
 
   app:
     container_name: shei-hoise-app
+    # On VPS (production), APP_IMAGE env var is set to use pre-built image from GHCR.
+    # Locally (dev), APP_IMAGE is empty so build: takes over and builds from source.
+    # Docker Compose: if image is set to an actual value, it uses that; image and build
+    # can coexist, with image taking precedence at runtime, but --build always rebuilds.
+    # So on VPS we pass APP_IMAGE=... and skip --build; locally we omit APP_IMAGE and use --build.
+    image: ${APP_IMAGE}
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -305,6 +311,12 @@ services:
       UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
       ADMIN_API_URL: ${ADMIN_API_URL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   db-config:

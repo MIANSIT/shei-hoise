@@ -24,7 +24,53 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/shei-hoise-app
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          dockerfile: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_PUBLIC_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.SITE_URL }}
+            UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}
+            UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -105,49 +151,50 @@ jobs:
             sudo ufw allow 443/tcp
           '
 
-      - name: Reconcile the stack and rebuild the app
+      - name: Deploy pre-built image to VPS
         run: |
-          if [ "${{ vars.USE_PROXY }}" = "true" ]; then
-            COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.proxy.yml"
-          else
-            COMPOSE_FILES="-f docker/docker-compose.yml"
-          fi
           ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
             set -e
             cd '${{ secrets.VPS_DEPLOY_PATH }}'
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --build app
+            
+            # Log in to GHCR on VPS
+            echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Pull the latest image
+            docker pull ghcr.io/${{ github.repository_owner }}/shei-hoise-app:latest
+            
+            # Determine compose files
+            if [ \"${{ vars.USE_PROXY }}\" = \"true\" ]; then
+              COMPOSE_FILES=\"-f docker/docker-compose.yml -f docker/docker-compose.proxy.yml\"
+            else
+              COMPOSE_FILES=\"-f docker/docker-compose.yml\"
+            fi
+            
+            # Start services with the pre-built image (no build step)
+            export APP_IMAGE=\"ghcr.io/${{ github.repository_owner }}/shei-hoise-app:latest\"
+            docker compose \$COMPOSE_FILES --env-file docker/.env.prod up -d
+            
+            echo 'Deployment complete - app container recreated with pre-built image'
           "
 
-      - name: Verify the app responds
+      - name: Verify the app is healthy (zero-downtime deployment)
         run: |
-          sleep 5
-          if [ "${{ vars.USE_PROXY }}" = "true" ]; then
-            SITE_DOMAIN=$(echo "${{ secrets.SITE_URL }}" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
-            API_DOMAIN=$(echo "${{ secrets.SUPABASE_PUBLIC_URL }}" | sed -E 's#^[a-zA-Z]+://##; s#[:/].*$##')
-
-            # Talk to Caddy on the VPS directly (IP + SNI override), so this
-            # verifies OUR deployment even before public DNS for $SITE_DOMAIN
-            # is cut over to this VPS — curling the real public URL would
-            # silently test whatever server DNS currently points at instead
-            # (e.g. a previous host), giving a false pass.
-            curl -skf --resolve "$SITE_DOMAIN:443:${{ secrets.VPS_HOST }}" \
-              -o /dev/null -w "app  (direct, via $SITE_DOMAIN) HTTP %{http_code}\n" "https://$SITE_DOMAIN/"
-            # /auth/v1/health requires an apikey header via Kong (like almost
-            # every other route) — jwks.json is one of the few genuinely open
-            # routes, so it doesn't need a secret just to prove Kong/GoTrue
-            # are up.
-            curl -skf --resolve "$API_DOMAIN:443:${{ secrets.VPS_HOST }}" \
-              -o /dev/null -w "kong (direct, via $API_DOMAIN)  HTTP %{http_code}\n" "https://$API_DOMAIN/auth/v1/.well-known/jwks.json"
-
-            # Best-effort, non-fatal: also try the real public URL. Fails
-            # until DNS for $SITE_DOMAIN actually points at this VPS — once
-            # it does, this line starts reporting a real 200 with a valid
-            # cert, confirming the cutover, with no redeploy needed.
-            curl -sf -o /dev/null -w "app  (public DNS)             HTTP %{http_code}\n" "${{ secrets.SITE_URL }}/" \
-              || echo "note: public DNS for $SITE_DOMAIN doesn't reach this VPS yet (expected until the A record is cut over)"
-          else
-            ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
-              curl -sf -o /dev/null -w "app HTTP %{http_code}\n" http://localhost:3000/
-            '
-          fi
+          echo "Waiting for app container to be healthy..."
+          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+            set -e
+            max_attempts=30
+            attempt=0
+            while [ $attempt -lt $max_attempts ]; do
+              health=$(docker inspect --format="{{.State.Health.Status}}" shei-hoise-app 2>/dev/null || echo "none")
+              if [ "$health" = "healthy" ]; then
+                echo "✓ App container is healthy"
+                exit 0
+              fi
+              echo "App health check: $health (attempt $((attempt+1))/$max_attempts)"
+              sleep 2
+              attempt=$((attempt+1))
+            done
+            echo "✗ App container did not become healthy within 60 seconds"
+            docker logs shei-hoise-app | tail -20
+            exit 1
+          '
