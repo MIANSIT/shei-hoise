@@ -9,6 +9,8 @@ interface BuyNowButtonProps {
   isLoading?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Shown instead of "Out of Stock" when disabled for a reason other than stock (e.g. an unmade bundle/variant choice). */
+  disabledLabel?: string;
 }
 
 const BuyNowButton: React.FC<BuyNowButtonProps> = ({
@@ -16,6 +18,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
   isLoading = false,
   disabled = false,
   className = "",
+  disabledLabel,
 }) => {
   const t = useTranslation();
 
@@ -76,7 +79,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
             className="flex items-center gap-2"
           >
             <Zap className="w-4 h-4" />
-            {t.cart.outOfStock}
+            {disabledLabel ?? t.cart.outOfStock}
           </motion.span>
         ) : (
           <motion.span
