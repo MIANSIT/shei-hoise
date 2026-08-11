@@ -1,35 +1,23 @@
 name: Deploy to VPS
 
-# Deploys the `app` service only. SSHes to the VPS, git-pulls main, builds a
-# new image there (NEXT_PUBLIC_* values are baked in from docker/.env.prod,
-# which lives only on the VPS and is never seen by this workflow), boots it
-# as a throwaway candidate container alongside the still-running production
-# app, health-checks it, and only swaps production over once the candidate
-# is proven healthy. If anything fails, production app is left untouched.
+# On push to main: SSH to the VPS, pull the latest code, stop the currently
+# running app container, then rebuild and start it with the new image.
 #
-# This workflow NEVER touches: db, auth, rest, storage, studio, meta, kong,
-# caddy, migrations, or docker/.env.prod's contents. Those are the manual,
-# careful steps in docker/VPS_DEPLOYMENT.md — provisioning, DNS, secrets
-# regeneration, and the DB restore only happen once, by hand.
+# This only touches the `app` service — db, auth, storage, kong, caddy, and
+# docker/.env.prod are never touched by this workflow. See
+# docker/VPS_DEPLOYMENT.md for those manual, one-time steps.
 #
-# Rollback: re-run this workflow via workflow_dispatch with "rollback"
-# checked to swap the app service back to the image that was running before
-# the last successful deploy.
+# Note: there's a brief window of downtime between stopping the old
+# container and the new one becoming healthy — this is a simple
+# stop-then-start deploy, not a zero-downtime blue/green swap.
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      rollback:
-        description: "Roll back the app service to the previous image instead of deploying"
-        type: boolean
-        default: false
+  workflow_dispatch: {}
 
 concurrency:
   group: deploy-production
-  # Never cancel mid-deploy — interrupting the swap could leave the VPS
-  # with no running app container.
   cancel-in-progress: false
 
 jobs:
@@ -44,26 +32,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Roll back app service to previous image
-        if: ${{ github.event.inputs.rollback == 'true' }}
-        run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
-            set -e
-            cd "${{ secrets.VPS_DEPLOY_PATH }}"
-            if ! docker image inspect shei-hoise-app:previous >/dev/null 2>&1; then
-              echo "No shei-hoise-app:previous image found — nothing to roll back to"
-              exit 1
-            fi
-            COMPOSE_FILES="-f docker/docker-compose.yml"
-            [ "${{ vars.USE_PROXY }}" = "true" ] && COMPOSE_FILES="$COMPOSE_FILES -f docker/docker-compose.proxy.yml"
-
-            docker tag shei-hoise-app:previous shei-hoise-app:latest
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --no-deps app
-            echo "Rolled back app service to previous image"
-          '
-
-      - name: Deploy latest main
-        if: ${{ github.event.inputs.rollback != 'true' }}
+      - name: Pull latest code and redeploy app
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
             set -e
@@ -72,67 +41,27 @@ jobs:
             COMPOSE_FILES="-f docker/docker-compose.yml"
             [ "${{ vars.USE_PROXY }}" = "true" ] && COMPOSE_FILES="$COMPOSE_FILES -f docker/docker-compose.proxy.yml"
 
-            echo "==> Fetching latest main"
-            git fetch origin main
-            NEW_SHA=$(git rev-parse origin/main)
-            OLD_SHA=$(git rev-parse HEAD)
+            echo "==> Pulling latest main"
+            git pull origin main
 
-            if [ "$NEW_SHA" = "$OLD_SHA" ]; then
-              echo "Already up to date at $OLD_SHA — nothing to deploy"
-              exit 0
-            fi
+            echo "==> Stopping current app container"
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod stop app
 
-            echo "==> Updating working tree to $NEW_SHA"
-            echo "    (docker/.env.prod is gitignored and untouched by this reset;"
-            echo "     db/auth/storage/etc keep running throughout)"
-            git reset --hard "$NEW_SHA"
+            echo "==> Building and starting new app container"
+            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --build app
 
-            echo "==> Building candidate app image — production app keeps serving on the old image"
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod build app
-            docker tag shei-hoise-app:latest shei-hoise-app:candidate
-
-            echo "==> Booting candidate as a throwaway container on the same network"
-            docker rm -f shei-hoise-app-candidate >/dev/null 2>&1 || true
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod \
-              run -d --rm --no-deps --name shei-hoise-app-candidate app
-
-            echo "==> Waiting for candidate health check"
+            echo "==> Waiting for app to become healthy"
             attempt=0
             max_attempts=30
-            until [ "$(docker inspect -f "{{.State.Health.Status}}" shei-hoise-app-candidate 2>/dev/null)" = "healthy" ]; do
-              attempt=$((attempt+1))
-              if [ $attempt -ge $max_attempts ]; then
-                echo "✗ Candidate failed to become healthy — aborting, production app untouched"
-                docker logs shei-hoise-app-candidate | tail -50
-                docker rm -f shei-hoise-app-candidate >/dev/null 2>&1 || true
-                echo "==> Reverting working tree to $OLD_SHA so it matches what is still running"
-                git reset --hard "$OLD_SHA"
-                exit 1
-              fi
-              echo "  (attempt $attempt/$max_attempts)"
-              sleep 2
-            done
-            echo "✓ Candidate is healthy"
-            docker rm -f shei-hoise-app-candidate
-
-            echo "==> Candidate verified — swapping production app to the new image"
-            docker tag shei-hoise-app:latest shei-hoise-app:previous
-            docker tag shei-hoise-app:candidate shei-hoise-app:latest
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --no-deps app
-
-            echo "==> Confirming swapped-in production app is healthy"
-            attempt=0
             until [ "$(docker inspect -f "{{.State.Health.Status}}" shei-hoise-app 2>/dev/null)" = "healthy" ]; do
               attempt=$((attempt+1))
               if [ $attempt -ge $max_attempts ]; then
-                echo "✗ Production app unhealthy after swap — rolling back to previous image"
-                docker tag shei-hoise-app:previous shei-hoise-app:latest
-                docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --no-deps app
+                echo "✗ App did not become healthy within 60 seconds"
                 docker logs shei-hoise-app | tail -50
                 exit 1
               fi
               sleep 2
             done
 
-            echo "✓ Deployed $NEW_SHA successfully"
+            echo "✓ Deployed successfully"
           '
