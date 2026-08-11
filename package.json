@@ -2,12 +2,26 @@
   "name": "shei-hoise",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.24.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "docker:dev:bootstrap": "./docker/scripts/bootstrap.sh dev",
+    "docker:dev:up": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file docker/.env up -d",
+    "docker:dev:build": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file docker/.env up -d --build app",
+    "docker:dev:down": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file docker/.env down",
+    "docker:dev:logs": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file docker/.env logs -f",
+    "docker:prod:bootstrap": "./docker/scripts/bootstrap.sh prod",
+    "docker:prod:up": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod up -d",
+    "docker:prod:build": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod up -d --build app",
+    "docker:prod:down": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod down",
+    "docker:prod:logs": "docker compose -f docker/docker-compose.yml --env-file docker/.env.prod logs -f",
+    "docker:local-vps:build": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.local-vps-backend.yml --env-file docker/.env.local-vps-backend up -d --build --no-deps app",
+    "docker:local-vps:down": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.local-vps-backend.yml --env-file docker/.env.local-vps-backend stop app",
+    "docker:local-vps:logs": "docker compose -f docker/docker-compose.yml -f docker/docker-compose.local-vps-backend.yml --env-file docker/.env.local-vps-backend logs -f app"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

@@ -1,0 +1,32 @@
+# Three site blocks. The app and Kong each need their own public HTTPS
+# hostname since browsers call Kong directly (NEXT_PUBLIC_SUPABASE_URL).
+# www redirects to the bare domain (the canonical host — matches SITE_URL)
+# rather than serving the app twice, so there's one canonical URL for SEO
+# and no duplicate-origin auth/cookie surprises. Caddy issues/renews
+# Let's Encrypt certs for all three automatically — this requires
+# www.$SITE_DOMAIN to also have a DNS A record pointing at this VPS,
+# same as the other two.
+
+{$SITE_DOMAIN} {
+	reverse_proxy app:3000
+}
+
+www.{$SITE_DOMAIN} {
+	# API routes (webhooks in particular — e.g. Pathao's callback URL, which
+	# some stores have registered against the www host) must be reverse
+	# proxied here, not redirected: a 301 turns the sender's POST into a
+	# dead end, since webhook senders generally don't re-POST through a
+	# redirect. Confirmed live — Pathao webhook traffic for one store went
+	# completely silent the moment this www redirect first shipped.
+	handle /api/* {
+		reverse_proxy app:3000
+	}
+
+	handle {
+		redir https://{$SITE_DOMAIN}{uri} permanent
+	}
+}
+
+{$API_DOMAIN} {
+	reverse_proxy kong:8000
+}

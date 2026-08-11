@@ -1,0 +1,48 @@
+# VPS-only overlay: adds Caddy as the single public entry point (automatic
+# Let's Encrypt TLS) and removes Kong's direct host port publishing — Kong
+# stays reachable internally via the compose network only.
+#
+# Usage (VPS only, on top of the base + prod env, no docker-compose.dev.yml):
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml --env-file .env.prod up -d
+#
+# Two public surfaces need their own TLS hostname because the browser talks
+# to Kong directly (NEXT_PUBLIC_SUPABASE_URL), not just to the app:
+#   SITE_DOMAIN -> app:3000
+#   API_DOMAIN  -> kong:8000
+# Point both domains' DNS A/AAAA records at the VPS *before* starting caddy,
+# or Let's Encrypt issuance will fail.
+
+services:
+
+  kong:
+    # Caddy is now the only public entry point.
+    ports: []
+
+  app:
+    # Caddy is now the only public entry point.
+    ports: []
+
+  caddy:
+    container_name: shei-hoise-caddy
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      kong:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./volumes/proxy/Caddyfile:/etc/caddy/Caddyfile:ro,z
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

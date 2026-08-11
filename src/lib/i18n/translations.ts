@@ -61,6 +61,7 @@ export const translations = {
       easyReturns: "Easy Returns",
       noReturns: "No Returns",
       noDescription: "No description available.",
+      chooseOptionsPrompt: "Choose your options above to continue",
     },
     cart: {
       save: "Save",
@@ -68,6 +69,7 @@ export const translations = {
       addedToCart: "Added to Cart",
       adding: "Adding…",
       outOfStock: "Out of Stock",
+      selectOptions: "Select Options",
       maxInCart: "Max in Cart",
       buyNow: "Buy Now",
       processing: "Processing…",
@@ -2171,6 +2173,7 @@ export const translations = {
       easyReturns: "সহজ রিটার্ন",
       noReturns: "রিটার্ন নেই",
       noDescription: "কোনো বিবরণ পাওয়া যায়নি।",
+      chooseOptionsPrompt: "চালিয়ে যেতে উপরে থেকে আপনার অপশন বেছে নিন",
     },
     cart: {
       save: "সাশ্রয়",
@@ -2178,6 +2181,7 @@ export const translations = {
       addedToCart: "কার্টে যোগ হয়েছে",
       adding: "যোগ হচ্ছে…",
       outOfStock: "স্টক নেই",
+      selectOptions: "অপশন নির্বাচন করুন",
       maxInCart: "কার্টে সর্বোচ্চ",
       buyNow: "এখনই কিনুন",
       processing: "প্রক্রিয়া হচ্ছে…",

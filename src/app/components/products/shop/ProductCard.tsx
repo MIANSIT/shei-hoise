@@ -32,6 +32,10 @@ export default function ProductCard({
 
   const variant = product.variants?.[0];
   const hasVariants = product.variants && product.variants.length > 0;
+  // Bundles with a customer-selectable slot (option_group_id) need the same
+  // "don't guess for them" treatment as variants — see bundle_has_options.
+  const needsConfiguration =
+    hasVariants || (product.product_type === "bundle" && product.bundle_has_options === true);
 
   const displayPrice =
     variant?.discounted_price && variant.discounted_price > 0
@@ -105,7 +109,7 @@ export default function ProductCard({
 
   const totalAvailableStock = getTotalAvailableStock();
   const totalCartQuantity = getTotalCartQuantity();
-  const isMaxInCart = !hasVariants && totalCartQuantity >= totalAvailableStock;
+  const isMaxInCart = !needsConfiguration && totalCartQuantity >= totalAvailableStock;
 
   const handleAddToCart = async () => {
     if (adding || !isInStock() || isMaxInCart) return;
@@ -185,7 +189,7 @@ export default function ProductCard({
                 -{n(calculatedDiscount)}%
               </span>
             )}
-            {productInStock && !hasVariants && isMaxInCart && (
+            {productInStock && !needsConfiguration && isMaxInCart && (
               <span className="text-[9px] font-bold bg-blue-500 text-white px-2 py-1 rounded-full whitespace-nowrap">
                 {t.card.max}
               </span>
@@ -252,7 +256,7 @@ export default function ProductCard({
 
         {/* Row 3 — Buttons */}
         <div className="flex gap-1.5 mt-auto">
-          {hasVariants ? (
+          {needsConfiguration ? (
             <Link
               href={`/${store_slug}/product/${product.slug}`}
               className="flex-1"

@@ -42,3 +42,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# docker — Postgres data directories (dev and prod use separate paths, real
+# data once migrated) and migration secrets/mapping output must never be committed
+docker/volumes/db/data/
+docker/volumes/db/data-prod/
+docker/volumes/db/data-prod.bak-*/
+docker/scripts/migrate-data/auth-id-mapping.json
+docker/*.dump
+docker/SERVICE_CREDENTIALS.md
+docker/.env.local-vps-backend

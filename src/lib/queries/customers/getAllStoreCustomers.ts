@@ -10,6 +10,27 @@ interface PaginatedCustomers {
   hasMore: boolean;
 }
 
+interface RawCustomerRow {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  profile_id: string | null;
+  created_at: string;
+  updated_at: string;
+  customer_profiles:
+    | {
+        date_of_birth: string | null;
+        gender: string | null;
+        address: string | null;
+        city: string | null;
+        state: string | null;
+        postal_code: string | null;
+        country: string | null;
+      }[]
+    | null;
+}
+
 export async function getAllStoreCustomers(
   storeId: string,
   search?: string,
@@ -19,19 +40,60 @@ export async function getAllStoreCustomers(
   if (!storeId) throw new Error("Store ID is required");
 
   try {
-    // Step 1: Get linked customer IDs
-    const { data: links, error: linkError } = await supabase
+    // Query from store_customer_links (scoped directly by store_id) and embed
+    // the linked store_customers row through the FK relationship, instead of
+    // first fetching every linked customer_id and passing the whole list to
+    // .in(...). For a store with hundreds of customers that .in() list built
+    // a URL over 30KB, which Kong rejects with a 414 "URI too long" — the
+    // customer list simply came back empty/errored for any sufficiently
+    // active store, regardless of environment.
+    const hasSearch = !!(search && search.trim());
+    const embed = hasSearch
+      ? "store_customers!inner!store_customer_links_customer_id_fkey"
+      : "store_customers!store_customer_links_customer_id_fkey";
+
+    let query = supabase
       .from("store_customer_links")
-      .select("customer_id")
+      .select(
+        `${embed}(
+          id, name, email, phone, profile_id, created_at, updated_at,
+          customer_profiles!customer_profiles_store_customer_id_fkey(*)
+        )`,
+        { count: page !== undefined ? "exact" : undefined }
+      )
       .eq("store_id", storeId);
 
-    if (linkError) throw linkError;
-    if (!links || links.length === 0) {
-      // Return empty array or paginated response
+    if (hasSearch) {
+      const searchTerm = `%${search!.trim()}%`;
+      query = query.or(
+        `name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`,
+        { referencedTable: "store_customers" }
+      );
+    }
+
+    query = query.order("created_at", {
+      ascending: false,
+      referencedTable: "store_customers",
+    });
+
+    // Apply pagination if provided
+    if (page !== undefined && pageSize !== undefined) {
+      const offset = (page - 1) * pageSize;
+      query = query.range(offset, offset + pageSize - 1);
+    }
+
+    const { data: links, error: linksError, count } = await query;
+    if (linksError) throw linksError;
+
+    const customers = (links || [])
+      .map((l) => (l as unknown as { store_customers: RawCustomerRow | null }).store_customers)
+      .filter((c): c is RawCustomerRow => c !== null);
+
+    if (customers.length === 0) {
       if (page !== undefined && pageSize !== undefined) {
         return {
           customers: [],
-          totalCount: 0,
+          totalCount: count || 0,
           currentPage: page,
           totalPages: 0,
           hasMore: false,
@@ -40,65 +102,21 @@ export async function getAllStoreCustomers(
       return [];
     }
 
-    const customerIds = links.map((link) => link.customer_id);
+    // Scoped by store_id only, not .in("customer_id", customerIds) — a
+    // customerIds list built from `customers` is only bounded when
+    // page/pageSize are supplied (see .range() above). Callers like
+    // create-order/edit-order call this with no pagination to get every
+    // customer at once, which made that list the store's entire customer
+    // set and rebuilt the exact URL-length problem the customer query above
+    // was fixed for. Per-customer filtering below (customerOrders) already
+    // narrows this down after the fetch.
+    const { data: orders, error: ordersError } = await supabase
+      .from("orders")
+      .select("id, customer_id, created_at")
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false });
 
-    // Step 2: Build query for customers
-    let query = supabase
-      .from("store_customers")
-      .select(
-        `id, name, email, phone, profile_id, created_at, updated_at,
-         customer_profiles!customer_profiles_store_customer_id_fkey(*)`,
-        { count: page !== undefined ? "exact" : undefined }
-      )
-      .in("id", customerIds);
-
-    // Apply search filter if provided
-    if (search && search.trim()) {
-      const searchTerm = `%${search.trim()}%`;
-      query = query.or(
-        `name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`
-      );
-    }
-
-    // Apply pagination if provided
-    if (page !== undefined && pageSize !== undefined) {
-      const offset = (page - 1) * pageSize;
-      query = query.range(offset, offset + pageSize - 1);
-    }
-
-    // Apply ordering
-    query = query.order("created_at", { ascending: false });
-
-    // Step 3: Fetch orders for all linked customers in parallel with step 2 —
-    // this only depends on storeId/customerIds from step 1, not on step 2's
-    // result, so there's no need to wait for it.
-    const [
-      { data: customers, error: customerError, count },
-      { data: orders, error: ordersError },
-    ] = await Promise.all([
-      query,
-      supabase
-        .from("orders")
-        .select("id, customer_id, created_at")
-        .in("customer_id", customerIds)
-        .eq("store_id", storeId)
-        .order("created_at", { ascending: false }),
-    ]);
-
-    if (customerError) throw customerError;
     if (ordersError) throw ordersError;
-    if (!customers) {
-      if (page !== undefined && pageSize !== undefined) {
-        return {
-          customers: [],
-          totalCount: 0,
-          currentPage: page || 1,
-          totalPages: 0,
-          hasMore: false,
-        };
-      }
-      return [];
-    }
 
     // Step 4: Transform to DetailedCustomer
     const detailedCustomers: DetailedCustomer[] = customers.map((c) => {

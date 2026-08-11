@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone", // ✅ produces a minimal .next/standalone bundle for Docker
+
   images: {
     unoptimized: true, // ✅ disable image optimization
     remotePatterns: [

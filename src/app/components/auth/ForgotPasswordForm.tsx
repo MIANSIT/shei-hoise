@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/card";
 import { SheiLoader } from "../ui/SheiLoader/loader";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { supabase } from "@/lib/supabase";
 import { Mail, ArrowLeft, KeyRound } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
@@ -56,32 +55,28 @@ export function ForgotPasswordForm({ type }: ForgotPasswordFormProps) {
   });
 
   const onSubmit = async (values: ForgotPasswordFormValues) => {
-    const origin = window.location.origin;
+    try {
+      const res = await fetch("/api/auth/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email,
+          type,
+          storeSlug: storeSlug ?? undefined,
+        }),
+      });
 
-    // Persist context so the /auth/update-password page knows where to redirect back
-    localStorage.setItem(
-      "resetPasswordContext",
-      JSON.stringify({ type, storeSlug: storeSlug ?? null })
-    );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        error(body?.error || t.auth.failedSendResetEmail);
+        return;
+      }
 
-    // Server-side callback route handles the PKCE code exchange.
-    // Add to Supabase → Authentication → URL Configuration → Redirect URLs:
-    //   http://localhost:3000/auth/callback
-    //   https://www.sheihoise.com/auth/callback
-    const redirectTo = `${origin}/auth/callback`;
-
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      values.email,
-      { redirectTo }
-    );
-
-    if (resetError) {
-      error(resetError.message || t.auth.failedSendResetEmail);
-      return;
+      setIsSubmitted(true);
+      success(t.auth.resetEmailSent);
+    } catch {
+      error(t.auth.failedSendResetEmail);
     }
-
-    setIsSubmitted(true);
-    success(t.auth.resetEmailSent);
   };
 
   if (isSubmitted) {

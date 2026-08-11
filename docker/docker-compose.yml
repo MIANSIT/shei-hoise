@@ -1,0 +1,322 @@
+# Shei Hoise — base Docker stack (dev AND prod both start here)
+#
+# A trimmed copy of Supabase's official self-hosted docker-compose
+# (https://github.com/supabase/supabase/tree/master/docker), plus the
+# Next.js app. This base file is production-shaped: `storage` talks to
+# real Cloudflare R2 via plain env vars, no local-only services included.
+#
+# Omitted vs. the official stack, all confirmed unused by this app:
+#   realtime, imgproxy, functions (edge runtime), analytics/logflare, supavisor (pooler)
+#
+# Two environments, two thin layers on top of this same file:
+#   dev:  docker compose -f docker-compose.yml -f docker-compose.dev.yml  --env-file .env      ...
+#         (adds a local MinIO container standing in for R2 — see docker-compose.dev.yml)
+#   prod: docker compose -f docker-compose.yml                            --env-file .env.prod  ...
+#         (talks directly to a real R2 bucket — see .env.prod.example)
+#
+# See docker/README.md for the full bring-up order and docker/scripts/*.sh
+# for the automated version of it.
+
+name: shei-hoise
+
+services:
+
+  db:
+    container_name: shei-hoise-db
+    image: supabase/postgres:17.6.1.136
+    restart: unless-stopped
+    ports:
+      # No Supavisor/pooler in this trimmed stack, so publish Postgres directly.
+      # On the VPS, bind this to 127.0.0.1 only (or drop it and use an SSH tunnel).
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      # Must be superuser to create event trigger
+      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      # Must be superuser to alter reserved role
+      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      # Initialize the database settings with JWT_SECRET and JWT_EXP
+      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      # PGDATA directory is persisted between restarts. Postgres only runs its
+      # init scripts (roles/jwt/webhooks above) on an EMPTY data directory, so
+      # dev and prod must use separate paths — otherwise prod's different
+      # POSTGRES_PASSWORD would never actually get set inside Postgres once
+      # dev has already initialized this directory.
+      - ${POSTGRES_DATA_DIR:-./volumes/db/data}:/var/lib/postgresql/data:Z
+      # Use named volume to persist pgsodium decryption key between restarts
+      - db-config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: ${POSTGRES_PORT}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY}
+    command:
+      [
+        "postgres",
+        "-c",
+        "config_file=/etc/postgresql/postgresql.conf",
+        "-c",
+        "log_min_messages=fatal"
+      ]
+
+  auth:
+    container_name: shei-hoise-auth
+    image: supabase/gotrue:v2.189.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_ISSUER: ${API_EXTERNAL_URL}
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      GOTRUE_MAILER_URLPATHS_INVITE: ${MAILER_URLPATHS_INVITE}
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
+      GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
+
+      GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
+      GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
+
+  rest:
+    container_name: shei-hoise-rest
+    image: postgrest/postgrest:v14.12
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
+      PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
+    command: ["postgrest"]
+
+  storage:
+    container_name: shei-hoise-storage
+    image: supabase/storage-api:v1.60.4
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      # dev adds minio/minio-createbucket dependencies on top of these — see
+      # docker-compose.dev.yml. In prod, storage talks directly to real R2,
+      # nothing else needs to come up first.
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      TENANT_ID: ${STORAGE_TENANT_ID}
+      REGION: ${REGION}
+      # No imgproxy in this trimmed stack — the app already serves images unoptimized.
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+      # S3-mode backend — real Cloudflare R2 in this base file (prod-shaped).
+      # docker-compose.dev.yml overrides these 5 values to point at local MinIO instead.
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
+      GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT}
+      GLOBAL_S3_PROTOCOL: ${GLOBAL_S3_PROTOCOL}
+      GLOBAL_S3_FORCE_PATH_STYLE: "true"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      # R2 doesn't support S3 object tagging — set now so nothing changes at cutover.
+      TUS_ALLOW_S3_TAGS: "false"
+      S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
+      S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
+
+  meta:
+    container_name: shei-hoise-meta
+    image: supabase/postgres-meta:v0.96.6
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: ${POSTGRES_HOST}
+      PG_META_DB_PORT: ${POSTGRES_PORT}
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+
+  studio:
+    container_name: shei-hoise-studio
+    image: supabase/studio:2026.07.07-sha-a6a04f2
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})\""
+        ]
+      timeout: 10s
+      interval: 5s
+      retries: 3
+      start_period: 20s
+    environment:
+      HOSTNAME: "0.0.0.0"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER_READ_WRITE: postgres
+      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+
+  kong:
+    container_name: shei-hoise-kong
+    image: kong/kong:3.9.1
+    restart: unless-stopped
+    depends_on:
+      studio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${KONG_HTTP_PORT}:8000/tcp"
+      - "${KONG_HTTPS_PORT}:8443/tcp"
+    volumes:
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro,z
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+      KONG_ROUTER_FLAVOR: expressions
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PROXY_ACCESS_LOG: /dev/stdout combined
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    entrypoint: ["/bin/sh", "/home/kong/kong-entrypoint.sh"]
+
+  app:
+    container_name: shei-hoise-app
+    # On VPS (production), APP_IMAGE env var is set to use pre-built image from GHCR.
+    # Locally (dev), APP_IMAGE is empty so build: takes over and builds from source.
+    # Docker Compose: if image is set to an actual value, it uses that; image and build
+    # can coexist, with image taking precedence at runtime, but --build always rebuilds.
+    # So on VPS we pass APP_IMAGE=... and skip --build; locally we omit APP_IMAGE and use --build.
+    image: ${APP_IMAGE}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # NEXT_PUBLIC_* vars are baked in at build time — rebuild `app` whenever
+        # SUPABASE_PUBLIC_URL/ANON_KEY/SITE_URL change (e.g. moving to the VPS).
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+        # Needed at build time too — see Dockerfile comment.
+        UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+        UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      kong:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      # Server-side code (server components, middleware, route handlers,
+      # supabaseAdmin) needs to reach Kong over the Docker network, not via
+      # the browser-facing SUPABASE_PUBLIC_URL — "kong" resolves correctly to
+      # this compose network's Kong container regardless of dev/prod/VPS.
+      SUPABASE_INTERNAL_URL: http://kong:8000
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ENCRYPTION_KEY_VERSION: ${ENCRYPTION_KEY_VERSION}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+      ADMIN_API_URL: ${ADMIN_API_URL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  db-config:

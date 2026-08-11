@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.husky
+supabase/.temp
+migration_dump
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+audit-report.html
+subscription-system-guide.html
+docker/volumes/db/data
+npm-debug.log*
