@@ -47,7 +47,8 @@ next-env.d.ts
 # data once migrated) and migration secrets/mapping output must never be committed
 docker/volumes/db/data/
 docker/volumes/db/data-prod/
+docker/volumes/db/data-prod.bak-*/
 docker/scripts/migrate-data/auth-id-mapping.json
-docker/full-prod.dump
+docker/*.dump
 docker/SERVICE_CREDENTIALS.md
 docker/.env.local-vps-backend
