@@ -55,6 +55,8 @@ export interface Product {
   product_type?: "simple" | "bundle";
   /** 'bundle' products only — what the components would cost bought separately. */
   component_value?: number;
+  /** 'bundle' products only — true if the customer must pick between alternatives for at least one slot (see BundleItem.option_group_id). */
+  bundle_has_options?: boolean;
 }
 
 /** One recipe line of a bundle product: how many of a real product/variant it takes. */

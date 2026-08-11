@@ -4,6 +4,7 @@ import { Product } from "@/lib/types/product";
 import { ProductStatus } from "@/lib/types/enums";
 import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
 import { getBundleComponentValueMap } from "@/lib/queries/bundles/getBundleComponentValueMap";
+import { getBundleConfigurableMap } from "@/lib/queries/bundles/getBundleConfigurableMap";
 
 export async function getFeaturedProducts(
   store_slug: string,
@@ -59,12 +60,13 @@ export async function getFeaturedProducts(
   const bundleIds = products
     .filter((p: any) => p.product_type === "bundle")
     .map((p: any) => p.id);
-  const [bundleAvailabilityMap, bundleValueMap] = bundleIds.length
+  const [bundleAvailabilityMap, bundleValueMap, bundleConfigurableMap] = bundleIds.length
     ? await Promise.all([
         getBundleAvailabilityMap(bundleIds),
         getBundleComponentValueMap(bundleIds),
+        getBundleConfigurableMap(bundleIds),
       ])
-    : [new Map<string, number>(), new Map<string, number>()];
+    : [new Map<string, number>(), new Map<string, number>(), new Map<string, boolean>()];
 
   return products.map((p: any) => {
     const primary_image =
@@ -88,6 +90,8 @@ export async function getFeaturedProducts(
       product_type: p.product_type ?? "simple",
       component_value:
         p.product_type === "bundle" ? bundleValueMap.get(p.id) ?? 0 : undefined,
+      bundle_has_options:
+        p.product_type === "bundle" ? bundleConfigurableMap.get(p.id) ?? false : undefined,
       category: p.categories
         ? { id: p.categories.id, name: p.categories.name, slug: p.categories.slug }
         : null,

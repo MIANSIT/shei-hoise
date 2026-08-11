@@ -934,7 +934,7 @@ export default function ProductPage() {
             {/* CTA */}
             {bundleSelectionIncomplete && (
               <p className="mb-2 text-[12px] font-medium text-amber-600 dark:text-amber-400">
-                Choose your options above to continue
+                {t.product.chooseOptionsPrompt}
               </p>
             )}
             <div className="flex flex-col sm:flex-row gap-3">
@@ -943,6 +943,9 @@ export default function ProductPage() {
                 isLoading={isAdding}
                 showSuccess={addedSuccess}
                 disabled={isOutOfStock || bundleSelectionIncomplete}
+                disabledLabel={
+                  !isOutOfStock && bundleSelectionIncomplete ? t.cart.selectOptions : undefined
+                }
                 isMaxInCart={stockStatus === "maxed"}
                 currentCartQuantity={cartQty}
                 className="sm:flex-1"
@@ -951,6 +954,9 @@ export default function ProductPage() {
                 onClick={handleBuyNow}
                 isLoading={isBuyingNow}
                 disabled={isOutOfStock || bundleSelectionIncomplete}
+                disabledLabel={
+                  !isOutOfStock && bundleSelectionIncomplete ? t.cart.selectOptions : undefined
+                }
                 className="sm:flex-1"
               />
             </div>

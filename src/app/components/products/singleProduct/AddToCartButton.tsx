@@ -14,6 +14,8 @@ interface AddToCartButtonProps {
   currentCartQuantity?: number;
   className?: string;
   label?: string;
+  /** Shown instead of "Out of Stock" when disabled for a reason other than stock (e.g. an unmade bundle/variant choice). */
+  disabledLabel?: string;
 }
 
 const AddToCartButton: React.FC<AddToCartButtonProps> = ({
@@ -25,6 +27,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   currentCartQuantity = 0,
   className = "",
   label,
+  disabledLabel,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -117,7 +120,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
             className="flex items-center gap-2"
           >
             <ShoppingCart className="w-4 h-4" />
-            {t.cart.outOfStock}
+            {disabledLabel ?? t.cart.outOfStock}
           </motion.span>
         ) : (
           <motion.span

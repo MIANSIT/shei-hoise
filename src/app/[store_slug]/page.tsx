@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck } from "lucide-react";
+import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye } from "lucide-react";
 import { getStoreBySlugFull, StoreFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getFeaturedProducts } from "@/lib/queries/products/getFeaturedProducts";
@@ -718,6 +718,11 @@ function ProductCard({
   const inStock = isProductInStock(product);
   const imageUrl = product.images?.[0] ?? product.primary_image?.image_url ?? null;
 
+  const hasVariants = product.variants && product.variants.length > 0;
+  // Bundles with a customer-selectable slot (option_group_id) need the same
+  // "don't guess for them" treatment as variants — see bundle_has_options.
+  const needsConfiguration =
+    hasVariants || (product.product_type === "bundle" && product.bundle_has_options === true);
   const firstVariant = product.variants?.[0];
   const originalPrice = firstVariant?.base_price ?? product.base_price;
   const price =
@@ -800,17 +805,26 @@ function ProductCard({
 
         {/* Hover quick-add overlay — desktop only */}
         <div className="hidden sm:block absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out p-3 z-20">
-          <button
-            onClick={(e) => { e.preventDefault(); onAddToCart(product); }}
-            disabled={!inStock || loadingProductId === product.id}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/96 dark:bg-gray-900/96 backdrop-blur-sm text-stone-900 dark:text-white text-xs font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-colors duration-150"
-          >
-            {loadingProductId === product.id
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <ShoppingBag className="h-3.5 w-3.5" />
-            }
-            {inStock ? t.home.quickAdd : t.home.outOfStock}
-          </button>
+          {needsConfiguration ? (
+            // Variants require picking size/color on the PDP — clicking here
+            // just bubbles up to the parent Link and navigates there.
+            <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/96 dark:bg-gray-900/96 backdrop-blur-sm text-stone-900 dark:text-white text-xs font-bold shadow-lg hover:bg-white dark:hover:bg-gray-800 transition-colors duration-150">
+              <Eye className="h-3.5 w-3.5" />
+              {t.card.viewOptions}
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.preventDefault(); onAddToCart(product); }}
+              disabled={!inStock || loadingProductId === product.id}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/96 dark:bg-gray-900/96 backdrop-blur-sm text-stone-900 dark:text-white text-xs font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-800 transition-colors duration-150"
+            >
+              {loadingProductId === product.id
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <ShoppingBag className="h-3.5 w-3.5" />
+              }
+              {inStock ? t.home.quickAdd : t.home.outOfStock}
+            </button>
+          )}
         </div>
       </Link>
 
@@ -840,33 +854,53 @@ function ProductCard({
           </div>
 
           {/* Mobile add button */}
-          <button
-            onClick={() => onAddToCart(product)}
-            disabled={!inStock || loadingProductId === product.id}
-            aria-label={`Add ${product.name} to cart`}
-            className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-stone-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed active:scale-90 transition-all duration-150 shadow-sm"
-          >
-            {loadingProductId === product.id
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <ShoppingBag className="h-3.5 w-3.5" />
-            }
-          </button>
+          {needsConfiguration ? (
+            <Link
+              href={`/${store_slug}/product/${product.slug}`}
+              aria-label={`${t.card.viewOptions} — ${product.name}`}
+              className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-stone-900 dark:bg-white text-white dark:text-gray-900 active:scale-90 transition-all duration-150 shadow-sm"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Link>
+          ) : (
+            <button
+              onClick={() => onAddToCart(product)}
+              disabled={!inStock || loadingProductId === product.id}
+              aria-label={`Add ${product.name} to cart`}
+              className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-stone-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed active:scale-90 transition-all duration-150 shadow-sm"
+            >
+              {loadingProductId === product.id
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <ShoppingBag className="h-3.5 w-3.5" />
+              }
+            </button>
+          )}
         </div>
       )}
 
       {/* Hero mobile add button */}
       {isHero && (
-        <button
-          onClick={() => onAddToCart(product)}
-          disabled={!inStock || loadingProductId === product.id}
-          aria-label={`Add ${product.name} to cart`}
-          className="sm:hidden absolute bottom-4 right-4 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-white text-stone-900 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed active:scale-90 transition-all duration-150"
-        >
-          {loadingProductId === product.id
-            ? <Loader2 className="h-4 w-4 animate-spin" />
-            : <ShoppingBag className="h-4 w-4" />
-          }
-        </button>
+        needsConfiguration ? (
+          <Link
+            href={`/${store_slug}/product/${product.slug}`}
+            aria-label={`${t.card.viewOptions} — ${product.name}`}
+            className="sm:hidden absolute bottom-4 right-4 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-white text-stone-900 shadow-lg active:scale-90 transition-all duration-150"
+          >
+            <Eye className="h-4 w-4" />
+          </Link>
+        ) : (
+          <button
+            onClick={() => onAddToCart(product)}
+            disabled={!inStock || loadingProductId === product.id}
+            aria-label={`Add ${product.name} to cart`}
+            className="sm:hidden absolute bottom-4 right-4 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-white text-stone-900 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed active:scale-90 transition-all duration-150"
+          >
+            {loadingProductId === product.id
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <ShoppingBag className="h-4 w-4" />
+            }
+          </button>
+        )
       )}
     </motion.article>
   );

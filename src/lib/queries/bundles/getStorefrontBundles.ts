@@ -3,6 +3,7 @@ import { Product } from "@/lib/types/product";
 import { ProductStatus } from "@/lib/types/enums";
 import { getBundleAvailabilityMap } from "./getBundleAvailabilityMap";
 import { getBundleComponentValueMap } from "./getBundleComponentValueMap";
+import { getBundleConfigurableMap } from "./getBundleConfigurableMap";
 
 /**
  * Active bundles for a store's storefront — its own dedicated section, not
@@ -46,12 +47,13 @@ export async function getStorefrontBundles(
   if (error || !bundles) return [];
 
   const bundleIds = bundles.map((b) => b.id);
-  const [availabilityMap, valueMap] = bundleIds.length
+  const [availabilityMap, valueMap, configurableMap] = bundleIds.length
     ? await Promise.all([
         getBundleAvailabilityMap(bundleIds),
         getBundleComponentValueMap(bundleIds),
+        getBundleConfigurableMap(bundleIds),
       ])
-    : [new Map<string, number>(), new Map<string, number>()];
+    : [new Map<string, number>(), new Map<string, number>(), new Map<string, boolean>()];
 
   return bundles.map((b) => {
     const images = b.product_images ?? [];
@@ -70,6 +72,7 @@ export async function getStorefrontBundles(
       featured: b.featured === true,
       product_type: "bundle",
       component_value: valueMap.get(b.id) ?? 0,
+      bundle_has_options: configurableMap.get(b.id) ?? false,
       category: categories ? { id: categories.id, name: categories.name } : null,
       images: images.map((img) => img.image_url),
       primary_image: rawPrimary
