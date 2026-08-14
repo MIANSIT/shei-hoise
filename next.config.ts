@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone", // ✅ produces a minimal .next/standalone bundle for Docker
 
+  // sharp ships prebuilt native binaries per platform/libc. Bundling it would
+  // break the native require; keep it external so it's resolved from
+  // node_modules at runtime and traced into .next/standalone intact.
+  serverExternalPackages: ["sharp"],
+
   images: {
     unoptimized: true, // ✅ disable image optimization
     remotePatterns: [
