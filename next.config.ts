@@ -8,7 +8,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "sqvvtaejcfarmxcdvgrz.supabase.co", // Current active project
+        hostname: "api.sheihoise.com", // Self-hosted storage (Kong via Caddy)
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "sqvvtaejcfarmxcdvgrz.supabase.co", // Old hosted project
         pathname: "/**",
       },
       {

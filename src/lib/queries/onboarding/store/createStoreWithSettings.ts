@@ -2,6 +2,8 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
+import { optimizeImage } from "@/lib/utils/optimizeImage";
 import {
   StoreType,
   StoreSettingsType,
@@ -49,26 +51,40 @@ export async function createStoreWithSettings({
 
     // 2️⃣ Upload logo if it's a file
     if (store.logo_url instanceof File) {
-      const path = `store/${storeId}/logo-${uniqueId}.png`;
+      const path = `store/${storeId}/logo-${uniqueId}.webp`;
       await supabaseAdmin.storage
         .from("store_logo")
-        .upload(path, store.logo_url, { upsert: true });
+        .upload(path, await optimizeImage(await store.logo_url.arrayBuffer()), {
+          upsert: true,
+          contentType: "image/webp",
+          cacheControl: "31536000",
+        });
       uploadedFiles.push({ bucket: "store_logo", path });
-      uploads.logo_url = supabaseAdmin.storage
-        .from("store_logo")
-        .getPublicUrl(path).data.publicUrl;
+      uploads.logo_url = toPublicStorageUrl(
+        supabaseAdmin.storage.from("store_logo").getPublicUrl(path).data
+          .publicUrl,
+      );
     }
 
     // 3️⃣ Upload banner if it's a file
     if (store.banner_url instanceof File) {
-      const path = `store/${storeId}/banner-${uniqueId}.png`;
+      const path = `store/${storeId}/banner-${uniqueId}.webp`;
       await supabaseAdmin.storage
         .from("store-banner")
-        .upload(path, store.banner_url, { upsert: true });
+        .upload(
+          path,
+          await optimizeImage(await store.banner_url.arrayBuffer()),
+          {
+            upsert: true,
+            contentType: "image/webp",
+            cacheControl: "31536000",
+          },
+        );
       uploadedFiles.push({ bucket: "store-banner", path });
-      uploads.banner_url = supabaseAdmin.storage
-        .from("store-banner")
-        .getPublicUrl(path).data.publicUrl;
+      uploads.banner_url = toPublicStorageUrl(
+        supabaseAdmin.storage.from("store-banner").getPublicUrl(path).data
+          .publicUrl,
+      );
     }
 
     // 4️⃣ Update store with uploaded file URLs
