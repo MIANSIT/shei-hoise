@@ -1,6 +1,8 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
+import { optimizeImage } from "@/lib/utils/optimizeImage";
 
 type MediaType = "logo" | "banner";
 
@@ -31,14 +33,16 @@ export async function uploadStoreMedia(
 
     // 3️⃣ Generate a unique filename for the new upload
     const uniqueId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    const path = `store/${storeId}/${type}-${uniqueId}.png`;
+    const path = `store/${storeId}/${type}-${uniqueId}.webp`;
 
     // 4️⃣ Upload new file
+    const optimized = await optimizeImage(await file.arrayBuffer());
     const { error } = await supabaseAdmin.storage
       .from(bucket)
-      .upload(path, file, {
+      .upload(path, optimized, {
         upsert: true,
-        contentType: file.type,
+        contentType: "image/webp",
+        cacheControl: "31536000",
       });
 
     if (error) {
@@ -50,7 +54,7 @@ export async function uploadStoreMedia(
     const { data: publicUrlData } = supabaseAdmin.storage
       .from(bucket)
       .getPublicUrl(path);
-    return publicUrlData.publicUrl;
+    return toPublicStorageUrl(publicUrlData.publicUrl);
   } catch (err) {
     console.error(`Error in uploadStoreMedia for ${type}:`, err);
     return null;
