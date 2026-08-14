@@ -312,7 +312,10 @@ services:
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
       ADMIN_API_URL: ${ADMIN_API_URL}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      # wget, not curl: the runner stage is a bare node:20-alpine, which ships
+      # BusyBox wget but no curl — a curl healthcheck can never pass here, and
+      # the deploy workflow's "wait for healthy" gate fails with it.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 5s
       timeout: 5s
       retries: 3
