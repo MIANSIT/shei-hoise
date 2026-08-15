@@ -21,7 +21,11 @@ export function toPublicStorageUrl(url: string): string {
     const target = new URL(url);
     const base = new URL(publicBase);
     target.protocol = base.protocol;
-    target.host = base.host;
+    // hostname + port, not host: the `host` setter leaves an existing port in
+    // place when the value it's given has none, so assigning "api.sheihoise.com"
+    // to a URL of http://kong:8000/... yields https://api.sheihoise.com:8000/...
+    target.hostname = base.hostname;
+    target.port = base.port;
     return target.toString();
   } catch {
     // Not a parseable absolute URL — leave it alone rather than corrupt it.
