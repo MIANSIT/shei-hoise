@@ -1,0 +1,33 @@
+# VALIDATION-ONLY Caddyfile for the new box before DNS cutover.
+#
+# Identical routing to the real Caddyfile, but with `tls internal` — Caddy
+# issues a self-signed cert from its own local CA instead of asking Let's
+# Encrypt. LE validates over HTTP-01 by connecting to whatever the domain
+# currently resolves to, which is still the OLD box, so real issuance cannot
+# succeed until DNS moves. Testers override DNS locally via /etc/hosts and
+# accept one browser warning.
+#
+# Swap back to the real `Caddyfile` at cutover — it is what obtains the real
+# certificates once DNS points here (or reuse the copied caddy-data volume).
+
+{$SITE_DOMAIN} {
+	tls internal
+	reverse_proxy app:3000
+}
+
+www.{$SITE_DOMAIN} {
+	tls internal
+	# Same rule as production: API routes are proxied, never redirected, so a
+	# webhook POST to the www host is not turned into a dead end.
+	handle /api/* {
+		reverse_proxy app:3000
+	}
+	handle {
+		redir https://{$SITE_DOMAIN}{uri} permanent
+	}
+}
+
+{$API_DOMAIN} {
+	tls internal
+	reverse_proxy kong:8000
+}

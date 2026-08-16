@@ -1,0 +1,30 @@
+# ONE-TIME MIGRATION ARTIFACT — the OLD VPS's Caddyfile during the cutover to
+# the new server. Swap this in for `Caddyfile` on the OLD box at the cutover
+# step, and reload. See docker/VPS_MIGRATION.md.
+#
+# After this reload the old box holds no state: every request it receives is
+# forwarded to the new server, so there is exactly one database accepting
+# writes regardless of which IP a given client currently resolves to. That is
+# what makes the DNS change safe to take as long as it takes — and what stops
+# orders placed mid-propagation from landing in a database you're about to
+# throw away.
+#
+# All three hostnames are proxied verbatim, www included. Routing decisions
+# (the www redirect, the /api/* passthrough) belong to the NEW box's Caddyfile,
+# not here — keeping this file dumb means there is only one place those rules
+# live. Do NOT add a redirect here: a 301 turns a webhook sender's POST into a
+# dead end, which already silenced Pathao traffic for one store once (see the
+# comment in Caddyfile).
+
+{$SITE_DOMAIN}, www.{$SITE_DOMAIN}, {$API_DOMAIN} {
+	# Change this IP if the target server ever differs from the 2026-08 move.
+	reverse_proxy https://165.99.219.4 {
+		# Preserve the original Host so the new box matches the correct site
+		# block, and send the same value as TLS SNI so it presents the cert
+		# for that hostname rather than a default one.
+		header_up Host {host}
+		transport http {
+			tls_server_name {host}
+		}
+	}
+}

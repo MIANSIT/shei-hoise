@@ -16,11 +16,18 @@ services:
 
   kong:
     # Caddy is now the only public entry point.
-    ports: []
+    #
+    # `!override` is load-bearing: Compose MERGES `ports` across files, and a
+    # bare `ports: []` merges to nothing — the base file's "8000:8000" survives
+    # and Kong stays published on the public interface. That is how the Azure
+    # box ended up answering plain HTTP on :8000 despite this overlay being in
+    # use. Requires Compose >= 2.24.
+    ports: !override []
 
   app:
-    # Caddy is now the only public entry point.
-    ports: []
+    # Caddy is now the only public entry point. See the note above — the bare
+    # `ports: []` form does not actually unpublish anything.
+    ports: !override []
 
   caddy:
     container_name: shei-hoise-caddy
