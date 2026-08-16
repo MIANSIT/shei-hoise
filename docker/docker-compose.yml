@@ -27,8 +27,15 @@ services:
     restart: unless-stopped
     ports:
       # No Supavisor/pooler in this trimmed stack, so publish Postgres directly.
-      # On the VPS, bind this to 127.0.0.1 only (or drop it and use an SSH tunnel).
-      - "${POSTGRES_PORT}:5432"
+      #
+      # Bound to loopback, not 0.0.0.0: Docker writes its port publishing rules
+      # straight into the DOCKER iptables chain, which firewalld's zone rules do
+      # NOT filter — so a plain "5432:5432" here is reachable from the open
+      # internet on any host without a cloud-level network ACL, firewall running
+      # or not. Local tooling on the host (psql, the migration scripts) is
+      # unaffected; reach it from elsewhere over an SSH tunnel:
+      #   ssh -L 5432:127.0.0.1:5432 <user>@<host>
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       # Must be superuser to create event trigger
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
