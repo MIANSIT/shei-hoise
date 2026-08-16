@@ -25,16 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      # The current VPS authenticates by password, not key, so this uses
+      # sshpass rather than an identity file. The password is read from the
+      # SSHPASS environment variable (sshpass -e) so it never appears in argv
+      # or in the process list on the runner.
       - name: Set up SSH
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Pull latest code and redeploy app
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+          sshpass -e ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
             set -e
             cd "${{ secrets.VPS_DEPLOY_PATH }}"
 
