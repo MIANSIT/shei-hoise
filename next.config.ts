@@ -9,7 +9,29 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp"],
 
   images: {
-    unoptimized: true, // ✅ disable image optimization
+    // Optimization is ON. 810 of 818 catalogue images are still full-size PNGs
+    // (some over 1.5 MB) uploaded before uploads started converting to WebP,
+    // and most of the storefront renders them far smaller than their intrinsic
+    // size. Optimising on demand converts and right-sizes them; results are
+    // cached on disk (see the next-image-cache volume in docker-compose.yml —
+    // without it every deploy would re-encode the whole catalogue).
+
+    // WebP only, deliberately. AVIF compresses a little better but costs
+    // roughly an order of magnitude more CPU per image, and this box has no
+    // CDN in front of it — every transform is paid for locally.
+    formats: ["image/webp"],
+
+    // Stored filenames carry a timestamp, so a given URL's bytes never change.
+    // 30 days.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+
+    // Each distinct width/quality combination is a separate encode. The
+    // defaults span 8 device widths and 8 image widths; these cover the
+    // storefront's actual breakpoints with less than half the variants.
+    deviceSizes: [640, 828, 1080, 1920],
+    imageSizes: [96, 256, 384],
+    qualities: [75],
+
     remotePatterns: [
       {
         protocol: "https",

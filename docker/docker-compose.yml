@@ -331,6 +331,19 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    volumes:
+      # Persist the Next image-optimizer cache across redeploys. The deploy
+      # workflow recreates this container on every push; without a volume the
+      # cache dies with it and the whole catalogue is re-encoded from scratch.
+      - next-image-cache:/app/.next/cache
+    # sharp allocates its decode buffers outside V8's heap, so a Node heap flag
+    # cannot bound image optimization — the cgroup limit is the only real
+    # control. Idle usage is ~80 MB, so 2g is ample headroom; the point is that
+    # if optimization ever does spike, the kernel kills THIS container (which
+    # restarts in a few seconds) instead of picking Postgres, which is what the
+    # host-level OOM killer would target on an unlimited container.
+    mem_limit: 2g
 
 volumes:
+  next-image-cache:
   db-config:
