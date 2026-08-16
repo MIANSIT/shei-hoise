@@ -1,0 +1,35 @@
+# Binds every published port to the loopback interface.
+#
+# Docker writes its port publishing rules straight into the DOCKER iptables
+# chain, which firewalld's zone rules do not filter — so on a host without a
+# cloud-level network ACL, `ports: ["5432:5432"]` is reachable from the open
+# internet even with firewalld running and 5432 not in its allow-list. Binding
+# to 127.0.0.1 is what actually closes it.
+#
+# Use this overlay whenever the stack is running without the Caddy overlay
+# (which empties `ports` for kong and app on its own but leaves db published):
+#
+#   docker compose -f docker/docker-compose.yml \
+#                  -f docker/docker-compose.localports.yml \
+#                  --env-file docker/.env.prod up -d
+#
+# Reach the services over an SSH tunnel, e.g.
+#   ssh -L 8000:127.0.0.1:8000 root@<host>
+
+# `!override` is required: Compose *merges* `ports` lists across files rather
+# than replacing them, so without it these entries are appended to the base
+# file's and you get "address already in use" as both bindings are attempted.
+# Requires Compose >= 2.24 (the VPS runs 2.27).
+services:
+  db:
+    ports: !override
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
+
+  kong:
+    ports: !override
+      - "127.0.0.1:${KONG_HTTP_PORT}:8000/tcp"
+      - "127.0.0.1:${KONG_HTTPS_PORT}:8443/tcp"
+
+  app:
+    ports: !override
+      - "127.0.0.1:3000:3000"
