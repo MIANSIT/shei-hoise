@@ -1,5 +1,6 @@
 import { DetailedCustomer } from "@/lib/types/users";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 
 // Define proper response types
 interface PaginatedCustomers {
@@ -82,8 +83,23 @@ export async function getAllStoreCustomers(
       query = query.range(offset, offset + pageSize - 1);
     }
 
-    const { data: links, error: linksError, count } = await query;
-    if (linksError) throw linksError;
+    let links: unknown[] | null;
+    let count: number | null = null;
+
+    if (page !== undefined && pageSize !== undefined) {
+      const res = await query;
+      if (res.error) throw res.error;
+      links = res.data;
+      count = res.count ?? null;
+    } else {
+      // Unpaginated callers (the create-order and edit-order customer pickers)
+      // want every customer. A single request is capped at PGRST_DB_MAX_ROWS
+      // (1000), which silently returned 1000 of 1653 for the largest store —
+      // customers past that point simply could not be selected on an order.
+      links = await fetchAllPaged<unknown>((from, to) =>
+        query.range(from, to),
+      );
+    }
 
     const customers = (links || [])
       .map((l) => (l as unknown as { store_customers: RawCustomerRow | null }).store_customers)
@@ -102,21 +118,29 @@ export async function getAllStoreCustomers(
       return [];
     }
 
-    // Scoped by store_id only, not .in("customer_id", customerIds) — a
-    // customerIds list built from `customers` is only bounded when
-    // page/pageSize are supplied (see .range() above). Callers like
-    // create-order/edit-order call this with no pagination to get every
-    // customer at once, which made that list the store's entire customer
-    // set and rebuilt the exact URL-length problem the customer query above
-    // was fixed for. Per-customer filtering below (customerOrders) already
-    // narrows this down after the fetch.
-    const { data: orders, error: ordersError } = await supabase
-      .from("orders")
-      .select("id, customer_id, created_at")
-      .eq("store_id", storeId)
-      .order("created_at", { ascending: false });
-
-    if (ordersError) throw ordersError;
+    // Scoped by store_id only, not .in("customer_id", customerIds): that list
+    // would be the store's entire customer set, rebuilding the same URL-length
+    // problem the customer query above was fixed for. Per-customer filtering
+    // (customerOrders) narrows it down after the fetch instead.
+    //
+    // Paged, because this is an aggregate over the store's whole order history
+    // and a
+    // single request stops at PGRST_DB_MAX_ROWS (1000). The largest store has
+    // 1699 orders, so the newest 1000 were all that counted — every customer
+    // whose orders fell outside that window showed order_count 0 and no last
+    // order date, with nothing to indicate the number was wrong.
+    const orders = await fetchAllPaged<{
+      id: string;
+      customer_id: string | null;
+      created_at: string;
+    }>((from, to) =>
+      supabase
+        .from("orders")
+        .select("id, customer_id, created_at")
+        .eq("store_id", storeId)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
 
     // Step 4: Transform to DetailedCustomer
     const detailedCustomers: DetailedCustomer[] = customers.map((c) => {
@@ -134,7 +158,7 @@ export async function getAllStoreCustomers(
         phone: c.phone || undefined,
         status: "active",
         order_count: customerOrders.length,
-        last_order_date: customerOrders[0]?.created_at || null,
+        last_order_date: customerOrders[0]?.created_at ?? undefined,
         source: "direct",
         user_type: "customer",
         created_at: c.created_at,

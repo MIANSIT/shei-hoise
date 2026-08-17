@@ -1,6 +1,21 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
+
+/** Shape returned by the orders select below, before mapping. */
+interface ManualCourierOrderRow {
+  id: string;
+  order_number: string;
+  shipping_address: { customer_name?: string; phone?: string } | null;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  store_customers:
+    | { name: string | null; phone: string | null }
+    | { name: string | null; phone: string | null }[]
+    | null;
+}
 
 export interface ManualCourierOrderSummary {
   orderId: string;
@@ -17,23 +32,29 @@ export async function getManualCourierOrders(
   storeId: string,
   courierName: string,
 ): Promise<ManualCourierOrderSummary[]> {
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .select(
-      `id, order_number, shipping_address, status, total_amount, created_at,
-       store_customers!customer_id ( name, phone )`,
-    )
-    .eq("store_id", storeId)
-    .eq("courier", courierName)
-    .order("created_at", { ascending: false });
-
-  if (error || !data) {
+  // Paged: a single request stops at PGRST_DB_MAX_ROWS (1000), and a busy
+  // store can easily put more than that through one manual courier — the
+  // oldest consignments would just stop appearing, with no error.
+  let data: ManualCourierOrderRow[];
+  try {
+    data = await fetchAllPaged<ManualCourierOrderRow>((from, to) =>
+      supabaseAdmin
+        .from("orders")
+        .select(
+          `id, order_number, shipping_address, status, total_amount, created_at,
+           store_customers!customer_id ( name, phone )`,
+        )
+        .eq("store_id", storeId)
+        .eq("courier", courierName)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
+  } catch (error) {
     console.error("Error fetching manual courier orders:", error);
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map((order) => {
+  return data.map((order) => {
     const customer = Array.isArray(order.store_customers)
       ? order.store_customers[0]
       : order.store_customers;
