@@ -44,6 +44,11 @@ export interface ProductWithStock {
   primary_image: ProductImage | null;
   stock: ProductStock | null;
   variants: ProductVariant[];
+  /** 'simple' | 'bundle' — a bundle is an ordinary products row, not a separate table. */
+  product_type: string;
+  /** Null when the product has no category assigned. */
+  category_id: string | null;
+  category_name: string | null;
 }
 
 // Database types
@@ -72,6 +77,11 @@ interface DatabaseProduct {
   discounted_price: number | null; // ✅ added
   tp_price: number | null; // ✅ added
   sku: string | null;
+  category_id: string | null;
+  product_type: string | null;
+  // PostgREST returns an embedded to-one relation as an object, but types it
+  // as an array in some versions — accept both and normalise when mapping.
+  categories: { id: string; name: string } | { id: string; name: string }[] | null;
   product_images: DatabaseProductImage[];
   product_inventory: DatabaseProductStock[];
   product_variants: DatabaseProductVariant[];
@@ -106,6 +116,9 @@ export async function getProductWithStock(
       tp_price,
       status,
       sku,
+      category_id,
+      product_type,
+      categories(id, name),
       product_images(id, product_id, variant_id, image_url, alt_text, is_primary),
       product_inventory(quantity_available, quantity_reserved, low_stock_threshold, track_inventory),
       product_variants(
@@ -191,6 +204,11 @@ export async function getProductWithStock(
       },
       variants,
       status: p.status as ProductStatus,
+      product_type: p.product_type ?? "simple",
+      category_id: p.category_id ?? null,
+      category_name: Array.isArray(p.categories)
+        ? (p.categories[0]?.name ?? null)
+        : (p.categories?.name ?? null),
     };
   });
 
