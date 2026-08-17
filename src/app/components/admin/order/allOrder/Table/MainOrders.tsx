@@ -10,6 +10,7 @@ import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
 import { getMonthlyOrderUsage, type MonthlyOrderUsage } from "@/lib/queries/orders/getMonthlyOrderUsage";
+import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
@@ -45,6 +46,9 @@ const MainOrders: React.FC = () => {
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [riskByPhone, setRiskByPhone] = useState<Record<string, RiskAssessment>>({});
+  const [historyByPhone, setHistoryByPhone] = useState<
+    Record<string, CustomerHistoryEntry[]>
+  >({});
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyOrderUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +114,17 @@ const MainOrders: React.FC = () => {
           })
             .then((res) => (res.ok ? res.json() : {}))
             .then((data) => setRiskByPhone(data))
+            .catch(() => {});
+
+          // Prior order history for the same phones — also fire-and-forget, so
+          // a slow or failed lookup never blocks the orders table itself.
+          fetch("/api/orders/customer-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ storeId: user?.store_id, phones }),
+          })
+            .then((res) => (res.ok ? res.json() : {}))
+            .then((data) => setHistoryByPhone(data))
             .catch(() => {});
         }
       } catch (err: unknown) {
@@ -305,6 +320,7 @@ const MainOrders: React.FC = () => {
       <OrdersTable
         orders={orders}
         riskByPhone={riskByPhone}
+        historyByPhone={historyByPhone}
         total={total}
         totalOrders={totalOrders}
         totalByOrderStatus={totalByOrderStatus}
