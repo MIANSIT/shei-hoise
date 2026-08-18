@@ -40,6 +40,7 @@ interface ApiProduct {
   base_price: number;
   discounted_price: number | null;
   discount_amount?: number;
+  free_delivery?: boolean;
   categories: { id: string; name: string } | null;
   product_images: Array<{ id: string; image_url: string; is_primary: boolean }>;
   product_inventory: Array<{
@@ -635,6 +636,7 @@ export default function ProductPage() {
               <ProductPrice
                 price={displayPrice}
                 originalPrice={originalPrice}
+                freeDelivery={product.free_delivery}
               />
               {product.product_type === "bundle" &&
                 (product.component_value ?? 0) > displayPrice && (

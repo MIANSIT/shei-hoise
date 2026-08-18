@@ -35,6 +35,7 @@ interface DbProduct {
   discount_amount: number | null;
   weight?: number | null;
   featured: boolean | string;
+  free_delivery?: boolean | null;
   status: "draft" | "active" | "inactive" | "archived";
   category_id?: string | null;
   created_at: string;
@@ -89,6 +90,7 @@ export async function getProductBySlug(
       discount_amount,
       weight,
       featured,
+      free_delivery,
       status,
       category_id,
       categories(id,name),
@@ -147,6 +149,7 @@ export async function getProductBySlug(
     stock: p.product_inventory?.[0]?.quantity_available ?? 0,
     status: p.status,
     featured: p.featured === true || p.featured === "true",
+    free_delivery: p.free_delivery === true,
     category_id: category?.id ?? null,
     discounted_price: p.discounted_price ?? 0,
     discount_amount: p.discount_amount ?? 0,

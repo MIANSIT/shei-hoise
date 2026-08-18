@@ -159,6 +159,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         sku: "",
         stock: undefined,
         featured: false,
+        free_delivery: false,
         status: ProductStatus.ACTIVE,
         variants: [],
         images: [],
@@ -747,6 +748,28 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 <span className="text-sm font-medium flex items-center gap-1.5">
                   {t.admin.addProductFeaturedLabel}
                   <Tooltip title={t.admin.addProductFeaturedTooltip} placement="top">
+                    <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
+                  </Tooltip>
+                </span>
+              </label>
+
+              <div className="w-px h-5 bg-border hidden sm:block" />
+
+              {/* Free delivery toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  {...form.register("free_delivery")}
+                  className="sr-only peer"
+                  id="free_delivery"
+                />
+                <div className="relative w-9 h-5 rounded-full bg-muted border border-border peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-colors duration-200 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-4" />
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  {t.admin.addProductFreeDeliveryLabel}
+                  <Tooltip
+                    title={t.admin.addProductFreeDeliveryTooltip}
+                    placement="top"
+                  >
                     <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
                   </Tooltip>
                 </span>
