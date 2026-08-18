@@ -5,10 +5,11 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2, Star } from "lucide-react";
+import { Edit, Trash2, Star, Truck } from "lucide-react";
 import { Modal } from "antd";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
+import { toggleProductFreeDelivery } from "@/lib/queries/products/toggleProductFreeDelivery";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Image from "next/image";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
@@ -147,7 +148,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [featuredOverrides, setFeaturedOverrides] = useState<
     Record<string, boolean>
   >({});
+  const [freeDeliveryOverrides, setFreeDeliveryOverrides] = useState<
+    Record<string, boolean>
+  >({});
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [togglingFreeDeliveryId, setTogglingFreeDeliveryId] = useState<
+    string | null
+  >(null);
   const sheiNotif = useSheiNotification();
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
@@ -167,6 +174,23 @@ const ProductTable: React.FC<ProductTableProps> = ({
       sheiNotif.error(t.admin.featuredUpdateFailed);
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const getFreeDelivery = (record: ProductWithVariants) =>
+    freeDeliveryOverrides[record.id] ?? record.free_delivery;
+
+  const handleToggleFreeDelivery = async (record: ProductWithVariants) => {
+    const next = !getFreeDelivery(record);
+    setFreeDeliveryOverrides((prev) => ({ ...prev, [record.id]: next }));
+    setTogglingFreeDeliveryId(record.id);
+    try {
+      await toggleProductFreeDelivery(record.id, next);
+    } catch {
+      setFreeDeliveryOverrides((prev) => ({ ...prev, [record.id]: !next }));
+      sheiNotif.error(t.admin.freeDeliveryUpdateFailed);
+    } finally {
+      setTogglingFreeDeliveryId(null);
     }
   };
 
@@ -327,6 +351,41 @@ const ProductTable: React.FC<ProductTableProps> = ({
       },
     },
     {
+      title: t.admin.freeDeliveryCol,
+      key: "free_delivery",
+      align: "center",
+      width: 110,
+      responsive: ["md"],
+      render: (_, record) => {
+        const isFree = getFreeDelivery(record);
+        const isToggling = togglingFreeDeliveryId === record.id;
+        return (
+          <div className="flex justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleFreeDelivery(record);
+              }}
+              disabled={isToggling}
+              title={
+                isFree
+                  ? t.admin.freeDeliveryDisableHint
+                  : t.admin.freeDeliveryEnableHint
+              }
+              className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+                ${
+                  isFree
+                    ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-500/25"
+                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-300 hover:text-emerald-400"
+                }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        );
+      },
+    },
+    {
       title: t.admin.statusCol,
       key: "status",
       align: "center",
@@ -445,6 +504,23 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       className="flex gap-1.5 ml-auto"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      <button
+                        onClick={() => handleToggleFreeDelivery(record)}
+                        disabled={togglingFreeDeliveryId === record.id}
+                        title={
+                          getFreeDelivery(record)
+                            ? t.admin.freeDeliveryDisableHint
+                            : t.admin.freeDeliveryEnableHint
+                        }
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50
+                          ${
+                            getFreeDelivery(record)
+                              ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500 text-emerald-500"
+                              : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600"
+                          }`}
+                      >
+                        <Truck className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => handleToggleFeatured(record)}
                         disabled={togglingId === record.id}

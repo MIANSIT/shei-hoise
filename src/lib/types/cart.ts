@@ -48,6 +48,8 @@ export interface CartProductWithDetails {
       is_primary: boolean;
     }>;
     product_type?: "simple" | "bundle";
+    /** Waives the delivery fee for the whole order when this item is in the cart. */
+    free_delivery?: boolean;
   };
 
   // Allow null for variant to explicitly indicate no variant

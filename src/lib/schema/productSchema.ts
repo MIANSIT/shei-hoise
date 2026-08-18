@@ -31,6 +31,8 @@ export const productSchema = z
     is_digital: z.boolean().optional(),
     status: z.enum(["draft", "active", "inactive", "archived"]),
     featured: z.boolean(),
+    /** Waives the delivery fee for any order containing this product. */
+    free_delivery: z.boolean().optional(),
     meta_title: z.string().optional().nullable(),
     meta_description: z.string().optional().nullable(),
 
