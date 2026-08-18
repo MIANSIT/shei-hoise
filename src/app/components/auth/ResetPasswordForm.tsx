@@ -6,8 +6,6 @@ import { z } from "zod";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -16,7 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { SheiLoader } from "../ui/SheiLoader/loader";
-import { PasswordToggle } from "../common/PasswordToggle";
+import { PasswordField } from "../common/PasswordField";
+import { PasswordStrength } from "../common/PasswordStrength";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { KeyRound, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -40,18 +39,20 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   const router = useRouter();
   const { success, error } = useSheiNotification();
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const {
-    register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
   });
+
+  const password = watch("password");
+  const confirmPassword = watch("confirmPassword");
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
     if (!token) return;
@@ -144,61 +145,30 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           noValidate
         >
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-base font-semibold">
-              New Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                {...register("password")}
-                disabled={isSubmitting}
-                className="pr-12"
-                autoFocus
-                aria-describedby={errors.password ? "password-error" : undefined}
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <PasswordToggle
-                  show={showPassword}
-                  onToggle={() => setShowPassword(!showPassword)}
-                  size={20}
-                  className="hover:bg-accent/20"
-                />
-              </div>
-            </div>
+            <PasswordField
+              id="password"
+              label="New Password"
+              value={password}
+              onChange={(value) => setValue("password", value, { shouldValidate: true })}
+              disabled={isSubmitting}
+              autoFocus
+            />
             {errors.password && (
               <p id="password-error" className="text-sm text-destructive">
                 {errors.password.message}
               </p>
             )}
+            <PasswordStrength password={password} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-base font-semibold">
-              Confirm New Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="••••••••"
-                {...register("confirmPassword")}
-                disabled={isSubmitting}
-                className="pr-12"
-                aria-describedby={
-                  errors.confirmPassword ? "confirm-error" : undefined
-                }
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <PasswordToggle
-                  show={showConfirmPassword}
-                  onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                  size={20}
-                  className="hover:bg-accent/20"
-                />
-              </div>
-            </div>
+            <PasswordField
+              id="confirmPassword"
+              label="Confirm New Password"
+              value={confirmPassword}
+              onChange={(value) => setValue("confirmPassword", value, { shouldValidate: true })}
+              disabled={isSubmitting}
+            />
             {errors.confirmPassword && (
               <p id="confirm-error" className="text-sm text-destructive">
                 {errors.confirmPassword.message}
