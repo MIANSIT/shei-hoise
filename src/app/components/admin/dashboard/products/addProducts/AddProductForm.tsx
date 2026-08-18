@@ -202,6 +202,12 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     });
     const displayCurrency = currencyLoading ? "" : (currency ?? "");
 
+    // What the customer actually pays: the discounted price when a discount is
+    // set, otherwise the MRP. Display only — `discounted_price` itself stays
+    // null without a discount, so nothing downstream mistakes the MRP for a
+    // sale price.
+    const finalPrice = discountedPrice ?? mrpPrice ?? null;
+
     useEffect(() => {
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
@@ -652,10 +658,11 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                       label={`${t.admin.addProductDiscountedLabel} (${displayCurrency})`}
                       tooltip={t.admin.addProductDiscountedTooltip}
                     />
-                    <FormField
+                    <FormField<ProductType>
                       name="discounted_price"
                       type="number"
-                      control={control}
+                      value={finalPrice ?? undefined}
+                      onChange={() => {}}
                       placeholder={t.admin.addProductAutoCalc}
                       readOnly
                     />

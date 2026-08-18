@@ -18,8 +18,10 @@ export const variantSchema = z
 
     base_price: z.number().optional(),
     tp_price: z.number().optional(),
-    discounted_price: z.number().optional(),
-    discount_amount: z.number().optional(),
+    // Nullable so clearing a variant's discount can send an explicit null and
+    // actually wipe the stored sale price (see calculateDiscountedPrice).
+    discounted_price: z.number().nullable().optional(),
+    discount_amount: z.number().nullable().optional(),
     stock: z.number().optional(),
 
     created_at: z.string().optional(),
