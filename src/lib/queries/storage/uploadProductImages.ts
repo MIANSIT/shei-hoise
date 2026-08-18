@@ -1,6 +1,8 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
+import { optimizeImage } from "@/lib/utils/optimizeImage";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
 import { checkLimit } from "@/lib/utils/planFeatures";
@@ -117,12 +119,15 @@ export async function uploadOrUpdateProductImages(
     // Upload new images (blob URLs or base64 data URLs = newly added files)
     if (!existingImage && (img.imageUrl.startsWith("blob:") || img.imageUrl.startsWith("data:"))) {
       const response = await fetch(img.imageUrl);
-      const blob = await response.blob();
-      const filePath = `${storeId}/${productId}-${Date.now()}-${i}.png`;
+      const optimized = await optimizeImage(await response.arrayBuffer());
+      const filePath = `${storeId}/${productId}-${Date.now()}-${i}.webp`;
 
       const { error: uploadError } = await supabaseAdmin.storage
         .from(BUCKET)
-        .upload(filePath, blob, { contentType: blob.type || "image/png" });
+        .upload(filePath, optimized, {
+          contentType: "image/webp",
+          cacheControl: "31536000",
+        });
 
       if (uploadError) throw uploadError;
 
@@ -130,7 +135,7 @@ export async function uploadOrUpdateProductImages(
         .from(BUCKET)
         .getPublicUrl(filePath);
 
-      imageUrl = publicUrlData.publicUrl;
+      imageUrl = toPublicStorageUrl(publicUrlData.publicUrl);
     }
 
     finalImages.push({

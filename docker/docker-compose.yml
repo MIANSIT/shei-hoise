@@ -27,8 +27,15 @@ services:
     restart: unless-stopped
     ports:
       # No Supavisor/pooler in this trimmed stack, so publish Postgres directly.
-      # On the VPS, bind this to 127.0.0.1 only (or drop it and use an SSH tunnel).
-      - "${POSTGRES_PORT}:5432"
+      #
+      # Bound to loopback, not 0.0.0.0: Docker writes its port publishing rules
+      # straight into the DOCKER iptables chain, which firewalld's zone rules do
+      # NOT filter — so a plain "5432:5432" here is reachable from the open
+      # internet on any host without a cloud-level network ACL, firewall running
+      # or not. Local tooling on the host (psql, the migration scripts) is
+      # unaffected; reach it from elsewhere over an SSH tunnel:
+      #   ssh -L 5432:127.0.0.1:5432 <user>@<host>
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       # Must be superuser to create event trigger
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
@@ -312,11 +319,31 @@ services:
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
       ADMIN_API_URL: ${ADMIN_API_URL}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      # wget, not curl: the runner stage is a bare node:20-alpine, which ships
+      # BusyBox wget but no curl — a curl healthcheck can never pass here, and
+      # the deploy workflow's "wait for healthy" gate fails with it.
+      #
+      # 127.0.0.1, not localhost: inside the container `localhost` resolves to
+      # the IPv6 [::1] first, but server.js binds HOSTNAME=0.0.0.0 (IPv4 only),
+      # so the probe gets ECONNREFUSED while the app is serving perfectly well.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
       interval: 5s
       timeout: 5s
       retries: 3
       start_period: 10s
+    volumes:
+      # Persist the Next image-optimizer cache across redeploys. The deploy
+      # workflow recreates this container on every push; without a volume the
+      # cache dies with it and the whole catalogue is re-encoded from scratch.
+      - next-image-cache:/app/.next/cache
+    # sharp allocates its decode buffers outside V8's heap, so a Node heap flag
+    # cannot bound image optimization — the cgroup limit is the only real
+    # control. Idle usage is ~80 MB, so 2g is ample headroom; the point is that
+    # if optimization ever does spike, the kernel kills THIS container (which
+    # restarts in a few seconds) instead of picking Postgres, which is what the
+    # host-level OOM killer would target on an unlimited container.
+    mem_limit: 2g
 
 volumes:
+  next-image-cache:
   db-config:

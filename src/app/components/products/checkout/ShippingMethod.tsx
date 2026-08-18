@@ -18,6 +18,8 @@ interface ShippingMethodProps {
   selectedShipping: string;
   onShippingChange: (shippingMethod: string, shippingFee: number) => void;
   minOrderAmount?: number;
+  /** True when at least one cart item is a free-delivery product — the whole order then ships free. */
+  hasFreeDeliveryProduct?: boolean;
 }
 
 export default function ShippingMethod({
@@ -26,6 +28,7 @@ export default function ShippingMethod({
   selectedShipping,
   onShippingChange,
   minOrderAmount = 0,
+  hasFreeDeliveryProduct = false,
 }: ShippingMethodProps) {
   const [shippingOptions, setShippingOptions] = useState<ShippingFee[]>([]);
   const [taxAmount, setTaxAmount] = useState<number>(0);
@@ -50,10 +53,13 @@ export default function ShippingMethod({
     return effectiveMinAmount <= 0 || subtotal >= effectiveMinAmount;
   }, [minOrderAmount, storeMinOrderAmount, subtotal]);
 
-  // Subtotal qualifies for free shipping when a threshold is configured and met
+  // Delivery is free when the store's threshold is met, or when the cart holds
+  // a product the admin marked as free delivery (any quantity, any mix of other
+  // products — the whole order ships free either way).
   const qualifiesForFreeShipping = useMemo(() => {
+    if (hasFreeDeliveryProduct) return true;
     return freeShippingThreshold > 0 && subtotal >= freeShippingThreshold;
-  }, [freeShippingThreshold, subtotal]);
+  }, [hasFreeDeliveryProduct, freeShippingThreshold, subtotal]);
 
   const getEffectiveFee = useCallback(
     (price: number) => (qualifiesForFreeShipping ? 0 : price),
@@ -89,9 +95,10 @@ export default function ShippingMethod({
           if (visible.length > 0) {
             const defaultOption = visible[0];
             const threshold = storeSettings.free_shipping_threshold || 0;
-            const fee =
-              threshold > 0 && subtotal >= threshold ? 0 : defaultOption.price;
-            onShippingChange(defaultOption.name, fee);
+            const isFree =
+              hasFreeDeliveryProduct ||
+              (threshold > 0 && subtotal >= threshold);
+            onShippingChange(defaultOption.name, isFree ? 0 : defaultOption.price);
           }
         }
       } catch (error) {
@@ -147,6 +154,15 @@ export default function ShippingMethod({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {hasFreeDeliveryProduct && (
+          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+            <Truck className="h-4 w-4 shrink-0 text-green-600" />
+            <span className="text-sm font-medium text-green-800">
+              {t.checkout.freeDeliveryApplied}
+            </span>
+          </div>
+        )}
+
         <RadioGroup
           value={selectedShipping}
           onValueChange={handleShippingChange}

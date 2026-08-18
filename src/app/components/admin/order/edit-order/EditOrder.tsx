@@ -37,6 +37,8 @@ import type { DetailedCustomer } from "@/lib/types/users";
 import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import CustomerOrderHistoryTags from "@/app/components/admin/order/common/CustomerOrderHistoryTags";
+import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 const { Option } = Select;
 
 const { Title, Text } = Typography;
@@ -106,6 +108,9 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   const [deliveryCouriers, setDeliveryCouriers] = useState<DeliveryCourier[]>([]);
 
   const [orderId, setOrderId] = useState("");
+  const [customerHistory, setCustomerHistory] = useState<CustomerHistoryEntry[]>(
+    [],
+  );
   // const [customerProfile, setCustomerProfile] =
   //   useState<CustomerProfile | null>(null);
   // const [profileLoading, setProfileLoading] = useState(false);
@@ -455,6 +460,36 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   }, [user?.store_id, orderNumber, fetchCustomerProfile, notification]);
 
   // Auto-select delivery option based on shipping fee from backend
+  // Prior order history for the phone on this order. Refetches if the order is
+  // relinked to a different customer, so the tags always describe whoever is
+  // currently attached rather than who was attached on load.
+  useEffect(() => {
+    const phone = customerInfo.phone?.trim();
+    const storeId = user?.store_id;
+    if (!phone || !storeId) {
+      setCustomerHistory([]);
+      return;
+    }
+
+    let cancelled = false;
+    fetch("/api/orders/customer-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storeId, phones: [phone] }),
+    })
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data: Record<string, CustomerHistoryEntry[]>) => {
+        if (!cancelled) setCustomerHistory(data?.[phone] ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerHistory([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerInfo.phone, user?.store_id]);
+
   useEffect(() => {
     if (
       originalOrder &&
@@ -599,7 +634,17 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
         <Card size="small">
           <Row gutter={[16, 12]} align="middle">
             <Col flex="auto">
-              <Text strong>Linked Customer</Text>
+              <Space size={8} align="center">
+                <Text strong>Linked Customer</Text>
+                {/* Prior orders from this phone at this store — the same
+                    delivered/cancelled signal shown on the orders table, so a
+                    COD decision can be made without leaving the page. */}
+                <CustomerOrderHistoryTags
+                  history={customerHistory}
+                  currentOrderId={originalOrder?.id}
+                  showEmptyHint
+                />
+              </Space>
               <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   Editing the name/phone/email below corrects this

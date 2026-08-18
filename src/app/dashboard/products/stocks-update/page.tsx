@@ -1,9 +1,11 @@
 "use client";
-import React, { useState, useRef } from "react";
-import { Pagination } from "antd";
+import React, { useState, useRef, useCallback } from "react";
+import { Button, Pagination } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
+import { Percent } from "lucide-react";
 import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable";
 import StockExportButton from "@/app/components/admin/dashboard/products/stock/StockExportButton";
+import TraderPriceExportModal from "@/app/components/admin/dashboard/products/trader/TraderPriceExportModal";
 import StockStats from "@/app/components/admin/dashboard/products/stock/StockStats";
 import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
@@ -77,7 +79,23 @@ const StockPage = () => {
   const [totalProducts, setTotalProducts] = React.useState(0);
   const [stats, setStats] = React.useState<StockAggregateStats | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [traderModalOpen, setTraderModalOpen] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Shared by both exports: fetch every product matching the current filters,
+  // ignoring pagination. Memoised because TraderPriceExportModal takes it as an
+  // effect dependency — a new identity each render would re-trigger the load.
+  const fetchAllProducts = useCallback(async () => {
+    if (!storeSlug) return [];
+    const result = await getProductWithStock(
+      storeSlug,
+      searchText,
+      stockFilter,
+      1,
+      Number.MAX_SAFE_INTEGER,
+    );
+    return result.data;
+  }, [storeSlug, searchText, stockFilter]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
@@ -117,20 +135,26 @@ const StockPage = () => {
           <StockExportButton
             storeSlug={storeSlug ?? undefined}
             locked={!exportAllowed}
-            fetchAllProducts={async () => {
-              if (!storeSlug) return [];
-              const result = await getProductWithStock(
-                storeSlug,
-                searchText,
-                stockFilter,
-                1,
-                Number.MAX_SAFE_INTEGER,
-              );
-              return result.data;
-            }}
+            fetchAllProducts={fetchAllProducts}
           />
+          {exportAllowed && (
+            <Button
+              icon={<Percent size={14} />}
+              className="rounded-xl h-9 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium"
+              onClick={() => setTraderModalOpen(true)}
+            >
+              <span className="hidden sm:inline">Trader prices</span>
+            </Button>
+          )}
         </div>
       </div>
+
+      <TraderPriceExportModal
+        open={traderModalOpen}
+        onClose={() => setTraderModalOpen(false)}
+        storeSlug={storeSlug ?? undefined}
+        fetchAllProducts={fetchAllProducts}
+      />
 
       {/* ── KPI stats ── */}
       <StockStats stats={stats} currencySymbol={currencySymbol} />

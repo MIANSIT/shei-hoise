@@ -47,10 +47,13 @@ import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
 import { LockOutlined } from "@ant-design/icons";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
+import CustomerOrderHistoryTags from "@/app/components/admin/order/common/CustomerOrderHistoryTags";
+import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 
 interface Props {
   orders: StoreOrder[];
   riskByPhone?: Record<string, RiskAssessment>;
+  historyByPhone?: Record<string, CustomerHistoryEntry[]>;
   total: number;
   page: number;
   search: string;
@@ -86,6 +89,7 @@ const FB_STATUS_STYLES: Record<"sent" | "held" | "suppressed", { bg: string; tex
 const OrdersTable: React.FC<Props> = ({
   orders,
   riskByPhone,
+  historyByPhone,
   onUpdate,
   search,
   onSearchChange,
@@ -515,6 +519,24 @@ const OrdersTable: React.FC<Props> = ({
         );
       },
       width: 90,
+      responsive: ["lg"],
+    },
+    {
+      title: "History",
+      key: "customer_history",
+      render: (_, order: StoreOrder) => {
+        const phone = order.shipping_address?.phone;
+        return (
+          <CustomerOrderHistoryTags
+            history={phone ? historyByPhone?.[phone] : undefined}
+            // Excluded so the tags show only what this customer did *before*
+            // this order — otherwise every row would include itself.
+            currentOrderId={order.id}
+            showEmptyHint
+          />
+        );
+      },
+      width: 110,
       responsive: ["lg"],
     },
     {

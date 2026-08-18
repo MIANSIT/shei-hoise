@@ -48,6 +48,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# The image optimizer writes transformed images under /app/.next/cache, which
+# docker-compose mounts as a named volume so the cache survives redeploys.
+# Create it here, owned by nextjs: when Docker first mounts an empty named
+# volume over a path that exists in the image, it seeds the volume from that
+# path — including its ownership. Without this the volume is created as
+# root:root, the container (uid 1001) cannot write to it, and every request
+# silently re-encodes instead of caching.
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
