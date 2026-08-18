@@ -39,6 +39,8 @@ interface Product {
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
+  /** Waives the delivery fee for any order containing this product. */
+  free_delivery: boolean;
   categories: { id: string; name: string }[];
   product_images: { id: string; image_url: string; is_primary: boolean }[];
   product_inventory: {
@@ -69,6 +71,7 @@ export async function getClientProductBySlug(
       base_price,
       discounted_price,
       discount_amount,
+      free_delivery,
       product_type,
       categories(id, name),
       product_images(id, image_url, is_primary),
