@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { fireServerPixelEvent } from "@/lib/utils/pixelEventServer";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export interface UpdateOrderData {
   status?: OrderStatus;
@@ -25,23 +26,28 @@ export interface UpdateOrderResult {
 }
 
 export async function updateOrder(
-  orderId: string, 
+  orderId: string,
   updates: UpdateOrderData
 ): Promise<UpdateOrderResult> {
   try {
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok) {
+      return { success: false, error: storeResult.error };
+    }
 
-    // Validate order exists
+    // Validate order exists and belongs to the caller's own store
     const { data: existingOrder, error: fetchError } = await supabaseAdmin
       .from('orders')
       .select('*')
       .eq('id', orderId)
+      .eq('store_id', storeResult.storeId)
       .single();
 
     if (fetchError) {
       console.error('Error fetching order:', fetchError);
-      return { 
-        success: false, 
-        error: `Order not found: ${fetchError.message}` 
+      return {
+        success: false,
+        error: `Order not found: ${fetchError.message}`
       };
     }
 
@@ -55,6 +61,7 @@ export async function updateOrder(
       .from('orders')
       .update(updateData)
       .eq('id', orderId)
+      .eq('store_id', storeResult.storeId)
       .select(`
         *,
         order_items (*),

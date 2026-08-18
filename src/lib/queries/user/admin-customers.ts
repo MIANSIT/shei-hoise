@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 // Interface matching your database
 interface UpdateCustomerData {
@@ -24,6 +25,24 @@ export async function updateCustomerProfileAsAdmin(
   profileData: UpdateProfileData
 ) {
   try {
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok) {
+      throw new Error(storeResult.error);
+    }
+
+    // customerId is caller-supplied — confirm this customer is actually
+    // linked to the caller's own store before touching their record.
+    const { data: link, error: linkError } = await supabase
+      .from("store_customer_links")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("store_id", storeResult.storeId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      throw new Error("This customer is not linked to your store");
+    }
+
     const email = customerData.email?.trim() || null;
 
     // Process customer data for store_customers table
