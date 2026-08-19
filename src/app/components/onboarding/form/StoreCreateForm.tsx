@@ -188,6 +188,9 @@ export default function StoreCreateForm({
     t.onboarding.sidebarBullet1,
     t.onboarding.sidebarBullet2,
     t.onboarding.sidebarBullet3,
+    t.onboarding.sidebarBullet4,
+    t.onboarding.sidebarBullet5,
+    t.onboarding.sidebarBullet6,
   ];
 
   return (
@@ -195,7 +198,11 @@ export default function StoreCreateForm({
       {/* Trust strip */}
       <div className='mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground'>
         <ShieldCheck className='h-3.5 w-3.5 text-chart-2' />
-        <span>{t.onboarding.trustStrip}</span>
+        <span>
+          {t.onboarding.trustStripPrefix}
+          <span className='font-medium text-foreground'>{t.onboarding.trustStripBold}</span>
+          {t.onboarding.trustStripSuffix}
+        </span>
       </div>
 
       <div className='flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-center'>
