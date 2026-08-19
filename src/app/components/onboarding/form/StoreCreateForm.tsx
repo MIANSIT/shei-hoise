@@ -4,7 +4,8 @@ import { Button } from "antd";
 import { Path, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
+import { AdminAuthIllustration } from "@/app/components/layout/auth/AdminAuthIllustration";
 
 import {
   CreateUserType,
@@ -183,114 +184,150 @@ export default function StoreCreateForm({
     onSubmit(data, reset);
   };
 
+  const sidebarBullets = [
+    t.onboarding.sidebarBullet1,
+    t.onboarding.sidebarBullet2,
+    t.onboarding.sidebarBullet3,
+  ];
+
   return (
-    <div className='mx-auto flex w-full max-w-2xl flex-col p-4 md:p-6'>
+    <div className='mx-auto flex w-full max-w-6xl flex-col p-4 md:p-6'>
       {/* Trust strip */}
       <div className='mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground'>
         <ShieldCheck className='h-3.5 w-3.5 text-chart-2' />
         <span>{t.onboarding.trustStrip}</span>
       </div>
 
-      {/* Step indicator — centered on every breakpoint */}
-      <div className='mb-8 flex items-center justify-center gap-3 sm:gap-4'>
-        {steps.map((step, idx) => (
-          <div key={idx} className='flex items-center gap-3 sm:gap-4'>
-            <button
-              type='button'
-              onClick={() => handleStepClick(idx)}
-              className='flex flex-col items-center gap-2'
-            >
-              <span
-                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-200 ${
-                  currentStep === idx
-                    ? "bg-chart-2 text-white ring-4 ring-chart-2/20"
-                    : idx < currentStep
-                    ? "border-2 border-chart-2 bg-chart-2/10 text-chart-2"
-                    : "border-2 border-border bg-muted text-muted-foreground"
-                }`}
-              >
-                {idx + 1}
-              </span>
-              <span
-                className={`whitespace-nowrap text-xs font-medium ${
-                  currentStep === idx
-                    ? "text-chart-2"
-                    : idx < currentStep
-                    ? "text-chart-2/70"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {step.title}
-              </span>
-            </button>
+      <div className='flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-center'>
+        <div className='flex w-full max-w-2xl flex-col items-center'>
+          {/* Step indicator — centered above the form itself, not the whole row */}
+          <div className='mb-8 flex items-center justify-center gap-3 sm:gap-4'>
+            {steps.map((step, idx) => (
+              <div key={idx} className='flex items-center gap-3 sm:gap-4'>
+                <button
+                  type='button'
+                  onClick={() => handleStepClick(idx)}
+                  className='flex flex-col items-center gap-2'
+                >
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-200 ${
+                      currentStep === idx
+                        ? "bg-chart-2 text-white ring-4 ring-chart-2/20"
+                        : idx < currentStep
+                        ? "border-2 border-chart-2 bg-chart-2/10 text-chart-2"
+                        : "border-2 border-border bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {idx + 1}
+                  </span>
+                  <span
+                    className={`whitespace-nowrap text-xs font-medium ${
+                      currentStep === idx
+                        ? "text-chart-2"
+                        : idx < currentStep
+                        ? "text-chart-2/70"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {step.title}
+                  </span>
+                </button>
 
-            {idx < steps.length - 1 && (
-              <div
-                className={`h-0.5 w-12 rounded-full transition-colors duration-200 sm:w-24 ${
-                  idx < currentStep ? "bg-chart-2" : "bg-border"
-                }`}
-              />
-            )}
+                {idx < steps.length - 1 && (
+                  <div
+                    className={`h-0.5 w-12 rounded-full transition-colors duration-200 sm:w-24 ${
+                      idx < currentStep ? "bg-chart-2" : "bg-border"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Form Content */}
-      <div className='rounded-3xl border border-chart-2/10 bg-card p-6 shadow-xl md:p-10'>
-        {currentContent}
+          {/* Form Content */}
+          <div className='w-full rounded-3xl border border-chart-2/10 bg-card p-6 shadow-2xl shadow-chart-2/10 md:p-10'>
+            {currentContent}
 
-        {/* Navigation Buttons */}
-        <div className='mt-8 flex items-center justify-between'>
-          {!isFirst && (
-            <Button onClick={prev} type='default' className='rounded-full px-6'>
-              {t.onboarding.previous}
-            </Button>
-          )}
+            {/* Navigation Buttons */}
+            <div className='mt-8 flex items-center justify-between'>
+              {!isFirst && (
+                <Button onClick={prev} type='default' className='rounded-full px-6'>
+                  {t.onboarding.previous}
+                </Button>
+              )}
 
-          <div className='flex-1 flex justify-end'>
-            {!isLast ? (
-              <Button
-                type='primary'
-                onClick={handleNext}
-                htmlType='button'
-                className='rounded-full px-8 font-semibold'
-                style={{ backgroundColor: "var(--chart-2)", border: "none" }}
-                onMouseEnter={(e) => {
-                  (
-                    e.currentTarget as HTMLButtonElement
-                  ).style.backgroundColor = "var(--badge)";
-                }}
-                onMouseLeave={(e) => {
-                  (
-                    e.currentTarget as HTMLButtonElement
-                  ).style.backgroundColor = "var(--chart-2)";
-                }}
-              >
-                {t.onboarding.next}
-              </Button>
-            ) : (
-              <Button
-                type='primary'
-                onClick={handleSubmit(onSubmitForm)}
-                loading={loading}
-                className='rounded-full px-8 py-2 font-semibold transition-colors duration-200'
-                style={{ backgroundColor: "var(--chart-2)", border: "none" }}
-                onMouseEnter={(e) => {
-                  (
-                    e.currentTarget as HTMLButtonElement
-                  ).style.backgroundColor = "var(--badge)";
-                }}
-                onMouseLeave={(e) => {
-                  (
-                    e.currentTarget as HTMLButtonElement
-                  ).style.backgroundColor = "var(--chart-2)";
-                }}
-              >
-                {t.onboarding.requestOnboard}
-              </Button>
-            )}
+              <div className='flex-1 flex justify-end'>
+                {!isLast ? (
+                  <Button
+                    type='primary'
+                    onClick={handleNext}
+                    htmlType='button'
+                    className='rounded-full px-8 font-semibold shadow-lg shadow-chart-2/30'
+                    style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                    onMouseEnter={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--badge)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--chart-2)";
+                    }}
+                  >
+                    {t.onboarding.next}
+                  </Button>
+                ) : (
+                  <Button
+                    type='primary'
+                    onClick={handleSubmit(onSubmitForm)}
+                    loading={loading}
+                    className='rounded-full px-8 py-2 font-semibold shadow-lg shadow-chart-2/30 transition-colors duration-200'
+                    style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                    onMouseEnter={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--badge)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--chart-2)";
+                    }}
+                  >
+                    {t.onboarding.requestOnboard}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Brand panel — desktop/wide screens only, fills the space beside the form */}
+        <aside className='sticky top-6 hidden w-85 shrink-0 flex-col lg:order-first lg:flex'>
+          <span className='text-xs font-bold uppercase tracking-widest text-chart-2'>
+            {t.onboarding.sidebarEyebrow}
+          </span>
+          <h2 className='mt-2 text-2xl font-semibold text-foreground'>
+            {t.onboarding.sidebarHeadline}
+          </h2>
+          <p className='mt-2 text-sm text-muted-foreground'>
+            {t.onboarding.sidebarSubtext}
+          </p>
+
+          <ul className='mt-5 space-y-3'>
+            {sidebarBullets.map((bullet) => (
+              <li key={bullet} className='flex items-start gap-2 text-sm text-foreground'>
+                <CheckCircle2 className='mt-0.5 h-4 w-4 shrink-0 text-chart-2' />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className='mt-6 aspect-4/3 overflow-hidden rounded-3xl shadow-2xl shadow-chart-2/20 ring-1 ring-chart-2/15'>
+            <AdminAuthIllustration />
+          </div>
+        </aside>
       </div>
     </div>
   );

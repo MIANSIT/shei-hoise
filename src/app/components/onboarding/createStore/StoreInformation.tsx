@@ -88,7 +88,7 @@ export default function StoreInformation({ control }: Props) {
           name="store.logo_url"
           control={control}
           render={({ field }) => (
-            <div>
+            <div className="flex flex-col items-center text-center">
               <UploadLabel label={t.onboarding.storeLogo} tooltip={t.onboarding.storeLogoTip} />
               <UploadImage
                 field={field}
@@ -102,7 +102,7 @@ export default function StoreInformation({ control }: Props) {
           name="store.banner_url"
           control={control}
           render={({ field }) => (
-            <div>
+            <div className="flex flex-col items-center text-center">
               <UploadLabel label={t.onboarding.storeBanner} tooltip={t.onboarding.storeBannerTip} />
               <UploadImage
                 field={field}
