@@ -11,7 +11,7 @@ export default function DesktopHeader() {
 
   const mainLinks: NavLink[] = [
     { name: t.nav.home, path: "/" },
-    { name: t.landing.requestDemo, path: "/#request-demo" },
+    { name: t.landing.getStore, path: "/onboarding" },
   ];
 
   return (

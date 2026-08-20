@@ -68,17 +68,18 @@ export default function StoreInformation({ control }: Props) {
         />
 
         <Controller
-          name="store.description"
+          name="store.short_description"
           control={control}
           render={({ field, fieldState }) => (
-            <PillTextArea
-              id="store_description"
+            <PillField
+              id="store_short_description"
               label={t.onboarding.storeDesc}
               value={field.value ?? ""}
               onChange={field.onChange}
               placeholder={t.onboarding.storeDescPlaceholder}
               tooltip={t.onboarding.storeDescTip}
               error={fieldState.error?.message}
+              maxLength={160}
               className="md:col-span-2"
             />
           )}

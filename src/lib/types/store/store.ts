@@ -23,6 +23,11 @@ export interface StoreData {
   is_active: boolean;
   created_at?: Date | string;
   updated_at?: Date | string;
+  // Which "Complete Your Store Setup" wizard steps have been saved — see
+  // src/app/components/admin/completeSetup/CompleteSetupWizard.tsx. Persisted
+  // so progress survives navigating away and back, not just page reloads.
+  setup_progress?: string[] | null;
+  setup_completed_at?: string | null;
 }
 
 export type UpdatedStoreData = Partial<StoreData>;

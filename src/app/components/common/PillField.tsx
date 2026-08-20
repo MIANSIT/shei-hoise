@@ -19,6 +19,7 @@ interface PillFieldProps {
   required?: boolean;
   tooltip?: string;
   error?: string;
+  maxLength?: number;
 }
 
 function PillLabel({
@@ -58,6 +59,7 @@ export function PillField({
   required,
   tooltip,
   error,
+  maxLength,
 }: PillFieldProps) {
   return (
     <div className={cn("relative", className)}>
@@ -79,11 +81,20 @@ export function PillField({
           placeholder={placeholder}
           disabled={disabled}
           autoFocus={autoFocus}
+          maxLength={maxLength}
           className="min-w-0 flex-1 bg-transparent text-base tracking-wide outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
         />
         {rightElement}
       </div>
-      {error && <p className="mt-1 ml-4 text-xs text-destructive">{error}</p>}
+      {error ? (
+        <p className="mt-1 ml-4 text-xs text-destructive">{error}</p>
+      ) : (
+        maxLength && (
+          <p className="mt-1 mr-4 text-right text-[11px] text-muted-foreground">
+            {value.length}/{maxLength}
+          </p>
+        )
+      )}
     </div>
   );
 }

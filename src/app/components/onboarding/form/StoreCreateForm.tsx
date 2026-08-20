@@ -52,7 +52,7 @@ export default function StoreCreateForm({
       store: {
         store_name: "",
         store_slug: "",
-        description: "",
+        short_description: "",
         status: StoreStatus.TRIAL,
         contact_email: "",
         contact_phone: "",
@@ -98,7 +98,7 @@ export default function StoreCreateForm({
       fields: [
         "store.store_name",
         "store.store_slug",
-        "store.description",
+        "store.short_description",
         "store.logo_url",
         "store.banner_url",
         "store.contact_email",

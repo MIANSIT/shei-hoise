@@ -21,16 +21,18 @@ export default function StoreCreatePage() {
   const router = useRouter();
   const t = useTranslation();
 
-  const handleCreateStore = async (
-    values: CreateUserType,
-    resetForm: () => void,
-  ) => {
+  const handleCreateStore = async (values: CreateUserType) => {
     setLoading(true);
     try {
       const payload = createUserSchema.parse(values);
       await createUser(payload);
       notify.success(t.onboarding.createdSuccess);
-      resetForm();
+
+      // Deliberately not calling resetForm() here — we redirect away right
+      // after this, and resetting mid-flight cleared the form's password
+      // field while the separate confirm-password field (local state, not
+      // form-managed) still held the typed value, flashing a false
+      // "passwords do not match" error for the instant before navigation.
 
       // Sign the merchant straight in instead of bouncing them to a
       // separate login page they'd have to re-enter credentials on.
@@ -44,7 +46,7 @@ export default function StoreCreatePage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/dashboard/complete-setup");
     } catch (err: unknown) {
       console.error(err);
 

@@ -46,7 +46,7 @@ const storeSchema = z.object({
   logo_url: fileOrUrl.optional(), // now optional
   banner_url: fileOrUrl.optional(), // now optional
 
-  description: z.string().optional(),
+  short_description: z.string().max(160, "Keep it under 160 characters").optional(),
 
   status: z.nativeEnum(StoreStatus),
 
