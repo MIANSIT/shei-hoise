@@ -31,9 +31,7 @@ export const signUpSchema = z.object({
 // Login schema
 export const LoginFormSchema = z.object({
   username: z.string().email({ message: "Must be a valid email address" }),
-  password: z
-    .string()
-    .regex(/.*[A-Z].*/, { message: "One uppercase character required" }),
+  password: z.string().min(1, { message: "Password is required" }),
 });
 
 // Checkout schema
