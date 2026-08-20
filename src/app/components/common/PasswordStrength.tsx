@@ -18,6 +18,14 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
     special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
   };
 
+  const labels: Record<keyof typeof checks, string> = {
+    length: "8 Chars",
+    uppercase: "A-Z",
+    lowercase: "a-z",
+    number: "123",
+    special: "@#$",
+  };
+
   const strength = Object.values(checks).filter(Boolean).length;
   const strengthText = ["Very Weak", "Weak", "Fair", "Good", "Strong"][strength - 1] || "Very Weak";
   const strengthColors = [
@@ -39,50 +47,41 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
   const currentTextColor = textColors[strength - 1] || "text-gray-500";
 
   return (
-    <motion.div 
-      className={`space-y-3 ${className}`}
+    <motion.div
+      className={`space-y-2.5 ${className}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       <div className="flex items-center justify-between">
-        <span className={`text-xs font-medium ${currentTextColor}`}>
-          Password strength: <span className="font-bold">{strengthText}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          Password Strength
         </span>
-        <span className="text-xs font-bold text-muted-foreground">
-          {strength}/5
+        <span className={`text-xs font-bold ${currentTextColor}`}>
+          {strengthText}
         </span>
       </div>
-      
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
         <motion.div
-          className={`h-2 rounded-full ${currentColor}`}
+          className={`h-1.5 rounded-full ${currentColor}`}
           initial={{ width: "0%" }}
           animate={{ width: `${(strength / 5) * 100}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         />
       </div>
-      
-      <div className="grid grid-cols-2 gap-2">
-        {Object.entries(checks).map(([key, passed]) => {
-          const label = {
-            length: "8+ characters",
-            uppercase: "Uppercase letter",
-            lowercase: "Lowercase letter",
-            number: "Number",
-            special: "Special character"
-          }[key];
-          
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        {(Object.keys(checks) as (keyof typeof checks)[]).map((key, index) => {
+          const passed = checks[key];
+
           return (
             <motion.div
               key={key}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: key === "length" ? 0.1 : 
-                         key === "uppercase" ? 0.2 : 
-                         key === "lowercase" ? 0.3 : 
-                         key === "number" ? 0.4 : 0.5 }}
+              transition={{ delay: index * 0.08 }}
             >
               <motion.div
                 animate={passed ? {
@@ -92,11 +91,11 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
                 transition={{ duration: 0.3 }}
               >
                 <CheckCircle
-                  className={`h-4 w-4 ${passed ? "text-green-500" : "text-gray-300 dark:text-gray-600"}`}
+                  className={`h-3.5 w-3.5 ${passed ? "text-green-500" : "text-gray-300 dark:text-gray-600"}`}
                 />
               </motion.div>
               <span className={`text-xs ${passed ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                {label}
+                {labels[key]}
               </span>
             </motion.div>
           );

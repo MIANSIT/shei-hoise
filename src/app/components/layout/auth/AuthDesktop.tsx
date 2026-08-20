@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { AdminAuthIllustration } from "./AdminAuthIllustration";
 
 interface DesktopLayoutProps {
   children: React.ReactNode;
@@ -14,15 +15,19 @@ export function DesktopLayout({
   return (
     <div className="flex  w-full">
       {/* Left side - Image */}
-      <div className="hidden md:flex w-2/3 h-screen relative items-center justify-center">
-        <Image
-          src={isAdmin ? "/adminBGi.png" : "/bgImage.png"}
-          alt={isAdmin ? "Admin background" : "Login background"}
-          fill
-          className="object-cover" // image fits entirely, no crop
-          priority
-          quality={100}
-        />
+      <div className="hidden md:flex w-2/3 h-screen relative items-center justify-center overflow-hidden">
+        {isAdmin ? (
+          <AdminAuthIllustration />
+        ) : (
+          <Image
+            src="/bgImage.png"
+            alt="Login background"
+            fill
+            className="object-cover" // image fits entirely, no crop
+            priority
+            quality={100}
+          />
+        )}
       </div>
 
       {/* Right side - Form */}

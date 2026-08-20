@@ -21,7 +21,7 @@ import { Key, CheckCircle, AlertCircle, Loader2, Shield } from "lucide-react";
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import { useParams } from "next/navigation";
 import { PasswordStrength } from "../../components/common/PasswordStrength";
-import { PasswordToggle } from "../../components/common/PasswordToggle";
+import { PasswordField } from "../../components/common/PasswordField";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
 import { linkAuthToCustomer } from "@/lib/queries/customers/getCustomerByEmail";
 
@@ -43,8 +43,6 @@ export default function CompleteAccountPage() {
     password: "",
     confirmPassword: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentCustomerId, setCurrentCustomerId] = useState<string>(customerIdFromUrl);
 
   // Use customer email if available, otherwise use from URL
@@ -257,12 +255,12 @@ export default function CompleteAccountPage() {
     router.push(`/${storeSlug}/login?redirect=/${storeSlug}/order-status&email=${encodeURIComponent(email)}`);
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, password: e.target.value });
+  const handlePasswordChange = (value: string) => {
+    setFormData({ ...formData, password: value });
   };
 
-  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, confirmPassword: e.target.value });
+  const handleConfirmPasswordChange = (value: string) => {
+    setFormData({ ...formData, confirmPassword: value });
   };
 
   if (!email || !currentCustomerId) {
@@ -344,51 +342,24 @@ export default function CompleteAccountPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handlePasswordChange}
-                    placeholder="Create a strong password"
-                    required
-                    minLength={6}
-                    className="pr-12 border-input"
-                  />
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                    <PasswordToggle
-                      show={showPassword}
-                      onToggle={() => setShowPassword(!showPassword)}
-                      size={18}
-                      className="hover:bg-accent/20"
-                    />
-                  </div>
-                </div>
+                <PasswordField
+                  id="password"
+                  label="Password"
+                  value={formData.password}
+                  onChange={handlePasswordChange}
+                  placeholder="Create a strong password"
+                />
                 <PasswordStrength password={formData.password} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={handleConfirmPasswordChange}
-                    placeholder="Re-enter your password"
-                    required
-                    className="pr-12 border-input"
-                  />
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                    <PasswordToggle
-                      show={showConfirmPassword}
-                      onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                      size={18}
-                      className="hover:bg-accent/20"
-                    />
-                  </div>
-                </div>
+                <PasswordField
+                  id="confirmPassword"
+                  label="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleConfirmPasswordChange}
+                  placeholder="Re-enter your password"
+                />
                 {formData.confirmPassword && formData.password !== formData.confirmPassword && (
                   <p className="text-xs text-destructive animate-in fade-in">
                     Passwords do not match

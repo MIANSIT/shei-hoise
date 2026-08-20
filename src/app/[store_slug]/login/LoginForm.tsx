@@ -258,7 +258,7 @@ export function LoginForm() {
 
   // Handle login/password submission
   const handleLogin = async () => {
-    if (!password || password.length < 6) {
+    if (!password) {
       error(t.auth.enterPasswordError);
       return;
     }

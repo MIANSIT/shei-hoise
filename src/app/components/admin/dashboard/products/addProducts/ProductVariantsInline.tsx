@@ -520,10 +520,15 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                         label={`${t.admin.variantFinalPrice} (${displayCurrency})`}
                         tooltip="Auto-calculated: MRP − Discount."
                       />
-                      <FormField
-                        control={form.control}
+                      <FormField<ProductType>
                         name={`variants.${idx}.discounted_price`}
                         type="number"
+                        value={
+                          variants[idx]?.discounted_price ??
+                          variants[idx]?.base_price ??
+                          undefined
+                        }
+                        onChange={() => {}}
                         placeholder="Auto"
                         readOnly
                       />

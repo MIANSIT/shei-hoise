@@ -4,20 +4,19 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { 
-  LoginFormSchema, 
+import {
+  LoginFormSchema,
   LoginFormType,
   signUpSchema,
-  SignUpFormValues 
+  SignUpFormValues
 } from "../../../lib/utils/formSchema";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PasswordToggle } from "../common/PasswordToggle";
+import { PillField } from "../common/PillField";
+import { PasswordField } from "../common/PasswordField";
 import { PasswordStrength } from "../common/PasswordStrength";
 import { SheiLoader } from "../ui/SheiLoader/loader";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
@@ -26,7 +25,6 @@ import { supabase } from "../../../lib/supabase";
 // ✅ Simplified interface
 interface UserFormProps {
   submitText?: string;
-  theme?: "light" | "dark";
   defaultValues?: any;
   onSubmit?: (values: any) => void;
   mode?: "login" | "signup";
@@ -35,7 +33,6 @@ interface UserFormProps {
 
 export function UserForm({
   submitText,
-  theme = "light",
   defaultValues,
   onSubmit,
   mode = "login",
@@ -113,7 +110,11 @@ export function UserForm({
       });
 
       if (loginError) {
-        error(loginError.message || "Login failed. Please try again.");
+        if (loginError.message.includes("Invalid login credentials")) {
+          error("Wrong email or password");
+        } else {
+          error(loginError.message || "Login failed. Please try again.");
+        }
         return;
       }
 
@@ -129,11 +130,11 @@ export function UserForm({
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
+    setValue,
   } = form;
 
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // ✅ Watch password for strength indicator (only for signup)
+  const emailFieldName = mode === "signup" ? "email" : "username";
+  const watchedEmail = watch(emailFieldName);
   const watchedPassword = watch("password");
 
   // ✅ Fix TypeScript error by safely accessing error messages
@@ -151,19 +152,15 @@ export function UserForm({
       noValidate
     >
       {/* Email Field */}
-      <div className="grid gap-2">
-        <Label htmlFor="email" className="font-bold">Email</Label>
-        <Input
+      <div className="space-y-2">
+        <PillField
           id="email"
           type="email"
+          label="Email"
+          value={watchedEmail || ""}
+          onChange={(value) => setValue(emailFieldName, value, { shouldValidate: true })}
           placeholder="Enter your email"
-          {...form.register(mode === "signup" ? "email" : "username")}
           disabled={isSubmitting}
-          className={
-            theme === "dark"
-              ? "border-gray-600 placeholder-gray-400"
-              : "border-gray-300 placeholder-gray-500"
-          }
         />
         {/* ✅ Fixed TypeScript error by safely accessing error message */}
         {errors.email && (
@@ -175,33 +172,20 @@ export function UserForm({
       </div>
 
       {/* Password Field */}
-      <div className="grid gap-2 relative">
-        <Label htmlFor="password" className="font-bold">Password</Label>
-        <div className="relative">
-          <Input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Enter your password"
-            {...form.register("password")}
-            disabled={isSubmitting}
-            className={
-              theme === "dark"
-                ? "border-gray-600 placeholder-gray-400 pr-14"
-                : "border-gray-300 placeholder-gray-500 pr-14"
-            }
-          />
-          <div className="absolute inset-y-0 right-2 flex items-center">
-            <PasswordToggle
-              show={showPassword}
-              onToggle={() => setShowPassword(!showPassword)}
-            />
-          </div>
-        </div>
+      <div className="space-y-2">
+        <PasswordField
+          id="password"
+          label="Password"
+          value={watchedPassword || ""}
+          onChange={(value) => setValue("password", value, { shouldValidate: true })}
+          placeholder="Enter your password"
+          disabled={isSubmitting}
+        />
         {/* ✅ Fixed TypeScript error by safely accessing error message */}
         {errors.password && (
           <p className="text-sm text-red-500">{getErrorMessage(errors.password)}</p>
         )}
-        
+
         {/* ✅ Password Strength Indicator (only for signup) */}
         {mode === "signup" && (
           <PasswordStrength password={watchedPassword} />
