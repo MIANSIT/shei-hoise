@@ -65,13 +65,11 @@ export default function StoreCreateForm({
       store_settings: {
         currency: Currency.BDT,
         tax_rate: 0,
-        shipping_fees: [
-          {
-            name: "Inside Dhaka",
-            price: 0,
-            estimated_days: "3-5",
-          },
-        ],
+        // No default shipping method — a placeholder fee would mislead
+        // customers before the merchant has set real shipping options.
+        // They configure their own real shipping in the Complete Setup
+        // wizard's Shipping step (embeds ShippingManager directly).
+        shipping_fees: [],
         min_order_amount: 0,
         processing_time_days: 1,
         return_policy_days: 7,

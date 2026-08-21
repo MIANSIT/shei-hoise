@@ -99,6 +99,42 @@ export function PillField({
   );
 }
 
+interface PillShellProps {
+  label: string;
+  required?: boolean;
+  tooltip?: string;
+  error?: string;
+  className?: string;
+  children: React.ReactNode;
+}
+
+/** Same pill chrome as PillField, but for embedding a custom control (e.g. a Select) instead of a plain input. */
+export function PillShell({
+  label,
+  required,
+  tooltip,
+  error,
+  className,
+  children,
+}: PillShellProps) {
+  return (
+    <div className={cn("relative", className)}>
+      <PillLabel label={label} required={required} tooltip={tooltip} />
+      <div
+        className={cn(
+          "flex h-12 items-center rounded-full border-2 bg-transparent transition-shadow focus-within:ring-[3px]",
+          error
+            ? "border-destructive focus-within:ring-destructive/20"
+            : "border-chart-2 focus-within:ring-chart-2/20",
+        )}
+      >
+        {children}
+      </div>
+      {error && <p className="mt-1 ml-4 text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 interface PillTextAreaProps {
   id: string;
   label: string;

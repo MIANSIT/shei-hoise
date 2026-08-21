@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+// Only true for local docker dev, where SUPABASE_PUBLIC_URL points at Kong
+// on localhost — never in production, where it's the real api.sheihoise.com
+// host. Used below to skip server-side image optimization there: the
+// optimizer fetches the source image from *inside* the app container, where
+// "localhost:8000" is the container's own loopback, not the host's Kong —
+// it can never actually reach it. The browser, by contrast, loads that same
+// URL directly just fine (it's on the host), so unoptimized mode — a plain
+// <img> pointed at the original URL — sidesteps the mismatch entirely.
+const isLocalSupabase =
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith("http://localhost") ??
+  false;
+
 const nextConfig: NextConfig = {
   output: "standalone", // ✅ produces a minimal .next/standalone bundle for Docker
 
@@ -31,6 +43,8 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 828, 1080, 1920],
     imageSizes: [96, 256, 384],
     qualities: [75],
+
+    unoptimized: isLocalSupabase,
 
     remotePatterns: [
       {

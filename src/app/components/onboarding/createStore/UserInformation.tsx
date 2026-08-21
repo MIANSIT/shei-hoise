@@ -6,9 +6,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { CreateUserType } from "@/lib/schema/onboarding/user.schema";
-import { PillField } from "../../common/PillField";
+import { PillField, PillShell } from "../../common/PillField";
 import { PasswordField } from "../../common/PasswordField";
 import { PasswordStrength } from "../../common/PasswordStrength";
+import { CountryFlag } from "../../common/CountryFlag";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
 export type AccountValidationReason =
@@ -155,14 +156,14 @@ export default function UserInformation({
           name="profile.country"
           control={control}
           render={({ field }) => (
-            <PillField
-              id="country"
-              label={t.onboarding.country}
-              value={field.value ?? ""}
-              onChange={field.onChange}
-              disabled
-              tooltip={t.onboarding.countryTip}
-            />
+            <PillShell label={t.onboarding.country} tooltip={t.onboarding.countryTip}>
+              <CountryFlag
+                value={field.value || "Bangladesh"}
+                onValueChange={field.onChange}
+                lockToCountry="Bangladesh"
+                className="h-12 w-full rounded-full border-0 bg-transparent px-4 shadow-none focus-visible:ring-0"
+              />
+            </PillShell>
           )}
         />
       </div>

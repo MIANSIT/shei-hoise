@@ -7,11 +7,15 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+export type CreateProductResult =
+  | { success: true; productId: string }
+  | { success: false; error: string };
+
 /**
  * Fully atomic product creation with robust rollback
  * Handles single-variant inactive scenario: sets product status to inactive
  */
-export async function createProduct(product: ProductType) {
+async function createProductInternal(product: ProductType): Promise<string> {
   if (!product.store_id) throw new Error("Store ID is missing");
 
   // ------------------ Frontend/Backend safe checks ------------------
@@ -190,7 +194,7 @@ export async function createProduct(product: ProductType) {
       );
     }
 
-    return productId;
+    return productId!;
   } catch (err: unknown) {
     console.error("❌ createProduct failed:", err);
     try {
@@ -199,5 +203,26 @@ export async function createProduct(product: ProductType) {
       console.error("⚠️ Rollback encountered errors:", rollbackErr);
     }
     throw err; // propagate error to frontend
+  }
+}
+
+// Server Actions have their thrown Error messages redacted in production
+// builds (Next.js replaces them with a generic "Server Components render"
+// digest message, to avoid leaking details by default) — so a thrown Error
+// here never reaches the client with its real text. Returning a result
+// object instead sidesteps that redaction entirely, since return values
+// aren't touched.
+export async function createProduct(
+  product: ProductType,
+): Promise<CreateProductResult> {
+  try {
+    const productId = await createProductInternal(product);
+    return { success: true, productId };
+  } catch (err: unknown) {
+    const error =
+      err instanceof Error
+        ? err.message
+        : "❌ Failed to add product. Please try again.";
+    return { success: false, error };
   }
 }

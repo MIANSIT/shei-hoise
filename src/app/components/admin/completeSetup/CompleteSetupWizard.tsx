@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { RichTextController } from "@/app/components/admin/dashboard/store-settings/storeCard/RichEditor";
 import { ImageUploader } from "@/app/components/admin/dashboard/store-settings/storeCard/ImageUploader";
-import { PillField, PillTextArea } from "@/app/components/common/PillField";
+import { PillField, PillShell, PillTextArea } from "@/app/components/common/PillField";
+import { CurrencySelect } from "@/app/components/common/CurrencySelect";
 import { ShippingManager } from "@/app/components/shipping/ShippingManager";
 import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
 import { useTranslation } from "@/lib/hook/useTranslation";
@@ -395,13 +396,14 @@ export default function CompleteSetupWizard({
             </p>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <PillField
-                id="currency"
-                label={t.completeSetup.currencyLabel}
-                value={String(settings.currency)}
-                onChange={() => {}}
-                disabled
-              />
+              <PillShell label={t.completeSetup.currencyLabel} tooltip={t.completeSetup.currencyTip}>
+                <CurrencySelect
+                  value={String(settings.currency)}
+                  onValueChange={() => {}}
+                  lockToCurrency="BDT"
+                  className="h-12 w-full rounded-full border-0 bg-transparent px-4 shadow-none focus-visible:ring-0"
+                />
+              </PillShell>
               <PillField
                 id="taxRate"
                 type="number"
