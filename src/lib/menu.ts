@@ -22,6 +22,7 @@ import {
   PackageCheck,
   Warehouse,
   Boxes,
+  Sparkles,
 } from "lucide-react";
 import React from "react";
 
@@ -35,10 +36,22 @@ export interface MenuItem {
   // feature enabled — unlike every other gated feature in this app, which
   // keeps its nav link visible and only locks the page itself.
   requiredFeature?: string;
+  // When true, SidebarMenu hides this node once stores.setup_completed_at
+  // is set (post-signup "finish setting up your store" nudge).
+  hideWhenSetupComplete?: boolean;
 }
 
 export const sideMenu: MenuItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
+  {
+    // Hidden once the store's setup_completed_at is set — see the
+    // useEffect in SidebarMenu.tsx that filters this out, mirroring the
+    // requiredFeature filter below.
+    title: "Complete Setup",
+    href: "/dashboard/complete-setup",
+    icon: Sparkles,
+    hideWhenSetupComplete: true,
+  },
   {
     title: "Users",
     icon: User,

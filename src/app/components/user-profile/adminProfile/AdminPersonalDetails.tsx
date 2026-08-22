@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { MapPin, Calendar, UserX } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { CountryFlagBadge } from "@/app/components/common/CountryFlag";
 
 interface ProfileDetails {
   date_of_birth?: string | null;
@@ -117,7 +118,7 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                   {profile.city && <span>{profile.city},</span>}
                   {profile.state && <span> {profile.state},</span>}
                   {profile.postal_code && <span>{profile.postal_code},</span>}
-                  {profile.country && <span> {profile.country}</span>}
+                  {profile.country && <CountryFlagBadge country={profile.country} />}
                 </div>
               </div>
             </div>
