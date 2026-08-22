@@ -71,6 +71,12 @@ export default function UnifiedCheckoutLayout({
   const t = useTranslation();
   const n = useLocalNum();
 
+  // One free-delivery product in the cart waives the fee for the whole order,
+  // no matter how many other items or quantities are in it.
+  const hasFreeDeliveryProduct = cartItems.some(
+    (item) => item.product?.free_delivery === true
+  );
+
   const totalWithShippingAndTax =
     calculations.totalPrice + shippingFee + (taxAmount > 0 ? taxAmount : 0);
 
@@ -276,6 +282,7 @@ export default function UnifiedCheckoutLayout({
                       subtotal={calculations.subtotal}
                       selectedShipping={selectedShipping}
                       onShippingChange={onShippingChange}
+                      hasFreeDeliveryProduct={hasFreeDeliveryProduct}
                     />
                   </div>
 

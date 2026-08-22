@@ -52,6 +52,8 @@ export interface ProductWithVariants {
   tp_price: number | null;
   discounted_price: number | null;
   featured: boolean;
+  /** Waives the delivery fee for any order containing this product. */
+  free_delivery: boolean;
   category_id: string | null;
   category?: Category | null;
   product_images: ProductImage[];
@@ -121,6 +123,7 @@ export async function getProductsWithVariants({
       tp_price,
       status,
       featured,
+      free_delivery,
       discounted_price,
       category_id,
       product_type,
@@ -195,6 +198,7 @@ export async function getProductsWithVariants({
     tp_price: p.tp_price,
     status: p.status ?? ProductStatus.INACTIVE,
     featured: p.featured ?? false,
+    free_delivery: p.free_delivery ?? false,
     discounted_price: p.discounted_price,
     category_id: p.category_id,
     category: p.categories

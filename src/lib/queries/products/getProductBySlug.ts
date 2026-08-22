@@ -35,6 +35,7 @@ interface DbProduct {
   discount_amount: number | null;
   weight?: number | null;
   featured: boolean | string;
+  free_delivery?: boolean | null;
   status: "draft" | "active" | "inactive" | "archived";
   category_id?: string | null;
   created_at: string;
@@ -55,8 +56,10 @@ function mapVariant(v: DbVariant, allImages: ProductImage[] = []) {
     sku: v.sku ?? "",
     base_price: Number(v.base_price ?? 0),
     tp_price: Number(v.tp_price ?? 0),
-    discounted_price: v.discounted_price ?? 0,
-    discount_amount: v.discount_amount ?? 0,
+    // null, not 0 — an absent discount must load as an empty field, and must
+    // stay null on save rather than being written back as a 0 discount.
+    discounted_price: v.discounted_price ?? null,
+    discount_amount: v.discount_amount ?? null,
     attributes: v.attributes ?? null,
     weight: v.weight ?? 0,
     color: v.color ?? "",
@@ -89,6 +92,7 @@ export async function getProductBySlug(
       discount_amount,
       weight,
       featured,
+      free_delivery,
       status,
       category_id,
       categories(id,name),
@@ -147,9 +151,10 @@ export async function getProductBySlug(
     stock: p.product_inventory?.[0]?.quantity_available ?? 0,
     status: p.status,
     featured: p.featured === true || p.featured === "true",
+    free_delivery: p.free_delivery === true,
     category_id: category?.id ?? null,
-    discounted_price: p.discounted_price ?? 0,
-    discount_amount: p.discount_amount ?? 0,
+    discounted_price: p.discounted_price ?? null,
+    discount_amount: p.discount_amount ?? null,
     weight: p.weight ?? 0,
     images: productImages.map((img) => ({
       imageUrl: img.image_url,

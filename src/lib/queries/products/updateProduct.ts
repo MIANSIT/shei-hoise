@@ -41,9 +41,16 @@ export async function updateProduct(data: ProductUpdateType) {
   }
 
   // 1️⃣ Update main product (without stock)
+  // Discount fields are normalised to null when absent: supabase-js drops
+  // undefined keys from the JSON body, so leaving them out would keep the old
+  // sale price on a product whose discount was just removed.
   const { error: productError } = await supabaseAdmin
     .from("products")
-    .update(productData)
+    .update({
+      ...productData,
+      discounted_price: productData.discounted_price ?? null,
+      discount_amount: productData.discount_amount ?? null,
+    })
     .eq("id", id);
   if (productError) throw productError;
 
@@ -68,7 +75,14 @@ export async function updateProduct(data: ProductUpdateType) {
 
   if (variants && variants.length > 0) {
     for (const variant of variants) {
-      const { stock: variantStock, ...variantData } = variant;
+      const { stock: variantStock, ...rest } = variant;
+      // Same normalisation as the product above — a cleared variant discount
+      // must be written as null, not omitted.
+      const variantData = {
+        ...rest,
+        discounted_price: rest.discounted_price ?? null,
+        discount_amount: rest.discount_amount ?? null,
+      };
       let variantId = variant.id;
 
       if (variantId) {

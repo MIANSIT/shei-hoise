@@ -103,6 +103,7 @@ export async function createProduct(product: ProductType) {
         sku: product.sku,
         status: productStatus,
         featured: product.featured,
+        free_delivery: product.free_delivery ?? false,
       })
       .select("id")
       .single();

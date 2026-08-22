@@ -419,6 +419,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "discounted_price" numeric,
     "discount_amount" numeric,
     "tp_price" numeric,
+    "free_delivery" boolean DEFAULT false NOT NULL,
     CONSTRAINT "products_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('draft'::character varying)::"text", ('active'::character varying)::"text", ('inactive'::character varying)::"text", ('archived'::character varying)::"text"])))
 );
 
