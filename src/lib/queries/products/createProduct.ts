@@ -7,12 +7,17 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 /**
  * Fully atomic product creation with robust rollback
  * Handles single-variant inactive scenario: sets product status to inactive
  */
 export async function createProduct(product: ProductType) {
-  if (!product.store_id) throw new Error("Store ID is missing");
+  // product.store_id is caller-supplied — never trust it for authorization.
+  // Always create under the session's own store, regardless of what was sent.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+  product = { ...product, store_id: storeResult.storeId };
 
   // ------------------ Frontend/Backend safe checks ------------------
   if (!product.name?.trim()) throw new Error("❌ Product name is required");

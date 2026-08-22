@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   ExpenseCategory,
   UpdateCategoryInput,
@@ -8,6 +9,11 @@ import {
 export async function updateCategory(
   payload: UpdateCategoryInput,
 ): Promise<ExpenseCategory> {
+  // payload.id is caller-supplied — scope the update to a category that
+  // actually belongs to the caller's own store.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+
   const { data, error } = await supabase
     .from("expense_categories")
     .update({
@@ -19,6 +25,7 @@ export async function updateCategory(
       updated_at: new Date().toISOString(),
     })
     .eq("id", payload.id)
+    .eq("store_id", storeResult.storeId)
     .select()
     .single();
 

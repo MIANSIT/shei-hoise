@@ -38,10 +38,13 @@ export async function getExpenseCategories({
     const to = from + pageSize - 1;
 
     // Build the base query
+    // Every store has its own copy of the "default" categories (one row per
+    // store, is_default just marks it as protected from deletion) — this
+    // must never match another store's rows just because is_default is true.
     let query = supabase
       .from("expense_categories")
       .select("*", { count: "exact" }) // Fixed: changed countType to count
-      .or(`store_id.eq.${storeId},is_default.eq.true`);
+      .eq("store_id", storeId);
 
     // Add search filter if provided
     if (search) {

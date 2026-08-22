@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { RecordVendorSettlementInput } from "@/lib/types/vendor/type";
 
 // Records a settlement visit atomically via the record_vendor_settlement RPC
@@ -13,9 +14,15 @@ export async function recordVendorSettlement(
     throw new Error("At least one settlement item is required");
   }
 
+  // input.store_id is caller-supplied — never trust it for authorization.
+  // Always settle against the session's own store, and the RPC itself
+  // separately verifies the vendor belongs to that store.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+
   const { data, error } = await supabaseAdmin.rpc("record_vendor_settlement", {
     p_vendor_id: input.vendor_id,
-    p_store_id: input.store_id,
+    p_store_id: storeResult.storeId,
     p_settlement_date: input.settlement_date,
     p_items: input.items.map((item) => ({
       product_id: item.product_id,

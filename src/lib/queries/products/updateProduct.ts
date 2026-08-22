@@ -5,11 +5,28 @@ import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export async function updateProduct(data: ProductUpdateType) {
-  const { id, store_id, variants, images, stock, ...productData } = data;
+  const { id, store_id: _clientStoreId, variants, images, stock, ...productData } = data;
 
-  if (!store_id) throw new Error("Store ID is required");
+  // id and data.store_id are caller-supplied — never trust either for
+  // authorization. Resolve the caller's real store and confirm the product
+  // being edited actually belongs to it.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+  const store_id = storeResult.storeId;
+
+  const { data: existingProduct, error: ownerLookupError } = await supabaseAdmin
+    .from("products")
+    .select("store_id")
+    .eq("id", id)
+    .single();
+
+  if (ownerLookupError || !existingProduct) throw new Error("Product not found");
+  if (existingProduct.store_id !== store_id) {
+    throw new Error("You do not have permission to update this product");
+  }
 
   // Whole-set check — this replaces the product's entire variant list at
   // once (delete-then-upsert below), not one variant at a time.
