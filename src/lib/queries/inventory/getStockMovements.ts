@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export interface StockMovement {
   id: string;
@@ -30,6 +31,25 @@ export async function getStockMovements(
   variantId: string | null = null,
   limit: number = 5,
 ): Promise<StockMovement[]> {
+  // stock_movements has no store_id of its own — confirm the product it's
+  // tied to actually belongs to the caller's store before reading its history.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) {
+    console.error("getStockMovements: unauthorized store access attempt");
+    return [];
+  }
+
+  const { data: product, error: productLookupError } = await supabaseAdmin
+    .from("products")
+    .select("store_id")
+    .eq("id", productId)
+    .single();
+
+  if (productLookupError || !product || product.store_id !== storeResult.storeId) {
+    console.error("getStockMovements: product does not belong to caller's store");
+    return [];
+  }
+
   let query = supabaseAdmin
     .from("stock_movements")
     .select(

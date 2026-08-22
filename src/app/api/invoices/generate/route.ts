@@ -100,7 +100,7 @@ function registerBengaliFont(pdf: jsPDF): boolean {
  * Sets Bengali font if the text contains Bengali characters, otherwise keeps
  * the current font unchanged. Call pdf.setFont(...) to restore after use.
  */
-function useBengaliFont(
+function applyBengaliFont(
   pdf: jsPDF,
   text: string,
   bengaliLoaded: boolean,
@@ -244,7 +244,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   pdf.setFontSize(24);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(29, 78, 216);
-  useBengaliFont(pdf, store.name, bengaliLoaded);
+  applyBengaliFont(pdf, store.name, bengaliLoaded);
   pdf.text(store.name, margin, y);
   pdf.setFont("helvetica", "normal"); // restore
 
@@ -259,7 +259,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   contactInfo.forEach((info, index) => {
     pdf.setFont("helvetica", "normal");
-    useBengaliFont(pdf, info, bengaliLoaded);
+    applyBengaliFont(pdf, info, bengaliLoaded);
     pdf.text(info, margin, y + index * lineHeight);
   });
   pdf.setFont("helvetica", "normal"); // restore
@@ -318,7 +318,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   customerInfo.forEach((info, index) => {
     pdf.setFont("helvetica", "normal");
-    useBengaliFont(pdf, info, bengaliLoaded);
+    applyBengaliFont(pdf, info, bengaliLoaded);
     pdf.text(info, margin, y + index * lineHeight);
   });
   pdf.setFont("helvetica", "normal"); // restore
@@ -405,7 +405,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
         pdf.setFontSize(11);
         pdf.setTextColor(0, 0, 0);
         // Label might be Bengali
-        useBengaliFont(pdf, charge.label, bengaliLoaded);
+        applyBengaliFont(pdf, charge.label, bengaliLoaded);
         pdf.text(charge.label, summaryX, summaryY);
         pdf.setFont("helvetica", "normal");
         pdf.text(`${charge.amount.toFixed(2)}`, pageWidth - margin, summaryY, {
@@ -449,7 +449,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     pdf.setFont("helvetica", "italic");
     pdf.text("Notes:", margin, summaryY);
     pdf.setFont("helvetica", "normal");
-    useBengaliFont(pdf, notes, bengaliLoaded);
+    applyBengaliFont(pdf, notes, bengaliLoaded);
 
     const notesLines = pdf.splitTextToSize(notes, pageWidth - 2 * margin);
     notesLines.forEach((line: string, index: number) => {
@@ -486,7 +486,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   pdf.setTextColor(128, 128, 128);
   // Store name in footer may be Bengali
   const thankYouPrefix = "Thank you for choosing ";
-  useBengaliFont(pdf, store.name, bengaliLoaded);
+  applyBengaliFont(pdf, store.name, bengaliLoaded);
   pdf.text(
     `${thankYouPrefix}${store.name}`,
     pageWidth / 2,
@@ -561,14 +561,14 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   // ==================== STORE HEADER ====================
   pdf.setFontSize(12);
   pdf.setFont("courier", "bold");
-  useBengaliFont(pdf, store.name, bengaliLoaded);
+  applyBengaliFont(pdf, store.name, bengaliLoaded);
   pdf.text(store.name, pageWidth / 2, y, { align: "center" });
   pdf.setFont("courier", "normal");
   y += 5;
 
   if (store.address) {
     pdf.setFontSize(8);
-    useBengaliFont(pdf, store.address, bengaliLoaded);
+    applyBengaliFont(pdf, store.address, bengaliLoaded);
     const addressLines = pdf.splitTextToSize(
       store.address,
       pageWidth - 2 * margin,
@@ -626,7 +626,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
       ? customer.name.substring(0, 28) + ".."
       : customer.name;
   pdf.setFont("courier", "normal");
-  useBengaliFont(pdf, customerName, bengaliLoaded);
+  applyBengaliFont(pdf, customerName, bengaliLoaded);
   pdf.text(customerName, margin, y);
   pdf.setFont("courier", "normal");
   y += 3.5;
@@ -639,7 +639,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
 
   if (customer.address) {
     pdf.setFont("courier", "normal");
-    useBengaliFont(pdf, customer.address, bengaliLoaded);
+    applyBengaliFont(pdf, customer.address, bengaliLoaded);
     const addressLines = pdf.splitTextToSize(
       customer.address,
       pageWidth - 2 * margin,
@@ -684,7 +684,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
       itemName = itemName.substring(0, maxChars - 3) + "...";
     }
 
-    useBengaliFont(pdf, itemName, bengaliLoaded);
+    applyBengaliFont(pdf, itemName, bengaliLoaded);
     pdf.text(itemName, margin, y);
     pdf.setFont("courier", "normal");
 
@@ -742,7 +742,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     additionalCharges.forEach((charge) => {
       if (charge.amount !== 0) {
         pdf.setFont("courier", "normal");
-        useBengaliFont(pdf, charge.label, bengaliLoaded);
+        applyBengaliFont(pdf, charge.label, bengaliLoaded);
         pdf.text(`${charge.label}:`, summaryLabelX, y);
         pdf.setFont("courier", "normal");
         pdf.text(`${charge.amount.toFixed(2)}`, summaryValueX, y, {
@@ -792,7 +792,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     y += 3;
 
     pdf.setFont("courier", "normal");
-    useBengaliFont(pdf, notes, bengaliLoaded);
+    applyBengaliFont(pdf, notes, bengaliLoaded);
     const notesLines = pdf.splitTextToSize(notes, pageWidth - 2 * margin);
     notesLines.forEach((line: string) => {
       pdf.text(line, margin, y);
@@ -805,7 +805,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   y += 8;
   pdf.setFontSize(8);
   pdf.setFont("courier", "normal");
-  useBengaliFont(pdf, store.name, bengaliLoaded);
+  applyBengaliFont(pdf, store.name, bengaliLoaded);
   pdf.text(`Thank you for choosing ${store.name}`, pageWidth / 2, y, {
     align: "center",
   });

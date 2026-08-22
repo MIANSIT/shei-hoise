@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export interface OrderShipmentHistoryEntry {
   trackingId: string;
@@ -14,6 +15,20 @@ export interface OrderShipmentHistoryEntry {
 export async function getOrderShipmentHistory(
   orderId: string,
 ): Promise<OrderShipmentHistoryEntry[]> {
+  // orderId is caller-supplied — courier_tracking has no store_id of its
+  // own, so confirm the order it's tied to belongs to the caller's store.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) return [];
+
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select("id")
+    .eq("id", orderId)
+    .eq("store_id", storeResult.storeId)
+    .maybeSingle();
+
+  if (!order) return [];
+
   const { data, error } = await supabaseAdmin
     .from("courier_tracking")
     .select("id, courier, consignment_id, status, created_at")

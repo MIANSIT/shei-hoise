@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { BundleType } from "@/lib/schema/bundleSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
 
 /**
@@ -11,11 +12,27 @@ import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
  * updateProduct.ts's delete-then-upsert approach for variants.
  */
 export async function updateBundle(data: BundleType) {
-  const { id, store_id, images, bundle_items, ...bundleData } = data;
+  const { id, store_id: _clientStoreId, images, bundle_items, ...bundleData } = data;
   if (!id) throw new Error("Bundle ID is required");
-  if (!store_id) throw new Error("Store ID is required");
   if (!bundle_items?.length)
     throw new Error("❌ Add at least one product to the bundle");
+
+  // id and data.store_id are caller-supplied — never trust either. Resolve
+  // the caller's real store and confirm the bundle being edited belongs to it.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+  const store_id = storeResult.storeId;
+
+  const { data: existingBundle, error: ownerLookupError } = await supabaseAdmin
+    .from("products")
+    .select("store_id")
+    .eq("id", id)
+    .single();
+
+  if (ownerLookupError || !existingBundle) throw new Error("Bundle not found");
+  if (existingBundle.store_id !== store_id) {
+    throw new Error("You do not have permission to update this bundle");
+  }
 
   validateBundleOptionGroups(bundle_items);
 

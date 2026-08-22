@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 /**
  * Fully atomic product deletion.
@@ -10,6 +11,22 @@ export async function deleteProduct(productId: string) {
   if (!productId) throw new Error("Product ID is required");
 
   try {
+    // productId is caller-supplied — confirm it belongs to the caller's own
+    // store before deleting anything.
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok) throw new Error(storeResult.error);
+
+    const { data: product, error: productLookupError } = await supabaseAdmin
+      .from("products")
+      .select("store_id")
+      .eq("id", productId)
+      .single();
+
+    if (productLookupError || !product) throw new Error("Product not found");
+    if (product.store_id !== storeResult.storeId) {
+      throw new Error("You do not have permission to delete this product");
+    }
+
     // 1️⃣ Fetch ALL images for this product (including variant images)
     //    product_images rows are linked by product_id regardless of variant_id
     const { data: imagesData, error: imagesError } = await supabaseAdmin
