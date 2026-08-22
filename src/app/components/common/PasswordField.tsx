@@ -15,6 +15,9 @@ interface PasswordFieldProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
+  required?: boolean;
+  tooltip?: string;
+  error?: string;
 }
 
 export function PasswordField({
@@ -27,6 +30,9 @@ export function PasswordField({
   disabled,
   autoFocus,
   className,
+  required,
+  tooltip,
+  error,
 }: PasswordFieldProps) {
   const [show, setShow] = useState(false);
 
@@ -42,6 +48,9 @@ export function PasswordField({
       disabled={disabled}
       autoFocus={autoFocus}
       className={className}
+      required={required}
+      tooltip={tooltip}
+      error={error}
       rightElement={
         <PasswordToggle
           show={show}

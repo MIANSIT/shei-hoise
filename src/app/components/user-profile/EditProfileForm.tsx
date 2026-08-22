@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CountryFlag } from "@/app/components/common/CountryFlag";
 import {
   Card,
   CardContent,
@@ -72,6 +73,7 @@ export function EditProfileForm({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     reset,
@@ -243,10 +245,15 @@ export function EditProfileForm({
 
             <div className="space-y-2">
               <Label htmlFor="country">{t.admin.myProfileCountryLabel}</Label>
-              <Input
-                id="country"
-                {...register("country")}
-                placeholder={t.admin.myProfileCountryPlaceholder}
+              <Controller
+                name="country"
+                control={control}
+                render={({ field }) => (
+                  <CountryFlag
+                    value={field.value || "Bangladesh"}
+                    onValueChange={field.onChange}
+                  />
+                )}
               />
             </div>
           </div>

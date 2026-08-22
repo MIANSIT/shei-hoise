@@ -16,6 +16,8 @@ import {
   type StoreSubscription,
 } from "@/lib/queries/subscription/getStoreSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
+import { getStoreBySlugWithLogo } from "@/lib/queries/stores/getStoreBySlugWithLogo";
+import { onStoreSetupCompleted } from "@/lib/utils/storeSetupEvent";
 
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
@@ -90,12 +92,25 @@ export default function SidebarMenu({
 
   const [couriers, setCouriers] = useState<DeliveryCourier[]>([]);
   const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
+  const [setupCompleted, setSetupCompleted] = useState(false);
 
   useEffect(() => {
     if (!storeId) return;
     getDeliveryCouriers(storeId).then(setCouriers);
     getStoreSubscription(storeId).then(setSubscription);
   }, [storeId]);
+
+  useEffect(() => {
+    if (!storeSlug) return;
+    getStoreBySlugWithLogo(storeSlug).then((store) => {
+      setSetupCompleted(!!store?.setup_completed_at);
+    });
+  }, [storeSlug]);
+
+  // The wizard that finishes setup lives on a different route than the
+  // sidebar (which stays mounted across dashboard navigations), so react to
+  // the broadcast instead of only relying on the fetch above ever re-running.
+  useEffect(() => onStoreSetupCompleted(() => setSetupCompleted(true)), []);
 
   const courierHref = (courier: DeliveryCourier): string => {
     if (courier.type === "pathao") return "/dashboard/courier/pathao";
@@ -114,6 +129,7 @@ export default function SidebarMenu({
   const resolvedMenu = useMemo<MenuItem[]>(() => {
     return sideMenu
       .filter((item) => !item.requiredFeature || hasFeature(subscription, item.requiredFeature))
+      .filter((item) => !item.hideWhenSetupComplete || !setupCompleted)
       .map((item) => {
         if (item.title !== "Courier" || !item.children) return item;
         return {
@@ -128,11 +144,12 @@ export default function SidebarMenu({
           ],
         };
       });
-  }, [couriers, subscription]);
+  }, [couriers, subscription, setupCompleted]);
 
   const translateTitle = (title: string): string => {
     const map: Record<string, string> = {
       "Dashboard": t.admin.menuDashboard,
+      "Complete Setup": t.admin.menuCompleteSetup,
       "Users": t.admin.menuUsers,
       "All Users": t.admin.menuAllUsers,
       "Create Users": t.admin.menuCreateUsers,

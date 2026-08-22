@@ -23,26 +23,21 @@ export default function AddProductPage() {
   if (!user || !user.store_id) return <p>No store found for this user.</p>;
 
   const handleSubmit = async (product: ProductType) => {
-    try {
-      await createProduct(product);
-      success(
-        <div>
-          🎉 <b>{product.name}</b> has been added successfully!
-        </div>
-      );
-      formRef.current?.reset();
-      router.push("/dashboard/products");
-    } catch (err: unknown) {
-      console.error(err);
+    const result = await createProduct(product);
 
-      let errorMessage = "❌ Failed to add product. Please try again.";
-
-      if (err instanceof Error) {
-        errorMessage = err.message; // <-- will now show friendly message for duplicates
-      }
-
-      error(errorMessage);
+    if (!result.success) {
+      console.error("createProduct failed:", result.error);
+      error(result.error);
+      return;
     }
+
+    success(
+      <div>
+        🎉 <b>{product.name}</b> has been added successfully!
+      </div>
+    );
+    formRef.current?.reset();
+    router.push("/dashboard/products");
   };
 
   return (

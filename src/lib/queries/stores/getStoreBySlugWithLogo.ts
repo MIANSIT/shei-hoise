@@ -8,6 +8,8 @@ export interface StoreWithLogo {
   logo_url: string | null;
   description: string | null;
   created_at: string; // <-- Add this
+  setup_completed_at: string | null;
+  setup_progress: string[] | null;
 }
 
 // Cache for store data
@@ -30,7 +32,9 @@ export async function getStoreBySlugWithLogo(
 
     const { data, error } = await supabase
       .from("stores")
-      .select("id, store_name, store_slug, logo_url, description,created_at")
+      .select(
+        "id, store_name, store_slug, logo_url, description, created_at, setup_completed_at, setup_progress",
+      )
       .eq("store_slug", store_slug)
       .single();
 

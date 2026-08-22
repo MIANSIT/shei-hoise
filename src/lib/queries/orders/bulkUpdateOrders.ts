@@ -6,6 +6,7 @@ import {
   PaymentStatus,
   DeliveryOption,
 } from "@/lib/types/enums";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export interface BulkUpdateData {
   orderIds: string[];
@@ -53,7 +54,11 @@ export async function bulkUpdateOrders(
   updateData: BulkUpdateData
 ): Promise<BulkUpdateResult> {
   try {
-    
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok) {
+      return { success: false, error: storeResult.error };
+    }
+    const storeId = storeResult.storeId;
 
     // Validate input
     if (
@@ -103,14 +108,17 @@ export async function bulkUpdateOrders(
       const { data: existingOrders } = await supabaseAdmin
         .from("orders")
         .select("id, status")
-        .in("id", updateData.orderIds);
+        .in("id", updateData.orderIds)
+        .eq("store_id", storeId);
 
       previousStatusByOrderId = Object.fromEntries(
         (existingOrders || []).map((o) => [o.id, o.status])
       );
     }
 
-    // Perform bulk update
+    // Perform bulk update — scoped to the caller's own store, so any ids in
+    // the batch that belong to a different store are silently excluded
+    // rather than updated.
     const {
       data: updatedOrders,
       error: updateError,
@@ -119,6 +127,7 @@ export async function bulkUpdateOrders(
       .from("orders")
       .update(updatePayload)
       .in("id", updateData.orderIds)
+      .eq("store_id", storeId)
       .select(
         "id, status, payment_status, delivery_option, payment_method, notes"
       )
@@ -139,8 +148,13 @@ export async function bulkUpdateOrders(
     // orders whose status is actually changing, not ones already sitting in
     // the target status.
     if (status) {
+      // Derived from updatedOrders (what the store-scoped update actually
+      // touched), not the raw input orderIds — otherwise ids belonging to a
+      // different store would still trigger inventory/courier side-effects
+      // even though the update itself correctly skipped them.
+      const updatedIds = new Set((updatedOrders ?? []).map((o) => o.id));
       const changedOrderIds = updateData.orderIds.filter(
-        (id) => previousStatusByOrderId[id] !== status
+        (id) => updatedIds.has(id) && previousStatusByOrderId[id] !== status
       );
       if (changedOrderIds.length > 0) {
         await handleBulkInventoryUpdates(changedOrderIds, status);
