@@ -71,7 +71,13 @@ const EditProductPage = () => {
         id: updatedProduct.id,
       });
 
-      await updateProduct(payload);
+      const result = await updateProduct(payload);
+
+      if (!result.success) {
+        console.error("Update failed:", result.error);
+        error(result.error);
+        return;
+      }
 
       success(
         <div>
@@ -88,6 +94,9 @@ const EditProductPage = () => {
         }
       }, 1000);
     } catch (err: unknown) {
+      // Only reachable for errors before/outside the updateProduct call
+      // itself (e.g. the productUpdateSchema.parse() above) — updateProduct
+      // no longer throws, it returns { success: false, error }.
       console.error("Update failed:", err);
       if (err instanceof Error) {
         error(err.message);

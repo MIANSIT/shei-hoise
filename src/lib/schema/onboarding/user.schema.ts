@@ -46,7 +46,7 @@ const storeSchema = z.object({
   logo_url: fileOrUrl.optional(), // now optional
   banner_url: fileOrUrl.optional(), // now optional
 
-  description: z.string().optional(),
+  short_description: z.string().max(160, "Keep it under 160 characters").optional(),
 
   status: z.nativeEnum(StoreStatus),
 
@@ -93,7 +93,7 @@ const storeSettingsSchema = z.object({
           .regex(/^\d+(-\d+)?$/, "Must be a number or range (e.g., 2-3)"),
       }),
     )
-    .min(1, { message: "At least one shipping method is required" }),
+    .optional(),
 
   free_shipping_threshold: z.number().min(0).optional(),
   min_order_amount: z.number().min(0),

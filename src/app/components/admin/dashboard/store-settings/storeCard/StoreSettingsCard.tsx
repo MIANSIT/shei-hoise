@@ -12,6 +12,7 @@ import type {
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { Currency, CURRENCY_ICONS } from "@/lib/types/enums";
+import { CurrencySelect } from "@/app/components/common/CurrencySelect";
 import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { getStoreCapiStatus, type StoreCapiStatus } from "@/lib/queries/stores/getStoreCapiStatus";
 import { hasFeature } from "@/lib/utils/planFeatures";
@@ -29,6 +30,8 @@ interface SettingRowProps {
   /** Feature not on the store's plan — show the field disabled with a lock icon + upgrade message, instead of hiding it entirely, so the owner can see what the upgrade unlocks. */
   locked?: boolean;
   lockedMessage?: string;
+  /** Renders the flag-style CurrencySelect (symbol + name, locked to BDT) instead of the plain input/select. */
+  currencySelect?: boolean;
 }
 
 function SettingRow({
@@ -43,6 +46,7 @@ function SettingRow({
   type = "number",
   locked,
   lockedMessage,
+  currencySelect,
 }: SettingRowProps) {
   const [showInfo, setShowInfo] = useState(false);
 
@@ -89,7 +93,15 @@ function SettingRow({
       </div>
 
       <div className="ml-4 shrink-0">
-        {editing && options ? (
+        {currencySelect ? (
+          <CurrencySelect
+            value={String(value ?? "BDT")}
+            onValueChange={(val) => onChange?.(val)}
+            disabled={!editing}
+            lockToCurrency="BDT"
+            className="h-9 w-40 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm shadow-none disabled:cursor-default disabled:opacity-100"
+          />
+        ) : editing && options ? (
           <select
             value={value ?? ""}
             onChange={(e) => onChange?.(e.target.value)}
@@ -279,17 +291,10 @@ export function StoreSettingsCard({
         <div className="space-y-0">
           <SettingRow
             label={t.admin.storeMgmtCurrency}
-            value={
-              editing
-                ? formData.currency
-                : `${currencyIcon} ${formData.currency}`
-            }
+            value={formData.currency}
             info={t.admin.storeMgmtCurrencyInfo}
             editing={editing}
-            options={Object.values(Currency).map((cur) => ({
-              label: `${CURRENCY_ICONS[cur]} ${cur}`,
-              value: cur,
-            }))}
+            currencySelect
             onChange={(val) => handleChange("currency", String(val))}
           />
           <SettingRow

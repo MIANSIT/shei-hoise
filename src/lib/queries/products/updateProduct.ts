@@ -7,7 +7,11 @@ import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
-export async function updateProduct(data: ProductUpdateType) {
+export type UpdateProductResult =
+  | { success: true }
+  | { success: false; error: string };
+
+async function updateProductInternal(data: ProductUpdateType): Promise<void> {
   const { id, store_id: _clientStoreId, variants, images, stock, ...productData } = data;
 
   // id and data.store_id are caller-supplied — never trust either for
@@ -152,6 +156,22 @@ export async function updateProduct(data: ProductUpdateType) {
 
     await uploadOrUpdateProductImages(store_id, id, imagesToSave);
   }
+}
 
-  return true;
+// See createProduct.ts for why this wraps a throwing internal function
+// instead of throwing directly — Server Action errors get their message
+// redacted in production builds unless returned as a normal value.
+export async function updateProduct(
+  data: ProductUpdateType,
+): Promise<UpdateProductResult> {
+  try {
+    await updateProductInternal(data);
+    return { success: true };
+  } catch (err: unknown) {
+    const error =
+      err instanceof Error
+        ? err.message
+        : "Failed to update product. Please try again.";
+    return { success: false, error };
+  }
 }

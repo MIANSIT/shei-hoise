@@ -1,13 +1,23 @@
 import type { NextConfig } from "next";
 
-// Next.js 16 has a confirmed regression (vercel/next.js#88873) where the
-// image optimizer's remotePatterns check rejects valid matches — verified
-// here against http://localhost:8000 (local dev's Kong): the config is
-// correct, the matching logic itself passes in isolation, but the live
-// /_next/image route still 400s with '"url" parameter is not allowed'.
-// Production is unaffected (a normal HTTPS custom domain, the same shape
-// the upstream bug report confirms still works) — this only disables
-// optimization for local dev, where images would otherwise render broken.
+// Only true for local docker dev, where SUPABASE_PUBLIC_URL points at Kong
+// on localhost — never in production, where it's the real api.sheihoise.com
+// host. Used below to skip server-side image optimization there, for two
+// independent reasons that both land on the same fix:
+//  1. Next.js 16 has a confirmed regression (vercel/next.js#88873) where the
+//     optimizer's remotePatterns check rejects valid matches — verified here:
+//     the config is correct and the matching logic passes in isolation, but
+//     the live /_next/image route still 400s with '"url" parameter is not
+//     allowed'.
+//  2. Even without that bug, the optimizer fetches the source image
+//     server-side from *inside* the app container, where "localhost:8000" is
+//     the container's own loopback, not the host's Kong — it could never
+//     actually reach it. The browser, by contrast, loads that same URL
+//     directly just fine (it's on the host).
+// Production is unaffected (a normal HTTPS custom domain, reachable the same
+// way for both the browser and the server). Unoptimized mode — a plain <img>
+// pointed at the original URL, fetched by the browser instead of the server —
+// sidesteps both problems at once.
 const isLocalDev = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").includes("localhost");
 
 const nextConfig: NextConfig = {

@@ -169,15 +169,15 @@ export default function StorePage() {
 
       {/* Sticky section navigation */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border border-border/60 rounded-xl shadow-sm">
-        <nav className="flex items-center gap-1 px-3 py-2 overflow-x-auto scrollbar-none">
-          <span className="text-xs font-semibold text-muted-foreground shrink-0 pr-2 border-r border-border mr-1">
+        <nav className="flex items-center gap-1.5 px-3 py-2.5 overflow-x-auto scrollbar-none">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-chart-2 shrink-0 pr-3 mr-0.5">
             {t.admin.storeMgmtNavHeader}
           </span>
           {navItems.map(({ id, label, icon }) => (
             <a
               key={id}
               href={`#${id}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-chart-2/30 hover:bg-chart-2/10 hover:text-chart-2 transition-all whitespace-nowrap shrink-0"
             >
               {icon}
               {label}
