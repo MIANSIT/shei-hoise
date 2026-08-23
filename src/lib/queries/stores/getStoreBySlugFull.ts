@@ -13,6 +13,7 @@ export interface StoreFull {
   contact_phone: string | null;
   business_address: string | null;
   facebook_pixel_id: string | null;
+  is_active: boolean;
   social: {
     facebook_link: string | null;
     instagram_link: string | null;
@@ -42,7 +43,8 @@ export async function getStoreBySlugFull(store_slug: string): Promise<StoreFull 
       contact_email,
       contact_phone,
       business_address,
-      created_at
+      created_at,
+      is_active
     `)
     .eq("store_slug", store_slug)
     .single();

@@ -76,6 +76,12 @@ export default async function StoreLayout({
   const storeData = await getStoreBySlugFull(store_slug);
   if (!storeData) notFound();
 
+  // Admin can take a store's storefront offline directly (stores.is_active),
+  // independent of billing state.
+  if (!storeData.is_active) {
+    return <StoreOffline storeName={storeData.store_name} />;
+  }
+
   // Storefront stays live through the trial and its grace period — only goes
   // offline once the grace period has fully lapsed with no payment.
   const access = await getStoreAccessStateAdmin(storeData.id);
