@@ -8,6 +8,7 @@ import {
 import { MapPin, Calendar, UserX } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { CountryFlagBadge } from "@/app/components/common/CountryFlag";
 
 // Update the interface to match your data structure
 interface ProfileDetails {
@@ -120,7 +121,12 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                   {profile.city && <span>{profile.city}</span>}
                   {profile.state && <span>, {profile.state}</span>}
                   {profile.postal_code && <span>{profile.postal_code}</span>}
-                  {profile.country && <span>, {profile.country}</span>}
+                  {profile.country && (
+                    <span className="inline-flex items-center gap-1">
+                      ,
+                      <CountryFlagBadge country={profile.country} />
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

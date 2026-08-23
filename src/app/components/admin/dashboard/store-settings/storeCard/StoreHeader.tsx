@@ -156,7 +156,11 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
               priority
             />
           ) : (
-            <div className="absolute inset-0 bg-linear-to-br from-slate-100 via-slate-50 to-zinc-100 dark:from-slate-800/80 dark:via-slate-900 dark:to-zinc-900">
+            <button
+              type="button"
+              onClick={handleOpenModal}
+              className="group absolute inset-0 flex items-center justify-center bg-linear-to-br from-chart-2/10 via-slate-50 to-zinc-100 dark:from-chart-2/10 dark:via-slate-900 dark:to-zinc-900"
+            >
               <div
                 className="absolute inset-0 opacity-30"
                 style={{
@@ -165,9 +169,16 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
                   color: "rgb(148 163 184 / 0.5)",
                 }}
               />
-              <div className="absolute -top-8 -left-8 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
-              <div className="absolute -bottom-8 right-10 h-32 w-32 rounded-full bg-violet-500/5 blur-3xl" />
-            </div>
+              <div className="absolute -top-8 -left-8 h-40 w-40 rounded-full bg-chart-2/10 blur-3xl" />
+              <div className="absolute -bottom-8 right-10 h-32 w-32 rounded-full bg-chart-2/10 blur-3xl" />
+
+              <div className="relative flex flex-col items-center gap-1.5 text-muted-foreground transition-colors group-hover:text-chart-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-current">
+                  <Camera className="h-4 w-4" />
+                </div>
+                <span className="text-xs font-medium">{t.admin.storeMgmtAddBanner}</span>
+              </div>
+            </button>
           )}
           <div className="absolute inset-0 bg-linear-to-t from-card/70 via-transparent to-transparent" />
           <button

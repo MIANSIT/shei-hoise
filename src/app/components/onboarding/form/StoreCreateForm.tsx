@@ -4,6 +4,8 @@ import { Button } from "antd";
 import { Path, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
+import { AdminAuthIllustration } from "@/app/components/layout/auth/AdminAuthIllustration";
 
 import {
   CreateUserType,
@@ -17,11 +19,10 @@ import {
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
-import UserInformation from "@/app/components/onboarding/createStore/UserInformation";
+import UserInformation, {
+  AccountValidationReason,
+} from "@/app/components/onboarding/createStore/UserInformation";
 import StoreInformation from "@/app/components/onboarding/createStore/StoreInformation";
-import FinalizeAccount from "@/app/components/onboarding/createStore/FinalizeAccount";
-import StoreSettings from "@/app/components/onboarding/createStore/StoreSettings";
-import TermsPrivacy from "@/app/components/onboarding/createStore/TermsPrivacy";
 
 interface StoreCreateFormProps {
   onSubmit: (data: CreateUserType, resetForm: () => void) => Promise<void>;
@@ -32,7 +33,10 @@ export default function StoreCreateForm({
   onSubmit,
   loading = false,
 }: StoreCreateFormProps) {
-  const [isFinalStepValid, setIsFinalStepValid] = useState(false);
+  const [isAccountStepValid, setIsAccountStepValid] = useState(false);
+  const [accountValidationReason, setAccountValidationReason] =
+    useState<AccountValidationReason>(null);
+  const [accountValidationAttempt, setAccountValidationAttempt] = useState(0);
   const notify = useSheiNotification();
   const t = useTranslation();
 
@@ -48,7 +52,7 @@ export default function StoreCreateForm({
       store: {
         store_name: "",
         store_slug: "",
-        description: "",
+        short_description: "",
         status: StoreStatus.TRIAL,
         contact_email: "",
         contact_phone: "",
@@ -61,13 +65,11 @@ export default function StoreCreateForm({
       store_settings: {
         currency: Currency.BDT,
         tax_rate: 0,
-        shipping_fees: [
-          {
-            name: "Inside Dhaka",
-            price: 0,
-            estimated_days: "",
-          },
-        ],
+        // No default shipping method — a placeholder fee would mislead
+        // customers before the merchant has set real shipping options.
+        // They configure their own real shipping in the Complete Setup
+        // wizard's Shipping step (embeds ShippingManager directly).
+        shipping_fees: [],
         min_order_amount: 0,
         processing_time_days: 1,
         return_policy_days: 7,
@@ -89,8 +91,32 @@ export default function StoreCreateForm({
 
   const stepsList: StepType[] = [
     {
+      title: t.onboarding.stepStoreInfo,
+      content: <StoreInformation control={control} />,
+      fields: [
+        "store.store_name",
+        "store.store_slug",
+        "store.short_description",
+        "store.logo_url",
+        "store.banner_url",
+        "store.contact_email",
+        "store.contact_phone",
+        "store.business_address",
+      ] as Path<CreateUserType>[],
+    },
+    {
       title: t.onboarding.stepUserInfo,
-      content: <UserInformation control={control} formState={form} />,
+      content: (
+        <UserInformation
+          control={control}
+          formState={form}
+          onValidationChange={(isValid, reason) => {
+            setIsAccountStepValid(isValid);
+            setAccountValidationReason(reason);
+          }}
+          validationAttempt={accountValidationAttempt}
+        />
+      ),
       fields: [
         "user_type",
         "email",
@@ -98,54 +124,8 @@ export default function StoreCreateForm({
         "last_name",
         "phone",
         "profile.country",
-        "profile.city",
+        "password",
       ] as Path<CreateUserType>[],
-    },
-    {
-      title: t.onboarding.stepStoreInfo,
-      content: <StoreInformation control={control} />,
-      fields: [
-        "store.store_name",
-        "store.store_slug",
-        "store.description",
-        "store.logo_url",
-        "store.banner_url",
-        "store.contact_email",
-        "store.contact_phone",
-        "store.business_address",
-        "store.business_license",
-        "store.tax_id",
-      ] as Path<CreateUserType>[],
-    },
-    {
-      title: t.onboarding.stepStoreSettings,
-      content: <StoreSettings control={control} />,
-      fields: [
-        "store_settings.currency",
-        "store_settings.tax_rate",
-        "store_settings.shipping_fees",
-        "store_settings.processing_time_days",
-        "store_settings.return_policy_days",
-      ] as Path<CreateUserType>[],
-    },
-    {
-      title: t.onboarding.stepTermsPrivacy,
-      content: <TermsPrivacy control={control} />,
-      fields: [
-        "store_settings.terms_and_conditions",
-        "store_settings.privacy_policy",
-      ] as Path<CreateUserType>[],
-    },
-    {
-      title: t.onboarding.stepFinalize,
-      content: (
-        <FinalizeAccount
-          control={control}
-          formState={form}
-          onValidationChange={setIsFinalStepValid}
-        />
-      ),
-      fields: ["email", "password"] as Path<CreateUserType>[],
     },
   ];
 
@@ -183,132 +163,176 @@ export default function StoreCreateForm({
     }
   };
 
+  const reasonMessages: Record<Exclude<AccountValidationReason, null>, string> = {
+    confirm_required: t.onboarding.confirmPasswordRequired,
+    confirm_mismatch: t.onboarding.passwordMismatch,
+    terms_required: t.onboarding.mustAcceptTerms,
+  };
+
   const onSubmitForm = (data: CreateUserType) => {
-    if (!isFinalStepValid) {
-      notify.error(t.onboarding.completePassword);
+    if (!isAccountStepValid) {
+      setAccountValidationAttempt((count) => count + 1);
+      notify.error(
+        accountValidationReason
+          ? reasonMessages[accountValidationReason]
+          : t.onboarding.completePassword,
+      );
       return;
     }
     onSubmit(data, reset);
   };
 
-  return (
-    <div className='max-w-5xl mx-auto p-4 md:p-6 flex flex-col md:flex-col'>
-      {/* Desktop: Top Horizontal Steps with Names */}
-      <div className='hidden md:flex mb-6 justify-between items-center'>
-        {steps.map((step, idx) => (
-          <div key={idx} className='flex-1 flex items-center'>
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
-            ${
-              currentStep === idx
-                ? "bg-blue-500 text-white"
-                : idx < currentStep
-                ? "bg-blue-200 text-blue-600"
-                : "bg-gray-200 text-gray-500"
-            }
-          `}
-            >
-              {idx + 1}
-            </div>
-            <span
-              className={`ml-2 font-medium text-sm
-          ${
-            currentStep === idx
-              ? "text-blue-500"
-              : idx < currentStep
-              ? "text-blue-600"
-              : "text-gray-500"
-          }
-        `}
-            >
-              {step.title}
-            </span>
+  const sidebarBullets = [
+    t.onboarding.sidebarBullet1,
+    t.onboarding.sidebarBullet2,
+    t.onboarding.sidebarBullet3,
+    t.onboarding.sidebarBullet4,
+    t.onboarding.sidebarBullet5,
+    t.onboarding.sidebarBullet6,
+  ];
 
-            {idx < steps.length - 1 && (
-              <div
-                className={`flex-1 h-1 mx-2
-            ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}
-          `}
-              ></div>
-            )}
-          </div>
-        ))}
+  return (
+    <div className='mx-auto flex w-full max-w-6xl flex-col p-4 md:p-6'>
+      {/* Trust strip */}
+      <div className='mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground'>
+        <ShieldCheck className='h-3.5 w-3.5 text-chart-2' />
+        <span>
+          {t.onboarding.trustStripPrefix}
+          <span className='font-medium text-foreground'>{t.onboarding.trustStripBold}</span>
+          {t.onboarding.trustStripSuffix}
+        </span>
       </div>
 
-      <div className='flex flex-1 items-center'>
-        {/* Mobile: Vertical Sidebar with line & numbers */}
-        <div className='flex md:hidden flex-col items-center mr-4 top-4 h-screen'>
-          {" "}
-          {steps.map((_step, idx) => (
-            <div key={idx} className='flex flex-col items-center mb-4'>
-              <button
-                onClick={() => handleStepClick(idx)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors duration-200
-              ${
-                currentStep === idx
-                  ? "bg-blue-500 text-white"
-                  : idx < currentStep
-                  ? "bg-blue-200 text-blue-600"
-                  : "bg-gray-200 text-gray-500"
-              }
-            `}
-              >
-                {idx + 1}
-              </button>
-
-              {idx < steps.length - 1 && (
-                <div
-                  className={`w-1 h-8
-              ${idx < currentStep ? "bg-blue-500" : "bg-gray-200"}
-            `}
-                ></div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Form Content */}
-        <div className='flex-1 bg-card shadow-lg rounded-xl p-6'>
-          {currentContent}
-
-          {/* Navigation Buttons */}
-          <div className='mt-6 flex justify-between items-center'>
-            {!isFirst && (
-              <Button onClick={prev} type='default'>
-                {t.onboarding.previous}
-              </Button>
-            )}
-
-            <div className='flex-1 flex justify-end'>
-              {!isLast ? (
-                <Button type='primary' onClick={handleNext} htmlType='button'>
-                  {t.onboarding.next}
-                </Button>
-              ) : (
-                <Button
-                  type='primary'
-                  onClick={handleSubmit(onSubmitForm)}
-                  loading={loading}
-                  disabled={!isFinalStepValid}
-                  className='rounded-lg px-6 py-2 font-semibold transition-colors duration-200'
-                  style={{ backgroundColor: "var(--chart-2)", border: "none" }}
-                  onMouseEnter={(e) => {
-                    (
-                      e.currentTarget as HTMLButtonElement
-                    ).style.backgroundColor = "var(--badge)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (
-                      e.currentTarget as HTMLButtonElement
-                    ).style.backgroundColor = "var(--chart-2)";
-                  }}
+      <div className='flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-center'>
+        <div className='flex w-full max-w-2xl flex-col items-center'>
+          {/* Step indicator — centered above the form itself, not the whole row */}
+          <div className='mb-8 flex items-center justify-center gap-3 sm:gap-4'>
+            {steps.map((step, idx) => (
+              <div key={idx} className='flex items-center gap-3 sm:gap-4'>
+                <button
+                  type='button'
+                  onClick={() => handleStepClick(idx)}
+                  className='flex flex-col items-center gap-2'
                 >
-                  {t.onboarding.requestOnboard}
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-200 ${
+                      currentStep === idx
+                        ? "bg-chart-2 text-white ring-4 ring-chart-2/20"
+                        : idx < currentStep
+                        ? "border-2 border-chart-2 bg-chart-2/10 text-chart-2"
+                        : "border-2 border-border bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {idx + 1}
+                  </span>
+                  <span
+                    className={`whitespace-nowrap text-xs font-medium ${
+                      currentStep === idx
+                        ? "text-chart-2"
+                        : idx < currentStep
+                        ? "text-chart-2/70"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {step.title}
+                  </span>
+                </button>
+
+                {idx < steps.length - 1 && (
+                  <div
+                    className={`h-0.5 w-12 rounded-full transition-colors duration-200 sm:w-24 ${
+                      idx < currentStep ? "bg-chart-2" : "bg-border"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Form Content */}
+          <div className='w-full rounded-3xl border border-chart-2/10 bg-card p-6 shadow-2xl shadow-chart-2/10 md:p-10'>
+            {currentContent}
+
+            {/* Navigation Buttons */}
+            <div className='mt-8 flex items-center justify-between'>
+              {!isFirst && (
+                <Button onClick={prev} type='default' className='rounded-full px-6'>
+                  {t.onboarding.previous}
                 </Button>
               )}
+
+              <div className='flex-1 flex justify-end'>
+                {!isLast ? (
+                  <Button
+                    type='primary'
+                    onClick={handleNext}
+                    htmlType='button'
+                    className='rounded-full px-8 font-semibold shadow-lg shadow-chart-2/30'
+                    style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                    onMouseEnter={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--badge)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--chart-2)";
+                    }}
+                  >
+                    {t.onboarding.next}
+                  </Button>
+                ) : (
+                  <Button
+                    type='primary'
+                    onClick={handleSubmit(onSubmitForm)}
+                    loading={loading}
+                    className='rounded-full px-8 py-2 font-semibold shadow-lg shadow-chart-2/30 transition-colors duration-200'
+                    style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                    onMouseEnter={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--badge)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "var(--chart-2)";
+                    }}
+                  >
+                    {t.onboarding.requestOnboard}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Brand panel — desktop/wide screens only, fills the space beside the form */}
+        <aside className='sticky top-6 hidden w-85 shrink-0 flex-col lg:order-first lg:flex'>
+          <span className='text-xs font-bold uppercase tracking-widest text-chart-2'>
+            {t.onboarding.sidebarEyebrow}
+          </span>
+          <h2 className='mt-2 text-2xl font-semibold text-foreground'>
+            {t.onboarding.sidebarHeadline}
+          </h2>
+          <p className='mt-2 text-sm text-muted-foreground'>
+            {t.onboarding.sidebarSubtext}
+          </p>
+
+          <ul className='mt-5 space-y-3'>
+            {sidebarBullets.map((bullet) => (
+              <li key={bullet} className='flex items-start gap-2 text-sm text-foreground'>
+                <CheckCircle2 className='mt-0.5 h-4 w-4 shrink-0 text-chart-2' />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className='mt-6 aspect-4/3 overflow-hidden rounded-3xl shadow-2xl shadow-chart-2/20 ring-1 ring-chart-2/15'>
+            <AdminAuthIllustration />
+          </div>
+        </aside>
       </div>
     </div>
   );

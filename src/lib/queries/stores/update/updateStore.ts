@@ -31,6 +31,7 @@ export async function updateStore(
     business_address,
     tax_id,
     business_license,
+    setup_progress,
   } = payload;
 
   const { data, error } = await supabaseAdmin
@@ -49,6 +50,7 @@ export async function updateStore(
       business_address,
       tax_id,
       business_license,
+      setup_progress,
       updated_at: new Date().toISOString(),
     })
     .eq("id", storeId)

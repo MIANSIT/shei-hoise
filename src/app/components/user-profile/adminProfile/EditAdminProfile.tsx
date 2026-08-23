@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CountryFlag } from "@/app/components/common/CountryFlag";
 import {
   Card,
   CardContent,
@@ -65,6 +66,7 @@ export function EditProfileForm({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<ProfileFormData>({
@@ -262,11 +264,20 @@ export function EditProfileForm({
 
             <div className="space-y-2">
               <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                {...register("country")}
-                placeholder="Country"
+              <Controller
+                name="country"
+                control={control}
+                render={({ field }) => (
+                  <CountryFlag
+                    value={field.value || "Bangladesh"}
+                    onValueChange={field.onChange}
+                    lockToCountry="Bangladesh"
+                  />
+                )}
               />
+              <div className="text-xs text-gray-500">
+                Shei Hoise is currently only available for stores in Bangladesh
+              </div>
             </div>
           </div>
 

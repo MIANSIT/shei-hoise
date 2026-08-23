@@ -28,6 +28,8 @@ import TrialEnded from "@/app/components/admin/StoreStatus/TrialEnded";
 import AccessRestricted from "@/app/components/admin/StoreStatus/AccessRestricted";
 import SubscriptionLocked from "@/app/components/admin/StoreStatus/SubscriptionLocked";
 import GracePeriodBanner from "@/app/components/admin/StoreStatus/GracePeriodBanner";
+import SetupChecklistBanner from "@/app/components/admin/common/SetupChecklistBanner";
+import { onStoreSetupCompleted, onStoreSetupProgress } from "@/lib/utils/storeSetupEvent";
 import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { getSubscriptionAccessState } from "@/lib/utils/subscriptionAccess";
 import LanguageSwitcher from "@/app/components/common/LanguageSwitcher";
@@ -103,6 +105,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       cancelled = true;
     };
   }, [storeSlug]);
+
+  // Setup can be finished/dismissed from a different route (the wizard at
+  // /dashboard/complete-setup) than this layout, which stays mounted across
+  // navigations — so react to the broadcast instead of only relying on the
+  // fetch above ever re-running.
+  useEffect(() => {
+    return onStoreSetupCompleted(() => {
+      setStore((prev) =>
+        prev ? { ...prev, setup_completed_at: new Date().toISOString() } : prev,
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    return onStoreSetupProgress((steps) => {
+      setStore((prev) => (prev ? { ...prev, setup_progress: steps } : prev));
+    });
+  }, []);
 
   useEffect(() => {
     if (!storeId) {
@@ -479,6 +499,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
               {accessState.state === "grace" && (
                 <GracePeriodBanner daysLeftInGrace={accessState.daysLeftInGrace} />
+              )}
+
+              {store && storeId && !store.setup_completed_at && (
+                <SetupChecklistBanner
+                  storeId={storeId}
+                  storeSlug={store.store_slug}
+                  setupProgress={store.setup_progress ?? []}
+                />
               )}
 
               <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">

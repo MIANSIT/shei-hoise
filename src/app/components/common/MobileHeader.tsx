@@ -23,7 +23,7 @@ export default function MobileHeader() {
 
   const navLinks: NavLink[] = [
     { name: t.nav.home, path: "/" },
-    { name: t.landing.requestDemo, path: "/#request-demo" },
+    { name: t.landing.getStore, path: "/onboarding" },
   ];
 
   return (
