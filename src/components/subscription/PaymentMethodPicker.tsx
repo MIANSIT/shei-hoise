@@ -37,7 +37,7 @@ function RadioDot({ selected, color }: { selected: boolean; color: string }) {
   return (
     <div
       className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-        selected ? `border-${color}-500 bg-${color}-500` : "border-gray-300 dark:border-gray-600"
+        selected ? `border-${color}-500 bg-${color}-500` : "border-border"
       }`}
     >
       {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -68,26 +68,26 @@ function BkashCard({
       className={`rounded-xl border-2 transition-all duration-200 overflow-hidden cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-pink-400 ${
         selected
           ? "border-pink-400 dark:border-pink-500 shadow-lg shadow-pink-100 dark:shadow-pink-900/20"
-          : "border-gray-200 dark:border-gray-700 hover:border-pink-300 dark:hover:border-pink-600"
+          : "border-border hover:border-pink-300 dark:hover:border-pink-600"
       }`}
     >
       <div
         className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${
-          selected ? "bg-pink-50 dark:bg-pink-950/40" : "bg-gray-50 dark:bg-gray-800/60"
+          selected ? "bg-pink-50 dark:bg-pink-950/40" : "bg-background/60"
         }`}
       >
         <div className="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center shrink-0">
           <Smartphone className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{t.admin.subMethodBkash}</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.subPersonal} · {BKASH.number}</p>
+          <p className="text-sm font-bold text-foreground">{t.admin.subMethodBkash}</p>
+          <p className="text-[11px] text-muted-foreground">{t.admin.subPersonal} · {BKASH.number}</p>
         </div>
         <RadioDot selected={selected} color="pink" />
       </div>
 
       {selected && (
-        <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-white dark:bg-gray-900 space-y-3">
+        <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-card space-y-3">
           <div className="rounded-lg bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-800 p-4">
             <p className="text-[10px] font-bold text-pink-500 dark:text-pink-400 uppercase tracking-wide mb-1.5">
               {t.admin.subSendExactly}
@@ -97,23 +97,23 @@ function BkashCard({
             </p>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg bg-background border border-border px-3 py-2.5">
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subSendTo}</p>
-              <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{BKASH.number}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t.admin.subSendTo}</p>
+              <p className="text-sm font-bold font-mono text-foreground">{BKASH.number}</p>
             </div>
             <CopyBtn text={BKASH.number} />
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg bg-background border border-border px-3 py-2.5">
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subColReference}</p>
-              <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{invoiceNumber}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t.admin.subColReference}</p>
+              <p className="text-sm font-bold font-mono text-foreground">{invoiceNumber}</p>
             </div>
             <CopyBtn text={invoiceNumber} />
           </div>
 
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
             {t.admin.subBkashInstructions}
           </p>
         </div>
@@ -143,26 +143,26 @@ function NagadCard({
       className={`rounded-xl border-2 transition-all duration-200 overflow-hidden cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
         selected
           ? "border-orange-400 dark:border-orange-500 shadow-lg shadow-orange-100 dark:shadow-orange-900/20"
-          : "border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600"
+          : "border-border hover:border-orange-300 dark:hover:border-orange-600"
       }`}
     >
       <div
         className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${
-          selected ? "bg-orange-50 dark:bg-orange-950/40" : "bg-gray-50 dark:bg-gray-800/60"
+          selected ? "bg-orange-50 dark:bg-orange-950/40" : "bg-background/60"
         }`}
       >
         <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
           <Smartphone className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{t.admin.subMethodNagad}</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.subPersonal} · {NAGAD.number}</p>
+          <p className="text-sm font-bold text-foreground">{t.admin.subMethodNagad}</p>
+          <p className="text-[11px] text-muted-foreground">{t.admin.subPersonal} · {NAGAD.number}</p>
         </div>
         <RadioDot selected={selected} color="orange" />
       </div>
 
       {selected && (
-        <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-white dark:bg-gray-900 space-y-3">
+        <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-card space-y-3">
           <div className="rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 p-4">
             <p className="text-[10px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wide mb-1.5">
               {t.admin.subSendExactly}
@@ -172,23 +172,23 @@ function NagadCard({
             </p>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg bg-background border border-border px-3 py-2.5">
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subSendTo}</p>
-              <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{NAGAD.number}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t.admin.subSendTo}</p>
+              <p className="text-sm font-bold font-mono text-foreground">{NAGAD.number}</p>
             </div>
             <CopyBtn text={NAGAD.number} />
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg bg-background border border-border px-3 py-2.5">
             <div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{t.admin.subColReference}</p>
-              <p className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200">{invoiceNumber}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t.admin.subColReference}</p>
+              <p className="text-sm font-bold font-mono text-foreground">{invoiceNumber}</p>
             </div>
             <CopyBtn text={invoiceNumber} />
           </div>
 
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
             {t.admin.subNagadInstructions}
           </p>
         </div>
@@ -225,41 +225,41 @@ function BankCard({
       className={`rounded-xl border-2 transition-all duration-200 overflow-hidden cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
         selected
           ? "border-blue-400 dark:border-blue-500 shadow-lg shadow-blue-100 dark:shadow-blue-900/20"
-          : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
+          : "border-border hover:border-blue-300 dark:hover:border-blue-600"
       }`}
     >
       <div
         className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${
-          selected ? "bg-blue-50 dark:bg-blue-950/40" : "bg-gray-50 dark:bg-gray-800/60"
+          selected ? "bg-blue-50 dark:bg-blue-950/40" : "bg-background/60"
         }`}
       >
         <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
           <Landmark className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{t.admin.subMethodBankTransfer}</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.admin.subBankSubLabel}</p>
+          <p className="text-sm font-bold text-foreground">{t.admin.subMethodBankTransfer}</p>
+          <p className="text-[11px] text-muted-foreground">{t.admin.subBankSubLabel}</p>
         </div>
         <RadioDot selected={selected} color="blue" />
       </div>
 
       {selected && (
-        <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-white dark:bg-gray-900 space-y-1">
+        <div onClick={(e) => e.stopPropagation()} className="px-4 pt-4 pb-5 bg-card space-y-1">
           {rows.map(({ label, value }) => (
             <div
               key={label}
-              className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0"
+              className="flex items-center justify-between py-2 border-b border-border last:border-0"
             >
-              <span className="text-[11px] text-gray-400 dark:text-gray-500 w-28 shrink-0">{label}</span>
+              <span className="text-[11px] text-muted-foreground w-28 shrink-0">{label}</span>
               <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-                <span className="text-[13px] font-semibold font-mono text-gray-800 dark:text-gray-200 truncate">
+                <span className="text-[13px] font-semibold font-mono text-foreground truncate">
                   {value}
                 </span>
                 <CopyBtn text={value} />
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 pt-2 leading-relaxed">
+          <p className="text-[11px] text-muted-foreground pt-2 leading-relaxed">
             {t.admin.subBankInstructions}
           </p>
         </div>

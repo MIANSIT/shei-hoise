@@ -35,14 +35,14 @@ export function DeleteConfirmModal({
       }
     >
       <div className="py-2">
-        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+        <p className="text-muted-foreground text-sm leading-relaxed">
           Are you sure you want to delete{" "}
-          <span className="font-semibold text-gray-900 dark:text-gray-300">
+          <span className="font-semibold text-foreground">
             {target?.name}
           </span>
           ?
         </p>
-        <p className="text-gray-400 dark:text-gray-100 text-xs mt-2">
+        <p className="text-muted-foreground text-xs mt-2">
           This action cannot be undone. Expenses linked to this category may be
           affected.
         </p>

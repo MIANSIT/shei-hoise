@@ -3,7 +3,7 @@ import { ProductGridSkeleton } from "./ProductGridSkeleton";
 
 export function StorePageSkeleton() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-card">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* ── Filter bar skeleton — mirrors ProductFilterSection ── */}
         <FilterBarSkeleton />
@@ -29,7 +29,7 @@ function FilterBarSkeleton() {
         {[64, 72, 56].map((w, i) => (
           <div
             key={i}
-            className="h-9 rounded-xl bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0"
+            className="h-9 rounded-xl bg-muted relative overflow-hidden shrink-0"
             style={{ width: `${w}px`, animationDelay: `${i * 60}ms` }}
           >
             <Shimmer />
@@ -38,10 +38,10 @@ function FilterBarSkeleton() {
       </div>
 
       {/* Right: search bar */}
-      <div className="h-9 w-full sm:w-56 rounded-xl bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+      <div className="h-9 w-full sm:w-56 rounded-xl bg-muted relative overflow-hidden shrink-0">
         <Shimmer />
         {/* Fake search icon hint */}
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-gray-200 dark:bg-gray-700" />
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-muted" />
       </div>
     </div>
   );

@@ -9,13 +9,13 @@ export default function LanguageSwitcher() {
     <button
       onClick={toggle}
       aria-label="Switch language"
-      className="flex items-center gap-0.5 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-[11px] font-bold tracking-wide transition-colors hover:border-gray-400 dark:hover:border-gray-500"
+      className="flex items-center gap-0.5 rounded-lg border border-border overflow-hidden text-[11px] font-bold tracking-wide transition-colors hover:border-border"
     >
       <span
         className={`px-2 py-1.5 transition-colors ${
           lang === "en"
-            ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-            : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
         }`}
       >
         EN
@@ -23,8 +23,8 @@ export default function LanguageSwitcher() {
       <span
         className={`px-2 py-1.5 transition-colors ${
           lang === "bn"
-            ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-            : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
         }`}
       >
         বাং

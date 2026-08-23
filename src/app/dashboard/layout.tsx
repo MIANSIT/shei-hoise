@@ -353,12 +353,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
         components: {
           Menu: {
-            itemColor: theme === "dark" ? "#d1d5db" : "#374151",
-            itemHoverBg: theme === "dark" ? "#1f2937" : "#000000",
-            itemHoverColor: theme === "dark" ? "#e5e7eb" : "#e5e7eb",
-            itemSelectedBg: theme === "dark" ? "#374151" : "#000000",
-            itemSelectedColor: "#ffffff",
-            groupTitleColor: theme === "dark" ? "#d1d5db" : "#374151",
+            itemColor: "var(--sidebar-foreground)",
+            // --accent equals --sidebar-accent in dark mode but is a
+            // distinct blue-tinted tone in light mode (where --sidebar-accent
+            // is indistinguishable from the sidebar background itself) — one
+            // token pair that works as a visible hover in both themes.
+            itemHoverBg: "var(--accent)",
+            itemHoverColor: "var(--accent-foreground)",
+            itemSelectedBg: "var(--sidebar-primary)",
+            itemSelectedColor: "var(--sidebar-primary-foreground)",
+            groupTitleColor: "var(--sidebar-foreground)",
           },
           Drawer: {
             colorBgElevated: "var(--sidebar)",
@@ -416,7 +420,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     newTheme === "dark",
                   );
                 }}
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition shrink-0"
+                className="p-2 rounded-full hover:bg-muted transition shrink-0"
               >
                 {theme === "light" ? (
                   <Moon className="w-5 h-5" />
@@ -431,41 +435,49 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </header>
 
           <div className="flex flex-1 min-h-0">
-            {/* Desktop Sidebar - Hidden on mobile */}
-            {!isMobile && (
-              <div
-                className="sticky top-0 h-full shadow-md transition-all duration-300"
-                style={{ background: "var(--sidebar)" }}
-              >
-                <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
-              </div>
-            )}
+            {/* Antd's submenu-title "open" highlight (e.g. "Users" while
+                "All Users" is selected) draws from the global colorPrimary
+                token, not the Menu component tokens above — nesting a
+                ConfigProvider here scopes the fix to the sidebar's own accent
+                (matching --sidebar-primary) without touching colorPrimary for
+                every other antd component in the dashboard. */}
+            <ConfigProvider theme={{ token: { colorPrimary: "#00bc7d" } }}>
+              {/* Desktop Sidebar - Hidden on mobile */}
+              {!isMobile && (
+                <div
+                  className="sticky top-0 h-full shadow-md transition-all duration-300"
+                  style={{ background: "var(--sidebar)" }}
+                >
+                  <Sidebar collapsed={!isSidebarOpen} themeMode={theme} />
+                </div>
+              )}
 
-            {/* Mobile Drawer for Sidebar - Now takes 100% width */}
-            <Drawer
-              title={t.admin.menu}
-              placement="bottom"
-              open={mobileDrawerOpen}
-              onClose={() => setMobileDrawerOpen(false)}
-              size="100%"
-              closable={true} // <-- ensures default X shows
-              styles={{
-                body: { padding: 0 },
-                header: {
-                  padding: "16px 20px",
-                  borderBottom: "1px solid var(--border)",
-                },
-              }}
-            >
-              <div className="h-full">
-                <Sidebar
-                  collapsed={false}
-                  themeMode={theme}
-                  isMobile={true}
-                  onMobileMenuClick={() => setMobileDrawerOpen(false)}
-                />
-              </div>
-            </Drawer>
+              {/* Mobile Drawer for Sidebar - Now takes 100% width */}
+              <Drawer
+                title={t.admin.menu}
+                placement="bottom"
+                open={mobileDrawerOpen}
+                onClose={() => setMobileDrawerOpen(false)}
+                size="100%"
+                closable={true} // <-- ensures default X shows
+                styles={{
+                  body: { padding: 0 },
+                  header: {
+                    padding: "16px 20px",
+                    borderBottom: "1px solid var(--border)",
+                  },
+                }}
+              >
+                <div className="h-full">
+                  <Sidebar
+                    collapsed={false}
+                    themeMode={theme}
+                    isMobile={true}
+                    onMobileMenuClick={() => setMobileDrawerOpen(false)}
+                  />
+                </div>
+              </Drawer>
+            </ConfigProvider>
 
             {/* Main content */}
             <main
@@ -481,7 +493,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <GracePeriodBanner daysLeftInGrace={accessState.daysLeftInGrace} />
               )}
 
-              <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center p-2 bg-card shadow-sm border-b border-border">
                 <Breadcrumb />
                 {store && storeStatus && (
                   <StoreStatusPopup
@@ -494,7 +506,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
 
               <div
-                className="flex-1 p-3 bg-gray-50 dark:bg-gray-950"
+                className="flex-1 p-3 bg-background"
                 ref={mainContentRef}
               >
                 {children}

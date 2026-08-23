@@ -75,7 +75,7 @@ export function ExpenseDetailDrawer({
       <ExpenseDetailContent expense={expense} currencyIcon={currencyIcon} />
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex gap-2 mt-2">
+      <div className="px-5 py-4 border-t border-border bg-card flex gap-2 mt-2">
         <Button
           block
           icon={<EditOutlined />}

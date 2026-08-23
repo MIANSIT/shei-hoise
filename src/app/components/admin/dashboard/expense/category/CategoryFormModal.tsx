@@ -85,7 +85,7 @@ export function CategoryFormModal({
       className="expense-modal"
       style={{ borderRadius: 20, overflow: "hidden" }}
       title={
-        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-700">
+        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-border">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}
@@ -96,13 +96,13 @@ export function CategoryFormModal({
               <PlusOutlined style={{ color: "white", fontSize: 14 }} />
             )}
           </div>
-          <span className="text-base font-bold text-gray-900 dark:text-white">
+          <span className="text-base font-bold text-foreground">
             {editingCategory ? t.admin.catEditTitle : t.admin.catNewTitle}
           </span>
         </div>
       }
       footer={
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
           <Button
             className="rounded-xl h-9 font-medium"
             onClick={handleCancel}
@@ -145,7 +145,7 @@ export function CategoryFormModal({
           <Form.Item
             name="name"
             label={
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-foreground">
                 {t.admin.catNameLabel}
               </span>
             }
@@ -161,7 +161,7 @@ export function CategoryFormModal({
           <Form.Item
             name="description"
             label={
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-foreground">
                 {t.admin.catDescLabel}
               </span>
             }
@@ -177,7 +177,7 @@ export function CategoryFormModal({
           <Form.Item
             name="color"
             label={
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-foreground">
                 {t.admin.catColorLabel}
               </span>
             }
@@ -188,7 +188,7 @@ export function CategoryFormModal({
           <Form.Item
             name="icon"
             label={
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-foreground">
                 {t.admin.catIconLabel}
               </span>
             }
@@ -199,7 +199,7 @@ export function CategoryFormModal({
           <Form.Item
             name="is_active"
             label={
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-foreground">
                 {t.admin.catActiveLabel}
               </span>
             }

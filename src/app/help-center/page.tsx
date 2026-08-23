@@ -18,7 +18,7 @@ export default function HelpCenterPage() {
         <h1 className="text-4xl sm:text-5xl font-extrabold mb-3 sm:mb-4">
           Help Center
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 text-lg sm:text-xl max-w-2xl">
+        <p className="text-muted-foreground text-lg sm:text-xl max-w-2xl">
           We’re here to help you. Reach out through any of the channels below or
           explore our resources.
         </p>
@@ -37,7 +37,7 @@ export default function HelpCenterPage() {
               <h3 className="font-semibold text-lg">Phone</h3>
               <Link
                 href={CONTACT_INFO.phoneHref}
-                className="text-gray-500 dark:text-gray-400 hover:text-ring hover:underline"
+                className="text-muted-foreground hover:text-ring hover:underline"
               >
                 {CONTACT_INFO.phone}
               </Link>
@@ -70,7 +70,7 @@ export default function HelpCenterPage() {
             </div>
             <div>
               <h3 className="font-semibold text-lg">Address</h3>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-muted-foreground">
                 {CONTACT_INFO.address}
               </p>
             </div>

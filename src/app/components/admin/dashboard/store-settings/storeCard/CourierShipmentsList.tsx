@@ -63,7 +63,7 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
 
   if (shipments === null) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-center">
+      <div className="rounded-2xl border border-border bg-card p-6 text-center">
         <p className="text-sm text-muted-foreground">{t.admin.loading}</p>
       </div>
     );
@@ -71,12 +71,12 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
 
   if (shipments.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-center">
+      <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center">
         <PackageSearch className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <p className="text-sm font-medium text-foreground">
           {t.admin.pathaoNoShipmentsTitle}
         </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           {t.admin.pathaoNoShipmentsHint}
         </p>
       </div>
@@ -95,9 +95,9 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
         return (
           <div
             key={s.trackingId}
-            className={`rounded-xl border border-l-4 bg-white dark:bg-gray-800 overflow-hidden ${
+            className={`rounded-xl border border-l-4 bg-card overflow-hidden ${
               statusStyle.border
-            } ${s.isActive ? "border-gray-200 dark:border-gray-700" : "border-gray-200 dark:border-gray-700 opacity-70"}`}
+            } ${s.isActive ? "border-border" : "border-border opacity-70"}`}
           >
             <div className="flex flex-wrap items-center gap-3 px-4 py-3">
               <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -168,7 +168,7 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
             </div>
 
             {isExpanded && (
-              <div className="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3.5">
+              <div className="border-t border-border bg-background/40 px-4 py-3.5">
                 {!d ? (
                   <p className="text-xs text-muted-foreground">{t.admin.pathaoDetailsUnavailable}</p>
                 ) : d.courier === "pathao" ? (
@@ -215,7 +215,7 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
                     )}
                   </div>
                 )}
-                <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-border">
                   {t.admin.pathaoFinancialLedgerNote}
                 </p>
               </div>

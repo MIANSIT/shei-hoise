@@ -101,8 +101,8 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
         <div
           key={stat.title}
           className="
-            bg-white dark:bg-gray-800
-            border border-gray-100 dark:border-gray-700
+            bg-card
+            border border-border
             rounded-2xl p-4 sm:p-5
             flex items-center gap-4
             shadow-sm hover:shadow-md
@@ -117,11 +117,11 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-widest m-0">
+            <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-widest m-0">
               {stat.title}
             </p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight tabular-nums">
+              <span className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight tabular-nums">
                 {stat.value}
               </span>
               {stat.trend && (
@@ -144,7 +144,7 @@ function ExpenseStats({ filtered, expenses, categories }: ExpenseStatsProps) {
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-gray-300 dark:text-gray-600 m-0 mt-0.5">
+            <p className="text-[11px] text-muted-foreground m-0 mt-0.5">
               {stat.sub}
             </p>
           </div>

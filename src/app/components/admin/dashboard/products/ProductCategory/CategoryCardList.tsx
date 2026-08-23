@@ -27,7 +27,7 @@ function ToggleSwitch({
       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full
                   transition-colors duration-300
                   focus:outline-none focus:ring-2 focus:ring-indigo-500/30
-                  ${checked ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                  ${checked ? "bg-emerald-500" : "bg-muted"}`}
     >
       <span
         className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow
@@ -45,26 +45,26 @@ const CategoryCard: React.FC<{
   onToggleActive: (c: Category, v: boolean) => void;
 }> = ({ category, onEdit, onDelete, onToggleActive }) => (
   <div
-    className="bg-white dark:bg-[#16181f]
-                  border border-gray-200 dark:border-[#2a2d3a]
+    className="bg-card
+                  border border-border
                   rounded-xl sm:rounded-2xl
                   p-3 sm:p-4
                   transition-all duration-200
-                  hover:border-gray-300 dark:hover:border-[#3a3d4a]
+                  hover:border-border
                   hover:shadow-sm"
   >
     {/* ── Top row ── */}
     <div className="flex items-start justify-between gap-2 mb-2">
       <div className="min-w-0 flex-1">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate leading-snug">
+        <h3 className="text-sm font-semibold text-foreground truncate leading-snug">
           {category.name}
         </h3>
         <span
           className="inline-block font-mono text-[10px] sm:text-[11px] mt-0.5
                          px-1.5 sm:px-2 py-0.5 rounded-md
-                         bg-gray-100 dark:bg-[#0f1117]
+                         bg-background
                          text-gray-400
-                         border border-gray-200 dark:border-[#2a2d3a]
+                         border border-border
                          max-w-full truncate"
         >
           {category.slug}
@@ -78,7 +78,7 @@ const CategoryCard: React.FC<{
                         ${
                           category.is_active
                             ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-gray-100 dark:bg-gray-700/30 text-gray-400"
+                            : "bg-muted/30 text-gray-400"
                         }`}
       >
         {category.is_active ? "Active" : "Inactive"}
@@ -96,7 +96,7 @@ const CategoryCard: React.FC<{
     <div
       className="flex items-center justify-between
                     pt-2.5 sm:pt-3
-                    border-t border-gray-100 dark:border-[#2a2d3a]"
+                    border-t border-border"
     >
       <div className="flex items-center gap-2">
         <ToggleSwitch
@@ -113,7 +113,7 @@ const CategoryCard: React.FC<{
           <button
             onClick={() => onEdit(category)}
             className="w-7 h-7 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg
-                       border border-gray-200 dark:border-[#2a2d3a]
+                       border border-border
                        text-gray-400 hover:text-indigo-500
                        hover:border-indigo-300 dark:hover:border-indigo-600
                        hover:bg-indigo-50 dark:hover:bg-indigo-500/10
@@ -165,12 +165,12 @@ const CategoryCardList: React.FC<CategoryCardListProps> = ({
     return (
       <div
         className="w-full flex flex-col items-center justify-center py-12 sm:py-16 text-center
-                      bg-white dark:bg-[#16181f]
-                      border border-gray-200 dark:border-[#2a2d3a]
+                      bg-card
+                      border border-border
                       rounded-2xl"
       >
         <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">🗂️</div>
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+        <p className="text-sm font-medium text-muted-foreground">
           No categories found
         </p>
         <p className="text-xs text-gray-400 mt-1">

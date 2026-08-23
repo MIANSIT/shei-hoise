@@ -126,8 +126,8 @@ const getStatusStyle = (
 ) => {
   return (
     map[status?.toUpperCase()] ?? {
-      bg: "bg-gray-50 dark:bg-gray-800",
-      text: "text-gray-600 dark:text-gray-400",
+      bg: "bg-background",
+      text: "text-muted-foreground",
       dot: "bg-gray-400",
     }
   );
@@ -787,21 +787,21 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
       {/* Modal shell */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl max-h-[96vh] sm:max-h-[92vh] overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="bg-card rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl max-h-[96vh] sm:max-h-[92vh] overflow-hidden border border-border">
           {/* ── Top bar ── */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/80 shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-background/80 shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <div className="p-2 bg-blue-600 rounded-xl shrink-0">
                 <FileText className="w-4 h-4 text-white" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white truncate">
+                  <h2 className="text-sm sm:text-base font-semibold text-foreground truncate">
                     Invoice #{orderId}
                   </h2>
                   <button
                     onClick={copyInvoiceId}
-                    className="shrink-0 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    className="shrink-0 p-1 rounded-md hover:bg-muted transition-colors"
                     title="Copy invoice number"
                   >
                     {copied ? (
@@ -811,7 +811,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                <p className="text-xs text-muted-foreground hidden sm:block">
                   {invoiceDate} · {invoiceTime}
                 </p>
               </div>
@@ -828,7 +828,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           <div className="flex-1 overflow-y-auto">
             <div
               ref={invoiceRef}
-              className="m-3 sm:m-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
+              className="m-3 sm:m-6 rounded-xl border border-border bg-card overflow-hidden"
             >
               {/* Invoice header band */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 sm:px-8 py-5 sm:py-7">
@@ -895,22 +895,22 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               {/* Body padding */}
               <div className="px-5 sm:px-8 py-5 sm:py-7 space-y-6 sm:space-y-8">
                 {/* Customer card */}
-                <div className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4 sm:p-5">
+                <div className="rounded-xl border border-border bg-background/50 p-4 sm:p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
                       <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Bill To
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-1">
-                      <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
+                      <p className="font-semibold text-foreground text-sm sm:text-base">
                         {customer.name}
                       </p>
                       {customer.address && (
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
+                        <p className="text-xs sm:text-sm text-muted-foreground flex items-start gap-1.5">
                           <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-gray-400" />
                           {customer.address}
                         </p>
@@ -918,13 +918,13 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                     </div>
                     <div className="space-y-1">
                       {customer.contact && (
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
                           <Phone className="w-3 h-3 shrink-0 text-gray-400" />
                           {customer.contact}
                         </p>
                       )}
                       {customer.email && (
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5">
                           <Mail className="w-3 h-3 shrink-0 text-gray-400" />
                           {customer.email}
                         </p>
@@ -939,29 +939,29 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                     <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
                       <Package className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Order Items
                     </span>
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="rounded-xl border border-border overflow-hidden">
                     <div className="overflow-x-auto">
                       <table
                         className="w-full text-sm"
                         style={{ minWidth: "480px" }}
                       >
                         <thead>
-                          <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">
+                          <tr className="bg-background border-b border-border">
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/2">
                               Item
                             </th>
-                            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6">
+                            <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/6">
                               Qty
                             </th>
-                            <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6">
+                            <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/6">
                               Price
                             </th>
-                            <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6">
+                            <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/6">
                               Total
                             </th>
                           </tr>
@@ -972,17 +972,17 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                               key={i}
                               className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors"
                             >
-                              <td className="px-4 py-3 text-gray-800 dark:text-gray-200 text-sm font-medium">
+                              <td className="px-4 py-3 text-foreground text-sm font-medium">
                                 {product.name}
                               </td>
-                              <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400 text-sm">
+                              <td className="px-4 py-3 text-center text-muted-foreground text-sm">
                                 {product.qty}
                               </td>
-                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400 text-sm font-mono">
+                              <td className="px-4 py-3 text-right text-muted-foreground text-sm font-mono">
                                 {currencyIcon}
                                 {product.price.toFixed(2)}
                               </td>
-                              <td className="px-4 py-3 text-right text-gray-900 dark:text-white font-semibold text-sm font-mono">
+                              <td className="px-4 py-3 text-right text-foreground font-semibold text-sm font-mono">
                                 {currencyIcon}
                                 {(product.qty * product.price).toFixed(2)}
                               </td>
@@ -997,14 +997,14 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 {/* Summary + Payment/Notes grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8">
                   {/* Summary */}
-                  <div className="sm:col-start-2 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <div className="sm:col-start-2 rounded-xl border border-border overflow-hidden">
+                    <div className="px-4 py-3 bg-background border-b border-border">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Summary
                       </span>
                     </div>
                     <div className="px-4 py-4 space-y-2.5">
-                      <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex justify-between items-center text-sm text-muted-foreground">
                         <span>Subtotal</span>
                         <span className="font-mono">
                           {currencyIcon}
@@ -1023,7 +1023,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       )}
 
                       {deliveryCharge > 0 && (
-                        <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex justify-between items-center text-sm text-muted-foreground">
                           <span>Delivery Charge</span>
                           <span className="font-mono">
                             {currencyIcon}
@@ -1033,7 +1033,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       )}
 
                       {taxAmount > 0 && (
-                        <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex justify-between items-center text-sm text-muted-foreground">
                           <span>Tax</span>
                           <span className="font-mono">
                             {currencyIcon}
@@ -1046,7 +1046,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       {additionalCharges.map((charge, i) => (
                         <div
                           key={i}
-                          className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400"
+                          className="flex justify-between items-center text-sm text-muted-foreground"
                         >
                           <span>{charge.label}</span>
                           <span className="font-mono">
@@ -1056,8 +1056,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                         </div>
                       ))}
 
-                      <div className="pt-3 mt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                        <span className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
+                      <div className="pt-3 mt-1 border-t border-border flex justify-between items-center">
+                        <span className="font-semibold text-foreground text-sm sm:text-base">
                           Grand Total
                         </span>
                         <span className="font-bold text-blue-600 dark:text-blue-400 text-base sm:text-lg font-mono">
@@ -1071,15 +1071,15 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                   {/* Payment method + Notes stacked in col 1 */}
                   <div className="sm:row-start-1 space-y-4">
                     {paymentMethod && paymentMethod !== "N/A" && (
-                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                      <div className="rounded-xl border border-border overflow-hidden">
+                        <div className="px-4 py-3 bg-background border-b border-border flex items-center gap-2">
                           <CreditCard className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Payment Method
                           </span>
                         </div>
                         <div className="px-4 py-3">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          <p className="text-sm font-medium text-foreground">
                             {paymentMethod === "cod"
                               ? "Cash on Delivery"
                               : paymentMethod.toUpperCase()}
@@ -1107,8 +1107,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                  <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+                <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-3 h-3" />
                       {invoiceDate}
@@ -1118,9 +1118,9 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       {invoiceTime}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 sm:text-right">
+                  <p className="text-xs text-muted-foreground sm:text-right">
                     Thank you for choosing{" "}
-                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                    <span className="font-medium text-muted-foreground">
                       {store.name}
                     </span>
                   </p>
@@ -1130,9 +1130,9 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           </div>
 
           {/* ── Bottom action bar ── */}
-          <div className="shrink-0 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/80 px-4 sm:px-6 py-3 sm:py-4">
+          <div className="shrink-0 border-t border-border bg-background/80 px-4 sm:px-6 py-3 sm:py-4">
             <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Building2 className="w-3 h-3" />
                 <span>
                   {invoiceDate} · {invoiceTime}
@@ -1145,7 +1145,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                     variant="outline"
                     onClick={printInvoice}
                     disabled={isPrinting || isGeneratingPDF}
-                    className="h-9 text-sm gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="h-9 text-sm gap-2 border-border hover:bg-muted"
                   >
                     {isPrinting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1159,23 +1159,23 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                 {showPOSButton && (
                   <div className="flex items-center gap-1">
                     {/* Paper size toggle */}
-                    <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 text-xs font-medium shrink-0">
+                    <div className="flex rounded-lg overflow-hidden border border-border text-xs font-medium shrink-0">
                       <button
                         onClick={() => setPosWidth(58)}
                         className={`px-2 py-1.5 transition-colors ${
                           posWidth === 58
                             ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
-                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            : "text-muted-foreground hover:bg-muted"
                         }`}
                       >
                         58mm
                       </button>
                       <button
                         onClick={() => setPosWidth(80)}
-                        className={`px-2 py-1.5 transition-colors border-l border-gray-200 dark:border-gray-700 ${
+                        className={`px-2 py-1.5 transition-colors border-l border-border ${
                           posWidth === 80
                             ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
-                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            : "text-muted-foreground hover:bg-muted"
                         }`}
                       >
                         80mm
@@ -1185,7 +1185,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                       variant="outline"
                       onClick={printPOSReceipt}
                       disabled={isPOSPrinting || isPrinting || isGeneratingPDF}
-                      className="h-9 text-sm gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="h-9 text-sm gap-2 border-border hover:bg-muted"
                     >
                       {isPOSPrinting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

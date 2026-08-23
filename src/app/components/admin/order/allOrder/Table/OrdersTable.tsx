@@ -580,14 +580,14 @@ const OrdersTable: React.FC<Props> = ({
       key: "total",
       render: (_, order: StoreOrder) => (
         <div className="text-right">
-          <div className="font-semibold text-gray-900 dark:text-gray-300 text-sm">
+          <div className="font-semibold text-foreground text-sm">
             {formatCurrency(order.total_amount, order.currency)}
           </div>
-          <div className="text-xs text-gray-600 dark:text-gray-400">
+          <div className="text-xs text-muted-foreground">
             Ship: {formatCurrency(order.shipping_fee, order.currency)}
           </div>
           {order.tax_amount != null && order.tax_amount > 0 && (
-            <div className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Tax: {formatCurrency(order.tax_amount, order.currency)}
             </div>
           )}
@@ -960,7 +960,7 @@ const OrdersTable: React.FC<Props> = ({
               placement="bottomRight"
               styles={{ container: { padding: 12, borderRadius: 14 } }}
             >
-              <Button icon={<LockOutlined />} className="text-gray-400 dark:text-gray-500">
+              <Button icon={<LockOutlined />} className="text-muted-foreground">
                 {t.admin.orderDownloadCsv}
               </Button>
             </Popover>
@@ -1002,7 +1002,7 @@ const OrdersTable: React.FC<Props> = ({
           expandedRowRender: (order: StoreOrder) => (
             <div className="space-y-4 p-3 sm:p-4 rounded-lg">
               {/* Show backend values at the top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-3 bg-background rounded">
                 <div>
                   <span className="text-sm font-medium text-gray-300">
                     {t.admin.orderDeliveryOption}

@@ -58,11 +58,11 @@ const StockStats: React.FC<StockStatsProps> = ({
   const toneClasses: Record<string, { icon: string; value: string }> = {
     neutral: {
       icon: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
-      value: "text-gray-900 dark:text-gray-100",
+      value: "text-foreground",
     },
     value: {
       icon: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
-      value: "text-gray-900 dark:text-gray-100",
+      value: "text-foreground",
     },
     warning: {
       icon: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
@@ -79,7 +79,7 @@ const StockStats: React.FC<StockStatsProps> = ({
       {tiles.map(({ key, icon: Icon, label, value, hint, tone }) => (
         <div
           key={key}
-          className="flex items-start gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-3.5 py-3"
+          className="flex items-start gap-2.5 rounded-xl border border-border bg-background/60 px-3.5 py-3"
         >
           <span
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClasses[tone].icon}`}
@@ -87,18 +87,18 @@ const StockStats: React.FC<StockStatsProps> = ({
             <Icon className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
               {label}
             </p>
             <p
               className={`mt-0.5 text-lg font-extrabold tracking-tight tabular-nums ${
-                loading ? "animate-pulse text-gray-300 dark:text-gray-700" : toneClasses[tone].value
+                loading ? "animate-pulse text-muted-foreground" : toneClasses[tone].value
               }`}
             >
               {value}
             </p>
             {hint && (
-              <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
                 {hint}
               </p>
             )}

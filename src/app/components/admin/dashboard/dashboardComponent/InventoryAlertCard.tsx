@@ -73,7 +73,7 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
         >
           {value}
         </div>
-        <div className="text-[11px] font-semibold mt-1.5 leading-tight text-gray-600 dark:text-gray-300">
+        <div className="text-[11px] font-semibold mt-1.5 leading-tight text-muted-foreground">
           {title}
         </div>
       </div>

@@ -62,11 +62,11 @@ export default function SidebarProfile() {
       {
         key: "user-info",
         label: (
-          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-700">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+          <div className="px-2 py-2 border-b border-border">
+            <p className="text-sm font-semibold text-foreground">
               {user?.first_name} {user?.last_name}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {user?.email}
             </p>
           </div>
@@ -119,9 +119,9 @@ export default function SidebarProfile() {
         },
       }}
     >
-      <button className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105 active:scale-95">
+      <button className="flex items-center gap-2 p-2 rounded-full hover:bg-muted transition-all duration-200 hover:scale-105 active:scale-95">
         {storeLoading ? (
-          <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse" />
+          <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
         ) : store?.logo_url ? (
           <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
             <Image

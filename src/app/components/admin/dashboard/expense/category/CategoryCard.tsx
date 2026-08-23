@@ -95,11 +95,11 @@ export function CategoryCard({ cat, onEdit, onDelete }: CategoryCardProps) {
 
         {/* Name + Description */}
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 dark:text-white text-base leading-snug mb-1">
+          <h3 className="font-bold text-foreground text-base leading-snug mb-1">
             {cat.name}
           </h3>
           {cat.description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">
+            <p className="text-sm text-muted-foreground leading-snug line-clamp-2">
               {cat.description}
             </p>
           )}

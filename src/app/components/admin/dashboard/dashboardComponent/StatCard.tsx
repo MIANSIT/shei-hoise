@@ -24,7 +24,7 @@ const meta = {
   },
   neutral: {
     bar: "from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-500",
-    pill: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600",
+    pill: "bg-muted text-muted-foreground border-border",
     arrow: "→",
   },
 };
@@ -41,8 +41,8 @@ const StatCard: React.FC<StatCardProps> = ({
   return (
     <div
       className="relative flex flex-col gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl overflow-hidden
-      bg-white dark:bg-gray-900
-      border border-gray-200 dark:border-gray-700/80
+      bg-card
+      border border-border/80
       shadow-sm dark:shadow-none
       transition-colors"
     >
@@ -56,9 +56,9 @@ const StatCard: React.FC<StatCardProps> = ({
         <div
           className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center
           text-base sm:text-lg shrink-0
-          bg-gray-100 dark:bg-gray-800
-          border border-gray-200 dark:border-gray-700
-          text-gray-600 dark:text-gray-300"
+          bg-muted
+          border border-border
+          text-muted-foreground"
         >
           {icon}
         </div>
@@ -69,7 +69,7 @@ const StatCard: React.FC<StatCardProps> = ({
         {/* Value: never truncates, shrinks font on mobile */}
         <div
           className="text-lg sm:text-[22px] font-black tabular-nums leading-none tracking-tight
-          text-gray-900 dark:text-white break-all"
+          text-foreground break-all"
         >
           {value}
         </div>
@@ -77,7 +77,7 @@ const StatCard: React.FC<StatCardProps> = ({
         {/* Title: always wraps fully — no truncation */}
         <div
           className="text-[10px] sm:text-[11px] font-semibold mt-1 sm:mt-1.5 leading-snug
-          text-gray-600 dark:text-gray-300"
+          text-muted-foreground"
         >
           {title}
         </div>
@@ -86,7 +86,7 @@ const StatCard: React.FC<StatCardProps> = ({
         {description && (
           <div
             className="text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 leading-snug
-            text-gray-400 dark:text-gray-500"
+            text-muted-foreground"
           >
             {description}
           </div>

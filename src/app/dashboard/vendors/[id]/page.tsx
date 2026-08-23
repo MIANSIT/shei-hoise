@@ -250,7 +250,7 @@ export default function VendorDetailPage() {
         const isSlowMoving = record.quantity_available > 0 && daysSince > 30;
         return (
           <div>
-            <span className="text-gray-500 dark:text-gray-400">
+            <span className="text-muted-foreground">
               {daysSince === 0 ? "today" : `${daysSince}d ago`}
             </span>
             {isSlowMoving && (
@@ -321,8 +321,8 @@ export default function VendorDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background pb-16">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button
@@ -333,7 +333,7 @@ export default function VendorDetailPage() {
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">{vendor.name}</h1>
+                <h1 className="text-lg font-bold text-foreground m-0">{vendor.name}</h1>
                 <Tag color={vendor.status === "active" ? "green" : "default"} className="rounded-full">
                   {vendor.status === "active" ? "Active" : "Inactive"}
                 </Tag>
@@ -348,7 +348,7 @@ export default function VendorDetailPage() {
                   </Tag>
                 )}
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+              <p className="text-xs text-muted-foreground m-0">
                 {vendor.phone} {vendor.business_name ? `· ${vendor.business_name}` : ""}
               </p>
             </div>
@@ -428,28 +428,28 @@ export default function VendorDetailPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-card rounded-2xl border border-border shadow-sm p-4">
           <div>
             <div className="text-xs text-gray-400">Total Dispatched</div>
-            <div className="font-semibold text-gray-800 dark:text-gray-100">{stats?.total_dispatched ?? 0}</div>
+            <div className="font-semibold text-foreground">{stats?.total_dispatched ?? 0}</div>
           </div>
           <div>
             <div className="text-xs text-gray-400">Total Receivable</div>
-            <div className="font-semibold text-gray-800 dark:text-gray-100">
+            <div className="font-semibold text-foreground">
               {fmtMoney(stats?.total_receivable ?? 0)}
             </div>
           </div>
           <div>
             <div className="text-xs text-gray-400">Total Paid</div>
-            <div className="font-semibold text-gray-800 dark:text-gray-100">
+            <div className="font-semibold text-foreground">
               {fmtMoney(stats?.total_paid ?? 0)}
             </div>
           </div>
         </div>
 
         <div>
-          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Current Vendor Stock</h2>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden overflow-x-auto">
+          <h2 className="text-sm font-bold text-foreground mb-3">Current Vendor Stock</h2>
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden overflow-x-auto">
             <Table
               columns={stockColumns}
               dataSource={stock}
@@ -463,7 +463,7 @@ export default function VendorDetailPage() {
 
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Vendor Ledger</h2>
+            <h2 className="text-sm font-bold text-foreground m-0">Vendor Ledger</h2>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400">
                 Cash collected {PERIOD_OPTIONS.find((p) => p.value === ledgerPeriod)?.label.toLowerCase()}:{" "}
@@ -478,7 +478,7 @@ export default function VendorDetailPage() {
               />
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden overflow-x-auto">
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden overflow-x-auto">
             <Table
               columns={ledgerColumns}
               dataSource={filteredLedger}

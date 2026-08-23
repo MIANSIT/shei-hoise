@@ -302,7 +302,7 @@ export default function CourierShipmentPanel({
             >
               <span className="font-medium">{h.courier}</span>
               <span className="font-mono">{h.consignmentId}</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700">
+              <span className="px-1.5 py-0.5 rounded-full bg-muted">
                 {h.status || "—"}
               </span>
             </div>
