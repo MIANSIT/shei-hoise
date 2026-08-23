@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, User, ChevronRight, ChevronLeft } from "lucide-react";
+import { ShoppingBag, User, ChevronRight, ChevronLeft, CircleAlert } from "lucide-react";
 import CartItemsList from "../../cart/CartItemList";
 import CheckoutForm from "./UserCheckoutForm";
 import ShippingMethod from "./ShippingMethod";
@@ -126,8 +126,8 @@ export default function UnifiedCheckoutLayout({
     return (
       <div className='container mx-auto p-4 lg:p-8'>
         <div className='text-center py-12'>
-          <div className='bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto'>
-            <div className='text-red-500 text-6xl mb-4'>⚠️</div>
+          <div className='bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md mx-auto shadow-lg'>
+            <CircleAlert className='h-14 w-14 text-red-500 mb-4 mx-auto' />
             <h2 className='text-xl font-bold text-red-800 mb-2'>
               {t.checkout.invalidOrderData}
             </h2>
@@ -189,7 +189,7 @@ export default function UnifiedCheckoutLayout({
             onClick={() => setActiveSection("cart")}
             className={`flex items-center gap-1 ${
               activeSection === "cart"
-                ? "text-yellow-600 font-semibold"
+                ? "text-stone-900 dark:text-white font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -202,7 +202,7 @@ export default function UnifiedCheckoutLayout({
             onClick={() => setActiveSection("customer")}
             className={`flex items-center gap-1 ${
               activeSection === "customer"
-                ? "text-yellow-600 font-semibold"
+                ? "text-stone-900 dark:text-white font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -210,9 +210,9 @@ export default function UnifiedCheckoutLayout({
             {activeSection === "cart" && <ChevronRight className='h-4 w-4' />}
           </button>
         </div>
-        <div className='w-full bg-gray-200 rounded-full h-2'>
+        <div className='w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2'>
           <div
-            className='bg-yellow-500 h-2 rounded-full transition-all duration-300'
+            className='bg-stone-900 dark:bg-white h-2 rounded-full transition-all duration-300'
             style={{ width: activeSection === "cart" ? "50%" : "100%" }}
           ></div>
         </div>
@@ -224,11 +224,11 @@ export default function UnifiedCheckoutLayout({
             activeSection === "customer" ? "hidden lg:block" : "block"
           }`}
         >
-          <Card className='bg-card lg:sticky lg:top-8'>
+          <Card className='bg-card lg:sticky lg:top-8 rounded-2xl shadow-lg'>
             <CardHeader className='pb-4'>
               <div className='flex items-center gap-3'>
-                <div className='bg-yellow-100 p-2 rounded-full'>
-                  <ShoppingBag className='h-5 w-5 text-yellow-600' />
+                <div className='bg-stone-100 dark:bg-gray-800 p-2 rounded-full'>
+                  <ShoppingBag className='h-5 w-5 text-stone-900 dark:text-white' />
                 </div>
                 <div>
                   <CardTitle className='text-lg lg:text-xl font-semibold text-card-foreground'>
@@ -240,7 +240,7 @@ export default function UnifiedCheckoutLayout({
                   </p>
                 </div>
               </div>
-              <div className='h-1 bg-linear-to-r from-yellow-400 to-yellow-600 rounded-full shadow-lg shadow-yellow-500/30 mt-2'></div>
+              <div className='h-1 bg-linear-to-r from-stone-700 to-stone-900 dark:from-gray-400 dark:to-white rounded-full shadow-lg mt-2'></div>
             </CardHeader>
             <CardContent className='space-y-4'>
               {cartItems.length === 0 ? (
@@ -300,7 +300,7 @@ export default function UnifiedCheckoutLayout({
                   </div>
 
                   <Button
-                    className='w-full lg:hidden bg-yellow-500 hover:bg-yellow-600 text-white mt-4'
+                    className='w-full lg:hidden bg-stone-900 hover:bg-stone-700 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 mt-4'
                     onClick={() => setActiveSection("customer")}
                     disabled={!meetsMinOrderAmount}
                   >
@@ -325,7 +325,7 @@ export default function UnifiedCheckoutLayout({
           }`}
         >
           <div className='space-y-6'>
-            <Card className='bg-card'>
+            <Card className='bg-card rounded-2xl shadow-lg'>
               <CardHeader className='pb-4'>
                 <div className='flex items-center gap-3'>
                   <div className='bg-blue-100 p-2 rounded-full'>

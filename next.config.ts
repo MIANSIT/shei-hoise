@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
+// Next.js 16 has a confirmed regression (vercel/next.js#88873) where the
+// image optimizer's remotePatterns check rejects valid matches — verified
+// here against http://localhost:8000 (local dev's Kong): the config is
+// correct, the matching logic itself passes in isolation, but the live
+// /_next/image route still 400s with '"url" parameter is not allowed'.
+// Production is unaffected (a normal HTTPS custom domain, the same shape
+// the upstream bug report confirms still works) — this only disables
+// optimization for local dev, where images would otherwise render broken.
+const isLocalDev = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").includes("localhost");
+
 const nextConfig: NextConfig = {
   output: "standalone", // ✅ produces a minimal .next/standalone bundle for Docker
 
@@ -9,6 +19,11 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp"],
 
   images: {
+    // See isLocalDev comment above — the optimizer's remotePatterns check is
+    // broken against localhost in this Next.js version, so skip it entirely
+    // in local dev rather than serve broken images.
+    unoptimized: isLocalDev,
+
     // Optimization is ON. 810 of 818 catalogue images are still full-size PNGs
     // (some over 1.5 MB) uploaded before uploads started converting to WebP,
     // and most of the storefront renders them far smaller than their intrinsic
@@ -36,6 +51,12 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "api.sheihoise.com", // Self-hosted storage (Kong via Caddy)
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "8000", // Local dev's Kong — storage URLs point here before Caddy/DNS exist
         pathname: "/**",
       },
       {
