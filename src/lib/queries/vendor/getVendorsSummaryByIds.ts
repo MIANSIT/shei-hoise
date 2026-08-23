@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { calculateVendorCurrentDue } from "./calculateVendorDue";
 import type { VendorListSummary } from "@/lib/types/vendor/type";
 
 // Batched version of getVendorDashboardStats for a page of vendor rows —
@@ -57,11 +58,16 @@ export async function getVendorsSummaryByIds(
   for (const vendorId of vendorIds) {
     const receivable = receivableByVendor.get(vendorId) ?? 0;
     const paid = paidByVendor.get(vendorId) ?? 0;
+    const stockValue = stockValueByVendor.get(vendorId) ?? 0;
     summary.set(vendorId, {
       vendor_id: vendorId,
       stock_quantity: stockQtyByVendor.get(vendorId) ?? 0,
-      stock_value: stockValueByVendor.get(vendorId) ?? 0,
-      current_due: receivable - paid,
+      stock_value: stockValue,
+      current_due: calculateVendorCurrentDue({
+        unsettledStockValue: stockValue,
+        totalReceivable: receivable,
+        totalPaid: paid,
+      }),
       last_payment_date: lastPaymentByVendor.get(vendorId) ?? null,
     });
   }

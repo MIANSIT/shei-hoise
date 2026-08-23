@@ -26,6 +26,7 @@ import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboard
 import { getVendorOrderableProducts } from "@/lib/queries/vendorOrder/getVendorOrderableProducts";
 import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById";
 import { updateVendorOrder } from "@/lib/queries/vendorOrder/updateVendorOrder";
+import { vendorOrderTotalsSchema } from "@/lib/schema/vendorOrderSchema";
 import type { VendorOrderableProduct, VendorOrderItemInput } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
@@ -132,8 +133,11 @@ export default function EditVendorOrderPage() {
         setItems(draftItems);
 
         if (order.vendor_id) {
+          // A draft never contributes to current_due (no vendor_stock entry,
+          // no settlement) until it's confirmed, so the baseline is just the
+          // vendor's current due as-is — nothing to subtract back out.
           getVendorDashboardStats(order.vendor_id).then((stats) =>
-            setVendorCurrentDue(stats.current_due - Number(order.due_amount)),
+            setVendorCurrentDue(stats.current_due),
           );
         }
       } catch (err) {
@@ -350,6 +354,17 @@ export default function EditVendorOrderPage() {
   const handleSave = () => {
     if (items.length === 0) {
       error("Add at least one product");
+      return;
+    }
+    const totalsCheck = vendorOrderTotalsSchema.safeParse({
+      subtotal,
+      deliveryCost,
+      discountAmount,
+      paidAmount,
+      grandTotal,
+    });
+    if (!totalsCheck.success) {
+      error(totalsCheck.error.issues[0]?.message ?? "Invalid order totals");
       return;
     }
     performSave();

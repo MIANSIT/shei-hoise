@@ -23,6 +23,7 @@ import {
   Warehouse,
   Boxes,
   Sparkles,
+  HandCoins,
 } from "lucide-react";
 import React from "react";
 
@@ -127,6 +128,11 @@ export const sideMenu: MenuItem[] = [
         title: "All Vendor Orders",
         href: "/dashboard/vendor-orders",
         icon: Clipboard,
+      },
+      {
+        title: "Vendor Settlements",
+        href: "/dashboard/vendor-settlements",
+        icon: HandCoins,
       },
     ],
   },

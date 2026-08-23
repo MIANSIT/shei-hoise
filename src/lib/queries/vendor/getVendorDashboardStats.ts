@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
+import { calculateVendorCurrentDue } from "./calculateVendorDue";
 import type { VendorDashboardStats } from "@/lib/types/vendor/type";
 
 const SLOW_MOVING_DAYS = 30;
@@ -28,7 +29,7 @@ export async function getVendorDashboardStats(
     await Promise.all([
       supabase
         .from("vendor_stock")
-        .select("quantity_available, updated_at")
+        .select("quantity_available, last_vendor_tp, updated_at")
         .eq("vendor_id", vendorId),
       supabase
         .from("vendor_orders")
@@ -57,6 +58,10 @@ export async function getVendorDashboardStats(
 
   const stockRows = stockRes.data ?? [];
   const currentStock = stockRows.reduce((sum, r) => sum + r.quantity_available, 0);
+  const unsettledStockValue = stockRows.reduce(
+    (sum, r) => sum + r.quantity_available * Number(r.last_vendor_tp ?? 0),
+    0,
+  );
   const slowMovingCutoff = dayjs().subtract(SLOW_MOVING_DAYS, "day");
   const slowMovingCount = stockRows.filter(
     (r) => r.quantity_available > 0 && dayjs(r.updated_at).isBefore(slowMovingCutoff),
@@ -115,7 +120,11 @@ export async function getVendorDashboardStats(
     total_returned: totalReturned,
     total_receivable: totalReceivable,
     total_paid: totalPaid,
-    current_due: totalReceivable - totalPaid,
+    current_due: calculateVendorCurrentDue({
+      unsettledStockValue,
+      totalReceivable,
+      totalPaid,
+    }),
     last_payment_date: payments[0]?.payment_date ?? null,
     margin_dispatched: marginDispatched,
     margin_realized: marginRealized,
