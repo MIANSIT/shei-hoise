@@ -1,0 +1,7 @@
+# Force LF line endings for files that get bind-mounted into Linux containers.
+# Without this, Windows checkouts (core.autocrlf=true) convert them to CRLF,
+# which breaks `sh` scripts (e.g. "not found", "Syntax error: end of file
+# unexpected") and can trip up strict YAML parsers inside the container.
+*.sh text eol=lf
+docker/volumes/**/*.yml text eol=lf
+docker/volumes/**/*.yaml text eol=lf
