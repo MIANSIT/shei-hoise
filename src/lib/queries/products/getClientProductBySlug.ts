@@ -13,6 +13,8 @@ interface ProductVariant {
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   color: string | null;
   attributes?: Record<string, string>;
   weight?: number;
@@ -39,6 +41,8 @@ interface Product {
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   /** Waives the delivery fee for any order containing this product. */
   free_delivery: boolean;
   categories: { id: string; name: string }[];
@@ -71,6 +75,8 @@ export async function getClientProductBySlug(
       base_price,
       discounted_price,
       discount_amount,
+      sale_starts_at,
+      sale_ends_at,
       free_delivery,
       product_type,
       categories(id, name),
@@ -83,6 +89,8 @@ export async function getClientProductBySlug(
         base_price,
         discounted_price,
         discount_amount,
+        sale_starts_at,
+        sale_ends_at,
         color,
         attributes,
         weight,

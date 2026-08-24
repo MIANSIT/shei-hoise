@@ -6,6 +6,7 @@ import { getStoreIdBySlug } from "../queries/stores/getStoreIdBySlug";
 import { getProductsWithVariants } from "../queries/products/getProductsWithVariants";
 import { decompressFromEncodedURIComponent } from "lz-string";
 import { CartProductWithDetails, CartCalculations } from "../types/cart";
+import { getEffectivePrice } from "../utils/getEffectivePrice";
 
 interface UseUnifiedCartDataProps {
   storeSlug: string;
@@ -142,11 +143,22 @@ export function useUnifiedCartData({
               variant = foundVariant || null;
             }
 
-            const variantPrice =
-              variant?.discounted_price || variant?.base_price;
-            const productPrice = product.discounted_price || product.base_price;
+            const variantEffective = variant
+              ? getEffectivePrice({
+                  base_price: variant.base_price ?? 0,
+                  discounted_price: variant.discounted_price,
+                  sale_starts_at: variant.sale_starts_at,
+                  sale_ends_at: variant.sale_ends_at,
+                })
+              : null;
+            const productEffective = getEffectivePrice({
+              base_price: product.base_price ?? 0,
+              discounted_price: product.discounted_price,
+              sale_starts_at: product.sale_starts_at,
+              sale_ends_at: product.sale_ends_at,
+            });
 
-            const displayPrice = variantPrice || productPrice || 0;
+            const displayPrice = variantEffective?.price || productEffective.price || 0;
             const originalPrice =
               variant?.base_price || product.base_price || 0;
 

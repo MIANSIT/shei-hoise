@@ -14,6 +14,8 @@ export const productUpdateSchema = z
     tp_price: z.number().optional(),
     discounted_price: z.number().optional().nullable(),
     discount_amount: z.number().optional().nullable(),
+    sale_starts_at: z.string().optional().nullable(),
+    sale_ends_at: z.string().optional().nullable(),
     weight: z.number().optional(),
     sku: z.string().optional(),
     stock: z.number().optional(),
@@ -118,6 +120,26 @@ export const productUpdateSchema = z
     //     path: ["images"],
     //   });
     // }
+
+    // Flash-sale window consistency
+    if (data.sale_ends_at && !data.sale_starts_at) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Sale start date is required when an end date is set.",
+        path: ["sale_starts_at"],
+      });
+    }
+    if (
+      data.sale_starts_at &&
+      data.sale_ends_at &&
+      new Date(data.sale_ends_at) <= new Date(data.sale_starts_at)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Sale end date must be after the start date.",
+        path: ["sale_ends_at"],
+      });
+    }
   });
 
 export type ProductUpdateType = z.infer<typeof productUpdateSchema>;

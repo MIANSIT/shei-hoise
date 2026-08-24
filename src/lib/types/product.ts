@@ -29,6 +29,9 @@ export interface ProductVariant {
   variant_name: string;
   base_price: number;
   discounted_price?: number | null;
+  /** Only meaningful together with discounted_price — see getEffectivePrice(). Both null means the discount is always active. */
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   tp_price?: number | null;
   color?: string | null;
   stock: ProductStock;
@@ -44,6 +47,9 @@ export interface Product {
   slug: string;
   base_price: number;
   discounted_price?: number | null;
+  /** Only meaningful together with discounted_price — see getEffectivePrice(). Both null means the discount is always active. */
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   featured?: boolean;
   category?: Category | null;
   primary_image?: ProductImage | null;

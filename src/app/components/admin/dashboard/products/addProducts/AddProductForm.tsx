@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useAddProductDraftStore } from "@/lib/store/addProductDraftStore";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { isoToDatetimeLocal, datetimeLocalToIso } from "@/lib/utils/datetimeLocal";
 
 interface AddProductFormProps {
   product?: ProductType;
@@ -155,6 +156,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         tp_price: undefined,
         discounted_price: null,
         discount_amount: null,
+        sale_starts_at: null,
+        sale_ends_at: null,
         weight: null,
         sku: "",
         stock: undefined,
@@ -207,10 +210,23 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     // null without a discount, so nothing downstream mistakes the MRP for a
     // sale price.
     const finalPrice = discountedPrice ?? mrpPrice ?? null;
+    const hasDiscount = Boolean(discountedPrice);
+    const saleStartsAt = watch("sale_starts_at");
+    const saleEndsAt = watch("sale_ends_at");
 
     useEffect(() => {
       setValue("discounted_price", discountedPrice);
     }, [discountedPrice, setValue]);
+
+    // A flash-sale window only means something alongside a discount — clear
+    // any previously-set window the moment the discount itself is cleared,
+    // so a stale schedule can't silently reactivate later.
+    useEffect(() => {
+      if (!hasDiscount && (saleStartsAt || saleEndsAt)) {
+        setValue("sale_starts_at", null);
+        setValue("sale_ends_at", null);
+      }
+    }, [hasDiscount, saleStartsAt, saleEndsAt, setValue]);
 
     useEffect(() => {
       if (!tpPrice || priceValue === null || !priceValueTouched) return;
@@ -667,6 +683,46 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                       readOnly
                     />
                   </PriceCard>
+                </div>
+
+                {/* Flash-sale window: an optional schedule around the discount above. Only meaningful once a discount is actually set. */}
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel
+                      label={t.admin.addProductFlashSaleStartLabel}
+                      tooltip={t.admin.addProductFlashSaleTooltip}
+                    />
+                    <input
+                      type="datetime-local"
+                      disabled={!hasDiscount}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                      value={isoToDatetimeLocal(saleStartsAt)}
+                      onChange={(e) =>
+                        setValue("sale_starts_at", datetimeLocalToIso(e.target.value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel
+                      label={t.admin.addProductFlashSaleEndLabel}
+                      tooltip={t.admin.addProductFlashSaleTooltip}
+                    />
+                    <input
+                      type="datetime-local"
+                      disabled={!hasDiscount}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                      value={isoToDatetimeLocal(saleEndsAt)}
+                      onChange={(e) =>
+                        setValue("sale_ends_at", datetimeLocalToIso(e.target.value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Weight / SKU / Stock row */}
