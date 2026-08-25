@@ -502,6 +502,18 @@ export async function createCustomerOrder(
       throw new Error("At least one product is required");
     }
 
+    // Storefront may have been taken offline (stores.is_active) after the
+    // checkout page was already loaded in the customer's browser — re-check
+    // here so an in-flight submission can't slip an order through.
+    const { data: storeRow } = await supabaseAdmin
+      .from("stores")
+      .select("is_active")
+      .eq("id", storeId)
+      .single();
+    if (storeRow && storeRow.is_active === false) {
+      throw new Error("This store is currently unavailable.");
+    }
+
     // ✅ INVENTORY VALIDATION — resolve bundle lines into their component
     // purchases first (see createOrder above for why).
     const { stockRelevantItems, componentsByHeaderKey } =
