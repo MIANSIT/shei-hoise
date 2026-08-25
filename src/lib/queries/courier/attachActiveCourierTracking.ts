@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 export interface ActiveTrackingFields {
   courier_consignment_id: string | null;
@@ -21,10 +22,24 @@ export async function getActiveCourierTrackingByOrderIds(
 ): Promise<Record<string, ActiveTrackingFields>> {
   if (orderIds.length === 0) return {};
 
+  // orderIds is caller-supplied — narrow it down to orders that actually
+  // belong to the caller's own store before reading their courier tracking.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) return {};
+
+  const { data: ownedOrders } = await supabaseAdmin
+    .from("orders")
+    .select("id")
+    .in("id", orderIds)
+    .eq("store_id", storeResult.storeId);
+
+  const ownedOrderIds = (ownedOrders ?? []).map((o) => o.id);
+  if (ownedOrderIds.length === 0) return {};
+
   const { data, error } = await supabaseAdmin
     .from("courier_tracking")
     .select("order_id, consignment_id, status, courier_credential_id")
-    .in("order_id", orderIds)
+    .in("order_id", ownedOrderIds)
     .eq("is_active", true);
 
   if (error) {

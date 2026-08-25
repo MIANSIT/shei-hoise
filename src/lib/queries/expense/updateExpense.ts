@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { Expense } from "@/lib/types/expense/type";
 
 export interface UpdateExpenseInput {
@@ -21,6 +22,14 @@ export async function updateExpense(
   try {
     const { id, ...rawFields } = input;
 
+    // id is caller-supplied — scope the update to an expense that actually
+    // belongs to the caller's own store.
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok) {
+      console.error("updateExpense: unauthorized store access attempt");
+      return null;
+    }
+
     // Strip undefined values so we never accidentally null out existing DB columns
     const fields = Object.fromEntries(
       Object.entries(rawFields).filter(([, v]) => v !== undefined),
@@ -30,6 +39,7 @@ export async function updateExpense(
       .from("expenses")
       .update({ ...fields, updated_at: new Date().toISOString() })
       .eq("id", id)
+      .eq("store_id", storeResult.storeId)
       .select(
         `
         *,
