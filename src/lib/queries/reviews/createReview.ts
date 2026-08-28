@@ -51,11 +51,19 @@ async function createReviewInternal(data: ReviewFormType): Promise<void> {
     // reviewing itself doesn't require one, so this isn't fatal.
   }
 
+  // A rating requires a verified purchase — discard whatever the client
+  // sent unless verifiedOrderId actually resolved above, so a non-buyer
+  // can't move a product's average by posting a rating alongside a comment.
+  if (verifiedOrderId && parsed.rating === undefined) {
+    throw new Error("Pick a rating");
+  }
+  const rating = verifiedOrderId ? parsed.rating : null;
+
   const { error: insertError } = await supabaseAdmin.from("product_reviews").insert({
     product_id: parsed.product_id,
     customer_id,
     order_id: verifiedOrderId,
-    rating: parsed.rating,
+    rating,
     review_title: parsed.review_title || null,
     review_text: parsed.review_text,
     is_verified_purchase: !!verifiedOrderId,

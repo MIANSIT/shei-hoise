@@ -4,7 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export interface ProductReview {
   id: string;
-  rating: number;
+  /** Null for a comment-only review (no verified purchase). */
+  rating: number | null;
   review_title: string | null;
   review_text: string | null;
   is_verified_purchase: boolean;
@@ -25,7 +26,7 @@ export interface ProductReviewsPage {
 
 interface ReviewRow {
   id: string;
-  rating: number;
+  rating: number | null;
   review_title: string | null;
   review_text: string | null;
   is_verified_purchase: boolean;
@@ -54,7 +55,12 @@ export async function getProductReviews(
         .range(from, from + pageSize - 1),
       // No is_approved filter — a hidden review's rating still counts
       // toward the average and breakdown; only its text is suppressed.
-      supabaseAdmin.from("product_reviews").select("rating").eq("product_id", productId),
+      // Excludes comment-only reviews (rating null, no verified purchase).
+      supabaseAdmin
+        .from("product_reviews")
+        .select("rating")
+        .eq("product_id", productId)
+        .not("rating", "is", null),
     ]);
 
   if (error) throw new Error(error.message);

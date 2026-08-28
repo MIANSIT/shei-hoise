@@ -15,7 +15,7 @@ import { StarRating } from "./StarRating";
 
 interface ReviewFormProps {
   productId: string;
-  /** Set when a verified delivered order backs this review; null submits unverified. */
+  /** Set when a verified delivered order backs this review — unlocks the star rating; null means comment-only. */
   orderId: string | null;
   onSubmitted: () => void;
   onCancel: () => void;
@@ -25,6 +25,7 @@ export function ReviewForm({ productId, orderId, onSubmitted, onCancel }: Review
   const t = useTranslation();
   const notify = useSheiNotification();
   const [submitting, setSubmitting] = useState(false);
+  const canRate = !!orderId;
 
   const {
     control,
@@ -36,7 +37,7 @@ export function ReviewForm({ productId, orderId, onSubmitted, onCancel }: Review
     defaultValues: {
       product_id: productId,
       order_id: orderId ?? undefined,
-      rating: 5,
+      rating: canRate ? 5 : undefined,
       review_title: "",
       review_text: "",
     },
@@ -74,19 +75,34 @@ export function ReviewForm({ productId, orderId, onSubmitted, onCancel }: Review
         {...register("order_id", { setValueAs: (v) => (v === "" ? null : v) })}
       />
 
-      <div>
-        <Label className="mb-2 block">{t.reviews.rating}</Label>
-        <Controller
-          control={control}
-          name="rating"
-          render={({ field }) => (
-            <StarRating value={field.value} onChange={field.onChange} size="lg" />
+      {canRate ? (
+        <div>
+          <Label className="mb-2 block">{t.reviews.rating}</Label>
+          <Controller
+            control={control}
+            name="rating"
+            render={({ field }) => (
+              <StarRating value={field.value ?? 0} onChange={field.onChange} size="lg" />
+            )}
+          />
+          {errors.rating && (
+            <p className="mt-1 text-xs text-rose-500">{errors.rating.message}</p>
           )}
-        />
-        {errors.rating && (
-          <p className="mt-1 text-xs text-rose-500">{errors.rating.message}</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* No verified order — no star rating. Still registered (hidden,
+              always undefined) so react-hook-form doesn't silently drop the
+              field the way an unregistered one would. */}
+          <input
+            type="hidden"
+            {...register("rating", { setValueAs: (v) => (v === "" ? undefined : Number(v)) })}
+          />
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            {t.reviews.commentOnlyNotice}
+          </p>
+        </>
+      )}
 
       <div>
         <Label htmlFor="review_title" className="mb-2 block">

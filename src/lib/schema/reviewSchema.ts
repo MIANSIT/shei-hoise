@@ -9,11 +9,17 @@ export const reviewSchema = z.object({
   // itself), since "" would otherwise fail the .uuid() format check even
   // though .optional()/.nullable() allow undefined/null.
   order_id: z.string().uuid().optional().nullable(),
+  // A star rating requires a verified purchase — a logged-in customer with
+  // no verified order for this product can still leave review_text, just
+  // no rating. Optional here; createReview additionally discards any
+  // rating the client sent when the purchase doesn't actually verify, so
+  // this isn't just a UI nicety.
   rating: z
     .number({ message: "Pick a rating" })
     .int()
     .min(1, "Pick a rating")
-    .max(5, "Pick a rating"),
+    .max(5, "Pick a rating")
+    .optional(),
   review_title: z.string().max(255).optional(),
   review_text: z
     .string()

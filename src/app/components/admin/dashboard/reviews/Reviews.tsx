@@ -13,7 +13,10 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 
 const PAGE_SIZE = 20;
 
-function StarRow({ rating }: { rating: number }) {
+function StarRow({ rating }: { rating: number | null }) {
+  if (rating === null) {
+    return <span className="text-xs text-muted-foreground">Comment only</span>;
+  }
   return (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (

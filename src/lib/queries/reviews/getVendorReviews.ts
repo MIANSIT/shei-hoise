@@ -4,7 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export interface VendorReviewItem {
   id: string;
-  rating: number;
+  /** Null for a comment-only review (no verified purchase). */
+  rating: number | null;
   review_title: string | null;
   review_text: string | null;
   is_verified_purchase: boolean;
@@ -16,7 +17,8 @@ export interface VendorReviewItem {
 
 interface VendorReviewRow {
   id: string;
-  rating: number;
+  /** Null for a comment-only review (no verified purchase). */
+  rating: number | null;
   review_title: string | null;
   review_text: string | null;
   is_verified_purchase: boolean;

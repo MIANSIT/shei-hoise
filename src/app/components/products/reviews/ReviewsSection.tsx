@@ -44,7 +44,7 @@ function ReviewCard({ review }: { review: ProductReview }) {
     <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-4 bg-gray-50/50 dark:bg-gray-800/30">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2">
-          <StarRating value={review.rating} size="sm" />
+          {review.rating !== null && <StarRating value={review.rating} size="sm" />}
           <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
             {review.reviewer_name}
           </span>
