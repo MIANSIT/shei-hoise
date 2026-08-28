@@ -12,6 +12,7 @@ import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
  * updateProduct.ts's delete-then-upsert approach for variants.
  */
 export async function updateBundle(data: BundleType) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to exclude store_id from bundleData below; the trusted value comes from getAuthenticatedStoreId()
   const { id, store_id: _clientStoreId, images, bundle_items, ...bundleData } = data;
   if (!id) throw new Error("Bundle ID is required");
   if (!bundle_items?.length)
