@@ -226,7 +226,7 @@ export function CustomerTable({
             <Card
               key={customer.id}
               size="small"
-              className="w-full shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-gray-700"
+              className="w-full shadow-sm hover:shadow-md transition-shadow duration-200 border border-border"
               styles={{
                 body: { padding: "16px" },
               }}
@@ -237,7 +237,7 @@ export function CustomerTable({
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-gray-900 dark:text-gray-100 truncate text-base mb-1">
+                    <div className="font-semibold text-foreground truncate text-base mb-1">
                       {customer.name}
                     </div>
                     <div className="flex flex-wrap gap-1">
@@ -268,24 +268,24 @@ export function CustomerTable({
               </div>
 
               <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3 p-2 bg-background rounded-lg">
                   <MailOutlined className="text-blue-500 text-sm shrink-0" />
-                  <Text className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                  <Text className="text-sm text-foreground truncate">
                     {customer.email}
                   </Text>
                 </div>
 
                 {customer.phone && (
-                  <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center gap-3 p-2 bg-background rounded-lg">
                     <PhoneOutlined className="text-green-500 text-sm shrink-0" />
-                    <Text className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                    <Text className="text-sm text-foreground truncate">
                       {customer.phone}
                     </Text>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-between gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between gap-2 pt-3 border-t border-border">
                 <Button
                   type="primary"
                   icon={<EyeOutlined />}
@@ -297,7 +297,7 @@ export function CustomerTable({
                   icon={<EditOutlined />}
                   size="middle"
                   onClick={() => onEdit(customer)}
-                  className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                  className="flex-1 flex items-center justify-center gap-1 h-9 text-sm font-medium border-border text-foreground"
                 />
                 <Button
                   danger

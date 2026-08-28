@@ -370,7 +370,7 @@ function TraderPriceExportModal({
                       key={c.id}
                       className="flex items-center justify-between gap-3"
                     >
-                      <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate">
+                      <span className="text-[12.5px] text-muted-foreground truncate">
                         {c.name}
                         <span className="ml-1.5 text-[11px] text-gray-400">
                           ({c.lineCount})

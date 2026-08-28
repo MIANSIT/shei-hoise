@@ -234,7 +234,7 @@ export function StoreStatusPopup({
       className={`fixed top-4 right-4 left-4 sm:left-auto z-50 sm:w-80 w-auto p-3 sm:p-4 shadow-lg rounded-lg border transition-all max-w-md mx-auto sm:mx-0 ${
         isExpiringSoon
           ? "bg-orange-50 dark:bg-orange-900/20 border-orange-400 dark:border-orange-600 animate-pulse"
-          : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+          : "bg-card border-border"
       }`}
     >
       <div className="flex justify-between items-start gap-2">
@@ -255,7 +255,7 @@ export function StoreStatusPopup({
             className={`text-xs font-medium wrap-break-word ${
               isExpiringSoon
                 ? "text-orange-700 dark:text-orange-300"
-                : "text-gray-700 dark:text-gray-300"
+                : "text-foreground"
             }`}
           >
             {isExpiringSoon ? "⏰ Expiring soon: " : "Trial expires in: "}
@@ -264,7 +264,7 @@ export function StoreStatusPopup({
         </div>
         <button
           onClick={handleClose}
-          className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-lg font-bold shrink-0"
+          className="text-gray-500 hover:text-foreground text-lg font-bold shrink-0"
         >
           ×
         </button>

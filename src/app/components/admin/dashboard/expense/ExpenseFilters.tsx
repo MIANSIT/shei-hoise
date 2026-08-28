@@ -172,7 +172,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
   return (
     <>
       {/* ── Desktop: inline bar ── */}
-      <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 px-5 py-3.5 shadow-sm">
+      <div className="hidden md:block bg-card rounded-2xl border border-border px-5 py-3.5 shadow-sm">
         <FilterControls {...props} activeCount={activeCount} />
       </div>
 
@@ -192,7 +192,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
         </div>
         <Button
           onClick={() => setDrawerOpen(true)}
-          className="flex items-center gap-1.5 h-9.5 rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          className="flex items-center gap-1.5 h-9.5 rounded-xl border-border dark:bg-gray-800 dark:text-gray-300"
           icon={<FilterOutlined />}
         >
           {t.admin.expenseFiltersBtn}
@@ -212,7 +212,7 @@ function ExpenseFilters(props: ExpenseFiltersProps) {
       {/* ── Mobile drawer ── */}
       <Drawer
         title={
-          <span className="font-semibold text-gray-800 dark:text-white">
+          <span className="font-semibold text-foreground">
             {t.admin.expenseFilterTitle}
           </span>
         }

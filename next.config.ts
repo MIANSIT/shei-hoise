@@ -2,15 +2,23 @@ import type { NextConfig } from "next";
 
 // Only true for local docker dev, where SUPABASE_PUBLIC_URL points at Kong
 // on localhost — never in production, where it's the real api.sheihoise.com
-// host. Used below to skip server-side image optimization there: the
-// optimizer fetches the source image from *inside* the app container, where
-// "localhost:8000" is the container's own loopback, not the host's Kong —
-// it can never actually reach it. The browser, by contrast, loads that same
-// URL directly just fine (it's on the host), so unoptimized mode — a plain
-// <img> pointed at the original URL — sidesteps the mismatch entirely.
-const isLocalSupabase =
-  process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith("http://localhost") ??
-  false;
+// host. Used below to skip server-side image optimization there, for two
+// independent reasons that both land on the same fix:
+//  1. Next.js 16 has a confirmed regression (vercel/next.js#88873) where the
+//     optimizer's remotePatterns check rejects valid matches — verified here:
+//     the config is correct and the matching logic passes in isolation, but
+//     the live /_next/image route still 400s with '"url" parameter is not
+//     allowed'.
+//  2. Even without that bug, the optimizer fetches the source image
+//     server-side from *inside* the app container, where "localhost:8000" is
+//     the container's own loopback, not the host's Kong — it could never
+//     actually reach it. The browser, by contrast, loads that same URL
+//     directly just fine (it's on the host).
+// Production is unaffected (a normal HTTPS custom domain, reachable the same
+// way for both the browser and the server). Unoptimized mode — a plain <img>
+// pointed at the original URL, fetched by the browser instead of the server —
+// sidesteps both problems at once.
+const isLocalDev = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").includes("localhost");
 
 const nextConfig: NextConfig = {
   output: "standalone", // ✅ produces a minimal .next/standalone bundle for Docker
@@ -21,6 +29,11 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp"],
 
   images: {
+    // See isLocalDev comment above — the optimizer's remotePatterns check is
+    // broken against localhost in this Next.js version, so skip it entirely
+    // in local dev rather than serve broken images.
+    unoptimized: isLocalDev,
+
     // Optimization is ON. 810 of 818 catalogue images are still full-size PNGs
     // (some over 1.5 MB) uploaded before uploads started converting to WebP,
     // and most of the storefront renders them far smaller than their intrinsic
@@ -44,12 +57,16 @@ const nextConfig: NextConfig = {
     imageSizes: [96, 256, 384],
     qualities: [75],
 
-    unoptimized: isLocalSupabase,
-
     remotePatterns: [
       {
         protocol: "https",
         hostname: "api.sheihoise.com", // Self-hosted storage (Kong via Caddy)
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "8000", // Local dev's Kong — storage URLs point here before Caddy/DNS exist
         pathname: "/**",
       },
       {

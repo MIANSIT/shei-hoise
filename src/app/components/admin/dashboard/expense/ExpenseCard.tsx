@@ -48,7 +48,7 @@ export function ExpenseCard({
   return (
     <>
       {/* Card */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md hover:border-indigo-100 dark:hover:border-indigo-900 active:scale-[0.99] ">
+      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm transition-all hover:shadow-md hover:border-indigo-100 dark:hover:border-indigo-900 active:scale-[0.99] ">
         {/* Top row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -67,13 +67,13 @@ export function ExpenseCard({
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 dark:text-white text-sm leading-tight truncate m-0">
+              <p className="font-semibold text-foreground text-sm leading-tight truncate m-0">
                 {record.title}
               </p>
               {record.vendor_name && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <Store size={10} className="text-gray-400" strokeWidth={2} />
-                  <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                  <span className="text-xs text-muted-foreground truncate">
                     {record.vendor_name}
                   </span>
                 </div>
@@ -95,11 +95,11 @@ export function ExpenseCard({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar size={11} strokeWidth={2} />
             <span>{dayjs(record.expense_date).format("MMM D, YYYY")}</span>
-            <span className="text-gray-300 dark:text-gray-600">·</span>
+            <span className="text-muted-foreground">·</span>
             <span>{dayjs(record.expense_date).fromNow()}</span>
           </div>
           <div
@@ -139,14 +139,14 @@ export function ExpenseCard({
         className="dark:[&_.ant-drawer-content]:bg-gray-800 dark:[&_.ant-drawer-body]:bg-gray-800"
       >
         {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1 bg-white dark:bg-gray-800">
-          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
+        <div className="flex justify-center pt-3 pb-1 bg-card">
+          <div className="w-10 h-1 rounded-full bg-muted" />
         </div>
 
         <ExpenseDetailContent expense={record} currencyIcon={currencyIcon} />
 
         {/* Footer actions */}
-        <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex gap-2">
+        <div className="px-5 py-4 border-t border-border bg-card flex gap-2">
           <Button
             block
             icon={<EditOutlined />}

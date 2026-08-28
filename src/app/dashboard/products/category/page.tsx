@@ -275,7 +275,7 @@ export default function CategoryPage() {
   const inactiveCount = categories.filter((c) => !c.is_active).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] transition-colors duration-300">
+    <div className="min-h-screen bg-background transition-colors duration-300">
       <div
         className="w-full max-w-screen-2xl mx-auto
                       px-3 sm:px-5 md:px-6 lg:px-8
@@ -288,7 +288,7 @@ export default function CategoryPage() {
             <p className="text-[10px] sm:text-xs font-semibold tracking-widest uppercase text-indigo-500 mb-0.5">
               {t.admin.prodCatSubtitle}
             </p>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground">
               {t.admin.prodCatTitle}
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
@@ -322,7 +322,7 @@ export default function CategoryPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="bg-white dark:bg-[#16181f] border border-gray-200 dark:border-[#2a2d3a]
+              className="bg-card border border-border
                          rounded-xl p-2.5 sm:p-3 md:p-4
                          flex flex-col sm:flex-row items-center gap-1 sm:gap-3"
             >
@@ -406,25 +406,23 @@ export default function CategoryPage() {
             <button
               disabled={page === 1}
               onClick={() => handlePaginationChange(page - 1, pageSize)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200
-                         dark:border-[#2a2d3a] bg-white dark:bg-[#16181f]
-                         text-gray-600 dark:text-gray-300
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-card
+                         text-muted-foreground
                          disabled:opacity-40 disabled:cursor-not-allowed
-                         hover:bg-gray-50 dark:hover:bg-[#1c1f2b] transition-colors"
+                         hover:bg-muted transition-colors"
             >
               {t.admin.prodCatPrev}
             </button>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300 tabular-nums">
+            <span className="text-sm font-medium text-muted-foreground tabular-nums">
               {n(page)} / {n(Math.ceil(total / pageSize) || 1)}
             </span>
             <button
               disabled={page >= Math.ceil(total / pageSize)}
               onClick={() => handlePaginationChange(page + 1, pageSize)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200
-                         dark:border-[#2a2d3a] bg-white dark:bg-[#16181f]
-                         text-gray-600 dark:text-gray-300
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-card
+                         text-muted-foreground
                          disabled:opacity-40 disabled:cursor-not-allowed
-                         hover:bg-gray-50 dark:hover:bg-[#1c1f2b] transition-colors"
+                         hover:bg-muted transition-colors"
             >
               {t.admin.prodCatNext}
             </button>
@@ -456,19 +454,19 @@ export default function CategoryPage() {
           >
             {/* Custom header with explicit close button */}
             <div
-              className="sticky top-0 z-10 bg-white dark:bg-[#16181f]
-                            px-5 py-4 border-b border-gray-100 dark:border-[#2a2d3a]
+              className="sticky top-0 z-10 bg-card
+                            px-5 py-4 border-b border-border
                             flex items-center justify-between"
             >
-              <DialogTitle className="text-base font-bold text-gray-900 dark:text-white">
+              <DialogTitle className="text-base font-bold text-foreground">
                 {editingCategory ? t.admin.prodCatEditTitle : t.admin.prodCatCreateTitle}
               </DialogTitle>
               <button
                 onClick={() => setShowForm(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg
-                           border border-gray-200 dark:border-[#2a2d3a]
-                           text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-                           hover:bg-gray-100 dark:hover:bg-[#2a2d3a]
+                           border border-border
+                           text-gray-400 hover:text-foreground
+                           hover:bg-muted
                            transition-all duration-150"
                 aria-label="Close"
               >

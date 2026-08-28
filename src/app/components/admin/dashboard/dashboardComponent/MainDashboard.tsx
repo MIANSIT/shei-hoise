@@ -80,8 +80,8 @@ const PeriodSelector: React.FC<{
   return (
   <div
     className="inline-flex items-center rounded-xl p-1 gap-0.5
-    bg-gray-100 dark:bg-gray-800
-    border border-gray-200 dark:border-gray-700"
+    bg-muted
+    border border-border"
   >
     {(
       [
@@ -97,7 +97,7 @@ const PeriodSelector: React.FC<{
           ${
             value === key
               ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              : "text-muted-foreground hover:text-foreground"
           }`}
       >
         {label}
@@ -140,8 +140,8 @@ const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({
   className = "",
 }) => (
   <div
-    className={`rounded-2xl bg-white dark:bg-gray-900
-    border border-gray-200 dark:border-gray-700
+    className={`rounded-2xl bg-card
+    border border-border
     shadow-sm dark:shadow-none ${className}`}
   >
     {children}
@@ -171,8 +171,8 @@ const PLHeroBar: React.FC<{
             glyph: "◆",
           }
         : {
-            value: "text-gray-600 dark:text-gray-300",
-            bg: "bg-gray-50 dark:bg-gray-800",
+            value: "text-muted-foreground",
+            bg: "bg-background",
             glyph: "—",
           };
 
@@ -193,7 +193,7 @@ const PLHeroBar: React.FC<{
   }) => (
     <div
       className={`flex flex-col items-center justify-center py-4 sm:py-6 px-2 sm:px-4 gap-0.5 sm:gap-1
-      ${bg} ${borderRight ? "border-r border-gray-200 dark:border-gray-700" : ""}`}
+      ${bg} ${borderRight ? "border-r border-border" : ""}`}
     >
       <span
         className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest sm:tracking-[0.2em] opacity-80 ${textCls}`}
@@ -206,7 +206,7 @@ const PLHeroBar: React.FC<{
       >
         {val}
       </span>
-      <span className="text-[8px] sm:text-[9px] uppercase tracking-widest mt-0.5 text-gray-400 dark:text-gray-500">
+      <span className="text-[8px] sm:text-[9px] uppercase tracking-widest mt-0.5 text-muted-foreground">
         {periodLabel}
       </span>
     </div>
@@ -215,8 +215,8 @@ const PLHeroBar: React.FC<{
   return (
     <div
       className="relative rounded-2xl overflow-hidden mb-4 sm:mb-6
-      bg-white dark:bg-gray-900
-      border border-gray-200 dark:border-gray-700
+      bg-card
+      border border-border
       shadow-sm dark:shadow-none"
     >
       <div className="grid grid-cols-3">
@@ -292,8 +292,8 @@ const OrderStatusRow: React.FC<{ title: string; value: string }> = ({
   };
   const configKey = translatedToKey[title] ?? title;
   const cfg = statusConfig[configKey] ?? {
-    text: "text-gray-600 dark:text-gray-300",
-    bg: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
+    text: "text-muted-foreground",
+    bg: "bg-background border-border",
     dot: "bg-gray-400",
   };
   return (
@@ -382,14 +382,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   return (
     <div
       className="min-h-screen pb-16 sm:pb-20
-      bg-gray-50 dark:bg-gray-950
-      text-gray-900 dark:text-gray-100"
+      bg-background
+      text-foreground"
     >
       {/* ── Sticky top bar ── */}
       <div
         className="sticky top-0 z-30 backdrop-blur-xl
         bg-gray-50/90 dark:bg-gray-950/90
-        border-b border-gray-200 dark:border-gray-800"
+        border-b border-border"
       >
         <div
           className="max-w-400 mx-auto px-3 sm:px-6 h-12 sm:h-14
@@ -407,7 +407,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             <div className="min-w-0">
               <p
                 className="text-xs sm:text-sm font-bold leading-none truncate
-                text-gray-900 dark:text-white"
+                text-foreground"
               >
                 {t.admin.businessOverview}
               </p>
@@ -463,7 +463,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">
               <span
                 className="text-[9px] sm:text-[10px] uppercase tracking-wider self-center
-                text-gray-400 dark:text-gray-500"
+                text-muted-foreground"
               >
                 {t.admin.expenseSplit}
               </span>

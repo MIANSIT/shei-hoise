@@ -53,7 +53,7 @@ const StockHistoryPopover: React.FC<StockHistoryPopoverProps> = ({
       styles={{ container: { padding: 10, borderRadius: 12, width: 250 } }}
       content={
         <div onClick={(e) => e.stopPropagation()}>
-          <p className="m-0 mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+          <p className="m-0 mb-2 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
             Recent activity
           </p>
           {loading ? (
@@ -61,7 +61,7 @@ const StockHistoryPopover: React.FC<StockHistoryPopoverProps> = ({
               <LoadingOutlined />
             </div>
           ) : movements.length === 0 ? (
-            <p className="m-0 py-2 text-[11.5px] text-gray-400 dark:text-gray-500">
+            <p className="m-0 py-2 text-[11.5px] text-muted-foreground">
               No changes recorded yet.
             </p>
           ) : (
@@ -70,10 +70,10 @@ const StockHistoryPopover: React.FC<StockHistoryPopoverProps> = ({
                 <div
                   key={m.id}
                   className={`flex items-center justify-between gap-2 py-1.5 text-[11.5px] ${
-                    i > 0 ? "border-t border-gray-100 dark:border-gray-800" : ""
+                    i > 0 ? "border-t border-border" : ""
                   }`}
                 >
-                  <span className="text-gray-500 dark:text-gray-400 truncate">
+                  <span className="text-muted-foreground truncate">
                     {m.createdByName ?? REASON_LABELS[m.reason] ?? m.reason} ·{" "}
                     {dayjs(m.createdAt).format("MMM D, h:mm A")}
                   </span>

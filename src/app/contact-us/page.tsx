@@ -16,7 +16,7 @@ export default function ContactUSPage() {
         <h1 className="text-4xl sm:text-5xl font-extrabold mb-3 sm:mb-4">
           Contact Us
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 text-lg sm:text-xl max-w-2xl">
+        <p className="text-muted-foreground text-lg sm:text-xl max-w-2xl">
           Need assistance? Connect with us using any of the channels below or
           browse our helpful resources.
         </p>

@@ -75,7 +75,7 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
             disabled={loading}
             className="
               w-7 h-7 rounded-lg flex items-center justify-center
-              bg-white dark:bg-gray-800
+              bg-card
               border border-blue-200 dark:border-blue-700/60
               text-blue-600 dark:text-blue-400
               hover:bg-blue-100 dark:hover:bg-blue-900/40
@@ -107,7 +107,7 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
             disabled={loading}
             className="
               w-7 h-7 rounded-lg flex items-center justify-center
-              bg-white dark:bg-gray-800
+              bg-card
               border border-blue-200 dark:border-blue-700/60
               text-blue-600 dark:text-blue-400
               hover:bg-blue-100 dark:hover:bg-blue-900/40

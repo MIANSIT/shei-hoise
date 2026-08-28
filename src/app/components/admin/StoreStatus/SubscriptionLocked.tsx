@@ -24,10 +24,10 @@ export default function SubscriptionLocked({ storeId, state, daysLeftInGrace }: 
   }, [storeId]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-          <Lock className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+          <Lock className="h-6 w-6 text-muted-foreground" />
         </div>
 
         <h1 className="text-xl font-semibold text-foreground">
@@ -47,7 +47,7 @@ export default function SubscriptionLocked({ storeId, state, daysLeftInGrace }: 
           </p>
         )}
 
-        <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-border p-3 text-sm text-muted-foreground">
+        <div className="mt-4 rounded-lg bg-background/60 border border-border p-3 text-sm text-muted-foreground">
           {t.admin.subLockedDataSafe}
         </div>
 

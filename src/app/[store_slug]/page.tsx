@@ -322,6 +322,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   imageClassName="aspect-square"
                   isHero={false}
                   index={i}
+                  currencyIcon={curr}
                 />
               ))}
             </div>
@@ -364,6 +365,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   imageClassName="aspect-3/4 sm:h-full sm:min-h-120"
                   isHero
                   index={0}
+                  currencyIcon={curr}
                 />
               )}
               {featuredProducts.slice(1).map((product, i) => (
@@ -378,6 +380,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   imageClassName="aspect-square"
                   isHero={false}
                   index={i + 1}
+                  currencyIcon={curr}
                 />
               ))}
             </div>
@@ -700,6 +703,7 @@ interface ProductCardProps {
   imageClassName: string;
   isHero: boolean;
   index: number;
+  currencyIcon: React.ReactNode;
 }
 
 function ProductCard({
@@ -712,6 +716,7 @@ function ProductCard({
   imageClassName,
   isHero,
   index,
+  currencyIcon,
 }: ProductCardProps) {
   const t = useTranslation();
   const n = useLocalNum();
@@ -787,17 +792,17 @@ function ProductCard({
             </p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="text-white font-black text-base drop-shadow">
-                ৳{n(Number(price).toLocaleString())}
+                {currencyIcon}{n(Number(price).toLocaleString())}
               </span>
               {hasDiscount && (
                 <span className="text-white/55 text-xs line-through font-medium">
-                  ৳{n(Number(originalPrice).toLocaleString())}
+                  {currencyIcon}{n(Number(originalPrice).toLocaleString())}
                 </span>
               )}
             </div>
             {bundleSavings > 0 && (
               <p className="mt-1 text-[11px] font-bold text-emerald-300 drop-shadow-sm">
-                Save ৳{n(Number(bundleSavings).toLocaleString())} vs. buying separately
+                Save {currencyIcon}{n(Number(bundleSavings).toLocaleString())} vs. buying separately
               </p>
             )}
           </div>
@@ -838,17 +843,17 @@ function ProductCard({
             </Link>
             <div className="flex items-baseline gap-1.5 mt-1.5">
               <span className="text-sm font-black text-stone-900 dark:text-white">
-                ৳{n(Number(price).toLocaleString())}
+                {currencyIcon}{n(Number(price).toLocaleString())}
               </span>
               {hasDiscount && (
                 <span className="text-[11px] text-stone-400 dark:text-gray-500 line-through">
-                  ৳{n(Number(originalPrice).toLocaleString())}
+                  {currencyIcon}{n(Number(originalPrice).toLocaleString())}
                 </span>
               )}
             </div>
             {bundleSavings > 0 && (
               <p className="mt-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                Save ৳{n(Number(bundleSavings).toLocaleString())} separately
+                Save {currencyIcon}{n(Number(bundleSavings).toLocaleString())} separately
               </p>
             )}
           </div>

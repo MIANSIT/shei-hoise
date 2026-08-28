@@ -112,20 +112,20 @@ export default function AddCategoryCardForm({
 
   return (
     <div
-      className="bg-white dark:bg-[#16181f]
-                    border border-gray-200 dark:border-[#2a2d3a]
+      className="bg-card
+                    border border-border
                     rounded-2xl overflow-hidden"
     >
       {/* ── Form header ── */}
       <div
         className="px-4 sm:px-5 py-3 sm:py-4
-                      border-b border-gray-100 dark:border-[#2a2d3a]
-                      bg-gray-50 dark:bg-[#13151d]"
+                      border-b border-border
+                      bg-background"
       >
         <p className="text-[10px] font-semibold uppercase tracking-widest text-indigo-500 mb-0.5">
           {editingCategory ? t.admin.prodCatEditing : t.admin.prodCatFormNew}
         </p>
-        <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+        <h2 className="text-sm sm:text-base font-bold text-foreground">
           {editingCategory ? (editingCategory as any).name : t.admin.prodCatCreateBtn}
         </h2>
       </div>
@@ -179,11 +179,11 @@ export default function AddCategoryCardForm({
         <div
           className="flex items-center justify-between
                         px-3 sm:px-4 py-2.5 sm:py-3
-                        rounded-xl border border-gray-200 dark:border-[#2a2d3a]
-                        bg-gray-50 dark:bg-[#0f1117]"
+                        rounded-xl border border-border
+                        bg-background"
         >
           <div>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            <p className="text-sm font-medium text-foreground">
               {t.admin.prodCatActiveStatus}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">{t.admin.prodCatVisibleInStore}</p>
@@ -194,7 +194,7 @@ export default function AddCategoryCardForm({
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full
                         transition-colors duration-300
                         focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:ring-offset-1
-                        ${isActiveValue ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                        ${isActiveValue ? "bg-emerald-500" : "bg-muted"}`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white shadow

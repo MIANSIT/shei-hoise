@@ -88,8 +88,7 @@ export default function CheckoutPage() {
     return cartLoading || authLoading || storeLoading || taxLoaded === false;
   }, [cartLoading, authLoading, storeLoading, taxLoaded]);
 
-  // Use refs to track notification state
-  const hasShownMinOrderNotification = useRef(false);
+  // Use ref to track notification state
   const minOrderCheckComplete = useRef(false);
 
   // Fetch store settings (tax and min order amount)
@@ -145,7 +144,7 @@ export default function CheckoutPage() {
         currency: storeCurrency,
       }, store_slug);
     }
-  }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal]);
+  }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal, storeCurrency, store_slug]);
 
   // Check minimum order amount - WITHOUT NOTIFICATION
   useEffect(() => {
@@ -558,8 +557,8 @@ export default function CheckoutPage() {
       shippingFee,
       taxAmount,
       minOrderAmount,
-      calculations.subtotal,
       currency,
+      storeCurrency,
       notify,
       clearAccountCreationFlags,
       isUserLoggedIn,
@@ -594,7 +593,31 @@ export default function CheckoutPage() {
     );
   }
 
-  // Order complete
+  // Cart is empty and checkout was never attempted (e.g. the user hit
+  // "Clear Cart" on this page) — show a real empty state with a way back
+  // to shopping, not the post-order skeleton below. That skeleton has no
+  // exit of its own; it only ever resolves via the redirect effect above,
+  // which is gated behind hasAttemptedCheckout — without this check first,
+  // a manually-cleared cart got stuck on it forever.
+  if (cartItems.length === 0 && !isLoadingOverall && !showInvoice && !hasAttemptedCheckout.current) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-foreground">{t.cart.cartEmpty}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t.cart.addProductsPrompt}</p>
+          <button
+            onClick={() => router.push(`/${store_slug}/shop`)}
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-stone-900 dark:bg-white text-white dark:text-gray-900 hover:bg-stone-700 dark:hover:bg-gray-100 active:scale-95 transition-all duration-200"
+          >
+            {t.cart.continueShoppingAt} {store_slug}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Order complete — cart was cleared right after a successful checkout;
+  // this briefly bridges to the redirect effect above before it fires.
   if (cartItems.length === 0 && !isLoadingOverall && !showInvoice) {
     return <OrderCompleteSkeleton />;
   }

@@ -45,17 +45,17 @@ export default function SteadfastCourierPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="max-w-5xl mx-auto flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0">
             <Truck size={18} color="white" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
               {t.admin.steadfastCardTitle}
             </h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+            <p className="text-xs text-muted-foreground m-0">
               {t.admin.courierPageSubtitle}
             </p>
           </div>
@@ -67,7 +67,7 @@ export default function SteadfastCourierPage() {
 
         <div>
           <div className="flex items-center justify-between mb-2.5">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+            <h2 className="text-sm font-bold text-foreground">
               {t.admin.pathaoShipmentsTitle}
             </h2>
           </div>

@@ -116,7 +116,7 @@ function CheckoutContent() {
   if (notFound || !plan) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
-        <p className="text-gray-500 dark:text-gray-400 text-sm">{t.admin.subPlanNotFound}</p>
+        <p className="text-muted-foreground text-sm">{t.admin.subPlanNotFound}</p>
         <button
           type="button"
           onClick={() => router.push("/dashboard/subscription")}
@@ -136,10 +136,10 @@ function CheckoutContent() {
         <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.admin.subPaymentSubmittedTitle}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+        <h2 className="text-xl font-bold text-foreground">{t.admin.subPaymentSubmittedTitle}</h2>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           {t.admin.subPaymentSubmittedPrefix}{" "}
-          <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">
+          <span className="font-mono font-semibold text-foreground">
             {submittedInvoiceNumber}
           </span>
           . {t.admin.subPaymentSubmittedActivateSuffix} {plan.name} {t.admin.subPaymentSubmittedActivateEnd}
@@ -163,7 +163,7 @@ function CheckoutContent() {
       <button
         type="button"
         onClick={() => router.push("/dashboard/subscription")}
-        className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-6"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         {t.admin.subBackToSubscription}
@@ -213,7 +213,7 @@ function CheckoutContent() {
 
       {/* Method cards */}
       <div>
-        <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
           {t.admin.subChoosePaymentMethod}
         </p>
         <PaymentMethodPicker method={method} onMethodChange={setMethod} amount={amount} invoiceNumber={invoiceNumber} />
@@ -238,7 +238,7 @@ function CheckoutContent() {
         <button
           type="button"
           onClick={() => router.push("/dashboard/subscription")}
-          className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="text-sm text-muted-foreground hover:text-muted-foreground transition-colors"
         >
           {t.admin.subBtnCancel}
         </button>

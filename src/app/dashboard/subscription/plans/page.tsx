@@ -41,12 +41,12 @@ function PlanCard({
 
   return (
     <div
-      className={`relative rounded-2xl border p-6 sm:p-8 flex flex-col gap-4 sm:gap-5 transition-all bg-white dark:bg-gray-900 ${
+      className={`relative rounded-2xl border p-6 sm:p-8 flex flex-col gap-4 sm:gap-5 transition-all bg-card ${
         isCurrent
           ? "border-violet-400 shadow-lg ring-2 ring-violet-300"
           : plan.is_featured
           ? "border-blue-300 shadow-xl lg:-translate-y-2"
-          : "border-gray-200 dark:border-gray-700 shadow-sm"
+          : "border-border shadow-sm"
       }`}
     >
       {isCurrent && (
@@ -70,7 +70,7 @@ function PlanCard({
             ? "bg-violet-100 dark:bg-violet-900/40"
             : plan.is_featured
             ? "bg-blue-100 dark:bg-blue-900/40"
-            : "bg-gray-100 dark:bg-gray-800"
+            : "bg-muted"
         }`}
       >
         <Package
@@ -79,24 +79,24 @@ function PlanCard({
               ? "text-violet-600 dark:text-violet-400"
               : plan.is_featured
               ? "text-blue-600 dark:text-blue-400"
-              : "text-gray-500 dark:text-gray-400"
+              : "text-muted-foreground"
           }`}
         />
       </div>
 
       <div>
-        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{plan.name}</h3>
+        <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
         {plan.description && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{plan.description}</p>
+          <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
         )}
       </div>
 
       <div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
+          <span className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
             {currency}{price.toLocaleString("en-BD")}
           </span>
-          <span className="text-sm text-gray-400 dark:text-gray-500">
+          <span className="text-sm text-muted-foreground">
             {isYearly ? t.admin.subPerYear : t.admin.subPerMonth}
           </span>
         </div>
@@ -116,7 +116,7 @@ function PlanCard({
         <div className="flex-1">
           <ul className="space-y-2 sm:space-y-2.5">
             {visibleFeatures.map((f) => (
-              <li key={f} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+              <li key={f} className="flex items-start gap-2.5 text-sm text-foreground">
                 <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 {f}
               </li>
@@ -244,7 +244,7 @@ export default function SubscriptionPlansPage() {
       <button
         type="button"
         onClick={() => router.push("/dashboard/subscription")}
-        className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-6 sm:mb-8"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 sm:mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
         {t.admin.subBackToSubscription}
@@ -252,22 +252,22 @@ export default function SubscriptionPlansPage() {
 
       {/* Header */}
       <div className="text-center mb-8 sm:mb-10">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
           {t.admin.subChooseYourPlan}
         </h1>
-        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
+        <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-md mx-auto">
           {t.admin.subPlansTagline}
         </p>
 
         {hasYearly && (
-          <div className="inline-flex items-center mt-6 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1 gap-1">
+          <div className="inline-flex items-center mt-6 rounded-full border border-border bg-background p-1 gap-1">
             <button
               type="button"
               onClick={() => setBillingCycle("monthly")}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
                 billingCycle === "monthly"
                   ? "bg-violet-600 text-white shadow"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.admin.subCycleMonthly}
@@ -278,7 +278,7 @@ export default function SubscriptionPlansPage() {
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
                 billingCycle === "yearly"
                   ? "bg-violet-600 text-white shadow"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.admin.subCycleYearly}

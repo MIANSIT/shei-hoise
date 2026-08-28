@@ -12,7 +12,7 @@ const STYLES: Record<"green" | "blue" | "amber" | "red" | "gray", CourierStatusS
   gray: {
     border: "border-l-gray-300 dark:border-l-gray-600",
     dot: "bg-gray-400",
-    text: "text-gray-500 dark:text-gray-400",
+    text: "text-muted-foreground",
   },
 };
 

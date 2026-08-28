@@ -85,7 +85,7 @@ function VendorSettlementModal({
       key: "product",
       render: (_, r) => (
         <div>
-          <div className="font-medium text-gray-800 dark:text-gray-100">{r.product_name}</div>
+          <div className="font-medium text-foreground">{r.product_name}</div>
           <div className="text-xs text-gray-400">Vendor has: {r.quantity_available}</div>
         </div>
       ),
@@ -167,16 +167,16 @@ function VendorSettlementModal({
       closable={!submitting}
       styles={{ body: { borderRadius: 20, padding: 0 } }}
       title={
-        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-700">
+        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-border">
           <div className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-400 to-teal-600 flex items-center justify-center shrink-0">
             <HandCoins size={16} color="white" />
           </div>
-          <span className="text-base font-bold text-gray-900 dark:text-white">Record Settlement</span>
+          <span className="text-base font-bold text-foreground">Record Settlement</span>
         </div>
       }
       footer={
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+          <div className="text-sm font-semibold text-foreground">
             Total Receivable: {totalReceivable.toFixed(2)}
           </div>
           <div className="flex gap-2">
@@ -202,7 +202,7 @@ function VendorSettlementModal({
       <div className="px-6 pt-5 pb-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Settlement Date</label>
+            <label className="text-xs font-semibold text-muted-foreground">Settlement Date</label>
             <DatePicker
               value={settlementDate}
               onChange={(d) => d && setSettlementDate(d)}
@@ -210,7 +210,7 @@ function VendorSettlementModal({
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Amount Received</label>
+            <label className="text-xs font-semibold text-muted-foreground">Amount Received</label>
             <InputNumber
               min={0}
               value={paymentAmount}
@@ -219,7 +219,7 @@ function VendorSettlementModal({
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Payment Method</label>
+            <label className="text-xs font-semibold text-muted-foreground">Payment Method</label>
             <Select
               value={paymentMethod}
               onChange={setPaymentMethod}
@@ -240,7 +240,7 @@ function VendorSettlementModal({
         />
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Notes (Optional)</label>
+          <label className="text-xs font-semibold text-muted-foreground">Notes (Optional)</label>
           <Input.TextArea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

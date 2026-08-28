@@ -142,70 +142,70 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded">
               <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white">
+              <div className="text-sm font-bold text-foreground">
                 {order.order_items.length}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Items
               </div>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-purple-100 dark:bg-purple-900 rounded">
               <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white">
+              <div className="text-sm font-bold text-foreground">
                 {order.order_items.reduce(
                   (sum, item) => sum + item.quantity,
                   0,
                 )}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Total Quantity
               </div>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-green-100 dark:bg-green-900 rounded">
               <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white">
+              <div className="text-sm font-bold text-foreground">
                 {displayCurrencyIconSafe}
                 {calculatedSubtotal.toFixed(2)}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Subtotal
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-orange-100 dark:bg-orange-900 rounded">
               <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white">
+              <div className="text-sm font-bold text-foreground">
                 {order.shipping_fee === 0
                   ? "Free Shipping"
                   : ` ${displayCurrencyIconSafe}${order.shipping_fee.toFixed(
                       2,
                     )}`}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Shipping
               </div>
             </div>
@@ -215,16 +215,16 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       {/* Order Status Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {/* Order Status */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded">
               <ClipboardCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">
+              <div className="text-sm font-bold text-foreground capitalize">
                 {order.status}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Order Status
               </div>
             </div>
@@ -232,7 +232,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         </div>
 
         {/* Payment Status */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-green-100 dark:bg-green-900 rounded">
               <CreditCard className="w-4 h-4 text-green-600 dark:text-green-400" />
@@ -247,7 +247,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               >
                 {order.payment_status}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Payment Status
               </div>
             </div>
@@ -255,16 +255,16 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         </div>
 
         {/* Delivery Method */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-orange-100 dark:bg-orange-900 rounded">
               <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">
+              <div className="text-sm font-bold text-foreground capitalize">
                 {order.delivery_option || "N/A"}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Delivery Method
               </div>
             </div>
@@ -272,16 +272,16 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         </div>
 
         {/* Payment Method */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
           <div className="flex items-center gap-2">
             <div className="p-1 bg-purple-100 dark:bg-purple-900 rounded">
               <DollarSign className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white uppercase">
+              <div className="text-sm font-bold text-foreground uppercase">
                 {order.payment_method}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 Payment Method
               </div>
             </div>
@@ -290,9 +290,9 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Products Table */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
+      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
             <Package className="w-4 h-4 text-blue-500" />
             Order Items
           </h3>
@@ -319,21 +319,21 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             return (
               <div
                 key={item.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-700"
+                className="flex flex-col sm:flex-row sm:items-center justify-between bg-card rounded-lg p-3 shadow-sm border border-border"
               >
                 <div className="flex items-start gap-3 flex-1">
                   <div className="flex-1">
                     {/* Product Name and SKU */}
                     <div className="flex flex-col gap-1">
-                      <div className="font-medium text-gray-800 dark:text-gray-100 text-sm">
+                      <div className="font-medium text-foreground text-sm">
                         {item.product_name}
                       </div>
 
                       {/* Display SKU if available */}
                       {displaySku && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs text-muted-foreground">
                           SKU:{" "}
-                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                          <span className="font-medium text-foreground">
                             {displaySku}
                           </span>
                         </div>
@@ -342,8 +342,8 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
                     {/* Variant Information */}
                     {variant && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                      <div className="text-xs text-muted-foreground mt-1">
+                        <span className="font-medium text-foreground">
                           {variant.variant_name}
                           {/* Show variant SKU if it's different from product SKU */}
                           {variantSku &&
@@ -367,13 +367,13 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                         className={`font-semibold ${
                           hasDiscount
                             ? "text-green-600 dark:text-green-400"
-                            : "text-gray-800 dark:text-gray-100"
+                            : "text-foreground"
                         }`}
                       >
                         {displayCurrencyIconSafe}
                         {discountedPrice.toFixed(2)}
                       </span>
-                      <span className="text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                      <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         × {item.quantity}
                       </span>
                       {hasDiscount && (
@@ -389,7 +389,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                   </div>
                 </div>
 
-                <div className="mt-2 sm:mt-0 font-semibold text-gray-900 dark:text-gray-100 text-right text-sm">
+                <div className="mt-2 sm:mt-0 font-semibold text-foreground text-right text-sm">
                   {displayCurrencyIconSafe}
                   {total.toFixed(2)}
                 </div>
@@ -413,8 +413,8 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Financial Summary */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
+        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
           <FileText className="w-4 h-4 text-blue-500" />
           Financial Summary
         </h3>
@@ -433,25 +433,25 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             return (
               <div
                 key={item.id}
-                className="p-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-white/50 dark:bg-gray-800/30"
+                className="p-2 rounded-lg border border-border bg-white/50 dark:bg-gray-800/30"
               >
                 <div className="flex justify-between items-center">
                   <div className="flex flex-col">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-sm text-muted-foreground">
                       {item.product_name}
                     </span>
                     {displaySku && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         SKU: {displaySku}
                       </span>
                     )}
                   </div>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                  <span className="text-sm font-medium text-foreground">
                     x{item.quantity}
                   </span>
                 </div>
 
-                <div className="text-xs mt-1 text-gray-500 dark:text-gray-400">
+                <div className="text-xs mt-1 text-muted-foreground">
                   Base Price: {displayCurrencyIconSafe}
                   {basePrice.toFixed(2)}
                 </div>
@@ -469,8 +469,8 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Financial Summary Details */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
+        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
           <FileText className="w-4 h-4 text-blue-500" />
           Order Summary
         </h3>
@@ -478,10 +478,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         <div className="space-y-2">
           {/* Subtotal */}
           <div className="flex justify-between items-center py-1">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-muted-foreground">
               Subtotal
             </span>
-            <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+            <span className="font-semibold text-sm text-foreground">
               {displayCurrencyIconSafe}
               {order.subtotal.toFixed(2)}
             </span>
@@ -489,7 +489,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
           {/* Discount */}
           <div className="flex justify-between items-center py-1">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-muted-foreground">
               Discount
             </span>
             <span className="font-semibold text-sm text-green-600 dark:text-green-400">
@@ -500,10 +500,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
 
           {/* Shipping Fee */}
           <div className="flex justify-between items-center py-1">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-muted-foreground">
               Shipping Fee
             </span>
-            <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+            <span className="font-semibold text-sm text-foreground">
               {displayCurrencyIconSafe}
               {(order.shipping_fee || 0).toFixed(2)}
             </span>
@@ -512,10 +512,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
           {/* Tax */}
           {(order.tax_amount ?? 0) > 0 && (
             <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 Tax
               </span>
-              <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+              <span className="font-semibold text-sm text-foreground">
                 {displayCurrencyIconSafe}
                 {(order.tax_amount || 0).toFixed(2)}
               </span>
@@ -523,10 +523,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
           )}
           {(order.additional_charges ?? 0) > 0 && (
             <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 Additional Charges
               </span>
-              <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+              <span className="font-semibold text-sm text-foreground">
                 {displayCurrencyIconSafe}
                 {(order.additional_charges ?? 0).toFixed(2)}
               </span>
@@ -534,7 +534,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
           )}
 
           {/* Total Amount */}
-          <div className="flex justify-between items-center pt-2 font-semibold border-t border-gray-200 dark:border-gray-600">
+          <div className="flex justify-between items-center pt-2 font-semibold border-t border-border">
             <span className="text-sm">Total Amount</span>
             <span className="text-blue-600 dark:text-blue-400 text-sm">
               {displayCurrencyIconSafe}
@@ -545,25 +545,25 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
       </div>
 
       {/* Address Information */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-gray-100 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
+        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
           <MapPin className="w-4 h-4 text-blue-500" />
           Address Information
         </h3>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* Shipping Address */}
-          <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="p-3 bg-card rounded-lg shadow-sm border border-border">
             <div className="flex items-center gap-2 mb-2">
               <Truck className="w-4 h-4 text-green-500" />
-              <h4 className="font-medium text-gray-700 dark:text-gray-200 text-sm">
+              <h4 className="font-medium text-foreground text-sm">
                 Shipping Address
               </h4>
             </div>
 
             <div className="space-y-2">
               <div>
-                <p className="font-medium text-gray-800 dark:text-gray-100 text-sm flex items-center justify-between">
+                <p className="font-medium text-foreground text-sm flex items-center justify-between">
                   {address.customer_name}
                   <button
                     onClick={() =>
@@ -581,7 +581,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               </div>
 
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <Phone size={12} />
                     {address.phone}
@@ -601,7 +601,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 </p>
               </div>
 
-              <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+              <div className="text-xs text-muted-foreground space-y-0.5">
                 <p>{address.address_line_1}</p>
                 <p>
                   {address.city}, {address.country}
@@ -631,10 +631,10 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
           </div>
 
           {/* Billing Address */}
-          <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="p-3 bg-card rounded-lg shadow-sm border border-border">
             <div className="flex items-center gap-2 mb-2">
               <CreditCard className="w-4 h-4 text-purple-500" />
-              <h4 className="font-medium text-gray-700 dark:text-gray-200 text-sm">
+              <h4 className="font-medium text-foreground text-sm">
                 Billing Address
               </h4>
             </div>
@@ -642,7 +642,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             {billingAddress ? (
               <div className="space-y-2">
                 <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-100 text-sm flex items-center justify-between">
+                  <p className="font-medium text-foreground text-sm flex items-center justify-between">
                     {billingAddress.customer_name}
                     <button
                       onClick={() =>
@@ -660,7 +660,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground flex items-center justify-between">
                     <span className="flex items-center gap-1">
                       <Phone size={12} />
                       {billingAddress.phone}
@@ -680,7 +680,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                   </p>
                 </div>
 
-                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                <div className="text-xs text-muted-foreground space-y-0.5">
                   <p>{billingAddress.address_line_1}</p>
                   <p>
                     {billingAddress.city}, {billingAddress.country}
@@ -708,7 +708,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                 </button>
               </div>
             ) : (
-              <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+              <div className="text-xs text-muted-foreground italic">
                 Same as shipping address
               </div>
             )}

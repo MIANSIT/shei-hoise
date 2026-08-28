@@ -41,7 +41,7 @@ const StatusBadge = ({
     draft:
       "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50",
     inactive:
-      "bg-gray-100   dark:bg-gray-800      text-gray-500   dark:text-gray-400   border-gray-200   dark:border-gray-700",
+      "bg-muted      text-muted-foreground   border-border",
   };
   return (
     <span
@@ -55,7 +55,7 @@ const StatusBadge = ({
 const SkuChip = ({ sku }: { sku?: string | null }) => {
   if (!sku) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 leading-none">
+    <span className="inline-flex items-center gap-1 text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md border border-border leading-none">
       {sku}
     </span>
   );
@@ -70,7 +70,7 @@ const TpPriceChip = ({
 }) => {
   if (tpPrice == null) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 leading-none">
+    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground leading-none">
       TP {symbol}
       {tpPrice.toFixed(2)}
     </span>
@@ -116,7 +116,7 @@ const StockInput = ({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="h-1 w-20 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+      <div className="h-1 w-20 rounded-full bg-muted overflow-hidden">
         <div
           className={`h-full rounded-full ${gaugeTone}`}
           style={{ width: `${stockLevelPct(stock, threshold ?? 0)}%` }}
@@ -211,15 +211,15 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
             key={product.id}
             className={`
               rounded-2xl border transition-all duration-150
-              bg-white dark:bg-gray-900
+              bg-card
               ${
                 parentSelected || parentIndeterminate
                   ? "border-blue-400 dark:border-blue-600 shadow-sm shadow-blue-100 dark:shadow-blue-950/40"
                   : product.isOutOfStock
-                    ? "border-gray-200 dark:border-gray-700/60 opacity-75"
+                    ? "border-border/60 opacity-75"
                     : product.isLowStock || hasAnyVariantIssue
                       ? "border-amber-200 dark:border-amber-800/50"
-                      : "border-gray-200 dark:border-gray-800"
+                      : "border-border"
               }
             `}
           >
@@ -238,7 +238,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
               </div>
 
               {/* Thumbnail */}
-              <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+              <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0">
                 {product.imageUrl ? (
                   <Image
                     src={product.imageUrl}
@@ -249,7 +249,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <svg
-                      className="w-5 h-5 text-gray-300 dark:text-gray-600"
+                      className="w-5 h-5 text-muted-foreground"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -267,7 +267,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
 
               {/* Title + SKU + badges */}
               <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                <span className="text-sm font-semibold text-foreground truncate">
                   {product.title}
                 </span>
 
@@ -318,7 +318,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
 
             {/* Simple product stock (no variants) */}
             {!hasVariants && (
-              <div className="px-3 pb-3 flex items-center gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+              <div className="px-3 pb-3 flex items-center gap-2 border-t border-border pt-3">
                 <StockInput
                   value={editedStocks[product.id] ?? product.stock}
                   stock={product.stock}
@@ -327,7 +327,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                   threshold={product.lowStockThreshold}
                   onChange={(v) => onStockChange(product.id, null, v)}
                 />
-                <span className="text-xs text-gray-400 dark:text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   units
                 </span>
                 <DeltaChip
@@ -350,7 +350,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
 
             {/* Variants */}
             {hasVariants && (
-              <div className="px-3 pb-3 space-y-1.5 border-t border-gray-100 dark:border-gray-800 pt-2.5">
+              <div className="px-3 pb-3 space-y-1.5 border-t border-border pt-2.5">
                 {product.variants!.map((variant) => {
                   const isVariantSelected = selectedRowKeys.includes(
                     variant.id,
@@ -367,7 +367,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           isVariantSelected
                             ? "bg-blue-50/60 dark:bg-blue-950/20 ring-1 ring-blue-300 dark:ring-blue-700/50"
                             : variant.isOutOfStock
-                              ? "bg-gray-50 dark:bg-gray-800/60"
+                              ? "bg-background/60"
                               : variant.isLowStock
                                 ? "bg-amber-50/60 dark:bg-amber-950/20"
                                 : "bg-gray-50/60 dark:bg-gray-800/40"
@@ -385,7 +385,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           />
                         </div>
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                          <span className="text-xs font-medium text-foreground truncate">
                             {variant.title}
                           </span>
                           {(variant.sku || variant.tpPrice != null) && (

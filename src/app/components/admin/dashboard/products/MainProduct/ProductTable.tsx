@@ -113,7 +113,7 @@ const VariantChip: React.FC<{ label: string }> = ({ label }) => (
 const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500 hover:scale-105 active:scale-95 transition-all duration-150"
+    className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500 hover:scale-105 active:scale-95 transition-all duration-150"
     aria-label="Edit"
   >
     <Edit className="w-3.5 h-3.5" />
@@ -123,7 +123,7 @@ const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
 const DeleteButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15 hover:border-red-300 dark:hover:border-red-500 hover:scale-105 active:scale-95 transition-all duration-150"
+    className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15 hover:border-red-300 dark:hover:border-red-500 hover:scale-105 active:scale-95 transition-all duration-150"
     aria-label="Delete"
   >
     <Trash2 className="w-3.5 h-3.5" />
@@ -233,7 +233,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       width: 60,
       responsive: ["md"],
       render: (_, record) => (
-        <div className="w-11 h-11 rounded-xl overflow-hidden border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 shrink-0">
+        <div className="w-11 h-11 rounded-xl overflow-hidden border border-border bg-background/50 shrink-0">
           <Image
             src={getProductImage(record)}
             alt={record.name}
@@ -249,10 +249,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
       key: "name",
       render: (_, record) => (
         <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-tight">
+          <span className="text-sm font-semibold text-foreground leading-tight">
             {record.name}
           </span>
-          <span className="text-xs text-gray-400 dark:text-slate-500">
+          <span className="text-xs text-muted-foreground">
             {record.category?.name || t.admin.uncategorized}
           </span>
         </div>
@@ -267,7 +267,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         const vars = record.product_variants || [];
         if (!vars.length)
           return (
-            <span className="text-xs text-gray-300 dark:text-slate-600 italic">
+            <span className="text-xs text-muted-foreground italic">
               {t.admin.noVariants}
             </span>
           );
@@ -277,7 +277,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               label={`${vars[0].variant_name ?? "Unnamed"}: ${cur}${n(vars[0].base_price ?? 0)}`}
             />
             {vars.length > 1 && (
-              <span className="text-[11px] text-gray-400 dark:text-slate-500">
+              <span className="text-[11px] text-muted-foreground">
                 +{n(vars.length - 1)}
               </span>
             )}
@@ -293,7 +293,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       render: (_, record) => {
         const price = getLowestBasePrice(record);
         return (
-          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+          <span className="text-sm font-medium text-foreground">
             {price ? `${cur}${n(price.toFixed(2))}` : "—"}
           </span>
         );
@@ -312,7 +312,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             {n(price.toFixed(2))}
           </span>
         ) : (
-          <span className="text-sm text-gray-300 dark:text-slate-600">—</span>
+          <span className="text-sm text-muted-foreground">—</span>
         );
       },
     },
@@ -338,7 +338,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 ${
                   isFeatured
                     ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500 text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/25"
-                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-300 hover:text-amber-400"
+                    : "bg-card border-border text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-300 hover:text-amber-400"
                 }`}
             >
               <Star
@@ -376,7 +376,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 ${
                   isFree
                     ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-500/25"
-                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-300 hover:text-emerald-400"
+                    : "bg-card border-border text-muted-foreground hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-300 hover:text-emerald-400"
                 }`}
             >
               <Truck className="w-3.5 h-3.5" />
@@ -415,16 +415,16 @@ const ProductTable: React.FC<ProductTableProps> = ({
   return (
     <>
       {/* ── Table header ── */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-700/60">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 flex items-center justify-center text-base">
             🛍️
           </div>
-          <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100 tracking-tight">
+          <h2 className="text-sm font-bold text-foreground tracking-tight">
             {t.admin.productListTitle}
           </h2>
         </div>
-        <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700/60 px-2.5 py-1 rounded-full">
+        <span className="text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full">
           {n(products.length)} {t.admin.itemsLabel}
         </span>
       </div>
@@ -434,7 +434,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         {products.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <span className="text-4xl">📦</span>
-            <p className="text-sm text-gray-400 dark:text-slate-500">
+            <p className="text-sm text-muted-foreground">
               {t.admin.noProductsFound}
             </p>
           </div>
@@ -468,7 +468,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         label={`${variants[0].variant_name ?? "Unnamed"}: ${cur}${n(variants[0].base_price ?? 0)}`}
                       />
                       {variants.length > 1 && (
-                        <span className="text-[11px] text-gray-400 dark:text-slate-500">
+                        <span className="text-[11px] text-muted-foreground">
                           +{n(variants.length - 1)} {t.admin.moreVariants}
                         </span>
                       )}
@@ -490,7 +490,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           </span>
                         </>
                       ) : (
-                        <span className="text-sm font-bold text-gray-700 dark:text-slate-300">
+                        <span className="text-sm font-bold text-foreground">
                           {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
                         </span>
                       )}
@@ -516,7 +516,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           ${
                             getFreeDelivery(record)
                               ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500 text-emerald-500"
-                              : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600"
+                              : "bg-card border-border text-muted-foreground"
                           }`}
                       >
                         <Truck className="w-3.5 h-3.5" />
@@ -529,7 +529,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           ${
                             getFeatured(record)
                               ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500 text-amber-500"
-                              : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600"
+                              : "bg-card border-border text-muted-foreground"
                           }`}
                       >
                         <Star
@@ -567,7 +567,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       <Modal
         open={modalOpen}
         title={
-          <span className="text-sm font-bold text-gray-900 dark:text-slate-100">
+          <span className="text-sm font-bold text-foreground">
             {t.admin.deleteProductTitle}
           </span>
         }
@@ -579,7 +579,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         centered
         okButtonProps={{ danger: true }}
       >
-        <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           {t.admin.deleteProductConfirm}
         </p>
       </Modal>

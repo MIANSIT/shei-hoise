@@ -116,17 +116,17 @@ export default function DeliveryCourierManagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="max-w-5xl mx-auto flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-linear-to-br from-indigo-400 to-blue-500 flex items-center justify-center shrink-0">
             <PackageCheck size={18} color="white" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
               {t.admin.deliveryCourierPageTitle}
             </h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+            <p className="text-xs text-muted-foreground m-0">
               {t.admin.deliveryCourierPageSubtitle}
             </p>
           </div>
@@ -134,8 +134,8 @@ export default function DeliveryCourierManagePage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-5 sm:py-7 space-y-5">
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 space-y-2.5">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-2.5">
+          <h2 className="text-sm font-bold text-foreground mb-1">
             {t.admin.deliveryCourierBuiltIn}
           </h2>
 
@@ -164,8 +164,8 @@ export default function DeliveryCourierManagePage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 space-y-2.5">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-2.5">
+          <h2 className="text-sm font-bold text-foreground mb-1">
             {t.admin.deliveryCourierCustom}
           </h2>
           <p className="text-xs text-muted-foreground mb-2">{t.admin.deliveryCourierCustomHint}</p>
