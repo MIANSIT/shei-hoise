@@ -12,6 +12,7 @@ export type UpdateProductResult =
   | { success: false; error: string };
 
 async function updateProductInternal(data: ProductUpdateType): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to exclude store_id from productData below; the trusted value comes from getAuthenticatedStoreId()
   const { id, store_id: _clientStoreId, variants, images, stock, ...productData } = data;
 
   // id and data.store_id are caller-supplied — never trust either for
