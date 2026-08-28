@@ -159,6 +159,7 @@ export default function SidebarMenu({
       "All Products": t.admin.menuAllProducts,
       "Bundles": t.admin.menuBundles,
       "All Categories": t.admin.menuAllCategories,
+      "Reviews": t.admin.menuReviews,
       "Orders": t.admin.menuOrders,
       "Create Order": t.admin.menuCreateOrder,
       "All Orders": t.admin.menuAllOrders,

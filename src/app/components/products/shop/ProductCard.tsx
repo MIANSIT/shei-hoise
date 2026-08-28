@@ -9,18 +9,23 @@ import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { RatingSummary } from "@/lib/queries/reviews/getProductRatingSummaries";
+import { StarRating } from "@/app/components/products/reviews/StarRating";
 
 interface ProductCardProps {
   store_slug: string;
   product: Product;
   isLoading?: boolean;
   onAddToCart: () => Promise<void>;
+  /** Undefined while the batched ratings fetch for the grid is still loading. */
+  rating?: RatingSummary;
 }
 
 export default function ProductCard({
   store_slug,
   product,
   onAddToCart,
+  rating,
 }: ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -217,6 +222,14 @@ export default function ProductCard({
             {formatName(product.name)}
           </h3>
         </Link>
+
+        {/* Row 1.5 — Rating */}
+        <div className="flex items-center gap-1 h-4">
+          <StarRating value={rating?.average ?? 0} size="sm" />
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+            ({rating?.total ?? 0})
+          </span>
+        </div>
 
         {/* Row 2 — Price block */}
         <div className="h-13 sm:h-14 flex flex-col justify-center gap-1">

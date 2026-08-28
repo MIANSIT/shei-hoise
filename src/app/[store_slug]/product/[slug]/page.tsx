@@ -6,6 +6,8 @@ import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getProductRatingSummary } from "@/lib/queries/reviews/getProductRatingSummary";
+import { ReviewsSection } from "@/app/components/products/reviews/ReviewsSection";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
@@ -25,7 +27,6 @@ import {
   Truck,
   RefreshCw,
   ShieldCheck,
-  ChevronLeft,
   ChevronDown,
   Star,
 } from "lucide-react";
@@ -140,18 +141,19 @@ const Stars = ({
 const DescAccordion = ({
   title,
   children,
-  open: defaultOpen = false,
+  open,
+  onToggle,
 }: {
   title: string;
   children: React.ReactNode;
-  open?: boolean;
+  open: boolean;
+  onToggle: () => void;
 }) => {
-  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-b border-gray-100 dark:border-gray-800">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left"
+        onClick={onToggle}
+        className="w-full flex cursor-pointer items-center justify-between py-4 text-left"
       >
         <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 tracking-wide">
           {title}
@@ -280,7 +282,16 @@ export default function ProductPage() {
   const [selectedBundleOptions, setSelectedBundleOptions] = useState<
     Record<string, string>
   >({});
+  const [ratingSummary, setRatingSummary] = useState({ average: 0, total: 0 });
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descOverflows, setDescOverflows] = useState(false);
+  // Exclusive accordion — only one of description/productDetails/pricing
+  // open at a time, opening one collapses whichever else was open.
+  const [openAccordion, setOpenAccordion] = useState<
+    "description" | "productDetails" | "pricing" | null
+  >("description");
   const inputRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLDivElement>(null);
 
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
@@ -450,6 +461,21 @@ export default function ProductPage() {
   }, [product_slug, store_slug]);
 
   useEffect(() => {
+    if (!product?.id) return;
+    getProductRatingSummary(product.id).then(setRatingSummary);
+  }, [product?.id]);
+
+  // Cap the open-by-default description at a fixed height with a
+  // "Read more" toggle — only for descriptions that actually overflow it,
+  // so a typical short/medium description shows in full with no extra click.
+  useEffect(() => {
+    setDescExpanded(false);
+    const el = descRef.current;
+    if (!el) return;
+    setDescOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [product?.description]);
+
+  useEffect(() => {
     if (showMaxErr) {
       const t = setTimeout(() => setShowMaxErr(false), 3000);
       return () => clearTimeout(t);
@@ -574,14 +600,7 @@ export default function ProductPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       {/* Top bar */}
       <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <a
-            href={`/${store_slug}/shop`}
-            className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors shrink-0"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            {t.nav.backToShop}
-          </a>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-end gap-4">
           <Breadcrumb
             store={store_slug}
             category={product.categories?.name ?? "Products"}
@@ -623,7 +642,7 @@ export default function ProductPage() {
               <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
                 {product.categories?.name ?? "Product"}
               </span>
-              {/* <Stars /> */}
+              <Stars rating={ratingSummary.average} count={ratingSummary.total} />
             </div>
 
             {/* Name */}
@@ -1008,19 +1027,48 @@ export default function ProductPage() {
 
             {/* Accordions */}
             <div className="mt-4">
-              <DescAccordion title={t.product.description} open>
-                <div className="space-y-2.5">
-                  {product.description ? (
-                    renderDescription(product.description)
-                  ) : (
-                    <p className="text-gray-400 dark:text-gray-600">
-                      {t.product.noDescription}
-                    </p>
+              <DescAccordion
+                title={t.product.description}
+                open={openAccordion === "description"}
+                onToggle={() =>
+                  setOpenAccordion((v) => (v === "description" ? null : "description"))
+                }
+              >
+                <div className="relative">
+                  <div
+                    ref={descRef}
+                    className={`space-y-2.5 ${descExpanded ? "" : "max-h-65 overflow-hidden"}`}
+                  >
+                    {product.description ? (
+                      renderDescription(product.description)
+                    ) : (
+                      <p className="text-gray-400 dark:text-gray-600">
+                        {t.product.noDescription}
+                      </p>
+                    )}
+                  </div>
+                  {!descExpanded && descOverflows && (
+                    <div className="absolute bottom-0 inset-x-0 h-10 bg-linear-to-t from-white dark:from-gray-900 to-transparent pointer-events-none" />
                   )}
                 </div>
+                {descOverflows && (
+                  <button
+                    type="button"
+                    onClick={() => setDescExpanded((v) => !v)}
+                    className="mt-2 cursor-pointer text-xs font-semibold text-gray-900 dark:text-gray-100 underline underline-offset-2"
+                  >
+                    {descExpanded ? t.product.showLess : t.product.readMore}
+                  </button>
+                )}
               </DescAccordion>
 
-              <DescAccordion title={t.product.productDetails}>
+              <DescAccordion
+                title={t.product.productDetails}
+                open={openAccordion === "productDetails"}
+                onToggle={() =>
+                  setOpenAccordion((v) => (v === "productDetails" ? null : "productDetails"))
+                }
+              >
                 <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
                   {(
                     [
@@ -1055,7 +1103,13 @@ export default function ProductPage() {
               </DescAccordion>
 
               {discount > 0 && (
-                <DescAccordion title={t.product.pricing}>
+                <DescAccordion
+                  title={t.product.pricing}
+                  open={openAccordion === "pricing"}
+                  onToggle={() =>
+                    setOpenAccordion((v) => (v === "pricing" ? null : "pricing"))
+                  }
+                >
                   <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
                     <dt className="text-gray-400 dark:text-gray-500 font-medium">
                       {t.product.basePrice}
@@ -1084,6 +1138,16 @@ export default function ProductPage() {
             </div>
           </motion.div>
         </div>
+
+        <ReviewsSection
+          productId={product.id}
+          storeSlug={store_slug}
+          average={ratingSummary.average}
+          total={ratingSummary.total}
+          onReviewSubmitted={() =>
+            getProductRatingSummary(product.id).then(setRatingSummary)
+          }
+        />
       </div>
     </div>
   );

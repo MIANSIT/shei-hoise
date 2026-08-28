@@ -98,6 +98,30 @@ $$;
 
 ALTER FUNCTION "public"."sync_subscription_on_invoice_paid"() OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."check_customer_email_exists"("p_email" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.store_customers WHERE lower(email) = lower(p_email)
+  );
+$$;
+
+
+ALTER FUNCTION "public"."check_customer_email_exists"("p_email" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."find_customer_by_email"("p_email" "text") RETURNS SETOF "public"."store_customers"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT * FROM public.store_customers WHERE lower(email) = lower(p_email);
+$$;
+
+
+ALTER FUNCTION "public"."find_customer_by_email"("p_email" "text") OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -1157,7 +1181,7 @@ ALTER TABLE ONLY "public"."product_inventory"
 
 
 ALTER TABLE ONLY "public"."product_reviews"
-    ADD CONSTRAINT "product_reviews_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "product_reviews_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."store_customers"("id") ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 
@@ -1202,7 +1226,7 @@ ALTER TABLE ONLY "public"."store_customers"
 
 
 ALTER TABLE ONLY "public"."store_reviews"
-    ADD CONSTRAINT "store_reviews_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "store_reviews_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."store_customers"("id") ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 
@@ -1373,6 +1397,18 @@ GRANT ALL ON FUNCTION "public"."sync_subscription_on_invoice_paid"() TO "service
 
 
 
+GRANT ALL ON FUNCTION "public"."check_customer_email_exists"("p_email" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."check_customer_email_exists"("p_email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_customer_email_exists"("p_email" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."find_customer_by_email"("p_email" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."find_customer_by_email"("p_email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_customer_by_email"("p_email" "text") TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."cart_items" TO "anon";
 GRANT ALL ON TABLE "public"."cart_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."cart_items" TO "service_role";
@@ -1465,8 +1501,6 @@ GRANT ALL ON TABLE "public"."product_inventory" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."product_reviews" TO "anon";
-GRANT ALL ON TABLE "public"."product_reviews" TO "authenticated";
 GRANT ALL ON TABLE "public"."product_reviews" TO "service_role";
 
 
@@ -1495,8 +1529,6 @@ GRANT ALL ON TABLE "public"."store_customers" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."store_reviews" TO "anon";
-GRANT ALL ON TABLE "public"."store_reviews" TO "authenticated";
 GRANT ALL ON TABLE "public"."store_reviews" TO "service_role";
 
 
