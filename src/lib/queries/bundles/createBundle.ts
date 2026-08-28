@@ -6,6 +6,7 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
 
 /**
@@ -16,7 +17,11 @@ import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
  * stock is always derived from its components at read time.
  */
 export async function createBundle(bundle: BundleType) {
-  if (!bundle.store_id) throw new Error("Store ID is missing");
+  // bundle.store_id is caller-supplied — never trust it for authorization.
+  // Always create under the session's own store, regardless of what was sent.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+  bundle = { ...bundle, store_id: storeResult.storeId };
 
   if (!bundle.name?.trim()) throw new Error("❌ Bundle name is required");
   if (!bundle.slug?.trim()) throw new Error("❌ Slug is required");

@@ -67,7 +67,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </DialogHeader>
         <div className="py-4">
           {typeof message === "string" ? (
-            <p className="text-gray-700 dark:text-gray-300">{message}</p>
+            <p className="text-foreground">{message}</p>
           ) : (
             message
           )}

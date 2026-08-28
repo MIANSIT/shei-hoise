@@ -88,10 +88,10 @@ export default function DashboardPage() {
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (userLoading || loadingSummary) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto" />
-          <p className="mt-4 text-lg text-gray-500 dark:text-gray-400">
+          <p className="mt-4 text-lg text-muted-foreground">
             {t.admin.loadingDashboard}
           </p>
         </div>

@@ -62,7 +62,7 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
         </span>
       </div>
 
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <motion.div
           className={`h-1.5 rounded-full ${currentColor}`}
           initial={{ width: "0%" }}
@@ -91,7 +91,7 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
                 transition={{ duration: 0.3 }}
               >
                 <CheckCircle
-                  className={`h-3.5 w-3.5 ${passed ? "text-green-500" : "text-gray-300 dark:text-gray-600"}`}
+                  className={`h-3.5 w-3.5 ${passed ? "text-green-500" : "text-muted-foreground"}`}
                 />
               </motion.div>
               <span className={`text-xs ${passed ? "text-foreground font-medium" : "text-muted-foreground"}`}>

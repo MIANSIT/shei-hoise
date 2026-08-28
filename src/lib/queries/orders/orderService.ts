@@ -6,6 +6,8 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { getPhoneRiskLevel } from "@/lib/utils/riskScoring";
 import { explodeBundleOrderProducts } from "./bundleExplosion";
 import { bundleItemKey } from "./bundleItemKey";
+import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
+import { redeemCoupon } from "@/lib/queries/coupons/redeemCoupon";
 
 export interface CreateOrderData {
   storeId: string;
@@ -15,6 +17,7 @@ export interface CreateOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  couponCode?: string;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
@@ -482,16 +485,19 @@ export async function createCustomerOrder(
       orderProducts,
       subtotal,
       taxAmount,
-      discount,
+      couponCode,
       additionalCharges,
       deliveryCost,
-      totalAmount,
       status = "pending",
       paymentStatus = "pending",
       paymentMethod,
       currency = "BDT",
       deliveryOption,
     } = orderData;
+    // Note: the client may also send `discount`/`totalAmount`, but both are
+    // ignored here — discount_amount and total_amount are always
+    // (re)computed server-side below (see coupon re-check), never trusted
+    // from the client.
 
     // Validate required fields
     if (!storeId) throw new Error("Store ID is required");
@@ -512,6 +518,26 @@ export async function createCustomerOrder(
       .single();
     if (storeRow && storeRow.is_active === false) {
       throw new Error("This store is currently unavailable.");
+    }
+
+    // Coupon discount is never trusted from the client — re-validate here,
+    // right before commit, and use the server-computed amount for both
+    // discount_amount and total_amount below. This is the same "re-check
+    // right before insert" treatment as the stores.is_active check above.
+    let finalDiscount = 0;
+    let redeemedCoupon: { id: string; code: string } | null = null;
+    if (couponCode) {
+      const validation = await validateCoupon(
+        couponCode,
+        storeId,
+        subtotal,
+        customerInfo.customer_id || null,
+      );
+      if (!validation.valid || !validation.coupon) {
+        throw new Error(validation.error || "Invalid coupon code");
+      }
+      finalDiscount = validation.discountAmount;
+      redeemedCoupon = { id: validation.coupon.id, code: validation.coupon.code };
     }
 
     // ✅ INVENTORY VALIDATION — resolve bundle lines into their component
@@ -558,10 +584,15 @@ export async function createCustomerOrder(
       status: status,
       subtotal: subtotal,
       tax_amount: taxAmount,
-      discount_amount: discount,
+      discount_amount: finalDiscount,
+      coupon_id: redeemedCoupon?.id ?? null,
+      coupon_code: redeemedCoupon?.code ?? null,
       additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
-      total_amount: totalAmount,
+      // Discount is never client-trusted (see coupon re-check above), so the
+      // total is recomputed from it here rather than trusting the client's
+      // totalAmount for that portion.
+      total_amount: subtotal - finalDiscount + taxAmount + deliveryCost + (additionalCharges || 0),
       currency: currency,
       payment_status: paymentStatus,
       payment_method: paymentMethod,
@@ -582,6 +613,27 @@ export async function createCustomerOrder(
     if (orderError) {
       console.error("❌ Customer order creation error:", orderError);
       throw new Error(`Failed to create order: ${orderError.message}`);
+    }
+
+    // Commit the coupon redemption now that the order exists — redeem_coupon
+    // locks the coupon row and re-checks it one more time, since two
+    // concurrent checkouts could both have passed the validateCoupon preview
+    // above for the last use of the same coupon. If it loses that race, the
+    // order is rolled back exactly like a failed order_items insert below.
+    if (redeemedCoupon) {
+      try {
+        await redeemCoupon({
+          couponId: redeemedCoupon.id,
+          orderId: order.id,
+          discountAmount: finalDiscount,
+          storeId,
+          customerId: storeCustomerId,
+        });
+      } catch (redeemError: any) {
+        console.error("❌ Coupon redemption error:", redeemError);
+        await supabaseAdmin.from("orders").delete().eq("id", order.id);
+        throw new Error(redeemError.message || "Failed to redeem coupon");
+      }
     }
 
     // Create order items. Storefront cart data never carries tp_price (it's

@@ -90,7 +90,7 @@ export default function BusinessHours({ businessHours }: BusinessHoursProps) {
         {businessHours.map((item) => (
           <p
             key={item.day}
-            className="flex justify-between text-gray-600 dark:text-gray-400"
+            className="flex justify-between text-muted-foreground"
           >
             <span>{item.day}</span>
             <span

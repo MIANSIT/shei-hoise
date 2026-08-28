@@ -19,7 +19,7 @@ interface VendorFormModalProps {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-semibold text-gray-700 dark:text-gray-300 text-[13px]">
+    <span className="font-semibold text-foreground text-[13px]">
       {children}
     </span>
   );
@@ -75,7 +75,7 @@ function VendorFormModal({
       closable={!submitting}
       styles={{ body: { borderRadius: 20, padding: 0 } }}
       title={
-        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-700">
+        <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-border">
           <div className="w-8 h-8 rounded-xl bg-linear-to-br from-indigo-400 to-purple-600 flex items-center justify-center shrink-0">
             {mode === "create" ? (
               <Plus size={16} color="white" strokeWidth={2.5} />
@@ -83,13 +83,13 @@ function VendorFormModal({
               <EditOutlined style={{ color: "white", fontSize: 14 }} />
             )}
           </div>
-          <span className="text-base font-bold text-gray-900 dark:text-white">
+          <span className="text-base font-bold text-foreground">
             {mode === "create" ? "Add Vendor" : "Edit Vendor"}
           </span>
         </div>
       }
       footer={
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
           <Button
             className="rounded-xl h-9 font-medium"
             onClick={handleCancel}

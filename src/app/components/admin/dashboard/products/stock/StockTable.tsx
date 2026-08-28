@@ -60,7 +60,7 @@ const Badge = ({
     draft:
       "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-600 dark:text-yellow-400 ring-yellow-200 dark:ring-yellow-800/50",
     inactive:
-      "bg-gray-100  dark:bg-gray-800      text-gray-500   dark:text-gray-400   ring-gray-200   dark:ring-gray-700",
+      "bg-muted      text-muted-foreground   ring-gray-200   dark:ring-gray-700",
   };
   return (
     <span
@@ -118,7 +118,7 @@ const StockTable: React.FC<StockTableProps> = ({
 
         return (
           <div className="relative w-10 h-10">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted">
               {record.imageUrl ? (
                 <Image
                   src={record.imageUrl}
@@ -130,7 +130,7 @@ const StockTable: React.FC<StockTableProps> = ({
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <svg
-                    className="w-4 h-4 text-gray-300 dark:text-gray-600"
+                    className="w-4 h-4 text-muted-foreground"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -183,7 +183,7 @@ const StockTable: React.FC<StockTableProps> = ({
 
         return (
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <span className="text-sm font-medium text-foreground">
               {title}
             </span>
             <div className="flex flex-wrap gap-1">
@@ -232,13 +232,13 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_sku, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+            <span className="text-xs text-muted-foreground italic">
               {t.admin.stockVaries}
             </span>
           );
         }
         return (
-          <span className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+          <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
             {record.sku ?? "—"}
           </span>
         );
@@ -253,15 +253,15 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_price, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+            <span className="text-xs text-muted-foreground italic">
               {t.admin.stockVaries}
             </span>
           );
         }
         const price = record.currentPrice ?? 0;
         return (
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            <span className="text-gray-400 dark:text-gray-500 text-xs mr-0.5">
+          <span className="text-sm text-foreground">
+            <span className="text-muted-foreground text-xs mr-0.5">
               {symbol}
             </span>
             {n(price.toFixed(2))}
@@ -278,17 +278,17 @@ const StockTable: React.FC<StockTableProps> = ({
       render: (_price, record) => {
         if ("variants" in record && record.variants?.length) {
           return (
-            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+            <span className="text-xs text-muted-foreground italic">
               {t.admin.stockVaries}
             </span>
           );
         }
         if (record.tpPrice == null) {
-          return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
+          return <span className="text-xs text-muted-foreground">—</span>;
         }
         return (
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            <span className="text-gray-400 dark:text-gray-500 text-xs mr-0.5">
+          <span className="text-sm text-foreground">
+            <span className="text-muted-foreground text-xs mr-0.5">
               {symbol}
             </span>
             {n(record.tpPrice.toFixed(2))}
@@ -336,7 +336,7 @@ const StockTable: React.FC<StockTableProps> = ({
 
         if (isProduct && record.variants?.length) {
           return (
-            <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+            <span className="text-xs text-muted-foreground italic">
               {t.admin.stockManagedInVariants}
             </span>
           );
@@ -358,7 +358,7 @@ const StockTable: React.FC<StockTableProps> = ({
             className="flex flex-col gap-1.5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="h-1 w-22 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            <div className="h-1 w-22 rounded-full bg-muted overflow-hidden">
               <div
                 className={`h-full rounded-full ${gaugeTone}`}
                 style={{ width: `${levelPct}%` }}

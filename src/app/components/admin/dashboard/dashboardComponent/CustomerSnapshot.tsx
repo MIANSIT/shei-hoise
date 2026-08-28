@@ -37,8 +37,8 @@ const CustomerSnapshot: React.FC<CustomerSnapshotProps> = ({ stats }) => (
         <div
           key={i}
           className="flex items-center gap-3 p-4 rounded-xl
-            bg-gray-50 dark:bg-gray-800/60
-            border border-gray-200 dark:border-gray-700
+            bg-background/60
+            border border-border
             transition-colors"
         >
           {/* Accent bar */}
@@ -53,10 +53,10 @@ const CustomerSnapshot: React.FC<CustomerSnapshotProps> = ({ stats }) => (
 
           {/* Text */}
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               {s.title}
             </div>
-            <div className="text-base font-black mt-0.5 truncate text-gray-900 dark:text-white">
+            <div className="text-base font-black mt-0.5 truncate text-foreground">
               {s.value}
             </div>
             {s.subValue && (

@@ -20,13 +20,13 @@ export function PaymentDetailsForm({
 }) {
   const t = useTranslation();
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 space-y-4">
-      <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
         {t.admin.subConfirmYourPayment}
       </p>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+        <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
           {t.admin.subFieldTxnRef} <span className="text-red-400">*</span>
         </label>
         <Input
@@ -36,13 +36,13 @@ export function PaymentDetailsForm({
           size="large"
           className="font-mono"
         />
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+        <p className="text-[11px] text-muted-foreground mt-1">
           {t.admin.subTxnRefHint}
         </p>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+        <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
           {t.admin.subFieldSenderNumber} <span className="text-red-400">*</span>
         </label>
         <Input
@@ -51,14 +51,14 @@ export function PaymentDetailsForm({
           placeholder={t.admin.subSenderPlaceholder}
           className="font-mono"
         />
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+        <p className="text-[11px] text-muted-foreground mt-1">
           {t.admin.subSenderHint}
         </p>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-          {t.admin.subFieldNotes} <span className="text-gray-300 dark:text-gray-600 font-normal">{t.admin.subOptional}</span>
+        <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+          {t.admin.subFieldNotes} <span className="text-muted-foreground font-normal">{t.admin.subOptional}</span>
         </label>
         <Input.TextArea
           value={notes}

@@ -30,6 +30,8 @@ export interface ProductVariant {
   base_price: number | null;
   discounted_price: number | null;
   discount_amount: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   tp_price: number | null;
   weight: number | null;
   color: string | null;
@@ -51,6 +53,8 @@ export interface ProductWithVariants {
   base_price: number | null;
   tp_price: number | null;
   discounted_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   featured: boolean;
   /** Waives the delivery fee for any order containing this product. */
   free_delivery: boolean;
@@ -125,6 +129,8 @@ export async function getProductsWithVariants({
       featured,
       free_delivery,
       discounted_price,
+      sale_starts_at,
+      sale_ends_at,
       category_id,
       product_type,
       categories (id, name),
@@ -143,6 +149,8 @@ export async function getProductsWithVariants({
         base_price,
         discounted_price,
         discount_amount,
+        sale_starts_at,
+        sale_ends_at,
         tp_price,
         weight,
         color,
@@ -200,6 +208,8 @@ export async function getProductsWithVariants({
     featured: p.featured ?? false,
     free_delivery: p.free_delivery ?? false,
     discounted_price: p.discounted_price,
+    sale_starts_at: p.sale_starts_at ?? null,
+    sale_ends_at: p.sale_ends_at ?? null,
     category_id: p.category_id,
     category: p.categories
       ? { id: p.categories.id, name: p.categories.name }
@@ -212,6 +222,8 @@ export async function getProductsWithVariants({
       base_price: v.base_price,
       discounted_price: v.discounted_price,
       discount_amount: v.discount_amount,
+      sale_starts_at: v.sale_starts_at ?? null,
+      sale_ends_at: v.sale_ends_at ?? null,
       tp_price: v.tp_price,
       weight: v.weight,
       color: v.color,

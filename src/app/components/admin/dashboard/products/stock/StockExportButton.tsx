@@ -109,7 +109,7 @@ function StockExportButton({
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="m-0 text-[13px] font-semibold text-gray-800 dark:text-gray-100 leading-tight flex items-center gap-1.5">
+          <p className="m-0 text-[13px] font-semibold text-foreground leading-tight flex items-center gap-1.5">
             {meta.label}
             {format === "xlsx" && (
               <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 px-1.5 py-0.5 rounded">
@@ -117,7 +117,7 @@ function StockExportButton({
               </span>
             )}
           </p>
-          <p className="m-0 text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+          <p className="m-0 text-[11px] text-muted-foreground mt-0.5">
             {meta.description}
           </p>
         </div>
@@ -135,7 +135,7 @@ function StockExportButton({
       >
         <Button
           icon={<LockOutlined />}
-          className="rounded-xl h-9 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 font-medium"
+          className="rounded-xl h-9 border-border bg-background/60 text-muted-foreground font-medium"
         >
           <span className="hidden sm:inline">Export</span>
         </Button>
@@ -155,7 +155,7 @@ function StockExportButton({
     >
       <Button
         icon={exporting ? <LoadingOutlined /> : <DownloadOutlined />}
-        className="rounded-xl h-9 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium"
+        className="rounded-xl h-9 border-border dark:bg-gray-700 dark:text-gray-300 font-medium"
       >
         <span className="hidden sm:inline">
           {exporting ? "Exporting…" : "Export"}

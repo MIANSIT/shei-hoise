@@ -34,8 +34,8 @@ const styleMap: Record<string, { text: string; bg: string }> = {
 };
 
 const fallback = {
-  text: "text-gray-700 dark:text-gray-300",
-  bg: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
+  text: "text-foreground",
+  bg: "bg-background border-border",
 };
 
 const OrderStatusCard: React.FC<OrderStatusCardProps> = ({

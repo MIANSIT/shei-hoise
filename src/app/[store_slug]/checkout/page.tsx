@@ -29,6 +29,8 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
+import type { CouponValidationResult } from "@/lib/types/coupon";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -41,6 +43,9 @@ export default function CheckoutPage() {
   const [invoiceData, setInvoiceData] = useState<StoreOrder | null>(null);
   const [taxLoaded, setTaxLoaded] = useState(false);
   const [storeCurrency, setStoreCurrency] = useState("BDT");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [couponValidating, setCouponValidating] = useState(false);
   const { currency, loading: currencyLoading } = useUserCurrencyIcon();
   const params = useParams();
   const router = useRouter();
@@ -83,8 +88,7 @@ export default function CheckoutPage() {
     return cartLoading || authLoading || storeLoading || taxLoaded === false;
   }, [cartLoading, authLoading, storeLoading, taxLoaded]);
 
-  // Use refs to track notification state
-  const hasShownMinOrderNotification = useRef(false);
+  // Use ref to track notification state
   const minOrderCheckComplete = useRef(false);
 
   // Fetch store settings (tax and min order amount)
@@ -140,7 +144,7 @@ export default function CheckoutPage() {
         currency: storeCurrency,
       }, store_slug);
     }
-  }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal]);
+  }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal, storeCurrency, store_slug]);
 
   // Check minimum order amount - WITHOUT NOTIFICATION
   useEffect(() => {
@@ -193,6 +197,34 @@ export default function CheckoutPage() {
     },
     [],
   );
+
+  // Coupon apply/remove — this is only a live preview; the discount is
+  // always (re)computed server-side again in createCustomerOrder right
+  // before the order commits, so a stale/raced preview here can never
+  // overcharge or undercharge the actual order.
+  const handleApplyCoupon = useCallback(async () => {
+    if (!couponCode.trim()) return;
+    setCouponValidating(true);
+    try {
+      const storeId = await getStoreIdBySlug(store_slug);
+      if (!storeId) throw new Error("Store not found");
+      const result = await validateCoupon(couponCode, storeId, calculations.subtotal);
+      setAppliedCoupon(result);
+      if (!result.valid) {
+        notify.error(result.error || "Invalid coupon code");
+      }
+    } catch (error: any) {
+      setAppliedCoupon({ valid: false, discountAmount: 0, error: error.message });
+      notify.error(error.message || "Could not apply coupon");
+    } finally {
+      setCouponValidating(false);
+    }
+  }, [couponCode, calculations.subtotal, store_slug, notify]);
+
+  const handleRemoveCoupon = useCallback(() => {
+    setCouponCode("");
+    setAppliedCoupon(null);
+  }, []);
 
   // Create temp order data for invoice
   const createTempOrderData = useCallback(
@@ -247,7 +279,9 @@ export default function CheckoutPage() {
         country: values.country,
       };
 
-      const totalWithTax = calculations.totalPrice + shippingFee + taxAmount;
+      const discountAmount = appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
+      const totalWithTax =
+        calculations.totalPrice - discountAmount + shippingFee + taxAmount;
 
       // Email is always empty for guest checkout
       const customerEmail = "";
@@ -260,6 +294,8 @@ export default function CheckoutPage() {
         status: OrderStatus.PENDING,
         subtotal: calculations.subtotal,
         tax_amount: taxAmount > 0 ? taxAmount : 0,
+        discount_amount: discountAmount,
+        coupon_code: appliedCoupon?.valid ? couponCode.toUpperCase() : null,
         shipping_fee: shippingFee,
         total_amount: totalWithTax,
         currency: displayCurrencyIconSafe,
@@ -307,6 +343,8 @@ export default function CheckoutPage() {
       displayCurrencyIconSafe,
       store_slug,
       selectedShipping,
+      appliedCoupon,
+      couponCode,
     ],
   );
 
@@ -453,6 +491,8 @@ export default function CheckoutPage() {
           cartItems,
           calculations,
           taxAmount,
+          appliedCoupon?.valid ? couponCode : undefined,
+          appliedCoupon?.valid ? appliedCoupon.discountAmount : 0,
         );
 
         if (!result.success) {
@@ -517,8 +557,8 @@ export default function CheckoutPage() {
       shippingFee,
       taxAmount,
       minOrderAmount,
-      calculations.subtotal,
       currency,
+      storeCurrency,
       notify,
       clearAccountCreationFlags,
       isUserLoggedIn,
@@ -531,6 +571,8 @@ export default function CheckoutPage() {
       clearStoreCart,
       findCustomerByPhone,
       t,
+      appliedCoupon,
+      couponCode,
     ],
   );
 
@@ -551,7 +593,31 @@ export default function CheckoutPage() {
     );
   }
 
-  // Order complete
+  // Cart is empty and checkout was never attempted (e.g. the user hit
+  // "Clear Cart" on this page) — show a real empty state with a way back
+  // to shopping, not the post-order skeleton below. That skeleton has no
+  // exit of its own; it only ever resolves via the redirect effect above,
+  // which is gated behind hasAttemptedCheckout — without this check first,
+  // a manually-cleared cart got stuck on it forever.
+  if (cartItems.length === 0 && !isLoadingOverall && !showInvoice && !hasAttemptedCheckout.current) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-foreground">{t.cart.cartEmpty}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t.cart.addProductsPrompt}</p>
+          <button
+            onClick={() => router.push(`/${store_slug}/shop`)}
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-stone-900 dark:bg-white text-white dark:text-gray-900 hover:bg-stone-700 dark:hover:bg-gray-100 active:scale-95 transition-all duration-200"
+          >
+            {t.cart.continueShoppingAt} {store_slug}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Order complete — cart was cleared right after a successful checkout;
+  // this briefly bridges to the redirect effect above before it fires.
   if (cartItems.length === 0 && !isLoadingOverall && !showInvoice) {
     return <OrderCompleteSkeleton />;
   }
@@ -572,6 +638,12 @@ export default function CheckoutPage() {
         minOrderAmount={minOrderAmount}
         isProcessing={isSubmitting}
         mode="checkout"
+        couponCode={couponCode}
+        onCouponCodeChange={setCouponCode}
+        onApplyCoupon={handleApplyCoupon}
+        onRemoveCoupon={handleRemoveCoupon}
+        appliedCoupon={appliedCoupon}
+        couponValidating={couponValidating}
       />
 
       <AnimatePresence>

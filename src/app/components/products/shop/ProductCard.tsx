@@ -9,6 +9,7 @@ import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
 
 interface ProductCardProps {
   store_slug: string;
@@ -37,10 +38,21 @@ export default function ProductCard({
   const needsConfiguration =
     hasVariants || (product.product_type === "bundle" && product.bundle_has_options === true);
 
-  const displayPrice =
-    variant?.discounted_price && variant.discounted_price > 0
-      ? variant.discounted_price
-      : (variant?.base_price ?? product.discounted_price ?? product.base_price);
+  const effective = variant
+    ? getEffectivePrice({
+        base_price: variant.base_price,
+        discounted_price: variant.discounted_price,
+        sale_starts_at: variant.sale_starts_at,
+        sale_ends_at: variant.sale_ends_at,
+      })
+    : getEffectivePrice({
+        base_price: product.base_price,
+        discounted_price: product.discounted_price,
+        sale_starts_at: product.sale_starts_at,
+        sale_ends_at: product.sale_ends_at,
+      });
+
+  const displayPrice = effective.price;
 
   // Original (pre-discount) price: use variant's base_price when variants exist
   const originalPrice = variant?.base_price ?? product.base_price;

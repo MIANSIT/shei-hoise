@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
 import { optimizeImage } from "@/lib/utils/optimizeImage";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 
 type MediaType = "logo" | "banner";
 
@@ -14,6 +15,15 @@ export async function uploadStoreMedia(
   const bucket = type === "logo" ? "store_logo" : "store-banner";
 
   try {
+    // storeId is caller-supplied — never trust it for authorization on its
+    // own. Only allow uploading media for the store the session's own
+    // account owns.
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok || storeResult.storeId !== storeId) {
+      console.error("uploadStoreMedia: unauthorized store access attempt", { storeId });
+      return null;
+    }
+
     // 1️⃣ List existing files in the store folder for this media type
     const folderPath = `store/${storeId}/`;
     const { data: existingFiles } = await supabaseAdmin.storage
@@ -69,6 +79,12 @@ export async function deleteStoreMedia(
   const folderPath = `store/${storeId}/`;
 
   try {
+    const storeResult = await getAuthenticatedStoreId();
+    if (!storeResult.ok || storeResult.storeId !== storeId) {
+      console.error("deleteStoreMedia: unauthorized store access attempt", { storeId });
+      return;
+    }
+
     const { data: existingFiles } = await supabaseAdmin.storage
       .from(bucket)
       .list(folderPath);

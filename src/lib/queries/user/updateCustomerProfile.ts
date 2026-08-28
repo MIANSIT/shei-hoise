@@ -1,6 +1,7 @@
 // lib/queries/user/updateCustomerProfile.ts
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
+import { getAuthenticatedCustomerId } from "@/lib/utils/getAuthenticatedCustomerId";
 
 interface UpdateCustomerData {
   name: string;
@@ -24,6 +25,14 @@ export async function updateCustomerProfile(
   profileData: UpdateCustomerProfileData
 ) {
   try {
+    // customerId is caller-supplied — this is the customer's own
+    // self-service profile page, so only allow editing the record that
+    // belongs to the session's own auth user.
+    const customerResult = await getAuthenticatedCustomerId();
+    if (!customerResult.ok || customerResult.customerId !== customerId) {
+      throw new Error("You do not have permission to update this profile");
+    }
+
     // Validate input
     if (!customerData.name.trim()) {
       throw new Error("Name is required");

@@ -30,19 +30,19 @@ export function ShippingOptionItem({
 
   if (isEditing) {
     return (
-      <div className="border border-slate-200 dark:border-slate-600 rounded-xl p-4 sm:p-5 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
+      <div className="border border-border rounded-xl p-4 sm:p-5 bg-card hover:border-border transition-colors">
         {/* Row 1: Name + price + days */}
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:gap-4 mb-4">
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               {t.admin.shippingMethodName} <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
               value={option.name}
               onChange={(e) => onUpdate(index, "name", e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50/50 dark:bg-slate-700/50 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
+              className="w-full px-3.5 py-2.5 text-sm text-foreground border border-border rounded-lg bg-slate-50/50 dark:bg-slate-700/50 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
               placeholder={t.admin.shippingMethodPlaceholder}
               required
             />
@@ -50,7 +50,7 @@ export function ShippingOptionItem({
 
           {/* Price */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               {t.admin.shippingPriceLabel} ({currency ?? "BDT"}){" "}
               <span className="text-red-400">*</span>
             </label>
@@ -58,7 +58,7 @@ export function ShippingOptionItem({
               type="number"
               value={option.price}
               onChange={(e) => onUpdate(index, "price", Number(e.target.value))}
-              className="w-full sm:w-32 px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50/50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
+              className="w-full sm:w-32 px-3.5 py-2.5 text-sm text-foreground border border-border rounded-lg bg-slate-50/50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
               min="0"
               step="0.01"
               placeholder="0.00"
@@ -68,18 +68,18 @@ export function ShippingOptionItem({
 
           {/* Estimated days */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               {t.admin.shippingEstDays}
             </label>
             <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 dark:text-slate-500 pointer-events-none" />
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={option.estimated_days ?? ""}
                 onChange={(e) =>
                   onUpdate(index, "estimated_days", e.target.value || undefined)
                 }
-                className="w-full sm:w-28 pl-8 pr-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50/50 dark:bg-slate-700/50 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
+                className="w-full sm:w-28 pl-8 pr-3.5 py-2.5 text-sm text-foreground border border-border rounded-lg bg-slate-50/50 dark:bg-slate-700/50 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:focus:border-blue-500 transition-all"
                 placeholder={t.admin.shippingDaysPlaceholder}
               />
             </div>
@@ -87,7 +87,7 @@ export function ShippingOptionItem({
         </div>
 
         {/* Row 2: Toggle + badge + delete */}
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border">
           {/* Available at Checkout toggle */}
           <button
             type="button"
@@ -95,7 +95,7 @@ export function ShippingOptionItem({
             className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 ${
               isVisible
                 ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
-                : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                : "bg-background/50 border-border text-muted-foreground hover:bg-muted"
             }`}
             title={
               isVisible
@@ -107,7 +107,7 @@ export function ShippingOptionItem({
               className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors duration-200 shrink-0 ${
                 isVisible
                   ? "bg-emerald-400 dark:bg-emerald-500"
-                  : "bg-slate-300 dark:bg-slate-600"
+                  : "bg-muted"
               }`}
             >
               <span
@@ -148,8 +148,8 @@ export function ShippingOptionItem({
     <div
       className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-xl border px-4 sm:px-5 py-4 transition-all ${
         isVisible
-          ? "border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-sm"
-          : "border-slate-100 dark:border-slate-700/50 bg-slate-50/60 dark:bg-slate-800/40 opacity-60"
+          ? "border-border bg-card hover:border-border hover:shadow-sm"
+          : "border-border/50 bg-slate-50/60 dark:bg-slate-800/40 opacity-60"
       }`}
     >
       {/* Left: dot + info */}
@@ -158,12 +158,12 @@ export function ShippingOptionItem({
           className={`w-2.5 h-2.5 rounded-full mt-1.5 sm:mt-0 shrink-0 ${
             isVisible
               ? "bg-emerald-400 dark:bg-emerald-500"
-              : "bg-slate-300 dark:bg-slate-600"
+              : "bg-muted"
           }`}
         />
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+            <h4 className="text-sm font-bold text-foreground">
               {option.name}
             </h4>
             {/* Visibility badge */}
@@ -171,7 +171,7 @@ export function ShippingOptionItem({
               className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
                 isVisible
                   ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50"
-                  : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600"
+                  : "text-muted-foreground bg-muted border-border"
               }`}
             >
               {isVisible ? (
@@ -185,13 +185,13 @@ export function ShippingOptionItem({
               )}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span>
               {option.price === 0 ? t.admin.shippingFreeDelivery : t.admin.shippingPaidDelivery}
             </span>
             {option.estimated_days && (
               <>
-                <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                <span className="w-1 h-1 bg-muted rounded-full" />
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {n(option.estimated_days)}{" "}

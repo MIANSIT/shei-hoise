@@ -11,6 +11,7 @@ import { calculateDiscountedPrice } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { Tooltip } from "antd";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { isoToDatetimeLocal, datetimeLocalToIso } from "@/lib/utils/datetimeLocal";
 
 interface ProductVariantsInlineProps {
   form: UseFormReturn<ProductType>;
@@ -531,6 +532,48 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                         onChange={() => {}}
                         placeholder="Auto"
                         readOnly
+                      />
+                    </div>
+                  </div>
+
+                  {/* Flash-sale window: optional, only meaningful once this variant has a discount */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <FieldLabel
+                        label={t.admin.addProductFlashSaleStartLabel}
+                        tooltip={t.admin.addProductFlashSaleTooltip}
+                      />
+                      <input
+                        type="datetime-local"
+                        disabled={!variants[idx]?.discounted_price}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                        value={isoToDatetimeLocal(variants[idx]?.sale_starts_at)}
+                        onChange={(e) =>
+                          setValue(
+                            `variants.${idx}.sale_starts_at`,
+                            datetimeLocalToIso(e.target.value),
+                            { shouldDirty: true, shouldValidate: true },
+                          )
+                        }
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel
+                        label={t.admin.addProductFlashSaleEndLabel}
+                        tooltip={t.admin.addProductFlashSaleTooltip}
+                      />
+                      <input
+                        type="datetime-local"
+                        disabled={!variants[idx]?.discounted_price}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                        value={isoToDatetimeLocal(variants[idx]?.sale_ends_at)}
+                        onChange={(e) =>
+                          setValue(
+                            `variants.${idx}.sale_ends_at`,
+                            datetimeLocalToIso(e.target.value),
+                            { shouldDirty: true, shouldValidate: true },
+                          )
+                        }
                       />
                     </div>
                   </div>

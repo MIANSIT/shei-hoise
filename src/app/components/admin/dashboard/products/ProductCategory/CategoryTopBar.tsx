@@ -38,21 +38,21 @@ const filterStyleConfig: Record<
     activeClass:
       "bg-indigo-500 text-white border-indigo-500 shadow-sm shadow-indigo-200 dark:shadow-indigo-900/40",
     inactiveClass:
-      "bg-white dark:bg-[#16181f] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2a2d3a] hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-500",
+      "bg-card text-muted-foreground border-border hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-500",
   },
   active: {
     icon: <CheckCircleOutlined />,
     activeClass:
       "bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/40",
     inactiveClass:
-      "bg-white dark:bg-[#16181f] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2a2d3a] hover:border-emerald-300 dark:hover:border-emerald-600 hover:text-emerald-500",
+      "bg-card text-muted-foreground border-border hover:border-emerald-300 dark:hover:border-emerald-600 hover:text-emerald-500",
   },
   inactive: {
     icon: <CloseCircleOutlined />,
     activeClass:
       "bg-red-500 text-white border-red-500 shadow-sm shadow-red-200 dark:shadow-red-900/40",
     inactiveClass:
-      "bg-white dark:bg-[#16181f] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2a2d3a] hover:border-red-300 dark:hover:border-red-600 hover:text-red-500",
+      "bg-card text-muted-foreground border-border hover:border-red-300 dark:hover:border-red-600 hover:text-red-500",
   },
 };
 
@@ -114,7 +114,7 @@ export default function CategoryTopBar({
 
   return (
     <div
-      className="bg-white dark:bg-[#16181f] border border-gray-200 dark:border-[#2a2d3a]
+      className="bg-card border border-border
                     rounded-2xl p-3 sm:p-4 transition-colors duration-200"
     >
       {/*
@@ -141,9 +141,9 @@ export default function CategoryTopBar({
             }}
             placeholder={t.admin.prodCatSearch}
             className="w-full pl-9 pr-9 py-2 sm:py-2.5 rounded-xl
-                       border border-gray-200 dark:border-[#2a2d3a]
-                       bg-gray-50 dark:bg-[#0f1117]
-                       text-sm text-gray-800 dark:text-gray-100
+                       border border-border
+                       bg-background
+                       text-sm text-foreground
                        placeholder-gray-400
                        focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400
                        transition-all duration-200"
@@ -152,7 +152,7 @@ export default function CategoryTopBar({
             <button
               onClick={handleClear}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                         hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                         hover:text-muted-foreground transition-colors"
             >
               <CloseOutlined style={{ fontSize: 11 }} />
             </button>
@@ -167,8 +167,8 @@ export default function CategoryTopBar({
         <div className="flex items-center justify-between gap-2 sm:gap-3 lg:flex-1">
           {/* Segment control — md+ */}
           <div
-            className="hidden md:flex items-center gap-1 bg-gray-50 dark:bg-[#0f1117]
-                          rounded-xl p-1 border border-gray-200 dark:border-[#2a2d3a] shrink-0"
+            className="hidden md:flex items-center gap-1 bg-background
+                          rounded-xl p-1 border border-border shrink-0"
           >
             {filterOptions.map((opt) => {
               const cfg = filterStyleConfig[opt];

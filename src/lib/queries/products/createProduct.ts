@@ -7,6 +7,8 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+
 export type CreateProductResult =
   | { success: true; productId: string }
   | { success: false; error: string };
@@ -16,7 +18,11 @@ export type CreateProductResult =
  * Handles single-variant inactive scenario: sets product status to inactive
  */
 async function createProductInternal(product: ProductType): Promise<string> {
-  if (!product.store_id) throw new Error("Store ID is missing");
+  // product.store_id is caller-supplied — never trust it for authorization.
+  // Always create under the session's own store, regardless of what was sent.
+  const storeResult = await getAuthenticatedStoreId();
+  if (!storeResult.ok) throw new Error(storeResult.error);
+  product = { ...product, store_id: storeResult.storeId };
 
   // ------------------ Frontend/Backend safe checks ------------------
   if (!product.name?.trim()) throw new Error("❌ Product name is required");
@@ -98,6 +104,8 @@ async function createProductInternal(product: ProductType): Promise<string> {
         tp_price: product.tp_price,
         discounted_price: product.discounted_price,
         discount_amount: product.discount_amount,
+        sale_starts_at: product.sale_starts_at,
+        sale_ends_at: product.sale_ends_at,
         weight: product.weight,
         sku: product.sku,
         status: productStatus,
@@ -148,6 +156,8 @@ async function createProductInternal(product: ProductType): Promise<string> {
           tp_price: v.tp_price,
           discounted_price: v.discounted_price,
           discount_amount: v.discount_amount,
+          sale_starts_at: v.sale_starts_at,
+          sale_ends_at: v.sale_ends_at,
           weight: v.weight,
           color: v.color,
           attributes: v.attributes ?? {},

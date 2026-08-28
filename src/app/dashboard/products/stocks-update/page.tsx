@@ -22,14 +22,14 @@ import {
 } from "@/lib/queries/products/getProductWithStock";
 
 const activeClass = {
-  gray: "bg-gray-900  dark:bg-gray-100  text-white  dark:text-gray-900",
+  gray: "bg-primary  text-primary-foreground",
   green: "bg-emerald-600 dark:bg-emerald-500 text-white",
-  amber: "bg-amber-500  dark:bg-amber-400  text-white  dark:text-gray-900",
+  amber: "bg-amber-500  dark:bg-amber-400  text-primary-foreground",
   red: "bg-red-500    dark:bg-red-400    text-white",
 };
 
 const inactiveClass =
-  "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500";
+  "bg-card text-muted-foreground border border-border hover:border-border";
 
 const StockPage = () => {
   const t = useTranslation();
@@ -112,10 +112,10 @@ const StockPage = () => {
       {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">
             {t.admin.stockTitle}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {t.admin.stockSubtitle}
           </p>
         </div>
@@ -124,9 +124,9 @@ const StockPage = () => {
             <span
               className="
               text-xs font-medium px-2.5 py-1 rounded-full
-              bg-gray-100 dark:bg-gray-800
-              text-gray-500 dark:text-gray-400
-              border border-gray-200 dark:border-gray-700
+              bg-muted
+              text-muted-foreground
+              border border-border
             "
             >
               {n(totalProducts)} {t.admin.stockProducts}
@@ -140,7 +140,7 @@ const StockPage = () => {
           {exportAllowed && (
             <Button
               icon={<Percent size={14} />}
-              className="rounded-xl h-9 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium"
+              className="rounded-xl h-9 border-border dark:bg-gray-700 dark:text-gray-300 font-medium"
               onClick={() => setTraderModalOpen(true)}
             >
               <span className="hidden sm:inline">Trader prices</span>
@@ -166,7 +166,7 @@ const StockPage = () => {
           <SearchOutlined
             className="
             absolute left-3 top-1/2 -translate-y-1/2 z-10
-            text-gray-400 dark:text-gray-500 text-sm pointer-events-none
+            text-muted-foreground text-sm pointer-events-none
           "
           />
           <input
@@ -177,9 +177,9 @@ const StockPage = () => {
             className="
               w-full pl-9 pr-4 py-2.5
               rounded-xl text-sm
-              bg-white dark:bg-gray-800/80
-              border border-gray-200 dark:border-gray-700
-              text-gray-800 dark:text-gray-200
+              bg-card/80
+              border border-border
+              text-foreground
               placeholder-gray-400 dark:placeholder-gray-500
               focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400
               dark:focus:border-blue-500
@@ -190,7 +190,7 @@ const StockPage = () => {
             <span
               className="
               absolute right-3 top-1/2 -translate-y-1/2
-              text-xs text-gray-400 dark:text-gray-500
+              text-xs text-muted-foreground
             "
             >
               …
@@ -261,7 +261,7 @@ const StockPage = () => {
         <>
           {/* Mobile */}
           <div className="flex flex-col items-center gap-2 md:hidden">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               {n(Math.min((currentPage - 1) * pageSize + 1, totalProducts))}–
               {n(Math.min(currentPage * pageSize, totalProducts))} {t.admin.customerOfLabel}{" "}
               {n(totalProducts)}
@@ -272,17 +272,17 @@ const StockPage = () => {
                 onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                 className="
                   px-3 py-1.5 rounded-lg text-xs font-medium
-                  bg-white dark:bg-gray-800
-                  border border-gray-200 dark:border-gray-700
-                  text-gray-600 dark:text-gray-400
+                  bg-card
+                  border border-border
+                  text-muted-foreground
                   disabled:opacity-40 disabled:cursor-not-allowed
-                  hover:bg-gray-50 dark:hover:bg-gray-700
+                  hover:bg-background
                   transition-colors duration-150
                 "
               >
                 {t.admin.stockPrev}
               </button>
-              <span className="text-xs text-gray-500 dark:text-gray-400 px-2">
+              <span className="text-xs text-muted-foreground px-2">
                 {n(currentPage)} / {n(totalPages)}
               </span>
               <button
@@ -292,11 +292,11 @@ const StockPage = () => {
                 }
                 className="
                   px-3 py-1.5 rounded-lg text-xs font-medium
-                  bg-white dark:bg-gray-800
-                  border border-gray-200 dark:border-gray-700
-                  text-gray-600 dark:text-gray-400
+                  bg-card
+                  border border-border
+                  text-muted-foreground
                   disabled:opacity-40 disabled:cursor-not-allowed
-                  hover:bg-gray-50 dark:hover:bg-gray-700
+                  hover:bg-background
                   transition-colors duration-150
                 "
               >

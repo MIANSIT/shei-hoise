@@ -99,3 +99,8 @@ export enum USERTYPE {
   ADMIN = "admin",
   SUPER_ADMIN = "super_admin",
 }
+
+export enum CouponDiscountType {
+  PERCENTAGE = "percentage",
+  FIXED_AMOUNT = "fixed_amount",
+}

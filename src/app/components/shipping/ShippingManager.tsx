@@ -179,7 +179,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
         {stats.map(({ label, value, icon: Icon, iconBg, iconColor, sub }) => (
           <div
             key={label}
-            className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-3.5 sm:p-5 flex items-center gap-2.5 sm:gap-4 min-w-0"
+            className="bg-card rounded-2xl border border-border shadow-sm p-3.5 sm:p-5 flex items-center gap-2.5 sm:gap-4 min-w-0"
           >
             {/* Icon — hidden on mobile, shown sm+ */}
             <div
@@ -195,16 +195,16 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
                 >
                   <Icon className={`w-3 h-3 ${iconColor}`} />
                 </div>
-                <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide truncate leading-none">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide truncate leading-none">
                   {label}
                 </p>
               </div>
               {/* sm+: label only */}
-              <p className="hidden sm:block text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide leading-none mb-1.5 truncate">
+              <p className="hidden sm:block text-xs font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-1.5 truncate">
                 {label}
               </p>
               <div className="flex items-baseline gap-1 flex-wrap">
-                <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-none tabular-nums">
+                <p className="text-xl sm:text-2xl font-bold text-foreground leading-none tabular-nums">
                   {value}
                 </p>
                 {sub && (
@@ -219,14 +219,14 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
       </div>
 
       {/* Main Card */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 px-5 sm:px-7 py-4 sm:py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/80">
+        <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 px-5 sm:px-7 py-4 sm:py-5 border-b border-border bg-slate-50/50 dark:bg-slate-800/80">
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+            <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
               {t.admin.shippingDeliveryMethods}
             </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 hidden sm:block">
+            <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
               {t.admin.shippingDeliveryDesc}
             </p>
           </div>
@@ -299,7 +299,7 @@ export function ShippingManager({ storeSlug }: ShippingManagerProps) {
       {/* Mobile sticky save/cancel bar */}
       {isEditing && (
         <>
-          <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 shadow-2xl shadow-slate-900/10 px-4 py-3 z-50">
+          <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border-t border-border shadow-2xl shadow-slate-900/10 px-4 py-3 z-50">
             <ShippingHeaderActions
               isEditing={isEditing}
               onEdit={() => setIsEditing(true)}

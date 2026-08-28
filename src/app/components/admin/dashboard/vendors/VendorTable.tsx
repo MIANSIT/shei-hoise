@@ -56,8 +56,8 @@ const EmptyVendors = () => (
     <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 flex items-center justify-center">
       <Users size={28} color="#a5b4fc" strokeWidth={1.5} />
     </div>
-    <p className="font-semibold text-gray-700 dark:text-gray-300 m-0">No vendors yet</p>
-    <p className="text-sm text-gray-400 dark:text-gray-500 m-0">Add your first vendor to get started</p>
+    <p className="font-semibold text-foreground m-0">No vendors yet</p>
+    <p className="text-sm text-muted-foreground m-0">Add your first vendor to get started</p>
   </div>
 );
 
@@ -99,7 +99,7 @@ function VendorTable({
       {
         key: "view",
         icon: <EyeOutlined style={{ color: "#6366f1" }} />,
-        label: <span className="text-gray-700 dark:text-gray-300 text-sm">View Details</span>,
+        label: <span className="text-foreground text-sm">View Details</span>,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
           setOpenMenuId(null);
@@ -109,7 +109,7 @@ function VendorTable({
       {
         key: "edit",
         icon: <EditOutlined style={{ color: "#6366f1" }} />,
-        label: <span className="text-gray-700 dark:text-gray-300 text-sm">Edit</span>,
+        label: <span className="text-foreground text-sm">Edit</span>,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
           setOpenMenuId(null);
@@ -138,9 +138,9 @@ function VendorTable({
       key: "name",
       render: (_, record) => (
         <div>
-          <div className="font-semibold text-gray-800 dark:text-gray-100">{record.name}</div>
+          <div className="font-semibold text-foreground">{record.name}</div>
           {record.business_name && (
-            <div className="text-xs text-gray-400 dark:text-gray-500">{record.business_name}</div>
+            <div className="text-xs text-muted-foreground">{record.business_name}</div>
           )}
         </div>
       ),
@@ -152,7 +152,7 @@ function VendorTable({
       key: "address",
       responsive: ["lg"],
       render: (address: string | null) => (
-        <span className="text-gray-500 dark:text-gray-400">{address || "—"}</span>
+        <span className="text-muted-foreground">{address || "—"}</span>
       ),
     },
     {
@@ -163,11 +163,11 @@ function VendorTable({
       render: (_, record) => {
         const s = summaries.get(record.id);
         if (!s || s.stock_quantity === 0) {
-          return <span className="text-gray-400 dark:text-gray-500">—</span>;
+          return <span className="text-muted-foreground">—</span>;
         }
         return (
           <div>
-            <div className="font-medium text-gray-800 dark:text-gray-100">{s.stock_quantity} units</div>
+            <div className="font-medium text-foreground">{s.stock_quantity} units</div>
             <div className="text-xs text-gray-400">{fmtMoney(s.stock_value)}</div>
           </div>
         );
@@ -187,7 +187,7 @@ function VendorTable({
         const overLimit = record.credit_limit > 0 && due > record.credit_limit;
         return (
           <div>
-            <div className={due > 0 ? "font-semibold text-red-500" : "font-medium text-gray-800 dark:text-gray-100"}>
+            <div className={due > 0 ? "font-semibold text-red-500" : "font-medium text-foreground"}>
               {fmtMoney(due)}
               {record.credit_limit > 0 && (
                 <span className="text-xs text-gray-400 font-normal"> / {fmtMoney(record.credit_limit)}</span>
@@ -237,7 +237,7 @@ function VendorTable({
             icon={<MoreOutlined />}
             size="small"
             onClick={(e) => e.stopPropagation()}
-            className="text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
+            className="text-gray-300 rounded-lg hover:bg-muted hover:text-muted-foreground"
           />
         </Dropdown>
       ),
@@ -245,7 +245,7 @@ function VendorTable({
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden overflow-x-auto">
+    <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden overflow-x-auto">
       <style>{TABLE_STYLES}</style>
       <Table
         columns={columns}

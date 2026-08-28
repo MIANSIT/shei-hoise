@@ -188,16 +188,16 @@ export default function VendorsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-400 to-purple-600 flex items-center justify-center">
               <Users size={20} color="white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">Vendors</h1>
-              <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+              <h1 className="text-lg font-bold text-foreground m-0">Vendors</h1>
+              <p className="text-xs text-muted-foreground m-0">
                 Manage the vendors/resellers you distribute stock to
               </p>
             </div>
@@ -228,43 +228,43 @@ export default function VendorsPage() {
       <div className="px-4 sm:px-8 py-6 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <VendorStatCard
-            icon={<Users size={18} color="white" />}
+            icon={<Users size={18} />}
             label="Active Vendors"
             value={String(overview?.total_vendors ?? 0)}
-            accent="linear-gradient(135deg,#6366f1,#4f46e5)"
+            tone="indigo"
           />
           <VendorStatCard
-            icon={<PackageCheck size={18} color="white" />}
+            icon={<PackageCheck size={18} />}
             label="Stock Out With Vendors"
             value={fmtMoney(overview?.total_stock_value ?? 0)}
-            accent="linear-gradient(135deg,#f59e0b,#d97706)"
+            tone="amber"
           />
           <VendorStatCard
-            icon={<Wallet size={18} color="white" />}
+            icon={<Wallet size={18} />}
             label="Total Due To Collect"
             value={fmtMoney(overview?.total_due ?? 0)}
-            accent="linear-gradient(135deg,#ef4444,#dc2626)"
+            tone="rose"
           />
           <VendorStatCard
-            icon={<HandCoins size={18} color="white" />}
+            icon={<HandCoins size={18} />}
             label="Collected This Week"
             value={fmtMoney(overview?.collected_this_week ?? 0)}
             hint={`This month: ${fmtMoney(overview?.collected_this_month ?? 0)}`}
-            accent="linear-gradient(135deg,#10b981,#059669)"
+            tone="emerald"
           />
           <VendorStatCard
-            icon={<TrendingUp size={18} color="white" />}
+            icon={<TrendingUp size={18} />}
             label="Margin Dispatched"
             value={fmtMoney(overview?.total_margin_dispatched ?? 0)}
             hint="On confirmed dispatches"
-            accent="linear-gradient(135deg,#0ea5e9,#0284c7)"
+            tone="sky"
           />
           <VendorStatCard
-            icon={<AlertTriangle size={18} color="white" />}
+            icon={<AlertTriangle size={18} />}
             label="Slow-Moving Stock"
             value={fmtMoney(overview?.slow_moving_stock_value ?? 0)}
             hint="Unsold 30+ days"
-            accent="linear-gradient(135deg,#78716c,#57534e)"
+            tone="slate"
           />
         </div>
 

@@ -40,7 +40,7 @@ export default function PolicyBlock({
           dangerouslySetInnerHTML={{
             __html:
               content ||
-              "<p class='text-gray-800 dark:text-gray-400 italic'>Not provided</p>",
+              "<p class='text-foreground italic'>Not provided</p>",
           }}
         />
       </div>

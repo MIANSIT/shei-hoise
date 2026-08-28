@@ -189,6 +189,36 @@ export interface VendorSettlement {
   items?: VendorSettlementItem[];
 }
 
+// Row shape for the store-wide "All Vendor Settlements" list page — a
+// settlement joined with just enough of its vendor to display/link to it,
+// plus the payment method of any payment logged against it (settlements
+// don't store payment_method themselves — vendor_payments does).
+export interface VendorSettlementListItem extends Omit<VendorSettlement, "items"> {
+  items?: { sold_quantity: number; returned_quantity: number }[];
+  vendor?: {
+    id: string;
+    name: string;
+    phone: string;
+    business_name: string | null;
+  };
+  payments?: { payment_method: VendorPaymentMethod }[];
+}
+
+export interface CreateVendorPaymentInput {
+  store_id: string;
+  vendor_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: VendorPaymentMethod;
+  notes?: string;
+  created_by?: string | null;
+  // Pin this payment to a specific confirmed order/invoice instead of
+  // letting getVendorInvoiceBalances' oldest-first waterfall guess which
+  // invoice it belongs to — useful when the vendor says outright which
+  // invoice they're paying off.
+  vendor_order_id?: string | null;
+}
+
 export interface VendorPayment {
   id: string;
   store_id: string;
@@ -214,6 +244,12 @@ export interface VendorLedgerEntry {
   receivable?: number; // increases due (dispatch has none; settlement sold does)
   paid?: number; // decreases due
   paymentMethod?: VendorPaymentMethod; // only set on "payment" entries
+  // The underlying row's real id (settlement or payment) — dispatch
+  // entries don't carry one, there's nothing to delete from this page.
+  id?: string;
+  // Whether a delete action should show for this row. Settlements are
+  // always deletable; payments only when standalone (see getVendorLedger).
+  deletable?: boolean;
 }
 
 export interface VendorDashboardStats {

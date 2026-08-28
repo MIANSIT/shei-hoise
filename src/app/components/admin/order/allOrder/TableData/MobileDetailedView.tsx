@@ -153,7 +153,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
           <div className="font-semibold text-sm ">
             {order.order_items.length}
           </div>
-          <div className="text-xs text-gray-500 dark:text-white">Items</div>
+          <div className="text-xs text-muted-foreground">Items</div>
         </div>
         <div className="p-2 bg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
           <Shield className="text-purple-600" />
@@ -161,7 +161,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
             {displayCurrencyIconSafe}
             {order.tax_amount.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500 dark:text-white">Tax</div>
+          <div className="text-xs text-muted-foreground">Tax</div>
         </div>
         <div className="p-2 bbg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
           <DollarSign className="text-green-600" />
@@ -170,7 +170,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
             {displayCurrencyIconSafe}
             {subtotal.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500 dark:text-white">Subtotal</div>
+          <div className="text-xs text-muted-foreground">Subtotal</div>
         </div>
         <div className="p-2 bg-white dark:bg-blue-500 rounded-lg shadow-sm border flex flex-col items-center">
           <Truck className="text-orange-600" />
@@ -179,7 +179,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
               ? "Free"
               : ` ${displayCurrencyIconSafe}${order.shipping_fee.toFixed(2)}`}
           </div>
-          <div className="text-xs text-gray-500 dark:text-white">Shipping</div>
+          <div className="text-xs text-muted-foreground">Shipping</div>
         </div>
       </div>
 
@@ -228,9 +228,9 @@ const MobileDetailedViewFull: React.FC<Props> = ({
 
                 {/* Display SKU if available */}
                 {displaySku && (
-                  <div className="text-gray-600 dark:text-gray-700 mt-1">
+                  <div className="text-muted-foreground mt-1">
                     <span className="font-medium">SKU:</span>{" "}
-                    <span className="text-gray-700 dark:text-gray-800">
+                    <span className="text-foreground">
                       {displaySku}
                       {variantSku &&
                         productSku &&
@@ -245,9 +245,9 @@ const MobileDetailedViewFull: React.FC<Props> = ({
 
                 {/* Variant name if available */}
                 {item.variant_details?.variant_name && (
-                  <div className="text-gray-600 dark:text-gray-700 mt-1">
+                  <div className="text-muted-foreground mt-1">
                     <span className="font-medium">Variant:</span>{" "}
-                    <span className="text-gray-700 dark:text-gray-800">
+                    <span className="text-foreground">
                       {item.variant_details.variant_name}
                     </span>
                   </div>

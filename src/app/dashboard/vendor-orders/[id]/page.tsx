@@ -250,19 +250,19 @@ export default function VendorOrderDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background pb-16">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">
+              <h1 className="text-lg font-bold text-foreground m-0">
                 {order.invoice_number}
               </h1>
               <Tag color={STATUS_COLORS[order.status]} className="rounded-full capitalize">
                 {order.status}
               </Tag>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+            <p className="text-xs text-muted-foreground m-0">
               {order.vendor?.name} · {dayjs(order.order_date).format("DD MMM YYYY")}
             </p>
           </div>
@@ -340,15 +340,15 @@ export default function VendorOrderDetailPage() {
       </div>
 
       <div className="px-4 sm:px-8 py-6 space-y-6 max-w-5xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <div className="text-xs text-gray-400">Vendor</div>
-            <div className="font-semibold text-gray-800 dark:text-gray-100">{order.vendor?.name}</div>
+            <div className="font-semibold text-foreground">{order.vendor?.name}</div>
             <div className="text-xs text-gray-500">{order.vendor?.phone}</div>
           </div>
           <div>
             <div className="text-xs text-gray-400">Delivery</div>
-            <div className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="text-sm text-foreground">
               {order.delivery_date ? dayjs(order.delivery_date).format("DD MMM YYYY") : "—"}
             </div>
             <div className="text-xs text-gray-500">
@@ -357,11 +357,11 @@ export default function VendorOrderDetailPage() {
           </div>
           <div>
             <div className="text-xs text-gray-400">Reference</div>
-            <div className="text-sm text-gray-700 dark:text-gray-300">{order.reference_number || "—"}</div>
+            <div className="text-sm text-foreground">{order.reference_number || "—"}</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden overflow-x-auto">
+        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden overflow-x-auto">
           <Table
             columns={columns}
             dataSource={order.items ?? []}
@@ -371,7 +371,7 @@ export default function VendorOrderDetailPage() {
           />
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-2 w-full sm:max-w-md sm:ml-auto">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-2 w-full sm:max-w-md sm:ml-auto">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Total Quantity</span>
             <span className="font-medium">{order.total_quantity}</span>
@@ -390,7 +390,7 @@ export default function VendorOrderDetailPage() {
             <span className="text-gray-500">Discount</span>
             <span className="font-medium">{Number(order.discount_amount).toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-base font-bold border-t border-gray-100 dark:border-gray-700 pt-2">
+          <div className="flex justify-between text-base font-bold border-t border-border pt-2">
             <span>Grand Total</span>
             <span>{Number(order.grand_total).toFixed(2)}</span>
           </div>
@@ -405,9 +405,9 @@ export default function VendorOrderDetailPage() {
         </div>
 
         {order.notes && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
             <div className="text-xs text-gray-400 mb-1">Notes</div>
-            <div className="text-sm text-gray-700 dark:text-gray-300">{order.notes}</div>
+            <div className="text-sm text-foreground">{order.notes}</div>
           </div>
         )}
       </div>

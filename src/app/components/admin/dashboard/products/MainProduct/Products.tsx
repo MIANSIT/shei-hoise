@@ -262,10 +262,10 @@ const Products: React.FC = () => {
       {/* ── Page Header ── */}
       <div className="flex flex-wrap items-start justify-between gap-3 pb-1">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100 leading-tight">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
             {t.admin.productsTitle}
           </h1>
-          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             {t.admin.productsManage} · {n(counts.ALL)} {t.admin.totalItems}
           </p>
         </div>
@@ -336,7 +336,7 @@ const Products: React.FC = () => {
                 ${
                   isActive
                     ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/25"
-                    : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                    : "bg-card border-border text-muted-foreground hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
                 }`}
             >
               {label}
@@ -345,7 +345,7 @@ const Products: React.FC = () => {
                 ${
                   isActive
                     ? "bg-white/20 text-white"
-                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {n(counts[key as ProductStatus | "ALL"] ?? 0)}
@@ -364,7 +364,7 @@ const Products: React.FC = () => {
             ${
               featuredOnly
                 ? "bg-amber-400 border-amber-400 text-white shadow-md shadow-amber-400/25"
-                : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-amber-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                : "bg-card border-border text-muted-foreground hover:border-amber-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
             }`}
         >
           <Star
@@ -377,7 +377,7 @@ const Products: React.FC = () => {
             ${
               featuredOnly
                 ? "bg-white/20 text-white"
-                : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
+                : "bg-muted text-muted-foreground"
             }`}
           >
             {n(featuredCount)}
@@ -408,7 +408,7 @@ const Products: React.FC = () => {
       </div>
 
       {/* ── Table Card ── */}
-      <div className="rounded-2xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+      <div className="rounded-2xl border border-border/60 bg-card/50 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
         <div className="">
           <ProductTable
             products={products}
@@ -421,7 +421,7 @@ const Products: React.FC = () => {
 
       {/* ── Mobile Pagination ── */}
       <div className="md:hidden flex flex-col items-center gap-2 pt-1">
-        <p className="text-xs text-gray-500 dark:text-slate-400">
+        <p className="text-xs text-muted-foreground">
           {total > 0
             ? `${n((page - 1) * pageSize + 1)}–${n(Math.min(page * pageSize, total))} ${t.admin.ofText} ${n(total)} ${t.admin.itemsLabel}`
             : t.admin.noItems}
@@ -430,17 +430,17 @@ const Products: React.FC = () => {
           <button
             disabled={page === 1}
             onClick={() => setPage(page - 1)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-card text-muted-foreground hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
             {t.admin.prevBtn}
           </button>
-          <span className="text-xs font-semibold text-gray-700 dark:text-slate-300 px-1">
+          <span className="text-xs font-semibold text-foreground px-1">
             {n(page)} / {n(Math.ceil(total / pageSize) || 1)}
           </span>
           <button
             disabled={page >= Math.ceil(total / pageSize)}
             onClick={() => setPage(page + 1)}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-card text-muted-foreground hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
           >
             {t.admin.nextBtn}
           </button>
@@ -449,7 +449,7 @@ const Products: React.FC = () => {
 
       {/* ── Desktop Pagination ── */}
       <div className="hidden md:flex items-center justify-between pt-1">
-        <p className="text-xs text-gray-500 dark:text-slate-400">
+        <p className="text-xs text-muted-foreground">
           {total > 0
             ? `${t.admin.showingRange} ${n((page - 1) * pageSize + 1)}–${n(Math.min(page * pageSize, total))} ${t.admin.ofText} ${n(total)} ${t.admin.productsLabel}`
             : t.admin.noProductsFound}

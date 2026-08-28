@@ -23,6 +23,8 @@ import {
   Warehouse,
   Boxes,
   Sparkles,
+  Tag,
+  HandCoins,
 } from "lucide-react";
 import React from "react";
 
@@ -128,6 +130,18 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/vendor-orders",
         icon: Clipboard,
       },
+      {
+        title: "Vendor Settlements",
+        href: "/dashboard/vendor-settlements",
+        icon: HandCoins,
+      },
+    ],
+  },
+  {
+    title: "Marketing",
+    icon: Tag,
+    children: [
+      { title: "Coupons", href: "/dashboard/marketing/coupons", icon: Tag },
     ],
   },
   {

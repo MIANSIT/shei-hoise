@@ -36,10 +36,10 @@ const CustomTooltip = ({
   return (
     <div
       className="rounded-xl px-3 py-2 shadow-xl
-      bg-white dark:bg-gray-900
-      border border-gray-200 dark:border-gray-700"
+      bg-card
+      border border-border"
     >
-      <div className="text-[10px] font-bold uppercase tracking-wider mb-1 text-gray-400 dark:text-gray-500">
+      <div className="text-[10px] font-bold uppercase tracking-wider mb-1 text-muted-foreground">
         {label}
       </div>
       <div className="text-base font-black tabular-nums text-indigo-600 dark:text-indigo-400">
@@ -75,10 +75,10 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
+          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             {t.admin.salesPeriodTotal}
           </div>
-          <div className="text-xl sm:text-2xl font-black tabular-nums text-gray-900 dark:text-white">
+          <div className="text-xl sm:text-2xl font-black tabular-nums text-foreground">
             {sym} {n(total.toFixed(2))}
           </div>
         </div>
@@ -86,8 +86,8 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
         {/* Day picker */}
         <div
           className="flex gap-1 rounded-xl p-1
-          bg-gray-100 dark:bg-gray-800
-          border border-gray-200 dark:border-gray-700"
+          bg-muted
+          border border-border"
         >
           {([7, 14, 30] as const).map((d) => {
             const periodLabel: Record<7 | 14 | 30, string> = {
@@ -103,7 +103,7 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
                   ${
                     days === d
                       ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {periodLabel[d]}
@@ -133,20 +133,20 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="currentColor"
-              className="text-gray-200 dark:text-gray-700/60"
+              className="text-muted-foreground/60"
               vertical={false}
             />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 9, fill: "currentColor" }}
-              className="text-gray-400 dark:text-gray-500"
+              className="text-muted-foreground"
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
               tick={{ fontSize: 9, fill: "currentColor" }}
-              className="text-gray-400 dark:text-gray-500"
+              className="text-muted-foreground"
               axisLine={false}
               tickLine={false}
               width={36}
@@ -202,14 +202,14 @@ const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
       <div className="flex items-center gap-4 mt-3 flex-wrap">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-0.5 rounded bg-indigo-500" />
-          <span className="text-[10px] text-gray-400 dark:text-gray-500">
+          <span className="text-[10px] text-muted-foreground">
             {t.admin.salesCurrentPeriod}
           </span>
         </div>
         {prevSlice.length > 0 && (
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 rounded bg-gray-300 dark:bg-gray-600" />
-            <span className="text-[10px] text-gray-400 dark:text-gray-500">
+            <div className="w-4 h-0.5 rounded bg-muted" />
+            <span className="text-[10px] text-muted-foreground">
               {t.admin.salesPreviousPeriod}
             </span>
           </div>

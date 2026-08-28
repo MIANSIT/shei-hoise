@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextRequest } from "next/server";
+import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
 
 // Revalidate at the CDN level — actual data freshness controlled by Cache-Control header
 export const dynamic = "force-dynamic";
@@ -47,6 +48,8 @@ interface DbVariant {
   color: string | null;
   base_price: number;
   discounted_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   product_inventory: DbInventory[] | null;
   product_images: DbImage[] | null;
 }
@@ -59,6 +62,8 @@ interface DbProduct {
   short_description: string | null;
   base_price: number;
   discounted_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   status: string;
   categories: { name: string }[] | null;
   product_images: DbImage[] | null;
@@ -109,6 +114,8 @@ export async function GET(
       short_description,
       base_price,
       discounted_price,
+      sale_starts_at,
+      sale_ends_at,
       status,
       categories(name),
       product_images(image_url, is_primary, variant_id),
@@ -120,6 +127,8 @@ export async function GET(
         color,
         base_price,
         discounted_price,
+        sale_starts_at,
+        sale_ends_at,
         product_inventory(quantity_available, quantity_reserved),
         product_images(image_url, is_primary)
       )
@@ -239,7 +248,13 @@ export async function GET(
         const availability = variantAvailable ? "in stock" : "out of stock";
 
         const basePrice = Number(v.base_price);
-        const salePrice = v.discounted_price != null ? Number(v.discounted_price) : null;
+        const vEffective = getEffectivePrice({
+          base_price: basePrice,
+          discounted_price: v.discounted_price,
+          sale_starts_at: v.sale_starts_at,
+          sale_ends_at: v.sale_ends_at,
+        });
+        const salePrice = vEffective.isOnSale ? vEffective.price : null;
 
         // Append variant name to title so each variant is distinct in the catalog
         const variantLabel = v.variant_name ? ` - ${v.variant_name}` : "";
@@ -273,7 +288,13 @@ export async function GET(
 
     const availability = isInStock(p) ? "in stock" : "out of stock";
     const basePrice = Number(p.base_price);
-    const salePrice = p.discounted_price != null ? Number(p.discounted_price) : null;
+    const pEffective = getEffectivePrice({
+      base_price: basePrice,
+      discounted_price: p.discounted_price,
+      sale_starts_at: p.sale_starts_at,
+      sale_ends_at: p.sale_ends_at,
+    });
+    const salePrice = pEffective.isOnSale ? pEffective.price : null;
 
     return [buildItem({
       id: p.id,
