@@ -12,8 +12,9 @@ import {
   Tag,
   Divider,
   Alert,
+  Modal,
 } from "antd";
-import { DeleteOutlined, PlusOutlined, HistoryOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined, HistoryOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { PackagePlus } from "lucide-react";
 
 import type { ColumnsType } from "antd/es/table";
@@ -26,7 +27,10 @@ import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById";
 import { getVendorOrderableProducts } from "@/lib/queries/vendorOrder/getVendorOrderableProducts";
 import { addItemsToConfirmedOrder } from "@/lib/queries/vendorOrder/addItemsToConfirmedOrder";
+import { getVendorById } from "@/lib/queries/vendor/getVendorById";
+import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboardStats";
 import type {
+  Vendor,
   VendorOrder,
   VendorOrderItem,
   VendorOrderableProduct,
@@ -54,6 +58,8 @@ export default function AddItemsToVendorOrderPage() {
 
   const [pageLoading, setPageLoading] = useState(true);
   const [order, setOrder] = useState<VendorOrder | null>(null);
+  const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [vendorCurrentDue, setVendorCurrentDue] = useState(0);
   const [newItems, setNewItems, clearDraft, hasDraft] = useLocalDraft<DraftLineItem[]>(
     `vendor_order_add_items_${orderId}`,
     [],
@@ -87,6 +93,15 @@ export default function AddItemsToVendorOrderPage() {
 
         setOrder(o);
         setProductOptions(products);
+
+        if (o.vendor_id) {
+          const [v, stats] = await Promise.all([
+            getVendorById(o.vendor_id, storeId),
+            getVendorDashboardStats(o.vendor_id),
+          ]);
+          setVendor(v);
+          setVendorCurrentDue(stats.current_due);
+        }
       } catch (err) {
         error(err instanceof Error ? err.message : "Failed to load order");
       } finally {
@@ -199,6 +214,12 @@ export default function AddItemsToVendorOrderPage() {
     () => round2(newGrandTotal - Number(order?.paid_amount ?? 0)),
     [newGrandTotal, order],
   );
+  const projectedVendorDue = useMemo(
+    () => round2(vendorCurrentDue + addedSubtotal),
+    [vendorCurrentDue, addedSubtotal],
+  );
+  const creditLimitExceeded =
+    !!vendor && vendor.credit_limit > 0 && projectedVendorDue > vendor.credit_limit;
 
   const existingColumns: ColumnsType<VendorOrderItem> = [
     { title: "Product", dataIndex: "product_name", key: "product_name" },
@@ -332,11 +353,25 @@ export default function AddItemsToVendorOrderPage() {
     },
   ];
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (newItems.length === 0) {
       error("Add at least one product");
       return;
     }
+    if (creditLimitExceeded) {
+      Modal.confirm({
+        title: "Credit limit exceeded",
+        icon: <ExclamationCircleOutlined />,
+        content: `${vendor?.name} would owe ${projectedVendorDue.toFixed(2)} after this dispatch, over their credit limit of ${vendor?.credit_limit.toFixed(2)}. Dispatch anyway?`,
+        okText: "Dispatch Anyway",
+        onOk: performSave,
+      });
+      return;
+    }
+    performSave();
+  };
+
+  const performSave = async () => {
     setSaving(true);
     try {
       await addItemsToConfirmedOrder(
@@ -426,6 +461,16 @@ export default function AddItemsToVendorOrderPage() {
                 Clear
               </Button>
             }
+            className="rounded-xl"
+          />
+        )}
+
+        {creditLimitExceeded && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Credit limit will be exceeded"
+            description={`${vendor?.name} currently owes ${vendorCurrentDue.toFixed(2)}. After this dispatch they'd owe ${projectedVendorDue.toFixed(2)}, over their credit limit of ${vendor?.credit_limit.toFixed(2)}. You can still dispatch — you'll be asked to confirm on save.`}
             className="rounded-xl"
           />
         )}

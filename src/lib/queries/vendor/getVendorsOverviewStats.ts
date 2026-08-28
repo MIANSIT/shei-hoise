@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
+import { calculateVendorCurrentDue } from "./calculateVendorDue";
 import type { VendorsOverviewStats } from "@/lib/types/vendor/type";
 
 const SLOW_MOVING_DAYS = 30;
@@ -89,7 +90,11 @@ export async function getVendorsOverviewStats(
     total_vendors: vendorCountRes.count ?? 0,
     total_receivable: totalReceivable,
     total_paid: totalPaid,
-    total_due: totalReceivable - totalPaid,
+    total_due: calculateVendorCurrentDue({
+      unsettledStockValue: totalStockValue,
+      totalReceivable,
+      totalPaid,
+    }),
     total_stock_value: totalStockValue,
     collected_this_week: collectedThisWeek,
     collected_this_month: collectedThisMonth,

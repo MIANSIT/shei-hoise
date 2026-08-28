@@ -228,43 +228,43 @@ export default function VendorsPage() {
       <div className="px-4 sm:px-8 py-6 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <VendorStatCard
-            icon={<Users size={18} color="white" />}
+            icon={<Users size={18} />}
             label="Active Vendors"
             value={String(overview?.total_vendors ?? 0)}
-            accent="linear-gradient(135deg,#6366f1,#4f46e5)"
+            tone="indigo"
           />
           <VendorStatCard
-            icon={<PackageCheck size={18} color="white" />}
+            icon={<PackageCheck size={18} />}
             label="Stock Out With Vendors"
             value={fmtMoney(overview?.total_stock_value ?? 0)}
-            accent="linear-gradient(135deg,#f59e0b,#d97706)"
+            tone="amber"
           />
           <VendorStatCard
-            icon={<Wallet size={18} color="white" />}
+            icon={<Wallet size={18} />}
             label="Total Due To Collect"
             value={fmtMoney(overview?.total_due ?? 0)}
-            accent="linear-gradient(135deg,#ef4444,#dc2626)"
+            tone="rose"
           />
           <VendorStatCard
-            icon={<HandCoins size={18} color="white" />}
+            icon={<HandCoins size={18} />}
             label="Collected This Week"
             value={fmtMoney(overview?.collected_this_week ?? 0)}
             hint={`This month: ${fmtMoney(overview?.collected_this_month ?? 0)}`}
-            accent="linear-gradient(135deg,#10b981,#059669)"
+            tone="emerald"
           />
           <VendorStatCard
-            icon={<TrendingUp size={18} color="white" />}
+            icon={<TrendingUp size={18} />}
             label="Margin Dispatched"
             value={fmtMoney(overview?.total_margin_dispatched ?? 0)}
             hint="On confirmed dispatches"
-            accent="linear-gradient(135deg,#0ea5e9,#0284c7)"
+            tone="sky"
           />
           <VendorStatCard
-            icon={<AlertTriangle size={18} color="white" />}
+            icon={<AlertTriangle size={18} />}
             label="Slow-Moving Stock"
             value={fmtMoney(overview?.slow_moving_stock_value ?? 0)}
             hint="Unsold 30+ days"
-            accent="linear-gradient(135deg,#78716c,#57534e)"
+            tone="slate"
           />
         </div>
 

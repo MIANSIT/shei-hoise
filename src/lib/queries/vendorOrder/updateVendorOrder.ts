@@ -18,8 +18,13 @@ export interface UpdateVendorOrderInput {
   items: VendorOrderItemInput[];
 }
 
-// Updates a draft vendor order — replaces all line items and recomputes totals.
-// Throws if the order is not in draft status or doesn't belong to the store.
+// Updates a draft vendor order — replaces all line items and recomputes
+// totals via the update_vendor_order_draft RPC, which locks the order row
+// (FOR UPDATE) and re-checks draft status inside that lock before touching
+// anything. Doing this as a single atomic transaction (rather than a
+// separate read-check + update + delete + insert from here) is what keeps
+// it correctly serialized against confirm_vendor_order's own lock on the
+// same row — see supabase/migrations/20260823000002_add_update_vendor_order_draft_rpc.sql.
 export async function updateVendorOrder(
   input: UpdateVendorOrderInput,
 ): Promise<void> {
@@ -27,72 +32,31 @@ export async function updateVendorOrder(
     throw new Error("At least one product is required");
   }
 
-  // Guard: only draft orders belonging to this store can be edited
-  const { data: existing, error: fetchError } = await supabaseAdmin
-    .from("vendor_orders")
-    .select("id, status, store_id")
-    .eq("id", input.order_id)
-    .eq("store_id", input.store_id)
-    .single();
+  const { error } = await supabaseAdmin.rpc("update_vendor_order_draft", {
+    p_order_id: input.order_id,
+    p_store_id: input.store_id,
+    p_order_date: input.order_date,
+    p_invoice_date: input.invoice_date || null,
+    p_delivery_date: input.delivery_date || null,
+    p_delivery_person: input.delivery_person || null,
+    p_vehicle_number: input.vehicle_number || null,
+    p_reference_number: input.reference_number || null,
+    p_notes: input.notes || null,
+    p_delivery_cost: input.delivery_cost ?? 0,
+    p_discount_amount: input.discount_amount ?? 0,
+    p_paid_amount: input.paid_amount ?? 0,
+    p_items: input.items.map((item) => ({
+      product_id: item.product_id,
+      variant_id: item.variant_id,
+      product_name: item.product_name,
+      sku: item.sku,
+      quantity: item.quantity,
+      original_tp: item.original_tp,
+      increase_percent: item.increase_percent,
+      vendor_tp: item.vendor_tp,
+      mrp: item.mrp,
+    })),
+  });
 
-  if (fetchError || !existing) throw new Error("Vendor order not found");
-  if (existing.status !== "draft") throw new Error("Only draft orders can be edited");
-
-  const totalQuantity = input.items.reduce((sum, i) => sum + i.quantity, 0);
-  const subtotal = input.items.reduce((sum, i) => sum + i.quantity * i.vendor_tp, 0);
-  const deliveryCost = input.delivery_cost ?? 0;
-  const discountAmount = input.discount_amount ?? 0;
-  const grandTotal = subtotal + deliveryCost - discountAmount;
-  const paidAmount = input.paid_amount ?? 0;
-  const dueAmount = grandTotal - paidAmount;
-
-  const { error: updateError } = await supabaseAdmin
-    .from("vendor_orders")
-    .update({
-      order_date: input.order_date,
-      invoice_date: input.invoice_date || null,
-      delivery_date: input.delivery_date || null,
-      delivery_person: input.delivery_person || null,
-      vehicle_number: input.vehicle_number || null,
-      reference_number: input.reference_number || null,
-      notes: input.notes || null,
-      total_quantity: totalQuantity,
-      subtotal,
-      delivery_cost: deliveryCost,
-      discount_amount: discountAmount,
-      grand_total: grandTotal,
-      paid_amount: paidAmount,
-      due_amount: dueAmount,
-    })
-    .eq("id", input.order_id);
-
-  if (updateError) throw new Error(updateError.message);
-
-  // Replace all items atomically: delete old, insert new
-  const { error: deleteError } = await supabaseAdmin
-    .from("vendor_order_items")
-    .delete()
-    .eq("vendor_order_id", input.order_id);
-
-  if (deleteError) throw new Error(deleteError.message);
-
-  const itemRows = input.items.map((item) => ({
-    vendor_order_id: input.order_id,
-    product_id: item.product_id,
-    variant_id: item.variant_id,
-    product_name: item.product_name,
-    sku: item.sku,
-    quantity: item.quantity,
-    original_tp: item.original_tp,
-    increase_percent: item.increase_percent,
-    vendor_tp: item.vendor_tp,
-    mrp: item.mrp,
-    line_total: item.quantity * item.vendor_tp,
-  }));
-
-  const { error: insertError } = await supabaseAdmin
-    .from("vendor_order_items")
-    .insert(itemRows);
-
-  if (insertError) throw new Error(insertError.message);
+  if (error) throw new Error(error.message);
 }

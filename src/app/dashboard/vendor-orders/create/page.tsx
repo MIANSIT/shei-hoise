@@ -27,6 +27,7 @@ import { getVendors } from "@/lib/queries/vendor/getVendors";
 import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboardStats";
 import { getVendorOrderableProducts } from "@/lib/queries/vendorOrder/getVendorOrderableProducts";
 import { createVendorOrder } from "@/lib/queries/vendorOrder/createVendorOrder";
+import { vendorOrderTotalsSchema } from "@/lib/schema/vendorOrderSchema";
 import type {
   Vendor,
   VendorOrderableProduct,
@@ -343,6 +344,17 @@ export default function CreateVendorOrderPage() {
     }
     if (items.length === 0) {
       error("Add at least one product");
+      return;
+    }
+    const totalsCheck = vendorOrderTotalsSchema.safeParse({
+      subtotal,
+      deliveryCost,
+      discountAmount,
+      paidAmount,
+      grandTotal,
+    });
+    if (!totalsCheck.success) {
+      error(totalsCheck.error.issues[0]?.message ?? "Invalid order totals");
       return;
     }
     if (creditLimitExceeded) {

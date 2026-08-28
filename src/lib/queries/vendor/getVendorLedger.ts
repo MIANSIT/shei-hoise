@@ -24,7 +24,7 @@ export async function getVendorLedger(
       .order("settlement_date", { ascending: false }),
     supabase
       .from("vendor_payments")
-      .select("id, payment_date, amount, payment_method, notes")
+      .select("id, payment_date, amount, payment_method, notes, settlement_id, vendor_order_id")
       .eq("vendor_id", vendorId)
       .order("payment_date", { ascending: false }),
   ]);
@@ -55,6 +55,8 @@ export async function getVendorLedger(
       description: `Settled: ${sold} sold, ${returned} returned`,
       quantity: sold + returned,
       receivable: settlement.total_receivable,
+      id: settlement.id,
+      deletable: true,
     });
   }
 
@@ -66,6 +68,11 @@ export async function getVendorLedger(
       description: payment.notes || "Payment received",
       paid: payment.amount,
       paymentMethod: payment.payment_method,
+      id: payment.id,
+      // Only a standalone payment (not settlement-linked, not an order's
+      // upfront payment) is safe to delete on its own — the other two get
+      // removed by deleteVendorSettlement / cancelling the order instead.
+      deletable: !payment.settlement_id && !payment.vendor_order_id,
     });
   }
 
