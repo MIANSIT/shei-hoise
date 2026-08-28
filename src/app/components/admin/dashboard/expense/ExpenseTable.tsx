@@ -59,10 +59,10 @@ const EmptyExpense = () => {
       <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900 flex items-center justify-center">
         <ReceiptText size={28} color="#a5b4fc" strokeWidth={1.5} />
       </div>
-      <p className="font-semibold text-gray-700 dark:text-gray-300 m-0">
+      <p className="font-semibold text-foreground m-0">
         {t.admin.expenseEmpty}
       </p>
-      <p className="text-sm text-gray-400 dark:text-gray-500 m-0">
+      <p className="text-sm text-muted-foreground m-0">
         {t.admin.expenseEmptyHint}
       </p>
     </div>
@@ -115,7 +115,7 @@ function ExpenseTable({
         key: "view",
         icon: <ReceiptText size={14} color="#6366f1" />,
         label: (
-          <span className="text-gray-700 dark:text-gray-300 text-sm">
+          <span className="text-foreground text-sm">
             {t.admin.expenseViewDetails}
           </span>
         ),
@@ -129,7 +129,7 @@ function ExpenseTable({
         key: "edit",
         icon: <EditOutlined style={{ color: "#6366f1" }} />,
         label: (
-          <span className="text-gray-700 dark:text-gray-300 text-sm">{t.admin.expenseEditAction}</span>
+          <span className="text-foreground text-sm">{t.admin.expenseEditAction}</span>
         ),
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
@@ -213,7 +213,7 @@ function ExpenseTable({
             icon={<MoreOutlined />}
             size="small"
             onClick={(e) => e.stopPropagation()}
-            className="text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
+            className="text-gray-300 rounded-lg hover:bg-muted hover:text-muted-foreground"
           />
         </Dropdown>
       ),
@@ -223,7 +223,7 @@ function ExpenseTable({
   return (
     <>
       {/* Desktop table */}
-      <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
         <style>{TABLE_STYLES}</style>
         <Table
           columns={columns}

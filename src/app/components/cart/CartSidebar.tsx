@@ -55,7 +55,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
   const handleContinueShopping = () => {
     onClose();
-    router.push(`/${store_slug}`);
+    router.push(`/${store_slug}/shop`);
   };
 
   const handleQuantityChange = (
@@ -132,7 +132,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                   {t.cart.addProductsPrompt}
                 </p>
                 <Button
-                  className="mt-4 w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
+                  className="mt-4 w-full bg-linear-to-r from-yellow-400 to-yellow-600 text-primary-foreground hover:from-yellow-500 hover:to-yellow-700 cursor-pointer transition-colors duration-300"
                   onClick={handleContinueShopping}
                 >
                   {t.cart.continueShoppingAt} {store_slug}

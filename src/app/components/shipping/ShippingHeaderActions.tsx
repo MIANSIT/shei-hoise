@@ -37,7 +37,7 @@ export function ShippingHeaderActions({
       <button
         onClick={onCancel}
         disabled={isSaving}
-        className="flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600"
+        className="flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-card hover:bg-background text-foreground text-sm font-semibold rounded-xl border border-border hover:border-border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600"
       >
         <X className="h-4 w-4" />
         <span>{t.admin.shippingCancel}</span>

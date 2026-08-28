@@ -66,17 +66,17 @@ export default function ManualCourierPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="max-w-5xl mx-auto flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-linear-to-br from-slate-400 to-slate-600 flex items-center justify-center shrink-0">
             <Truck size={18} color="white" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
               {courier.name}
             </h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+            <p className="text-xs text-muted-foreground m-0">
               {t.admin.courierPageSubtitle}
             </p>
           </div>
@@ -92,18 +92,18 @@ export default function ManualCourierPage() {
         </div>
 
         <div>
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-2.5">
+          <h2 className="text-sm font-bold text-foreground mb-2.5">
             {t.admin.pathaoShipmentsTitle}
           </h2>
 
           {orders === null ? (
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-center">
+            <div className="rounded-2xl border border-border bg-card p-6 text-center">
               <p className="text-sm text-muted-foreground">{t.admin.loading}</p>
             </div>
           ) : orders.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-center">
+            <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center">
               <PackageSearch className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <p className="text-sm font-medium text-foreground">
                 {t.admin.pathaoNoShipmentsTitle}
               </p>
             </div>
@@ -112,7 +112,7 @@ export default function ManualCourierPage() {
               {orders.map((o) => (
                 <div
                   key={o.orderId}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3"
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
                 >
                   <Truck className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0">

@@ -240,7 +240,7 @@ export default function AddItemsToVendorOrderPage() {
       key: "product",
       render: (_, record) => (
         <div>
-          <div className="font-medium text-gray-800 dark:text-gray-100">{record.product_name}</div>
+          <div className="font-medium text-foreground">{record.product_name}</div>
           <div className="text-xs text-gray-400">
             {record.sku ? `SKU: ${record.sku} · ` : ""}Warehouse stock: {record.warehouse_stock}
           </div>
@@ -366,21 +366,21 @@ export default function AddItemsToVendorOrderPage() {
   if (!order) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-400 to-purple-600 flex items-center justify-center">
             <PackagePlus size={20} color="white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">
+              <h1 className="text-lg font-bold text-foreground m-0">
                 Add Products — {order.invoice_number}
               </h1>
               <Tag color="green" className="rounded-full">confirmed</Tag>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+            <p className="text-xs text-muted-foreground m-0">
               {order.vendor?.name} · New items are dispatched to the vendor immediately
             </p>
           </div>
@@ -390,12 +390,12 @@ export default function AddItemsToVendorOrderPage() {
       <div className="px-4 sm:px-8 py-6 space-y-6 max-w-5xl mx-auto">
 
         {/* Existing items — read-only */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-3">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">
+            <h2 className="text-sm font-bold text-foreground m-0">
               Previously Dispatched
             </h2>
-            <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-gray-400 bg-muted px-2 py-0.5 rounded-full">
               {order.items?.length ?? 0} items · Qty {order.total_quantity}
             </span>
           </div>
@@ -431,8 +431,8 @@ export default function AddItemsToVendorOrderPage() {
         )}
 
         {/* New items picker */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-indigo-200 dark:border-indigo-700 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">
+        <div className="bg-card rounded-2xl border border-indigo-200 dark:border-indigo-700 shadow-sm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-foreground m-0">
             New Products to Dispatch
           </h2>
           <Select
@@ -462,7 +462,7 @@ export default function AddItemsToVendorOrderPage() {
 
         {/* Updated totals preview */}
         {newItems.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-2 w-full sm:max-w-md sm:ml-auto">
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-2 w-full sm:max-w-md sm:ml-auto">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide m-0">
               Updated Order Totals
             </p>
@@ -486,7 +486,7 @@ export default function AddItemsToVendorOrderPage() {
                 <span>−{Number(order.discount_amount).toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-base font-bold border-t border-gray-100 dark:border-gray-700 pt-2">
+            <div className="flex justify-between text-base font-bold border-t border-border pt-2">
               <span>New Grand Total</span>
               <span>{newGrandTotal.toFixed(2)}</span>
             </div>

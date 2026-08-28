@@ -40,11 +40,11 @@ export function ExpenseDetailContent({ expense, currencyIcon }: ExpenseDetailCon
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white m-0 leading-tight">
+            <h2 className="text-base font-bold text-foreground m-0 leading-tight">
               {expense.title}
             </h2>
             {expense.vendor_name && (
-              <p className="text-sm text-gray-400 dark:text-gray-500 m-0 mt-0.5 flex items-center gap-1">
+              <p className="text-sm text-muted-foreground m-0 mt-0.5 flex items-center gap-1">
                 <Building2 size={11} />
                 {expense.vendor_name}
               </p>
@@ -64,7 +64,7 @@ export function ExpenseDetailContent({ expense, currencyIcon }: ExpenseDetailCon
       </div>
 
       {/* Detail rows */}
-      <div className="px-5 py-1 bg-white dark:bg-gray-800">
+      <div className="px-5 py-1 bg-card">
         <DetailRow icon={<Calendar size={14} color="#6366f1" />} label="Date">
           <span>{dayjs(expense.expense_date).format("MMM D, YYYY")}</span>
           <span className="text-xs text-gray-400 ml-2">{dayjs(expense.expense_date).fromNow()}</span>
@@ -98,7 +98,7 @@ export function ExpenseDetailContent({ expense, currencyIcon }: ExpenseDetailCon
 
         {expense.description && (
           <DetailRow icon={<AlignLeft size={14} color="#6b7280" />} label="Description">
-            <span className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+            <span className="text-muted-foreground text-sm leading-relaxed">
               {expense.description}
             </span>
           </DetailRow>
@@ -106,7 +106,7 @@ export function ExpenseDetailContent({ expense, currencyIcon }: ExpenseDetailCon
 
         {expense.notes && (
           <DetailRow icon={<FileText size={14} color="#a5b4fc" />} label="Notes">
-            <span className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+            <span className="text-muted-foreground text-sm leading-relaxed">
               {expense.notes}
             </span>
           </DetailRow>

@@ -31,7 +31,7 @@ function ToggleSwitch({
       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full
                   transition-colors duration-300 focus:outline-none focus:ring-2
                   focus:ring-offset-1 focus:ring-indigo-500/40
-                  ${checked ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                  ${checked ? "bg-emerald-500" : "bg-muted"}`}
     >
       <span
         className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow
@@ -64,7 +64,7 @@ export default function CategoryTable({
       width: 200,
       render: (name: string, record: Category) => (
         <div className="min-w-35">
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-tight">
+          <p className="text-sm font-semibold text-foreground leading-tight">
             {name}
           </p>
           {record.description && (
@@ -84,9 +84,9 @@ export default function CategoryTable({
       render: (slug: string) => (
         <span
           className="inline-block font-mono text-[11px] px-2 py-0.5 rounded-md
-                         bg-gray-100 dark:bg-[#0f1117]
-                         text-gray-500 dark:text-gray-400
-                         border border-gray-200 dark:border-[#2a2d3a]
+                         bg-background
+                         text-muted-foreground
+                         border border-border
                          whitespace-nowrap max-w-35 truncate"
         >
           {slug}
@@ -118,7 +118,7 @@ export default function CategoryTable({
           />
           <span
             className={`text-xs font-medium hidden sm:inline
-                            ${record.is_active ? "text-emerald-500" : "text-gray-400 dark:text-gray-500"}`}
+                            ${record.is_active ? "text-emerald-500" : "text-muted-foreground"}`}
           >
             {record.is_active ? t.admin.prodCatActiveLabel : t.admin.prodCatInactiveLabel}
           </span>
@@ -140,7 +140,7 @@ export default function CategoryTable({
             <button
               onClick={() => onEdit(record)}
               className="w-7 h-7 flex items-center justify-center rounded-lg
-                         border border-gray-200 dark:border-[#2a2d3a]
+                         border border-border
                          text-gray-400 hover:text-indigo-500
                          hover:border-indigo-300 dark:hover:border-indigo-600
                          hover:bg-indigo-50 dark:hover:bg-indigo-500/10
@@ -188,8 +188,8 @@ export default function CategoryTable({
       The `fixed: "right"` on Actions column pins it during horizontal scroll.
     */
     <div
-      className="rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2a2d3a]
-                    bg-white dark:bg-[#16181f] overflow-x-auto"
+      className="rounded-2xl overflow-hidden border border-border
+                    bg-card overflow-x-auto"
     >
       <DataTable<Category>
         columns={columns}
@@ -197,20 +197,16 @@ export default function CategoryTable({
         loading={loading}
         pagination={false}
         scroll={{ x: "max-content" }}
-        rowClassName="hover:bg-gray-50 dark:hover:bg-[#1c1f2b] transition-colors duration-150"
+        rowClassName="hover:bg-muted transition-colors duration-150"
         className="
           [&_.ant-table]:bg-transparent
-          [&_.ant-table-thead_>_tr_>_th]:bg-gray-50
-          [&_.ant-table-thead_>_tr_>_th]:dark:bg-[#13151d]
+          [&_.ant-table-thead_>_tr_>_th]:bg-background
           [&_.ant-table-thead_>_tr_>_th]:border-b
-          [&_.ant-table-thead_>_tr_>_th]:border-gray-200
-          [&_.ant-table-thead_>_tr_>_th]:dark:border-[#2a2d3a]
+          [&_.ant-table-thead_>_tr_>_th]:border-border
           [&_.ant-table-tbody_>_tr_>_td]:border-b
-          [&_.ant-table-tbody_>_tr_>_td]:border-gray-100
-          [&_.ant-table-tbody_>_tr_>_td]:dark:border-[#2a2d3a]/60
+          [&_.ant-table-tbody_>_tr_>_td]:border-border
           [&_.ant-table-tbody_>_tr:last-child_>_td]:border-0
-          [&_.ant-table-cell-fix-right]:bg-white
-          [&_.ant-table-cell-fix-right]:dark:bg-[#16181f]
+          [&_.ant-table-cell-fix-right]:bg-card
         "
       />
     </div>

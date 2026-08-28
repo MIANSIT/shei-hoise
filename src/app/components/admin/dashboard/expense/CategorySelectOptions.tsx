@@ -37,7 +37,7 @@ export function renderCategoryOption(option: { data: CategoryOption }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
-            className="text-gray-900 dark:text-gray-100"
+            className="text-foreground"
             style={{
               fontSize: 13,
               fontWeight: 500,
@@ -50,7 +50,7 @@ export function renderCategoryOption(option: { data: CategoryOption }) {
           </span>
           {c.is_default && (
             <span
-              className="bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500"
+              className="bg-muted text-muted-foreground"
               style={{
                 fontSize: 9,
                 fontWeight: 700,

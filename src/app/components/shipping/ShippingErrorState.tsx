@@ -11,16 +11,16 @@ export function ShippingErrorState({
   onRetry,
 }: ShippingErrorStateProps) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-red-100 dark:border-red-900/40 shadow-sm p-6 sm:p-8">
+    <div className="bg-card rounded-2xl border border-red-100 dark:border-red-900/40 shadow-sm p-6 sm:p-8">
       <div className="flex flex-col sm:flex-row items-start gap-4">
         <div className="w-11 h-11 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center shrink-0">
           <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">
+          <h3 className="text-sm font-bold text-foreground mb-1">
             Failed to load shipping data
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
             {error}
           </p>
           <button

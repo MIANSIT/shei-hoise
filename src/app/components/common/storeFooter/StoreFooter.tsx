@@ -160,7 +160,7 @@ export default function StoreFooter({
           {/* Column 1: Brand */}
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 flex items-center justify-center shadow-sm">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center shadow-sm">
                 {storeLogo ? (
                   <Image
                     src={storeLogo}
@@ -172,7 +172,7 @@ export default function StoreFooter({
                     className="object-contain p-2"
                   />
                 ) : (
-                  <span className="text-gray-700 dark:text-gray-300 font-bold text-lg">
+                  <span className="text-foreground font-bold text-lg">
                     {storeName?.[0]?.toUpperCase() || "S"}
                   </span>
                 )}
@@ -254,7 +254,7 @@ export default function StoreFooter({
               {contactAddress && (
                 <li className="flex items-start gap-3">
                   <FiMapPin className="w-5 h-5 text-primary mt-0.5 shrink-0 dark:text-primary-400" />
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-muted-foreground">
                     {contactAddress}
                   </span>
                 </li>
@@ -404,7 +404,7 @@ export default function StoreFooter({
                 {contactAddress && (
                   <li className="flex items-start gap-2">
                     <FiMapPin className="w-4 h-4 text-primary mt-1 shrink-0 dark:text-primary-400" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-sm text-muted-foreground">
                       {contactAddress}
                     </span>
                   </li>
@@ -425,7 +425,7 @@ export default function StoreFooter({
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+        <div className="pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-center items-center gap-4">
             <div className="text-sm text-gray-500 text-center md:text-left dark:text-gray-400">
               © {new Date().getFullYear()}{" "}

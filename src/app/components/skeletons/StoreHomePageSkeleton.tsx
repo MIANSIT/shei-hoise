@@ -16,7 +16,7 @@ function Shimmer() {
 
 function Bone({ className, style }: { className: string; style?: React.CSSProperties }) {
   return (
-    <div style={style} className={`relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 ${className}`}>
+    <div style={style} className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
       <Shimmer />
     </div>
   );
@@ -27,7 +27,7 @@ export function StoreHomePageSkeleton() {
     <div className="min-h-screen bg-[#F8F8F6] dark:bg-gray-950 animate-pulse">
 
       {/* ── Hero — compact on mobile ── */}
-      <div className="relative w-full h-36 sm:h-96 lg:h-120 bg-gray-200 dark:bg-gray-800 overflow-hidden">
+      <div className="relative w-full h-36 sm:h-96 lg:h-120 bg-muted overflow-hidden">
         <Shimmer />
         <div className="absolute bottom-0 inset-x-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2.5 sm:pb-7 flex items-end justify-between gap-4">
@@ -53,7 +53,7 @@ export function StoreHomePageSkeleton() {
       </div>
 
       {/* ── Desktop: category card section ── */}
-      <div className="hidden sm:block bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800">
+      <div className="hidden sm:block bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="flex items-end justify-between mb-10">
             <div className="flex flex-col gap-2">
@@ -64,8 +64,8 @@ export function StoreHomePageSkeleton() {
           </div>
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <div className="h-0.5 bg-gray-100 dark:bg-gray-800" />
+              <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden">
+                <div className="h-0.5 bg-muted" />
                 <div className="flex flex-col items-center gap-3 px-3 py-7">
                   <Bone className="w-11 h-11 rounded-xl" />
                   <Bone className="h-3.5 w-3/4 rounded-md" />
@@ -96,7 +96,7 @@ export function StoreHomePageSkeleton() {
           {/* Bento grid — 2 cols mobile, 4 cols desktop */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             {/* Hero card */}
-            <div className="sm:col-span-2 sm:row-span-2 rounded-2xl overflow-hidden bg-gray-200 dark:bg-gray-800 relative aspect-3/4 sm:aspect-auto sm:min-h-120">
+            <div className="sm:col-span-2 sm:row-span-2 rounded-2xl overflow-hidden bg-muted relative aspect-3/4 sm:aspect-auto sm:min-h-120">
               <Shimmer />
               <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 flex flex-col gap-2">
                 <Bone className="h-3.5 sm:h-4 w-3/4 rounded-md" />
@@ -105,8 +105,8 @@ export function StoreHomePageSkeleton() {
             </div>
             {/* Standard cards */}
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex flex-col shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-                <div className="relative aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden">
+              <div key={i} className="rounded-2xl overflow-hidden bg-card border border-border flex flex-col shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+                <div className="relative aspect-square bg-muted overflow-hidden">
                   <Shimmer />
                 </div>
                 <div className="px-3.5 py-3 flex flex-col gap-2">

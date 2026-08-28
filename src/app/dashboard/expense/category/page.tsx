@@ -267,9 +267,9 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* ── Header ── */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Title */}
           <div className="flex items-center gap-2.5 min-w-0">
@@ -282,10 +282,10 @@ export default function CategoriesPage() {
               <FolderOutlined style={{ color: "white", fontSize: 18 }} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white m-0 tracking-tight leading-tight">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
                 {t.admin.expCatTitle}
               </h1>
-              <p className="text-xs text-gray-400 dark:text-gray-500 m-0 hidden sm:block">
+              <p className="text-xs text-muted-foreground m-0 hidden sm:block">
                 {t.admin.expCatSubtitle}
               </p>
             </div>

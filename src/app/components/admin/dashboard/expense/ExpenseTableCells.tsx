@@ -33,13 +33,13 @@ export function ExpenseCell({ record }: { record: Expense }) {
         )}
       </div>
       <div>
-        <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm leading-tight m-0">
+        <p className="font-semibold text-foreground text-sm leading-tight m-0">
           {record.title}
         </p>
         {record.vendor_name && (
           <div className="flex items-center gap-1 mt-0.5">
             <Store size={10} color="#9ca3af" strokeWidth={2} />
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {record.vendor_name}
             </span>
           </div>
@@ -88,7 +88,7 @@ export function AmountCell({
 }) {
   const n = useLocalNum();
   return (
-    <span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums flex items-center gap-0.5">
+    <span className="font-bold text-foreground text-sm tabular-nums flex items-center gap-0.5">
       <span>{currencyIcon}</span>
       <span>{n(Number(amount).toFixed(2))}</span>
     </span>
@@ -98,7 +98,7 @@ export function AmountCell({
 export function DateCell({ date }: { date: string }) {
   return (
     <div>
-      <span className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+      <span className="text-foreground text-sm font-medium">
         {dayjs(date).format("MMM D, YYYY")}
       </span>
       <p className="text-gray-400 text-xs mt-0.5 m-0">
@@ -128,7 +128,7 @@ export function PaymentCell({ method }: { method: string }) {
 export function PlatformCell({ platform }: { platform?: string }) {
   if (!platform) return <span className="text-gray-200 text-xs">—</span>;
   return (
-    <span className="inline-block text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-md px-2 py-1 font-medium whitespace-nowrap max-w-25 truncate">
+    <span className="inline-block text-xs text-muted-foreground bg-muted rounded-md px-2 py-1 font-medium whitespace-nowrap max-w-25 truncate">
       {platform}
     </span>
   );

@@ -16,12 +16,12 @@ function ProductCardSkeleton({ index }: { index: number }) {
 
   return (
     <div
-      className="flex flex-col rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+      className="flex flex-col rounded-2xl overflow-hidden border border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
       style={{ animationDelay: delay }}
     >
       {/* ── Image placeholder — square, exact match to ProductCard ── */}
       <div
-        className="relative w-full overflow-hidden bg-gray-100 dark:bg-gray-800"
+        className="relative w-full overflow-hidden bg-muted"
         style={{ aspectRatio: "1/1" }}
       >
         <Shimmer />
@@ -50,9 +50,9 @@ function ProductCardSkeleton({ index }: { index: number }) {
           </div>
           {/* Variant dots row */}
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="w-1.5 h-1.5 rounded-full bg-muted" />
+            <div className="w-1.5 h-1.5 rounded-full bg-muted" />
+            <div className="w-1.5 h-1.5 rounded-full bg-muted" />
             <SkeletonBar className="h-2.5 w-16 ml-1" delay={delay} />
           </div>
         </div>
@@ -60,7 +60,7 @@ function ProductCardSkeleton({ index }: { index: number }) {
         {/* Row 3 — Button(s): h-9, always stuck to bottom via mt-auto */}
         <div className="flex gap-1.5 mt-auto">
           <SkeletonBar className="h-9 flex-1 rounded-xl" delay={delay} />
-          <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+          <div className="h-9 w-9 rounded-xl bg-muted relative overflow-hidden shrink-0">
             <Shimmer />
           </div>
         </div>
@@ -92,7 +92,7 @@ function SkeletonBar({
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800 ${className}`}
+      className={`relative overflow-hidden rounded-md bg-muted ${className}`}
     >
       <Shimmer />
     </div>

@@ -134,8 +134,8 @@ const SUBSCRIPTION_STATUS_STYLES: Record<
   },
   expired: {
     labelKey: "subStatusExpired",
-    header: "bg-gray-50 dark:bg-gray-800/40",
-    border: "border-gray-200 dark:border-gray-700",
+    header: "bg-background/40",
+    border: "border-border",
     pill: "bg-gray-500 text-white",
     dot: "bg-gray-200",
   },
@@ -153,8 +153,8 @@ function getSubscriptionStatusStyle(status: string, t: ReturnType<typeof useTran
   const adminT = t.admin as unknown as Record<string, string>;
   return {
     label: style ? adminT[style.labelKey] : status,
-    header: style?.header ?? "bg-gray-50 dark:bg-gray-800/40",
-    border: style?.border ?? "border-gray-200 dark:border-gray-700",
+    header: style?.header ?? "bg-background/40",
+    border: style?.border ?? "border-border",
     pill: style?.pill ?? "bg-gray-500 text-white",
     dot: style?.dot ?? "bg-gray-200",
   };
@@ -222,7 +222,7 @@ function makeInvoiceColumns(
       dataIndex: "invoice_number",
       key: "invoice_number",
       render: (v: string) => (
-        <span className="font-mono text-xs font-medium text-gray-700 dark:text-gray-300">
+        <span className="font-mono text-xs font-medium text-foreground">
           {v}
         </span>
       ),
@@ -348,7 +348,7 @@ function SubscriptionCard({
   ];
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
       {/* Status hero */}
       <div className={`px-6 pt-6 pb-5 ${statusStyle.header} border-b ${statusStyle.border}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -362,11 +362,11 @@ function SubscriptionCard({
               </span>
               <BillingCycleTag cycle={sub.billing_cycle} />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-2xl font-bold text-foreground">
               {sub.plan?.name ?? "—"}
             </h2>
             {sub.plan?.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 {sub.plan.description}
               </p>
             )}
@@ -383,11 +383,11 @@ function SubscriptionCard({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-xs text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-xs text-muted-foreground">
           {metaItems.map((item) => (
             <span key={item.label}>
-              <span className="text-gray-400 dark:text-gray-500">{item.label}:</span>{" "}
-              <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">
+              <span className="text-muted-foreground">{item.label}:</span>{" "}
+              <span className="font-medium text-foreground capitalize">
                 {item.value}
               </span>
             </span>
@@ -399,22 +399,22 @@ function SubscriptionCard({
       {latestInvoice && (
         <div className="px-6 py-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 flex-wrap text-sm">
-            <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
+            <span className="font-mono text-xs text-muted-foreground">
               {latestInvoice.invoice_number}
             </span>
-            <span className="font-semibold text-gray-800 dark:text-gray-200">
+            <span className="font-semibold text-foreground">
               {formatAmount(latestInvoice.amount, latestInvoice.currency)}
             </span>
             <InvoiceStatusTag status={latestInvoice.status} />
             <PaymentMethodBadge method={latestInvoice.payment_method} />
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {latestInvoice.paid_at ? t.admin.subInvoiceStatusPaid : t.admin.subDuePrefix} {formatDate(latestInvoice.paid_at ?? latestInvoice.due_date)}
             </span>
           </div>
           <Tooltip title={t.admin.subTooltipDownloadPdf}>
             <button
               onClick={() => downloadInvoicePdf(latestInvoice, store)}
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-400 dark:text-gray-500"
+              className="p-1.5 rounded hover:bg-muted transition text-muted-foreground"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
@@ -482,14 +482,14 @@ function AdminPaymentPanel() {
 
   if (loadingRows) {
     return (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm p-6">
+      <div className="rounded-xl border border-border bg-card shadow-sm p-6">
         <Skeleton active paragraph={{ rows: 3 }} />
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-card shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-violet-100 dark:border-violet-800 flex items-center gap-2 bg-violet-50 dark:bg-violet-950/30">
         <ShieldCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
         <h2 className="text-base font-semibold text-violet-900 dark:text-violet-100">
@@ -505,7 +505,7 @@ function AdminPaymentPanel() {
       {rows.length === 0 ? (
         <div className="py-12 text-center">
           <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t.admin.subNoPendingPayments}</p>
+          <p className="text-sm text-muted-foreground">{t.admin.subNoPendingPayments}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -514,7 +514,7 @@ function AdminPaymentPanel() {
               {/* Store + invoice info */}
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                     <Store className="w-3.5 h-3.5 text-gray-400" />
                     {row.store_name ?? row.store_id}
                   </div>
@@ -524,12 +524,12 @@ function AdminPaymentPanel() {
                   <InvoiceStatusTag status={row.status} />
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap text-xs text-gray-500 dark:text-gray-400">
-                  <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">
+                <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                  <span className="font-mono font-semibold text-foreground">
                     {row.invoice_number}
                   </span>
                   <span>·</span>
-                  <span className="font-bold text-gray-800 dark:text-gray-200">
+                  <span className="font-bold text-foreground">
                     {row.currency} {Number(row.amount).toLocaleString("en-BD")}
                   </span>
                   <span>·</span>
@@ -541,29 +541,29 @@ function AdminPaymentPanel() {
                 {/* Payment details submitted by customer */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
                   {row.payment_method && (
-                    <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{t.admin.subFieldMethod}</p>
+                    <div className="rounded-lg bg-background border border-border px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t.admin.subFieldMethod}</p>
                       <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${METHOD_COLOR[row.payment_method] ?? "bg-gray-100 text-gray-700"}`}>
                         {METHOD_LABEL[row.payment_method] ?? row.payment_method}
                       </span>
                     </div>
                   )}
                   {row.sender_number && (
-                    <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{t.admin.subFieldSenderNumber}</p>
-                      <p className="text-xs font-mono font-semibold text-gray-800 dark:text-gray-200">{row.sender_number}</p>
+                    <div className="rounded-lg bg-background border border-border px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t.admin.subFieldSenderNumber}</p>
+                      <p className="text-xs font-mono font-semibold text-foreground">{row.sender_number}</p>
                     </div>
                   )}
                   {row.payment_reference && (
-                    <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{t.admin.subFieldReferenceTxid}</p>
-                      <p className="text-xs font-mono font-semibold text-gray-800 dark:text-gray-200">{row.payment_reference}</p>
+                    <div className="rounded-lg bg-background border border-border px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{t.admin.subFieldReferenceTxid}</p>
+                      <p className="text-xs font-mono font-semibold text-foreground">{row.payment_reference}</p>
                     </div>
                   )}
                 </div>
 
                 {row.notes && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 italic mt-1">&quot;{row.notes}&quot;</p>
+                  <p className="text-xs text-muted-foreground italic mt-1">&quot;{row.notes}&quot;</p>
                 )}
               </div>
 
@@ -675,10 +675,10 @@ export default function SubscriptionPage() {
     <div className="space-y-6 pb-10 max-w-7xl mx-auto">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-xl font-bold text-foreground">
           {t.admin.subPageTitle}
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           {t.admin.subPageDesc}
         </p>
       </div>
@@ -693,12 +693,12 @@ export default function SubscriptionPage() {
           onPay={goToPayPage}
         />
       ) : (
-        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-10 text-center">
-          <CreditCard className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
+          <CreditCard className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">
             {t.admin.subNoActiveTitle}
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {t.admin.subNoActiveDesc}
           </p>
         </div>
@@ -715,10 +715,10 @@ export default function SubscriptionPage() {
               <Package className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="font-semibold text-foreground">
                 {subscription ? t.admin.subChangePlanTitle : t.admin.subGetStartedTitle}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {t.admin.subChangePlanDesc}
               </p>
             </div>
@@ -736,10 +736,10 @@ export default function SubscriptionPage() {
       )}
 
       {/* Invoices table */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-gray-500" />
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h2 className="text-base font-semibold text-foreground">
             {t.admin.subBillingHistory}
           </h2>
           <span className="ml-auto text-xs text-gray-400">

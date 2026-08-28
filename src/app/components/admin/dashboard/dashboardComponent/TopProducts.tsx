@@ -15,7 +15,7 @@ const rankStyles = [
     bar: "from-indigo-500 to-purple-500",
   },
   {
-    rank: "text-slate-500  dark:text-slate-300",
+    rank: "text-muted-foreground",
     bar: "from-sky-500 to-cyan-400",
   },
   {
@@ -32,13 +32,13 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
   if (loading)
     return (
       <div className="flex items-center justify-center h-24">
-        <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-700 border-t-indigo-500 rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-border border-t-indigo-500 rounded-full animate-spin" />
       </div>
     );
 
   if (products.length === 0)
     return (
-      <div className="text-center py-10 text-sm text-gray-500 dark:text-gray-400">
+      <div className="text-center py-10 text-sm text-muted-foreground">
         {t.admin.topProductsNoData}
       </div>
     );
@@ -60,8 +60,8 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
           <div
             key={i}
             className="rounded-xl p-4
-              bg-gray-50 dark:bg-gray-800/70
-              border border-gray-200 dark:border-gray-700
+              bg-background/70
+              border border-border
               transition-colors"
           >
             {/* Rank · Name · Revenue */}
@@ -70,23 +70,23 @@ const TopProducts: React.FC<TopProductsProps> = ({ products }) => {
                 <span className={`text-sm font-black shrink-0 ${s.rank}`}>
                   #{n(i + 1)}
                 </span>
-                <span className="text-sm font-semibold truncate text-gray-800 dark:text-gray-100">
+                <span className="text-sm font-semibold truncate text-foreground">
                   {p.name}
                 </span>
               </div>
-              <span className="text-sm font-bold shrink-0 tabular-nums text-gray-900 dark:text-white">
+              <span className="text-sm font-bold shrink-0 tabular-nums text-foreground">
                 {fmt(p.revenue)}
               </span>
             </div>
 
             {/* Units · Avg */}
-            <div className="flex justify-between text-xs mb-2.5 text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between text-xs mb-2.5 text-muted-foreground">
               <span>{n(p.quantity)} {t.admin.topProductsUnitsSold}</span>
               <span>{fmt(avg)} {t.admin.topProductsAvgUnit}</span>
             </div>
 
             {/* Progress bar */}
-            <div className="h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+            <div className="h-1.5 rounded-full overflow-hidden bg-muted">
               <div
                 className={`h-full rounded-full bg-linear-to-r ${s.bar} transition-all duration-500`}
                 style={{ width: `${pct}%` }}

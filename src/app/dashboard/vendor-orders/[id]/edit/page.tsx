@@ -255,7 +255,7 @@ export default function EditVendorOrderPage() {
       key: "product",
       render: (_, record) => (
         <div>
-          <div className="font-medium text-gray-800 dark:text-gray-100">{record.product_name}</div>
+          <div className="font-medium text-foreground">{record.product_name}</div>
           <div className="text-xs text-gray-400">
             {record.sku ? `SKU: ${record.sku} · ` : ""}Warehouse stock: {record.warehouse_stock}
           </div>
@@ -399,15 +399,15 @@ export default function EditVendorOrderPage() {
   if (!allowed) return <FeatureLocked />;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-4 sm:px-8 py-4 sm:py-5">
+    <div className="min-h-screen bg-background pb-24">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-400 to-purple-600 flex items-center justify-center">
             <PackagePlus size={20} color="white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">Edit Vendor Order</h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
+            <h1 className="text-lg font-bold text-foreground m-0">Edit Vendor Order</h1>
+            <p className="text-xs text-muted-foreground m-0">
               {vendorName} · Draft — changes will not move stock until confirmed
             </p>
           </div>
@@ -415,17 +415,17 @@ export default function EditVendorOrderPage() {
       </div>
 
       <div className="px-4 sm:px-8 py-6 space-y-6 max-w-5xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Order Details</h2>
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-foreground m-0">Order Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Vendor</label>
-              <div className="mt-1 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+              <label className="text-xs font-semibold text-muted-foreground">Vendor</label>
+              <div className="mt-1 px-3 py-2 rounded-lg bg-background text-sm text-foreground border border-border">
                 {vendorName}
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Order Date</label>
+              <label className="text-xs font-semibold text-muted-foreground">Order Date</label>
               <DatePicker
                 value={orderDate}
                 onChange={(d) => d && setOrderDate(d)}
@@ -433,7 +433,7 @@ export default function EditVendorOrderPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Invoice Date (Optional)</label>
+              <label className="text-xs font-semibold text-muted-foreground">Invoice Date (Optional)</label>
               <DatePicker
                 value={invoiceDate}
                 onChange={setInvoiceDate}
@@ -453,8 +453,8 @@ export default function EditVendorOrderPage() {
           />
         )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Products</h2>
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-foreground m-0">Products</h2>
           <Select
             showSearch
             value={null}
@@ -477,33 +477,33 @@ export default function EditVendorOrderPage() {
           />
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 m-0">Additional Information (Optional)</h2>
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-foreground m-0">Additional Information (Optional)</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Delivery Date</label>
+              <label className="text-xs font-semibold text-muted-foreground">Delivery Date</label>
               <DatePicker value={deliveryDate} onChange={setDeliveryDate} className="w-full mt-1" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Delivery Person</label>
+              <label className="text-xs font-semibold text-muted-foreground">Delivery Person</label>
               <Input value={deliveryPerson} onChange={(e) => setDeliveryPerson(e.target.value)} className="mt-1 rounded-lg" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Vehicle Number</label>
+              <label className="text-xs font-semibold text-muted-foreground">Vehicle Number</label>
               <Input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} className="mt-1 rounded-lg" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Reference Number</label>
+              <label className="text-xs font-semibold text-muted-foreground">Reference Number</label>
               <Input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="mt-1 rounded-lg" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Notes</label>
+            <label className="text-xs font-semibold text-muted-foreground">Notes</label>
             <Input.TextArea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-1 rounded-lg" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-3 w-full sm:max-w-md sm:ml-auto">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-5 space-y-3 w-full sm:max-w-md sm:ml-auto">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Total Quantity</span>
             <span className="font-medium">{totalQuantity}</span>
@@ -531,7 +531,7 @@ export default function EditVendorOrderPage() {
               className="w-32 rounded-lg"
             />
           </div>
-          <div className="flex justify-between text-base font-bold border-t border-gray-100 dark:border-gray-700 pt-3">
+          <div className="flex justify-between text-base font-bold border-t border-border pt-3">
             <span>Grand Total</span>
             <span>{grandTotal.toFixed(2)}</span>
           </div>
