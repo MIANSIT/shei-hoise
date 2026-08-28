@@ -27,6 +27,7 @@ export default function StoreCreatePage() {
       const payload = createUserSchema.parse(values);
       await createUser(payload);
       notify.success(t.onboarding.createdSuccess);
+      notify.info(t.onboarding.welcomeEmailSpamNote, { duration: 7000 });
 
       // Deliberately not calling resetForm() here — we redirect away right
       // after this, and resetting mid-flight cleared the form's password
@@ -55,6 +56,11 @@ export default function StoreCreatePage() {
         err.message === DomainErrorCode.EMAIL_EXISTS
       ) {
         notify.error(t.onboarding.emailExists);
+      } else if (
+        err instanceof Error &&
+        err.message === DomainErrorCode.EMAIL_NOT_VERIFIED
+      ) {
+        notify.error(t.onboarding.verifyRequired);
       } else {
         notify.error(t.onboarding.createFailed);
       }
