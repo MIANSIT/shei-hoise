@@ -22,7 +22,9 @@ export function useOrderProcess(store_slug: string) {
     shippingFee: number = 0,
     cartItems?: CartProductWithDetails[],
     calculations?: CartCalculations,
-    taxAmount: number = 0
+    taxAmount: number = 0,
+    couponCode?: string,
+    discountAmount: number = 0
   ) => {
     setLoading(true);
     setError(null);
@@ -53,7 +55,7 @@ export function useOrderProcess(store_slug: string) {
 
       // ✅ Calculate total with tax
       const subtotal = calculations?.subtotal || 0;
-      const totalWithTax = subtotal + shippingFee + taxAmount;
+      const totalWithTax = subtotal + shippingFee + taxAmount - discountAmount;
 
       // Prepare order data with enum values
       const orderData = {
@@ -87,7 +89,13 @@ export function useOrderProcess(store_slug: string) {
         }),
         subtotal: subtotal,
         taxAmount: taxAmount,
-        discount: 0, // ✅ FIXED: Always 0 for customer orders - product price differences are not order discounts
+        // Advisory only — createCustomerOrder ignores this value entirely
+        // and (re)computes the real discount server-side from couponCode
+        // alone via validateCoupon. Kept here only so the notify-email
+        // payload and the returned confirmation total match what the
+        // customer saw on the checkout page's live coupon preview.
+        discount: discountAmount,
+        couponCode,
         additionalCharges: 0, // Default to 0 for customer orders
         deliveryCost: shippingFee,
         totalAmount: totalWithTax,

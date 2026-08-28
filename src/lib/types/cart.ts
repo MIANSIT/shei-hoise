@@ -38,6 +38,8 @@ export interface CartProductWithDetails {
     slug: string;
     base_price: number | null;
     discounted_price: number | null;
+    sale_starts_at?: string | null;
+    sale_ends_at?: string | null;
     category?: {
       id: string;
       name: string;
@@ -59,6 +61,8 @@ export interface CartProductWithDetails {
     base_price: number | null;
     discounted_price: number | null;
     discount_amount: number | null;
+    sale_starts_at?: string | null;
+    sale_ends_at?: string | null;
     color: string | null;
     product_images: Array<{
       id: string;

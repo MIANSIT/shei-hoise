@@ -87,6 +87,8 @@ export interface StoreOrder {
   subtotal: number;
   tax_amount: number;
   discount_amount?: number;
+  coupon_id?: string | null;
+  coupon_code?: string | null;
   additional_charges?: number;
   shipping_fee: number;
   total_amount: number;
@@ -152,6 +154,7 @@ export interface CreateOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  couponCode?: string;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
@@ -179,6 +182,7 @@ export interface CustomerOrderData {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  couponCode?: string;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;

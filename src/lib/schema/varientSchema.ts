@@ -22,6 +22,10 @@ export const variantSchema = z
     // actually wipe the stored sale price (see calculateDiscountedPrice).
     discounted_price: z.number().nullable().optional(),
     discount_amount: z.number().nullable().optional(),
+    // Optional flash-sale window around discounted_price — both null means
+    // the discount is always active (see getEffectivePrice).
+    sale_starts_at: z.string().nullable().optional(),
+    sale_ends_at: z.string().nullable().optional(),
     stock: z.number().optional(),
 
     created_at: z.string().optional(),
@@ -38,6 +42,26 @@ export const variantSchema = z
           path: ["discounted_price"],
         });
       }
+    }
+
+    // Flash-sale window consistency per variant
+    if (data.sale_ends_at && !data.sale_starts_at) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Sale start date is required when an end date is set.",
+        path: ["sale_starts_at"],
+      });
+    }
+    if (
+      data.sale_starts_at &&
+      data.sale_ends_at &&
+      new Date(data.sale_ends_at) <= new Date(data.sale_starts_at)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Sale end date must be after the start date.",
+        path: ["sale_ends_at"],
+      });
     }
   });
 
