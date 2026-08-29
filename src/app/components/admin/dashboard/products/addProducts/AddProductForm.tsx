@@ -210,7 +210,15 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     // null without a discount, so nothing downstream mistakes the MRP for a
     // sale price.
     const finalPrice = discountedPrice ?? mrpPrice ?? null;
-    const hasDiscount = Boolean(discountedPrice);
+    // Derived straight from discountAmount rather than discountedPrice:
+    // useDiscountCalculation seeds its state to null and only computes the
+    // real value inside a useEffect, so on the very first render of an edit
+    // form discountedPrice is still null even though the product has a real
+    // discount. That one-tick lag made the "clear stale window" effect below
+    // wipe a freshly-loaded sale_starts_at/sale_ends_at before the discount
+    // effect ever caught up — computing hasDiscount synchronously here closes
+    // that race.
+    const hasDiscount = Boolean(discountAmount && discountAmount > 0);
     const saleStartsAt = watch("sale_starts_at");
     const saleEndsAt = watch("sale_ends_at");
 
@@ -686,42 +694,76 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                 </div>
 
                 {/* Flash-sale window: an optional schedule around the discount above. Only meaningful once a discount is actually set. */}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div>
-                    <FieldLabel
-                      label={t.admin.addProductFlashSaleStartLabel}
-                      tooltip={t.admin.addProductFlashSaleTooltip}
-                    />
-                    <input
-                      type="datetime-local"
-                      disabled={!hasDiscount}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
-                      value={isoToDatetimeLocal(saleStartsAt)}
-                      onChange={(e) =>
-                        setValue("sale_starts_at", datetimeLocalToIso(e.target.value), {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel
-                      label={t.admin.addProductFlashSaleEndLabel}
-                      tooltip={t.admin.addProductFlashSaleTooltip}
-                    />
-                    <input
-                      type="datetime-local"
-                      disabled={!hasDiscount}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
-                      value={isoToDatetimeLocal(saleEndsAt)}
-                      onChange={(e) =>
-                        setValue("sale_ends_at", datetimeLocalToIso(e.target.value), {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                    />
+                <div>
+                  {hasDiscount && (saleStartsAt || saleEndsAt) && (
+                    <div className="mb-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Only validate once, after both fields are cleared — validating
+                          // after the first setValue would run the schema against a
+                          // transient state (start already null, end not yet), which
+                          // legitimately fails "start required when end is set" and can
+                          // win the race against the second, correct validation pass.
+                          setValue("sale_starts_at", null, { shouldDirty: true });
+                          setValue("sale_ends_at", null, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        className="text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline dark:hover:text-rose-400"
+                      >
+                        Turn off flash sale
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div id="field-sale_starts_at" className="scroll-mt-24">
+                      <FieldLabel
+                        label={t.admin.addProductFlashSaleStartLabel}
+                        tooltip={t.admin.addProductFlashSaleTooltip}
+                      />
+                      <input
+                        type="datetime-local"
+                        disabled={!hasDiscount}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                        value={isoToDatetimeLocal(saleStartsAt)}
+                        onChange={(e) =>
+                          setValue("sale_starts_at", datetimeLocalToIso(e.target.value), {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                      />
+                      {form.formState.errors.sale_starts_at && (
+                        <p className="mt-1 text-xs font-medium text-rose-500">
+                          {form.formState.errors.sale_starts_at.message}
+                        </p>
+                      )}
+                    </div>
+                    <div id="field-sale_ends_at" className="scroll-mt-24">
+                      <FieldLabel
+                        label={t.admin.addProductFlashSaleEndLabel}
+                        tooltip={t.admin.addProductFlashSaleTooltip}
+                      />
+                      <input
+                        type="datetime-local"
+                        disabled={!hasDiscount}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                        value={isoToDatetimeLocal(saleEndsAt)}
+                        onChange={(e) =>
+                          setValue("sale_ends_at", datetimeLocalToIso(e.target.value), {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                      />
+                      {form.formState.errors.sale_ends_at && (
+                        <p className="mt-1 text-xs font-medium text-rose-500">
+                          {form.formState.errors.sale_ends_at.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

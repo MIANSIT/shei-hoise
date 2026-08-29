@@ -537,44 +537,85 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
                   </div>
 
                   {/* Flash-sale window: optional, only meaningful once this variant has a discount */}
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <FieldLabel
-                        label={t.admin.addProductFlashSaleStartLabel}
-                        tooltip={t.admin.addProductFlashSaleTooltip}
-                      />
-                      <input
-                        type="datetime-local"
-                        disabled={!variants[idx]?.discounted_price}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
-                        value={isoToDatetimeLocal(variants[idx]?.sale_starts_at)}
-                        onChange={(e) =>
-                          setValue(
-                            `variants.${idx}.sale_starts_at`,
-                            datetimeLocalToIso(e.target.value),
-                            { shouldDirty: true, shouldValidate: true },
-                          )
-                        }
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel
-                        label={t.admin.addProductFlashSaleEndLabel}
-                        tooltip={t.admin.addProductFlashSaleTooltip}
-                      />
-                      <input
-                        type="datetime-local"
-                        disabled={!variants[idx]?.discounted_price}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
-                        value={isoToDatetimeLocal(variants[idx]?.sale_ends_at)}
-                        onChange={(e) =>
-                          setValue(
-                            `variants.${idx}.sale_ends_at`,
-                            datetimeLocalToIso(e.target.value),
-                            { shouldDirty: true, shouldValidate: true },
-                          )
-                        }
-                      />
+                  <div>
+                    {!!variants[idx]?.discounted_price &&
+                      (variants[idx]?.sale_starts_at || variants[idx]?.sale_ends_at) && (
+                        <div className="mb-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Validate only once, after both are cleared — see the
+                              // matching product-level button in AddProductForm.tsx for
+                              // why validating after the first setValue is unsafe.
+                              setValue(`variants.${idx}.sale_starts_at`, null, {
+                                shouldDirty: true,
+                              });
+                              setValue(`variants.${idx}.sale_ends_at`, null, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                            className="text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline dark:hover:text-rose-400"
+                          >
+                            Turn off flash sale
+                          </button>
+                        </div>
+                      )}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div
+                        id={`field-variants.${idx}.sale_starts_at`}
+                        className="scroll-mt-24"
+                      >
+                        <FieldLabel
+                          label={t.admin.addProductFlashSaleStartLabel}
+                          tooltip={t.admin.addProductFlashSaleTooltip}
+                        />
+                        <input
+                          type="datetime-local"
+                          disabled={!variants[idx]?.discounted_price}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                          value={isoToDatetimeLocal(variants[idx]?.sale_starts_at)}
+                          onChange={(e) =>
+                            setValue(
+                              `variants.${idx}.sale_starts_at`,
+                              datetimeLocalToIso(e.target.value),
+                              { shouldDirty: true, shouldValidate: true },
+                            )
+                          }
+                        />
+                        {variantErrors?.[idx]?.sale_starts_at && (
+                          <p className="mt-1 text-xs font-medium text-rose-500">
+                            {variantErrors[idx]?.sale_starts_at?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div
+                        id={`field-variants.${idx}.sale_ends_at`}
+                        className="scroll-mt-24"
+                      >
+                        <FieldLabel
+                          label={t.admin.addProductFlashSaleEndLabel}
+                          tooltip={t.admin.addProductFlashSaleTooltip}
+                        />
+                        <input
+                          type="datetime-local"
+                          disabled={!variants[idx]?.discounted_price}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-muted"
+                          value={isoToDatetimeLocal(variants[idx]?.sale_ends_at)}
+                          onChange={(e) =>
+                            setValue(
+                              `variants.${idx}.sale_ends_at`,
+                              datetimeLocalToIso(e.target.value),
+                              { shouldDirty: true, shouldValidate: true },
+                            )
+                          }
+                        />
+                        {variantErrors?.[idx]?.sale_ends_at && (
+                          <p className="mt-1 text-xs font-medium text-rose-500">
+                            {variantErrors[idx]?.sale_ends_at?.message}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
