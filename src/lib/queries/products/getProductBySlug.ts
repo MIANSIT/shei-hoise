@@ -13,6 +13,8 @@ interface DbVariant {
   base_price: number;
   discounted_price?: number | null;
   discount_amount?: number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   tp_price?: number | null;
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
@@ -33,6 +35,8 @@ interface DbProduct {
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
   weight?: number | null;
   featured: boolean | string;
   free_delivery?: boolean | null;
@@ -60,6 +64,8 @@ function mapVariant(v: DbVariant, allImages: ProductImage[] = []) {
     // stay null on save rather than being written back as a 0 discount.
     discounted_price: v.discounted_price ?? null,
     discount_amount: v.discount_amount ?? null,
+    sale_starts_at: v.sale_starts_at ?? null,
+    sale_ends_at: v.sale_ends_at ?? null,
     attributes: v.attributes ?? null,
     weight: v.weight ?? 0,
     color: v.color ?? "",
@@ -90,6 +96,8 @@ export async function getProductBySlug(
       base_price,
       discounted_price,
       discount_amount,
+      sale_starts_at,
+      sale_ends_at,
       weight,
       featured,
       free_delivery,
@@ -106,6 +114,8 @@ export async function getProductBySlug(
         base_price,
         discounted_price,
         discount_amount,
+        sale_starts_at,
+        sale_ends_at,
         tp_price,
         attributes,
         weight,
@@ -155,6 +165,8 @@ export async function getProductBySlug(
     category_id: category?.id ?? null,
     discounted_price: p.discounted_price ?? null,
     discount_amount: p.discount_amount ?? null,
+    sale_starts_at: p.sale_starts_at ?? null,
+    sale_ends_at: p.sale_ends_at ?? null,
     weight: p.weight ?? 0,
     images: productImages.map((img) => ({
       imageUrl: img.image_url,
