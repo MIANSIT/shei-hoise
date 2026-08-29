@@ -34,6 +34,8 @@ export const bundleSchema = z.object({
 
   status: z.enum(["draft", "active", "inactive", "archived"]),
   featured: z.boolean(),
+  /** Waives the delivery fee for any order containing this bundle. */
+  free_delivery: z.boolean().optional(),
 
   images: z
     .array(

@@ -39,6 +39,7 @@ export async function getBundleBySlug(
       discounted_price,
       discount_amount,
       featured,
+      free_delivery,
       status,
       category_id,
       product_images(id, image_url, alt_text, sort_order, is_primary),
@@ -70,6 +71,7 @@ export async function getBundleBySlug(
     discount_amount: data.discount_amount ?? null,
     status: data.status,
     featured: data.featured === true,
+    free_delivery: data.free_delivery === true,
     category_id: data.category_id ?? null,
     images: images.map((img) => ({
       imageUrl: img.image_url,
