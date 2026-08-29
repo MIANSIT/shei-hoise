@@ -229,6 +229,7 @@ export default function CouponsPage() {
           loading={loading}
           deletingId={deletingId}
           currencySymbol={currencySymbol}
+          storeId={storeId}
           onEdit={openEditModal}
           onDelete={handleDelete}
         />
