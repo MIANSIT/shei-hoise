@@ -25,6 +25,7 @@ import {
   Sparkles,
   Tag,
   HandCoins,
+  Star,
 } from "lucide-react";
 import React from "react";
 
@@ -93,6 +94,7 @@ export const sideMenu: MenuItem[] = [
       },
     ],
   },
+  { title: "Reviews", href: "/dashboard/reviews", icon: Star },
   {
     title: "Orders",
     icon: ShoppingCart,

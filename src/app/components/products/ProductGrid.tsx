@@ -1,9 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ProductCard from "./shop/ProductCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/types/product";
+import {
+  getProductRatingSummaries,
+  RatingSummary,
+} from "@/lib/queries/reviews/getProductRatingSummaries";
 
 interface ProductGridProps {
   products: Product[];
@@ -20,6 +24,15 @@ export default function ProductGrid({
   store_slug,
   productIndexOffset = 0,
 }: ProductGridProps) {
+  const [ratings, setRatings] = useState<Record<string, RatingSummary>>({});
+
+  // One batched query for every card on the page instead of one per card.
+  useEffect(() => {
+    const ids = products.map((p) => p.id);
+    if (ids.length === 0) return;
+    getProductRatingSummaries(ids).then(setRatings);
+  }, [products]);
+
   if (!products.length)
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -63,6 +76,7 @@ export default function ProductGrid({
               store_slug={store_slug}
               onAddToCart={() => onAddToCart(product)}
               isLoading={loadingProductId === product.id}
+              rating={ratings[product.id]}
             />
           </motion.div>
         ))}
