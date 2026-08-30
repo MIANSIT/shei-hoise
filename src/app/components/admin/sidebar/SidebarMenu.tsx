@@ -164,6 +164,8 @@ export default function SidebarMenu({
       "Create Order": t.admin.menuCreateOrder,
       "All Orders": t.admin.menuAllOrders,
       "Generate Order Link": t.admin.menuGenerateOrderLink,
+      "Marketing": t.admin.menuMarketing,
+      "Coupons": t.admin.menuCoupons,
       "Setting": t.admin.menuSetting,
       "Shipping": t.admin.menuShipping,
       "Financial": t.admin.menuFinancial,

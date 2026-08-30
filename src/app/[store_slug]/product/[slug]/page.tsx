@@ -21,6 +21,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { StoreSettings } from "@/lib/types/store/store";
+import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
 import {
   Minus,
   Plus,
@@ -41,6 +42,8 @@ interface ApiProduct {
   base_price: number;
   discounted_price: number | null;
   discount_amount?: number;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   free_delivery?: boolean;
   categories: { id: string; name: string } | null;
   product_images: Array<{ id: string; image_url: string; is_primary: boolean }>;
@@ -70,6 +73,8 @@ interface ApiProduct {
     base_price: number;
     discounted_price: number | null;
     discount_amount?: number;
+    sale_starts_at?: string | null;
+    sale_ends_at?: string | null;
     color: string | null;
     attributes?: Record<string, any>;
     product_inventory: Array<{
@@ -309,13 +314,20 @@ export default function ProductPage() {
   const originalPrice = selectedVariantData
     ? selectedVariantData.base_price
     : product?.base_price || 0;
-  const rawDiscounted = selectedVariantData
-    ? selectedVariantData.discounted_price
-    : product?.discounted_price;
-  const displayPrice =
-    rawDiscounted && rawDiscounted > 0 && rawDiscounted < originalPrice
-      ? rawDiscounted
-      : originalPrice;
+  const effective = selectedVariantData
+    ? getEffectivePrice({
+        base_price: selectedVariantData.base_price,
+        discounted_price: selectedVariantData.discounted_price,
+        sale_starts_at: selectedVariantData.sale_starts_at,
+        sale_ends_at: selectedVariantData.sale_ends_at,
+      })
+    : getEffectivePrice({
+        base_price: product?.base_price || 0,
+        discounted_price: product?.discounted_price,
+        sale_starts_at: product?.sale_starts_at,
+        sale_ends_at: product?.sale_ends_at,
+      });
+  const displayPrice = effective.price;
   const discount =
     displayPrice < originalPrice && originalPrice > 0
       ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)

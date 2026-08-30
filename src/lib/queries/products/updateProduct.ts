@@ -55,6 +55,8 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
       ...productData,
       discounted_price: productData.discounted_price ?? null,
       discount_amount: productData.discount_amount ?? null,
+      sale_starts_at: productData.sale_starts_at ?? null,
+      sale_ends_at: productData.sale_ends_at ?? null,
     })
     .eq("id", id);
   if (productError) throw productError;
@@ -87,6 +89,8 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
         ...rest,
         discounted_price: rest.discounted_price ?? null,
         discount_amount: rest.discount_amount ?? null,
+        sale_starts_at: rest.sale_starts_at ?? null,
+        sale_ends_at: rest.sale_ends_at ?? null,
       };
       let variantId = variant.id;
 

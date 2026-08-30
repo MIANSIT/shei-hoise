@@ -5,7 +5,8 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2, Star, Truck } from "lucide-react";
+import { Edit, Trash2, Star, Truck, Zap } from "lucide-react";
+import { isSaleActive } from "@/lib/utils/getEffectivePrice";
 import { Modal } from "antd";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
@@ -44,6 +45,25 @@ const getLowestDiscountedPrice = (product: ProductWithVariants) => {
   return prices.length > 0
     ? Math.min(...prices)
     : product.discounted_price || null;
+};
+
+// A "flash sale" is a discount with a real, currently-open sale_ends_at
+// window — as opposed to a permanent markdown with no schedule attached.
+// Checked at the product level and across every variant, since either can
+// carry its own discount + window independently.
+const hasActiveFlashSale = (product: ProductWithVariants): boolean => {
+  const isActiveWindow = (
+    discountedPrice: number | null,
+    startsAt: string | null,
+    endsAt: string | null,
+  ) => discountedPrice != null && discountedPrice > 0 && !!endsAt && isSaleActive(startsAt, endsAt);
+
+  if (isActiveWindow(product.discounted_price, product.sale_starts_at, product.sale_ends_at)) {
+    return true;
+  }
+  return (product.product_variants ?? []).some((v) =>
+    isActiveWindow(v.discounted_price, v.sale_starts_at, v.sale_ends_at),
+  );
 };
 
 const getProductImage = (record: ProductWithVariants) => {
@@ -306,11 +326,20 @@ const ProductTable: React.FC<ProductTableProps> = ({
       responsive: ["md"],
       render: (_, record) => {
         const price = getLowestDiscountedPrice(record);
+        const onFlashSale = hasActiveFlashSale(record);
         return price ? (
-          <span className="text-sm font-semibold text-emerald-500">
-            {cur}
-            {n(price.toFixed(2))}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-sm font-semibold text-emerald-500">
+              {cur}
+              {n(price.toFixed(2))}
+            </span>
+            {onFlashSale && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                <Zap className="h-2.5 w-2.5 fill-current" />
+                Flash Sale
+              </span>
+            )}
+          </div>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         );
