@@ -35,6 +35,8 @@ export interface ProductVariant {
   price: number;
   discounted_price?: number | null;
   discount_amount?: number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
   color?: string | null;
@@ -57,6 +59,8 @@ export interface Product {
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   weight?: number | null;
   featured: boolean;
   status: "draft" | "active" | "inactive" | "archived";
@@ -81,6 +85,8 @@ interface DbVariant {
   base_price: number;
   discounted_price?: number | null;
   discount_amount?: number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   attributes?: Record<string, string | number | boolean> | null;
   weight?: number | null;
   color?: string | null;
@@ -100,6 +106,8 @@ interface DbProduct {
   base_price: number;
   discounted_price?: number | null;
   discount_amount?: number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   weight?: number | null;
   featured: boolean | string;
   status: "draft" | "active" | "inactive" | "archived";
@@ -144,6 +152,8 @@ function mapVariant(v: DbVariant, allImages: ProductImage[]): ProductVariant {
     price: Number(v.base_price),
     discounted_price: v.discounted_price ?? null,
     discount_amount: v.discount_amount ?? null,
+    sale_starts_at: v.sale_starts_at ?? null,
+    sale_ends_at: v.sale_ends_at ?? null,
     attributes: v.attributes || {},
     weight: v.weight ?? null,
     tp_price: v.tp_price ?? null,
@@ -173,6 +183,8 @@ export async function getProducts(storeId: string): Promise<Product[]> {
       base_price,
       discounted_price,
       discount_amount,
+      sale_starts_at,
+      sale_ends_at,
       weight,
       featured,
       status,
@@ -189,6 +201,8 @@ export async function getProducts(storeId: string): Promise<Product[]> {
         base_price,
         discounted_price,
         discount_amount,
+        sale_starts_at,
+        sale_ends_at,
         attributes,
         tp_price,
         weight,
@@ -259,6 +273,8 @@ export async function getProducts(storeId: string): Promise<Product[]> {
       base_price: Number(p.base_price),
       discounted_price: p.discounted_price ?? null,
       discount_amount: p.discount_amount ?? null,
+      sale_starts_at: p.sale_starts_at ?? null,
+      sale_ends_at: p.sale_ends_at ?? null,
       weight: p.weight ?? null,
       featured: p.featured === true || p.featured === "true",
       status: p.status,

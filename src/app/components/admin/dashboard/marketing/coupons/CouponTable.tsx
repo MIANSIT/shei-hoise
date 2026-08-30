@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
-import { Table, Dropdown, Button, Spin, App, Tag } from "antd";
+import { Table, Dropdown, Button, Spin, App, Tag, Modal } from "antd";
 import { EditOutlined, DeleteOutlined, MoreOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { Tag as TagIcon } from "lucide-react";
 import type { ColumnsType } from "antd/es/table";
@@ -9,12 +9,17 @@ import type { MenuProps } from "antd";
 import dayjs from "dayjs";
 import { CouponDiscountType } from "@/lib/types/enums";
 import type { Coupon } from "@/lib/types/coupon";
+import {
+  getCouponRedemptions,
+  type CouponRedemptionRow,
+} from "@/lib/queries/coupons/getCouponRedemptions";
 
 interface CouponTableProps {
   data: Coupon[];
   loading: boolean;
   deletingId: string | null;
   currencySymbol: string;
+  storeId: string | null;
   onEdit: (coupon: Coupon) => void;
   onDelete: (coupon: Coupon) => void;
 }
@@ -47,9 +52,32 @@ const EmptyCoupons = () => (
   </div>
 );
 
-function CouponTable({ data, loading, deletingId, currencySymbol, onEdit, onDelete }: CouponTableProps) {
+function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdit, onDelete }: CouponTableProps) {
   const { modal } = App.useApp();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const [redemptionCoupon, setRedemptionCoupon] = useState<Coupon | null>(null);
+  const [redemptions, setRedemptions] = useState<CouponRedemptionRow[]>([]);
+  const [loadingRedemptions, setLoadingRedemptions] = useState(false);
+
+  const openRedemptions = useCallback(
+    async (coupon: Coupon) => {
+      if (!storeId) return;
+      setRedemptionCoupon(coupon);
+      setLoadingRedemptions(true);
+      try {
+        setRedemptions(await getCouponRedemptions(coupon.id, storeId));
+      } finally {
+        setLoadingRedemptions(false);
+      }
+    },
+    [storeId],
+  );
+
+  const closeRedemptions = useCallback(() => {
+    setRedemptionCoupon(null);
+    setRedemptions([]);
+  }, []);
 
   const confirmDelete = useCallback(
     (record: Coupon) => {
@@ -134,17 +162,33 @@ function CouponTable({ data, loading, deletingId, currencySymbol, onEdit, onDele
     {
       title: "Usage",
       key: "usage",
-      responsive: ["md"],
-      render: (_, record) => (
-        <span className="text-gray-700 dark:text-gray-300">
-          {record.current_uses} / {record.max_uses ?? "∞"}
-          {record.max_uses_per_customer != null && (
-            <span className="block text-xs text-gray-400">
-              max {record.max_uses_per_customer} per customer
+      render: (_, record) =>
+        record.current_uses > 0 ? (
+          <Button
+            type="link"
+            size="small"
+            className="p-0! h-auto! text-left font-normal"
+            onClick={() => openRedemptions(record)}
+          >
+            <span className="text-emerald-600 dark:text-emerald-400 underline decoration-dotted">
+              {record.current_uses} / {record.max_uses ?? "∞"}
             </span>
-          )}
-        </span>
-      ),
+            {record.max_uses_per_customer != null && (
+              <span className="block text-xs text-gray-400 no-underline">
+                max {record.max_uses_per_customer} per customer
+              </span>
+            )}
+          </Button>
+        ) : (
+          <span className="text-gray-700 dark:text-gray-300">
+            {record.current_uses} / {record.max_uses ?? "∞"}
+            {record.max_uses_per_customer != null && (
+              <span className="block text-xs text-gray-400">
+                max {record.max_uses_per_customer} per customer
+              </span>
+            )}
+          </span>
+        ),
     },
     {
       title: "Window",
@@ -196,6 +240,55 @@ function CouponTable({ data, loading, deletingId, currencySymbol, onEdit, onDele
     },
   ];
 
+  const redemptionColumns: ColumnsType<CouponRedemptionRow> = [
+    {
+      title: "Order",
+      dataIndex: "orderNumber",
+      key: "orderNumber",
+      render: (orderNumber: string | null) => (
+        <span className="font-mono font-semibold text-gray-800 dark:text-gray-100">
+          {orderNumber ?? "—"}
+        </span>
+      ),
+    },
+    {
+      title: "Customer",
+      dataIndex: "customerName",
+      key: "customerName",
+      render: (customerName: string | null) => customerName ?? "—",
+    },
+    {
+      title: "Order Total",
+      dataIndex: "totalAmount",
+      key: "totalAmount",
+      render: (totalAmount: number | null) =>
+        totalAmount != null ? `${currencySymbol} ${totalAmount}` : "—",
+    },
+    {
+      title: "Discount",
+      dataIndex: "discountAmount",
+      key: "discountAmount",
+      render: (discountAmount: number) => `${currencySymbol} ${discountAmount}`,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: string | null) =>
+        status ? (
+          <Tag className="rounded-full capitalize">{status}</Tag>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      title: "Date",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (createdAt: string) => dayjs(createdAt).format("MMM D, YYYY h:mm A"),
+    },
+  ];
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden overflow-x-auto">
       <style>{TABLE_STYLES}</style>
@@ -209,6 +302,24 @@ function CouponTable({ data, loading, deletingId, currencySymbol, onEdit, onDele
         pagination={false}
         scroll={{ x: 900 }}
       />
+
+      <Modal
+        title={redemptionCoupon ? `Orders that used ${redemptionCoupon.code}` : ""}
+        open={!!redemptionCoupon}
+        onCancel={closeRedemptions}
+        footer={null}
+        width={720}
+      >
+        <Table
+          columns={redemptionColumns}
+          dataSource={redemptions}
+          loading={loadingRedemptions}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 600, y: 360 }}
+          size="small"
+        />
+      </Modal>
     </div>
   );
 }
