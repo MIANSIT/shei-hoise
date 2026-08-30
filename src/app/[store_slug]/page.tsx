@@ -4,13 +4,16 @@ import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye } from "lucide-react";
+import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye, Zap } from "lucide-react";
 import { getStoreBySlugFull, StoreFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getFeaturedProducts } from "@/lib/queries/products/getFeaturedProducts";
+import { getActiveFlashSaleProducts } from "@/lib/queries/products/getActiveFlashSaleProducts";
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStorefrontBundles } from "@/lib/queries/bundles/getStorefrontBundles";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
+import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRatingSummary";
+import { StarRating } from "@/app/components/products/reviews/StarRating";
 import { Product } from "@/lib/types/product";
 import { Category } from "@/lib/types/category";
 import { StoreSettings } from "@/lib/types/store/store";
@@ -42,6 +45,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isFeaturedSection, setIsFeaturedSection] = useState(true);
+  const [flashSaleProducts, setFlashSaleProducts] = useState<Product[]>([]);
+  const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [bundles, setBundles] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,16 +64,21 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setStoreData(fullStore);
         setStoreExists(true);
 
-        const [categoriesData, featured, storefrontBundles, settings] = await Promise.all([
-          getCategoriesQuery(fullStore.id),
-          getFeaturedProducts(store_slug, 5),
-          getStorefrontBundles(store_slug, 4),
-          getStoreSettings(fullStore.id),
-        ]);
+        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating] =
+          await Promise.all([
+            getCategoriesQuery(fullStore.id),
+            getFeaturedProducts(store_slug, 5),
+            getStorefrontBundles(store_slug, 4),
+            getStoreSettings(fullStore.id),
+            getActiveFlashSaleProducts(store_slug, 8),
+            getStoreRatingSummary(fullStore.id),
+          ]);
 
         if (categoriesData.data) setCategories(categoriesData.data);
         setBundles(storefrontBundles);
         setStoreSettings(settings);
+        setFlashSaleProducts(flashSale);
+        setStoreRatingSummary(storeRating);
 
         if (featured.length > 0) {
           setFeaturedProducts(featured);
@@ -183,6 +193,14 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   <h1 className="text-sm sm:text-2xl font-black tracking-widest leading-none text-white drop-shadow-md truncate">
                     {storeName}
                   </h1>
+                  {storeRatingSummary.total > 0 && (
+                    <StoreRatingBadge
+                      store_slug={store_slug}
+                      average={storeRatingSummary.average}
+                      total={storeRatingSummary.total}
+                      className="mt-1 sm:mt-1.5"
+                    />
+                  )}
                   {storeData?.short_description && (
                     <p className="mt-0.5 sm:mt-1.5 text-[11px] sm:text-sm text-white/80 truncate sm:whitespace-normal sm:line-clamp-2 font-normal leading-snug drop-shadow-sm max-w-xs sm:max-w-md md:max-w-xl">
                       {storeData.short_description}
@@ -249,6 +267,15 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               {storeName}
             </motion.h1>
 
+            {storeRatingSummary.total > 0 && (
+              <StoreRatingBadge
+                store_slug={store_slug}
+                average={storeRatingSummary.average}
+                total={storeRatingSummary.total}
+                className="mt-3 justify-center"
+              />
+            )}
+
             {(storeData?.description || storeData?.short_description) && (
               <motion.p
                 initial={{ opacity: 0, y: 12 }}
@@ -286,6 +313,37 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         returnPolicyDays={storeSettings?.return_policy_days}
         currency={curr}
       />
+
+      {/* ══════════════════════════════════════════
+          FLASH SALE — time-boxed discounts (discounted_price +
+          sale_starts_at/sale_ends_at set on a product in Add Product).
+          Leads before bundles/featured: urgency sells first.
+      ══════════════════════════════════════════ */}
+      {flashSaleProducts.length > 0 && (
+        <section className="pt-8 sm:pt-16 pb-16 sm:pb-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <FlashSaleHeader products={flashSaleProducts} />
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {flashSaleProducts.map((product, i) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  store_slug={store_slug}
+                  onAddToCart={handleAddToCart}
+                  loadingProductId={loadingProductId}
+                  isProductInStock={isProductInStock}
+                  className=""
+                  imageClassName="aspect-square"
+                  isHero={false}
+                  index={i}
+                  currencyIcon={curr}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════
           BUNDLES & COMBOS — leads right after the trust strip:
@@ -459,6 +517,98 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   STORE RATING BADGE — compact trust signal in the hero, linking to
+   the dedicated store reviews page. A solid near-white pill rather
+   than a translucent one so it reads equally well over the dark
+   banner-image overlay and over the plain light no-banner hero.
+───────────────────────────────────────────────────────── */
+function StoreRatingBadge({
+  store_slug,
+  average,
+  total,
+  className = "",
+}: {
+  store_slug: string;
+  average: number;
+  total: number;
+  className?: string;
+}) {
+  const n = useLocalNum();
+  return (
+    <Link
+      href={`/${store_slug}/reviews`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/96 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm text-stone-900 dark:text-white hover:bg-white dark:hover:bg-gray-800 active:scale-95 transition-all duration-150 ${className}`}
+    >
+      <StarRating value={average} size="sm" />
+      <span className="text-[11px] sm:text-xs font-bold">{average.toFixed(1)}</span>
+      <span className="text-[10px] sm:text-[11px] text-stone-400 dark:text-gray-500 font-medium">
+        ({n(total)})
+      </span>
+    </Link>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   FLASH SALE HEADER — a hot banner instead of the neutral
+   SectionHeader, plus a live countdown to the soonest-expiring
+   deal currently shown, so the "flash" reads as urgency.
+───────────────────────────────────────────────────────── */
+function FlashSaleHeader({ products }: { products: Product[] }) {
+  const earliestEnd = products.reduce<string | null>((earliest, p) => {
+    if (!p.sale_ends_at) return earliest;
+    if (!earliest || new Date(p.sale_ends_at) < new Date(earliest)) return p.sale_ends_at;
+    return earliest;
+  }, null);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex items-center justify-between gap-3 mb-5 sm:mb-9 rounded-2xl bg-linear-to-r from-rose-600 to-orange-500 px-4 sm:px-6 py-3.5 sm:py-4.5 text-white shadow-lg"
+    >
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <Zap className="h-5 w-5 sm:h-6 sm:w-6 fill-white shrink-0" />
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-xl font-black tracking-tight leading-none">Flash Sale</h2>
+          <p className="hidden sm:block text-xs text-white/80 mt-1">
+            Limited-time prices — grab them before they&apos;re gone
+          </p>
+        </div>
+      </div>
+      {earliestEnd && <FlashSaleCountdown endsAt={earliestEnd} />}
+    </motion.div>
+  );
+}
+
+function FlashSaleCountdown({ endsAt }: { endsAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const diff = Math.max(0, new Date(endsAt).getTime() - now);
+  if (diff <= 0) return null;
+
+  const pad = (v: number) => String(v).padStart(2, "0");
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  return (
+    <div className="flex items-center gap-1 font-mono text-xs sm:text-sm font-bold shrink-0" aria-label="Time left in this flash sale">
+      <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-white/20">{pad(hours)}</span>
+      <span>:</span>
+      <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-white/20">{pad(minutes)}</span>
+      <span>:</span>
+      <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-white/20">{pad(seconds)}</span>
     </div>
   );
 }
