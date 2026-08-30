@@ -37,6 +37,7 @@ import type {
   VendorSettlementItemInput,
   VendorPaymentMethod,
 } from "@/lib/types/vendor/type";
+import { toWhatsAppNumber } from "@/lib/utils/phoneNumber";
 
 const LEDGER_TAG_COLOR: Record<VendorLedgerEntry["type"], string> = {
   dispatch: "blue",
@@ -60,15 +61,6 @@ const PERIOD_OPTIONS: { label: string; value: LedgerPeriod }[] = [
   { label: "This Month", value: "month" },
   { label: "All Time", value: "all" },
 ];
-
-// Local numbers are stored as 01XXXXXXXXX; wa.me links need the full
-// international number with no leading zero (880 = Bangladesh).
-function toWhatsAppNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("880")) return digits;
-  if (digits.startsWith("0")) return `880${digits.slice(1)}`;
-  return digits;
-}
 
 export default function VendorDetailPage() {
   const params = useParams();

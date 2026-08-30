@@ -18,6 +18,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { createReviewInviteLink } from "@/lib/queries/reviews/createReviewInviteLink";
 
 interface Props {
   order: StoreOrder;
@@ -26,6 +27,7 @@ interface Props {
 const DetailedOrderView: React.FC<Props> = ({ order }) => {
   const { message } = App.useApp();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [generatingReviewLink, setGeneratingReviewLink] = useState<string | null>(null);
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
 
@@ -37,6 +39,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
     : fullShippingAddress;
 
   const isCancelled = order.status === "cancelled";
+  const isDelivered = order.status === "delivered";
   const isPaid = order.payment_status === "paid";
 
   const copyToClipboard = (text: string, label: string, fieldId: string) => {
@@ -47,6 +50,23 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         setCopiedField(null);
       }, 2000);
     });
+  };
+
+  const handleGetReviewLink = async (itemId: string, productId: string) => {
+    setGeneratingReviewLink(itemId);
+    try {
+      const result = await createReviewInviteLink(order.id, productId);
+      if (!result.success) {
+        message.error(result.error);
+        return;
+      }
+      copyToClipboard(result.url, "Review link", `review-${itemId}`);
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to create review link");
+    } finally {
+      setGeneratingReviewLink(null);
+    }
   };
 
   const CopyIcon = ({ fieldId }: { fieldId: string }) => {
@@ -389,9 +409,23 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
                   </div>
                 </div>
 
-                <div className="mt-2 sm:mt-0 font-semibold text-foreground text-right text-sm">
-                  {displayCurrencyIconSafe}
-                  {total.toFixed(2)}
+                <div className="mt-2 sm:mt-0 flex flex-col items-end gap-1.5">
+                  <div className="font-semibold text-foreground text-right text-sm">
+                    {displayCurrencyIconSafe}
+                    {total.toFixed(2)}
+                  </div>
+                  {isDelivered && (
+                    <button
+                      onClick={() => handleGetReviewLink(item.id, item.product_id)}
+                      disabled={generatingReviewLink === item.id}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 disabled:opacity-50"
+                    >
+                      <CopyIcon fieldId={`review-${item.id}`} />
+                      {generatingReviewLink === item.id
+                        ? "Generating…"
+                        : "Get review link"}
+                    </button>
+                  )}
                 </div>
               </div>
             );

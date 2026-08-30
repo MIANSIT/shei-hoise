@@ -129,6 +129,7 @@ export interface StoreOrder {
   courier_consignment_id?: string | null;
   courier_order_status?: string | null;
   courier_credential_id?: string | null;
+  whatsapp_notified_at?: string | null;
 }
 
 // ===== FORM DATA TYPES =====
