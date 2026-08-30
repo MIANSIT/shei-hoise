@@ -12,6 +12,8 @@ import { getActiveFlashSaleProducts } from "@/lib/queries/products/getActiveFlas
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStorefrontBundles } from "@/lib/queries/bundles/getStorefrontBundles";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
+import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRatingSummary";
+import { StarRating } from "@/app/components/products/reviews/StarRating";
 import { Product } from "@/lib/types/product";
 import { Category } from "@/lib/types/category";
 import { StoreSettings } from "@/lib/types/store/store";
@@ -44,6 +46,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isFeaturedSection, setIsFeaturedSection] = useState(true);
   const [flashSaleProducts, setFlashSaleProducts] = useState<Product[]>([]);
+  const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [bundles, setBundles] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,18 +64,21 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setStoreData(fullStore);
         setStoreExists(true);
 
-        const [categoriesData, featured, storefrontBundles, settings, flashSale] = await Promise.all([
-          getCategoriesQuery(fullStore.id),
-          getFeaturedProducts(store_slug, 5),
-          getStorefrontBundles(store_slug, 4),
-          getStoreSettings(fullStore.id),
-          getActiveFlashSaleProducts(store_slug, 8),
-        ]);
+        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating] =
+          await Promise.all([
+            getCategoriesQuery(fullStore.id),
+            getFeaturedProducts(store_slug, 5),
+            getStorefrontBundles(store_slug, 4),
+            getStoreSettings(fullStore.id),
+            getActiveFlashSaleProducts(store_slug, 8),
+            getStoreRatingSummary(fullStore.id),
+          ]);
 
         if (categoriesData.data) setCategories(categoriesData.data);
         setBundles(storefrontBundles);
         setStoreSettings(settings);
         setFlashSaleProducts(flashSale);
+        setStoreRatingSummary(storeRating);
 
         if (featured.length > 0) {
           setFeaturedProducts(featured);
@@ -187,6 +193,14 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   <h1 className="text-sm sm:text-2xl font-black tracking-widest leading-none text-white drop-shadow-md truncate">
                     {storeName}
                   </h1>
+                  {storeRatingSummary.total > 0 && (
+                    <StoreRatingBadge
+                      store_slug={store_slug}
+                      average={storeRatingSummary.average}
+                      total={storeRatingSummary.total}
+                      className="mt-1 sm:mt-1.5"
+                    />
+                  )}
                   {storeData?.short_description && (
                     <p className="mt-0.5 sm:mt-1.5 text-[11px] sm:text-sm text-white/80 truncate sm:whitespace-normal sm:line-clamp-2 font-normal leading-snug drop-shadow-sm max-w-xs sm:max-w-md md:max-w-xl">
                       {storeData.short_description}
@@ -252,6 +266,15 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             >
               {storeName}
             </motion.h1>
+
+            {storeRatingSummary.total > 0 && (
+              <StoreRatingBadge
+                store_slug={store_slug}
+                average={storeRatingSummary.average}
+                total={storeRatingSummary.total}
+                className="mt-3 justify-center"
+              />
+            )}
 
             {(storeData?.description || storeData?.short_description) && (
               <motion.p
@@ -495,6 +518,38 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         </section>
       )}
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   STORE RATING BADGE — compact trust signal in the hero, linking to
+   the dedicated store reviews page. A solid near-white pill rather
+   than a translucent one so it reads equally well over the dark
+   banner-image overlay and over the plain light no-banner hero.
+───────────────────────────────────────────────────────── */
+function StoreRatingBadge({
+  store_slug,
+  average,
+  total,
+  className = "",
+}: {
+  store_slug: string;
+  average: number;
+  total: number;
+  className?: string;
+}) {
+  const n = useLocalNum();
+  return (
+    <Link
+      href={`/${store_slug}/reviews`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/96 dark:bg-gray-900/90 backdrop-blur-sm shadow-sm text-stone-900 dark:text-white hover:bg-white dark:hover:bg-gray-800 active:scale-95 transition-all duration-150 ${className}`}
+    >
+      <StarRating value={average} size="sm" />
+      <span className="text-[11px] sm:text-xs font-bold">{average.toFixed(1)}</span>
+      <span className="text-[10px] sm:text-[11px] text-stone-400 dark:text-gray-500 font-medium">
+        ({n(total)})
+      </span>
+    </Link>
   );
 }
 

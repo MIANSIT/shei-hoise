@@ -131,10 +131,10 @@ export function ReviewForm({ productId, orderId, onSubmitted, onCancel }: Review
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-1">
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
+        <Button type="button" variant="ghost" className="rounded-full" onClick={onCancel} disabled={submitting}>
           {t.reviews.cancel}
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" className="rounded-full font-semibold" disabled={submitting}>
           {submitting ? t.reviews.submitting : t.reviews.submitReview}
         </Button>
       </div>

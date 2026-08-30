@@ -7,7 +7,9 @@ import { getClientProductBySlug } from "@/lib/queries/products/getClientProductB
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getProductRatingSummary } from "@/lib/queries/reviews/getProductRatingSummary";
+import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRatingSummary";
 import { ReviewsSection } from "@/app/components/products/reviews/ReviewsSection";
+import { StoreReviewsSection } from "@/app/components/store/reviews/StoreReviewsSection";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
@@ -288,6 +290,8 @@ export default function ProductPage() {
     Record<string, string>
   >({});
   const [ratingSummary, setRatingSummary] = useState({ average: 0, total: 0 });
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [descExpanded, setDescExpanded] = useState(false);
   const [descOverflows, setDescOverflows] = useState(false);
   // Exclusive accordion — only one of description/productDetails/pricing
@@ -419,8 +423,10 @@ export default function ProductPage() {
 
         let localSettings = null;
         if (storeId) {
+          setStoreId(storeId);
           localSettings = await getStoreSettings(storeId);
           setStoreSettings(localSettings);
+          getStoreRatingSummary(storeId).then(setStoreRatingSummary);
         }
 
         if (!productData) {
@@ -1160,6 +1166,18 @@ export default function ProductPage() {
             getProductRatingSummary(product.id).then(setRatingSummary)
           }
         />
+
+        {storeId && (
+          <StoreReviewsSection
+            storeId={storeId}
+            storeSlug={store_slug}
+            average={storeRatingSummary.average}
+            total={storeRatingSummary.total}
+            onReviewSubmitted={() =>
+              getStoreRatingSummary(storeId).then(setStoreRatingSummary)
+            }
+          />
+        )}
       </div>
     </div>
   );
