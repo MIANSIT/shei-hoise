@@ -9,9 +9,14 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createUserCore } from "@/lib/queries/onboarding/store/createUserCore";
 import { createStoreWithSettings } from "@/lib/queries/onboarding/store/createStoreWithSettings";
 import { DomainErrorCode } from "@/lib/errors/domainErrors";
+import {
+  isOnboardingEmailVerified,
+  clearOnboardingVerification,
+} from "@/lib/queries/onboarding/emailVerification";
+import { sendWelcomeEmail } from "@/lib/email/welcomeEmail";
 // ✅ Domain error codes for production
 
-async function assignDefaultTrialPlan(storeId: string, userId: string): Promise<void> {
+async function assignDefaultTrialPlan(storeId: string, userId: string): Promise<Date | null> {
   try {
     const { data: plan } = await supabaseAdmin
       .from("subscription_plans")
@@ -20,7 +25,7 @@ async function assignDefaultTrialPlan(storeId: string, userId: string): Promise<
       .eq("is_active", true)
       .maybeSingle();
 
-    if (!plan) return;
+    if (!plan) return null;
 
     const now = new Date();
     const trialEndsAt = new Date(now);
@@ -35,8 +40,11 @@ async function assignDefaultTrialPlan(storeId: string, userId: string): Promise<
       current_period_start: now.toISOString(),
       current_period_end: trialEndsAt.toISOString(),
     });
+
+    return trialEndsAt;
   } catch (err) {
     console.error("assignDefaultTrialPlan failed (non-fatal):", err);
+    return null;
   }
 }
 
@@ -47,6 +55,14 @@ export async function createUser(data: CreateUserType) {
   let storeId: string | null = null;
 
   try {
+    // 0️⃣ The store owner must have already verified this email via the
+    // onboarding OTP step — checked server-side so this can't be bypassed
+    // by calling this action directly.
+    const isVerified = await isOnboardingEmailVerified(payload.email);
+    if (!isVerified) {
+      throw new Error(DomainErrorCode.EMAIL_NOT_VERIFIED);
+    }
+
     // 1️⃣ Create user + profile
     userId = await createUserCore(payload);
 
@@ -70,8 +86,27 @@ export async function createUser(data: CreateUserType) {
       // Best-effort only — a store with no subscription row is treated as
       // unrestricted access everywhere else in the app, so a failure here
       // should never fail the whole signup.
-      await assignDefaultTrialPlan(storeId!, userId!);
+      const trialEndsAt = await assignDefaultTrialPlan(storeId!, userId!);
+
+      // 5️⃣ Welcome email — best-effort, never fails the signup itself.
+      // This is the one point everything (user, store, settings, trial) is
+      // definitively created, and every failure path above already rolls
+      // back and throws instead of reaching here.
+      try {
+        await sendWelcomeEmail({
+          toEmail: payload.email,
+          ownerName: payload.first_name,
+          storeName: payload.store.store_name,
+          storeSlug: payload.store.store_slug,
+          trialEndsAt,
+        });
+      } catch (emailErr) {
+        console.error("sendWelcomeEmail failed (non-fatal):", emailErr);
+      }
     }
+
+    // The code has served its purpose — clean it up so it can't be reused.
+    await clearOnboardingVerification(payload.email);
 
     return { success: true, userId, storeId };
   } catch (err: unknown) {
@@ -114,6 +149,15 @@ export async function createUser(data: CreateUserType) {
       err.code === "email_exists"
     ) {
       throw new Error(DomainErrorCode.EMAIL_EXISTS);
+    }
+
+    // Already a known domain error (e.g. the pre-flight verification check
+    // above) — pass it through as-is instead of masking it.
+    if (
+      err instanceof Error &&
+      (Object.values(DomainErrorCode) as string[]).includes(err.message)
+    ) {
+      throw err;
     }
 
     throw new Error(DomainErrorCode.CREATE_USER_FAILED);

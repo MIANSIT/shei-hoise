@@ -23,6 +23,7 @@ import UserInformation, {
   AccountValidationReason,
 } from "@/app/components/onboarding/createStore/UserInformation";
 import StoreInformation from "@/app/components/onboarding/createStore/StoreInformation";
+import VerifyEmail from "@/app/components/onboarding/createStore/VerifyEmail";
 
 interface StoreCreateFormProps {
   onSubmit: (data: CreateUserType, resetForm: () => void) => Promise<void>;
@@ -37,6 +38,7 @@ export default function StoreCreateForm({
   const [accountValidationReason, setAccountValidationReason] =
     useState<AccountValidationReason>(null);
   const [accountValidationAttempt, setAccountValidationAttempt] = useState(0);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const notify = useSheiNotification();
   const t = useTranslation();
 
@@ -87,7 +89,10 @@ export default function StoreCreateForm({
     },
   });
 
-  const { control, handleSubmit, trigger, reset } = form;
+  const { control, handleSubmit, trigger, reset, watch } = form;
+  const email = watch("email");
+
+  const USER_INFO_STEP = 1;
 
   const stepsList: StepType[] = [
     {
@@ -127,6 +132,13 @@ export default function StoreCreateForm({
         "password",
       ] as Path<CreateUserType>[],
     },
+    {
+      title: t.onboarding.stepVerifyEmail,
+      content: (
+        <VerifyEmail email={email} onValidationChange={setIsEmailVerified} />
+      ),
+      fields: [] as Path<CreateUserType>[],
+    },
   ];
 
   const {
@@ -141,6 +153,26 @@ export default function StoreCreateForm({
     currentFields,
   } = useStepForm(stepsList);
 
+  const reasonMessages: Record<Exclude<AccountValidationReason, null>, string> = {
+    confirm_required: t.onboarding.confirmPasswordRequired,
+    confirm_mismatch: t.onboarding.passwordMismatch,
+    terms_required: t.onboarding.mustAcceptTerms,
+  };
+
+  // Confirm-password and terms live as local state inside UserInformation
+  // (not RHF fields), so trigger() alone never catches them — this is the
+  // one shared gate both step navigation and final submit rely on.
+  const blockedByAccountValidation = () => {
+    if (isAccountStepValid) return false;
+    setAccountValidationAttempt((count) => count + 1);
+    notify.error(
+      accountValidationReason
+        ? reasonMessages[accountValidationReason]
+        : t.onboarding.completePassword,
+    );
+    return true;
+  };
+
   const handleNext = async () => {
     if (!currentFields || currentFields.length === 0) return;
     const isStepValid = await trigger(currentFields, { shouldFocus: true });
@@ -148,6 +180,7 @@ export default function StoreCreateForm({
       notify.error(t.onboarding.fillRequired);
       return;
     }
+    if (currentStep === USER_INFO_STEP && blockedByAccountValidation()) return;
     next();
   };
 
@@ -158,25 +191,19 @@ export default function StoreCreateForm({
       return;
     } else {
       const isStepValid = await trigger(currentFields, { shouldFocus: true });
-      if (isStepValid) goTo(stepIndex);
-      else notify.error(t.onboarding.fillRequired);
+      if (!isStepValid) {
+        notify.error(t.onboarding.fillRequired);
+        return;
+      }
+      if (currentStep === USER_INFO_STEP && blockedByAccountValidation()) return;
+      goTo(stepIndex);
     }
   };
 
-  const reasonMessages: Record<Exclude<AccountValidationReason, null>, string> = {
-    confirm_required: t.onboarding.confirmPasswordRequired,
-    confirm_mismatch: t.onboarding.passwordMismatch,
-    terms_required: t.onboarding.mustAcceptTerms,
-  };
-
   const onSubmitForm = (data: CreateUserType) => {
-    if (!isAccountStepValid) {
-      setAccountValidationAttempt((count) => count + 1);
-      notify.error(
-        accountValidationReason
-          ? reasonMessages[accountValidationReason]
-          : t.onboarding.completePassword,
-      );
+    if (blockedByAccountValidation()) return;
+    if (!isEmailVerified) {
+      notify.error(t.onboarding.verifyRequired);
       return;
     }
     onSubmit(data, reset);
@@ -287,14 +314,22 @@ export default function StoreCreateForm({
                     type='primary'
                     onClick={handleSubmit(onSubmitForm)}
                     loading={loading}
+                    disabled={!isEmailVerified}
+                    title={!isEmailVerified ? t.onboarding.verifyRequired : undefined}
                     className='rounded-full px-8 py-2 font-semibold shadow-lg shadow-chart-2/30 transition-colors duration-200'
-                    style={{ backgroundColor: "var(--chart-2)", border: "none" }}
+                    style={
+                      isEmailVerified
+                        ? { backgroundColor: "var(--chart-2)", border: "none" }
+                        : undefined
+                    }
                     onMouseEnter={(e) => {
+                      if (!isEmailVerified) return;
                       (
                         e.currentTarget as HTMLButtonElement
                       ).style.backgroundColor = "var(--badge)";
                     }}
                     onMouseLeave={(e) => {
+                      if (!isEmailVerified) return;
                       (
                         e.currentTarget as HTMLButtonElement
                       ).style.backgroundColor = "var(--chart-2)";
