@@ -1,6 +1,6 @@
 // components/common/PasswordStrength.tsx
 import { CheckCircle } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 interface PasswordStrengthProps {
   password: string | undefined;
@@ -47,7 +47,7 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
   const currentTextColor = textColors[strength - 1] || "text-gray-500";
 
   return (
-    <motion.div
+    <m.div
       className={`space-y-2.5 ${className}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -63,7 +63,7 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
       </div>
 
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <motion.div
+        <m.div
           className={`h-1.5 rounded-full ${currentColor}`}
           initial={{ width: "0%" }}
           animate={{ width: `${(strength / 5) * 100}%` }}
@@ -76,14 +76,14 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
           const passed = checks[key];
 
           return (
-            <motion.div
+            <m.div
               key={key}
               className="flex items-center gap-1"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.08 }}
             >
-              <motion.div
+              <m.div
                 animate={passed ? {
                   scale: [1, 1.2, 1],
                   rotate: [0, 10, -10, 0]
@@ -93,14 +93,14 @@ export function PasswordStrength({ password, className = "" }: PasswordStrengthP
                 <CheckCircle
                   className={`h-3.5 w-3.5 ${passed ? "text-green-500" : "text-muted-foreground"}`}
                 />
-              </motion.div>
+              </m.div>
               <span className={`text-xs ${passed ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                 {labels[key]}
               </span>
-            </motion.div>
+            </m.div>
           );
         })}
       </div>
-    </motion.div>
+    </m.div>
   );
 }

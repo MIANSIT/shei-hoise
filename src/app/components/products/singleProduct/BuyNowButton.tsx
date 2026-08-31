@@ -1,7 +1,7 @@
 "use client";
 
 import { Zap } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface BuyNowButtonProps {
@@ -38,7 +38,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
     .join(" ");
 
   return (
-    <motion.button
+    <m.button
       onClick={handleClick}
       disabled={disabled || isLoading}
       whileTap={!disabled ? { scale: 0.98 } : {}}
@@ -46,7 +46,7 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
     >
       <AnimatePresence mode="wait">
         {isLoading ? (
-          <motion.span
+          <m.span
             key="loading"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -69,9 +69,9 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
               />
             </svg>
             {t.cart.processing}
-          </motion.span>
+          </m.span>
         ) : disabled ? (
-          <motion.span
+          <m.span
             key="oos"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -80,9 +80,9 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
           >
             <Zap className="w-4 h-4" />
             {disabledLabel ?? t.cart.outOfStock}
-          </motion.span>
+          </m.span>
         ) : (
-          <motion.span
+          <m.span
             key="idle"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -91,10 +91,10 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
           >
             <Zap className="w-4 h-4" />
             {t.cart.buyNow}
-          </motion.span>
+          </m.span>
         )}
       </AnimatePresence>
-    </motion.button>
+    </m.button>
   );
 };
 

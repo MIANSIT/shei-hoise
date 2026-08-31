@@ -1,12 +1,14 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
-const MotionButton = motion(Button);
+// `m.create()` rather than `motion(Button)`: under LazyMotion strict the
+// `motion` factory is unavailable by design — see MotionProvider.
+const MotionButton = m.create(Button);
 
 const salesBars = [2, 4, 3, 6, 8, 5, 3, 4, 7, 9, 6, 8, 5, 4, 6, 7];
 
@@ -51,40 +53,40 @@ export default function HeroSection() {
         <div className="container mx-auto grid lg:grid-cols-2 gap-12 items-center">
 
           {/* LEFT — Copy */}
-          <motion.div
+          <m.div
             initial="initial"
             animate="animate"
             variants={stagger}
             className="space-y-8"
           >
             {/* BADGE */}
-            <motion.div variants={fadeInUp}>
+            <m.div variants={fadeInUp}>
               <span className="inline-flex items-center gap-2 bg-chart-2/10 text-chart-2 text-xs font-semibold px-4 py-1.5 rounded-full border border-chart-2/20">
                 <Zap className="w-3 h-3" />
                 {t.landing.badge}
               </span>
-            </motion.div>
+            </m.div>
 
             {/* HEADLINE */}
-            <motion.h1
+            <m.h1
               variants={fadeInUp}
               className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
             >
               {t.landing.headline1}
               <br />
               <span className="text-chart-2">{t.landing.headline2}</span>
-            </motion.h1>
+            </m.h1>
 
             {/* SUBTEXT */}
-            <motion.p
+            <m.p
               variants={fadeInUp}
               className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg"
             >
               {t.landing.subtext}
-            </motion.p>
+            </m.p>
 
             {/* CTA BUTTONS */}
-            <motion.div
+            <m.div
               variants={fadeInUp}
               className="flex flex-col sm:flex-row gap-4"
             >
@@ -110,10 +112,10 @@ export default function HeroSection() {
               >
                 {t.landing.seeHowItWorks}
               </Button>
-            </motion.div>
+            </m.div>
 
             {/* TRUST BADGES */}
-            <motion.div
+            <m.div
               variants={fadeInUp}
               className="flex flex-wrap gap-4 text-sm text-muted-foreground"
             >
@@ -123,10 +125,10 @@ export default function HeroSection() {
                   {text}
                 </div>
               ))}
-            </motion.div>
+            </m.div>
 
             {/* STATS */}
-            <motion.div
+            <m.div
               variants={fadeInUp}
               className="flex gap-8 pt-4 border-t border-border"
             >
@@ -136,11 +138,11 @@ export default function HeroSection() {
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
 
           {/* RIGHT — Professional Dashboard Mockup */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15 }}
@@ -294,7 +296,7 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </m.div>
 
         </div>
       </section>

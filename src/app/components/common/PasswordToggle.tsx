@@ -2,7 +2,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 interface PasswordToggleProps {
   show: boolean;
@@ -18,7 +18,7 @@ export function PasswordToggle({
   className,
 }: PasswordToggleProps) {
   return (
-    <motion.button
+    <m.button
       type="button"
       onClick={onToggle}
       className={`flex items-center justify-center p-2 rounded-full hover:bg-accent/20 transition-colors ${className || ""}`}
@@ -32,7 +32,7 @@ export function PasswordToggle({
     >
       <AnimatePresence mode="wait" initial={false}>
         {show ? (
-          <motion.div
+          <m.div
             key="eye-off"
             initial={{ opacity: 0, scale: 0.7, rotate: -90 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -40,9 +40,9 @@ export function PasswordToggle({
             transition={{ duration: 0.2 }}
           >
             <EyeOff size={size} className="text-muted-foreground" />
-          </motion.div>
+          </m.div>
         ) : (
-          <motion.div
+          <m.div
             key="eye"
             initial={{ opacity: 0, scale: 0.7, rotate: -90 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -50,9 +50,9 @@ export function PasswordToggle({
             transition={{ duration: 0.2 }}
           >
             <Eye size={size} className="text-muted-foreground" />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
-    </motion.button>
+    </m.button>
   );
 }

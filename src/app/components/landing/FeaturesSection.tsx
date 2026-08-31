@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   BarChart3,
   Bell,
@@ -26,27 +26,27 @@ export default function FeaturesSection() {
   return (
     <section id="features" className="py-16 md:py-20 px-6 bg-muted/30">
       <div className="container mx-auto text-center mb-12 md:mb-16">
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-3xl md:text-4xl font-bold mb-4"
         >
           {t.landing.featuresTitle}
-        </motion.h2>
-        <motion.p
+        </m.h2>
+        <m.p
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
         >
           {t.landing.featuresSubtitle}
-        </motion.p>
+        </m.p>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         {features.map((feature, index) => (
-          <motion.div
+          <m.div
             key={feature.title}
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -65,7 +65,7 @@ export default function FeaturesSection() {
             <p className="text-sm md:text-base text-muted-foreground">
               {feature.description}
             </p>
-          </motion.div>
+          </m.div>
         ))}
       </div>
     </section>
