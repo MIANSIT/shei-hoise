@@ -1,6 +1,5 @@
 "use client";
 
-import { m } from "framer-motion";
 import {
   BarChart3,
   Bell,
@@ -10,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useGsapScope } from "@/lib/gsap/useGsapScope";
 
 export default function FeaturesSection() {
   const t = useTranslation();
@@ -23,36 +23,62 @@ export default function FeaturesSection() {
     { icon: Users,    title: t.landing.feature6Title, description: t.landing.feature6Desc, color: "text-chart-2" },
   ];
 
+  // Scroll reveal, GSAP rather than per-element whileInView: one trigger for
+  // the whole section keeps the cards on a single stagger, so they read as one
+  // system arriving instead of six independent fades racing each other.
+  const scope = useGsapScope(({ q, root, reduced, gsap }) => {
+    const targets = [...q("[data-reveal]"), ...q("[data-reveal-card]")];
+
+    if (reduced) {
+      gsap.set(targets, { opacity: 1, y: 0 });
+      return;
+    }
+
+    gsap.set(targets, { opacity: 0, y: 28 });
+
+    gsap.timeline({
+      scrollTrigger: {
+        trigger: root,
+        // Fires when the section is a third of the way up the viewport —
+        // late enough that the reader is looking at it, early enough that
+        // nothing has finished animating before it is on screen.
+        start: "top 70%",
+        once: true,
+      },
+      defaults: { ease: "power3.out" },
+    })
+      .to(q("[data-reveal]"), { opacity: 1, y: 0, duration: 0.6, stagger: 0.1 })
+      .to(
+        q("[data-reveal-card]"),
+        { opacity: 1, y: 0, duration: 0.55, stagger: 0.07 },
+        "-=0.35",
+      );
+  });
+
   return (
-    <section id="features" className="py-16 md:py-20 px-6 bg-muted/30">
+    <section
+      ref={scope as React.RefObject<HTMLElement>}
+      id="features"
+      className="py-16 md:py-20 px-6 bg-muted/30"
+    >
       <div className="container mx-auto text-center mb-12 md:mb-16">
-        <m.h2
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-3xl md:text-4xl font-bold mb-4"
-        >
+        <h2 data-reveal className="text-3xl md:text-4xl font-bold mb-4">
           {t.landing.featuresTitle}
-        </m.h2>
-        <m.p
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+        </h2>
+        <p
+          data-reveal
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
         >
           {t.landing.featuresSubtitle}
-        </m.p>
+        </p>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {features.map((feature, index) => (
-          <m.div
+        {features.map((feature) => (
+          <div
             key={feature.title}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
-            whileHover={{ y: -5 }}
-            className="bg-card p-6 rounded-xl shadow-lg border hover:shadow-xl transition-all"
+            data-reveal-card
+            className="bg-card p-6 rounded-xl shadow-lg border transition-transform duration-200 hover:-translate-y-1.5 hover:shadow-xl"
           >
             <div
               className={`w-10 h-10 md:w-12 md:h-12 ${feature.color} bg-muted rounded-lg flex items-center justify-center mb-4`}
@@ -65,7 +91,7 @@ export default function FeaturesSection() {
             <p className="text-sm md:text-base text-muted-foreground">
               {feature.description}
             </p>
-          </m.div>
+          </div>
         ))}
       </div>
     </section>

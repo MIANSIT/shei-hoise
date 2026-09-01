@@ -50,6 +50,7 @@
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
     "framer-motion": "^12.23.12",
+    "gsap": "^3.15.0",
     "html2canvas": "^1.4.1",
     "jodit-react": "^5.2.38",
     "jspdf": "^4.2.0",

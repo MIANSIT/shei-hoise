@@ -1,10 +1,13 @@
 "use client";
 
+import { Fragment } from "react";
 import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useGsapScope, countUpTo } from "@/lib/gsap/useGsapScope";
+import { useLanguageStore } from "@/lib/store/languageStore";
 
 // `m.create()` rather than `motion(Button)`: under LazyMotion strict the
 // `motion` factory is unavailable by design — see MotionProvider.
@@ -15,6 +18,31 @@ const salesBars = [2, 4, 3, 6, 8, 5, 3, 4, 7, 9, 6, 8, 5, 4, 6, 7];
 export default function HeroSection() {
   const router = useRouter();
   const t = useTranslation();
+  const lang = useLanguageStore((s) => s.lang);
+
+  /**
+   * Splits a headline into per-word spans for the entrance stagger.
+   *
+   * Done in JSX rather than with GSAP's SplitText on purpose. SplitText
+   * rewrites the element's children in the DOM, which takes that subtree out
+   * of React's hands — so switching language left the old words on screen,
+   * because React was updating text nodes SplitText had already replaced.
+   * Rendering the words ourselves keeps React the owner and the animation
+   * only touches their transforms.
+   */
+  const words = (text: string) => {
+    const parts = text.split(" ");
+    return parts.map((word, index) => (
+      // The separator is a real text node outside the span, not a non-breaking
+      // space inside it — an nbsp would stop the headline wrapping on a phone.
+      <Fragment key={`${word}-${index}`}>
+        <span data-hero-word className="inline-block">
+          {word}
+        </span>
+        {index < parts.length - 1 ? " " : ""}
+      </Fragment>
+    ));
+  };
 
   const pnl = [
     { label: t.landing.pnlRevenue, value: "৳6,801", color: "text-chart-2", border: "border-t-chart-2" },
@@ -29,15 +57,77 @@ export default function HeroSection() {
     { label: t.landing.pipelineCancelled, count: 0, dot: "bg-chart-5/50", text: "text-muted-foreground" },
   ];
 
-  const fadeInUp = {
-    initial: { y: 50, opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-    transition: { duration: 0.6, ease: "easeOut" },
-  };
+  // The hero is the only thing a first-time visitor is guaranteed to see, and
+  // previously every part of it arrived at once — headline, mock, CTA and
+  // stats all competing for the same glance. This gives that half-second an
+  // order of reading: sentence first, then the product doing something, then
+  // the ask. One timeline rather than a dozen delays, so the offsets stay
+  // adjustable as a unit.
+  const scope = useGsapScope(({ q, reduced, gsap }) => {
+    const reveal = q("[data-hero]");
+    const mock = q("[data-hero-mock]");
+    const bars = q("[data-hero-bar]");
+    const counters = q("[data-count]") as HTMLElement[];
 
-  const stagger = {
-    animate: { transition: { staggerChildren: 0.12 } },
-  };
+    if (reduced) {
+      gsap.set([...reveal, ...mock, ...q("[data-hero-word]")], {
+        opacity: 1,
+        y: 0,
+        clearProps: "transform",
+      });
+      gsap.set(bars, { scaleY: 1 });
+      counters.forEach((el) => {
+        el.textContent = el.dataset.count ?? el.textContent;
+      });
+      return;
+    }
+
+    // Word-level stagger so the eye tracks left to right and lands on the
+    // emphasised half, rather than absorbing the whole block at once.
+    const headlineWords = q("[data-hero-word]");
+
+    const tl = gsap.timeline({
+      defaults: { ease: "power3.out" },
+      // Runs after first paint: the headline is the LCP element and must not
+      // sit at opacity 0 waiting on JS.
+      delay: 0.05,
+    });
+
+    tl.from(q("[data-hero='badge']"), { y: 12, opacity: 0, duration: 0.45 });
+
+    if (headlineWords.length > 0) {
+      tl.from(
+        headlineWords,
+        { y: "0.6em", opacity: 0, duration: 0.6, stagger: 0.04 },
+        "-=0.25",
+      );
+    }
+
+    tl.from(q("[data-hero='sub']"), { y: 14, opacity: 0, duration: 0.5 }, "-=0.35")
+      // The mock overlaps the copy rather than following it — the product
+      // picture should read as the consequence of the sentence, not a
+      // separate beat.
+      .from(
+        mock,
+        { y: 28, opacity: 0, scale: 0.985, duration: 0.7, transformOrigin: "center top" },
+        "-=0.55",
+      )
+      .from(
+        bars,
+        { scaleY: 0, transformOrigin: "bottom", duration: 0.5, stagger: 0.025 },
+        "-=0.3",
+      )
+      .from(q("[data-hero='cta']"), { y: 14, opacity: 0, duration: 0.5 }, "-=0.45")
+      .from(q("[data-hero='trust']"), { y: 10, opacity: 0, duration: 0.45 }, "-=0.35")
+      .from(q("[data-hero='stats']"), { y: 10, opacity: 0, duration: 0.45 }, "-=0.3")
+      .add(() => {
+        counters.forEach((el) =>
+          countUpTo(el, el.dataset.count ?? "", { duration: 1.1 }),
+        );
+      }, "-=0.2");
+    // Re-runs on language change: the word count differs between English and
+    // Bangla, so the timeline has to be rebuilt against the new spans.
+  }, [lang]);
 
   const stats = [
     { value: t.landing.stat1Value, label: t.landing.stat1Label },
@@ -49,47 +139,39 @@ export default function HeroSection() {
 
   return (
     <>
-      <section className="pt-10 md:pt-20 pb-16 px-3">
+      <section
+        ref={scope as React.RefObject<HTMLElement>}
+        className="pt-10 md:pt-20 pb-16 px-3"
+      >
         <div className="container mx-auto grid lg:grid-cols-2 gap-12 items-center">
 
           {/* LEFT — Copy */}
-          <m.div
-            initial="initial"
-            animate="animate"
-            variants={stagger}
-            className="space-y-8"
-          >
+          <div className="space-y-8">
             {/* BADGE */}
-            <m.div variants={fadeInUp}>
+            <div data-hero="badge">
               <span className="inline-flex items-center gap-2 bg-chart-2/10 text-chart-2 text-xs font-semibold px-4 py-1.5 rounded-full border border-chart-2/20">
                 <Zap className="w-3 h-3" />
                 {t.landing.badge}
               </span>
-            </m.div>
+            </div>
 
             {/* HEADLINE */}
-            <m.h1
-              variants={fadeInUp}
-              className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
-            >
-              {t.landing.headline1}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+              {words(t.landing.headline1)}
               <br />
-              <span className="text-chart-2">{t.landing.headline2}</span>
-            </m.h1>
+              <span className="text-chart-2">{words(t.landing.headline2)}</span>
+            </h1>
 
             {/* SUBTEXT */}
-            <m.p
-              variants={fadeInUp}
+            <p
+              data-hero="sub"
               className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg"
             >
               {t.landing.subtext}
-            </m.p>
+            </p>
 
             {/* CTA BUTTONS */}
-            <m.div
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row gap-4"
-            >
+            <div data-hero="cta" className="flex flex-col sm:flex-row gap-4">
               <MotionButton
                 size="lg"
                 className="w-full sm:w-auto bg-chart-2 hover:bg-chart-2/90 text-background px-8 py-4 text-base sm:text-lg flex items-center justify-center"
@@ -112,11 +194,11 @@ export default function HeroSection() {
               >
                 {t.landing.seeHowItWorks}
               </Button>
-            </m.div>
+            </div>
 
             {/* TRUST BADGES */}
-            <m.div
-              variants={fadeInUp}
+            <div
+              data-hero="trust"
               className="flex flex-wrap gap-4 text-sm text-muted-foreground"
             >
               {trustBadges.map((text, idx) => (
@@ -125,29 +207,29 @@ export default function HeroSection() {
                   {text}
                 </div>
               ))}
-            </m.div>
+            </div>
 
             {/* STATS */}
-            <m.div
-              variants={fadeInUp}
-              className="flex gap-8 pt-4 border-t border-border"
-            >
+            <div data-hero="stats" className="flex gap-8 pt-4 border-t border-border">
               {stats.map((stat) => (
                 <div key={stat.label}>
-                  <p className="text-2xl font-bold text-chart-2">{stat.value}</p>
+                  {/* data-count holds the authored string ("500+", "10k+") —
+                      the counter animates only its numeric part so the copy
+                      stays the source of truth. */}
+                  <p
+                    className="text-2xl font-bold text-chart-2"
+                    data-count={stat.value}
+                  >
+                    {stat.value}
+                  </p>
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
-            </m.div>
-          </m.div>
+            </div>
+          </div>
 
           {/* RIGHT — Professional Dashboard Mockup */}
-          <m.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15 }}
-            className="relative"
-          >
+          <div data-hero-mock className="relative">
             {/* Ambient glow */}
             <div className="absolute -inset-4 bg-linear-to-br from-chart-2/20 via-chart-3/10 to-transparent rounded-3xl blur-2xl pointer-events-none" />
 
@@ -282,7 +364,8 @@ export default function HeroSection() {
                       {salesBars.map((h, i) => (
                         <div
                           key={i}
-                          className={`flex-1 rounded-sm transition-all ${
+                          data-hero-bar
+                          className={`flex-1 rounded-sm ${
                             i >= salesBars.length - 4
                               ? "bg-chart-2"
                               : "bg-muted-foreground/20"
@@ -296,7 +379,7 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
-          </m.div>
+          </div>
 
         </div>
       </section>
