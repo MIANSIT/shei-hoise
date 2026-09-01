@@ -221,7 +221,7 @@ export default function StatsSection() {
                 be unreadable. */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute bottom-10 left-[14px] top-3 w-px bg-border md:hidden"
+              className="pointer-events-none absolute bottom-10 left-4 top-3 w-px bg-border md:hidden"
             >
               <div
                 data-rail-fill="vertical"
@@ -242,9 +242,15 @@ export default function StatsSection() {
                     data-stat-node
                     data-lit="false"
                     aria-hidden="true"
-                    className="group absolute left-0.5 top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-border bg-card transition-colors duration-300 data-[lit=true]:border-chart-2 data-[lit=true]:bg-chart-2/10 md:left-1/2 md:top-0 md:-translate-x-1/2"
+                    className="group absolute left-0.5 top-1 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-border bg-card transition-colors duration-300 data-[lit=true]:border-chart-2 md:left-1/2 md:top-0 md:-translate-x-1/2"
                   >
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors duration-300 group-data-[lit=true]:text-chart-2" />
+                    {/* The lit tint is a layer *inside* the node rather than a
+                        translucent background on it. The node's own background
+                        has to stay opaque, otherwise the rail behind it shows
+                        straight through the circle and draws a line across the
+                        icon. */}
+                    <span className="absolute inset-0 rounded-full bg-chart-2/10 opacity-0 transition-opacity duration-300 group-data-[lit=true]:opacity-100" />
+                    <Icon className="relative h-3.5 w-3.5 text-muted-foreground transition-colors duration-300 group-data-[lit=true]:text-chart-2" />
                   </span>
 
                   <div className="md:pt-11">
