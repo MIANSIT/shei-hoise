@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, X, Store } from "lucide-react";
 import { StoreOrder } from "@/lib/types/order";
@@ -405,7 +405,7 @@ export default function AnimatedInvoice({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:justify-center">
       {/* Backdrop */}
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -414,7 +414,7 @@ export default function AnimatedInvoice({
       />
 
       {/* Receipt Card */}
-      <motion.div
+      <m.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
@@ -640,7 +640,7 @@ export default function AnimatedInvoice({
             )}
           </div>
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

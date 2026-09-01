@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import ContactUSForm from "@/app/components/contactUs/ContactUsForm";
 import Modal from "@/app/components//common/Modal"; // Import the modal component
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useGsapScope } from "@/lib/gsap/useGsapScope";
 
 export default function CTASection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,29 +14,48 @@ export default function CTASection() {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
+  // The closing ask. Rises as one block rather than line by line — at the end
+  // of a long scroll the reader wants a single clear thing to do, not another
+  // sequence to sit through.
+  const scope = useGsapScope(({ q, root, reduced, gsap }) => {
+    const targets = q("[data-reveal]");
+
+    if (reduced) {
+      gsap.set(targets, { opacity: 1, y: 0 });
+      return;
+    }
+
+    gsap.fromTo(
+      targets,
+      { opacity: 0, y: 26 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        stagger: 0.08,
+        ease: "power3.out",
+        scrollTrigger: { trigger: root, start: "top 75%", once: true },
+      },
+    );
+  });
+
   return (
     <section
+      ref={scope as React.RefObject<HTMLElement>}
       id='request-demo'
       className='py-16 md:py-20 px-6 bg-muted/50 border border-chart-2/20'
     >
       <div className='container mx-auto text-center'>
-        <motion.h2
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className='text-3xl md:text-4xl font-bold mb-6'
-        >
+        <h2 data-reveal className='text-3xl md:text-4xl font-bold mb-6'>
           {t.landing.ctaTitle}
-        </motion.h2>
+        </h2>
 
-        <motion.p
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+        <p
+          data-reveal
           className='text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto'
         >
           {t.landing.ctaSubtitle}
-        </motion.p>
+        </p>
 
         <div className='flex flex-col sm:flex-row gap-4 justify-center'>
           <Button

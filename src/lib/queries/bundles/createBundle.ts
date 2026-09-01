@@ -101,6 +101,7 @@ export async function createBundle(bundle: BundleType) {
         sku: bundle.sku,
         status: bundle.status ?? ProductStatus.ACTIVE,
         featured: bundle.featured,
+        free_delivery: bundle.free_delivery ?? false,
         product_type: "bundle",
       })
       .select("id")

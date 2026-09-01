@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { FC, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { useProductImage } from "../../../../lib/hook/useProductImage";
 
@@ -89,7 +89,7 @@ const ProductImage: FC<ProductImageProps> = ({
           onClick={() => openLightbox(mainIndex)}
         >
           <AnimatePresence mode="wait">
-            <motion.div
+            <m.div
               key={mainIndex}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -105,7 +105,7 @@ const ProductImage: FC<ProductImageProps> = ({
                 priority
                 sizes="(max-width: 768px) 100vw, 560px"
               />
-            </motion.div>
+            </m.div>
           </AnimatePresence>
 
           {/* Discount badge */}
@@ -166,7 +166,7 @@ const ProductImage: FC<ProductImageProps> = ({
         typeof document !== "undefined" &&
         createPortal(
           <AnimatePresence>
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -228,7 +228,7 @@ const ProductImage: FC<ProductImageProps> = ({
               )}
 
               {/* Main image */}
-              <motion.div
+              <m.div
                 key={lightboxIndex}
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -249,7 +249,7 @@ const ProductImage: FC<ProductImageProps> = ({
                   sizes="720px"
                   priority
                 />
-              </motion.div>
+              </m.div>
 
               {/* Next */}
               {images.length > 1 && (
@@ -307,7 +307,7 @@ const ProductImage: FC<ProductImageProps> = ({
                   ))}
                 </div>
               )}
-            </motion.div>
+            </m.div>
           </AnimatePresence>,
           document.body,
         )}

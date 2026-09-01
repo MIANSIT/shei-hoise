@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface OtpCodeInputProps {
@@ -102,7 +102,7 @@ export function OtpCodeInput({
   };
 
   return (
-    <motion.div
+    <m.div
       key={shakeTrigger}
       initial={{ x: 0 }}
       animate={hasError ? { x: [0, -8, 8, -8, 8, 0] } : { x: 0 }}
@@ -110,7 +110,7 @@ export function OtpCodeInput({
       className="flex gap-2 sm:gap-3"
     >
       {digits.map((digit, index) => (
-        <motion.div
+        <m.div
           key={index}
           animate={digit ? { scale: [1, 1.12, 1] } : { scale: 1 }}
           transition={{ duration: 0.18 }}
@@ -139,8 +139,8 @@ export function OtpCodeInput({
                 : "border-border focus:border-chart-2 focus:ring-chart-2/20",
             )}
           />
-        </motion.div>
+        </m.div>
       ))}
-    </motion.div>
+    </m.div>
   );
 }

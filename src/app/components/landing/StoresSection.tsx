@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 import {
   getAllStores,
@@ -63,29 +63,29 @@ export default function StoresSection() {
     <section id="stores" className="py-16 md:py-20 px-6 bg-muted/10">
       {/* Header */}
       <div className="container mx-auto text-center mb-12">
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="text-3xl md:text-4xl font-bold mb-3"
         >
           Featured Stores
-        </motion.h2>
+        </m.h2>
 
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="text-lg text-muted-foreground max-w-2xl mx-auto"
         >
           Check out some of the amazing stores created by our Store Owners.
-        </motion.p>
+        </m.p>
       </div>
 
       {/* Stores Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2  gap-8 max-w-6xl mx-auto">
         {previewStores.map((store, index) => (
-          <motion.div
+          <m.div
             key={store.id}
             className={getGridClass(previewStores.length, index)}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -120,7 +120,7 @@ export default function StoresSection() {
                 @{store.store_slug}
               </p>
             </Link>
-          </motion.div>
+          </m.div>
         ))}
       </div>
 

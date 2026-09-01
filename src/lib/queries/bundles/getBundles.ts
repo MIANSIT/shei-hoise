@@ -12,6 +12,7 @@ export interface BundleListItem {
   base_price: number;
   discounted_price: number | null;
   featured: boolean;
+  free_delivery: boolean;
   status: string;
   primary_image: { image_url: string } | null;
   component_count: number;
@@ -36,7 +37,7 @@ export async function getBundles({
     .from("products")
     .select(
       `
-      id, name, slug, sku, base_price, discounted_price, featured, status,
+      id, name, slug, sku, base_price, discounted_price, featured, free_delivery, status,
       product_images(image_url, is_primary),
       bundle_items!bundle_items_bundle_product_id_fkey(id)
       `,
@@ -72,6 +73,7 @@ export async function getBundles({
       base_price: Number(b.base_price),
       discounted_price: b.discounted_price,
       featured: b.featured === true,
+      free_delivery: b.free_delivery === true,
       status: b.status,
       primary_image: primary ? { image_url: primary.image_url } : null,
       component_count: (b.bundle_items ?? []).length,

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Gift } from "lucide-react";
 import PriceTag from "@/app/components/landing/PriceTag/PriceTag";
@@ -42,7 +42,7 @@ export default function PricingCard({
   const hasTrialBtn = trialDays > 0;
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
@@ -88,7 +88,7 @@ export default function PricingCard({
 
       {/* Free Trial Banner — only shown when trial_days > 0 */}
       {trialDays > 0 && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.2 }}
@@ -136,7 +136,7 @@ export default function PricingCard({
               highlighted ? "text-white/60" : "text-emerald-400"
             }`}
           />
-        </motion.div>
+        </m.div>
       )}
 
       {features.length > 0 && (
@@ -181,6 +181,6 @@ export default function PricingCard({
           </p>
         )}
       </div>
-    </motion.div>
+    </m.div>
   );
 }

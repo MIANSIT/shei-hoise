@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import ProductCard from "./shop/ProductCard";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Product } from "@/lib/types/product";
 import {
   getProductRatingSummaries,
@@ -49,7 +49,7 @@ export default function ProductGrid({
     );
 
   return (
-    <motion.div
+    <m.div
       layout
       // 2 cols on mobile → 3 on md → 4 on lg → 5 on xl
       // gap-3 on mobile, gap-4 on sm+
@@ -57,7 +57,7 @@ export default function ProductGrid({
     >
       <AnimatePresence mode="popLayout">
         {products.map((product, index) => (
-          <motion.div
+          <m.div
             key={`${product.id}-${productIndexOffset + index}`}
             layout
             initial={{ opacity: 0, y: 16 }}
@@ -78,9 +78,9 @@ export default function ProductGrid({
               isLoading={loadingProductId === product.id}
               rating={ratings[product.id]}
             />
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
-    </motion.div>
+    </m.div>
   );
 }

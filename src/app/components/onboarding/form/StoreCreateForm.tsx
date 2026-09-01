@@ -3,7 +3,7 @@
 import { Button } from "antd";
 import { Path, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { AdminAuthIllustration } from "@/app/components/layout/auth/AdminAuthIllustration";
 
@@ -18,6 +18,8 @@ import {
 } from "@/lib/hook/onboarding/useStepForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useGsapScope } from "@/lib/gsap/useGsapScope";
+import { gsap } from "gsap";
 
 import UserInformation, {
   AccountValidationReason,
@@ -178,15 +180,16 @@ export default function StoreCreateForm({
     const isStepValid = await trigger(currentFields, { shouldFocus: true });
     if (!isStepValid) {
       notify.error(t.onboarding.fillRequired);
+      shakePanel();
       return;
     }
     if (currentStep === USER_INFO_STEP && blockedByAccountValidation()) return;
-    next();
+    withDirection(currentStep + 1, next);
   };
 
   const handleStepClick = async (stepIndex: number) => {
     if (stepIndex < currentStep) {
-      goTo(stepIndex);
+      withDirection(stepIndex, () => goTo(stepIndex));
     } else if (stepIndex === currentStep) {
       return;
     } else {
@@ -196,7 +199,7 @@ export default function StoreCreateForm({
         return;
       }
       if (currentStep === USER_INFO_STEP && blockedByAccountValidation()) return;
-      goTo(stepIndex);
+      withDirection(stepIndex, () => goTo(stepIndex));
     }
   };
 
@@ -209,6 +212,109 @@ export default function StoreCreateForm({
     onSubmit(data, reset);
   };
 
+  // Which way the last step change went, so the panel slides in from the side
+  // it came from. Direction is what turns two panels into "steps" — a merchant
+  // sees whether they advanced or went back without reading anything.
+  const directionRef = useRef<1 | -1>(1);
+  const previousStepRef = useRef(currentStep);
+
+  const panelScope = useGsapScope(
+    ({ root, reduced, gsap: g }) => {
+      const direction = directionRef.current;
+
+      if (reduced) {
+        g.set(root, { opacity: 1, x: 0 });
+        return;
+      }
+
+      // First render is not a transition — a wizard that slides in before the
+      // merchant has done anything reads as jitter, not as feedback.
+      if (previousStepRef.current === currentStep) {
+        g.set(root, { opacity: 1, x: 0 });
+        return;
+      }
+
+      g.fromTo(
+        root,
+        { opacity: 0, x: 26 * direction },
+        { opacity: 1, x: 0, duration: 0.34, ease: "power3.out" },
+      );
+    },
+    [currentStep],
+  );
+
+  const progressScope = useGsapScope(
+    ({ q, reduced, gsap: g }) => {
+      // Three steps is short enough that showing the remaining distance
+      // shrink is what stops people abandoning halfway.
+      const pct = (currentStep / (stepsList.length - 1)) * 100;
+      g.to(q("[data-progress-fill]"), {
+        width: `${pct}%`,
+        duration: reduced ? 0 : 0.5,
+        ease: "power2.out",
+      });
+    },
+    [currentStep],
+  );
+
+  // Page-load entrance, the same idea as the landing hero: a merchant arriving
+  // here has just clicked "Start for Free", and an instant wall of form fields
+  // is a harder thing to land on than one that assembles. Order matters — the
+  // reassurance (trust strip, brand panel) resolves before the work does.
+  const enterScope = useGsapScope(({ q, reduced, gsap: g }) => {
+    const targets = q("[data-enter]");
+
+    if (reduced) {
+      g.set(targets, { opacity: 1, y: 0 });
+      return;
+    }
+
+    g.timeline({ defaults: { ease: "power3.out" }, delay: 0.05 })
+      .from(q("[data-enter='trust']"), { y: -10, opacity: 0, duration: 0.4 })
+      .from(q("[data-enter='aside']"), { x: -18, opacity: 0, duration: 0.55 }, "-=0.2")
+      .from(q("[data-enter='steps']"), { y: 12, opacity: 0, duration: 0.45 }, "-=0.35")
+      .from(q("[data-enter='panel']"), { y: 18, opacity: 0, duration: 0.55 }, "-=0.3")
+      // The first field is where the merchant has to act, so it arrives last
+      // and alone — nothing else is moving by the time it lands.
+      .from(q("[data-enter='progress']"), { opacity: 0, duration: 0.35 }, "-=0.4");
+  });
+
+  /**
+   * A short horizontal shake on the form panel when a step fails validation.
+   *
+   * The toast alone is easy to miss on mobile, where it can sit above the
+   * fold while the merchant is looking at the button they just pressed. This
+   * puts the feedback where their attention already is, and scrolls the first
+   * invalid field into view — react-hook-form focuses it, but focus does not
+   * guarantee it is on screen inside a scrolling panel.
+   */
+  const shakePanel = () => {
+    const panel = panelScope.current;
+    if (!panel) return;
+
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.fromTo(
+        panel,
+        { x: -8 },
+        { x: 0, duration: 0.45, ease: "elastic.out(1, 0.35)" },
+      );
+    }
+
+    panel
+      .querySelector<HTMLElement>("[aria-invalid='true'], .ant-form-item-has-error")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  /**
+   * Marks which way the wizard is about to move, so the panel animation knows
+   * its direction before React re-renders with the new step.
+   */
+  const withDirection = (target: number, move: () => void) => {
+    directionRef.current = target > currentStep ? 1 : -1;
+    previousStepRef.current = currentStep;
+    move();
+  };
+
   const sidebarBullets = [
     t.onboarding.sidebarBullet1,
     t.onboarding.sidebarBullet2,
@@ -219,9 +325,15 @@ export default function StoreCreateForm({
   ];
 
   return (
-    <div className='mx-auto flex w-full max-w-6xl flex-col p-4 md:p-6'>
+    <div
+      ref={enterScope as React.RefObject<HTMLDivElement>}
+      className='mx-auto flex w-full max-w-6xl flex-col p-4 md:p-6'
+    >
       {/* Trust strip */}
-      <div className='mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground'>
+      <div
+        data-enter='trust'
+        className='mb-6 flex items-center justify-center gap-2 text-xs text-muted-foreground'
+      >
         <ShieldCheck className='h-3.5 w-3.5 text-chart-2' />
         <span>
           {t.onboarding.trustStripPrefix}
@@ -233,7 +345,10 @@ export default function StoreCreateForm({
       <div className='flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-center'>
         <div className='flex w-full max-w-2xl flex-col items-center'>
           {/* Step indicator — centered above the form itself, not the whole row */}
-          <div className='mb-8 flex items-center justify-center gap-3 sm:gap-4'>
+          <div
+            data-enter='steps'
+            className='mb-8 flex items-center justify-center gap-3 sm:gap-4'
+          >
             {steps.map((step, idx) => (
               <div key={idx} className='flex items-center gap-3 sm:gap-4'>
                 <button
@@ -276,14 +391,41 @@ export default function StoreCreateForm({
             ))}
           </div>
 
+          {/* Progress — how much is left, not just where you are */}
+          <div
+            ref={progressScope as React.RefObject<HTMLDivElement>}
+            data-enter='progress'
+            className='mb-6 w-full'
+          >
+            <div className='h-1 w-full overflow-hidden rounded-full bg-border'>
+              <div
+                data-progress-fill
+                className='h-full rounded-full bg-chart-2'
+                style={{ width: 0 }}
+              />
+            </div>
+            <p className='mt-2 text-center text-xs text-muted-foreground'>
+              {t.onboarding.stepCounterPrefix} {currentStep + 1}{" "}
+              {t.onboarding.stepCounterOf} {stepsList.length}
+            </p>
+          </div>
+
           {/* Form Content */}
-          <div className='w-full rounded-3xl border border-chart-2/10 bg-card p-6 shadow-2xl shadow-chart-2/10 md:p-10'>
+          <div
+            ref={panelScope as React.RefObject<HTMLDivElement>}
+            data-enter='panel'
+            className='w-full rounded-3xl border border-chart-2/10 bg-card p-6 shadow-2xl shadow-chart-2/10 md:p-10'
+          >
             {currentContent}
 
             {/* Navigation Buttons */}
             <div className='mt-8 flex items-center justify-between'>
               {!isFirst && (
-                <Button onClick={prev} type='default' className='rounded-full px-6'>
+                <Button
+                  onClick={() => withDirection(currentStep - 1, prev)}
+                  type='default'
+                  className='rounded-full px-6'
+                >
                   {t.onboarding.previous}
                 </Button>
               )}
@@ -344,7 +486,10 @@ export default function StoreCreateForm({
         </div>
 
         {/* Brand panel — desktop/wide screens only, fills the space beside the form */}
-        <aside className='sticky top-6 hidden w-85 shrink-0 flex-col lg:order-first lg:flex'>
+        <aside
+          data-enter='aside'
+          className='sticky top-6 hidden w-85 shrink-0 flex-col lg:order-first lg:flex'
+        >
           <span className='text-xs font-bold uppercase tracking-widest text-chart-2'>
             {t.onboarding.sidebarEyebrow}
           </span>
