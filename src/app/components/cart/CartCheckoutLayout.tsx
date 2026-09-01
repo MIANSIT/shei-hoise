@@ -2,7 +2,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
@@ -31,7 +31,7 @@ export default function CartCheckoutLayout({
     const displayCurrency = currencyLoading ? "" : currency ?? "";
   const displayCurrencyIconSafe = displayCurrency || "BDT"; // fallback
   return (
-    <motion.div 
+    <m.div 
       className="pt-4 border-t border-gray-700 m-4"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -39,7 +39,7 @@ export default function CartCheckoutLayout({
     >
       <div className="flex justify-between mb-4">
         <span>{t.cart.subtotalLabel}</span>
-        <motion.span 
+        <m.span 
           className="font-bold"
           key={`subtotal-${subtotal}`}
           initial={{ scale: 1.1 }}
@@ -47,9 +47,9 @@ export default function CartCheckoutLayout({
           transition={{ duration: 0.2 }}
         >
          {formattedSubtotal} {displayCurrencyIconSafe}
-        </motion.span>
+        </m.span>
       </div>
-      <motion.div
+      <m.div
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -59,7 +59,7 @@ export default function CartCheckoutLayout({
         >
           {buttonText ?? t.cart.proceedToCheckout}
         </Button>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

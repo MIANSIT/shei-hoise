@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -58,15 +58,15 @@ export default function AllStores() {
   return (
     <section className="py-12 md:py-16 px-3 bg-muted/10">
       <div className="container mx-auto text-center mb-12 md:mb-16">
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-3xl md:text-4xl font-bold mb-4"
         >
           Featured Stores
-        </motion.h2>
-        <motion.p
+        </m.h2>
+        <m.p
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -74,10 +74,10 @@ export default function AllStores() {
         >
           Check out some of the amazing stores created by our Store Owners.
           <br />
-        </motion.p>
+        </m.p>
       </div>
 
-      <motion.div
+      <m.div
         className="grid md:grid-cols-3 lg:grid-cols-4 gap-8 max-w-6xl mx-auto"
         initial="hidden"
         whileInView="visible"
@@ -88,7 +88,7 @@ export default function AllStores() {
         }}
       >
         {stores.map((store) => (
-          <motion.div
+          <m.div
             key={store.id}
             variants={{
               hidden: { opacity: 0, y: 20 },
@@ -131,9 +131,9 @@ export default function AllStores() {
                 @{store.store_slug}
               </p>
             </Link>
-          </motion.div>
+          </m.div>
         ))}
-      </motion.div>
+      </m.div>
 
       {/* Pagination Buttons */}
       {/* Pagination info and buttons */}

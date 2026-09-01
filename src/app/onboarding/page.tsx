@@ -7,6 +7,7 @@ import {
   CreateUserType,
 } from "@/lib/schema/onboarding/user.schema";
 import StoreCreateForm from "@/app/components/onboarding/form/StoreCreateForm";
+import StoreCreatedOverlay from "@/app/components/onboarding/StoreCreatedOverlay";
 import { createUser } from "@/lib/queries/onboarding/createUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import Header from "@/app/components/common/Header";
@@ -17,6 +18,12 @@ import { supabase } from "@/lib/supabase";
 
 export default function StoreCreatePage() {
   const [loading, setLoading] = useState(false);
+  // Held until the success sequence finishes, so the merchant sees their store
+  // confirmed before the dashboard replaces the screen.
+  const [createdStore, setCreatedStore] = useState<{
+    name: string;
+    destination: string;
+  } | null>(null);
   const notify = useSheiNotification();
   const router = useRouter();
   const t = useTranslation();
@@ -42,12 +49,10 @@ export default function StoreCreatePage() {
         password: payload.password,
       });
 
-      if (signInError) {
-        router.push("/admin-login");
-        return;
-      }
-
-      router.push("/dashboard/complete-setup");
+      setCreatedStore({
+        name: payload.store.store_name ?? "",
+        destination: signInError ? "/admin-login" : "/dashboard/complete-setup",
+      });
     } catch (err: unknown) {
       console.error(err);
 
@@ -86,6 +91,13 @@ export default function StoreCreatePage() {
       </main>
 
       <Footer />
+
+      {createdStore && (
+        <StoreCreatedOverlay
+          storeName={createdStore.name}
+          onDone={() => router.push(createdStore.destination)}
+        />
+      )}
     </div>
   );
 }

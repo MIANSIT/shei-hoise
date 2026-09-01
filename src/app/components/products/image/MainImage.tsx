@@ -4,7 +4,7 @@ import { FC, useState } from "react";
 import mergeRefs from "../../../../lib/hook/mergeMultipleRefs";
 import { SwipeableHandlers } from "react-swipeable";
 import { X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 interface MainImageProps {
   src: string;
@@ -90,7 +90,7 @@ const MainImage: FC<MainImageProps> = ({
       {/* ── Lightbox ── */}
       <AnimatePresence>
         {lightboxOpen && (
-          <motion.div
+          <m.div
             key="lightbox"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -126,7 +126,7 @@ const MainImage: FC<MainImageProps> = ({
             )}
 
             {/* Image */}
-            <motion.div
+            <m.div
               key={lightboxIndex}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -143,7 +143,7 @@ const MainImage: FC<MainImageProps> = ({
                 priority
                 sizes="640px"
               />
-            </motion.div>
+            </m.div>
 
             {/* Next */}
             {images.length > 1 && (
@@ -184,7 +184,7 @@ const MainImage: FC<MainImageProps> = ({
                 {lightboxIndex + 1} / {images.length}
               </span>
             )}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>

@@ -1,6 +1,6 @@
 import { Button } from "../../../../components/ui/button";
 import { Minus, Plus } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 interface ProductQuantitySelectorProps {
@@ -111,7 +111,7 @@ const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
               maxLength={3}
             />
           ) : (
-            <motion.span
+            <m.span
               key={quantity}
               initial={{ 
                 y: changingDirection === "up" ? -20 : changingDirection === "down" ? 20 : 0,
@@ -126,7 +126,7 @@ const ProductQuantitySelector: React.FC<ProductQuantitySelectorProps> = ({
               className="absolute font-medium text-sm text-foreground"
             >
               {quantity}
-            </motion.span>
+            </m.span>
           )}
         </AnimatePresence>
       </div>

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "./components/ui/sheiSonner/sonner"; // Import your custom Toaster
 import { CartProvider } from "@/lib/context/CartContext";
+import MotionProvider from "./components/motion/MotionProvider";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 const geistSans = Geist({
@@ -32,10 +33,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AntdRegistry>
-          <CartProvider>
-            {children}
-            <Toaster position='top-right' />
-          </CartProvider>
+          <MotionProvider>
+            <CartProvider>
+              {children}
+              <Toaster position='top-right' />
+            </CartProvider>
+          </MotionProvider>
         </AntdRegistry>
       </body>
     </html>

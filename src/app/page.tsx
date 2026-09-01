@@ -2,6 +2,7 @@
 
 import HeroSection from "@/app/components/landing/HeroSection";
 import FeaturesSection from "@/app/components/landing/FeaturesSection";
+import StatsSection from "@/app/components/landing/StatsSection";
 import HowItWorksSection from "@/app/components/landing/HowItWorksSection";
 // import PricingSection from "@/app/components/landing/PricingSection";
 import CTASection from "@/app/components/landing/CTASection";
@@ -16,6 +17,9 @@ export default function LandingPage() {
       <main className="flex-1">
         <HeroSection />
         <FeaturesSection />
+        {/* Proof after the pitch: the reader now knows what it does, so scale
+            is the next question they ask. */}
+        <StatsSection />
         <HowItWorksSection />
         {/* <PricingSection />   */}
         {/* <StoresSection /> */}

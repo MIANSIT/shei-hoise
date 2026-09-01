@@ -15,7 +15,7 @@ import { Category } from "@/lib/types/category";
 import NotFoundPage from "../../not-found";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { fbq, FbEvent } from "@/lib/utils/fbPixel";
@@ -230,7 +230,11 @@ export default function ShopPage({ params }: ShopPageProps) {
   if (storeExists === false) return <NotFoundPage />;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    // Fades in as the skeleton unmounts so the swap reads as loading
+    // finishing rather than as a flash of new layout.
+    <m.div
+      className="min-h-screen bg-white dark:bg-gray-950" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.28, ease: "easeOut" }}
+    >
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Filter Section */}
         <ProductFilterSection
@@ -248,7 +252,7 @@ export default function ShopPage({ params }: ShopPageProps) {
             <Loader2 className="h-7 w-7 animate-spin text-gray-400 dark:text-gray-500" />
           </div>
         ) : products.length === 0 ? (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-32 text-center"
@@ -266,7 +270,7 @@ export default function ShopPage({ params }: ShopPageProps) {
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
               {t.shop.tryDifferent}
             </p>
-          </motion.div>
+          </m.div>
         ) : (
           <>
             <ProductGrid
@@ -279,7 +283,7 @@ export default function ShopPage({ params }: ShopPageProps) {
 
             {/* Load More */}
             {hasMore && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center gap-3 mt-10 mb-16"
@@ -314,12 +318,12 @@ export default function ShopPage({ params }: ShopPageProps) {
                     </>
                   )}
                 </button>
-              </motion.div>
+              </m.div>
             )}
 
             {/* End state */}
             {!hasMore && products.length > 0 && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center gap-1 py-12 border-t border-gray-100 dark:border-gray-800"
@@ -330,11 +334,11 @@ export default function ShopPage({ params }: ShopPageProps) {
                 <p className="text-xs text-gray-400 dark:text-gray-500">
                   {t.shop.reachedEnd}
                 </p>
-              </motion.div>
+              </m.div>
             )}
           </>
         )}
       </div>
-    </div>
+    </m.div>
   );
 }
