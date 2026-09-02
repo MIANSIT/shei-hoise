@@ -12,6 +12,7 @@ import { StoreOrder } from "@/lib/types/order";
 import OrderControls from "@/app/components/admin/order/allOrder/DropDown/OrderControls";
 import CourierShipmentPanel from "@/app/components/admin/order/allOrder/Table/CourierShipmentPanel";
 import NotifyWhatsAppButton from "@/app/components/admin/order/allOrder/Table/NotifyWhatsAppButton";
+import CollectPaymentButton from "@/app/components/admin/order/allOrder/Table/CollectPaymentButton";
 import dataService from "@/lib/queries/dataService";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification"; // Adjust the import path
 
@@ -211,7 +212,10 @@ const OrderProductTable: React.FC<Props> = ({
         onSaveAll={handleSaveAll}
         saving={saving}
       />
-      <NotifyWhatsAppButton order={order} />
+      <div className="flex items-center gap-2 flex-wrap">
+        <NotifyWhatsAppButton order={order} />
+        <CollectPaymentButton order={order} onCollected={onRefresh} />
+      </div>
       <CourierShipmentPanel
         order={order}
         onShipped={(consignmentId, orderStatus) =>

@@ -2,34 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Currency, CURRENCY_NAMES } from "@/lib/types/enums";
-import fs from "fs";
-import path from "path";
-
-interface Product {
-  name: string;
-  qty: number;
-  price: number;
-}
-
-interface Store {
-  name: string;
-  address?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  logo?: string | null;
-}
-
-interface Customer {
-  name: string;
-  address?: string;
-  contact?: string;
-  email?: string;
-}
-
-interface AdditionalCharge {
-  label: string;
-  amount: number;
-}
+import {
+  InvoicePdfProduct as Product,
+  InvoicePdfStore as Store,
+  InvoicePdfCustomer as Customer,
+  InvoicePdfAdditionalCharge as AdditionalCharge,
+  applyBengaliFont,
+  formatStatus,
+  hasBengali,
+  registerBengaliFont,
+} from "@/lib/utils/invoicePdfHelpers";
 
 interface InvoiceRequest {
   store: Store;
@@ -49,75 +31,6 @@ interface InvoiceRequest {
   notes?: string;
   orderCreatedAt?: string | null;
   type?: "A4" | "POS";
-}
-
-// ==================== BENGALI FONT SUPPORT ====================
-let bengaliFontCache: { regular: string | null; bold: string | null } | null =
-  null;
-
-function getBengaliFontData(): { regular: string | null; bold: string | null } {
-  if (bengaliFontCache !== null) return bengaliFontCache;
-  try {
-    const fontsDir = path.join(process.cwd(), "public", "fonts");
-    const regularPath = path.join(fontsDir, "NotoSansBengali-Regular.ttf");
-    const boldPath = path.join(fontsDir, "NotoSansBengali-Bold.ttf");
-    bengaliFontCache = {
-      regular: fs.existsSync(regularPath)
-        ? fs.readFileSync(regularPath).toString("base64")
-        : null,
-      bold: fs.existsSync(boldPath)
-        ? fs.readFileSync(boldPath).toString("base64")
-        : null,
-    };
-  } catch {
-    bengaliFontCache = { regular: null, bold: null };
-  }
-  return bengaliFontCache;
-}
-
-function hasBengali(text: string): boolean {
-  return /[ঀ-৿]/.test(text);
-}
-
-function registerBengaliFont(pdf: jsPDF): boolean {
-  const fontData = getBengaliFontData();
-  if (!fontData.regular) return false;
-  try {
-    pdf.addFileToVFS("NotoSansBengali-Regular.ttf", fontData.regular);
-    pdf.addFont("NotoSansBengali-Regular.ttf", "NotoSansBengali", "normal");
-
-    // Verify registration succeeded (jsPDF fires PubSub errors without throwing)
-    const fontList = pdf.getFontList();
-    if (!fontList["NotoSansBengali"]) return false;
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Sets Bengali font if the text contains Bengali characters, otherwise keeps
- * the current font unchanged. Call pdf.setFont(...) to restore after use.
- */
-function applyBengaliFont(
-  pdf: jsPDF,
-  text: string,
-  bengaliLoaded: boolean,
-): boolean {
-  if (bengaliLoaded && hasBengali(text)) {
-    pdf.setFont("NotoSansBengali", "normal");
-    return true;
-  }
-  return false;
-}
-
-// Helper function to format status text (capitalize properly)
-function formatStatus(status: string): string {
-  return status
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
 }
 
 export async function POST(req: NextRequest) {

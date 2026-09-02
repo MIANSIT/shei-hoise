@@ -130,6 +130,8 @@ export interface StoreOrder {
   courier_order_status?: string | null;
   courier_credential_id?: string | null;
   whatsapp_notified_at?: string | null;
+  /** 'pos' for a walk-in Quick Sale order, 'online' for everything else. */
+  channel?: "online" | "pos";
 }
 
 // ===== FORM DATA TYPES =====
@@ -164,6 +166,9 @@ export interface CreateOrderData {
   paymentMethod: string;
   currency?: string;
   deliveryOption: string;
+  courier?: string;
+  /** Defaults to "online" server-side when omitted. */
+  channel?: "online" | "pos";
 }
 
 // ===== CUSTOMER ORDER TYPES =====

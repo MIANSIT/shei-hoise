@@ -193,6 +193,8 @@ interface InvoiceModalProps {
   discountAmount?: number;
   additionalCharges?: AdditionalCharge[];
   totalDue: number;
+  /** Sum of any customer_payments recorded against this order (advance/partial payment) — omit or 0 for a normal, untouched order. */
+  amountPaid?: number;
   paymentStatus?: PaymentStatus;
   paymentMethod?: string;
   orderStatus?: OrderStatus;
@@ -219,6 +221,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     discountAmount = 0,
     additionalCharges = [],
     totalDue,
+    amountPaid = 0,
     paymentStatus = "PENDING",
     paymentMethod = "N/A",
     orderStatus = "PROCESSING",
@@ -249,6 +252,11 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
   const formattedPaymentStatus = formatStatus(paymentStatus);
   const formattedOrderStatus = formatStatus(orderStatus);
+
+  // Only worth showing when there's a genuine partial situation — an order
+  // with no advance recorded (the common case) stays exactly as it was.
+  const hasAdvancePayment = amountPaid > 0 && amountPaid < totalDue;
+  const remainingBalance = Math.max(0, totalDue - amountPaid);
 
   // Reset copied
   useEffect(() => {
@@ -384,6 +392,18 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             <span>GRAND TOTAL:</span>
             <span>${currencyIcon}${totalDue.toFixed(2)}</span>
           </div>
+          ${
+            hasAdvancePayment
+              ? `<div class="summary-row">
+            <span>Paid:</span>
+            <span>${currencyIcon}${amountPaid.toFixed(2)}</span>
+          </div>
+          <div class="summary-row" style="font-weight:bold;color:#dc2626;">
+            <span>Remaining Balance:</span>
+            <span>${currencyIcon}${remainingBalance.toFixed(2)}</span>
+          </div>`
+              : ""
+          }
         </div>
 
         ${
@@ -724,6 +744,12 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       <span>TOTAL:</span>
       <span>${displayCurrency}${totalDue.toFixed(2)}</span>
     </div>
+    ${
+      hasAdvancePayment
+        ? `<div class="row"><span>Paid:</span><span>${displayCurrency}${amountPaid.toFixed(2)}</span></div>
+    <div class="row bold"><span>Remaining Balance:</span><span>${displayCurrency}${remainingBalance.toFixed(2)}</span></div>`
+        : ""
+    }
 
     <div class="divider-dashed"></div>
 
@@ -1065,6 +1091,25 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                           {totalDue.toFixed(2)}
                         </span>
                       </div>
+
+                      {hasAdvancePayment && (
+                        <>
+                          <div className="flex justify-between items-center text-sm text-muted-foreground">
+                            <span>Paid</span>
+                            <span className="font-mono">
+                              {currencyIcon}
+                              {amountPaid.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm font-semibold text-rose-600 dark:text-rose-400">
+                            <span>Remaining Balance</span>
+                            <span className="font-mono">
+                              {currencyIcon}
+                              {remainingBalance.toFixed(2)}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 

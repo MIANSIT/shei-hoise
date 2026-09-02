@@ -2,11 +2,13 @@
 import {
   Card,
   Form,
+  Input,
   InputNumber,
   Select,
   Row,
   Col,
   Space,
+  Switch,
   Typography,
   Divider,
   Statistic,
@@ -62,6 +64,12 @@ interface OrderSummaryProps {
   setPaymentStatus: (status: PaymentStatus) => void;
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
+  isDueSale?: boolean;
+  setIsDueSale?: (due: boolean) => void;
+  amountReceivedNow?: number | null;
+  setAmountReceivedNow?: (amount: number | null) => void;
+  paymentReference?: string;
+  setPaymentReference?: (reference: string) => void;
   courier: string;
   setCourier: (courier: string) => void;
   deliveryCouriers?: DeliveryCourier[];
@@ -91,6 +99,12 @@ export default function OrderSummary({
   setPaymentStatus,
   paymentMethod,
   setPaymentMethod,
+  isDueSale = false,
+  setIsDueSale,
+  amountReceivedNow,
+  setAmountReceivedNow,
+  paymentReference = "",
+  setPaymentReference,
   courier,
   setCourier,
   deliveryCouriers = [],
@@ -508,6 +522,7 @@ export default function OrderSummary({
                   onChange={(value: PaymentStatus) => setPaymentStatus(value)}
                   style={{ width: "100%" }}
                   size="large"
+                  disabled={isDueSale}
                 >
                   {paymentStatusOptions.map((option) => (
                     <Option key={option.value} value={option.value}>
@@ -515,9 +530,85 @@ export default function OrderSummary({
                     </Option>
                   ))}
                 </Select>
+                {isDueSale && (
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    Derived from the advance amount received, below.
+                  </Text>
+                )}
               </Form.Item>
             </Col>
           </Row>
+
+          {setIsDueSale && (
+            <>
+              <Form.Item
+                label={
+                  <span className="flex items-center gap-1">
+                    Advance Payment
+                  </span>
+                }
+              >
+                <Switch
+                  checked={isDueSale}
+                  onChange={(checked) => {
+                    setIsDueSale(checked);
+                    if (!checked) {
+                      setAmountReceivedNow?.(null);
+                      setPaymentReference?.("");
+                    }
+                  }}
+                />
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  Turn on when the customer already sent an advance (e.g. bKash/Nagad) — records
+                  what&apos;s been paid now; the remaining balance is collected normally (e.g.
+                  Cash on Delivery), or anytime from Orders → Customer Dues.
+                </Text>
+              </Form.Item>
+
+              {isDueSale && (
+                <>
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Advance amount received">
+                        <InputNumber
+                          min={0}
+                          max={totalAmount}
+                          value={amountReceivedNow}
+                          onChange={(v) => setAmountReceivedNow?.(v)}
+                          placeholder="0.00 (nothing received yet)"
+                          style={{ width: "100%" }}
+                          size="large"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Remaining balance">
+                        <Statistic
+                          value={Math.max(
+                            0,
+                            totalAmount - Math.min(Math.max(amountReceivedNow || 0, 0), totalAmount),
+                          )}
+                          precision={2}
+                          prefix={displayCurrencyIcon}
+                          valueStyle={{ fontSize: 20, color: "#cf1322" }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  {setPaymentReference && (
+                    <Form.Item label="Advance payment reference (optional)">
+                      <Input
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        placeholder="e.g. bKash TrxID 8N7A3XZQ1"
+                        size="large"
+                      />
+                    </Form.Item>
+                  )}
+                </>
+              )}
+            </>
+          )}
 
           <Form.Item
             label={

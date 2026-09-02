@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Input, Space, Pagination, notification } from "antd";
 import { useRouter } from "next/navigation";
-import { SearchOutlined, PlusOutlined, DownloadOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined } from "@ant-design/icons";
 import { Star } from "lucide-react";
 import ProductTable from "./ProductTable";
 import {
@@ -11,6 +11,13 @@ import {
   ProductWithVariants,
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useStore } from "@/lib/hook/stores/useStore";
+import {
+  getProductPublicUrl,
+  renderProductQrDataUrl,
+  openLabelPrintWindow,
+} from "@/lib/utils/productQr";
+import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import { ProductStatus } from "@/lib/types/enums";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
@@ -21,7 +28,8 @@ const Products: React.FC = () => {
   const t = useTranslation();
   const n = useLocalNum();
   const router = useRouter();
-  const { user } = useCurrentUser();
+  const { user, storeSlug } = useCurrentUser();
+  const { store } = useStore(user?.store_id ?? null);
 
   const statusConfig = [
     { key: "ALL", label: t.admin.allProductsFilter },
@@ -53,6 +61,7 @@ const Products: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [printingLabels, setPrintingLabels] = useState(false);
   const [counts, setCounts] = useState<Record<ProductStatus | "ALL", number>>({
     [ProductStatus.ACTIVE]: 0,
     [ProductStatus.INACTIVE]: 0,
@@ -255,6 +264,65 @@ const Products: React.FC = () => {
     }
   };
 
+  const handlePrintAllQrLabels = async () => {
+    if (!user?.store_id || !storeSlug) return;
+
+    setPrintingLabels(true);
+    try {
+      const res = await getProductsWithVariants({
+        storeId: user.store_id,
+        search,
+        status: status === "ALL" ? undefined : status,
+        featured: featuredOnly ? true : undefined,
+        excludeBundles: true,
+      });
+
+      if (!res.data.length) {
+        notification.info({
+          message: t.admin.noProductsFound,
+        });
+        return;
+      }
+
+      const storeDisplayName = store?.store_name || "My Shop";
+      const logoUrl = store?.logo_url;
+
+      // Sized in mm, not px — these go straight onto product packaging, not
+      // a display sheet, so each label stays small (22mm QR) and the grid
+      // packs more of them per A4 page.
+      const cards = await Promise.all(
+        res.data.map(async (product) => {
+          const url = getProductPublicUrl(storeSlug, product.slug);
+          const dataUrl = await renderProductQrDataUrl(url, logoUrl);
+          return (
+            '<div style="border:1px dashed #999;border-radius:2mm;padding:2mm;break-inside:avoid;text-align:center;">' +
+            (logoUrl
+              ? `<img src="${logoUrl}" style="width:3.5mm;height:3.5mm;border-radius:1mm;object-fit:cover;" />`
+              : "") +
+            `<div style="font-size:6px;color:#555;margin:0.5mm 0 1mm;">${storeDisplayName}</div>` +
+            `<img src="${dataUrl}" style="width:22mm;height:22mm;" />` +
+            `<div style="font-weight:700;font-size:6.5px;margin-top:1mm;">${product.name}</div>` +
+            "</div>"
+          );
+        }),
+      );
+
+      openLabelPrintWindow(
+        sanitizeFilename(`${storeDisplayName}-QR-Labels`),
+        `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3mm;">${cards.join("")}</div>`,
+        "@page { size: A4; margin: 10mm; }",
+      );
+    } catch (error) {
+      console.error("Failed to print QR labels:", error);
+      notification.error({
+        message: "Failed to generate QR labels",
+        description: error instanceof Error ? error.message : undefined,
+      });
+    } finally {
+      setPrintingLabels(false);
+    }
+  };
+
   const handleAddProduct = () => router.push("/dashboard/products/add-product");
 
   return (
@@ -308,8 +376,16 @@ const Products: React.FC = () => {
           </Space.Compact>
         </div>
 
-        {/* Download button */}
+        {/* Download / QR labels */}
         <div className="flex items-center gap-2">
+          <Button
+            icon={<QrcodeOutlined />}
+            loading={printingLabels}
+            disabled={!storeSlug}
+            onClick={handlePrintAllQrLabels}
+          >
+            Print All QR Labels
+          </Button>
           <Button
             icon={<DownloadOutlined />}
             loading={exporting}
@@ -415,6 +491,9 @@ const Products: React.FC = () => {
             loading={loading}
             pagination={undefined}
             onDeleteSuccess={fetchProducts}
+            storeSlug={storeSlug ?? undefined}
+            storeName={store?.store_name ?? undefined}
+            storeLogoUrl={store?.logo_url}
           />
         </div>
       </div>

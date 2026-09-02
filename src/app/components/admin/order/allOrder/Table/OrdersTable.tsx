@@ -13,6 +13,8 @@ import {
   DatePicker,
   Dropdown,
   Popover,
+  Tag,
+  Modal,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StoreOrder } from "@/lib/types/order";
@@ -28,13 +30,13 @@ import {
   EditOutlined,
   DeleteOutlined,
   FileTextOutlined,
-  ExclamationCircleOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import BulkActions from "./BulkActions";
 import BulkCourierShipmentAction from "./BulkCourierShipmentAction";
-import { Check } from "lucide-react";
+import BulkInvoiceAction from "./BulkInvoiceAction";
+import { Check, MapPin, ChevronDown, Trash2 } from "lucide-react";
 // import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import InvoiceModal from "@/app/components/invoice/invoice";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
@@ -52,6 +54,7 @@ import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 
 interface Props {
   orders: StoreOrder[];
+  paidAmountByOrderId?: Record<string, number>;
   riskByPhone?: Record<string, RiskAssessment>;
   historyByPhone?: Record<string, CustomerHistoryEntry[]>;
   total: number;
@@ -69,9 +72,52 @@ interface Props {
   initialStatus?: string;
   totalByOrderStatus?: Record<string, number>; // <--- add this
   totalByPaymentStatus?: Record<string, number>;
+  totalByChannel?: { online: number; pos: number };
+  channelFilter?: "all" | "online" | "pos";
+  onChannelChange?: (channel: "all" | "online" | "pos") => void;
   onRefresh?: () => void;
   onExportOrders?: () => Promise<StoreOrder[]>;
 }
+
+// Same re-skin technique as VendorTable.tsx's TABLE_STYLES — uppercase gray
+// headers, subtle hover tint, borderless rows — for visual consistency with
+// the rest of the dashboard's "modernized antd table" pages.
+const TABLE_STYLES = `
+  .orders-table .ant-table-thead > tr > th {
+    background: #fafafa !important; color: #6b7280 !important;
+    font-size: 11px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: 0.06em !important;
+    border-bottom: 1px solid #f0f0f5 !important; padding: 12px 16px !important;
+  }
+  .dark .orders-table .ant-table-thead > tr > th {
+    background: #1f2937 !important; color: #9ca3af !important;
+    border-bottom-color: #374151 !important;
+  }
+  .orders-table .ant-table-tbody > tr > td {
+    padding: 12px 16px !important; border-bottom: 1px solid #f9fafb !important;
+  }
+  .dark .orders-table .ant-table-tbody > tr > td { border-bottom-color: #374151 !important; }
+  .orders-table .ant-table-tbody > tr:hover > td { background: #fafbff !important; }
+  .dark .orders-table .ant-table-tbody > tr:hover > td { background: #1e293b !important; }
+  .orders-table .ant-table-tbody > tr:last-child > td { border-bottom: none !important; }
+`;
+
+// Label + value pair used throughout the expand panel's detail strip — one
+// shared, theme-aware style instead of each field repeating its own
+// (the old `text-gray-300` label color barely showed up on a light
+// background at all).
+const DetailField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({
+  label,
+  children,
+  className,
+}) => (
+  <div className={className}>
+    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+      {label}
+    </div>
+    <div className="text-sm font-medium text-foreground">{children}</div>
+  </div>
+);
 
 const RISK_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   new: { bg: "bg-gray-100", text: "text-gray-600", label: "New" },
@@ -88,6 +134,7 @@ const FB_STATUS_STYLES: Record<"sent" | "held" | "suppressed", { bg: string; tex
 
 const OrdersTable: React.FC<Props> = ({
   orders,
+  paidAmountByOrderId = {},
   riskByPhone,
   historyByPhone,
   onUpdate,
@@ -105,10 +152,13 @@ const OrdersTable: React.FC<Props> = ({
   loading = false,
   totalByOrderStatus, // <--- add this
   totalByPaymentStatus,
+  totalByChannel = { online: 0, pos: 0 },
+  channelFilter = "all",
+  onChannelChange,
   onRefresh,
   onExportOrders,
 }) => {
-  const { notification, modal } = App.useApp();
+  const { notification } = App.useApp();
   const t = useTranslation();
   const n = useLocalNum();
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
@@ -126,6 +176,7 @@ const OrdersTable: React.FC<Props> = ({
   });
 
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [deleteConfirmOrder, setDeleteConfirmOrder] = useState<StoreOrder | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -148,7 +199,7 @@ const OrdersTable: React.FC<Props> = ({
     );
   };
 
-  const handleDelete = async (order: StoreOrder) => {
+  const handleDelete = (order: StoreOrder) => {
     if (order.status !== OrderStatus.CANCELLED) {
       notification.warning({
         title: t.admin.orderCannotDeleteTitle,
@@ -158,17 +209,13 @@ const OrdersTable: React.FC<Props> = ({
       return;
     }
 
-    modal.confirm({
-      title: t.admin.orderDeleteTitle,
-      icon: <ExclamationCircleOutlined />,
-      content: `Are you sure you want to delete order #${order.order_number}? This action cannot be undone.`,
-      okText: t.admin.orderDeleteOk,
-      okType: "danger",
-      cancelText: t.admin.orderDeleteCancel,
-      onOk: async () => {
-        await performDelete(order.id);
-      },
-    });
+    setDeleteConfirmOrder(order);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmOrder) return;
+    await performDelete(deleteConfirmOrder.id);
+    setDeleteConfirmOrder(null);
   };
 
   const performDelete = async (orderId: string) => {
@@ -330,21 +377,54 @@ const OrdersTable: React.FC<Props> = ({
     }
   };
 
+  // Consolidates what used to be a dedicated Invoice column plus separate
+  // Edit/Delete icon buttons into one menu — frees up column width and
+  // matches the row-action-menu pattern common in modern admin tables.
+  // Glossy tinted chip look shared by the invoice/edit/delete row buttons —
+  // a soft top-to-bottom gradient + hairline border + shadow that lifts
+  // slightly on hover, so each action reads as its own small "premium"
+  // control instead of a flat gray icon.
+  const ACTION_CHIP_BASE =
+    "!w-8 !h-8 !min-w-8 !p-0 !rounded-lg !inline-flex !items-center !justify-center border shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0 transition-all duration-150";
+
+  const renderInvoiceButton = (order: StoreOrder) => (
+    <Tooltip title="View Invoice">
+      <Button
+        type="text"
+        icon={<FileTextOutlined />}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleViewInvoice(order);
+        }}
+        className={`${ACTION_CHIP_BASE} bg-linear-to-b from-indigo-50 to-indigo-100/80 dark:from-indigo-950/50 dark:to-indigo-900/30 border-indigo-200/70 dark:border-indigo-800/40 text-indigo-600! dark:text-indigo-400! hover:from-indigo-100 hover:to-indigo-200/80 dark:hover:from-indigo-900/60 dark:hover:to-indigo-800/40`}
+      />
+    </Tooltip>
+  );
+
   const renderActionButtons = (order: StoreOrder) => (
-    <div className="flex items-center gap-2 justify-center">
+    <div className="flex items-center justify-center gap-1.5">
       <Tooltip title="Edit Order">
-        <EditOutlined
-          className="text-blue-600! cursor-pointer hover:text-blue-800! text-base"
-          onClick={() => handleEdit(order)}
+        <Button
+          type="text"
+          icon={<EditOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEdit(order);
+          }}
+          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-blue-50 to-blue-100/80 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200/70 dark:border-blue-800/40 text-blue-600! dark:text-blue-400! hover:from-blue-100 hover:to-blue-200/80 dark:hover:from-blue-900/60 dark:hover:to-blue-800/40`}
         />
       </Tooltip>
       <Tooltip title="Delete Order">
-        <DeleteOutlined
-          className={`text-red-600! cursor-pointer hover:text-red-800! text-base ${
-            deleteLoading === order.id ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          onClick={() => deleteLoading !== order.id && handleDelete(order)}
-          spin={deleteLoading === order.id}
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          loading={deleteLoading === order.id}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(order);
+          }}
+          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-rose-50 to-rose-100/80 dark:from-rose-950/50 dark:to-rose-900/30 border-rose-200/70 dark:border-rose-800/40 text-rose-600! dark:text-rose-400! hover:from-rose-100 hover:to-rose-200/80 dark:hover:from-rose-900/60 dark:hover:to-rose-800/40`}
         />
       </Tooltip>
     </div>
@@ -449,19 +529,34 @@ const OrdersTable: React.FC<Props> = ({
       title: t.admin.orderColNum,
       dataIndex: "order_number",
       key: "order_number",
-      render: (orderNumber: string) => (
-        <Tooltip title="Click to copy">
-          <span
-            className="group inline-flex items-center gap-1 cursor-pointer text-blue-600 max-w-full overflow-hidden"
-            onClick={(e) => {
-              e.stopPropagation();
-              copyOrderNumber(orderNumber);
-            }}
-          >
-            <span className="truncate">#{orderNumber}</span>
-            <CopyOutlined className="opacity-0 group-hover:opacity-100 text-xs shrink-0" />
-          </span>
-        </Tooltip>
+      render: (orderNumber: string, order: StoreOrder) => (
+        <div className="flex flex-col items-start gap-0.5 max-w-full overflow-hidden">
+          <Tooltip title="Click to copy">
+            <span
+              className="group inline-flex items-center gap-1 cursor-pointer text-blue-600 max-w-full overflow-hidden"
+              onClick={(e) => {
+                e.stopPropagation();
+                copyOrderNumber(orderNumber);
+              }}
+            >
+              <span className="truncate">#{orderNumber}</span>
+              <CopyOutlined className="opacity-0 group-hover:opacity-100 text-xs shrink-0" />
+            </span>
+          </Tooltip>
+          {order.channel === "pos" && (
+            <Tag color="gold" style={{ marginInlineEnd: 0 }}>
+              POS
+            </Tag>
+          )}
+          {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
+            order.payment_status !== PaymentStatus.PAID && (
+              <Tooltip title="Part of this order has already been paid — the rest is still outstanding">
+                <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                  Advance {n(paidAmountByOrderId[order.id].toFixed(0))}
+                </Tag>
+              </Tooltip>
+            )}
+        </div>
       ),
       width: 120,
       fixed: "left" as const,
@@ -483,97 +578,33 @@ const OrdersTable: React.FC<Props> = ({
             {getCustomerInitial(order)}
           </Avatar>
           <div className="min-w-0">
-            <div className="font-medium text-sm truncate max-w-25 lg:max-w-30">
+            <div className="font-medium text-sm truncate max-w-25 lg:max-w-37.5">
               {getCustomerName(order)}
+            </div>
+            <div className="text-xs text-muted-foreground truncate max-w-25 lg:max-w-37.5">
+              {n(getCustomerPhone(order))}
             </div>
           </div>
         </Space>
       ),
-      width: 150,
+      width: 170,
       responsive: ["md"],
     },
     {
-      title: t.admin.orderColPhone,
-      key: "phone",
-      render: (_, order: StoreOrder) => (
-        <div className="truncate max-w-30 lg:max-w-37.5 text-xs lg:text-sm">
-          {n(getCustomerPhone(order))}
-        </div>
-      ),
-      width: 120,
-      responsive: ["lg"],
-    },
-    {
-      title: t.admin.orderColRisk,
-      key: "risk",
-      render: (_, order: StoreOrder) => {
-        const phone = order.shipping_address?.phone;
-        const risk = phone ? riskByPhone?.[phone] : undefined;
-        const style = RISK_STYLES[risk?.level ?? "new"];
-        return (
-          <Tooltip title={risk?.reason ?? "No history yet"}>
-            <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${style.bg} ${style.text}`}>
-              {style.label}
-            </span>
-          </Tooltip>
-        );
-      },
-      width: 90,
-      responsive: ["lg"],
-    },
-    {
-      title: "History",
-      key: "customer_history",
-      render: (_, order: StoreOrder) => {
-        const phone = order.shipping_address?.phone;
-        return (
-          <CustomerOrderHistoryTags
-            history={phone ? historyByPhone?.[phone] : undefined}
-            // Excluded so the tags show only what this customer did *before*
-            // this order — otherwise every row would include itself.
-            currentOrderId={order.id}
-            showEmptyHint
-          />
-        );
-      },
-      width: 110,
-      responsive: ["lg"],
-    },
-    {
-      title: t.admin.orderColFb,
-      key: "fb_status",
-      render: (_, order: StoreOrder) => {
-        const fbStatus = order.fb_purchase_event_status ?? "sent";
-        const style = FB_STATUS_STYLES[fbStatus];
-        return (
-          <Tooltip title={style.reason}>
-            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${style.bg} ${style.text}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-              {style.label}
-            </span>
-          </Tooltip>
-        );
-      },
-      width: 70,
-      responsive: ["xl"],
-    },
-    {
-      title: t.admin.orderColAddress,
-      key: "address",
-      render: (_, order: StoreOrder) => {
-        const displayAddress = getDisplayAddress(order);
-        const fullAddress = getFullAddress(order);
-
-        return (
-          <Tooltip title={fullAddress}>
-            <div className="truncate max-w-30 lg:max-w-37.5 text-xs lg:text-sm">
-              {displayAddress}
-            </div>
-          </Tooltip>
-        );
-      },
-      width: 150,
-      responsive: ["lg"],
+      title: "Channel",
+      key: "channel",
+      render: (_, order: StoreOrder) =>
+        order.channel === "pos" ? (
+          <Tag color="gold" style={{ marginInlineEnd: 0 }}>
+            Quick Sale
+          </Tag>
+        ) : (
+          <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+            Online
+          </Tag>
+        ),
+      width: 100,
+      responsive: ["sm"],
     },
     {
       title: t.admin.orderColTotal,
@@ -618,52 +649,18 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
-      title: t.admin.orderColDelivery,
-      dataIndex: "delivery_option",
-      key: "delivery_option",
-      render: (option: string) => (
-        <span className="text-xs font-medium capitalize">
-          {option || t.admin.orderNotSet}
-        </span>
-      ),
-      width: 100,
-      responsive: ["lg"],
-    },
-    {
-      title: t.admin.orderColPaymentMethod,
-      dataIndex: "payment_method",
-      key: "payment_method",
-      render: (method: string) => (
-        <span className="text-xs font-medium capitalize">
-          {method === "cod" ? t.admin.orderCod : method || t.admin.orderNotSet}
-        </span>
-      ),
-      width: 120,
-      responsive: ["lg"],
-    },
-    {
-      title: t.admin.orderColInvoice,
+      title: "Invoice",
       key: "invoice",
-      render: (_, order: StoreOrder) => (
-        <Tooltip title="View Invoice">
-          <Button
-            type="link"
-            icon={<FileTextOutlined />}
-            onClick={() => handleViewInvoice(order)}
-            className="text-green-600! p-1! h-auto! text-xs"
-            size="small"
-          ></Button>
-        </Tooltip>
-      ),
-      width: 80,
+      render: (_, order: StoreOrder) => renderInvoiceButton(order),
+      width: 64,
       align: "center" as const,
-      responsive: ["md"],
+      responsive: ["sm"],
     },
     {
       title: t.admin.orderColActions,
       key: "actions",
       render: (_, order: StoreOrder) => renderActionButtons(order),
-      width: 100,
+      width: 76,
       align: "center" as const,
       responsive: ["sm"],
     },
@@ -674,155 +671,142 @@ const OrdersTable: React.FC<Props> = ({
     const displayAddress = getDisplayAddress(order);
     const fullAddress = getFullAddress(order);
 
+    const isExpanded = expandedRowKey === order.id;
+    const isSelected = selectedRowKeys.includes(order.id);
+
     return (
       <Card
         key={order.id}
-        className="mb-4 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow border relative"
-        style={{ padding: 0 }} // Add this
+        className="mb-3 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-border relative overflow-hidden"
+        style={{ padding: 0 }}
       >
-        {/* Checkbox in top-right corner */}
-        <div className="absolute top-3 right-3">
-          <input
-            type="checkbox"
-            checked={selectedRowKeys.includes(order.id)}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setSelectedRowKeys([...selectedRowKeys, order.id]);
-              } else {
-                setSelectedRowKeys(
-                  selectedRowKeys.filter((key) => key !== order.id),
-                );
-              }
-            }}
-            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+        <div className="p-3.5 sm:p-4">
+          {/* Checkbox in top-right corner */}
+          <div className="absolute top-3.5 right-3.5">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedRowKeys([...selectedRowKeys, order.id]);
+                } else {
+                  setSelectedRowKeys(
+                    selectedRowKeys.filter((key) => key !== order.id),
+                  );
+                }
+              }}
+              className="h-4 w-4 rounded border-border text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
 
-        {/* Header */}
-        <div className="flex justify-between items-start mb-3 pr-6">
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-blue-600 text-base sm:text-lg truncate">
-              #{order.order_number}
+          {/* Header */}
+          <div className="flex justify-between items-start mb-3 pr-6">
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 text-base sm:text-lg truncate">
+                #{order.order_number}
+              </div>
+              <div className="text-xs sm:text-sm text-muted-foreground">
+                {formatDate(order.created_at)}
+              </div>
+              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                <Tag color={order.channel === "pos" ? "gold" : "blue"} style={{ marginInlineEnd: 0 }}>
+                  {order.channel === "pos" ? "Quick Sale" : "Online"}
+                </Tag>
+                {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
+                  order.payment_status !== PaymentStatus.PAID && (
+                    <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                      Advance {n(paidAmountByOrderId[order.id].toFixed(0))}
+                    </Tag>
+                  )}
+              </div>
             </div>
-            <div className="text-xs sm:text-sm text-gray-500">
-              {formatDate(order.created_at)}
+            <div className="text-right ml-2">
+              <div className="font-bold text-base sm:text-lg whitespace-nowrap text-foreground">
+                {formatCurrency(order.total_amount, order.currency)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t.admin.orderShippingLabel} {formatCurrency(order.shipping_fee, order.currency)}
+              </div>
             </div>
           </div>
-          <div className="text-right ml-2">
-            <div className="font-bold text-base sm:text-lg whitespace-nowrap">
-              {formatCurrency(order.total_amount, order.currency)}
-            </div>
-            <div className="text-xs text-gray-600">
-              {t.admin.orderShippingLabel} {formatCurrency(order.shipping_fee, order.currency)}
-            </div>
-          </div>
-        </div>
 
-        {/* Selection indicator */}
-        {selectedRowKeys.includes(order.id) && (
-          <div className="flex items-center gap-1 mb-2 text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
-            <Check size={12} />
-            {t.admin.orderSelectedForBulk}
-          </div>
-        )}
-
-        {/* Customer Info */}
-        <div className="flex items-center mb-3">
-          <Avatar
-            size="small"
-            style={{
-              backgroundColor: "#1890ff",
-              color: "#fff",
-              fontSize: "12px",
-              fontWeight: "bold",
-              marginRight: "8px",
-              flexShrink: 0,
-            }}
-          >
-            {getCustomerInitial(order)}
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">
-              {getCustomerName(order)}
+          {/* Selection indicator */}
+          {isSelected && (
+            <div className="flex items-center gap-1 mb-2.5 text-indigo-600 dark:text-indigo-400 text-xs font-medium bg-indigo-50 dark:bg-indigo-950/40 px-2 py-1 rounded-lg">
+              <Check size={12} />
+              {t.admin.orderSelectedForBulk}
             </div>
+          )}
 
-            <div className="text-xs text-gray-600 truncate">
-              {n(getCustomerPhone(order))}
+          {/* Customer Info */}
+          <div className="flex items-center mb-3">
+            <Avatar
+              size="small"
+              style={{
+                backgroundColor: "#4f46e5",
+                color: "#fff",
+                fontSize: "12px",
+                fontWeight: "bold",
+                marginRight: "8px",
+                flexShrink: 0,
+              }}
+            >
+              {getCustomerInitial(order)}
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-foreground truncate">
+                {getCustomerName(order)}
+              </div>
+
+              <div className="text-xs text-muted-foreground truncate">
+                {n(getCustomerPhone(order))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Address */}
-        <div className="mb-3">
-          <div className="text-xs sm:text-sm text-gray-600">
-            <span className="font-medium">{t.admin.orderAddressLabel} </span>
+          {/* Address */}
+          <div className="mb-3 flex items-start gap-1.5 text-xs sm:text-sm text-muted-foreground">
+            <MapPin size={14} className="mt-0.5 shrink-0" />
             <Tooltip title={fullAddress}>
               <span className="line-clamp-2">{displayAddress}</span>
             </Tooltip>
           </div>
-        </div>
 
-        {/* Backend Values Display */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div>
-            <span className="text-xs font-medium text-gray-500">{t.admin.orderDeliveryLabel}</span>
-            <div className="text-sm font-medium capitalize">
-              {order.delivery_option || t.admin.orderNotSet}
+          {/* Status Tags + Actions — delivery option/payment method/risk/
+              history/FB status all moved to "View Details" below, same as
+              the desktop table, instead of duplicating them here. */}
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
+            <div className="flex flex-wrap gap-1 sm:gap-2">
+              <StatusTag status={order.status as OrderStatus} size="small" />
+              <StatusTag
+                status={order.payment_status as PaymentStatus}
+                size="small"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              {renderInvoiceButton(order)}
+              <div className="w-px h-5 bg-border mx-0.5" />
+              {renderActionButtons(order)}
             </div>
           </div>
-          <div>
-            <span className="text-xs font-medium text-gray-500">
-              {t.admin.orderPaymentMethodLabel}
-            </span>
-            <div className="text-sm font-medium capitalize">
-              {order.payment_method === "cod"
-                ? t.admin.orderCod
-                : order.payment_method || t.admin.orderNotSet}
-            </div>
-          </div>
-        </div>
 
-        {/* Status Tags */}
-        <div className="flex flex-wrap gap-1 sm:gap-2 mb-3">
-          <StatusTag status={order.status as OrderStatus} size="small" />
-          <StatusTag
-            status={order.payment_status as PaymentStatus}
-            size="small"
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mb-3">
-          <Tooltip title="View Invoice">
-            <Button
-              type="primary"
-              icon={<FileTextOutlined />}
-              onClick={() => handleViewInvoice(order)}
-              size="small"
-              className="bg-green-600! border-green-600! hover:bg-green-700!"
-            >
-              {t.admin.orderInvoiceBtn}
-            </Button>
-          </Tooltip>
-          {renderActionButtons(order)}
-        </div>
-
-        {/* Expand Button */}
-        <div className="text-right">
+          {/* Expand Button */}
           <button
-            onClick={() =>
-              setExpandedRowKey(expandedRowKey === order.id ? null : order.id)
-            }
-            className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
+            onClick={() => setExpandedRowKey(isExpanded ? null : order.id)}
+            className="mt-2 w-full flex items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 text-xs sm:text-sm font-semibold py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
           >
-            {expandedRowKey === order.id ? t.admin.orderHideDetails : t.admin.orderViewDetails}
+            {isExpanded ? t.admin.orderHideDetails : t.admin.orderViewDetails}
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            />
           </button>
         </div>
 
         {/* Expanded Content */}
-        {expandedRowKey === order.id && (
-          <div className="mt-3 border-t pt-3">
+        {isExpanded && (
+          <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 -mt-1 bg-muted/30 pt-3">
             {order.status !== OrderStatus.CANCELLED &&
               !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
               <div className="mb-3">
@@ -904,6 +888,16 @@ const OrdersTable: React.FC<Props> = ({
                 onSuccess={() => onRefresh?.()}
                 onClearSelection={() => setSelectedRowKeys([])}
               />
+              <BulkInvoiceAction
+                selectedOrders={selectedOrderObjects}
+                storeId={storeId ?? undefined}
+                paidAmountByOrderId={paidAmountByOrderId}
+                getCustomerName={getCustomerName}
+                getCustomerPhone={getCustomerPhone}
+                getFullAddress={getFullAddress}
+                exportAllowed={exportAllowed}
+                onClearSelection={() => setSelectedRowKeys([])}
+              />
               <Button
                 onClick={() => setSelectedRowKeys([])}
                 className="w-full sm:w-auto"
@@ -912,6 +906,38 @@ const OrdersTable: React.FC<Props> = ({
               </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {onChannelChange && (
+        <div className="mb-3 flex items-center gap-1.5">
+          {(
+            [
+              ["all", "All Channels", totalByChannel.online + totalByChannel.pos],
+              ["online", "Online", totalByChannel.online],
+              ["pos", "Quick Sale", totalByChannel.pos],
+            ] as const
+          ).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onChannelChange(key)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                channelFilter === key
+                  ? "bg-indigo-500 border-indigo-500 text-white"
+                  : "bg-card border-border text-muted-foreground hover:border-indigo-400 hover:text-indigo-600"
+              }`}
+            >
+              {label}
+              <span
+                className={`inline-flex items-center justify-center min-w-4.5 h-4 px-1 rounded-full text-[10px] font-bold ${
+                  channelFilter === key ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {n(count)}
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -968,7 +994,10 @@ const OrdersTable: React.FC<Props> = ({
         </div>
       </div>
 
+      <style>{TABLE_STYLES}</style>
       <DataTable<StoreOrder>
+        className="orders-table"
+        bordered={false}
         columns={columns}
         data={orders}
         loading={loading}
@@ -999,47 +1028,77 @@ const OrdersTable: React.FC<Props> = ({
           expandedRowKeys: expandedRowKey ? [expandedRowKey] : [],
           onExpand: (expanded, record) =>
             setExpandedRowKey(expanded ? record.id : null),
-          expandedRowRender: (order: StoreOrder) => (
-            <div className="space-y-4 p-3 sm:p-4 rounded-lg">
+          expandedRowRender: (order: StoreOrder) => {
+            const phone = order.shipping_address?.phone;
+            const risk = phone ? riskByPhone?.[phone] : undefined;
+            const riskStyle = RISK_STYLES[risk?.level ?? "new"];
+            const fbStatus = order.fb_purchase_event_status ?? "sent";
+            const fbStyle = FB_STATUS_STYLES[fbStatus];
+            const fullAddress = getFullAddress(order);
+
+            return (
+            <div className="space-y-4 p-3 sm:p-4 rounded-xl bg-muted/30">
               {/* Show backend values at the top */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-3 bg-background rounded">
-                <div>
-                  <span className="text-sm font-medium text-gray-300">
-                    {t.admin.orderDeliveryOption}
-                  </span>
-                  <div className="font-medium capitalize">
-                    {order.delivery_option || t.admin.orderNotSet}
-                  </div>
+              <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                  Order Details
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-300">
-                    {t.admin.orderPaymentMethodOption}
-                  </span>
-                  <div className="font-medium capitalize">
-                    {order.payment_method === "cod"
-                      ? t.admin.orderCod
-                      : order.payment_method || t.admin.orderNotSet}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-300">
-                    {t.admin.orderStatusOption}{" "}
-                  </span>
-                  <StatusTag status={order.status as OrderStatus} />
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-300">
-                    {t.admin.orderPaymentStatusOption}{" "}
-                  </span>
-                  <StatusTag status={order.payment_status as PaymentStatus} />
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-300">
-                    {t.admin.orderDeliveryCourierOption}
-                  </span>
-                  <div className="font-medium capitalize">
-                    {order.courier || t.admin.orderNotSet}
-                  </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-4">
+                  <DetailField label={t.admin.orderDeliveryOption}>
+                    <span className="capitalize">
+                      {order.delivery_option || t.admin.orderNotSet}
+                    </span>
+                  </DetailField>
+                  <DetailField label={t.admin.orderPaymentMethodOption}>
+                    <span className="capitalize">
+                      {order.payment_method === "cod"
+                        ? t.admin.orderCod
+                        : order.payment_method || t.admin.orderNotSet}
+                    </span>
+                  </DetailField>
+                  <DetailField label={t.admin.orderStatusOption}>
+                    <StatusTag status={order.status as OrderStatus} />
+                  </DetailField>
+                  <DetailField label={t.admin.orderPaymentStatusOption}>
+                    <StatusTag status={order.payment_status as PaymentStatus} />
+                  </DetailField>
+                  <DetailField label={t.admin.orderDeliveryCourierOption}>
+                    <span className="capitalize">
+                      {order.courier || t.admin.orderNotSet}
+                    </span>
+                  </DetailField>
+                  <DetailField label={t.admin.orderColRisk}>
+                    <Tooltip title={risk?.reason ?? "No history yet"}>
+                      <span
+                        className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${riskStyle.bg} ${riskStyle.text}`}
+                      >
+                        {riskStyle.label}
+                      </span>
+                    </Tooltip>
+                  </DetailField>
+                  <DetailField label="History">
+                    <CustomerOrderHistoryTags
+                      history={phone ? historyByPhone?.[phone] : undefined}
+                      currentOrderId={order.id}
+                      showEmptyHint
+                    />
+                  </DetailField>
+                  <DetailField label={t.admin.orderColFb}>
+                    <Tooltip title={fbStyle.reason}>
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${fbStyle.bg} ${fbStyle.text}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${fbStyle.dot}`} />
+                        {fbStyle.label}
+                      </span>
+                    </Tooltip>
+                  </DetailField>
+                  <DetailField
+                    label={t.admin.orderColAddress}
+                    className="col-span-2 sm:col-span-3 lg:col-span-4"
+                  >
+                    <span className="font-normal">{fullAddress}</span>
+                  </DetailField>
                 </div>
               </div>
 
@@ -1082,7 +1141,8 @@ const OrdersTable: React.FC<Props> = ({
               )}
               <DetailedOrderView order={order} />
             </div>
-          ),
+            );
+          },
         }}
         scroll={{ x: 1000 }}
         responsive={true}
@@ -1174,6 +1234,7 @@ const OrdersTable: React.FC<Props> = ({
               : []
           }
           totalDue={selectedOrderForInvoice.total_amount}
+          amountPaid={paidAmountByOrderId[selectedOrderForInvoice.id]}
           paymentStatus={selectedOrderForInvoice.payment_status}
           paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
           orderStatus={selectedOrderForInvoice.status}
@@ -1183,6 +1244,49 @@ const OrdersTable: React.FC<Props> = ({
           showPOSButton={false}
         />
       )}
+
+      {/* Delete confirmation */}
+      <Modal
+        open={!!deleteConfirmOrder}
+        onCancel={() => setDeleteConfirmOrder(null)}
+        footer={null}
+        width={420}
+        centered
+      >
+        <div className="flex flex-col items-center text-center pt-2">
+          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-rose-400 to-red-600 flex items-center justify-center mb-4">
+            <Trash2 size={22} color="white" strokeWidth={2} />
+          </div>
+          <h3 className="text-base font-bold text-foreground mb-1.5">
+            Delete Order?
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Are you sure you want to delete order{" "}
+            <span className="font-semibold text-foreground">
+              #{deleteConfirmOrder?.order_number}
+            </span>
+            ? This action cannot be undone.
+          </p>
+          <div className="flex gap-2 w-full">
+            <Button
+              className="flex-1"
+              onClick={() => setDeleteConfirmOrder(null)}
+              disabled={deleteLoading === deleteConfirmOrder?.id}
+            >
+              {t.admin.orderDeleteCancel}
+            </Button>
+            <Button
+              danger
+              type="primary"
+              className="flex-1"
+              loading={deleteLoading === deleteConfirmOrder?.id}
+              onClick={confirmDelete}
+            >
+              {t.admin.orderDeleteOk}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

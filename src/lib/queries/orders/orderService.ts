@@ -27,6 +27,8 @@ export interface CreateOrderData {
   courier?: string;
   currency?: string;
   deliveryOption: string;
+  /** 'pos' for a walk-in Quick Sale order. Defaults to 'online' when omitted. */
+  channel?: "online" | "pos";
 }
 
 export interface CreateOrderResult {
@@ -283,6 +285,7 @@ export async function createOrder(
       paymentStatus,
       paymentMethod,
       currency = "BDT",
+      channel = "online",
     } = orderData;
 
     // Validate required fields
@@ -345,6 +348,7 @@ export async function createOrder(
       notes: customerInfo.notes,
       delivery_option: orderData.deliveryOption,
       courier: orderData.courier || null,
+      channel,
     };
 
 

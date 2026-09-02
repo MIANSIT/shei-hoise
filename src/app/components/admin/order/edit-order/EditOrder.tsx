@@ -396,14 +396,21 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
         setDeliveryCost(Number(order.shipping_fee));
         setTotalAmount(Number(order.total_amount));
 
-        // Set customer info from order
-        if (order.customer) {
+        // Set customer info from order — prefer the linked customer record,
+        // but an order with no customer_id (e.g. a regular, non-due Quick
+        // Sale order — see getOrCreateCustomerByPhone.ts, only due sales
+        // resolve one) has no `order.customer` at all. Gating this whole
+        // block on `order.customer` left the form's name/phone/address/city
+        // blank for those orders, which made isFormValid permanently false
+        // and blocked Update entirely — fall back to the shipping_address
+        // snapshot saved at order-creation time instead.
+        if (order.customer || order.shipping_address) {
           setCustomerInfo((prev) => ({
             ...prev,
-            name: order.customer?.name || "",
-            phone: order.customer?.phone || "",
+            name: order.customer?.name || order.shipping_address?.customer_name || "",
+            phone: order.customer?.phone || order.shipping_address?.phone || "",
             email: order.customer?.email || "",
-            customer_id: order.customer_id,
+            customer_id: order.customer_id || undefined,
           }));
 
           // Set shipping address info. `??` (not `||`) so an intentionally
@@ -427,8 +434,11 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
           }
 
           // Fetch customer profile (gap-fills only if the order itself has
-          // no shipping_address at all — see fetchCustomerProfile).
-          await fetchCustomerProfile(order.customer_id, !!order.shipping_address);
+          // no shipping_address at all — see fetchCustomerProfile) — only
+          // when there's an actual customer_id to look one up for.
+          if (order.customer_id) {
+            await fetchCustomerProfile(order.customer_id, !!order.shipping_address);
+          }
         }
 
         // Convert order items to OrderProduct format
