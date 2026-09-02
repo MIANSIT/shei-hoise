@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus } from "@/lib/types/enums";
+import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 
 const STORE_TIMEZONE = "Asia/Dhaka";
 
@@ -80,20 +81,27 @@ export async function getSalesReport(
   // Explicit +06:00 (Dhaka has no DST, so this offset is always correct) —
   // without it, Postgres/PostgREST would interpret these as UTC, shifting
   // the day boundary by 6 hours and miscounting orders near midnight.
-  const { data, error } = await supabase
-    .from("orders")
-    .select("subtotal, discount_amount, channel, created_at")
-    .eq("store_id", storeId)
-    .neq("status", OrderStatus.CANCELLED)
-    .gte("created_at", `${fromDate}T00:00:00+06:00`)
-    .lte("created_at", `${toDate}T23:59:59.999+06:00`);
-
-  if (error) {
+  //
+  // Paged, because a single request is capped at PGRST_DB_MAX_ROWS (1000) —
+  // a store with more than 1000 non-cancelled orders in the selected range
+  // (e.g. a "Year" view) would silently have every total (revenue, order
+  // count, average order value) computed from only the first 1000.
+  let orders: { subtotal: number; discount_amount: number; channel: string; created_at: string }[];
+  try {
+    orders = await fetchAllPaged((from, to) =>
+      supabase
+        .from("orders")
+        .select("subtotal, discount_amount, channel, created_at")
+        .eq("store_id", storeId)
+        .neq("status", OrderStatus.CANCELLED)
+        .gte("created_at", `${fromDate}T00:00:00+06:00`)
+        .lte("created_at", `${toDate}T23:59:59.999+06:00`)
+        .range(from, to),
+    );
+  } catch (error) {
     console.error("Failed to load sales report:", error);
     return EMPTY_RESULT;
   }
-
-  const orders = data ?? [];
 
   let totalRevenue = 0;
   let onlineRevenue = 0;
@@ -170,16 +178,20 @@ export async function getSalesReportOrdersForPeriod(
 ): Promise<SalesReportOrderRow[]> {
   if (!storeId) return [];
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("order_number, subtotal, discount_amount, channel, created_at, shipping_address, store_customers!customer_id(name)")
-    .eq("store_id", storeId)
-    .neq("status", OrderStatus.CANCELLED)
-    .gte("created_at", `${fromDate}T00:00:00+06:00`)
-    .lte("created_at", `${toDate}T23:59:59.999+06:00`)
-    .order("created_at", { ascending: false });
-
-  if (error) {
+  let data: unknown[];
+  try {
+    data = await fetchAllPaged((from, to) =>
+      supabase
+        .from("orders")
+        .select("order_number, subtotal, discount_amount, channel, created_at, shipping_address, store_customers!customer_id(name)")
+        .eq("store_id", storeId)
+        .neq("status", OrderStatus.CANCELLED)
+        .gte("created_at", `${fromDate}T00:00:00+06:00`)
+        .lte("created_at", `${toDate}T23:59:59.999+06:00`)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
+  } catch (error) {
     console.error("Failed to load sales report period orders:", error);
     return [];
   }

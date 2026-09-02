@@ -8,14 +8,45 @@ import { extractProductSlugFromScannedText } from "@/lib/utils/productQr";
 
 interface ScanToAddModalProps {
   open: boolean;
+  /** True while a variant picker opened by a scan is still awaiting the cashier's selection — scanning pauses so a held-up QR doesn't reopen/replace that picker mid-selection. */
+  paused: boolean;
   products: ProductWithVariants[];
   onClose: () => void;
-  onProductFound: (product: ProductWithVariants) => void;
+  onProductFound: (product: ProductWithVariants) => "added" | "variant-needed";
 }
 
 // Debounces repeat scans of the same QR while it's still in frame, so
 // holding the code up doesn't add it a dozen times.
 const RESCAN_DELAY_MS = 1500;
+
+// A short beep + vibration on every recognized scan — the on-screen status
+// text alone is easy to miss while scanning several items back-to-back.
+function playBeep(): void {
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.12);
+    oscillator.onended = () => ctx.close();
+  } catch {
+    // Sound isn't critical to the scan flow — ignore if unsupported/blocked.
+  }
+}
+
+function vibrate(): void {
+  if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(60);
+}
 
 function cameraErrorMessage(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
@@ -33,6 +64,7 @@ function cameraErrorMessage(err: unknown): string {
 
 export default function ScanToAddModal({
   open,
+  paused,
   products,
   onClose,
   onProductFound,
@@ -42,9 +74,16 @@ export default function ScanToAddModal({
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastMatchRef = useRef<{ slug: string; time: number } | null>(null);
+  const pausedRef = useRef(paused);
   const [status, setStatus] = useState("Starting camera…");
   const [cameraFailed, setCameraFailed] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) setStatus("Finish selecting the variant in the popup, then keep scanning.");
+    else if (open) setStatus("Point the camera at a product QR code.");
+  }, [paused, open]);
 
   const stopCamera = () => {
     if (rafRef.current) {
@@ -99,7 +138,7 @@ export default function ScanToAddModal({
     function scanTick() {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
+      if (!pausedRef.current && video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext("2d");
@@ -130,8 +169,14 @@ export default function ScanToAddModal({
         return;
       }
       lastMatchRef.current = { slug, time: now };
-      setStatus(`✓ Added: ${product.name}`);
-      onProductFound(product);
+      vibrate();
+      playBeep();
+      const outcome = onProductFound(product);
+      setStatus(
+        outcome === "variant-needed"
+          ? `Select a variant for ${product.name}…`
+          : `✓ Added: ${product.name}`,
+      );
     }
 
     return () => {
