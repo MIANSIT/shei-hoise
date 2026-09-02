@@ -50,7 +50,9 @@ export default function DeliveryCourierManagePage() {
   const isConnected = (courier: DeliveryCourier): boolean =>
     (accounts ?? []).some((a) => a.courier === courier.type && a.connected);
 
-  const builtIn = (couriers ?? []).filter((c) => !c.deletable);
+  // "shop" is a system courier used internally by Quick Sale (in-store
+  // pickup, no real integration to connect) — not shown in this list.
+  const builtIn = (couriers ?? []).filter((c) => !c.deletable && c.type !== "shop");
   const custom = (couriers ?? []).filter((c) => c.deletable);
 
   const handleAdd = async () => {

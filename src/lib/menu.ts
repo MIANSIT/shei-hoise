@@ -26,6 +26,8 @@ import {
   Tag,
   HandCoins,
   Star,
+  Zap,
+  Wallet,
 } from "lucide-react";
 import React from "react";
 
@@ -100,6 +102,11 @@ export const sideMenu: MenuItem[] = [
     icon: ShoppingCart,
     children: [
       {
+        title: "Quick Sale",
+        href: "/dashboard/orders/quick-sale",
+        icon: Zap,
+      },
+      {
         title: "Create Order",
         href: "/dashboard/orders/create-order",
         icon: PlusCircle,
@@ -113,6 +120,16 @@ export const sideMenu: MenuItem[] = [
         title: "Generate Order Link",
         href: "/generate-orders-link",
         icon: Link2,
+      },
+      {
+        title: "Customer Dues",
+        href: "/dashboard/customers/dues",
+        icon: Wallet,
+      },
+      {
+        title: "Sales Report",
+        href: "/dashboard/reports/sales",
+        icon: BarChart2,
       },
     ],
   },

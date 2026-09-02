@@ -95,6 +95,9 @@ export default function CreateOrder() {
     PaymentStatus.PENDING,
   );
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [isDueSale, setIsDueSale] = useState(false);
+  const [amountReceivedNow, setAmountReceivedNow] = useState<number | null>(null);
+  const [paymentReference, setPaymentReference] = useState("");
   const [courier, setCourier] = useState("");
   const [deliveryCouriers, setDeliveryCouriers] = useState<DeliveryCourier[]>([]);
 
@@ -116,6 +119,17 @@ export default function CreateOrder() {
   // Draft persistence - survives tab switches / accidental reloads
   const hasHydrated = useCreateOrderDraftStore((s) => s._hasHydrated);
   const [readyToSyncDraft, setReadyToSyncDraft] = useState(false);
+
+  // When a Due sale is toggled on, payment status is derived from how much
+  // was actually received now vs. the total — same rule Quick Sale uses
+  // (QuickSale.tsx) — rather than left to the manual Select.
+  useEffect(() => {
+    if (!isDueSale) return;
+    const received = Math.min(Math.max(amountReceivedNow || 0, 0), totalAmount);
+    setPaymentStatus(
+      totalAmount - received > 0.01 ? PaymentStatus.PENDING : PaymentStatus.PAID,
+    );
+  }, [isDueSale, amountReceivedNow, totalAmount]);
 
   // Validate email uniqueness - only validate if email is provided
   const validateEmailUniqueness = useCallback(
@@ -909,6 +923,12 @@ export default function CreateOrder() {
                   setPaymentStatus={setPaymentStatus}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
+                  isDueSale={isDueSale}
+                  setIsDueSale={setIsDueSale}
+                  amountReceivedNow={amountReceivedNow}
+                  setAmountReceivedNow={setAmountReceivedNow}
+                  paymentReference={paymentReference}
+                  setPaymentReference={setPaymentReference}
                   courier={courier}
                   setCourier={setCourier}
                   deliveryCouriers={deliveryCouriers}
@@ -937,6 +957,9 @@ export default function CreateOrder() {
                   status={status}
                   paymentStatus={paymentStatus}
                   paymentMethod={paymentMethod}
+                  isDueSale={isDueSale}
+                  amountReceivedNow={amountReceivedNow}
+                  paymentReference={paymentReference}
                   courier={courier}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   onCustomerCreated={fetchCustomers}

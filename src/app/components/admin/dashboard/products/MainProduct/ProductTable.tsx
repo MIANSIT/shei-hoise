@@ -5,9 +5,10 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2, Star, Truck, Zap } from "lucide-react";
+import { Edit, Trash2, Star, Truck, Zap, QrCode } from "lucide-react";
 import { isSaleActive } from "@/lib/utils/getEffectivePrice";
 import { Modal } from "antd";
+import ProductQrModal from "./ProductQrModal";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
 import { toggleProductFreeDelivery } from "@/lib/queries/products/toggleProductFreeDelivery";
@@ -25,6 +26,9 @@ interface ProductTableProps {
   loading?: boolean;
   onDeleteSuccess?: () => void;
   pagination?: TablePaginationConfig;
+  storeSlug?: string;
+  storeName?: string;
+  storeLogoUrl?: string | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -150,12 +154,26 @@ const DeleteButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   </button>
 );
 
+const QrButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/15 hover:border-emerald-300 dark:hover:border-emerald-500 hover:scale-105 active:scale-95 transition-all duration-150"
+    aria-label="Generate QR"
+    title="Generate QR"
+  >
+    <QrCode className="w-3.5 h-3.5" />
+  </button>
+);
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 const ProductTable: React.FC<ProductTableProps> = ({
   products,
   loading,
   onDeleteSuccess,
+  storeSlug,
+  storeName,
+  storeLogoUrl,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -165,6 +183,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [qrProduct, setQrProduct] = useState<ProductWithVariants | null>(null);
   const [featuredOverrides, setFeaturedOverrides] = useState<
     Record<string, boolean>
   >({});
@@ -434,6 +453,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
           className="flex gap-1.5 justify-center"
           onClick={(e) => e.stopPropagation()}
         >
+          {storeSlug && <QrButton onClick={() => setQrProduct(record)} />}
           <EditButton onClick={() => handleEdit(record.slug)} />
           <DeleteButton onClick={() => showDeleteModal(record.id)} />
         </div>
@@ -566,6 +586,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           fill={getFeatured(record) ? "currentColor" : "none"}
                         />
                       </button>
+                      {storeSlug && (
+                        <QrButton onClick={() => setQrProduct(record)} />
+                      )}
                       <EditButton onClick={() => handleEdit(record.slug)} />
                       <DeleteButton
                         onClick={() => showDeleteModal(record.id)}
@@ -612,6 +635,17 @@ const ProductTable: React.FC<ProductTableProps> = ({
           {t.admin.deleteProductConfirm}
         </p>
       </Modal>
+
+      {storeSlug && (
+        <ProductQrModal
+          open={!!qrProduct}
+          onClose={() => setQrProduct(null)}
+          product={qrProduct}
+          storeSlug={storeSlug}
+          storeName={storeName || "My Shop"}
+          logoUrl={storeLogoUrl}
+        />
+      )}
     </>
   );
 };

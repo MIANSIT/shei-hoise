@@ -48,9 +48,9 @@ export type ShippingFees = ShippingFee[];
 export interface DeliveryCourier {
   id: string;
   name: string;
-  /** "pathao"/"steadfast" are the real API integrations; "manual" is a store-defined courier with no integration. */
-  type: "pathao" | "steadfast" | "manual";
-  /** false for the built-in Pathao/Steadfast entries — every store gets them and can't remove them. */
+  /** "pathao"/"steadfast" are the real API integrations; "shop" is the built-in in-store/walk-in pickup courier (used by Quick Sale); "manual" is a store-defined courier with no integration. */
+  type: "pathao" | "steadfast" | "shop" | "manual";
+  /** false for the built-in Pathao/Steadfast/Shop entries — every store gets them and can't remove them. */
   deletable: boolean;
   created_at: string;
 }
