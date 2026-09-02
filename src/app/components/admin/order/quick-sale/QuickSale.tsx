@@ -110,6 +110,16 @@ export default function QuickSale() {
     useState<ProductWithVariants | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
 
+  // Briefly highlights the cart row a scan (or tap) just touched, so the
+  // "✓ Added" confirmation has a second, harder-to-miss signal than a
+  // status line under the camera view.
+  const [flashKey, setFlashKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flashKey) return;
+    const t = setTimeout(() => setFlashKey(null), 900);
+    return () => clearTimeout(t);
+  }, [flashKey]);
+
   // Loads the full active, non-bundle catalog once (no server-side search)
   // so the tap grid feels instant and "Scan to Add" always has the complete
   // set to match a scanned slug against — unlike the paginated/searched
@@ -162,6 +172,20 @@ export default function QuickSale() {
       ? getVariantAvailableQuantity(variant)
       : getAvailableQuantity(product);
     const costPrice = variant ? (variant.tp_price ?? null) : (product.tp_price ?? null);
+    const flashItemKey = `${product.id}:${variant?.id ?? ""}`;
+
+    // Mirrors the existing/new-item stock capping below, computed against the
+    // current render's cart snapshot — good enough for a cosmetic flash cue,
+    // where setCart's functional form (not this) is what guarantees the cart
+    // itself stays correct under rapid calls.
+    const existingIdx = cart.findIndex(
+      (it) => it.product_id === product.id && (it.variant_id || undefined) === variant?.id,
+    );
+    const willAdd =
+      existingIdx !== -1
+        ? Math.min(cart[existingIdx].quantity + qty, available) > cart[existingIdx].quantity
+        : Math.min(qty, available) >= 1;
+    if (willAdd) setFlashKey(flashItemKey);
 
     setCart((prev) => {
       const idx = prev.findIndex(
@@ -210,13 +234,14 @@ export default function QuickSale() {
     });
   };
 
-  const handleTapProduct = (product: ProductWithVariants) => {
+  const handleTapProduct = (product: ProductWithVariants): "added" | "variant-needed" => {
     const activeVariants = (product.product_variants || []).filter((v) => v.is_active);
     if (activeVariants.length > 0) {
       setVariantPickerProduct(product);
-      return;
+      return "variant-needed";
     }
     addToCart(product);
+    return "added";
   };
 
   const updateCartQty = (index: number, newQty: number) => {
@@ -618,7 +643,14 @@ export default function QuickSale() {
           ) : (
             <div className="flex flex-col divide-y divide-border/60">
               {cart.map((item, index) => (
-                <div key={index} className="flex items-center justify-between gap-2 py-2">
+                <div
+                  key={index}
+                  className={`flex items-center justify-between gap-2 py-2 rounded-lg px-1 -mx-1 transition-colors duration-700 ${
+                    flashKey === `${item.product_id}:${item.variant_id ?? ""}`
+                      ? "bg-emerald-100 dark:bg-emerald-500/20"
+                      : "bg-transparent"
+                  }`}
+                >
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-foreground truncate">
                       {item.product_name}
@@ -856,6 +888,7 @@ export default function QuickSale() {
 
       <ScanToAddModal
         open={scanOpen}
+        paused={!!variantPickerProduct}
         products={products}
         onClose={() => setScanOpen(false)}
         onProductFound={(product) => handleTapProduct(product)}
