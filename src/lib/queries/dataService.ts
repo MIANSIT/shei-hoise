@@ -73,6 +73,7 @@ export interface DataService {
     totalOrders: number; // store-wide
     totalByOrderStatus: Record<string, number>; // NEW
     totalByPaymentStatus: Record<string, number>; // NEW
+    totalByChannel: { online: number; pos: number };
   }>;
   getOrderByNumber: (
     storeId: string,
@@ -169,14 +170,20 @@ const getStoreOrdersImpl = async (
   totalOrders: number;
   totalByOrderStatus: Record<string, number>;
   totalByPaymentStatus: Record<string, number>;
+  totalByChannel: { online: number; pos: number };
 }> => {
   const { storeId, search, page = 1, pageSize = 10, filters } = options;
 
-  const normalizedFilters: { status?: string; payment_status?: string } = {};
+  const normalizedFilters: {
+    status?: string;
+    payment_status?: string;
+    channel?: "online" | "pos";
+  } = {};
   if (filters?.status && filters.status !== "all")
     normalizedFilters.status = filters.status;
   if (filters?.payment_status && filters.payment_status !== "all")
     normalizedFilters.payment_status = filters.payment_status;
+  if (filters?.channel) normalizedFilters.channel = filters.channel;
 
   return originalGetStoreOrders(
     storeId,

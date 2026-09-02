@@ -53,9 +53,17 @@ const EditableCourier: React.FC<Props> = ({ courier, storeId, onSave, disabled }
   // Pathao/Steadfast only stay selectable if the plan includes courier
   // tracking — except the order's current value, which always stays visible
   // even if it's Pathao/Steadfast and the plan has since lost that feature,
-  // so the field never shows a value with no matching option.
+  // so the field never shows a value with no matching option. "manual" and
+  // "shop" (in-store pickup, used by Quick Sale) aren't paid integrations,
+  // so they're never gated behind the plan.
   const options = couriers
-    .filter((c) => c.type === "manual" || courierTrackingAllowed || c.type === courier)
+    .filter(
+      (c) =>
+        c.type === "manual" ||
+        c.type === "shop" ||
+        courierTrackingAllowed ||
+        c.type === courier,
+    )
     .map((c) => {
       // Steadfast is built but not yet verified live — shown so it's not a
       // surprise once it launches, but not selectable for new orders. An

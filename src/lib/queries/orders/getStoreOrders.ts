@@ -11,6 +11,7 @@ export interface GetStoreOrdersOptions {
   filters?: {
     status?: string;
     payment_status?: string;
+    channel?: "online" | "pos";
   };
 }
 
@@ -28,6 +29,7 @@ export async function getStoreOrders(
   totalOrders: number;
   totalByPaymentStatus: Record<PaymentStatus, number>;
   totalByOrderStatus: Record<OrderStatus, number>;
+  totalByChannel: { online: number; pos: number };
 }> {
   try {
     const searchTerm = (search || "").trim();
@@ -95,6 +97,7 @@ export async function getStoreOrders(
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.payment_status)
         query = query.eq("payment_status", filters.payment_status);
+      if (filters.channel) query = query.eq("channel", filters.channel);
     }
 
     if (page !== undefined && pageSize !== undefined) {
@@ -117,32 +120,50 @@ export async function getStoreOrders(
     const orderStatusValues = Object.values(OrderStatus);
     const paymentStatusValues = Object.values(PaymentStatus);
 
-    const [totalOrdersResult, ...statusCountResults] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("store_id", storeId),
-      ...orderStatusValues.map((status) =>
+    const [totalOrdersResult, onlineChannelResult, posChannelResult, ...statusCountResults] =
+      await Promise.all([
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("store_id", storeId),
         supabase
           .from("orders")
           .select("id", { count: "exact", head: true })
           .eq("store_id", storeId)
-          .eq("status", status),
-      ),
-      ...paymentStatusValues.map((paymentStatus) =>
+          .eq("channel", "online"),
         supabase
           .from("orders")
           .select("id", { count: "exact", head: true })
           .eq("store_id", storeId)
-          .eq("payment_status", paymentStatus),
-      ),
-    ]);
+          .eq("channel", "pos"),
+        ...orderStatusValues.map((status) =>
+          supabase
+            .from("orders")
+            .select("id", { count: "exact", head: true })
+            .eq("store_id", storeId)
+            .eq("status", status),
+        ),
+        ...paymentStatusValues.map((paymentStatus) =>
+          supabase
+            .from("orders")
+            .select("id", { count: "exact", head: true })
+            .eq("store_id", storeId)
+            .eq("payment_status", paymentStatus),
+        ),
+      ]);
 
     const statusError =
       totalOrdersResult.error ||
+      onlineChannelResult.error ||
+      posChannelResult.error ||
       statusCountResults.find((r) => r.error)?.error ||
       null;
     if (statusError) throw statusError;
+
+    const totalByChannel = {
+      online: onlineChannelResult.count || 0,
+      pos: posChannelResult.count || 0,
+    };
 
     const orderStatusCounts = statusCountResults.slice(
       0,
@@ -253,6 +274,7 @@ export async function getStoreOrders(
       totalOrders: totalOrdersResult.count || 0,
       totalByPaymentStatus,
       totalByOrderStatus,
+      totalByChannel,
     };
   } catch (error) {
     console.error("Error in getStoreOrders:", error);

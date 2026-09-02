@@ -10,6 +10,7 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Im
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -26,6 +27,9 @@ interface SaveOrderButtonProps {
   status: OrderStatus; // ✅ CHANGED: Use enum
   paymentStatus: PaymentStatus; // ✅ CHANGED: Use enum
   paymentMethod: string;
+  isDueSale?: boolean;
+  amountReceivedNow?: number | null;
+  paymentReference?: string;
   courier?: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
@@ -47,6 +51,9 @@ export default function SaveOrderButton({
   status,
   paymentStatus,
   paymentMethod,
+  isDueSale = false,
+  amountReceivedNow,
+  paymentReference,
   courier,
   disabled = false,
   onCustomerCreated,
@@ -224,6 +231,32 @@ export default function SaveOrderButton({
       const result = await dataService.createOrder(orderData);
 
       if (result.success) {
+        // If this was created as a Due sale, log whatever was actually
+        // received now against the balance — pinned to this order — the
+        // same mechanism Quick Sale already uses (recordCustomerPayment.ts).
+        // Skipped if customer creation was declined ("Continue without
+        // customer") since there's no customer to attribute the payment to.
+        if (isDueSale && finalCustomerInfo.customer_id && result.orderId) {
+          const receivedNow = Math.min(Math.max(amountReceivedNow || 0, 0), totalAmount);
+          if (receivedNow > 0) {
+            const paymentResult = await recordCustomerPayment({
+              storeId,
+              customerId: finalCustomerInfo.customer_id,
+              orderId: result.orderId,
+              amount: receivedNow,
+              paymentMethod,
+              paymentDate: new Date().toISOString().slice(0, 10),
+              notes: paymentReference || undefined,
+            });
+            if (!paymentResult.success) {
+              notification.warning({
+                title: "Order saved, but the payment log failed",
+                description: paymentResult.error,
+              });
+            }
+          }
+        }
+
         // Notify store owner via email (fire-and-forget, don't block UI)
         fetch("/api/order-notify", {
           method: "POST",

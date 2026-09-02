@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Alert, Spin, App } from "antd";
+import { ShoppingCart, Clock, PackageCheck, Zap } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { StoreOrder } from "@/lib/types/order";
@@ -11,6 +12,9 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
 import { getMonthlyOrderUsage, type MonthlyOrderUsage } from "@/lib/queries/orders/getMonthlyOrderUsage";
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
+import { getCustomerPaymentsSummaryByOrderIds } from "@/lib/queries/customers/getCustomerPaymentsSummaryByOrderIds";
+import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorStatCard";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
@@ -43,12 +47,19 @@ const MainOrders: React.FC = () => {
     undefined,
     0
   );
+  const [channelFilter, setChannelFilter] = useUrlSync<"all" | "online" | "pos">(
+    "channel",
+    "all",
+    (v) => (v === "online" || v === "pos" ? v : "all"),
+    0
+  );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [riskByPhone, setRiskByPhone] = useState<Record<string, RiskAssessment>>({});
   const [historyByPhone, setHistoryByPhone] = useState<
     Record<string, CustomerHistoryEntry[]>
   >({});
+  const [paidAmountByOrderId, setPaidAmountByOrderId] = useState<Record<string, number>>({});
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyOrderUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +71,10 @@ const MainOrders: React.FC = () => {
   const [totalByPaymentStatus, setTotalByPaymentStatus] = useState<
     Record<string, number>
   >({});
+  const [totalByChannel, setTotalByChannel] = useState<{ online: number; pos: number }>({
+    online: 0,
+    pos: 0,
+  });
 
   // ✅ ADD: refresh trigger state
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -71,14 +86,16 @@ const MainOrders: React.FC = () => {
       searchTerm: string,
       category: "order" | "payment",
       status: string,
-      paymentStatus: string
+      paymentStatus: string,
+      channel: "all" | "online" | "pos"
     ) => {
       if (!user?.store_id) return;
       try {
         setLoading(true);
         setError(null);
 
-        const filters: { status?: string; payment_status?: string } = {};
+        const filters: { status?: string; payment_status?: string; channel?: "online" | "pos" } =
+          {};
         if (category === "order" && status && status !== "all")
           filters.status = status;
         else if (
@@ -87,6 +104,7 @@ const MainOrders: React.FC = () => {
           paymentStatus !== "all"
         )
           filters.payment_status = paymentStatus;
+        if (channel !== "all") filters.channel = channel;
 
         const result = await dataService.getStoreOrders({
           storeId: user.store_id,
@@ -101,6 +119,15 @@ const MainOrders: React.FC = () => {
         setTotalOrders(result.totalOrders);
         setTotalByOrderStatus(result.totalByOrderStatus);
         setTotalByPaymentStatus(result.totalByPaymentStatus);
+        setTotalByChannel(result.totalByChannel);
+
+        // How much of each order on this page has an advance/partial
+        // payment recorded against it (fire-and-forget, same pattern as the
+        // risk/history lookups below) — powers the "Advance" hint in the
+        // table and the Paid/Due lines on the invoice.
+        getCustomerPaymentsSummaryByOrderIds(result.orders.map((o) => o.id))
+          .then(setPaidAmountByOrderId)
+          .catch(() => {});
 
         // Fetch COD fake-order risk levels for the phones on this page (fire-and-forget)
         const phones = result.orders
@@ -153,7 +180,7 @@ const MainOrders: React.FC = () => {
   const handleExportOrders = useCallback(async (): Promise<StoreOrder[]> => {
     if (!user?.store_id) return [];
 
-    const filters: { status?: string; payment_status?: string } = {};
+    const filters: { status?: string; payment_status?: string; channel?: "online" | "pos" } = {};
     if (category === "order" && statusFilter && statusFilter !== "all")
       filters.status = statusFilter;
     else if (
@@ -162,6 +189,7 @@ const MainOrders: React.FC = () => {
       paymentStatusFilter !== "all"
     )
       filters.payment_status = paymentStatusFilter;
+    if (channelFilter !== "all") filters.channel = channelFilter;
 
     const result = await dataService.getStoreOrders({
       storeId: user.store_id,
@@ -172,7 +200,7 @@ const MainOrders: React.FC = () => {
     });
 
     return result.orders;
-  }, [user?.store_id, search, category, statusFilter, paymentStatusFilter]);
+  }, [user?.store_id, search, category, statusFilter, paymentStatusFilter, channelFilter]);
 
   useEffect(() => {
     if (!user?.store_id) return;
@@ -187,7 +215,8 @@ const MainOrders: React.FC = () => {
         search,
         category,
         statusFilter,
-        paymentStatusFilter
+        paymentStatusFilter,
+        channelFilter
       );
     }
   }, [
@@ -199,6 +228,7 @@ const MainOrders: React.FC = () => {
     category,
     statusFilter,
     paymentStatusFilter,
+    channelFilter,
     fetchOrders,
     refreshTrigger, // ✅ ADD: refresh trigger dependency
   ]);
@@ -234,6 +264,11 @@ const MainOrders: React.FC = () => {
   const handlePaymentStatusChange = (status: string) => {
     setPaymentStatusFilter(status);
     setCategory("payment");
+    setPage(1);
+  };
+
+  const handleChannelChange = (channel: "all" | "online" | "pos") => {
+    setChannelFilter(channel);
     setPage(1);
   };
 
@@ -275,7 +310,8 @@ const MainOrders: React.FC = () => {
                   search,
                   category,
                   statusFilter,
-                  paymentStatusFilter
+                  paymentStatusFilter,
+                  channelFilter
                 )
               }
               className="text-blue-600 hover:text-blue-800 font-medium"
@@ -288,43 +324,82 @@ const MainOrders: React.FC = () => {
     );
 
   return (
-    <div className="">
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold ">
-            {t.admin.allOrdersTitle}
-          </h2>
-          <p className="text-gray-500 mt-1 text-sm sm:text-base">
-            {t.admin.allOrdersDesc}
-          </p>
-        </div>
-        {/* ✅ ADD: Refresh button for manual refresh */}
-        {monthlyUsage && monthlyUsage.limit !== -1 && (
-          <div
-            className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-              monthlyUsage.current > monthlyUsage.limit
-                ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
-                : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-            }`}
-            title={
-              monthlyUsage.current > monthlyUsage.limit
-                ? t.admin.allOrdersMonthlyLimitExceeded
-                : t.admin.allOrdersMonthlyLimitInfo
-            }
-          >
-            {monthlyUsage.current}/{monthlyUsage.limit} {t.admin.allOrdersMonthlyLimitLabel}
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-blue-400 to-indigo-600 flex items-center justify-center shrink-0">
+              <ShoppingCart size={18} color="white" strokeWidth={2} />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
+                {t.admin.allOrdersTitle}
+              </h1>
+              <p className="text-xs text-muted-foreground m-0">
+                {t.admin.allOrdersDesc}
+              </p>
+            </div>
           </div>
-        )}
+          {monthlyUsage && monthlyUsage.limit !== -1 && (
+            <div
+              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                monthlyUsage.current > monthlyUsage.limit
+                  ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
+                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+              }`}
+              title={
+                monthlyUsage.current > monthlyUsage.limit
+                  ? t.admin.allOrdersMonthlyLimitExceeded
+                  : t.admin.allOrdersMonthlyLimitInfo
+              }
+            >
+              {monthlyUsage.current}/{monthlyUsage.limit} {t.admin.allOrdersMonthlyLimitLabel}
+            </div>
+          )}
+        </div>
       </div>
+
+      <div className="px-4 sm:px-8 py-6 space-y-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <VendorStatCard
+            icon={<ShoppingCart size={18} />}
+            label="Total Orders"
+            value={String(totalOrders)}
+            tone="indigo"
+          />
+          <VendorStatCard
+            icon={<Clock size={18} />}
+            label="Payment Pending"
+            value={String(totalByPaymentStatus[PaymentStatus.PENDING] ?? 0)}
+            tone="amber"
+          />
+          <VendorStatCard
+            icon={<PackageCheck size={18} />}
+            label="Delivered"
+            value={String(totalByOrderStatus[OrderStatus.DELIVERED] ?? 0)}
+            tone="emerald"
+          />
+          <VendorStatCard
+            icon={<Zap size={18} />}
+            label="Quick Sale"
+            value={String(totalByChannel.pos)}
+            hint={`${totalByChannel.online} online`}
+            tone="sky"
+          />
+        </div>
 
       <OrdersTable
         orders={orders}
+        paidAmountByOrderId={paidAmountByOrderId}
         riskByPhone={riskByPhone}
         historyByPhone={historyByPhone}
         total={total}
         totalOrders={totalOrders}
         totalByOrderStatus={totalByOrderStatus}
         totalByPaymentStatus={totalByPaymentStatus}
+        totalByChannel={totalByChannel}
+        channelFilter={channelFilter}
+        onChannelChange={handleChannelChange}
         page={page}
         pageSize={pageSize}
         onTableChange={handleTableChange}
@@ -340,6 +415,7 @@ const MainOrders: React.FC = () => {
         onRefresh={handleRefresh}
         onExportOrders={handleExportOrders}
       />
+      </div>
     </div>
   );
 };
