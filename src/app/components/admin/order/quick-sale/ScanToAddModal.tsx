@@ -15,9 +15,12 @@ interface ScanToAddModalProps {
   onProductFound: (product: ProductWithVariants) => "added" | "variant-needed";
 }
 
-// Debounces repeat scans of the same QR while it's still in frame, so
-// holding the code up doesn't add it a dozen times.
-const RESCAN_DELAY_MS = 1500;
+// Consecutive empty frames required before a held QR is considered "out of
+// frame" and eligible to scan again — a couple of frames, not one, so a
+// single missed decode on a code that's still in view (motion blur, glare)
+// doesn't let it re-trigger without actually being moved away. At ~30fps
+// this is well under 200ms, so it doesn't slow down scanning the next item.
+const MISS_FRAMES_TO_CLEAR = 5;
 
 // A short beep + vibration on every recognized scan — the on-screen status
 // text alone is easy to miss while scanning several items back-to-back.
@@ -73,7 +76,11 @@ export default function ScanToAddModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
-  const lastMatchRef = useRef<{ slug: string; time: number } | null>(null);
+  // The raw text of the QR currently held in front of the camera — cleared
+  // once it's actually removed (see MISS_FRAMES_TO_CLEAR), so holding a code
+  // up longer than intended can't add it twice.
+  const activeTextRef = useRef<string | null>(null);
+  const missFramesRef = useRef(0);
   const pausedRef = useRef(paused);
   const [status, setStatus] = useState("Starting camera…");
   const [cameraFailed, setCameraFailed] = useState(false);
@@ -138,6 +145,7 @@ export default function ScanToAddModal({
     function scanTick() {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      let sawCode = false;
       if (!pausedRef.current && video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -146,21 +154,33 @@ export default function ScanToAddModal({
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const code = jsQR(imageData.data, imageData.width, imageData.height);
-          if (code?.data) handleScanned(code.data);
+          if (code?.data) {
+            sawCode = true;
+            handleScanned(code.data);
+          }
+        }
+      }
+      if (sawCode) {
+        missFramesRef.current = 0;
+      } else if (activeTextRef.current !== null) {
+        missFramesRef.current += 1;
+        if (missFramesRef.current >= MISS_FRAMES_TO_CLEAR) {
+          activeTextRef.current = null;
+          missFramesRef.current = 0;
         }
       }
       rafRef.current = requestAnimationFrame(scanTick);
     }
 
     function handleScanned(text: string) {
+      // Same code still in front of the camera as last frame — wait for it
+      // to actually leave view (scanTick clears this) before acting again.
+      if (activeTextRef.current === text) return;
+      activeTextRef.current = text;
+
       const slug = extractProductSlugFromScannedText(text);
       if (!slug) {
         setStatus("That QR isn't a product code from this store.");
-        return;
-      }
-      const now = Date.now();
-      const last = lastMatchRef.current;
-      if (last && last.slug === slug && now - last.time < RESCAN_DELAY_MS) {
         return;
       }
       const product = products.find((p) => p.slug === slug);
@@ -168,7 +188,6 @@ export default function ScanToAddModal({
         setStatus("Scanned, but that product isn't in this store's catalog.");
         return;
       }
-      lastMatchRef.current = { slug, time: now };
       vibrate();
       playBeep();
       const outcome = onProductFound(product);
