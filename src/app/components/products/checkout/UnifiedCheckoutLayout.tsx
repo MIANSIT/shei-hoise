@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, User, ChevronRight, ChevronLeft, ChevronDown, Tag, X, CircleAlert } from "lucide-react";
@@ -15,6 +15,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useIsMobile } from "@/lib/hook/useIsMobile";
 import type { CouponValidationResult } from "@/lib/types/coupon";
 
 interface UnifiedCheckoutLayoutProps {
@@ -85,6 +86,31 @@ export default function UnifiedCheckoutLayout({
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
   const t = useTranslation();
   const n = useLocalNum();
+  // The cart/details split is a two-step flow on mobile and a two-column
+  // layout on desktop. The slide only makes sense in the first case — on
+  // desktop both panels are permanently visible, so animating them on
+  // `activeSection` would drive the wrong one to opacity 0.
+  const isMobile = useIsMobile();
+
+  const panelMotion = (panel: "cart" | "customer") =>
+    isMobile
+      ? {
+          initial: false as const,
+          animate: {
+            opacity: activeSection === panel ? 1 : 0,
+            // Cart sits left of details, so each slides in from its own side —
+            // the direction is what makes the two feel like steps rather than
+            // like a swap.
+            x:
+              activeSection === panel
+                ? 0
+                : panel === "cart"
+                  ? -24
+                  : 24,
+          },
+          transition: { duration: 0.28, ease: "easeOut" as const },
+        }
+      : {};
 
   // One free-delivery product in the cart waives the fee for the whole order,
   // no matter how many other items or quantities are in it.
@@ -240,10 +266,11 @@ export default function UnifiedCheckoutLayout({
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8'>
-        <div
+        <m.div
           className={`${
             activeSection === "customer" ? "hidden lg:block" : "block"
           }`}
+          {...panelMotion("cart")}
         >
           <Card className='bg-card lg:sticky lg:top-8 rounded-2xl shadow-lg'>
             <CardHeader className='pb-4'>
@@ -345,7 +372,7 @@ export default function UnifiedCheckoutLayout({
                   <div className='pt-3 border-t border-border'>
                     <div className='flex justify-between font-bold text-foreground text-lg'>
                       <span>{t.checkout.totalLabel}</span>
-                      <motion.span
+                      <m.span
                         key={`total-${totalWithShippingAndTax}`}
                         initial={{ scale: 1.1 }}
                         animate={{ scale: 1 }}
@@ -353,7 +380,7 @@ export default function UnifiedCheckoutLayout({
                       >
                         {displayCurrencyIconSafe}
                         {n(totalWithShippingAndTax.toFixed(2))}
-                      </motion.span>
+                      </m.span>
                     </div>
 
                     <button
@@ -434,12 +461,13 @@ export default function UnifiedCheckoutLayout({
               )}
             </CardContent>
           </Card>
-        </div>
+        </m.div>
 
-        <div
+        <m.div
           className={`${
             activeSection === "cart" ? "hidden lg:block" : "block"
           }`}
+          {...panelMotion("customer")}
         >
           <div className='space-y-6'>
             <Card className='bg-card rounded-2xl shadow-lg'>
@@ -481,7 +509,7 @@ export default function UnifiedCheckoutLayout({
               </CardContent>
             </Card>
           </div>
-        </div>
+        </m.div>
       </div>
     </div>
   );

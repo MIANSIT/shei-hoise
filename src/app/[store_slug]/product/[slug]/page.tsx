@@ -14,7 +14,7 @@ import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
 import BuyNowButton from "@/app/components/products/singleProduct/BuyNowButton";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 import { ProductPageSkeleton } from "../../../components/skeletons/ProductPageSkeleton";
@@ -165,16 +165,16 @@ const DescAccordion = ({
         <span className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 tracking-wide">
           {title}
         </span>
-        <motion.div
+        <m.div
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
           <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        </motion.div>
+        </m.div>
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -184,7 +184,7 @@ const DescAccordion = ({
             <div className="pb-5 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
               {children}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -631,7 +631,7 @@ export default function ProductPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-8 lg:gap-12 lg:items-start">
           {/* LEFT — image */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4 }}
@@ -646,10 +646,10 @@ export default function ProductPage() {
                 product.discounted_price
               }
             />
-          </motion.div>
+          </m.div>
 
           {/* RIGHT — info card */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.08 }}
@@ -890,7 +890,7 @@ export default function ProductPage() {
                       />
                     ) : (
                       <AnimatePresence mode="wait">
-                        <motion.span
+                        <m.span
                           key={quantity}
                           initial={{ y: -6, opacity: 0 }}
                           animate={{ y: 0, opacity: 1 }}
@@ -899,7 +899,7 @@ export default function ProductPage() {
                           className="text-[13px] font-bold text-gray-900 dark:text-gray-100"
                         >
                           {n(quantity)}
-                        </motion.span>
+                        </m.span>
                       </AnimatePresence>
                     )}
                   </div>
@@ -916,7 +916,7 @@ export default function ProductPage() {
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
                   {t.product.total}
                 </p>
-                <motion.p
+                <m.p
                   key={totalPrice}
                   initial={{ scale: 1.05 }}
                   animate={{ scale: 1 }}
@@ -924,21 +924,21 @@ export default function ProductPage() {
                 >
                   {curr}
                   {n(totalPrice.toFixed(2))}
-                </motion.p>
+                </m.p>
               </div>
             </div>
 
             {/* Max qty error */}
             <AnimatePresence>
               {showMaxErr && (
-                <motion.p
+                <m.p
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   className="text-[12px] text-rose-500 dark:text-rose-400 font-medium mb-2 overflow-hidden"
                 >
                   {t.product.maxQtyReached}
-                </motion.p>
+                </m.p>
               )}
             </AnimatePresence>
 
@@ -1154,7 +1154,7 @@ export default function ProductPage() {
                 </DescAccordion>
               )}
             </div>
-          </motion.div>
+          </m.div>
         </div>
 
         <ReviewsSection

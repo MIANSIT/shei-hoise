@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useParams } from "next/navigation";
 import { CartProductWithDetails } from "@/lib/types/cart";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -420,14 +420,14 @@ export default function CartItemsList({
 
                 {/* Show max quantity error */}
                 {showError && (
-                  <motion.p
+                  <m.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     className="text-xs text-destructive mt-1"
                   >
                     {t.cart.maxQtyExceeded}
-                  </motion.p>
+                  </m.p>
                 )}
               </div>
             </div>
@@ -446,7 +446,7 @@ export default function CartItemsList({
                 </Button>
               )}
 
-              <motion.p
+              <m.p
                 className="text-foreground font-medium"
                 key={`price-${itemKey}-${item.quantity}`}
                 initial={{ scale: 1.1 }}
@@ -454,7 +454,7 @@ export default function CartItemsList({
                 transition={{ duration: 0.2 }}
               >
                  {displayCurrencyIconSafe}{n((item.displayPrice * item.quantity).toFixed(2))}
-              </motion.p>
+              </m.p>
             </div>
           </div>
         );

@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Home, ArrowLeft } from "lucide-react";
 
 export default function NotFoundPage() {
@@ -22,7 +22,7 @@ export default function NotFoundPage() {
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-125 h-125 bg-chart-2/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* 404 layered number */}
-      <motion.div
+      <m.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 180, damping: 14 }}
@@ -34,30 +34,30 @@ export default function NotFoundPage() {
         <span className="absolute inset-0 flex items-center justify-center text-5xl md:text-7xl font-extrabold text-chart-2">
           404
         </span>
-      </motion.div>
+      </m.div>
 
       {/* Heading */}
-      <motion.h1
+      <m.h1
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="text-2xl md:text-3xl font-bold text-foreground mb-3"
       >
         Page Not Found
-      </motion.h1>
+      </m.h1>
 
       {/* Description */}
-      <motion.p
+      <m.p
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
         className="text-base md:text-lg text-muted-foreground max-w-md mb-8"
       >
         The page you are looking for does not exist or has been moved.
-      </motion.p>
+      </m.p>
 
       {/* Action buttons */}
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
@@ -80,7 +80,7 @@ export default function NotFoundPage() {
           <ArrowLeft className="mr-2 w-4 h-4" />
           Go Back
         </Button>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

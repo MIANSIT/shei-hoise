@@ -244,3 +244,29 @@
 .ant-message-notice-wrapper {
   text-align: left;
 }
+/* ── Reduced motion ─────────────────────────────────────────────────────────
+   MotionConfig handles framer-motion; this covers everything it can't reach:
+   Tailwind/tw-animate-css keyframes, AntD's own transitions, and any bare CSS
+   transition in the app.
+
+   Spinners are deliberately exempt. `animate-spin` is not decoration — it is
+   the only signal that a request is still in flight, and freezing it reads as
+   a hung page. The guidance is to remove motion that conveys nothing, not to
+   remove feedback. Everything else collapses to a near-instant, single pass
+   so state still changes but nothing sweeps across the viewport. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin,
+  .animate-spin-slow {
+    animation-duration: 0.8s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

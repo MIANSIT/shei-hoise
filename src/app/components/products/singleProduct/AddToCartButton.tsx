@@ -1,7 +1,7 @@
 "use client";
 
 import { ShoppingCart, Check, Info } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 
@@ -53,7 +53,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
     .join(" ");
 
   return (
-    <motion.button
+    <m.button
       onClick={handleClick}
       disabled={disabled || isLoading}
       whileTap={!disabled && !isMaxInCart ? { scale: 0.98 } : {}}
@@ -61,7 +61,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
     >
       <AnimatePresence mode="wait">
         {showSuccess ? (
-          <motion.span
+          <m.span
             key="success"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -70,9 +70,9 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
           >
             <Check className="w-4 h-4" />
             {t.cart.addedToCart}
-          </motion.span>
+          </m.span>
         ) : isLoading ? (
-          <motion.span
+          <m.span
             key="loading"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -99,9 +99,9 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
               />
             </svg>
             {t.cart.adding}
-          </motion.span>
+          </m.span>
         ) : isMaxInCart ? (
-          <motion.span
+          <m.span
             key="maxed"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -110,9 +110,9 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
           >
             <Info className="w-4 h-4" />
             {t.cart.maxInCart} ({n(currentCartQuantity)})
-          </motion.span>
+          </m.span>
         ) : disabled ? (
-          <motion.span
+          <m.span
             key="oos"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -121,9 +121,9 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
           >
             <ShoppingCart className="w-4 h-4" />
             {disabledLabel ?? t.cart.outOfStock}
-          </motion.span>
+          </m.span>
         ) : (
-          <motion.span
+          <m.span
             key="idle"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -132,10 +132,10 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
           >
             <ShoppingCart className="w-4 h-4" />
             {resolvedLabel}
-          </motion.span>
+          </m.span>
         )}
       </AnimatePresence>
-    </motion.button>
+    </m.button>
   );
 };
 

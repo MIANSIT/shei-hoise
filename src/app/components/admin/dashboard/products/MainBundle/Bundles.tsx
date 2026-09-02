@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Input, Pagination, notification } from "antd";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
-import { Boxes, Pencil, Trash2 } from "lucide-react";
+import { Boxes, Pencil, Trash2, Truck } from "lucide-react";
 import { getBundles, BundleListItem } from "@/lib/queries/bundles/getBundles";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
+import { toggleProductFreeDelivery } from "@/lib/queries/products/toggleProductFreeDelivery";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import ConfirmModal from "@/app/components/admin/common/ConfirmModal";
@@ -28,6 +29,32 @@ const Bundles: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<BundleListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Optimistic overrides so the toggle responds instantly without refetching
+  // the page; rolled back if the write fails.
+  const [freeDeliveryOverrides, setFreeDeliveryOverrides] = useState<
+    Record<string, boolean>
+  >({});
+  const [togglingFreeDeliveryId, setTogglingFreeDeliveryId] = useState<
+    string | null
+  >(null);
+
+  const getFreeDelivery = (bundle: BundleListItem) =>
+    freeDeliveryOverrides[bundle.id] ?? bundle.free_delivery;
+
+  const handleToggleFreeDelivery = async (bundle: BundleListItem) => {
+    const next = !getFreeDelivery(bundle);
+    setFreeDeliveryOverrides((prev) => ({ ...prev, [bundle.id]: next }));
+    setTogglingFreeDeliveryId(bundle.id);
+    try {
+      // Bundles are rows in `products`, so the product-level toggle applies.
+      await toggleProductFreeDelivery(bundle.id, next);
+    } catch {
+      setFreeDeliveryOverrides((prev) => ({ ...prev, [bundle.id]: !next }));
+      notif.error({ title: "Failed to update free delivery" });
+    } finally {
+      setTogglingFreeDeliveryId(null);
+    }
+  };
 
   const fetchBundles = useCallback(async () => {
     if (!user?.store_id) return;
@@ -154,6 +181,24 @@ const Bundles: React.FC = () => {
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
+                  onClick={() => handleToggleFreeDelivery(bundle)}
+                  disabled={togglingFreeDeliveryId === bundle.id}
+                  title={
+                    getFreeDelivery(bundle)
+                      ? "Turn off free delivery — normal delivery charge applies"
+                      : "Turn on free delivery — orders with this bundle ship free"
+                  }
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-150 disabled:opacity-50
+                    ${
+                      getFreeDelivery(bundle)
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-500 dark:border-emerald-500 dark:bg-emerald-500/15"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  aria-label="Toggle free delivery"
+                >
+                  <Truck className="h-3.5 w-3.5" />
+                </button>
+                <button
                   onClick={() => setPendingDelete(bundle)}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                   aria-label="Delete bundle"
@@ -222,6 +267,7 @@ const Bundles: React.FC = () => {
               <th className="px-4 py-3">Price</th>
               <th className="px-4 py-3">Contains</th>
               <th className="px-4 py-3">Available</th>
+              <th className="px-4 py-3 text-center">Free Delivery</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -229,14 +275,14 @@ const Bundles: React.FC = () => {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && bundles.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   No bundles yet.
                 </td>
               </tr>
@@ -304,6 +350,28 @@ const Bundles: React.FC = () => {
                   >
                     {bundle.available}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => handleToggleFreeDelivery(bundle)}
+                      disabled={togglingFreeDeliveryId === bundle.id}
+                      title={
+                        getFreeDelivery(bundle)
+                          ? "Turn off free delivery — normal delivery charge applies"
+                          : "Turn on free delivery — orders with this bundle ship free"
+                      }
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+                        ${
+                          getFreeDelivery(bundle)
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-500 hover:bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-500/15"
+                            : "border-border bg-card text-muted-foreground hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-400 dark:hover:bg-emerald-500/10"
+                        }`}
+                      aria-label="Toggle free delivery"
+                    >
+                      <Truck className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </td>
                 <td className="px-4 py-3 capitalize text-muted-foreground">{bundle.status}</td>
                 <td className="px-4 py-3">

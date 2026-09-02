@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye, Zap } from "lucide-react";
 import { getStoreBySlugFull, StoreFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
@@ -178,7 +178,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         {hasBanner && (
           <div className="absolute bottom-0 inset-x-0">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 sm:pb-6 flex items-end justify-between gap-4">
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
@@ -207,9 +207,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                     </p>
                   )}
                 </div>
-              </motion.div>
+              </m.div>
 
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, delay: 0.1 }}
@@ -223,7 +223,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   <span className="hidden sm:inline">{t.home.shopAll}</span>
                   <span className="sm:hidden">{t.home.shop}</span>
                 </Link>
-              </motion.div>
+              </m.div>
             </div>
           </div>
         )}
@@ -242,7 +242,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           </div>
 
           <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 lg:py-24 flex flex-col items-center text-center">
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
@@ -256,16 +256,16 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   <ShoppingBag className="h-7 w-7 sm:h-8 sm:w-8 text-stone-400" />
                 </div>
               )}
-            </motion.div>
+            </m.div>
 
-            <motion.h1
+            <m.h1
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.42, delay: 0.06 }}
               className="mt-5 sm:mt-7 text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.05] text-stone-900 dark:text-white"
             >
               {storeName}
-            </motion.h1>
+            </m.h1>
 
             {storeRatingSummary.total > 0 && (
               <StoreRatingBadge
@@ -277,17 +277,17 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             )}
 
             {(storeData?.description || storeData?.short_description) && (
-              <motion.p
+              <m.p
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.42, delay: 0.12 }}
                 className="mt-3 sm:mt-4 text-sm sm:text-base text-stone-500 dark:text-gray-400 leading-relaxed max-w-xl"
               >
                 {storeData.description || storeData.short_description}
-              </motion.p>
+              </m.p>
             )}
 
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.42, delay: 0.18 }}
@@ -300,7 +300,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                 <ShoppingBag className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                 {t.home.shopAll}
               </Link>
-            </motion.div>
+            </m.div>
           </div>
         </div>
       )}
@@ -446,7 +446,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
 
           {/* Bottom CTA */}
           {featuredProducts.length > 0 && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
@@ -462,7 +462,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                 {t.home.browseAll}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
               </Link>
-            </motion.div>
+            </m.div>
           )}
         </div>
       </section>
@@ -478,7 +478,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             {categories.map((cat, i) => (
               <CategoryChip key={cat.id} category={cat} store_slug={store_slug} index={i} />
             ))}
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: Math.min(categories.length * 0.05, 0.4), duration: 0.28 }}
@@ -490,7 +490,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               >
                 All <ArrowRight className="h-3 w-3" />
               </Link>
-            </motion.div>
+            </m.div>
           </div>
         </div>
       )}
@@ -566,7 +566,7 @@ function FlashSaleHeader({ products }: { products: Product[] }) {
   }, null);
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -582,7 +582,7 @@ function FlashSaleHeader({ products }: { products: Product[] }) {
         </div>
       </div>
       {earliestEnd && <FlashSaleCountdown endsAt={earliestEnd} />}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -629,7 +629,7 @@ interface SectionHeaderProps {
 
 function SectionHeader({ eyebrow, title, href, ctaLabel, badge }: SectionHeaderProps) {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -653,7 +653,7 @@ function SectionHeader({ eyebrow, title, href, ctaLabel, badge }: SectionHeaderP
         {ctaLabel}
         <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
       </Link>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -747,7 +747,7 @@ function TrustStrip({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-5 gap-x-3">
           {items.map((item, i) => (
-            <motion.div
+            <m.div
               key={i}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -765,7 +765,7 @@ function TrustStrip({
                   {item.sub}
                 </p>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </div>
@@ -784,7 +784,7 @@ interface CategoryChipProps {
 
 function CategoryChip({ category, store_slug, index }: CategoryChipProps) {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05, duration: 0.28, ease: "easeOut" }}
@@ -797,7 +797,7 @@ function CategoryChip({ category, store_slug, index }: CategoryChipProps) {
         <Tag className="h-3 w-3 text-stone-400 shrink-0" />
         {category.name}
       </Link>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -813,7 +813,7 @@ interface CategoryCardProps {
 function CategoryCard({ category, store_slug, index }: CategoryCardProps) {
   const t = useTranslation();
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.38, ease: "easeOut" }}
@@ -836,7 +836,7 @@ function CategoryCard({ category, store_slug, index }: CategoryCardProps) {
           </span>
         </div>
       </Link>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -894,7 +894,7 @@ function ProductCard({
       : 0;
 
   return (
-    <motion.article
+    <m.article
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.38 }}
@@ -1057,6 +1057,6 @@ function ProductCard({
           </button>
         )
       )}
-    </motion.article>
+    </m.article>
   );
 }
