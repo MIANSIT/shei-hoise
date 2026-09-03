@@ -5,6 +5,7 @@ import { Modal, Button } from "antd";
 import jsQR from "jsqr";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { extractProductSlugFromScannedText } from "@/lib/utils/productQr";
+import { playBeep } from "@/lib/utils/beep";
 
 interface ScanToAddModalProps {
   open: boolean;
@@ -21,35 +22,6 @@ interface ScanToAddModalProps {
 // doesn't let it re-trigger without actually being moved away. At ~30fps
 // this is well under 200ms, so it doesn't slow down scanning the next item.
 const MISS_FRAMES_TO_CLEAR = 5;
-
-// A short beep + vibration on every recognized scan — the on-screen status
-// text alone is easy to miss while scanning several items back-to-back.
-function playBeep(): void {
-  try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.12);
-    oscillator.onended = () => ctx.close();
-  } catch {
-    // Sound isn't critical to the scan flow — ignore if unsupported/blocked.
-  }
-}
-
-function vibrate(): void {
-  if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(60);
-}
 
 function cameraErrorMessage(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
@@ -188,7 +160,6 @@ export default function ScanToAddModal({
         setStatus("Scanned, but that product isn't in this store's catalog.");
         return;
       }
-      vibrate();
       playBeep();
       const outcome = onProductFound(product);
       setStatus(
