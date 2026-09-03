@@ -32,11 +32,14 @@ import {
   DeliveryOption,
 } from "@/lib/types/enums";
 import { CreateOrderData, OrderProduct } from "@/lib/types/order";
-import { printFittedDocument, sanitizeFilename } from "@/lib/utils/printWindow";
+import { sanitizeFilename } from "@/lib/utils/printWindow";
+import { generateReceiptPdf } from "@/lib/utils/generateReceiptPdf";
+import { unlockBeepAudio } from "@/lib/utils/beep";
 import { getStorePublicUrl, renderProductQrDataUrl } from "@/lib/utils/productQr";
 import { getOrCreateCustomerByPhone } from "@/lib/queries/customers/getOrCreateCustomerByPhone";
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import VariantPickerModal from "./VariantPickerModal";
+import ReceiptPreviewModal from "./ReceiptPreviewModal";
 import ScanToAddModal from "./ScanToAddModal";
 
 const { Text, Title } = Typography;
@@ -109,6 +112,10 @@ export default function QuickSale() {
   const [variantPickerProduct, setVariantPickerProduct] =
     useState<ProductWithVariants | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+
+  const [receiptPdfBlob, setReceiptPdfBlob] = useState<Blob | null>(null);
+  const [receiptFileName, setReceiptFileName] = useState("");
+  const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false);
 
   // Briefly highlights the cart row a scan (or tap) just touched, so the
   // "✓ Added" confirmation has a second, harder-to-miss signal than a
@@ -291,96 +298,50 @@ export default function QuickSale() {
   }) => {
     const storeDisplayName = store?.store_name || "My Shop";
     const logoUrl = store?.logo_url;
-    const itemsHtml = order.items
-      .map(
-        (it) =>
-          `<tr><td class="r-name">${it.product_name}${
-            it.variant_name ? ` (${it.variant_name})` : ""
-          }</td><td class="r-qty">x${it.quantity}</td><td class="r-amt">${it.total_price.toFixed(2)}</td></tr>`,
-      )
-      .join("");
 
     // A QR on the receipt pointing at the shop's own storefront (not a
     // product) — lets a walk-in customer find/shop with the store online
-    // later. Generated once and reused on both printed copies.
-    let shopQrHtml = "";
+    // later.
+    let shopQrDataUrl: string | null = null;
     if (storeSlug) {
       try {
-        const shopQrDataUrl = await renderProductQrDataUrl(
-          getStorePublicUrl(storeSlug),
-          logoUrl,
-        );
-        shopQrHtml = `<div class="center" style="margin-top:4px;"><img src="${shopQrDataUrl}" class="shop-qr" /><div class="shop-qr-caption">Shop with us online</div></div>`;
+        shopQrDataUrl = await renderProductQrDataUrl(getStorePublicUrl(storeSlug), logoUrl);
       } catch (err) {
         console.error("Failed to generate shop QR for receipt:", err);
       }
     }
 
-    const receiptCopy = (copyLabel: "CUSTOMER COPY" | "SHOP COPY") => `
-      <div class="receipt">
-        <div class="center copy-label">— ${copyLabel} —</div>
-        ${logoUrl ? `<div class="center"><img src="${logoUrl}" class="logo" /></div>` : ""}
-        <div class="center store-name">${storeDisplayName}</div>
-        <div class="center">${order.date.toLocaleString()}</div>
-        <div class="center">#${order.orderNumber}</div>
-        <hr />
-        <table>${itemsHtml}</table>
-        <hr />
-        <table class="totals">
-          <tr><td class="r-name">Subtotal</td><td class="r-amt">${order.subtotal.toFixed(2)}</td></tr>
-          <tr><td class="r-name">Discount</td><td class="r-amt">${order.discount.toFixed(2)}</td></tr>
-          <tr class="grand"><td class="r-name">TOTAL</td><td class="r-amt">${order.total.toFixed(2)}</td></tr>
-          <tr><td class="r-name">Payment</td><td class="r-amt">${
-            PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod
-          }</td></tr>
-          ${
-            order.cashReceived != null
-              ? `<tr><td class="r-name">Cash received</td><td class="r-amt">${order.cashReceived.toFixed(2)}</td></tr>
-                 <tr><td class="r-name">Change due</td><td class="r-amt">${(order.changeDue ?? 0).toFixed(2)}</td></tr>`
-              : ""
-          }
-          ${
-            order.due != null && order.due > 0.01
-              ? `<tr><td class="r-name">Paid now</td><td class="r-amt">${(order.paidNow ?? 0).toFixed(2)}</td></tr>
-                 <tr class="due-row"><td class="r-name">DUE</td><td class="r-amt">${order.due.toFixed(2)}</td></tr>`
-              : ""
-          }
-        </table>
-        ${shopQrHtml}
-        <div class="center footer">Thank you for shopping with us!</div>
-      </div>
-    `;
+    // A real PDF, not a browser print() of HTML: the 58mm thermal-roll page
+    // size is baked into the file itself, so it survives mobile print
+    // pipelines (iOS AirPrint, Android print bridges like RawBT) that
+    // otherwise silently substitute a Letter/A4 page for anything printed
+    // as HTML — see generateReceiptPdf.ts for the full reasoning.
+    const pdfBlob = await generateReceiptPdf({
+      storeName: storeDisplayName,
+      logoUrl,
+      dateLabel: order.date.toLocaleString(),
+      orderNumber: order.orderNumber,
+      items: order.items.map((it) => ({
+        name: it.product_name + (it.variant_name ? ` (${it.variant_name})` : ""),
+        qty: it.quantity,
+        amount: it.total_price,
+      })),
+      subtotal: order.subtotal,
+      discount: order.discount,
+      total: order.total,
+      paymentLabel: PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod,
+      cashReceived: order.cashReceived,
+      changeDue: order.changeDue,
+      paidNow: order.paidNow,
+      due: order.due,
+      currencyIcon,
+      shopQrDataUrl,
+    });
 
-    const bodyHtml =
-      receiptCopy("CUSTOMER COPY") +
-      '<div class="cut-line">✂ - - - - - - - - - - - - - - - - - - - - - -</div>' +
-      receiptCopy("SHOP COPY");
-
-    const styles = `
-      body { padding: 0; }
-      .receipt { width: 58mm; font-family: "Courier New", monospace; font-size: 10.5px; line-height: 1.4; color: #000; padding: 2mm 3mm; }
-      .center { text-align: center; }
-      .copy-label { font-size: 9px; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 2px; }
-      .logo { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; margin-bottom: 2px; }
-      .store-name { font-size: 13px; font-weight: 700; }
-      hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
-      table { width: 100%; border-collapse: collapse; }
-      td { padding: 1px 0; vertical-align: top; }
-      .r-name { width: 55%; word-break: break-word; }
-      .r-qty { width: 15%; text-align: center; }
-      .r-amt { width: 30%; text-align: right; }
-      .totals td { padding-top: 2px; }
-      .grand td { font-weight: 700; font-size: 12px; border-top: 1px dashed #000; padding-top: 3px; }
-      .due-row td { font-weight: 700; }
-      .shop-qr { width: 18mm; height: 18mm; margin-top: 2px; }
-      .shop-qr-caption { font-size: 8.5px; color: #333; }
-      .footer { margin-top: 6px; font-size: 9.5px; }
-      .cut-line { text-align: center; font-size: 9px; color: #666; margin: 3mm 0; }
-    `;
-
-    // Suggested "Save as PDF" filename — {store}-{order number}.pdf.
     const fileTitle = sanitizeFilename(`${storeDisplayName}-${order.orderNumber}`);
-    printFittedDocument(fileTitle, bodyHtml, styles, 58);
+    setReceiptPdfBlob(pdfBlob);
+    setReceiptFileName(`${fileTitle}.pdf`);
+    setReceiptPreviewOpen(true);
   };
 
   const handleCompleteSale = async () => {
@@ -544,7 +505,14 @@ export default function QuickSale() {
             <Button
               size="large"
               icon={<CameraOutlined />}
-              onClick={() => setScanOpen(true)}
+              onClick={() => {
+                // Unlocking here (a direct tap) rather than inside the scan
+                // loop later — iOS Safari only lets an AudioContext produce
+                // sound if it's created/resumed synchronously inside a real
+                // user gesture like this click.
+                unlockBeepAudio();
+                setScanOpen(true);
+              }}
               className="w-full sm:w-auto"
             >
               Scan to Add
@@ -892,6 +860,13 @@ export default function QuickSale() {
         products={products}
         onClose={() => setScanOpen(false)}
         onProductFound={(product) => handleTapProduct(product)}
+      />
+
+      <ReceiptPreviewModal
+        open={receiptPreviewOpen}
+        pdfBlob={receiptPdfBlob}
+        fileName={receiptFileName}
+        onClose={() => setReceiptPreviewOpen(false)}
       />
     </div>
   );
