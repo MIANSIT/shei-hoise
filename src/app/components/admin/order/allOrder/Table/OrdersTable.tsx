@@ -607,6 +607,22 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["sm"],
     },
     {
+      title: "History",
+      key: "history",
+      render: (_, order: StoreOrder) => {
+        const phone = getCustomerPhone(order);
+        return (
+          <CustomerOrderHistoryTags
+            history={historyByPhone?.[phone]}
+            currentOrderId={order.id}
+            showEmptyHint
+          />
+        );
+      },
+      width: 90,
+      responsive: ["lg"],
+    },
+    {
       title: t.admin.orderColTotal,
       key: "total",
       render: (_, order: StoreOrder) => (
@@ -1075,13 +1091,6 @@ const OrdersTable: React.FC<Props> = ({
                         {riskStyle.label}
                       </span>
                     </Tooltip>
-                  </DetailField>
-                  <DetailField label="History">
-                    <CustomerOrderHistoryTags
-                      history={phone ? historyByPhone?.[phone] : undefined}
-                      currentOrderId={order.id}
-                      showEmptyHint
-                    />
                   </DetailField>
                   <DetailField label={t.admin.orderColFb}>
                     <Tooltip title={fbStyle.reason}>
