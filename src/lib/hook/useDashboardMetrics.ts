@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import type { DashboardSummaryPayload } from "@/lib/queries/dashboard/getDashboardSummary";
 
-export type TimePeriod = "weekly" | "monthly" | "yearly";
+export type TimePeriod = "weekly" | "monthly" | "yearly" | "all";
 export type OrderStatus =
   | "pending"
   | "confirmed"

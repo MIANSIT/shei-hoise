@@ -133,16 +133,29 @@ export default function DashboardPage() {
       ? t.admin.periodLast7
       : p === "monthly"
         ? t.admin.periodLast30
-        : t.admin.periodLast365;
+        : p === "yearly"
+          ? t.admin.periodLast365
+          : t.admin.periodAllTime;
 
   const getComparisonText = (p: TimePeriod) =>
     p === "weekly"
       ? t.admin.vsPrev7
       : p === "monthly"
         ? t.admin.vsPrev30
-        : t.admin.vsPrev365;
+        : p === "yearly"
+          ? t.admin.vsPrev365
+          : "";
 
   const fmt = (pct: number) => `${pct > 0 ? "+" : ""}${n(pct.toFixed(1))}%`;
+
+  // All time has no earlier window to compare against, so the KPI cards show
+  // what the figure covers instead of a change percentage measured against a
+  // baseline of zero.
+  const isAllTime = timePeriod === "all";
+  const changeLabel = (pct: number) =>
+    isAllTime ? t.admin.sinceLaunch : `${fmt(pct)} ${getComparisonText(timePeriod)}`;
+  const changeTone = (pct: number): "positive" | "negative" | "neutral" =>
+    isAllTime ? "neutral" : getChangeType(pct);
 
   // ── Revenue / Order KPI cards ────────────────────────────────────────────────
   const stats = [
@@ -150,32 +163,32 @@ export default function DashboardPage() {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.revenuePaid}`,
       value: renderCurrency(metrics.revenue),
       icon: <DollarOutlined className="text-emerald-500" />,
-      change: `${fmt(metrics.changePercentage.revenue)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(metrics.changePercentage.revenue),
+      change: changeLabel(metrics.changePercentage.revenue),
+      changeType: changeTone(metrics.changePercentage.revenue),
       description: `${n(metrics.paidOrdersCount)} ${t.admin.fromPaidOrders}`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.ordersAll}`,
       value: n(metrics.orderCount),
       icon: <ShoppingCartOutlined className="text-blue-500" />,
-      change: `${fmt(metrics.changePercentage.orders)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(metrics.changePercentage.orders),
+      change: changeLabel(metrics.changePercentage.orders),
+      changeType: changeTone(metrics.changePercentage.orders),
       description: `${t.admin.totalOrdersOf} (${n(metrics.paidOrdersCount)} ${t.admin.paid})`,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.avgOrderValue}`,
       value: renderCurrency(metrics.averageOrderValue),
       icon: <LineChartOutlined className="text-violet-500" />,
-      change: `${fmt(metrics.changePercentage.aov)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(metrics.changePercentage.aov),
+      change: changeLabel(metrics.changePercentage.aov),
+      changeType: changeTone(metrics.changePercentage.aov),
       description: t.admin.subtotalAllOrders,
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.grossProfit}`,
       value: renderCurrency(metrics.grossProfit),
       icon: <DollarOutlined className="text-amber-500" />,
-      change: `${fmt(metrics.changePercentage.profit)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(metrics.changePercentage.profit),
+      change: changeLabel(metrics.changePercentage.profit),
+      changeType: changeTone(metrics.changePercentage.profit),
       description: t.admin.basedOnCost,
     },
   ];
@@ -206,8 +219,10 @@ export default function DashboardPage() {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.totalExpenses}`,
       value: renderCurrency(expenseMetrics.totalExpenses),
       icon: <FallOutlined className="text-rose-500" />,
-      change: `${fmt(expenseMetrics.changePercentage.expenses)} ${getComparisonText(timePeriod)}`,
-      changeType: getChangeType(-expenseMetrics.changePercentage.expenses),
+      change: changeLabel(expenseMetrics.changePercentage.expenses),
+      changeType: isAllTime
+        ? "neutral"
+        : getChangeType(-expenseMetrics.changePercentage.expenses),
       description: `${n(expenseMetrics.expenseCount)} ${t.admin.expenseRecords}`,
     },
     {
@@ -220,11 +235,15 @@ export default function DashboardPage() {
           }
         />
       ),
-      change: `${fmt(expenseMetrics.changePercentage.netProfit)} ${getComparisonText(timePeriod)}`,
+      change: changeLabel(expenseMetrics.changePercentage.netProfit),
+      // A loss stays red even on the all-time view — that is a fact about the
+      // figure itself, not a comparison against an earlier period.
       changeType:
         expenseMetrics.netProfit < 0
           ? "negative"
-          : getChangeType(expenseMetrics.changePercentage.netProfit),
+          : isAllTime
+            ? "neutral"
+            : getChangeType(expenseMetrics.changePercentage.netProfit),
       description: `${t.admin.grossProfitMinus} + vendor profit`,
     },
     {

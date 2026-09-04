@@ -2,6 +2,9 @@ import type { TimePeriod } from "@/lib/hook/useDashboardMetrics";
 
 const STORE_TIMEZONE = "Asia/Dhaka";
 
+/** Earlier than the platform itself, so "all time" genuinely means all time. */
+const ALL_TIME_START = "2020-01-01";
+
 export interface DashboardPeriodRange {
   periodStart: string;
   periodEnd: string;
@@ -30,8 +33,23 @@ const addDays = (dateStr: string, days: number): string => {
  * @returns ISO date strings (YYYY-MM-DD) for the current and previous period bounds.
  */
 export function getDashboardPeriodRange(period: TimePeriod): DashboardPeriodRange {
-  const spanDays = period === "weekly" ? 7 : period === "monthly" ? 30 : 365;
   const today = toDhakaDateString(new Date());
+
+  // "All time" reaches back further than any store on the platform, so every
+  // order, expense and settlement is counted whatever the store's age. There is
+  // no prior window to compare against — the previous range is deliberately
+  // zero-width so every prev_* total comes back 0, and the UI drops the
+  // comparison line rather than claiming a meaningless "+100% vs previous".
+  if (period === "all") {
+    return {
+      periodStart: ALL_TIME_START,
+      periodEnd: today,
+      prevPeriodStart: ALL_TIME_START,
+      prevPeriodEnd: ALL_TIME_START,
+    };
+  }
+
+  const spanDays = period === "weekly" ? 7 : period === "monthly" ? 30 : 365;
 
   const periodEnd = today;
   const periodStart = addDays(today, -(spanDays - 1));
