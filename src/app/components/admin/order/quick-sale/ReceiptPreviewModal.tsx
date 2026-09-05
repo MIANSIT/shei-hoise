@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Modal, Button, Space } from "antd";
-import { PrinterOutlined, ShareAltOutlined } from "@ant-design/icons";
+import { PrinterOutlined, ShareAltOutlined, FilePdfOutlined } from "@ant-design/icons";
 
 interface ReceiptPreviewModalProps {
   open: boolean;
@@ -12,14 +12,19 @@ interface ReceiptPreviewModalProps {
 }
 
 /**
- * Shows the generated receipt PDF inline (an <iframe> on its blob: URL,
- * same-origin so contentWindow access/printing isn't blocked) instead of
- * navigating to a new tab or auto-picking a share/open path by device type.
- * A cashier explicitly chooses Print (goes straight to the OS print dialog
- * on the embedded PDF — its 58mm page size is baked into the file, so this
- * doesn't detour through a generic "Save as PDF" step the way opening the
- * PDF as a plain link tends to on mobile) or Share (hands the same file to
- * another printer app, e.g. RawBT on Android).
+ * Shows the generated receipt PDF via an <iframe> on its blob: URL
+ * (same-origin so contentWindow access/printing isn't blocked), with
+ * explicit Print and Share actions — instead of navigating to a new tab or
+ * auto-picking a path by device type.
+ *
+ * The iframe renders the PDF inline fine on desktop, so it stays visible
+ * there. Mobile Chrome/Safari don't reliably render a blob: PDF inside an
+ * iframe at all (it shows a bare "open this file" placeholder instead of
+ * the actual content) — rather than fight that, mobile gets a simple
+ * "ready to print" card instead, while the same iframe stays mounted
+ * off-screen purely so Print can still call .print() on it. The real visual
+ * check on mobile happens in the OS's own print preview once Print is
+ * tapped, which — unlike the iframe — renders the PDF correctly.
  */
 export default function ReceiptPreviewModal({
   open,
@@ -30,6 +35,11 @@ export default function ReceiptPreviewModal({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [canShare, setCanShare] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(/iPad|iPhone|iPod|Android/.test(navigator.userAgent));
+  }, []);
 
   useEffect(() => {
     if (!open || !pdfBlob) {
@@ -90,12 +100,39 @@ export default function ReceiptPreviewModal({
         </Space>
       }
     >
+      {blobUrl && isMobile && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            padding: "40px 16px",
+            color: "#666",
+          }}
+        >
+          <FilePdfOutlined style={{ fontSize: 48, color: "#d4380d" }} />
+          <div style={{ fontWeight: 600, color: "#333" }}>Receipt ready</div>
+          <div style={{ fontSize: 12, textAlign: "center", wordBreak: "break-all" }}>{fileName}</div>
+        </div>
+      )}
       {blobUrl && (
         <iframe
           ref={iframeRef}
           src={blobUrl}
           title="Receipt preview"
-          style={{ width: "100%", height: "60vh", border: "none", background: "#f5f5f5" }}
+          style={
+            isMobile
+              ? // Same hidden-iframe CSS already proven for print() elsewhere
+                // in this app (see printHtmlDocument in printWindow.ts) —
+                // `visibility: hidden` still lets the browser fully load and
+                // lay out the iframe's content, unlike a 1px/opacity:0 box,
+                // which risked the embedded PDF viewer never properly
+                // initializing and print() then doing nothing.
+                { position: "fixed", width: 0, height: 0, border: 0, visibility: "hidden" }
+              : { width: "100%", height: "60vh", border: "none", background: "#f5f5f5" }
+          }
         />
       )}
     </Modal>
