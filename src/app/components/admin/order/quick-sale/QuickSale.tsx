@@ -14,7 +14,7 @@ import {
   notification,
 } from "antd";
 import { SearchOutlined, CameraOutlined, DeleteOutlined } from "@ant-design/icons";
-import Image from "next/image";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStore } from "@/lib/hook/stores/useStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -72,16 +72,13 @@ function getVariantAvailableQuantity(variant: ProductVariant): number {
 }
 // Mirrors ProductTable.tsx's getProductImage — same fallback order (product
 // primary image → product's first image → a variant's primary/first image).
-function getProductImage(product: ProductWithVariants): string {
+function getProductImage(product: ProductWithVariants): string | null {
   const img =
     product.product_images?.find((i) => i.is_primary) ||
     product.product_images?.[0] ||
     product.product_variants?.flatMap((v) => v.product_images || []).find((i) => i.is_primary) ||
     product.product_variants?.flatMap((v) => v.product_images || [])[0];
-  return (
-    img?.image_url ||
-    "https://lizjlqgrurjegmjeujki.supabase.co/storage/v1/object/public/dummyImage/logo_beta.png"
-  );
+  return img?.image_url || null;
 }
 
 export default function QuickSale() {
@@ -569,12 +566,11 @@ export default function QuickSale() {
                     className="flex flex-col items-start gap-1 rounded-xl border border-border bg-background/60 p-3 min-h-19 text-left transition-all duration-150 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <div className="relative w-full h-16 rounded-lg overflow-hidden bg-muted shrink-0">
-                      <Image
+                      <ProductImage
                         src={getProductImage(product)}
                         alt=""
-                        fill
                         sizes="140px"
-                        className="object-cover"
+                        iconClassName="h-6 w-6 text-stone-400 dark:text-gray-500"
                       />
                     </div>
                     <span className="text-sm font-semibold text-foreground line-clamp-2">

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import Image from "next/image";
 import { m } from "framer-motion";
 import { useParams } from "next/navigation";
 import { CartProductWithDetails } from "@/lib/types/cart";
@@ -12,6 +11,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { getBundleContentsMap } from "@/lib/queries/bundles/getBundleContentsMap";
 import { BundleItem } from "@/lib/types/product";
+import { ProductImage } from "@/app/components/products/ProductImage";
 
 // Two cart lines for the same bundle can carry different choice-group picks
 // (e.g. Adult vs Kitten flavor) — bundleSelections must be part of the key
@@ -320,16 +320,7 @@ export default function CartItemsList({
           >
             <div className="flex items-start gap-4 min-w-0">
               <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
-                <Image
-                  src={item.imageUrl}
-                  alt={item.productName}
-                  fill
-                  className="object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "/placeholder.png";
-                  }}
-                />
+                <ProductImage src={item.imageUrl} alt={item.productName} />
               </div>
               <div className="flex flex-col min-w-0">
                 <h3 className="font-medium text-foreground md:text-xs text-sm">

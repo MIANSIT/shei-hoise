@@ -337,7 +337,7 @@ export default function ConfirmOrderPage() {
                               variant?.product_images?.[0]?.image_url;
           const productImage = prodImages?.find((img: any) => img.is_primary)?.image_url || 
                               prodImages?.[0]?.image_url;
-          const imageUrl = variantImage || productImage || "/placeholder.png";
+          const imageUrl = variantImage || productImage || "";
 
           // Product name
           const productName = variant

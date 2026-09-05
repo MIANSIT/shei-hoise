@@ -214,7 +214,11 @@ function drawReceiptCopy(
   if (logo) {
     const logoSize = 9;
     doc.addImage(logo.dataUrl, logo.format, (PAGE_WIDTH_MM - logoSize) / 2, y, logoSize, logoSize);
-    y += logoSize + 1.5;
+    // `doc.text()` below draws at its y as a baseline, and a 10pt bold
+    // font's glyphs reach ~2.5-3mm above that baseline — a 1.5mm gap after
+    // the logo's bottom edge put the store name's letters back up inside
+    // the logo image. Needs enough clearance for that ascender plus margin.
+    y += logoSize + 4.5;
   }
 
   centeredText(doc, data.storeName, y, 10, true, bengaliLoaded);
@@ -239,8 +243,13 @@ function drawReceiptCopy(
 
   y = totalRow(doc, y, "Subtotal", amountText(data.currencyIcon, data.subtotal), false, 7.5, bengaliLoaded);
   y = totalRow(doc, y, "Discount", amountText(data.currencyIcon, data.discount), false, 7.5, bengaliLoaded);
-  dashedLine(doc, y - 1);
-  y = totalRow(doc, y + 0.8, "TOTAL", amountText(data.currencyIcon, data.total), true, 9, bengaliLoaded);
+  y += 1;
+  dashedLine(doc, y);
+  // TOTAL is drawn larger/bolder (9pt) than the rows around it — needs more
+  // clearance above its baseline than the ~3.6mm row height those use, or
+  // its taller glyphs poke up through the dashed line just above.
+  y += 3.2;
+  y = totalRow(doc, y, "TOTAL", amountText(data.currencyIcon, data.total), true, 9, bengaliLoaded);
   y = totalRow(doc, y, "Payment", data.paymentLabel, false, 7.5, bengaliLoaded);
 
   if (data.cashReceived != null) {
@@ -265,14 +274,6 @@ function drawReceiptCopy(
 
   centeredText(doc, "Thank you for shopping with us!", y, 7, false, bengaliLoaded, [60, 60, 60]);
   y += 4;
-
-  if (copyLabel === "CUSTOMER COPY") {
-    // Fallback tear guide for printers without an auto-cutter — the two
-    // copies are separate PDF pages (see generateReceiptPdf), so a printer
-    // with an auto-cutter separates them on its own regardless.
-    centeredText(doc, "- - - - - cut here - - - - -", y, 6.5, false, false, [110, 110, 110]);
-    y += 3;
-  }
 
   return y + BOTTOM_PADDING_MM;
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart, Check, Eye, Tag } from "lucide-react";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import { Product } from "@/lib/types/product";
 import useCartStore from "@/lib/store/cartStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -67,7 +67,7 @@ export default function ProductCard({
     variant?.product_images?.[0]?.image_url ||
     product.primary_image?.image_url ||
     product.images?.[0] ||
-    "/placeholder.png";
+    null;
 
   const calculatedDiscount =
     originalPrice > displayPrice
@@ -175,10 +175,9 @@ export default function ProductCard({
         className="block relative overflow-hidden bg-gray-50 dark:bg-gray-800 shrink-0"
         style={{ aspectRatio: "1/1" }}
       >
-        <Image
+        <ProductImage
           src={displayImage}
           alt={product.name}
-          fill
           className={`object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] ${!productInStock ? "grayscale-30" : ""}`}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
         />

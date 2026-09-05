@@ -216,7 +216,7 @@ export function useCartItems(storeSlug?: string) {
           const productImage =
             product.product_images?.find((img: any) => img.is_primary)
               ?.image_url || product.product_images?.[0]?.image_url;
-          const imageUrl = variantImage || productImage || "/placeholder.png";
+          const imageUrl = variantImage || productImage || "";
 
           // Create product name
           const productName = variant

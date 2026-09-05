@@ -13,7 +13,6 @@ import {
   Divider,
   Empty,
   InputNumber,
-  Image,
   notification,
   Alert,
 } from "antd";
@@ -22,6 +21,7 @@ import {
   DeleteOutlined,
   ShoppingCartOutlined,
 } from "@ant-design/icons";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import { OrderProduct } from "@/lib/types/order";
 import {
   ProductWithVariants,
@@ -503,16 +503,16 @@ export default function AdminOrderDetails({
                       return (
                         <Option key={product.id} value={product.id}>
                           <Space>
-                            {primaryImage && (
-                              <Image
-                                src={primaryImage.image_url}
+                            <div
+                              className="relative shrink-0 overflow-hidden"
+                              style={{ width: 20, height: 20, borderRadius: 4 }}
+                            >
+                              <ProductImage
+                                src={primaryImage?.image_url}
                                 alt={product.name}
-                                width={20}
-                                height={20}
-                                style={{ borderRadius: "4px" }}
-                                preview={false}
+                                iconClassName="h-3 w-3 text-stone-400 dark:text-gray-500"
                               />
-                            )}
+                            </div>
                             <span>
                               {product.name}
 
@@ -600,16 +600,16 @@ export default function AdminOrderDetails({
                       return (
                         <Option key={variant.id} value={variant.id}>
                           <Space>
-                            {primaryImage && (
-                              <Image
-                                src={primaryImage.image_url}
+                            <div
+                              className="relative shrink-0 overflow-hidden"
+                              style={{ width: 20, height: 20, borderRadius: 4 }}
+                            >
+                              <ProductImage
+                                src={primaryImage?.image_url}
                                 alt={variant.variant_name || "Variant"}
-                                width={20}
-                                height={20}
-                                style={{ borderRadius: "4px" }}
-                                preview={false}
+                                iconClassName="h-3 w-3 text-stone-400 dark:text-gray-500"
                               />
-                            )}
+                            </div>
                             <span>
                               {variant.variant_name}
                               {variant.sku && (
