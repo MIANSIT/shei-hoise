@@ -10,7 +10,9 @@ import TopProducts from "./TopProducts";
 import CustomerSnapshot from "./CustomerSnapshot";
 import AlertsSection from "./AlertsSection";
 
-type TimePeriod = "weekly" | "monthly" | "yearly";
+// Imported rather than redeclared — a local copy silently drifted out of sync
+// with the canonical type when "all" was added.
+import type { TimePeriod } from "@/lib/hook/useDashboardMetrics";
 
 interface MainDashboardProps {
   stats: {
@@ -88,6 +90,7 @@ const PeriodSelector: React.FC<{
         ["weekly", t.admin.period7D],
         ["monthly", t.admin.period30D],
         ["yearly", t.admin.period1Y],
+        ["all", t.admin.periodAll],
       ] as [TimePeriod, string][]
     ).map(([key, label]) => (
       <button
