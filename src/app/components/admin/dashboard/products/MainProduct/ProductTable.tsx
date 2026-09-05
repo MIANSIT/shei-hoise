@@ -13,7 +13,7 @@ import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
 import { toggleProductFreeDelivery } from "@/lib/queries/products/toggleProductFreeDelivery";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import Image from "next/image";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
 import type { TablePaginationConfig } from "antd/es/table";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -70,7 +70,7 @@ const hasActiveFlashSale = (product: ProductWithVariants): boolean => {
   );
 };
 
-const getProductImage = (record: ProductWithVariants) => {
+const getProductImage = (record: ProductWithVariants): string | null => {
   const img =
     record.product_images?.find((i) => i.is_primary) ||
     record.product_images?.[0] ||
@@ -78,10 +78,7 @@ const getProductImage = (record: ProductWithVariants) => {
       ?.flatMap((v) => v.product_images || [])
       .find((i) => i.is_primary) ||
     record.product_variants?.flatMap((v) => v.product_images || [])[0];
-  return (
-    img?.image_url ||
-    "https://lizjlqgrurjegmjeujki.supabase.co/storage/v1/object/public/dummyImage/logo_beta.png"
-  );
+  return img?.image_url || null;
 };
 
 // ── Status Badge ─────────────────────────────────────────────────────────────
@@ -272,13 +269,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
       width: 60,
       responsive: ["md"],
       render: (_, record) => (
-        <div className="w-11 h-11 rounded-xl overflow-hidden border border-border bg-background/50 shrink-0">
-          <Image
+        <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-border bg-background/50 shrink-0">
+          <ProductImage
             src={getProductImage(record)}
             alt={record.name}
-            width={44}
-            height={44}
-            className="object-cover w-full h-full"
+            iconClassName="h-5 w-5 text-stone-400 dark:text-gray-500"
           />
         </div>
       ),
@@ -498,12 +493,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
             <ProductCardLayout
               key={record.id}
               image={
-                <Image
+                <ProductImage
                   src={getProductImage(record)}
                   alt={record.name}
-                  width={80}
-                  height={80}
-                  className="object-cover w-full h-full"
+                  iconClassName="h-8 w-8 text-stone-400 dark:text-gray-500"
                 />
               }
               title={record.name}

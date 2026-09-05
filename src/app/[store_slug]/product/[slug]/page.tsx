@@ -610,7 +610,7 @@ export default function ProductPage() {
       </div>
     );
 
-  const images = product.product_images.map((i) => i.image_url);
+  const images = product.product_images.map((i) => i.image_url).filter(Boolean);
   const hasVariants = (product.product_variants?.length ?? 0) > 0;
   const totalPrice = displayPrice * quantity;
 

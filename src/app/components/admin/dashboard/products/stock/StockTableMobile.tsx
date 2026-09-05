@@ -2,7 +2,7 @@
 
 import React from "react";
 import { InputNumber, Tooltip, Checkbox } from "antd";
-import Image from "next/image";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import { ProductRow } from "@/lib/hook/products/stock/mapProductsForTable";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { ProductStatus } from "@/lib/types/enums";
@@ -239,30 +239,11 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
 
               {/* Thumbnail */}
               <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted shrink-0">
-                {product.imageUrl ? (
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.title}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-muted-foreground"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
-                      />
-                    </svg>
-                  </div>
-                )}
+                <ProductImage
+                  src={product.imageUrl}
+                  alt={product.title}
+                  iconClassName="h-5 w-5 text-stone-400 dark:text-gray-500"
+                />
               </div>
 
               {/* Title + SKU + badges */}

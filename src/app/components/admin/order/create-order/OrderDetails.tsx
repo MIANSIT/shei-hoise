@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2, ShoppingCart, Minus } from "lucide-react";
-import Image from "next/image";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
 
@@ -344,16 +344,14 @@ export default function OrderDetails({
                       return (
                         <SelectItem key={product.id} value={product.id} className="py-2">
                           <div className="flex items-center gap-3">
-                            {primaryImage && (
-                              <div className="shrink-0 w-8 h-8 relative">
-                                <Image
-                                  src={primaryImage.image_url}
-                                  alt={product.name}
-                                  fill
-                                  className="rounded-md object-cover"
-                                />
-                              </div>
-                            )}
+                            <div className="shrink-0 w-8 h-8 relative overflow-hidden rounded-md">
+                              <ProductImage
+                                src={primaryImage?.image_url}
+                                alt={product.name}
+                                className="rounded-md object-cover"
+                                iconClassName="h-4 w-4 text-stone-400 dark:text-gray-500"
+                              />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-sm truncate">{product.name}</p>
@@ -431,16 +429,14 @@ export default function OrderDetails({
                         <SelectItem key={variant.id} value={variant.id} className="py-2">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              {primaryImage && (
-                                <div className="shrink-0 w-6 h-6 relative">
-                                  <Image
-                                    src={primaryImage.image_url}
-                                    alt={variant.variant_name || "Variant"}
-                                    fill
-                                    className="rounded object-cover"
-                                  />
-                                </div>
-                              )}
+                              <div className="shrink-0 w-6 h-6 relative overflow-hidden rounded">
+                                <ProductImage
+                                  src={primaryImage?.image_url}
+                                  alt={variant.variant_name || "Variant"}
+                                  className="rounded object-cover"
+                                  iconClassName="h-3 w-3 text-stone-400 dark:text-gray-500"
+                                />
+                              </div>
                               <span className="font-medium">{variant.variant_name}</span>
                             </div>
                             <div className="text-sm font-medium">

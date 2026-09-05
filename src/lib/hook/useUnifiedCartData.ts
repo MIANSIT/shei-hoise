@@ -180,7 +180,7 @@ export function useUnifiedCartData({
             const productImage =
               product.product_images?.find((img: any) => img.is_primary)
                 ?.image_url || product.product_images?.[0]?.image_url;
-            const imageUrl = variantImage || productImage || "/placeholder.png";
+            const imageUrl = variantImage || productImage || "";
 
             const productName = variant
               ? `${product.name} - ${variant.variant_name}`

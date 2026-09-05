@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Table, Button, Spin, Empty } from "antd";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Table, Button, Spin, Empty, Input } from "antd";
 import { Wallet } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -23,6 +23,7 @@ export default function CustomerDues() {
 
   const [dues, setDues] = useState<CustomerWithDue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithDue | null>(null);
   const [orderOptions, setOrderOptions] = useState<CustomerOrderBalance[]>([]);
@@ -84,6 +85,16 @@ export default function CustomerDues() {
       setSubmitting(false);
     }
   };
+
+  const filteredDues = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return dues;
+    return dues.filter((customer) => {
+      const name = (customer.name || "").toLowerCase();
+      const phone = (customer.phone || "").toLowerCase();
+      return name.includes(term) || phone.includes(term);
+    });
+  }, [dues, search]);
 
   const columns = [
     {
@@ -156,16 +167,26 @@ export default function CustomerDues() {
       </div>
 
       <div className="px-4 sm:px-8 py-6">
+        <div className="mb-4 max-w-sm">
+          <Input.Search
+            allowClear
+            placeholder="Search by name or phone"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         {loading ? (
           <div className="flex justify-center py-16">
             <Spin size="large" />
           </div>
         ) : dues.length === 0 ? (
           <Empty description="No outstanding customer dues right now" />
+        ) : filteredDues.length === 0 ? (
+          <Empty description="No customers match your search" />
         ) : (
           <Table
             columns={columns}
-            dataSource={dues}
+            dataSource={filteredDues}
             rowKey="customer_id"
             pagination={false}
           />

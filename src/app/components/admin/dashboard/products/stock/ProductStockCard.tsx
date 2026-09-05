@@ -2,11 +2,11 @@
 
 import React from "react";
 import { Checkbox } from "antd";
-import { Package, TrendingDown } from "lucide-react";
+import { TrendingDown } from "lucide-react";
 import { ProductRow } from "@/lib/hook/products/stock/mapProductsForTable";
 import VariantStockItem from "./VariantStockItem";
 import StockInputSection from "./StockInputSection";
-import Image from "next/image";
+import { ProductImage } from "@/app/components/products/ProductImage";
 
 interface ProductStockCardProps {
   product: ProductRow;
@@ -53,20 +53,13 @@ const ProductStockCard: React.FC<ProductStockCardProps> = ({
       {/* Image + Status Badge */}
       <div className="flex items-start gap-4">
         <div className="relative w-20 h-20 shrink-0">
-          {product.imageUrl ? (
-            <div className="relative w-full h-full rounded-2xl overflow-hidden border-4 border-white shadow-lg">
-              <Image
-                src={product.imageUrl}
-                alt={product.title}
-                fill
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full bg-gray-200 rounded-2xl flex items-center justify-center">
-              <Package className="w-8 h-8 text-gray-400" />
-            </div>
-          )}
+          <div className="relative w-full h-full rounded-2xl overflow-hidden border-4 border-white shadow-lg">
+            <ProductImage
+              src={product.imageUrl}
+              alt={product.title}
+              iconClassName="h-8 w-8 text-stone-400 dark:text-gray-500"
+            />
+          </div>
 
           {/* Product Status Badge */}
           {(product.status === "draft" || product.status === "inactive") && (

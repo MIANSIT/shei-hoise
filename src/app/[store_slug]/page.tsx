@@ -4,7 +4,8 @@ import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { m } from "framer-motion";
-import { ShoppingBag, ArrowRight, Package, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye, Zap } from "lucide-react";
+import { ProductImage } from "@/app/components/products/ProductImage";
+import { ShoppingBag, ArrowRight, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye, Zap } from "lucide-react";
 import { getStoreBySlugFull, StoreFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getFeaturedProducts } from "@/lib/queries/products/getFeaturedProducts";
@@ -904,19 +905,12 @@ function ProductCard({
         href={`/${store_slug}/product/${product.slug}`}
         className={`relative block overflow-hidden bg-stone-50 dark:bg-gray-800 shrink-0 ${imageClassName}`}
       >
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover group-hover:scale-[1.05] transition-transform duration-500 ease-out"
-            sizes={isHero ? "50vw" : "25vw"}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Package className="h-10 w-10 text-stone-200 dark:text-gray-700" />
-          </div>
-        )}
+        <ProductImage
+          src={imageUrl}
+          alt={product.name}
+          className="object-cover group-hover:scale-[1.05] transition-transform duration-500 ease-out"
+          sizes={isHero ? "50vw" : "25vw"}
+        />
 
         {isHero && (
           <div className="absolute inset-0 bg-linear-to-t from-black/65 via-black/15 to-transparent" />

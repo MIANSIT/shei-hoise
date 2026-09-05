@@ -4,7 +4,7 @@ import React from "react";
 import type { ColumnsType } from "antd/es/table";
 import type { TableRowSelection } from "antd/es/table/interface";
 import DataTable from "@/app/components/admin/common/DataTable";
-import Image from "next/image";
+import { ProductImage } from "@/app/components/products/ProductImage";
 import { InputNumber, Tooltip } from "antd";
 import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import {
@@ -118,32 +118,12 @@ const StockTable: React.FC<StockTableProps> = ({
 
         return (
           <div className="relative w-10 h-10">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted">
-              {record.imageUrl ? (
-                <Image
-                  src={record.imageUrl}
-                  alt={record.title}
-                  width={40}
-                  height={40}
-                  className="object-cover w-full h-full"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4 text-muted-foreground"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
-                    />
-                  </svg>
-                </div>
-              )}
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-muted">
+              <ProductImage
+                src={record.imageUrl}
+                alt={record.title}
+                iconClassName="h-4 w-4 text-stone-400 dark:text-gray-500"
+              />
             </div>
             {hasIssue && (
               <Tooltip
