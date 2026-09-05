@@ -7,6 +7,7 @@ import type { UploadFile, UploadProps } from "antd/es/upload";
 import { FrontendImage } from "@/lib/types/frontendImage";
 import { Eye, Trash2, GripVertical, Star } from "lucide-react";
 import { fileToBase64 } from "@/lib/utils/fileToBase64";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
 import {
   DndContext,
@@ -152,6 +153,7 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
+  const notify = useSheiNotification();
 
   useEffect(() => {
     const uploadFiles: UploadFile[] = (images ?? []).map((img, index) => ({
@@ -170,9 +172,9 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
   };
 
   const handleBeforeUpload = (file: File) => {
-    const isLt5M = file.size / 1024 / 1024 <= 5;
-    if (!isLt5M) alert(`${file.name} is too large. Max size is 5MB.`);
-    return isLt5M;
+    const isLt3M = file.size / 1024 / 1024 <= 3;
+    if (!isLt3M) notify.error(`${file.name} is too large. Max size is 3MB.`);
+    return isLt3M;
   };
 
   const syncImages = (list: UploadFile[]) => {
@@ -297,7 +299,7 @@ const PicturesWallUploader: React.FC<PicturesWallUploaderProps> = ({
                     Drop images here or click to browse
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    PNG, JPG, WEBP · Max 5 images · 5MB each
+                    PNG, JPG, WEBP · Max 5 images · 3MB each
                   </p>
                 </div>
               </div>

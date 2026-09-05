@@ -115,7 +115,10 @@ const nextConfig: NextConfig = {
 
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb", // ✅ increase this depending on max file size
+      // Product images travel to createProduct/updateProduct as base64 data
+      // URLs inside the Server Action body — up to 5 images at the 3MB
+      // client-side cap each, plus ~37% base64 overhead, tops out near 21mb.
+      bodySizeLimit: "25mb",
     },
   },
 };

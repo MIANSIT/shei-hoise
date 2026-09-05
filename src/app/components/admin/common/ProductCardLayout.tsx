@@ -24,7 +24,7 @@ const ProductCardLayout: React.FC<MobileCardProps> = ({
         <div className="flex gap-4 flex-1 items-center min-w-0">
           {image && (
             <div
-              className="w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0"
+              className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0"
               style={{
                 background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
               }}

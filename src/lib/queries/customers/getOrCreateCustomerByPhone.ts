@@ -35,7 +35,7 @@ export async function getOrCreateCustomerByPhone(
   // walk-in customer resolution, not a strict identity lookup.
   const { data: existingRows, error: lookupError } = await supabaseAdmin
     .from("store_customers")
-    .select("id")
+    .select("id, name")
     .eq("phone", cleanedPhone)
     .limit(1);
 
@@ -44,6 +44,23 @@ export async function getOrCreateCustomerByPhone(
   }
 
   let customerId = existingRows?.[0]?.id as string | undefined;
+  const existingName = existingRows?.[0]?.name as string | null | undefined;
+  const trimmedName = name.trim();
+
+  if (customerId && !existingName && trimmedName) {
+    // Backfills a name left blank by an earlier due sale (or any other
+    // flow that only had the phone number) now that the cashier has
+    // actually typed one in for this customer — otherwise it stays blank
+    // forever and Customer Dues falls back to "Walk-in Customer".
+    const { error: updateError } = await supabaseAdmin
+      .from("store_customers")
+      .update({ name: trimmedName })
+      .eq("id", customerId);
+
+    if (updateError) {
+      return { customerId: null, error: updateError.message };
+    }
+  }
 
   if (!customerId) {
     const { data: created, error: createError } = await supabaseAdmin
