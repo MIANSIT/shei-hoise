@@ -23,6 +23,17 @@ interface ScanToAddModalProps {
 // this is well under 200ms, so it doesn't slow down scanning the next item.
 const MISS_FRAMES_TO_CLEAR = 5;
 
+// Only the centered box (this fraction of the frame's width/height) is
+// actually decoded — printed sheets of multiple product labels (see
+// "Print All QR Labels") put several small QR codes in view at once, and
+// decoding the full frame either can't resolve the tiny modules or locks
+// onto the wrong neighboring code. Cropping to a center box matching the
+// visible on-screen guide forces the cashier to align one code at a time,
+// and combined with the higher-resolution stream requested below, that
+// cropped region still has enough native pixels to resolve a code held
+// close to the camera.
+const SCAN_BOX_FRACTION = 0.55;
+
 function cameraErrorMessage(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
@@ -61,7 +72,7 @@ export default function ScanToAddModal({
   useEffect(() => {
     pausedRef.current = paused;
     if (paused) setStatus("Finish selecting the variant in the popup, then keep scanning.");
-    else if (open) setStatus("Point the camera at a product QR code.");
+    else if (open) setStatus("Line up one QR code inside the box.");
   }, [paused, open]);
 
   const stopCamera = () => {
@@ -93,7 +104,18 @@ export default function ScanToAddModal({
     let cancelled = false;
 
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
+      .getUserMedia({
+        video: {
+          facingMode: "environment",
+          // Ideal, not exact — falls back gracefully on cameras that can't
+          // hit this, but on most phones this is what actually gives the
+          // cropped center box (see SCAN_BOX_FRACTION) enough real pixels
+          // to resolve a small QR code, e.g. one label on a printed sheet
+          // of several.
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -105,7 +127,7 @@ export default function ScanToAddModal({
           video.srcObject = stream;
           video.play();
         }
-        setStatus("Point the camera at a product QR code.");
+        setStatus("Line up one QR code inside the box.");
         rafRef.current = requestAnimationFrame(scanTick);
       })
       .catch((err) => {
@@ -124,7 +146,15 @@ export default function ScanToAddModal({
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          // Decode only the centered box matching the on-screen guide (see
+          // SCAN_BOX_FRACTION) — keeps neighboring codes on a multi-label
+          // sheet out of the decode entirely, instead of leaving jsQR to
+          // arbitrarily pick one among several found in the full frame.
+          const boxWidth = canvas.width * SCAN_BOX_FRACTION;
+          const boxHeight = canvas.height * SCAN_BOX_FRACTION;
+          const boxX = (canvas.width - boxWidth) / 2;
+          const boxY = (canvas.height - boxHeight) / 2;
+          const imageData = ctx.getImageData(boxX, boxY, boxWidth, boxHeight);
           const code = jsQR(imageData.data, imageData.width, imageData.height);
           if (code?.data) {
             sawCode = true;
@@ -188,18 +218,40 @@ export default function ScanToAddModal({
       title="Scan Product QR"
       centered
     >
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        style={{
-          width: "100%",
-          borderRadius: 8,
-          background: "#000",
-          aspectRatio: "4 / 3",
-          objectFit: "cover",
-        }}
-      />
+      <div style={{ position: "relative" }}>
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          style={{
+            width: "100%",
+            borderRadius: 8,
+            background: "#000",
+            aspectRatio: "4 / 3",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+        {/* Visual match for SCAN_BOX_FRACTION — only what's inside this box
+            is actually decoded, so it tells the cashier where to hold a
+            single code when several are visible at once (e.g. an uncut
+            sheet of printed labels). */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: `${SCAN_BOX_FRACTION * 100}%`,
+            height: `${SCAN_BOX_FRACTION * 100}%`,
+            transform: "translate(-50%, -50%)",
+            border: "2px solid rgba(255,255,255,0.85)",
+            borderRadius: 8,
+            boxShadow: "0 0 0 999px rgba(0,0,0,0.25)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
       <p style={{ margin: "8px 0 0", fontSize: 13, color: "#888", textAlign: "center", minHeight: 16 }}>
         {status}
