@@ -23,6 +23,7 @@ import {
   registerBengaliFont,
   setTextFont,
 } from "./pdfText";
+import { drawQrVector } from "./pdfQr";
 
 export interface ReceiptPdfItem {
   name: string;
@@ -45,8 +46,8 @@ export interface ReceiptPdfData {
   paidNow: number | null;
   due: number | null;
   currencyIcon: string;
-  /** Pre-rendered PNG data URL (see renderProductQrDataUrl) pointing at the store's storefront, or null to omit it. */
-  shopQrDataUrl: string | null;
+  /** URL to encode in the "shop with us online" QR (see getStorePublicUrl), or null to omit it — drawn as vector rectangles, not a raster image (see pdfQr.ts). */
+  shopQrUrl: string | null;
 }
 
 const PAGE_WIDTH_MM = 58;
@@ -198,9 +199,9 @@ function drawReceiptCopy(
 
   y += 1.5;
 
-  if (data.shopQrDataUrl) {
+  if (data.shopQrUrl) {
     const qrSize = 16;
-    doc.addImage(data.shopQrDataUrl, "PNG", (PAGE_WIDTH_MM - qrSize) / 2, y, qrSize, qrSize);
+    drawQrVector(doc, data.shopQrUrl, (PAGE_WIDTH_MM - qrSize) / 2, y, qrSize, logo);
     y += qrSize + 1.5;
     centeredText(doc, "Shop with us online", y, 6.5, false, bengaliLoaded, [100, 100, 100]);
     y += 4;
