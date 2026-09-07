@@ -10,12 +10,13 @@
  * replaces.
  */
 import { JsPDFInstance, loadImageBase64, registerBengaliFont, setTextFont } from "./pdfText";
+import { drawQrVector } from "./pdfQr";
 
 export interface LabelPdfData {
   storeName: string;
   logoUrl?: string | null;
-  /** Pre-rendered PNG data URL (see renderProductQrDataUrl). */
-  qrDataUrl: string;
+  /** URL the QR encodes — drawn as vector rectangles, not a raster image (see pdfQr.ts). */
+  qrUrl: string;
   productName: string;
 }
 
@@ -45,7 +46,7 @@ function drawLabel(
   doc.text(data.storeName, LABEL_WIDTH_MM / 2, y, { align: "center" });
   y += 3.2;
 
-  doc.addImage(data.qrDataUrl, "PNG", (LABEL_WIDTH_MM - QR_SIZE_MM) / 2, y, QR_SIZE_MM, QR_SIZE_MM);
+  drawQrVector(doc, data.qrUrl, (LABEL_WIDTH_MM - QR_SIZE_MM) / 2, y, QR_SIZE_MM, logo);
   y += QR_SIZE_MM + 1.5;
 
   doc.setFontSize(6.5);

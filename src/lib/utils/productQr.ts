@@ -24,6 +24,34 @@ export function getStorePublicUrl(storeSlug: string, origin?: string): string {
   return `${base}/${storeSlug}`;
 }
 
+export interface QrModuleMatrix {
+  /** Modules per side, not counting the quiet zone. */
+  size: number;
+  isDark(row: number, col: number): boolean;
+}
+
+/**
+ * The raw QR dark/light module grid, with no image/canvas involved — used to
+ * draw a QR as vector rectangles in a PDF (see pdfQr.ts) instead of an
+ * embedded raster image. That distinction matters for thermal printing: an
+ * embedded PNG QR gets run through the Android print bridge's photo
+ * dithering step (the same one that shades grayscale photos with dot
+ * patterns), which speckles the crisp module edges a scanner needs and can
+ * break decoding entirely — confirmed by comparing a printer's own
+ * firmware-generated self-test QR (sharp) against a PNG QR printed through
+ * that pipeline (grainy, unscannable) on identical hardware. Vector
+ * rectangles render through the same path as the PDF's ordinary text, which
+ * prints sharp, so they skip that dithering step.
+ */
+export function getQrModuleMatrix(url: string): QrModuleMatrix {
+  const qr = QRCode.create(url, { errorCorrectionLevel: "H" });
+  const { modules } = qr;
+  return {
+    size: modules.size,
+    isDark: (row, col) => !!modules.get(row, col),
+  };
+}
+
 function drawLogoOnCanvas(
   canvas: HTMLCanvasElement,
   logoUrl: string,
