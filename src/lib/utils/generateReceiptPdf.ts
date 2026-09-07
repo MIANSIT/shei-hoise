@@ -17,7 +17,12 @@
  * garbled the ৳ currency glyph.
  */
 
-type JsPDFInstance = InstanceType<typeof import("jspdf").jsPDF>;
+import {
+  JsPDFInstance,
+  loadImageBase64,
+  registerBengaliFont,
+  setTextFont,
+} from "./pdfText";
 
 export interface ReceiptPdfItem {
   name: string;
@@ -50,79 +55,8 @@ const CONTENT_WIDTH_MM = PAGE_WIDTH_MM - MARGIN_X_MM * 2;
 const RIGHT_EDGE_MM = PAGE_WIDTH_MM - MARGIN_X_MM;
 const BOTTOM_PADDING_MM = 4;
 
-// ── Bengali font (browser-side) ──────────────────────────────────────────
-// Mirrors exportSalesReport.ts's registerBengaliFontBrowser: the ৳ symbol
-// (and any Bengali store/product name) needs this embedded, since jsPDF's
-// built-in fonts have no glyph for it — a bare `pdf.text("৳80.00", ...)`
-// would otherwise render with the glyph missing/blank.
-const BENGALI_FONT_URL = "/fonts/NotoSansBengali-Regular.ttf";
-let bengaliFontBase64Cache: string | null | undefined;
-
-async function loadBengaliFontBase64(): Promise<string | null> {
-  if (bengaliFontBase64Cache !== undefined) return bengaliFontBase64Cache;
-  try {
-    const res = await fetch(BENGALI_FONT_URL);
-    if (!res.ok) {
-      bengaliFontBase64Cache = null;
-      return null;
-    }
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    bengaliFontBase64Cache = btoa(binary);
-  } catch {
-    bengaliFontBase64Cache = null;
-  }
-  return bengaliFontBase64Cache;
-}
-
-function hasBengaliChar(text: string): boolean {
-  return /[ঀ-৿]/.test(text);
-}
-
-async function registerBengaliFont(pdf: JsPDFInstance): Promise<boolean> {
-  const base64 = await loadBengaliFontBase64();
-  if (!base64) return false;
-  try {
-    pdf.addFileToVFS("NotoSansBengali-Regular.ttf", base64);
-    pdf.addFont("NotoSansBengali-Regular.ttf", "NotoSansBengali", "normal");
-    return !!pdf.getFontList()["NotoSansBengali"];
-  } catch {
-    return false;
-  }
-}
-
-/** Sets the Bengali font if `text` needs it, otherwise falls back to Courier (this receipt's base font). Always restore with `pdf.setFont("courier", style)` after drawing. */
-function setTextFont(pdf: JsPDFInstance, text: string, bengaliLoaded: boolean, bold: boolean): void {
-  if (bengaliLoaded && hasBengaliChar(text)) {
-    pdf.setFont("NotoSansBengali", "normal");
-  } else {
-    pdf.setFont("courier", bold ? "bold" : "normal");
-  }
-}
-
 function amountText(icon: string, value: number): string {
   return `${icon}${value.toFixed(2)}`;
-}
-
-function loadImageBase64(url: string): Promise<{ dataUrl: string; format: "PNG" | "JPEG" } | null> {
-  return fetch(url)
-    .then((res) => (res.ok ? res.blob() : null))
-    .then(
-      (blob) =>
-        blob &&
-        new Promise<{ dataUrl: string; format: "PNG" | "JPEG" }>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () =>
-            resolve({
-              dataUrl: reader.result as string,
-              format: blob.type.includes("png") ? "PNG" : "JPEG",
-            });
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        }),
-    )
-    .catch(() => null); // best-effort — some store logos aren't served with CORS headers permissive enough for this (same caveat as elsewhere this app embeds a logo into a canvas/PDF)
 }
 
 function dashedLine(doc: JsPDFInstance, y: number): void {
@@ -278,7 +212,15 @@ function drawReceiptCopy(
   return y + BOTTOM_PADDING_MM;
 }
 
-export async function generateReceiptPdf(data: ReceiptPdfData): Promise<Blob> {
+export interface ReceiptPdfSet {
+  /** Both copies as one 2-page PDF — used for the on-screen preview and Share, where a single file covering the whole sale reads naturally. */
+  combined: Blob;
+  /** Copies as separate single-page PDFs — printed as independent jobs, since a cheap thermal print bridge (RawBT etc.) may only ever send page 1 of a multi-page PDF, or the OS print sheet closes after the first job with no way back to page 2. */
+  customerCopy: Blob;
+  shopCopy: Blob;
+}
+
+export async function generateReceiptPdfSet(data: ReceiptPdfData): Promise<ReceiptPdfSet> {
   const { jsPDF } = await import("jspdf");
 
   const logo = data.logoUrl ? await loadImageBase64(data.logoUrl) : null;
@@ -289,14 +231,27 @@ export async function generateReceiptPdf(data: ReceiptPdfData): Promise<Blob> {
   const scratch = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, 400] });
   const bengaliLoaded = await registerBengaliFont(scratch);
   const pageHeightMm = drawReceiptCopy(scratch, data, "CUSTOMER COPY", bengaliLoaded, logo);
+  const pageFormat: [number, number] = [PAGE_WIDTH_MM, pageHeightMm];
 
-  // Pass 2: the real, correctly-sized document (font registration is
-  // per-instance, so it's repeated here).
-  const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, pageHeightMm] });
-  await registerBengaliFont(doc);
-  drawReceiptCopy(doc, data, "CUSTOMER COPY", bengaliLoaded, logo);
-  doc.addPage([PAGE_WIDTH_MM, pageHeightMm]);
-  drawReceiptCopy(doc, data, "SHOP COPY", bengaliLoaded, logo);
+  // Pass 2: the real, correctly-sized documents (font registration is
+  // per-instance, so it's repeated on each one).
+  const combinedDoc = new jsPDF({ unit: "mm", format: pageFormat });
+  await registerBengaliFont(combinedDoc);
+  drawReceiptCopy(combinedDoc, data, "CUSTOMER COPY", bengaliLoaded, logo);
+  combinedDoc.addPage(pageFormat);
+  drawReceiptCopy(combinedDoc, data, "SHOP COPY", bengaliLoaded, logo);
 
-  return doc.output("blob");
+  const customerDoc = new jsPDF({ unit: "mm", format: pageFormat });
+  await registerBengaliFont(customerDoc);
+  drawReceiptCopy(customerDoc, data, "CUSTOMER COPY", bengaliLoaded, logo);
+
+  const shopDoc = new jsPDF({ unit: "mm", format: pageFormat });
+  await registerBengaliFont(shopDoc);
+  drawReceiptCopy(shopDoc, data, "SHOP COPY", bengaliLoaded, logo);
+
+  return {
+    combined: combinedDoc.output("blob"),
+    customerCopy: customerDoc.output("blob"),
+    shopCopy: shopDoc.output("blob"),
+  };
 }
