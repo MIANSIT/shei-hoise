@@ -73,6 +73,12 @@ function drawLogoOnCanvas(
 /**
  * Renders into a live <canvas> (e.g. inside a modal). errorCorrectionLevel
  * "H" leaves enough redundancy that a centered logo doesn't break scanning.
+ *
+ * margin: 4 (quiet zone, in QR modules) matches the ISO/IEC 18004 minimum —
+ * scanners use that blank border to find the code's edges before decoding
+ * it. A smaller margin (this used to be 1) is often invisible to the eye but
+ * makes real scanners refuse to lock onto the code at all, especially once
+ * printed (where "1 module" can shrink to well under a millimeter).
  */
 export async function renderProductQrToCanvas(
   canvas: HTMLCanvasElement,
@@ -81,7 +87,7 @@ export async function renderProductQrToCanvas(
 ): Promise<void> {
   await QRCode.toCanvas(canvas, url, {
     errorCorrectionLevel: "H",
-    margin: 1,
+    margin: 4,
     width: 260,
   });
   if (logoUrl) await drawLogoOnCanvas(canvas, logoUrl);

@@ -9,7 +9,8 @@ import {
   renderProductQrDataUrl,
   renderProductQrBlob,
 } from "@/lib/utils/productQr";
-import { printFittedDocument, sanitizeFilename } from "@/lib/utils/printWindow";
+import { printPdfBlob, sanitizeFilename } from "@/lib/utils/printWindow";
+import { generateLabelPdf } from "@/lib/utils/generateLabelPdf";
 
 const { Text } = Typography;
 
@@ -81,24 +82,17 @@ export default function ProductQrModal({
     setExporting(true);
     try {
       const dataUrl = await renderProductQrDataUrl(url, logoUrl);
-      // Sized in mm, not px — this label is meant to go straight onto a
-      // product package, not fill a sheet of paper. 22mm is small enough to
-      // fit a packet corner while staying comfortably scannable.
-      const bodyHtml =
-        '<div style="text-align:center;">' +
-        (logoUrl
-          ? `<img src="${logoUrl}" style="width:3.5mm;height:3.5mm;border-radius:1mm;object-fit:cover;" />`
-          : "") +
-        `<div style="font-size:6px;color:#555;margin:0.5mm 0 1mm;">${storeName}</div>` +
-        `<img src="${dataUrl}" style="width:22mm;height:22mm;" />` +
-        `<div style="font-weight:700;font-size:6.5px;margin-top:1mm;max-width:26mm;">${product.name}</div>` +
-        "</div>";
-      printFittedDocument(
-        `${fileBaseName}-QR`,
-        bodyHtml,
-        "body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:2mm;background:#fff;color:#000;}",
-        30,
-      );
+      // A real PDF with the label's exact 30mm-wide page size baked in —
+      // not HTML + a custom `@page` rule, which many mobile/thermal print
+      // pipelines silently ignore in favor of a much bigger default page
+      // (see generateLabelPdf.ts).
+      const blob = await generateLabelPdf({
+        storeName,
+        logoUrl,
+        qrDataUrl: dataUrl,
+        productName: product.name,
+      });
+      printPdfBlob(blob);
     } catch (err) {
       notification.error({
         message: "Couldn't print QR label",
