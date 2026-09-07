@@ -200,8 +200,11 @@ function drawReceiptCopy(
   y += 1.5;
 
   if (data.shopQrUrl) {
-    const qrSize = 16;
-    drawQrVector(doc, data.shopQrUrl, (PAGE_WIDTH_MM - qrSize) / 2, y, qrSize, logo);
+    // Bigger than before (16mm) — a wider receipt has the room, and a
+    // bigger physical QR means bigger physical modules, which matters more
+    // for scannability through a thermal print pipeline than shaving paper.
+    const qrSize = 22;
+    drawQrVector(doc, data.shopQrUrl, (PAGE_WIDTH_MM - qrSize) / 2, y, qrSize);
     y += qrSize + 1.5;
     centeredText(doc, "Shop with us online", y, 6.5, false, bengaliLoaded, [100, 100, 100]);
     y += 4;
