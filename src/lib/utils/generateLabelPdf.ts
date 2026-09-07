@@ -23,7 +23,10 @@ export interface LabelPdfData {
 const LABEL_WIDTH_MM = 30;
 const MARGIN_MM = 2;
 const CONTENT_WIDTH_MM = LABEL_WIDTH_MM - MARGIN_MM * 2;
-const QR_SIZE_MM = 22;
+// Fills the label's full content width (was 16mm smaller) — bigger physical
+// QR means bigger physical modules, which is what actually survives a
+// thermal print pipeline's blur/dithering (see pdfQr.ts).
+const QR_SIZE_MM = CONTENT_WIDTH_MM;
 const BOTTOM_PADDING_MM = 2;
 
 function drawLabel(
@@ -46,7 +49,7 @@ function drawLabel(
   doc.text(data.storeName, LABEL_WIDTH_MM / 2, y, { align: "center" });
   y += 3.2;
 
-  drawQrVector(doc, data.qrUrl, (LABEL_WIDTH_MM - QR_SIZE_MM) / 2, y, QR_SIZE_MM, logo);
+  drawQrVector(doc, data.qrUrl, (LABEL_WIDTH_MM - QR_SIZE_MM) / 2, y, QR_SIZE_MM);
   y += QR_SIZE_MM + 1.5;
 
   doc.setFontSize(6.5);
