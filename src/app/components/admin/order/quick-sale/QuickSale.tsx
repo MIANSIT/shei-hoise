@@ -35,7 +35,7 @@ import { CreateOrderData, OrderProduct } from "@/lib/types/order";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { generateReceiptPdfSet } from "@/lib/utils/generateReceiptPdf";
 import { unlockBeepAudio } from "@/lib/utils/beep";
-import { getStorePublicUrl, renderProductQrDataUrl } from "@/lib/utils/productQr";
+import { getStorePublicUrl } from "@/lib/utils/productQr";
 import { getOrCreateCustomerByPhone } from "@/lib/queries/customers/getOrCreateCustomerByPhone";
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import VariantPickerModal from "./VariantPickerModal";
@@ -300,15 +300,9 @@ export default function QuickSale() {
 
     // A QR on the receipt pointing at the shop's own storefront (not a
     // product) — lets a walk-in customer find/shop with the store online
-    // later.
-    let shopQrDataUrl: string | null = null;
-    if (storeSlug) {
-      try {
-        shopQrDataUrl = await renderProductQrDataUrl(getStorePublicUrl(storeSlug), logoUrl);
-      } catch (err) {
-        console.error("Failed to generate shop QR for receipt:", err);
-      }
-    }
+    // later. Just the URL: generateReceiptPdfSet draws it as vector
+    // rectangles itself (see pdfQr.ts), no pre-rendered image needed.
+    const shopQrUrl = storeSlug ? getStorePublicUrl(storeSlug) : null;
 
     // A real PDF, not a browser print() of HTML: the 58mm thermal-roll page
     // size is baked into the file itself, so it survives mobile print
@@ -336,7 +330,7 @@ export default function QuickSale() {
       paidNow: order.paidNow,
       due: order.due,
       currencyIcon,
-      shopQrDataUrl,
+      shopQrUrl,
     });
 
     const fileTitle = sanitizeFilename(`${storeDisplayName}-${order.orderNumber}`);

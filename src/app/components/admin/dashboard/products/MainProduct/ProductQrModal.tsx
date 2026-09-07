@@ -6,7 +6,6 @@ import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVaria
 import {
   getProductPublicUrl,
   renderProductQrToCanvas,
-  renderProductQrDataUrl,
   renderProductQrBlob,
 } from "@/lib/utils/productQr";
 import { printPdfBlob, sanitizeFilename } from "@/lib/utils/printWindow";
@@ -81,15 +80,16 @@ export default function ProductQrModal({
     if (!product) return;
     setExporting(true);
     try {
-      const dataUrl = await renderProductQrDataUrl(url, logoUrl);
       // A real PDF with the label's exact 30mm-wide page size baked in —
       // not HTML + a custom `@page` rule, which many mobile/thermal print
-      // pipelines silently ignore in favor of a much bigger default page
-      // (see generateLabelPdf.ts).
+      // pipelines silently ignore in favor of a much bigger default page —
+      // and the QR itself drawn as vector rectangles, not a raster image,
+      // so a print bridge's photo-dithering step never touches it (see
+      // generateLabelPdf.ts / pdfQr.ts).
       const blob = await generateLabelPdf({
         storeName,
         logoUrl,
-        qrDataUrl: dataUrl,
+        qrUrl: url,
         productName: product.name,
       });
       printPdfBlob(blob);
