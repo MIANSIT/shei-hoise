@@ -1,38 +1,48 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Button, Space } from "antd";
 import { PrinterOutlined, ShareAltOutlined, FilePdfOutlined } from "@ant-design/icons";
+import { printPdfBlob } from "@/lib/utils/printWindow";
 
 interface ReceiptPreviewModalProps {
   open: boolean;
+  /** Both copies as one 2-page PDF — shown in the preview and used for Share. */
   pdfBlob: Blob | null;
+  /** Single-page PDFs, printed as independent jobs (see generateReceiptPdf.ts's ReceiptPdfSet for why). */
+  customerCopyBlob: Blob | null;
+  shopCopyBlob: Blob | null;
   fileName: string;
   onClose: () => void;
 }
 
 /**
- * Shows the generated receipt PDF via an <iframe> on its blob: URL
- * (same-origin so contentWindow access/printing isn't blocked), with
- * explicit Print and Share actions — instead of navigating to a new tab or
- * auto-picking a path by device type.
+ * Shows the generated receipt PDF via an <iframe> on its blob: URL, plus
+ * separate "Print Customer Copy" / "Print Shop Copy" actions — kept as two
+ * independent one-page print jobs (rather than one Print button sending the
+ * whole 2-page PDF) because a cheap thermal print bridge often only honors
+ * page 1 of a multi-page PDF, and the OS print sheet closing after that
+ * first job left no way back to the second page. Both buttons stay visible
+ * here for as long as the modal is open, so printing "page 2" is just
+ * tapping the other button — no popup sequencing, no relying on detecting
+ * when a print actually finished (browsers don't reliably expose that).
  *
  * The iframe renders the PDF inline fine on desktop, so it stays visible
  * there. Mobile Chrome/Safari don't reliably render a blob: PDF inside an
  * iframe at all (it shows a bare "open this file" placeholder instead of
  * the actual content) — rather than fight that, mobile gets a simple
- * "ready to print" card instead, while the same iframe stays mounted
- * off-screen purely so Print can still call .print() on it. The real visual
- * check on mobile happens in the OS's own print preview once Print is
- * tapped, which — unlike the iframe — renders the PDF correctly.
+ * "ready to print" card instead; the actual print/preview happens in the
+ * browser's own PDF viewer once one of the print buttons is tapped (see
+ * printPdfBlob in printWindow.ts).
  */
 export default function ReceiptPreviewModal({
   open,
   pdfBlob,
+  customerCopyBlob,
+  shopCopyBlob,
   fileName,
   onClose,
 }: ReceiptPreviewModalProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [canShare, setCanShare] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -56,18 +66,6 @@ export default function ReceiptPreviewModal({
     return () => URL.revokeObjectURL(url);
   }, [open, pdfBlob, fileName]);
 
-  const handlePrint = () => {
-    const win = iframeRef.current?.contentWindow;
-    if (win) {
-      win.focus();
-      win.print();
-    } else if (blobUrl) {
-      // Only reached if the iframe somehow never mounted a window — same
-      // blob URL, just as a last resort.
-      window.open(blobUrl, "_blank");
-    }
-  };
-
   const handleShare = async () => {
     if (!pdfBlob) return;
     const file = new File([pdfBlob], fileName, { type: "application/pdf" });
@@ -88,9 +86,23 @@ export default function ReceiptPreviewModal({
       centered
       width={420}
       footer={
-        <Space style={{ width: "100%", justifyContent: "center" }}>
-          <Button icon={<PrinterOutlined />} type="primary" size="large" onClick={handlePrint}>
-            Print
+        <Space wrap style={{ width: "100%", justifyContent: "center" }}>
+          <Button
+            icon={<PrinterOutlined />}
+            type="primary"
+            size="large"
+            disabled={!customerCopyBlob}
+            onClick={() => customerCopyBlob && printPdfBlob(customerCopyBlob)}
+          >
+            Print Customer Copy
+          </Button>
+          <Button
+            icon={<PrinterOutlined />}
+            size="large"
+            disabled={!shopCopyBlob}
+            onClick={() => shopCopyBlob && printPdfBlob(shopCopyBlob)}
+          >
+            Print Shop Copy
           </Button>
           {canShare && (
             <Button icon={<ShareAltOutlined />} size="large" onClick={handleShare}>
@@ -117,22 +129,11 @@ export default function ReceiptPreviewModal({
           <div style={{ fontSize: 12, textAlign: "center", wordBreak: "break-all" }}>{fileName}</div>
         </div>
       )}
-      {blobUrl && (
+      {blobUrl && !isMobile && (
         <iframe
-          ref={iframeRef}
           src={blobUrl}
           title="Receipt preview"
-          style={
-            isMobile
-              ? // Same hidden-iframe CSS already proven for print() elsewhere
-                // in this app (see printHtmlDocument in printWindow.ts) —
-                // `visibility: hidden` still lets the browser fully load and
-                // lay out the iframe's content, unlike a 1px/opacity:0 box,
-                // which risked the embedded PDF viewer never properly
-                // initializing and print() then doing nothing.
-                { position: "fixed", width: 0, height: 0, border: 0, visibility: "hidden" }
-              : { width: "100%", height: "60vh", border: "none", background: "#f5f5f5" }
-          }
+          style={{ width: "100%", height: "60vh", border: "none", background: "#f5f5f5" }}
         />
       )}
     </Modal>

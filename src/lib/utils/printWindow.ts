@@ -74,40 +74,50 @@ export function printHtmlDocument(
 }
 
 /**
- * Measures how tall the given HTML+CSS renders by mounting it off-screen in
- * the current document — used instead of the CSS `size: <width> auto` @page
- * syntax, which isn't actually valid (a <length> can't be paired with
- * `auto`): browsers that reject it silently fall back to the system default
- * page size (A4/Letter) rather than "fit to content", which is why a 58mm
- * receipt or an 80mm label was printing on a full A4 page.
+ * Prints a PDF Blob via the most reliable path per platform, for anything
+ * that already generates a real PDF (a receipt copy, a QR label) instead of
+ * printing HTML through `printHtmlDocument` above.
+ *
+ * Desktop: a temporary hidden iframe + `contentWindow.print()` — proven
+ * reliable there (see ReceiptPreviewModal's visible preview iframe, which
+ * uses the same call). Mobile (iOS/Android): opens the PDF in a new tab
+ * instead. A hidden iframe's embedded PDF viewer often never finishes
+ * initializing on mobile, so `.print()` on it silently does nothing — same
+ * lesson as the isMobile branch above, just for a PDF instead of HTML. The
+ * new tab shows the browser's own PDF viewer, which has its own working
+ * Print/Share icon that hands off to the OS print sheet (AirPrint, a
+ * Bluetooth thermal-printer app via RawBT, etc.) exactly like printing any
+ * other document.
  */
-export function estimateHtmlHeightMm(bodyHtml: string, styles: string): number {
-  const container = document.createElement("div");
-  container.style.cssText = "position:fixed;left:-9999px;top:0;visibility:hidden;";
-  const styleEl = document.createElement("style");
-  styleEl.textContent = styles;
-  const contentEl = document.createElement("div");
-  contentEl.innerHTML = bodyHtml;
-  container.appendChild(styleEl);
-  container.appendChild(contentEl);
-  document.body.appendChild(container);
-  const heightPx = contentEl.getBoundingClientRect().height;
-  document.body.removeChild(container);
-  // 96 CSS px = 1in = 25.4mm, per spec — resolution independent.
-  return (heightPx * 25.4) / 96;
-}
+export function printPdfBlob(blob: Blob): void {
+  const isMobile = /iPad|iPhone|iPod|Android/.test(navigator.userAgent);
+  const url = URL.createObjectURL(blob);
 
-/**
- * Prints a narrow, content-fitted document (a receipt, a single product
- * label) at an explicit `widthMm × <measured height>mm` page size, computed
- * from the actual rendered content instead of the unreliable `auto` height.
- */
-export function printFittedDocument(
-  title: string,
-  bodyHtml: string,
-  styles: string,
-  widthMm: number,
-): void {
-  const heightMm = Math.ceil(estimateHtmlHeightMm(bodyHtml, styles)) + 8;
-  printHtmlDocument(title, bodyHtml, `${styles}\n@page { size: ${widthMm}mm ${heightMm}mm; margin: 0; }`);
+  if (isMobile) {
+    const win = window.open(url, "_blank");
+    if (!win) alert("Please allow pop-ups to print.");
+    // Left for the browser to release when that tab is closed — revoking
+    // eagerly here can blank the viewer while it's still loading the file.
+    return;
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;width:0;height:0;border:0;visibility:hidden;";
+  iframe.onload = () => {
+    const win = iframe.contentWindow;
+    if (win) {
+      win.focus();
+      win.print();
+    }
+  };
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  // No afterprint-driven cleanup here (unlike printHtmlDocument) — a PDF
+  // loaded via `src` rather than `document.write` doesn't reliably fire
+  // afterprint on the iframe's own window across browsers, so this just
+  // gives the print dialog a generous window to be used before cleaning up.
+  setTimeout(() => {
+    if (document.body.contains(iframe)) document.body.removeChild(iframe);
+    URL.revokeObjectURL(url);
+  }, 60000);
 }

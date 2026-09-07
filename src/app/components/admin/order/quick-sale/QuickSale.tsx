@@ -33,7 +33,7 @@ import {
 } from "@/lib/types/enums";
 import { CreateOrderData, OrderProduct } from "@/lib/types/order";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
-import { generateReceiptPdf } from "@/lib/utils/generateReceiptPdf";
+import { generateReceiptPdfSet } from "@/lib/utils/generateReceiptPdf";
 import { unlockBeepAudio } from "@/lib/utils/beep";
 import { getStorePublicUrl, renderProductQrDataUrl } from "@/lib/utils/productQr";
 import { getOrCreateCustomerByPhone } from "@/lib/queries/customers/getOrCreateCustomerByPhone";
@@ -111,6 +111,8 @@ export default function QuickSale() {
   const [scanOpen, setScanOpen] = useState(false);
 
   const [receiptPdfBlob, setReceiptPdfBlob] = useState<Blob | null>(null);
+  const [customerCopyBlob, setCustomerCopyBlob] = useState<Blob | null>(null);
+  const [shopCopyBlob, setShopCopyBlob] = useState<Blob | null>(null);
   const [receiptFileName, setReceiptFileName] = useState("");
   const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false);
 
@@ -312,8 +314,10 @@ export default function QuickSale() {
     // size is baked into the file itself, so it survives mobile print
     // pipelines (iOS AirPrint, Android print bridges like RawBT) that
     // otherwise silently substitute a Letter/A4 page for anything printed
-    // as HTML — see generateReceiptPdf.ts for the full reasoning.
-    const pdfBlob = await generateReceiptPdf({
+    // as HTML — see generateReceiptPdf.ts for the full reasoning. Customer
+    // and shop copies are also generated as separate single-page PDFs (not
+    // just the combined 2-pager) so each can be printed as its own job.
+    const { combined, customerCopy, shopCopy } = await generateReceiptPdfSet({
       storeName: storeDisplayName,
       logoUrl,
       dateLabel: order.date.toLocaleString(),
@@ -336,7 +340,9 @@ export default function QuickSale() {
     });
 
     const fileTitle = sanitizeFilename(`${storeDisplayName}-${order.orderNumber}`);
-    setReceiptPdfBlob(pdfBlob);
+    setReceiptPdfBlob(combined);
+    setCustomerCopyBlob(customerCopy);
+    setShopCopyBlob(shopCopy);
     setReceiptFileName(`${fileTitle}.pdf`);
     setReceiptPreviewOpen(true);
   };
@@ -861,6 +867,8 @@ export default function QuickSale() {
       <ReceiptPreviewModal
         open={receiptPreviewOpen}
         pdfBlob={receiptPdfBlob}
+        customerCopyBlob={customerCopyBlob}
+        shopCopyBlob={shopCopyBlob}
         fileName={receiptFileName}
         onClose={() => setReceiptPreviewOpen(false)}
       />
