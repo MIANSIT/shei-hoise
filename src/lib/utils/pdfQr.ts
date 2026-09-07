@@ -3,6 +3,13 @@
  * instead of embedding it as a raster image — see getQrModuleMatrix in
  * productQr.ts for why that distinction is what actually makes a printed QR
  * scannable on a thermal print bridge.
+ *
+ * No logo here (unlike the on-screen canvas QR in productQr.ts): embedding
+ * one forces error-correction level "H", which on a real product URL adds
+ * enough extra modules to shrink each one well below what most scanners can
+ * resolve through a lossy thermal print pipeline. Dropping the logo and
+ * using "M" instead measurably grows every module (see getQrModuleMatrix's
+ * doc comment) — worth more for actual scannability than the branding.
  */
 import { JsPDFInstance } from "./pdfText";
 import { getQrModuleMatrix } from "./productQr";
@@ -17,21 +24,15 @@ const QUIET_ZONE_MODULES = 4;
 // hairline between them — imperceptible at any print resolution.
 const MODULE_OVERLAP_MM = 0.02;
 
-export interface QrLogo {
-  dataUrl: string;
-  format: "PNG" | "JPEG";
-}
-
-/** Draws a `sizeMm × sizeMm` QR (quiet zone included in that size) at (xMm, yMm), with an optional centered logo — mirrors drawLogoOnCanvas's white-box treatment in productQr.ts, sized to stay inside the "H" error-correction budget. */
+/** Draws a `sizeMm × sizeMm` QR (quiet zone included in that size) at (xMm, yMm). */
 export function drawQrVector(
   doc: JsPDFInstance,
   url: string,
   xMm: number,
   yMm: number,
   sizeMm: number,
-  logo?: QrLogo | null,
 ): void {
-  const matrix = getQrModuleMatrix(url);
+  const matrix = getQrModuleMatrix(url, "M");
   const totalModules = matrix.size + QUIET_ZONE_MODULES * 2;
   const moduleSizeMm = sizeMm / totalModules;
 
@@ -50,21 +51,4 @@ export function drawQrVector(
       );
     }
   }
-
-  if (!logo) return;
-  const logoSizeMm = sizeMm * 0.22;
-  const padMm = sizeMm * 0.015;
-  const boxSizeMm = logoSizeMm + padMm * 2;
-  const boxX = xMm + (sizeMm - boxSizeMm) / 2;
-  const boxY = yMm + (sizeMm - boxSizeMm) / 2;
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(boxX, boxY, boxSizeMm, boxSizeMm, 0.6, 0.6, "F");
-  doc.addImage(
-    logo.dataUrl,
-    logo.format,
-    xMm + (sizeMm - logoSizeMm) / 2,
-    yMm + (sizeMm - logoSizeMm) / 2,
-    logoSizeMm,
-    logoSizeMm,
-  );
 }

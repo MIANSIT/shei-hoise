@@ -42,9 +42,21 @@ export interface QrModuleMatrix {
  * that pipeline (grainy, unscannable) on identical hardware. Vector
  * rectangles render through the same path as the PDF's ordinary text, which
  * prints sharp, so they skip that dithering step.
+ *
+ * errorCorrectionLevel defaults to "H" (30% redundancy) because the
+ * canvas-based renders below use it to survive a centered logo. Printed QRs
+ * (pdfQr.ts) pass "M" instead and skip the logo entirely: "H" on a long URL
+ * forces enough extra modules that each one shrinks below what most
+ * scanners can resolve through a lossy print pipeline (measured: a 92-char
+ * product URL is 53 modules/side at "H" vs 41 at "M" — a real difference in
+ * physical module size at a fixed label size), and the logo isn't worth
+ * that cost when the code just needs to scan reliably.
  */
-export function getQrModuleMatrix(url: string): QrModuleMatrix {
-  const qr = QRCode.create(url, { errorCorrectionLevel: "H" });
+export function getQrModuleMatrix(
+  url: string,
+  errorCorrectionLevel: "L" | "M" | "Q" | "H" = "H",
+): QrModuleMatrix {
+  const qr = QRCode.create(url, { errorCorrectionLevel });
   const { modules } = qr;
   return {
     size: modules.size,

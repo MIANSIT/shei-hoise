@@ -439,6 +439,16 @@ export default function QuickSale() {
           message: "Sale completed",
           description: `Order #${orderNumber} recorded.`,
         });
+        // "Cash received" on screen is optional (a cashier ringing up exact
+        // change often just skips it), but the printed receipt should still
+        // always show what was received and any change — defaulting to the
+        // full total (i.e. no change) when it was left blank, rather than
+        // omitting both lines entirely.
+        const isCashSale = !isDueSale && paymentMethod === PaymentMethod.CASH;
+        const receiptCashReceived = isCashSale ? (cashReceived ?? total) : null;
+        const receiptChangeDue = isCashSale
+          ? Math.max(0, (cashReceived ?? total) - total)
+          : null;
         await printReceipt({
           orderNumber,
           items: cart,
@@ -446,8 +456,8 @@ export default function QuickSale() {
           discount,
           total,
           paymentMethod,
-          cashReceived,
-          changeDue,
+          cashReceived: receiptCashReceived,
+          changeDue: receiptChangeDue,
           paidNow: isDueSale ? receivedNow : null,
           due: isDueSale ? dueAmount : null,
           date: now,
