@@ -45,6 +45,9 @@ export interface ReceiptPdfData {
   changeDue: number | null;
   paidNow: number | null;
   due: number | null;
+  /** The customer identified for a due sale (collected so the balance can be traced back to them later) — omitted/blank for a fully-paid sale, so only printed alongside the DUE line below. */
+  customerName?: string | null;
+  customerPhone?: string | null;
   currencyIcon: string;
   /** URL to encode in the "shop with us online" QR (see getStorePublicUrl), or null to omit it — drawn as vector rectangles, not a raster image (see pdfQr.ts). */
   shopQrUrl: string | null;
@@ -193,8 +196,19 @@ function drawReceiptCopy(
   }
 
   if (data.due != null && data.due > 0.01) {
-    y = totalRow(doc, y, "Paid now", amountText(data.currencyIcon, data.paidNow ?? 0), false, 7.5, bengaliLoaded);
+    // "Paid now" only for a genuine partial payment — a fully-due sale (₹0
+    // collected up front) has nothing paid to report, so skip straight to
+    // DUE rather than printing a "Paid now ৳0.00" line.
+    if (data.paidNow != null && data.paidNow > 0.01) {
+      y = totalRow(doc, y, "Paid now", amountText(data.currencyIcon, data.paidNow), false, 7.5, bengaliLoaded);
+    }
     y = totalRow(doc, y, "DUE", amountText(data.currencyIcon, data.due), true, 7.5, bengaliLoaded);
+    if (data.customerName) {
+      y = totalRow(doc, y, "Customer", data.customerName, false, 7.5, bengaliLoaded);
+    }
+    if (data.customerPhone) {
+      y = totalRow(doc, y, "Phone", data.customerPhone, false, 7.5, bengaliLoaded);
+    }
   }
 
   y += 3;

@@ -1,15 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Modal, Button, Typography, Space, notification } from "antd";
+import { Modal, Button, Typography, Space, Dropdown, notification } from "antd";
+import type { MenuProps } from "antd";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import {
   getProductPublicUrl,
   renderProductQrToCanvas,
   renderProductQrBlob,
 } from "@/lib/utils/productQr";
-import { printPdfBlob, sanitizeFilename } from "@/lib/utils/printWindow";
+import { downloadBlob, printPdfBlob, sanitizeFilename } from "@/lib/utils/printWindow";
 import { generateLabelPdf } from "@/lib/utils/generateLabelPdf";
+import { generateLabelSheetPdf } from "@/lib/utils/generateLabelSheetPdf";
+
+type LabelFormat = "58mm" | "a4";
+
+const LABEL_FORMAT_MENU_ITEMS: MenuProps["items"] = [
+  { key: "58mm", label: "58mm thermal label" },
+  { key: "a4", label: "A4 sheet" },
+];
 
 const { Text } = Typography;
 
@@ -53,7 +62,7 @@ export default function ProductQrModal({
   // reading the on-screen canvas) because a store logo without CORS headers
   // taints the displayed canvas — it still shows fine on screen, but pixel
   // extraction for export throws unless it goes through the safe path below.
-  const handleDownload = async () => {
+  const handleDownloadPng = async () => {
     if (!product) return;
     setExporting(true);
     try {
@@ -76,23 +85,51 @@ export default function ProductQrModal({
     }
   };
 
-  const handlePrint = async () => {
-    if (!product) return;
+  // A real PDF with the label's exact size baked in — not HTML + a custom
+  // `@page` rule, which many mobile/thermal print pipelines silently ignore
+  // in favor of a much bigger default page — and the QR itself drawn as
+  // vector rectangles, not a raster image, so a print bridge's
+  // photo-dithering step never touches it (see generateLabelPdf.ts /
+  // pdfQr.ts).
+  const buildLabelPdf = (format: LabelFormat) => {
+    if (!product) return null;
+    if (format === "a4") {
+      return generateLabelSheetPdf(storeName, logoUrl, [
+        { qrUrl: url, productName: product.name },
+      ]);
+    }
+    return generateLabelPdf({ storeName, logoUrl, qrUrl: url, productName: product.name });
+  };
+
+  const handleDownloadPdf = async (format: LabelFormat) => {
+    const build = buildLabelPdf(format);
+    if (!build) return;
     setExporting(true);
     try {
-      // A real PDF with the label's exact 30mm-wide page size baked in —
-      // not HTML + a custom `@page` rule, which many mobile/thermal print
-      // pipelines silently ignore in favor of a much bigger default page —
-      // and the QR itself drawn as vector rectangles, not a raster image,
-      // so a print bridge's photo-dithering step never touches it (see
-      // generateLabelPdf.ts / pdfQr.ts).
-      const blob = await generateLabelPdf({
-        storeName,
-        logoUrl,
-        qrUrl: url,
-        productName: product.name,
+      const blob = await build;
+      downloadBlob(blob, `${fileBaseName}-QR-${format}.pdf`);
+    } catch (err) {
+      notification.error({
+        message: "Couldn't download QR label",
+        description: err instanceof Error ? err.message : undefined,
       });
-      printPdfBlob(blob, `${fileBaseName}-QR.pdf`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handlePrint = async (format: LabelFormat) => {
+    const build = buildLabelPdf(format);
+    if (!build) return;
+    setExporting(true);
+    try {
+      const blob = await build;
+      // preferShare: false — a QR label goes to a regular/photo printer via
+      // the OS print dialog, not an ESC/POS Bluetooth bridge app, so the
+      // mobile Share-sheet detour printPdfBlob otherwise takes for receipts
+      // (see its doc comment) would just be an extra hop with no printer on
+      // the other end here.
+      await printPdfBlob(blob, `${fileBaseName}-QR.pdf`, { preferShare: false });
     } catch (err) {
       notification.error({
         message: "Couldn't print QR label",
@@ -143,13 +180,33 @@ export default function ProductQrModal({
         >
           {url}
         </Text>
-        <Space style={{ marginTop: 16 }}>
-          <Button onClick={handleDownload} loading={exporting} disabled={rendering}>
+        <Space wrap style={{ marginTop: 16, justifyContent: "center" }}>
+          <Button onClick={handleDownloadPng} loading={exporting} disabled={rendering}>
             Download PNG
           </Button>
-          <Button type="primary" onClick={handlePrint} loading={exporting} disabled={rendering}>
+          <Dropdown.Button
+            onClick={() => handleDownloadPdf("58mm")}
+            loading={exporting}
+            disabled={rendering}
+            menu={{
+              items: LABEL_FORMAT_MENU_ITEMS,
+              onClick: ({ key }) => handleDownloadPdf(key as LabelFormat),
+            }}
+          >
+            Download PDF
+          </Dropdown.Button>
+          <Dropdown.Button
+            type="primary"
+            onClick={() => handlePrint("58mm")}
+            loading={exporting}
+            disabled={rendering}
+            menu={{
+              items: LABEL_FORMAT_MENU_ITEMS,
+              onClick: ({ key }) => handlePrint(key as LabelFormat),
+            }}
+          >
             Print Label
-          </Button>
+          </Dropdown.Button>
         </Space>
       </div>
     </Modal>

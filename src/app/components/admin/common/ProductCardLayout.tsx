@@ -8,6 +8,8 @@ interface MobileCardProps {
   subtitle?: string;
   content?: ReactNode;
   actions?: ReactNode;
+  /** A checkbox (or similar control) rendered before the image, for bulk-select. */
+  selection?: ReactNode;
 }
 
 const ProductCardLayout: React.FC<MobileCardProps> = ({
@@ -16,12 +18,14 @@ const ProductCardLayout: React.FC<MobileCardProps> = ({
   subtitle,
   content,
   actions,
+  selection,
 }) => {
   return (
     <div className="border rounded-xl p-4 flex flex-col gap-3 shadow-sm">
       {/* Top row: image, title/subtitle, actions */}
       <div className="flex justify-between items-center flex-wrap">
         <div className="flex gap-4 flex-1 items-center min-w-0">
+          {selection && <div className="shrink-0">{selection}</div>}
           {image && (
             <div
               className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0"

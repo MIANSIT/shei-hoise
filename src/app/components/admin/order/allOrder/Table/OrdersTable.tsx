@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Avatar,
   Space,
@@ -31,6 +31,7 @@ import {
   DeleteOutlined,
   FileTextOutlined,
   CopyOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import BulkActions from "./BulkActions";
@@ -51,6 +52,9 @@ import { LockOutlined } from "@ant-design/icons";
 import type { RiskAssessment } from "@/lib/utils/riskScoring";
 import CustomerOrderHistoryTags from "@/app/components/admin/order/common/CustomerOrderHistoryTags";
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
+import ReceiptPreviewModal from "@/app/components/admin/order/quick-sale/ReceiptPreviewModal";
+import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
+import { sanitizeFilename } from "@/lib/utils/printWindow";
 
 interface Props {
   orders: StoreOrder[];
@@ -169,10 +173,20 @@ const OrdersTable: React.FC<Props> = ({
     useState<StoreOrder | null>(null);
   const [exportingCsv, setExportingCsv] = useState(false);
 
-  // const { icon: currencyIcon } = useUserCurrencyIcon();
+  // Reprint-from-order state (Quick Sale/POS orders only) — rebuilds the
+  // thermal receipt PDF entirely from the persisted order, so it works even
+  // after the checkout page's in-memory receipt has been lost (reload, tab
+  // closed, etc.) — see receiptFromOrder.ts.
+  const [receiptOrder, setReceiptOrder] = useState<StoreOrder | null>(null);
+  const [receiptBuilding, setReceiptBuilding] = useState(false);
+  const [receiptPdfBlob, setReceiptPdfBlob] = useState<Blob | null>(null);
+  const [receiptCustomerCopyBlob, setReceiptCustomerCopyBlob] = useState<Blob | null>(null);
+  const [receiptShopCopyBlob, setReceiptShopCopyBlob] = useState<Blob | null>(null);
+  const [receiptFileName, setReceiptFileName] = useState("");
+  const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false);
 
   const { storeData } = useInvoiceData({
-    storeId: selectedOrderForInvoice?.store_id,
+    storeId: selectedOrderForInvoice?.store_id ?? receiptOrder?.store_id,
   });
 
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
@@ -182,9 +196,14 @@ const OrdersTable: React.FC<Props> = ({
   const searchParams = useSearchParams();
   const {
     currency: storeCurrency,
-    // icon: currencyIcon,
-    // loading: currencyLoading,
+    icon: currencyIconRaw,
+    loading: currencyIconLoading,
   } = useUserCurrencyIcon();
+  // Same "only BDT is an active currency today" simplification QuickSale.tsx
+  // makes — icon is typed ReactNode for currencies that render as a
+  // component, but the receipt PDF needs a plain string.
+  const currencyIcon =
+    !currencyIconLoading && typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
 
   const { storeId } = useCurrentUser();
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
@@ -245,6 +264,51 @@ const OrdersTable: React.FC<Props> = ({
     setSelectedOrderForInvoice(order);
     setShowInvoice(true);
   };
+
+  const handlePrintReceipt = (order: StoreOrder) => {
+    setReceiptOrder(order);
+  };
+
+  // Waits for storeData to resolve to *this* order's store (it's keyed off
+  // selectedOrderForInvoice/receiptOrder — whichever is set) before building,
+  // so a reprint never uses another store's stale name/logo left over from a
+  // previously-opened invoice.
+  useEffect(() => {
+    if (!receiptOrder || !storeData || storeData.id !== receiptOrder.store_id) return;
+    let cancelled = false;
+    setReceiptBuilding(true);
+    buildReceiptPdfSetForOrder(
+      receiptOrder,
+      storeData,
+      paidAmountByOrderId[receiptOrder.id] ?? 0,
+      currencyIcon,
+    )
+      .then(({ combined, customerCopy, shopCopy }) => {
+        if (cancelled) return;
+        setReceiptPdfBlob(combined);
+        setReceiptCustomerCopyBlob(customerCopy);
+        setReceiptShopCopyBlob(shopCopy);
+        setReceiptFileName(
+          `${sanitizeFilename(`${storeData.store_name}-${receiptOrder.order_number}`)}.pdf`,
+        );
+        setReceiptPreviewOpen(true);
+        setReceiptOrder(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        notification.error({
+          title: "Couldn't rebuild receipt",
+          description: err instanceof Error ? err.message : undefined,
+        });
+        setReceiptOrder(null);
+      })
+      .finally(() => {
+        if (!cancelled) setReceiptBuilding(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [receiptOrder, storeData, paidAmountByOrderId, currencyIcon, notification]);
 
   // Bulk selection handlers
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
@@ -399,6 +463,31 @@ const OrdersTable: React.FC<Props> = ({
         className={`${ACTION_CHIP_BASE} bg-linear-to-b from-indigo-50 to-indigo-100/80 dark:from-indigo-950/50 dark:to-indigo-900/30 border-indigo-200/70 dark:border-indigo-800/40 text-indigo-600! dark:text-indigo-400! hover:from-indigo-100 hover:to-indigo-200/80 dark:hover:from-indigo-900/60 dark:hover:to-indigo-800/40`}
       />
     </Tooltip>
+  );
+
+  // Quick Sale (POS) orders only — every other order type has no thermal
+  // receipt to reprint, just the regular invoice above.
+  const renderReceiptButton = (order: StoreOrder) =>
+    order.channel === "pos" && (
+      <Tooltip title="Print Receipt">
+        <Button
+          type="text"
+          icon={<PrinterOutlined />}
+          loading={receiptBuilding && receiptOrder?.id === order.id}
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrintReceipt(order);
+          }}
+          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 border-amber-200/70 dark:border-amber-800/40 text-amber-600! dark:text-amber-400! hover:from-amber-100 hover:to-amber-200/80 dark:hover:from-amber-900/60 dark:hover:to-amber-800/40`}
+        />
+      </Tooltip>
+    );
+
+  const renderInvoiceCell = (order: StoreOrder) => (
+    <div className="flex items-center justify-center gap-1.5">
+      {renderInvoiceButton(order)}
+      {renderReceiptButton(order)}
+    </div>
   );
 
   const renderActionButtons = (order: StoreOrder) => (
@@ -667,8 +756,8 @@ const OrdersTable: React.FC<Props> = ({
     {
       title: "Invoice",
       key: "invoice",
-      render: (_, order: StoreOrder) => renderInvoiceButton(order),
-      width: 64,
+      render: (_, order: StoreOrder) => renderInvoiceCell(order),
+      width: 96,
       align: "center" as const,
       responsive: ["sm"],
     },
@@ -801,7 +890,7 @@ const OrdersTable: React.FC<Props> = ({
               />
             </div>
             <div className="flex items-center gap-1">
-              {renderInvoiceButton(order)}
+              {renderInvoiceCell(order)}
               <div className="w-px h-5 bg-border mx-0.5" />
               {renderActionButtons(order)}
             </div>
@@ -1246,6 +1335,14 @@ const OrdersTable: React.FC<Props> = ({
           amountPaid={paidAmountByOrderId[selectedOrderForInvoice.id]}
           paymentStatus={selectedOrderForInvoice.payment_status}
           paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
+          // Quick Sale's delivery option is always the fixed in-store "shop"
+          // pickup — showing it on the invoice would just be noise, so it's
+          // only passed for a regular (non-POS) order.
+          deliveryOption={
+            selectedOrderForInvoice.channel === "pos"
+              ? null
+              : selectedOrderForInvoice.delivery_option
+          }
           orderStatus={selectedOrderForInvoice.status}
           // ✅ FIX 2: Pass notes from order
           notes={selectedOrderForInvoice.notes ?? ""}
@@ -1253,6 +1350,16 @@ const OrdersTable: React.FC<Props> = ({
           showPOSButton={false}
         />
       )}
+
+      {/* Reprinted Quick Sale receipt */}
+      <ReceiptPreviewModal
+        open={receiptPreviewOpen}
+        pdfBlob={receiptPdfBlob}
+        customerCopyBlob={receiptCustomerCopyBlob}
+        shopCopyBlob={receiptShopCopyBlob}
+        fileName={receiptFileName}
+        onClose={() => setReceiptPreviewOpen(false)}
+      />
 
       {/* Delete confirmation */}
       <Modal

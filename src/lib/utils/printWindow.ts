@@ -3,6 +3,19 @@ export function sanitizeFilename(name: string): string {
   return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "").trim() || "download";
 }
 
+/** Triggers a browser download of an arbitrary Blob via a throwaway `<a download>` link. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /**
  * Prints an arbitrary HTML document via a temporary hidden iframe (desktop)
  * or a new window (iOS/Android, where a hidden iframe often silently fails
@@ -118,11 +131,23 @@ function printPdfViaIframe(blob: Blob): void {
  * there), since desktop print dialogs don't have this custom-page-size
  * preview problem and Web Share's file support is far less consistently
  * available on desktop browsers.
+ *
+ * `preferShare` (default true) opts out of the mobile Share-sheet detour
+ * above for callers where it doesn't make sense — a QR label (58mm or A4)
+ * is normally sent to a regular/photo printer via the OS print dialog, not
+ * an ESC/POS Bluetooth bridge app, so routing it through Share first just
+ * adds an extra "which app?" hop with no printer on the other end. Receipt
+ * printing keeps the default (true).
  */
-export async function printPdfBlob(blob: Blob, fileName: string): Promise<void> {
+export async function printPdfBlob(
+  blob: Blob,
+  fileName: string,
+  options?: { preferShare?: boolean },
+): Promise<void> {
+  const preferShare = options?.preferShare ?? true;
   const isMobile = /iPad|iPhone|iPod|Android/.test(navigator.userAgent);
 
-  if (isMobile && typeof navigator.share === "function") {
+  if (preferShare && isMobile && typeof navigator.share === "function") {
     const file = new File([blob], fileName, { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
       try {

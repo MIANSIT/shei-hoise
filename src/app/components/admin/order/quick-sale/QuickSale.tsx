@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Input,
   Button,
@@ -41,14 +42,9 @@ import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPay
 import VariantPickerModal from "./VariantPickerModal";
 import ReceiptPreviewModal from "./ReceiptPreviewModal";
 import ScanToAddModal from "./ScanToAddModal";
+import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 
 const { Text, Title } = Typography;
-
-const PAYMENT_LABELS: Record<string, string> = {
-  [PaymentMethod.CASH]: "Cash",
-  [PaymentMethod.CARD]: "Card",
-  [PaymentMethod.MOBILE_BANKING]: "Mobile Banking",
-};
 
 function getEffectivePrice(product: ProductWithVariants): number {
   return product.discounted_price && product.discounted_price > 0
@@ -82,6 +78,7 @@ function getProductImage(product: ProductWithVariants): string | null {
 }
 
 export default function QuickSale() {
+  const router = useRouter();
   const { user, storeSlug } = useCurrentUser();
   const { store } = useStore(user?.store_id ?? null);
   const { icon: currencyIconRaw, loading: currencyLoading } = useUserCurrencyIcon();
@@ -293,6 +290,8 @@ export default function QuickSale() {
     changeDue: number | null;
     paidNow: number | null;
     due: number | null;
+    customerName: string | null;
+    customerPhone: string | null;
     date: Date;
   }) => {
     const storeDisplayName = store?.store_name || "My Shop";
@@ -329,6 +328,8 @@ export default function QuickSale() {
       changeDue: order.changeDue,
       paidNow: order.paidNow,
       due: order.due,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
       currencyIcon,
       shopQrUrl,
     });
@@ -376,6 +377,16 @@ export default function QuickSale() {
       const storeTag = (store?.store_name || "STORE").replace(/\s+/g, "").toUpperCase().slice(0, 10);
       const orderNumber = `${storeTag}-${yy}${mm}${dd}-${uid}`;
 
+      // "Cash received" on screen is optional (a cashier ringing up exact
+      // change often just skips it), but the printed receipt should still
+      // always show what was received and any change — defaulting to the
+      // full total (i.e. no change) when it was left blank, rather than
+      // omitting both lines entirely. Persisted on the order too, so a
+      // reprint later (e.g. after a reload wiped this page's state) can
+      // reconstruct the same "Cash received"/"Change due" lines.
+      const isCashSale = !isDueSale && paymentMethod === PaymentMethod.CASH;
+      const receiptCashReceived = isCashSale ? (cashReceived ?? total) : null;
+
       const orderData: CreateOrderData = {
         storeId: user.store_id,
         orderNumber,
@@ -411,6 +422,7 @@ export default function QuickSale() {
         courier: "shop",
         channel: "pos",
         currency: "BDT",
+        cashReceived: receiptCashReceived,
       };
 
       const result = await dataService.createOrder(orderData);
@@ -439,13 +451,6 @@ export default function QuickSale() {
           message: "Sale completed",
           description: `Order #${orderNumber} recorded.`,
         });
-        // "Cash received" on screen is optional (a cashier ringing up exact
-        // change often just skips it), but the printed receipt should still
-        // always show what was received and any change — defaulting to the
-        // full total (i.e. no change) when it was left blank, rather than
-        // omitting both lines entirely.
-        const isCashSale = !isDueSale && paymentMethod === PaymentMethod.CASH;
-        const receiptCashReceived = isCashSale ? (cashReceived ?? total) : null;
         const receiptChangeDue = isCashSale
           ? Math.max(0, (cashReceived ?? total) - total)
           : null;
@@ -460,6 +465,8 @@ export default function QuickSale() {
           changeDue: receiptChangeDue,
           paidNow: isDueSale ? receivedNow : null,
           due: isDueSale ? dueAmount : null,
+          customerName: isDueSale ? walkInName.trim() : null,
+          customerPhone: isDueSale ? walkInPhone.trim() : null,
           date: now,
         });
         setCart([]);
@@ -494,6 +501,9 @@ export default function QuickSale() {
             Ring up a walk-in customer without leaving the counter.
           </p>
         </div>
+        <Button onClick={() => router.push("/dashboard/orders/quick-sale/audit")}>
+          Register Audit
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">

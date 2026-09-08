@@ -132,6 +132,8 @@ export interface StoreOrder {
   whatsapp_notified_at?: string | null;
   /** 'pos' for a walk-in Quick Sale order, 'online' for everything else. */
   channel?: "online" | "pos";
+  /** Cash actually tendered at checkout for a fully-paid POS cash sale — null for due sales, non-cash payments, and online orders. Lets the receipt's "Cash received"/"Change due" lines be reprinted later instead of only ever existing in the checkout page's transient state. */
+  cash_received?: number | null;
 }
 
 // ===== FORM DATA TYPES =====
@@ -169,6 +171,8 @@ export interface CreateOrderData {
   courier?: string;
   /** Defaults to "online" server-side when omitted. */
   channel?: "online" | "pos";
+  /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received. */
+  cashReceived?: number | null;
 }
 
 // ===== CUSTOMER ORDER TYPES =====
