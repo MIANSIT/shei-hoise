@@ -7,7 +7,8 @@ import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { Edit, Trash2, Star, Truck, Zap, QrCode } from "lucide-react";
 import { isSaleActive } from "@/lib/utils/getEffectivePrice";
-import { Modal } from "antd";
+import { Modal, Checkbox, Button, Dropdown } from "antd";
+import type { MenuProps } from "antd";
 import ProductQrModal from "./ProductQrModal";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
@@ -20,6 +21,41 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { ProductStatus } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { getProductPublicUrl } from "@/lib/utils/productQr";
+import { generateBulkLabelPdf } from "@/lib/utils/generateLabelPdf";
+import { generateLabelSheetPdf } from "@/lib/utils/generateLabelSheetPdf";
+import { sanitizeFilename } from "@/lib/utils/printWindow";
+import QrLabelPreviewModal from "./QrLabelPreviewModal";
+
+type QrLayout = "pages" | "strip" | "sheet";
+
+const QR_LAYOUT_OPTIONS: { key: QrLayout; label: string; description: string }[] = [
+  {
+    key: "pages",
+    label: "Individual labels",
+    description: "58mm thermal roll, one label per page",
+  },
+  {
+    key: "strip",
+    label: "Continuous strip",
+    description: "58mm thermal roll, all labels on one long page",
+  },
+  {
+    key: "sheet",
+    label: "A4 sheet",
+    description: "Regular printer page, labels arranged in a grid",
+  },
+];
+
+const qrLayoutMenuItems: MenuProps["items"] = QR_LAYOUT_OPTIONS.map((opt) => ({
+  key: opt.key,
+  label: (
+    <div>
+      <div className="font-medium">{opt.label}</div>
+      <div className="text-xs text-muted-foreground">{opt.description}</div>
+    </div>
+  ),
+}));
 
 interface ProductTableProps {
   products: ProductWithVariants[];
@@ -191,6 +227,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [togglingFreeDeliveryId, setTogglingFreeDeliveryId] = useState<
     string | null
   >(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkLabelsBlob, setBulkLabelsBlob] = useState<Blob | null>(null);
+  const [bulkLabelsFileName, setBulkLabelsFileName] = useState("");
+  const [bulkLabelsPreviewOpen, setBulkLabelsPreviewOpen] = useState(false);
   const sheiNotif = useSheiNotification();
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
@@ -256,6 +297,47 @@ const ProductTable: React.FC<ProductTableProps> = ({
       sheiNotif.error(t.admin.productDeleteFailed);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const selectedProducts = products.filter((p) => selectedIds.includes(p.id));
+
+  // Shared by both bulk actions below. "pages"/"strip" share the same
+  // vector-QR thermal label as the single-product modal (see
+  // generateBulkLabelPdf's doc comment for the difference between them);
+  // "sheet" is a completely different A4 grid layout for a regular printer.
+  const buildSelectedLabelsPdf = (layout: QrLayout) => {
+    if (!storeSlug) return null;
+    const items = selectedProducts.map((p) => ({
+      qrUrl: getProductPublicUrl(storeSlug, p.slug),
+      productName: p.name,
+    }));
+    if (layout === "sheet") {
+      return generateLabelSheetPdf(storeName || "My Shop", storeLogoUrl, items);
+    }
+    return generateBulkLabelPdf(storeName || "My Shop", storeLogoUrl, items, layout);
+  };
+
+  // Generates the selected labels, then hands them to a preview modal (same
+  // "generate → preview in a modal → Print/Download from inside it" pattern
+  // as Quick Sale's checkout receipt) instead of jumping straight to the
+  // browser's native print/save dialog with no on-page feedback first — that
+  // abrupt full-screen takeover was reading as an unexpected page change.
+  const handleGenerateLabels = async (layout: QrLayout) => {
+    const build = buildSelectedLabelsPdf(layout);
+    if (!build) return;
+    setBulkGenerating(true);
+    try {
+      const blob = await build;
+      setBulkLabelsBlob(blob);
+      setBulkLabelsFileName(`${sanitizeFilename(storeName || "My Shop")}-QR-Labels.pdf`);
+      setBulkLabelsPreviewOpen(true);
+    } catch (err) {
+      sheiNotif.error(
+        err instanceof Error ? err.message : "Couldn't generate QR labels",
+      );
+    } finally {
+      setBulkGenerating(false);
     }
   };
 
@@ -473,6 +555,34 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </span>
       </div>
 
+      {/* ── Bulk QR selection bar ── */}
+      {storeSlug && selectedIds.length > 0 && (
+        <div className="flex items-center justify-between flex-wrap gap-2 px-5 py-2.5 border-b border-border/60 bg-emerald-50/60 dark:bg-emerald-500/10">
+          <span className="text-xs font-semibold text-foreground">
+            {n(selectedIds.length)} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Dropdown.Button
+              size="small"
+              type="primary"
+              onClick={() => handleGenerateLabels("pages")}
+              loading={bulkGenerating}
+              disabled={bulkGenerating}
+              menu={{
+                items: qrLayoutMenuItems,
+                onClick: ({ key }) => handleGenerateLabels(key as QrLayout),
+              }}
+            >
+              <QrCode className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
+              QR Labels
+            </Dropdown.Button>
+            <Button size="small" onClick={() => setSelectedIds([])} disabled={bulkGenerating}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile cards ── */}
       <div className="md:hidden flex flex-col gap-2.5 p-3">
         {products.length === 0 && !loading && (
@@ -492,6 +602,20 @@ const ProductTable: React.FC<ProductTableProps> = ({
           return (
             <ProductCardLayout
               key={record.id}
+              selection={
+                storeSlug && (
+                  <Checkbox
+                    checked={selectedIds.includes(record.id)}
+                    onChange={(e) =>
+                      setSelectedIds((prev) =>
+                        e.target.checked
+                          ? [...prev, record.id]
+                          : prev.filter((id) => id !== record.id),
+                      )
+                    }
+                  />
+                )
+              }
               image={
                 <ProductImage
                   src={getProductImage(record)}
@@ -605,6 +729,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
           loading={loading}
           size="middle"
           bordered={false}
+          rowSelection={
+            storeSlug
+              ? {
+                  selectedRowKeys: selectedIds,
+                  onChange: (keys) => setSelectedIds(keys as string[]),
+                }
+              : undefined
+          }
         />
       </div>
 
@@ -639,6 +771,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
           logoUrl={storeLogoUrl}
         />
       )}
+
+      <QrLabelPreviewModal
+        open={bulkLabelsPreviewOpen}
+        pdfBlob={bulkLabelsBlob}
+        fileName={bulkLabelsFileName}
+        onClose={() => setBulkLabelsPreviewOpen(false)}
+      />
     </>
   );
 };

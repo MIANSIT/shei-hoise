@@ -21,6 +21,7 @@ import {
   CreditCard,
   Package,
   StickyNote,
+  Truck,
 } from "lucide-react";
 import {
   Currency,
@@ -197,6 +198,8 @@ interface InvoiceModalProps {
   amountPaid?: number;
   paymentStatus?: PaymentStatus;
   paymentMethod?: string;
+  /** Delivery option (Pathao, home delivery, etc.) — pass only for a regular Create Order order; a Quick Sale order's delivery option is always the fixed in-store "shop" pickup, so callers should omit it there rather than showing a meaningless constant. */
+  deliveryOption?: string | null;
   orderStatus?: OrderStatus;
   notes?: string;
   orderCreatedAt?: string;
@@ -224,6 +227,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     amountPaid = 0,
     paymentStatus = "PENDING",
     paymentMethod = "N/A",
+    deliveryOption = null,
     orderStatus = "PROCESSING",
     notes = "",
     orderCreatedAt,
@@ -407,13 +411,21 @@ export default function InvoiceModal(props: InvoiceModalProps) {
         </div>
 
         ${
-          (paymentMethod && paymentMethod !== "N/A") || notes
+          (paymentMethod && paymentMethod !== "N/A") || deliveryOption || notes
             ? `<div class="payment-notes">
             ${
               paymentMethod && paymentMethod !== "N/A"
                 ? `<div>
                 <h4>Payment Method:</h4>
                 <p>${paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod.toUpperCase()}</p>
+              </div>`
+                : ""
+            }
+            ${
+              deliveryOption
+                ? `<div>
+                <h4>Delivery Option:</h4>
+                <p>${deliveryOption.charAt(0).toUpperCase() + deliveryOption.slice(1)}</p>
               </div>`
                 : ""
             }
@@ -1128,6 +1140,22 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                             {paymentMethod === "cod"
                               ? "Cash on Delivery"
                               : paymentMethod.toUpperCase()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {deliveryOption && (
+                      <div className="rounded-xl border border-border overflow-hidden">
+                        <div className="px-4 py-3 bg-background border-b border-border flex items-center gap-2">
+                          <Truck className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Delivery Option
+                          </span>
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm font-medium text-foreground capitalize">
+                            {deliveryOption}
                           </p>
                         </div>
                       </div>
