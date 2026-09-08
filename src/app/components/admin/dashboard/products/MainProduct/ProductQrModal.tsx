@@ -92,7 +92,7 @@ export default function ProductQrModal({
         qrUrl: url,
         productName: product.name,
       });
-      printPdfBlob(blob);
+      printPdfBlob(blob, `${fileBaseName}-QR.pdf`);
     } catch (err) {
       notification.error({
         message: "Couldn't print QR label",
