@@ -73,29 +73,7 @@ export function printHtmlDocument(
   setTimeout(restoreTitle, 30000);
 }
 
-/**
- * Prints a PDF Blob for anything that already generates a real PDF (a
- * receipt copy, a QR label) instead of printing HTML through
- * `printHtmlDocument` above.
- *
- * Deliberately never navigates to the PDF (no `window.open` on the blob
- * URL): whether that shows a viewer with a print icon, or just silently
- * downloads the file instead, depends on the phone's own "open PDFs in
- * browser vs. download them" setting — outside this app's control, and a
- * dead end when it's set to download, since the user then has to go dig the
- * file out of Downloads themselves. Instead this loads the PDF into a real,
- * visible (not zero-size/hidden) same-page iframe and calls
- * `contentWindow.print()` directly — that invokes the browser's native
- * print API, which on Android hands off to the OS print dialog (showing
- * every registered PrintService, e.g. an ESC/POS Bluetooth-printer bridge)
- * the same way `window.print()` would, regardless of any PDF-download
- * setting, since the PDF is never treated as a file to open or save. A
- * zero-size/hidden iframe frequently never finishes initializing its
- * embedded PDF viewer on mobile, so print() had nothing to act on — this
- * briefly overlays the full viewport instead, which reliably finishes
- * loading, then is removed once printing is done.
- */
-export function printPdfBlob(blob: Blob): void {
+function printPdfViaIframe(blob: Blob): void {
   const url = URL.createObjectURL(blob);
 
   const iframe = document.createElement("iframe");
@@ -118,4 +96,46 @@ export function printPdfBlob(blob: Blob): void {
   // Fallback in case afterprint never fires (some mobile browsers don't
   // reliably emit it for a PDF viewer's own print action).
   setTimeout(cleanup, 60000);
+}
+
+/**
+ * Prints a PDF Blob for anything that already generates a real PDF (a
+ * receipt copy, a QR label) instead of printing HTML through
+ * `printHtmlDocument` above.
+ *
+ * On mobile this hands the file to Android's Share sheet first (via the Web
+ * Share API's file support), not the browser's print API — a Bluetooth
+ * ESC/POS bridge app (RawBT, "ESC POS Print Service", etc.) is normally
+ * used by receiving a shared file directly, and that's also what actually
+ * works: calling window.print()/iframe print() instead routes through
+ * Android's own system Print Preview screen, which tries to render a
+ * thumbnail of the PDF and can render nothing but a blank/black screen for
+ * a non-standard small page size like this app's 58mm receipts — a dead
+ * end with no path to an actual printer. Sharing skips that broken preview
+ * entirely and lets the bridge app open the file itself.
+ *
+ * Desktop keeps the iframe + `contentWindow.print()` path (proven reliable
+ * there), since desktop print dialogs don't have this custom-page-size
+ * preview problem and Web Share's file support is far less consistently
+ * available on desktop browsers.
+ */
+export async function printPdfBlob(blob: Blob, fileName: string): Promise<void> {
+  const isMobile = /iPad|iPhone|iPod|Android/.test(navigator.userAgent);
+
+  if (isMobile && typeof navigator.share === "function") {
+    const file = new File([blob], fileName, { type: "application/pdf" });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: fileName });
+        return;
+      } catch (err) {
+        // The user backing out of the share sheet isn't a failure to fall
+        // back from — anything else (e.g. no share target installed) falls
+        // through to the iframe/print path below as a last resort.
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
+    }
+  }
+
+  printPdfViaIframe(blob);
 }
