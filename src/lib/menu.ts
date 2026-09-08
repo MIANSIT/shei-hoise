@@ -28,6 +28,7 @@ import {
   Star,
   Zap,
   Wallet,
+  Calculator,
 } from "lucide-react";
 import React from "react";
 
@@ -105,6 +106,11 @@ export const sideMenu: MenuItem[] = [
         title: "Quick Sale",
         href: "/dashboard/orders/quick-sale",
         icon: Zap,
+      },
+      {
+        title: "Register Audit",
+        href: "/dashboard/orders/quick-sale/audit",
+        icon: Calculator,
       },
       {
         title: "Create Order",

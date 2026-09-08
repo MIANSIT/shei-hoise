@@ -29,6 +29,8 @@ export interface CreateOrderData {
   deliveryOption: string;
   /** 'pos' for a walk-in Quick Sale order. Defaults to 'online' when omitted. */
   channel?: "online" | "pos";
+  /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received in lib/types/order.ts. */
+  cashReceived?: number | null;
 }
 
 export interface CreateOrderResult {
@@ -286,6 +288,7 @@ export async function createOrder(
       paymentMethod,
       currency = "BDT",
       channel = "online",
+      cashReceived,
     } = orderData;
 
     // Validate required fields
@@ -349,18 +352,32 @@ export async function createOrder(
       delivery_option: orderData.deliveryOption,
       courier: orderData.courier || null,
       channel,
+      cash_received: cashReceived ?? null,
     };
 
 
-    const { data: order, error: orderError } = await supabaseAdmin
+    let { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert([orderInsertData])
       .select("id, order_number, customer_id")
       .single();
 
-    if (orderError) {
+    // `cash_received` (see the 20260909000000 migration) may not have been
+    // applied to this environment yet — retry without it rather than
+    // failing every Quick Sale checkout until someone runs that migration.
+    if (orderError?.code === "42703") {
+      const { cash_received: _omit, ...withoutCashReceived } = orderInsertData;
+      void _omit;
+      ({ data: order, error: orderError } = await supabaseAdmin
+        .from("orders")
+        .insert([withoutCashReceived])
+        .select("id, order_number, customer_id")
+        .single());
+    }
+
+    if (orderError || !order) {
       console.error("❌ Order insertion error:", orderError);
-      throw new Error(`Failed to create order: ${orderError.message}`);
+      throw new Error(`Failed to create order: ${orderError?.message ?? "no order returned"}`);
     }
 
 
