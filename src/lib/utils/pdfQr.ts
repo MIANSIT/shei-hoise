@@ -24,6 +24,21 @@ const QUIET_ZONE_MODULES = 4;
 // hairline between them — imperceptible at any print resolution.
 const MODULE_OVERLAP_MM = 0.02;
 
+/**
+ * The smallest sizeMm that keeps every module at least `minModuleSizeMm`
+ * for this URL, at "M" error correction — call this before drawQrVector
+ * instead of using one fixed size for every QR. A longer URL (e.g. a
+ * product page vs. a store's short home URL) needs more modules for the
+ * same data, so the same physical size packs them smaller and denser; a
+ * fixed size that scans fine for a short URL can still come out too dense
+ * to scan for a longer one. Sizing off the actual module count keeps
+ * scannability consistent regardless of how long the encoded URL is.
+ */
+export function minQrSizeMm(url: string, minModuleSizeMm: number): number {
+  const matrix = getQrModuleMatrix(url, "M");
+  return (matrix.size + QUIET_ZONE_MODULES * 2) * minModuleSizeMm;
+}
+
 /** Draws a `sizeMm × sizeMm` QR (quiet zone included in that size) at (xMm, yMm). */
 export function drawQrVector(
   doc: JsPDFInstance,
