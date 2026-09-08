@@ -23,7 +23,7 @@ import {
   registerBengaliFont,
   setTextFont,
 } from "./pdfText";
-import { drawQrVector } from "./pdfQr";
+import { drawQrVector, minQrSizeMm } from "./pdfQr";
 
 export interface ReceiptPdfItem {
   name: string;
@@ -202,11 +202,14 @@ function drawReceiptCopy(
   if (data.shopQrUrl) {
     // At least 25-30mm is the recommended minimum for reliable scanning
     // through a thermal print pipeline — a wider receipt has the room, and
-    // a bigger physical QR means bigger physical modules. The QR's own
-    // quiet zone (4 modules, drawn as part of it — see pdfQr.ts) already
-    // satisfies the QR spec, but a few extra mm of surrounding whitespace
-    // here keeps any nearby text further clear of it too.
-    const qrSize = 30;
+    // a bigger physical QR means bigger physical modules. Sized off the
+    // actual URL (not a bare constant) so a longer store slug automatically
+    // gets a bigger QR too, keeping the module size — not just the overall
+    // size — consistent with what's confirmed scanning correctly (see
+    // pdfQr.ts's minQrSizeMm). The QR's own quiet zone (4 modules, drawn as
+    // part of it) already satisfies the QR spec, but a few extra mm of
+    // surrounding whitespace here keeps any nearby text further clear too.
+    const qrSize = Math.min(45, Math.max(30, minQrSizeMm(data.shopQrUrl, 0.8)));
     drawQrVector(doc, data.shopQrUrl, (PAGE_WIDTH_MM - qrSize) / 2, y, qrSize);
     y += qrSize + 3;
     centeredText(doc, "Shop with us online", y, 6.5, false, bengaliLoaded, [100, 100, 100]);
