@@ -47,6 +47,8 @@ export default function ReceiptPreviewModal({
   const [canShare, setCanShare] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  const fileNameFor = (copy: "customer" | "shop") => fileName.replace(/\.pdf$/i, `-${copy}.pdf`);
+
   useEffect(() => {
     setIsMobile(/iPad|iPhone|iPod|Android/.test(navigator.userAgent));
   }, []);
@@ -92,7 +94,9 @@ export default function ReceiptPreviewModal({
             type="primary"
             size="large"
             disabled={!customerCopyBlob}
-            onClick={() => customerCopyBlob && printPdfBlob(customerCopyBlob)}
+            onClick={() =>
+              customerCopyBlob && printPdfBlob(customerCopyBlob, fileNameFor("customer"))
+            }
           >
             Print Customer Copy
           </Button>
@@ -100,7 +104,7 @@ export default function ReceiptPreviewModal({
             icon={<PrinterOutlined />}
             size="large"
             disabled={!shopCopyBlob}
-            onClick={() => shopCopyBlob && printPdfBlob(shopCopyBlob)}
+            onClick={() => shopCopyBlob && printPdfBlob(shopCopyBlob, fileNameFor("shop"))}
           >
             Print Shop Copy
           </Button>
