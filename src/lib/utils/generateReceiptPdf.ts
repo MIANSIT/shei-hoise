@@ -197,15 +197,18 @@ function drawReceiptCopy(
     y = totalRow(doc, y, "DUE", amountText(data.currencyIcon, data.due), true, 7.5, bengaliLoaded);
   }
 
-  y += 1.5;
+  y += 3;
 
   if (data.shopQrUrl) {
-    // Bigger than before (16mm) — a wider receipt has the room, and a
-    // bigger physical QR means bigger physical modules, which matters more
-    // for scannability through a thermal print pipeline than shaving paper.
-    const qrSize = 22;
+    // At least 25-30mm is the recommended minimum for reliable scanning
+    // through a thermal print pipeline — a wider receipt has the room, and
+    // a bigger physical QR means bigger physical modules. The QR's own
+    // quiet zone (4 modules, drawn as part of it — see pdfQr.ts) already
+    // satisfies the QR spec, but a few extra mm of surrounding whitespace
+    // here keeps any nearby text further clear of it too.
+    const qrSize = 30;
     drawQrVector(doc, data.shopQrUrl, (PAGE_WIDTH_MM - qrSize) / 2, y, qrSize);
-    y += qrSize + 1.5;
+    y += qrSize + 3;
     centeredText(doc, "Shop with us online", y, 6.5, false, bengaliLoaded, [100, 100, 100]);
     y += 4;
   }
