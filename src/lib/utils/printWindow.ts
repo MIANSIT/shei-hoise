@@ -74,50 +74,48 @@ export function printHtmlDocument(
 }
 
 /**
- * Prints a PDF Blob via the most reliable path per platform, for anything
- * that already generates a real PDF (a receipt copy, a QR label) instead of
- * printing HTML through `printHtmlDocument` above.
+ * Prints a PDF Blob for anything that already generates a real PDF (a
+ * receipt copy, a QR label) instead of printing HTML through
+ * `printHtmlDocument` above.
  *
- * Desktop: a temporary hidden iframe + `contentWindow.print()` — proven
- * reliable there (see ReceiptPreviewModal's visible preview iframe, which
- * uses the same call). Mobile (iOS/Android): opens the PDF in a new tab
- * instead. A hidden iframe's embedded PDF viewer often never finishes
- * initializing on mobile, so `.print()` on it silently does nothing — same
- * lesson as the isMobile branch above, just for a PDF instead of HTML. The
- * new tab shows the browser's own PDF viewer, which has its own working
- * Print/Share icon that hands off to the OS print sheet (AirPrint, a
- * Bluetooth thermal-printer app via RawBT, etc.) exactly like printing any
- * other document.
+ * Deliberately never navigates to the PDF (no `window.open` on the blob
+ * URL): whether that shows a viewer with a print icon, or just silently
+ * downloads the file instead, depends on the phone's own "open PDFs in
+ * browser vs. download them" setting — outside this app's control, and a
+ * dead end when it's set to download, since the user then has to go dig the
+ * file out of Downloads themselves. Instead this loads the PDF into a real,
+ * visible (not zero-size/hidden) same-page iframe and calls
+ * `contentWindow.print()` directly — that invokes the browser's native
+ * print API, which on Android hands off to the OS print dialog (showing
+ * every registered PrintService, e.g. an ESC/POS Bluetooth-printer bridge)
+ * the same way `window.print()` would, regardless of any PDF-download
+ * setting, since the PDF is never treated as a file to open or save. A
+ * zero-size/hidden iframe frequently never finishes initializing its
+ * embedded PDF viewer on mobile, so print() had nothing to act on — this
+ * briefly overlays the full viewport instead, which reliably finishes
+ * loading, then is removed once printing is done.
  */
 export function printPdfBlob(blob: Blob): void {
-  const isMobile = /iPad|iPhone|iPod|Android/.test(navigator.userAgent);
   const url = URL.createObjectURL(blob);
 
-  if (isMobile) {
-    const win = window.open(url, "_blank");
-    if (!win) alert("Please allow pop-ups to print.");
-    // Left for the browser to release when that tab is closed — revoking
-    // eagerly here can blank the viewer while it's still loading the file.
-    return;
-  }
-
   const iframe = document.createElement("iframe");
-  iframe.style.cssText = "position:fixed;width:0;height:0;border:0;visibility:hidden;";
+  iframe.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:99999;background:#fff;";
+  const cleanup = () => {
+    if (document.body.contains(iframe)) document.body.removeChild(iframe);
+    URL.revokeObjectURL(url);
+  };
   iframe.onload = () => {
     const win = iframe.contentWindow;
-    if (win) {
-      win.focus();
-      win.print();
-    }
+    if (!win) return;
+    win.focus();
+    win.print();
+    // Fires once the OS print sheet is dismissed, on both desktop and
+    // mobile, since this iframe is same-origin and actually rendered.
+    win.addEventListener("afterprint", cleanup);
   };
   iframe.src = url;
   document.body.appendChild(iframe);
-  // No afterprint-driven cleanup here (unlike printHtmlDocument) — a PDF
-  // loaded via `src` rather than `document.write` doesn't reliably fire
-  // afterprint on the iframe's own window across browsers, so this just
-  // gives the print dialog a generous window to be used before cleaning up.
-  setTimeout(() => {
-    if (document.body.contains(iframe)) document.body.removeChild(iframe);
-    URL.revokeObjectURL(url);
-  }, 60000);
+  // Fallback in case afterprint never fires (some mobile browsers don't
+  // reliably emit it for a PDF viewer's own print action).
+  setTimeout(cleanup, 60000);
 }
