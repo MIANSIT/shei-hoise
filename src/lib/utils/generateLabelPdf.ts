@@ -56,10 +56,12 @@ function drawLabel(
   doc.setTextColor(85, 85, 85);
   setTextFont(doc, data.storeName, bengaliLoaded, false);
   doc.text(data.storeName, PAGE_WIDTH_MM / 2, y, { align: "center" });
-  y += 3.6;
+  y += 4.5;
 
+  // Extra whitespace beyond the QR's own built-in quiet zone (see
+  // pdfQr.ts) — keeps the store name/product name text clear of it too.
   drawQrVector(doc, data.qrUrl, (PAGE_WIDTH_MM - QR_SIZE_MM) / 2, y, QR_SIZE_MM);
-  y += QR_SIZE_MM + 2;
+  y += QR_SIZE_MM + 3;
 
   doc.setFontSize(7.5);
   doc.setTextColor(0, 0, 0);
