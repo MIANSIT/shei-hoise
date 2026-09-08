@@ -632,7 +632,6 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
     customerInfo.phone &&
     customerInfo.address &&
     customerInfo.city &&
-    customerInfo.deliveryMethod &&
     customerInfo.deliveryOption &&
     orderProducts.length > 0 &&
     !emailError;

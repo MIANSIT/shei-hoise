@@ -19,7 +19,7 @@
  * as the receipt) removes that ambiguity entirely.
  */
 import { JsPDFInstance, loadImageBase64, registerBengaliFont, setTextFont } from "./pdfText";
-import { drawQrVector } from "./pdfQr";
+import { drawQrVector, minQrSizeMm } from "./pdfQr";
 
 export interface LabelPdfData {
   storeName: string;
@@ -32,10 +32,15 @@ export interface LabelPdfData {
 const PAGE_WIDTH_MM = 58;
 const MARGIN_MM = 3;
 const CONTENT_WIDTH_MM = PAGE_WIDTH_MM - MARGIN_MM * 2;
-// Not "fill the full width" (that'd be a huge, paper-wasting QR at 52mm) —
-// 30mm is comfortably scannable (see pdfQr.ts's module-size math) while
-// leaving the label a sensible size to actually stick on a product.
-const QR_SIZE_MM = 30;
+// A product URL is longer than the receipt's store-home-page URL, so it
+// needs more QR modules for the same data — a size that scans fine for a
+// short URL can still be too dense at a longer one. Sizing off the actual
+// URL keeps every label's module size at least as generous as what's now
+// confirmed working on the receipt (~0.8mm/module at 30mm for a short
+// URL), instead of one fixed size that only works for short product names.
+const MIN_MODULE_SIZE_MM = 0.8;
+const MIN_QR_SIZE_MM = 30;
+const MAX_QR_SIZE_MM = 45; // stays inside the 52mm content width with margin
 const BOTTOM_PADDING_MM = 3;
 
 function drawLabel(
@@ -60,8 +65,12 @@ function drawLabel(
 
   // Extra whitespace beyond the QR's own built-in quiet zone (see
   // pdfQr.ts) — keeps the store name/product name text clear of it too.
-  drawQrVector(doc, data.qrUrl, (PAGE_WIDTH_MM - QR_SIZE_MM) / 2, y, QR_SIZE_MM);
-  y += QR_SIZE_MM + 3;
+  const qrSizeMm = Math.min(
+    MAX_QR_SIZE_MM,
+    Math.max(MIN_QR_SIZE_MM, minQrSizeMm(data.qrUrl, MIN_MODULE_SIZE_MM)),
+  );
+  drawQrVector(doc, data.qrUrl, (PAGE_WIDTH_MM - qrSizeMm) / 2, y, qrSizeMm);
+  y += qrSizeMm + 3;
 
   doc.setFontSize(7.5);
   doc.setTextColor(0, 0, 0);
