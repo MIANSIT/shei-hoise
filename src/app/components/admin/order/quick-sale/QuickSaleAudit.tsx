@@ -150,10 +150,10 @@ export default function QuickSaleAudit() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Title level={2} style={{ margin: 0 }}>
-            Quick Sale Register Audit
+            Register Audit
           </Title>
           <Text type="secondary" className="text-xs">
-            End-of-shift cash count for a day&apos;s walk-in sales.
+            End-of-shift cash count for the day&apos;s sales — online and in-store.
           </Text>
         </div>
         <DatePicker
@@ -243,7 +243,7 @@ export default function QuickSaleAudit() {
             pagination={false}
             size="small"
             scroll={{ x: 700 }}
-            locale={{ emptyText: "No Quick Sale transactions on this day." }}
+            locale={{ emptyText: "No transactions on this day." }}
           />
         </>
       )}

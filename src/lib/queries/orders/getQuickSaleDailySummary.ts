@@ -38,10 +38,17 @@ const EMPTY: QuickSaleDailySummary = {
 };
 
 /**
- * One day's Quick Sale (POS) register summary, for an end-of-shift cash
- * count — gross sales, what actually came in by payment method, and what's
- * still owed from today's due sales. Cancelled sales are excluded (no goods
- * left, no money should have moved).
+ * One day's cash-register summary — gross sales, what actually came in by
+ * payment method, and what's still owed from today's due sales. Cancelled
+ * sales are excluded (no goods left, no money should have moved).
+ *
+ * Covers every channel, not just Quick Sale/POS: an online order can also
+ * be paid in cash and physically land in the same drawer (e.g. picked up
+ * in-store), and there's no reliable way to tell that apart from a courier
+ * order whose cash the courier holds instead — so this counts every order
+ * regardless of channel, same as the store's own reconciliation process
+ * does. The "collected by payment method" breakdown below is what actually
+ * answers "how much cash should be in the drawer," not the channel.
  *
  * "Collected by method" folds customer_payments in too, not just
  * payment_status='paid' orders — a due sale's "amount received now" only
@@ -69,7 +76,6 @@ export async function getQuickSaleDailySummary(
         "id, order_number, created_at, total_amount, payment_method, payment_status, status, shipping_address",
       )
       .eq("store_id", storeId)
-      .eq("channel", "pos")
       .neq("status", OrderStatus.CANCELLED)
       .neq("status", OrderStatus.RETURNED)
       .gte("created_at", `${dateStr}T00:00:00+06:00`)

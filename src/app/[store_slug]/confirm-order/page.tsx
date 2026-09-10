@@ -717,6 +717,14 @@ export default function ConfirmOrderPage() {
           return notify.error(result.error || "Failed to place order");
         }
 
+        // One-time use: the link stays otherwise valid for its full expiry
+        // window, so without this it could be reused to place a second
+        // order after already being completed once. Best-effort — a failed
+        // cleanup call here shouldn't undo an order that already succeeded.
+        if (token) {
+          fetch(`/api/get-confirm-order?t=${token}`, { method: "DELETE" }).catch(() => {});
+        }
+
         const invoice = buildInvoiceData(values, storeCustomerId, result);
         setInvoiceData(invoice);
         setShowInvoice(true);
@@ -800,6 +808,7 @@ export default function ConfirmOrderPage() {
         taxAmount={taxAmount}
         isProcessing={isProcessing || orderLoading}
         mode="confirm"
+        expiresAt={tokenData?.expires_at ?? null}
         onQuantityChange={handleQuantityChange}
         onRemoveItem={handleRemoveItem}
       />
