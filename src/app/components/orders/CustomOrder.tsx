@@ -110,7 +110,6 @@ export default function CustomOrder() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          store_id: await getStoreIdBySlug(storeSlug),
           store_slug: storeSlug,
           products: orderProducts.map((item) => ({
             product_id: item.product_id,
