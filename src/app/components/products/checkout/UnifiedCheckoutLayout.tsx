@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { m } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, User, ChevronRight, ChevronLeft, ChevronDown, Tag, X, CircleAlert } from "lucide-react";
+import { ShoppingBag, User, ChevronRight, ChevronLeft, ChevronDown, Tag, X, CircleAlert, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import CartItemsList from "../../cart/CartItemList";
 import CheckoutForm from "./UserCheckoutForm";
@@ -32,6 +32,8 @@ interface UnifiedCheckoutLayoutProps {
   minOrderAmount?: number;
   isProcessing: boolean;
   mode?: "checkout" | "confirm";
+  /** ISO timestamp the shared order link expires at — only meaningful (and only shown) when mode is "confirm". */
+  expiresAt?: string | null;
   couponCode?: string;
   onCouponCodeChange?: (code: string) => void;
   onApplyCoupon?: () => void;
@@ -65,6 +67,7 @@ export default function UnifiedCheckoutLayout({
   minOrderAmount = 0,
   isProcessing,
   mode = "checkout",
+  expiresAt,
   onQuantityChange,
   onRemoveItem,
   couponCode = "",
@@ -79,6 +82,27 @@ export default function UnifiedCheckoutLayout({
   );
   const [isClearing, setIsClearing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
+  // Ticks once a minute — this is a courtesy heads-up, not a precise timer,
+  // so second-level accuracy isn't worth the extra re-renders.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (mode !== "confirm" || !expiresAt) return;
+    const interval = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, [mode, expiresAt]);
+
+  const msRemaining = expiresAt ? new Date(expiresAt).getTime() - now : null;
+  const expiryLabel = (() => {
+    if (msRemaining == null) return null;
+    if (msRemaining <= 0) return "This link has expired";
+    const totalMinutes = Math.ceil(msRemaining / 60_000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const parts = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    return `Link expires in ${parts}`;
+  })();
+  const expirySoon = msRemaining != null && msRemaining <= 30 * 60_000;
   const {
     icon: currencyIcon,
     loading: currencyLoading,
@@ -288,6 +312,18 @@ export default function UnifiedCheckoutLayout({
                   </p>
                 </div>
               </div>
+              {mode === "confirm" && expiryLabel && (
+                <div
+                  className={`mt-3 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium w-fit ${
+                    expirySoon
+                      ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                      : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  {expiryLabel}
+                </div>
+              )}
               <div className='h-1 bg-linear-to-r from-stone-700 to-stone-900 dark:from-gray-400 dark:to-white rounded-full shadow-lg mt-2'></div>
             </CardHeader>
             <CardContent className='space-y-4'>
