@@ -179,6 +179,7 @@ const OrderProductTable: React.FC<Props> = ({
 
   const isFinalized =
     order.status === OrderStatus.CANCELLED ||
+    order.status === OrderStatus.RETURNED ||
     (order.status === OrderStatus.DELIVERED &&
       order.payment_status === PaymentStatus.PAID);
 

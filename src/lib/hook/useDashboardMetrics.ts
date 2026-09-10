@@ -8,7 +8,8 @@ export type OrderStatus =
   | "confirmed"
   | "shipped"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "returned";
 export type PaymentStatus = "paid" | "pending" | "refunded";
 export type AlertType = "stock" | "order" | "payment" | "expense";
 
@@ -89,6 +90,7 @@ const emptyMetrics: DashboardMetrics = {
     shipped: 0,
     delivered: 0,
     cancelled: 0,
+    returned: 0,
   },
   salesTrend: [],
   customerSnapshot: {

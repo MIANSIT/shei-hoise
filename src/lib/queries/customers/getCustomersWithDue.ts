@@ -25,6 +25,9 @@ export async function getCustomersWithDue(storeId: string): Promise<CustomerWith
       .eq("store_id", storeId)
       .not("customer_id", "is", null)
       .neq("payment_status", PaymentStatus.PAID)
+      // A returned order that was auto-refunded shouldn't reappear as an
+      // outstanding due once its refund row pushes due_remaining back up.
+      .neq("payment_status", PaymentStatus.REFUNDED)
       .order("created_at", { ascending: true }),
     supabase.from("customer_payments").select("amount, order_id, customer_id").eq("store_id", storeId),
   ]);

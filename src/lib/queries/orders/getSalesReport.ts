@@ -94,6 +94,7 @@ export async function getSalesReport(
         .select("subtotal, discount_amount, channel, created_at")
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
+        .neq("status", OrderStatus.RETURNED)
         .gte("created_at", `${fromDate}T00:00:00+06:00`)
         .lte("created_at", `${toDate}T23:59:59.999+06:00`)
         .range(from, to),
@@ -186,6 +187,7 @@ export async function getSalesReportOrdersForPeriod(
         .select("order_number, subtotal, discount_amount, channel, created_at, shipping_address, store_customers!customer_id(name)")
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
+        .neq("status", OrderStatus.RETURNED)
         .gte("created_at", `${fromDate}T00:00:00+06:00`)
         .lte("created_at", `${toDate}T23:59:59.999+06:00`)
         .order("created_at", { ascending: false })

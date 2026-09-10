@@ -348,15 +348,22 @@ export default function QuickSale() {
     try {
       // A due sale needs a real customer record (not just free-text name/
       // phone) so the balance can be found and collected again later — see
-      // getOrCreateCustomerByPhone.ts.
+      // getOrCreateCustomerByPhone.ts. A fully-paid sale doesn't strictly
+      // need one, but if a phone number was entered anyway, resolve it the
+      // same way — otherwise a walk-in who's already a known customer gets
+      // this sale recorded as free-text only, invisible to their order
+      // history/dashboard totals, instead of linked to their existing record.
       let customerId: string | undefined;
-      if (isDueSale) {
+      const trimmedPhone = walkInPhone.trim();
+      if (isDueSale || trimmedPhone) {
         const customerResult = await getOrCreateCustomerByPhone(
           user.store_id,
           walkInName.trim(),
-          walkInPhone.trim(),
+          trimmedPhone,
         );
-        if (!customerResult.customerId) {
+        if (customerResult.customerId) {
+          customerId = customerResult.customerId;
+        } else if (isDueSale) {
           notification.error({
             message: "Couldn't save due sale",
             description: customerResult.error || "Could not resolve the customer record.",
@@ -364,7 +371,9 @@ export default function QuickSale() {
           setSubmitting(false);
           return;
         }
-        customerId = customerResult.customerId;
+        // Non-due sale: resolving/creating the customer record failed —
+        // don't block an otherwise-complete cash sale over it, just record
+        // it as a walk-in (raw name/phone text only), same as before.
       }
 
       // Same order-number shape as the Create Order flow (see CreateOrder.tsx)

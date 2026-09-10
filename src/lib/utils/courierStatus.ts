@@ -16,6 +16,6 @@ export function isCourierLocked(
   courierOrderStatus?: string | null,
   orderStatus?: string | null,
 ): boolean {
-  if (orderStatus === "delivered" || orderStatus === "cancelled") return true;
+  if (orderStatus === "delivered" || orderStatus === "cancelled" || orderStatus === "returned") return true;
   return !!consignmentId && !isCourierStatusCancelled(courierOrderStatus);
 }

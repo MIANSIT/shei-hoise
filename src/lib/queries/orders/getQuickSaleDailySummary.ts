@@ -71,6 +71,7 @@ export async function getQuickSaleDailySummary(
       .eq("store_id", storeId)
       .eq("channel", "pos")
       .neq("status", OrderStatus.CANCELLED)
+      .neq("status", OrderStatus.RETURNED)
       .gte("created_at", `${dateStr}T00:00:00+06:00`)
       .lte("created_at", `${dateStr}T23:59:59.999+06:00`)
       .order("created_at", { ascending: true }),

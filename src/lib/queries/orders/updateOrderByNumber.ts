@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { recordOrderOutcome } from "@/lib/utils/riskScoring";
+import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
 
 export interface UpdateOrderByNumberData {
   orderId: string;
@@ -33,6 +35,8 @@ export interface UpdateOrderByNumberData {
   deliveryOption: string;
   courier?: string;
   currency?: string;
+  /** "YYYY-MM-DD" — when the sale actually happened. Omit to leave the existing order_date unchanged. */
+  orderDate?: string;
   shippingAddress?: {
     customer_name: string;
     phone: string;
@@ -76,6 +80,7 @@ export async function updateOrderByNumber(
       courier,
       currency = "BDT",
       shippingAddress,
+      orderDate,
     } = updateData;
 
     // Validate order exists and belongs to store
@@ -154,12 +159,24 @@ export async function updateOrderByNumber(
 
     // Switching the Delivery Courier deactivates (never deletes) the
     // previous courier's courier_tracking row — see updateOrder.ts for the
-    // same logic on the inline-editor save path. Cancelling the order does
-    // the same thing even if the courier field itself isn't touched —
-    // otherwise the shipment sits "active" forever once cancelled/delivered
-    // locks the courier picker and there's no other way to trigger this.
+    // same logic on the inline-editor save path. Cancelling (or returning)
+    // the order does the same thing even if the courier field itself isn't
+    // touched — otherwise the shipment sits "active" forever once
+    // cancelled/delivered/returned locks the courier picker and there's no
+    // other way to trigger this.
     const courierChanged = courier !== undefined && (courier || null) !== (existingOrder.courier || null);
-    const justCancelled = status !== existingOrder.status && status === OrderStatus.CANCELLED;
+    const becomingReturned = status !== existingOrder.status && status === OrderStatus.RETURNED;
+    const justCancelledOrReturned =
+      status !== existingOrder.status &&
+      (status === OrderStatus.CANCELLED || status === OrderStatus.RETURNED);
+
+    // A paid order becoming returned auto-flips to refunded, regardless of
+    // whatever the form's Payment Status field happened to submit — this is
+    // what makes the dashboard's payment_status-keyed revenue math correctly
+    // exclude it, with no other dashboard change needed.
+    const wasPaid = existingOrder.payment_status === PaymentStatus.PAID;
+    const effectivePaymentStatus =
+      becomingReturned && wasPaid ? PaymentStatus.REFUNDED : paymentStatus;
 
     // Update the order with COMPLETE shipping address
     const updateOrderData = {
@@ -170,7 +187,7 @@ export async function updateOrderByNumber(
       additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
-      payment_status: paymentStatus,
+      payment_status: effectivePaymentStatus,
       payment_method: paymentMethod,
       delivery_option: deliveryOption,
       courier: courier || null,
@@ -179,6 +196,7 @@ export async function updateOrderByNumber(
       billing_address: shippingAddressUpdate,
       notes: customerInfo.notes,
       updated_at: new Date().toISOString(),
+      ...(orderDate ? { order_date: orderDate } : {}),
     };
 
     
@@ -233,7 +251,7 @@ export async function updateOrderByNumber(
       }
     }
 
-    if (courierChanged || justCancelled) {
+    if (courierChanged || justCancelledOrReturned) {
       await supabaseAdmin
         .from("courier_tracking")
         .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -251,6 +269,26 @@ export async function updateOrderByNumber(
       existingOrderItems,
       nonBundleOrderProducts
     );
+
+    if (becomingReturned) {
+      // Not wired into risk scoring at all today for this update path (only
+      // updateOrder.ts's inline editor calls recordOrderOutcome) — this adds
+      // just the 'returned' case, since Edit Order is a realistic place
+      // admins process returns from. Recorded as its own distinct outcome
+      // (separate returned_orders counter, see riskScoring.ts), not folded
+      // into cancelled_orders.
+      const phone = existingOrder.shipping_address?.phone ?? null;
+      await recordOrderOutcome(phone, storeId, "returned");
+
+      // Reverse any tracked due-sale payments for this order in the
+      // customer dues ledger — no-op if never paid or no ledger trail.
+      await handleOrderReturned({
+        storeId,
+        orderId,
+        customerId: existingOrder.customer_id ?? null,
+        wasPaid,
+      });
+    }
 
 
     // Fetch updated order with items
@@ -536,10 +574,10 @@ async function handleStatusChangeInventory(
 ): Promise<void> {
   try {
 
-    // Any non-cancelled status (pending, confirmed, shipped, or even delivered —
-    // a delivered-then-returned order) moving to cancelled returns stock.
-    // returnReservedStockToAvailable clamps quantity_reserved at 0, so it's
-    // safe to call regardless of which status this came from.
+    // Any non-cancelled status (pending, confirmed, or shipped) moving to
+    // cancelled returns stock. returnReservedStockToAvailable clamps
+    // quantity_reserved at 0, so it's safe to call regardless of which
+    // status this came from.
     if (
       oldStatus !== OrderStatus.CANCELLED &&
       newStatus === OrderStatus.CANCELLED
@@ -547,9 +585,23 @@ async function handleStatusChangeInventory(
       await returnReservedStockToAvailable(orderItems);
     }
 
-    // From cancelled to pending/confirmed - reserve stock again
+    // Moving to returned: once delivered, deductReservedStock (below) has
+    // already zeroed quantity_reserved without ever touching
+    // quantity_available, so there's nothing left in "reserved" to move —
+    // restock straight to "available" instead. From any earlier status,
+    // stock is still sitting in quantity_reserved, same case cancelled
+    // already handles.
+    if (oldStatus !== OrderStatus.RETURNED && newStatus === OrderStatus.RETURNED) {
+      if (oldStatus === OrderStatus.DELIVERED) {
+        await restockDeliveredReturn(orderItems);
+      } else {
+        await returnReservedStockToAvailable(orderItems);
+      }
+    }
+
+    // From cancelled/returned to pending/confirmed - reserve stock again
     if (
-      oldStatus === OrderStatus.CANCELLED &&
+      (oldStatus === OrderStatus.CANCELLED || oldStatus === OrderStatus.RETURNED) &&
       (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
       await reserveStock(orderItems);
@@ -568,7 +620,7 @@ async function handleStatusChangeInventory(
       await reserveStock(orderItems);
     }
 
-    
+
   } catch (error) {
     console.error("❌ Error in handleStatusChangeInventory:", error);
   }
@@ -690,6 +742,52 @@ async function returnReservedStockToAvailable(
       }
     } catch (error) {
       console.error(`Error returning stock for item ${item.id}:`, error);
+    }
+  }
+}
+
+// Add stock straight back to available when a DELIVERED order is returned —
+// deductReservedStock (below) already zeroed quantity_reserved for these
+// items with no corresponding add to quantity_available, so there's nothing
+// to "return from reserved" the way returnReservedStockToAvailable does.
+async function restockDeliveredReturn(orderItems: any[]): Promise<void> {
+  for (const item of orderItems) {
+    try {
+      if (item.variant_id) {
+        const { data: inventory } = await supabaseAdmin
+          .from("product_inventory")
+          .select("quantity_available")
+          .eq("variant_id", item.variant_id)
+          .single();
+
+        if (inventory) {
+          await supabaseAdmin
+            .from("product_inventory")
+            .update({
+              quantity_available: (inventory.quantity_available || 0) + item.quantity,
+            })
+            .eq("variant_id", item.variant_id);
+        }
+      } else {
+        const { data: inventory } = await supabaseAdmin
+          .from("product_inventory")
+          .select("quantity_available")
+          .eq("product_id", item.product_id)
+          .is("variant_id", null)
+          .single();
+
+        if (inventory) {
+          await supabaseAdmin
+            .from("product_inventory")
+            .update({
+              quantity_available: (inventory.quantity_available || 0) + item.quantity,
+            })
+            .eq("product_id", item.product_id)
+            .is("variant_id", null);
+        }
+      }
+    } catch (error) {
+      console.error(`Error restocking returned item ${item.id}:`, error);
     }
   }
 }

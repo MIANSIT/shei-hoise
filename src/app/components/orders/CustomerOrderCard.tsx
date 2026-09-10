@@ -68,6 +68,8 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
           return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
         case "cancelled":
           return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+        case "returned":
+          return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
         case "shipped":
           return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
         default:
@@ -206,7 +208,7 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
                 {/* Store Name */}
                 <div className="text-right">
                   <div className="text-xs text-muted-foreground">{t.myOrders.store}</div>
-                  <div className="text-sm font-medium text-foreground truncate max-w-[120px]">
+                  <div className="text-sm font-medium text-foreground truncate max-w-30">
                     {order.stores?.store_name || t.myOrders.store}
                   </div>
                 </div>

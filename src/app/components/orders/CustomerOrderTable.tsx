@@ -70,6 +70,8 @@ export default function OrdersTable({
           return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
         case "cancelled":
           return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+        case "returned":
+          return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
         case "shipped":
           return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
         default:

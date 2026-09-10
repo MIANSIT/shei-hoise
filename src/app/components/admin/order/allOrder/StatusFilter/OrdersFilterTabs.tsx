@@ -28,6 +28,7 @@ const statusColors: Record<string, string> = {
   shipped: "bg-purple-100 text-purple-800 border-purple-200",
   delivered: "bg-green-100 text-green-800 border-green-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
+  returned: "bg-orange-100 text-orange-800 border-orange-200",
   paid: "bg-green-100 text-green-800 border-green-200",
   failed: "bg-red-100 text-red-800 border-red-200",
   refunded: "bg-orange-100 text-orange-800 border-orange-200",
@@ -69,6 +70,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
     "shipped",
     "delivered",
     "cancelled",
+    "returned",
   ];
   const paymentStatuses = ["all", "pending", "paid", "failed", "refunded"];
   const statuses = category === "order" ? orderStatuses : paymentStatuses;
@@ -81,6 +83,7 @@ const OrdersFilterTabs: React.FC<Props> = ({
       shipped: t.admin.shipped,
       delivered: t.admin.delivered,
       cancelled: t.admin.cancelled,
+      returned: t.admin.returned,
       paid: t.admin.statusPaid,
       failed: t.admin.statusFailed,
       refunded: t.admin.statusRefunded,

@@ -28,6 +28,7 @@ export interface OrderWithItems {
   courier_order_status?: string | null;
   created_at: string;
   updated_at: string;
+  order_date: string;
   fb_purchase_event_status?: "sent" | "held" | "suppressed";
   customer?: {
     id: string;
