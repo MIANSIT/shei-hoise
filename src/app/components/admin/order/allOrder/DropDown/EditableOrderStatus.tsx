@@ -16,6 +16,7 @@ const STATUS_OPTIONS = [
   { value: "shipped", label: "Shipped" },
   { value: "delivered", label: "Delivered" },
   { value: "cancelled", label: "Cancelled" },
+  { value: "returned", label: "Returned" },
 ];
 
 const OrderStatusSelect: React.FC<{

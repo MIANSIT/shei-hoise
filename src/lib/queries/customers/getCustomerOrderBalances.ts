@@ -29,6 +29,9 @@ export async function getCustomerOrderBalances(
       .eq("store_id", storeId)
       .eq("customer_id", customerId)
       .neq("payment_status", PaymentStatus.PAID)
+      // A returned order that was auto-refunded shouldn't reappear as an
+      // outstanding due once its refund row pushes due_remaining back up.
+      .neq("payment_status", PaymentStatus.REFUNDED)
       .order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")

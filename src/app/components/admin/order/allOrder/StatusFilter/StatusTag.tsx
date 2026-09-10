@@ -20,6 +20,7 @@ const statusColors: Record<StatusType, string> = {
   shipped: "purple",
   delivered: "green",
   cancelled: "red",
+  returned: "orange",
 
   // Payment statuses
   paid: "green",
@@ -51,6 +52,7 @@ const statusLabels: Record<StatusType, string> = {
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  returned: "Returned",
 
   // Payment statuses
   paid: "Paid",

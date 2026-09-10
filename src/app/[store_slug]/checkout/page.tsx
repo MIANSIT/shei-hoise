@@ -306,6 +306,7 @@ export default function CheckoutPage() {
         notes: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        order_date: new Date().toISOString(),
         order_items: orderItems,
         customers: {
           id: customerId || "temp-customer",

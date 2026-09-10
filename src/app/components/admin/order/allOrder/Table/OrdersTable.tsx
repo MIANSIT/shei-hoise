@@ -219,10 +219,10 @@ const OrdersTable: React.FC<Props> = ({
   };
 
   const handleDelete = (order: StoreOrder) => {
-    if (order.status !== OrderStatus.CANCELLED) {
+    if (order.status !== OrderStatus.CANCELLED && order.status !== OrderStatus.RETURNED) {
       notification.warning({
         title: t.admin.orderCannotDeleteTitle,
-        description: `Order #${order.order_number} is "${order.status}". Please cancel the order first to restore stock before deleting.`,
+        description: `Order #${order.order_number} is "${order.status}". Please cancel or mark the order returned first to restore stock before deleting.`,
         duration: 4,
       });
       return;
@@ -812,7 +812,7 @@ const OrdersTable: React.FC<Props> = ({
                 #{order.order_number}
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">
-                {formatDate(order.created_at)}
+                {formatDate(order.order_date || order.created_at)}
               </div>
               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                 <Tag color={order.channel === "pos" ? "gold" : "blue"} style={{ marginInlineEnd: 0 }}>
@@ -913,6 +913,7 @@ const OrdersTable: React.FC<Props> = ({
         {isExpanded && (
           <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 -mt-1 bg-muted/30 pt-3">
             {order.status !== OrderStatus.CANCELLED &&
+              order.status !== OrderStatus.RETURNED &&
               !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
               <div className="mb-3">
                 <OrderProductTable
@@ -1201,6 +1202,7 @@ const OrdersTable: React.FC<Props> = ({
               </div>
 
               {order.status !== OrderStatus.CANCELLED &&
+                order.status !== OrderStatus.RETURNED &&
                 !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
                 <OrderProductTable
                   order={order}

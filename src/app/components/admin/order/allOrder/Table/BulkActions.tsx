@@ -45,6 +45,7 @@ const BulkActions: React.FC<Props> = ({
     { value: "shipped", label: t.admin.bulkShipped },
     { value: "delivered", label: t.admin.bulkDelivered },
     { value: "cancelled", label: t.admin.bulkCancelled },
+    { value: "returned", label: t.admin.bulkReturned },
   ];
 
   const PAYMENT_STATUS_OPTIONS = [

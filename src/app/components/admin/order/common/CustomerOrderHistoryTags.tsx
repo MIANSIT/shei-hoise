@@ -24,6 +24,7 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   {
     delivered: { bg: "bg-emerald-100", text: "text-emerald-700", label: "D" },
     cancelled: { bg: "bg-red-100", text: "text-red-700", label: "C" },
+    returned: { bg: "bg-red-100", text: "text-red-700", label: "R" },
     shipped: { bg: "bg-blue-50", text: "text-blue-600", label: "S" },
     confirmed: { bg: "bg-amber-50", text: "text-amber-600", label: "P" },
     pending: { bg: "bg-gray-100", text: "text-gray-500", label: "N" },
@@ -48,6 +49,7 @@ function CustomerOrderHistoryTags({
 
   const delivered = prior.filter((h) => h.status === "delivered").length;
   const cancelled = prior.filter((h) => h.status === "cancelled").length;
+  const returned = prior.filter((h) => h.status === "returned").length;
 
   return (
     <Tooltip
@@ -56,6 +58,7 @@ function CustomerOrderHistoryTags({
           <div className="font-semibold mb-1">
             Last {prior.length} order{prior.length !== 1 ? "s" : ""} ·{" "}
             {delivered} delivered · {cancelled} cancelled
+            {returned > 0 ? ` · ${returned} returned` : ""}
           </div>
           {prior.map((h) => (
             <div key={h.orderId} className="whitespace-nowrap">

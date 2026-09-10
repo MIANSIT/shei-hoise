@@ -17,16 +17,23 @@ export async function getPhoneRiskLevel(phoneNumber: string | null | undefined):
 
   const { data: profile } = await supabaseAdmin
     .from("customer_risk_profiles")
-    .select("delivered_orders, cancelled_orders")
+    .select("delivered_orders, cancelled_orders, returned_orders")
     .eq("phone_number", phoneNumber)
     .maybeSingle();
 
   if (!profile) return { level: "new", reason: "First order from this number" };
 
-  const resolved = profile.delivered_orders + profile.cancelled_orders;
+  const returnedOrders = profile.returned_orders ?? 0;
+  // Cancelled (never accepted the delivery) and returned (accepted it, then
+  // sent it back) are different behaviors, tracked in separate columns — but
+  // both are still "didn't end up keeping the order", so both count toward
+  // the risk rate/threshold the same way. Only the reason text distinguishes
+  // them, so an admin can tell which pattern they're actually looking at.
+  const badOutcomes = profile.cancelled_orders + returnedOrders;
+  const resolved = profile.delivered_orders + badOutcomes;
   if (resolved === 0) return { level: "new", reason: "No completed orders yet" };
 
-  const cancellationRate = profile.cancelled_orders / resolved;
+  const cancellationRate = badOutcomes / resolved;
 
   const { count: distinctStores } = await supabaseAdmin
     .from("customer_risk_store_touches")
@@ -35,11 +42,20 @@ export async function getPhoneRiskLevel(phoneNumber: string | null | undefined):
 
   const storeCount = distinctStores ?? 0;
 
-  if (cancellationRate > 0.5 || (profile.cancelled_orders >= 3 && storeCount >= 2)) {
+  // "3 cancelled, 1 returned of 8 past orders" — omits whichever of the two
+  // is zero instead of always naming both.
+  const badOutcomeDetail = [
+    profile.cancelled_orders > 0 ? `${profile.cancelled_orders} cancelled` : null,
+    returnedOrders > 0 ? `${returnedOrders} returned` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  if (cancellationRate > 0.5 || (badOutcomes >= 3 && storeCount >= 2)) {
     return {
       level: "high",
       reason:
-        `${profile.cancelled_orders} of ${resolved} past orders cancelled` +
+        `${badOutcomeDetail} of ${resolved} past orders` +
         (storeCount >= 2 ? ` across ${storeCount} different stores` : ""),
     };
   }
@@ -47,7 +63,7 @@ export async function getPhoneRiskLevel(phoneNumber: string | null | undefined):
   if (cancellationRate >= 0.2) {
     return {
       level: "medium",
-      reason: `${profile.cancelled_orders} of ${resolved} past orders cancelled`,
+      reason: `${badOutcomeDetail} of ${resolved} past orders`,
     };
   }
 
@@ -57,17 +73,17 @@ export async function getPhoneRiskLevel(phoneNumber: string | null | undefined):
   };
 }
 
-/** Feeds an order's final outcome (delivered/cancelled) back into the phone's risk profile. */
+/** Feeds an order's final outcome (delivered/cancelled/returned) back into the phone's risk profile. */
 export async function recordOrderOutcome(
   phoneNumber: string | null | undefined,
   storeId: string,
-  outcome: "delivered" | "cancelled",
+  outcome: "delivered" | "cancelled" | "returned",
 ): Promise<void> {
   if (!phoneNumber) return;
 
   const { data: existing } = await supabaseAdmin
     .from("customer_risk_profiles")
-    .select("total_orders, delivered_orders, cancelled_orders")
+    .select("total_orders, delivered_orders, cancelled_orders, returned_orders")
     .eq("phone_number", phoneNumber)
     .maybeSingle();
 
@@ -77,6 +93,7 @@ export async function recordOrderOutcome(
       total_orders: (existing?.total_orders ?? 0) + 1,
       delivered_orders: (existing?.delivered_orders ?? 0) + (outcome === "delivered" ? 1 : 0),
       cancelled_orders: (existing?.cancelled_orders ?? 0) + (outcome === "cancelled" ? 1 : 0),
+      returned_orders: (existing?.returned_orders ?? 0) + (outcome === "returned" ? 1 : 0),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "phone_number" },

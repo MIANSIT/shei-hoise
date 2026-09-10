@@ -18,6 +18,7 @@ export interface DashboardSummaryPayload {
     shipped: number;
     delivered: number;
     cancelled: number;
+    returned: number;
   };
   payment_amounts: {
     pending: number;

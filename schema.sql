@@ -282,6 +282,7 @@ CREATE TABLE IF NOT EXISTS "public"."customer_risk_profiles" (
     "total_orders" integer DEFAULT 0 NOT NULL,
     "delivered_orders" integer DEFAULT 0 NOT NULL,
     "cancelled_orders" integer DEFAULT 0 NOT NULL,
+    "returned_orders" integer DEFAULT 0 NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
@@ -324,8 +325,9 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "courier" character varying(20),
     "whatsapp_notified_at" timestamp with time zone,
     "cash_received" numeric(10,2),
+    "order_date" date DEFAULT CURRENT_DATE NOT NULL,
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
-    CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text"]))),
+    CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text", ('returned'::character varying)::"text"]))),
     CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
 );
 
@@ -335,6 +337,23 @@ ALTER TABLE "public"."orders" OWNER TO "postgres";
 
 COMMENT ON COLUMN "public"."orders"."delivery_option" IS 'Delivery Option Like (Pathao, Courier)';
 
+
+-- History of what the store actually paid the courier for an order (one row
+-- per revision — estimate, correction, final invoice), as opposed to
+-- orders.shipping_fee, which is what the customer was charged. The most
+-- recent row per order_id is the current actual cost.
+CREATE TABLE IF NOT EXISTS "public"."order_delivery_costs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "order_id" "uuid" NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "amount" numeric(10,2) NOT NULL,
+    "note" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."order_delivery_costs" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."pixel_events" (

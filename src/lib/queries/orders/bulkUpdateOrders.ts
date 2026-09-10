@@ -7,6 +7,8 @@ import {
   DeliveryOption,
 } from "@/lib/types/enums";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { recordOrderOutcome } from "@/lib/utils/riskScoring";
+import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
 
 export interface BulkUpdateData {
   orderIds: string[];
@@ -102,17 +104,35 @@ export async function bulkUpdateOrders(
     // Capture each order's status BEFORE overwriting it — needed to work out
     // which orders are actually changing status (and from what), so a mixed
     // batch that includes already-cancelled/already-delivered orders doesn't
-    // get their stock reversed/deducted a second time.
+    // get their stock reversed/deducted a second time. Also captures
+    // payment_status/customer_id/phone up front — needed for the returned-
+    // status auto-refund and risk-scoring side effects below, which are
+    // per-order (unlike the rest of this bulk update, which writes one
+    // shared payload to every selected row).
     let previousStatusByOrderId: Record<string, string> = {};
+    let previousOrderInfoById: Record<
+      string,
+      { payment_status: string; customer_id: string | null; phone: string | null }
+    > = {};
     if (status) {
       const { data: existingOrders } = await supabaseAdmin
         .from("orders")
-        .select("id, status")
+        .select("id, status, payment_status, customer_id, shipping_address")
         .in("id", updateData.orderIds)
         .eq("store_id", storeId);
 
       previousStatusByOrderId = Object.fromEntries(
         (existingOrders || []).map((o) => [o.id, o.status])
+      );
+      previousOrderInfoById = Object.fromEntries(
+        (existingOrders || []).map((o) => [
+          o.id,
+          {
+            payment_status: o.payment_status,
+            customer_id: o.customer_id,
+            phone: (o.shipping_address as { phone?: string } | null)?.phone ?? null,
+          },
+        ])
       );
     }
 
@@ -157,13 +177,13 @@ export async function bulkUpdateOrders(
         (id) => updatedIds.has(id) && previousStatusByOrderId[id] !== status
       );
       if (changedOrderIds.length > 0) {
-        await handleBulkInventoryUpdates(changedOrderIds, status);
+        await handleBulkInventoryUpdates(changedOrderIds, status, previousStatusByOrderId);
 
-        // Same reasoning as the single-order update paths: cancelling
-        // deactivates any still-active shipment, since the courier picker
-        // locks once cancelled/delivered and there's no other way to
-        // trigger this afterward.
-        if (status === "cancelled") {
+        // Same reasoning as the single-order update paths: cancelling (or
+        // returning) deactivates any still-active shipment, since the
+        // courier picker locks once cancelled/delivered/returned and
+        // there's no other way to trigger this afterward.
+        if (status === "cancelled" || status === "returned") {
           const { error: shipmentError } = await supabaseAdmin
             .from("courier_tracking")
             .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -171,8 +191,49 @@ export async function bulkUpdateOrders(
             .eq("is_active", true);
 
           if (shipmentError) {
-            console.error("Error deactivating shipments in bulk cancel:", shipmentError);
+            console.error("Error deactivating shipments in bulk cancel/return:", shipmentError);
           }
+        }
+
+        // Returned-specific side effects — auto-refund, risk scoring, and
+        // the customer dues ledger reversal. Per-order, since only the
+        // subset that was actually PAID before needs any of this.
+        if (status === "returned") {
+          const paidOrderIds = changedOrderIds.filter(
+            (id) => previousOrderInfoById[id]?.payment_status === PaymentStatus.PAID
+          );
+
+          // Auto-flip to refunded — same rule as the single-order paths:
+          // only when the admin didn't already explicitly choose a payment
+          // status for this same bulk action.
+          if (paidOrderIds.length > 0 && payment_status === undefined) {
+            const { error: refundStatusError } = await supabaseAdmin
+              .from("orders")
+              .update({ payment_status: PaymentStatus.REFUNDED, updated_at: new Date().toISOString() })
+              .in("id", paidOrderIds);
+
+            if (refundStatusError) {
+              console.error("Error auto-flipping bulk-returned orders to refunded:", refundStatusError);
+            }
+          }
+
+          await Promise.all(
+            changedOrderIds.map(async (id) => {
+              const info = previousOrderInfoById[id];
+              if (!info) return;
+
+              await recordOrderOutcome(info.phone, storeId, "returned");
+
+              if (info.payment_status === PaymentStatus.PAID) {
+                await handleOrderReturned({
+                  storeId,
+                  orderId: id,
+                  customerId: info.customer_id,
+                  wasPaid: true,
+                });
+              }
+            })
+          );
         }
       }
     }
@@ -198,11 +259,12 @@ export async function bulkUpdateOrders(
 // Handle inventory updates for bulk status changes
 async function handleBulkInventoryUpdates(
   orderIds: string[],
-  newStatus: OrderStatus
+  newStatus: OrderStatus,
+  previousStatusByOrderId: Record<string, string>
 ): Promise<void> {
   try {
-    if (newStatus !== "cancelled" && newStatus !== "delivered") {
-      return; // Only handle inventory for cancelled or delivered status
+    if (newStatus !== "cancelled" && newStatus !== "delivered" && newStatus !== "returned") {
+      return; // Only handle inventory for cancelled, delivered, or returned status
     }
 
     // Get all order items for the affected orders
@@ -220,6 +282,19 @@ async function handleBulkInventoryUpdates(
       await returnBulkReservedStockToAvailable(orderItems);
     } else if (newStatus === "delivered") {
       await deductBulkReservedStock(orderItems);
+    } else if (newStatus === "returned") {
+      // Once delivered, quantity_reserved is already zeroed (deductBulkReservedStock
+      // never touches quantity_available) — those items restock straight to
+      // available. Items coming from any earlier status are still sitting in
+      // quantity_reserved, same case cancelled already handles.
+      const fromDelivered = orderItems.filter(
+        (item) => previousStatusByOrderId[item.order_id] === "delivered"
+      );
+      const fromOther = orderItems.filter(
+        (item) => previousStatusByOrderId[item.order_id] !== "delivered"
+      );
+      if (fromDelivered.length > 0) await restockBulkDeliveredReturn(fromDelivered);
+      if (fromOther.length > 0) await returnBulkReservedStockToAvailable(fromOther);
     }
   } catch (error) {
     console.error("Error in handleBulkInventoryUpdates:", error);
@@ -308,6 +383,70 @@ async function returnBulkReservedStockToAvailable(
         }
       } catch (error) {
         console.error(`Error updating inventory for ${key}:`, error);
+      }
+    }
+  );
+
+  await Promise.all(updatePromises);
+}
+
+// Add stock straight back to available for multiple DELIVERED orders that
+// are being returned — see handleBulkInventoryUpdates for why this is a
+// separate path from returnBulkReservedStockToAvailable.
+async function restockBulkDeliveredReturn(orderItems: OrderItem[]): Promise<void> {
+  const availableAdditions: Record<string, number> = {};
+
+  for (const item of orderItems) {
+    const key = item.variant_id
+      ? `variant_${item.variant_id}`
+      : `product_${item.product_id}`;
+    availableAdditions[key] = (availableAdditions[key] || 0) + item.quantity;
+  }
+
+  const updatePromises = Object.entries(availableAdditions).map(
+    async ([key, addition]) => {
+      try {
+        if (key.startsWith("variant_")) {
+          const variantId = key.replace("variant_", "");
+
+          const { data: inventory } = await supabaseAdmin
+            .from("product_inventory")
+            .select("quantity_available")
+            .eq("variant_id", variantId)
+            .single();
+
+          if (inventory) {
+            await supabaseAdmin
+              .from("product_inventory")
+              .update({
+                quantity_available: (inventory.quantity_available || 0) + addition,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("variant_id", variantId);
+          }
+        } else {
+          const productId = key.replace("product_", "");
+
+          const { data: inventory } = await supabaseAdmin
+            .from("product_inventory")
+            .select("quantity_available")
+            .eq("product_id", productId)
+            .is("variant_id", null)
+            .single();
+
+          if (inventory) {
+            await supabaseAdmin
+              .from("product_inventory")
+              .update({
+                quantity_available: (inventory.quantity_available || 0) + addition,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("product_id", productId)
+              .is("variant_id", null);
+          }
+        }
+      } catch (error) {
+        console.error(`Error restocking returned item for ${key}:`, error);
       }
     }
   );

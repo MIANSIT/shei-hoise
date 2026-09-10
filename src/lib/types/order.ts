@@ -116,6 +116,7 @@ export interface StoreOrder {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  order_date: string;
   order_items: OrderItem[];
   customers: OrderCustomer | null;
   delivery_option?: DeliveryOption;

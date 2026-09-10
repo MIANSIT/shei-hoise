@@ -49,6 +49,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useCreateOrderDraftStore } from "@/lib/store/orderDraftStore";
 import { supabase } from "@/lib/supabase";
+import dayjs, { Dayjs } from "dayjs";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -100,6 +101,7 @@ export default function CreateOrder() {
   const [paymentReference, setPaymentReference] = useState("");
   const [courier, setCourier] = useState("");
   const [deliveryCouriers, setDeliveryCouriers] = useState<DeliveryCourier[]>([]);
+  const [orderDate, setOrderDate] = useState<Dayjs>(dayjs());
 
   const [orderId, setOrderId] = useState("");
   const [customerType, setCustomerType] = useState<CustomerType>("new");
@@ -346,6 +348,9 @@ export default function CreateOrder() {
       if (draft.courier !== undefined) {
         setCourier(draft.courier);
       }
+      if (draft.orderDate) {
+        setOrderDate(dayjs(draft.orderDate));
+      }
       if (draft.customerInfo.customer_id) {
         setCustomerType("existing");
       }
@@ -381,6 +386,7 @@ export default function CreateOrder() {
       paymentStatus,
       paymentMethod,
       courier,
+      orderDate: orderDate.format("YYYY-MM-DD"),
     });
   }, [
     readyToSyncDraft,
@@ -395,6 +401,7 @@ export default function CreateOrder() {
     paymentStatus,
     paymentMethod,
     courier,
+    orderDate,
   ]);
 
   // Filter customers based on search
@@ -931,6 +938,8 @@ export default function CreateOrder() {
                   setPaymentReference={setPaymentReference}
                   courier={courier}
                   setCourier={setCourier}
+                  orderDate={orderDate}
+                  setOrderDate={setOrderDate}
                   deliveryCouriers={deliveryCouriers}
                   courierTrackingAllowed={courierTrackingAllowed}
                   shippingFees={shippingFees}
@@ -961,6 +970,7 @@ export default function CreateOrder() {
                   amountReceivedNow={amountReceivedNow}
                   paymentReference={paymentReference}
                   courier={courier}
+                  orderDate={orderDate.format("YYYY-MM-DD")}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   onCustomerCreated={fetchCustomers}
                   onOrderCreated={() =>
