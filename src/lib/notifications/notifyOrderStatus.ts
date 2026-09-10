@@ -20,6 +20,8 @@ const STATUS_MESSAGE: Partial<Record<OrderStatus, (p: OrderStatusNotifyParams) =
     `Hi ${p.customerName}, your order #${p.orderNumber} from ${p.storeName} has been delivered. Thank you for shopping with us!`,
   [OrderStatus.CANCELLED]: (p) =>
     `Hi ${p.customerName}, your order #${p.orderNumber} from ${p.storeName} has been cancelled. Please contact us if you have any questions.`,
+  [OrderStatus.RETURNED]: (p) =>
+    `Hi ${p.customerName}, your order #${p.orderNumber} from ${p.storeName} has been marked as returned. Please contact us if you have any questions.`,
 };
 
 /**

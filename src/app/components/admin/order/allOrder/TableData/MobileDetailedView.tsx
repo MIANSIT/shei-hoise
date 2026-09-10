@@ -121,7 +121,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
               </div>
               <div className="text-xs flex items-center gap-1 mt-1">
                 <Calendar size={12} />{" "}
-                {new Date(order.created_at).toLocaleDateString()}
+                {new Date(order.order_date || order.created_at).toLocaleDateString()}
               </div>
             </div>
           </div>

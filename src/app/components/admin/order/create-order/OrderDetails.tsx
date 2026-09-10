@@ -120,8 +120,12 @@ export default function OrderDetails({
   const canAddProduct = () => {
     if (!selectedProduct || quantity < 1) return false;
 
-    // Check if product is active
-    if (selectedProduct.status !== ProductStatus.ACTIVE) return false;
+    // Draft products aren't finished/published yet — inactive ones are
+    // real, complete products just paused/hidden from the storefront, and
+    // an admin can still deliberately sell through remaining stock of one
+    // via Create Order (unlike the customer-facing storefront, which never
+    // queries inactive/draft products at all — unaffected by this).
+    if (selectedProduct.status === ProductStatus.DRAFT) return false;
 
     // If product has active variants, must select a variant
     if (availableVariants.length > 0 && selectedVariantId === "no-variant") {
@@ -269,10 +273,11 @@ export default function OrderDetails({
     );
   };
 
-  // Filter products that are ACTIVE and have available stock
+  // Filter products sellable from this admin screen: draft ones excluded
+  // (unfinished/unpublished), inactive ones included (see canAddProduct) —
+  // with available stock either way.
   const availableProducts = products.filter((product) => {
-    // First check if product is active
-    if (product.status !== ProductStatus.ACTIVE) return false;
+    if (product.status === ProductStatus.DRAFT) return false;
 
     // Check if base product has stock
     const baseStockAvailable = getBaseProductAvailableQuantity(product) > 0;
@@ -333,7 +338,7 @@ export default function OrderDetails({
                 <SelectContent className="bg-popover text-popover-foreground border-border max-h-60">
                   {availableProducts.length === 0 ? (
                     <div className="py-4 text-center text-sm text-muted-foreground">
-                      No active products with available stock
+                      No products with available stock
                     </div>
                   ) : (
                     availableProducts.map((product) => {
@@ -355,6 +360,11 @@ export default function OrderDetails({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-sm truncate">{product.name}</p>
+                                {product.status === ProductStatus.INACTIVE && (
+                                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">
+                                    Inactive
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 {/* Show price only if product has no variants */}
@@ -390,7 +400,7 @@ export default function OrderDetails({
               </Select>
               {availableProducts.length === 0 && (
                 <p className="text-xs text-amber-600">
-                  No active products with available stock found. Please activate products or add inventory.
+                  No products with available stock found. Please add inventory.
                 </p>
               )}
             </div>
@@ -528,11 +538,14 @@ export default function OrderDetails({
                 </SheiAlert>
               )}
               
-            {/* Product Inactive Warning */}
-            {selectedProduct && selectedProduct.status !== ProductStatus.ACTIVE && (
-              <SheiAlert className="bg-red-50 border-red-200">
-                <SheiAlertDescription className="text-red-800">
-                  This product is not active ({selectedProduct.status}). Only active products can be added to orders.
+            {/* Inactive Product Notice — informational, not blocking: an
+                inactive product can still be added here, it just stays
+                hidden from the storefront (customers never see it either
+                way). */}
+            {selectedProduct && selectedProduct.status === ProductStatus.INACTIVE && (
+              <SheiAlert className="bg-amber-50 border-amber-200">
+                <SheiAlertDescription className="text-amber-800">
+                  This product is inactive and hidden from the storefront — it can still be added to this order.
                 </SheiAlertDescription>
               </SheiAlert>
             )}

@@ -549,6 +549,7 @@ export default function ConfirmOrderPage() {
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        order_date: new Date().toISOString(),
         order_items: orderItems,
         customers: {
           id: customerId || "temp-customer",

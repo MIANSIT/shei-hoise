@@ -5,6 +5,7 @@ import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { fireServerPixelEvent } from "@/lib/utils/pixelEventServer";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
 
 export interface UpdateOrderData {
   status?: OrderStatus;
@@ -51,6 +52,18 @@ export async function updateOrder(
       };
     }
 
+    // A paid order becoming returned auto-flips to refunded — this is what
+    // makes the dashboard's payment_status-keyed revenue math correctly
+    // exclude it, with no other dashboard change needed. Only when the
+    // caller didn't already explicitly set payment_status themselves.
+    const becomingReturned =
+      updates.status === OrderStatus.RETURNED &&
+      updates.status !== existingOrder.status;
+    const wasPaid = existingOrder.payment_status === PaymentStatus.PAID;
+    if (becomingReturned && wasPaid && updates.payment_status === undefined) {
+      updates.payment_status = PaymentStatus.REFUNDED;
+    }
+
     // Prepare update data with timestamp
     const updateData: UpdateOrderData & Record<string, any> = {
       ...updates,
@@ -91,18 +104,18 @@ export async function updateOrder(
     // order update could leave a real, active shipment deactivated while
     // the order still claims to be shipped via it.
     //
-    // Cancelling the order deactivates it too, even without touching the
-    // courier field — once the order is cancelled (or delivered), the
-    // courier picker locks (see isCourierLocked), so a courier change can
-    // never happen afterward to trigger this; without this check the
-    // shipment would stay "active" forever on a cancelled order.
+    // Cancelling (or returning) the order deactivates it too, even without
+    // touching the courier field — once the order is cancelled/delivered/
+    // returned, the courier picker locks (see isCourierLocked), so a courier
+    // change can never happen afterward to trigger this; without this check
+    // the shipment would stay "active" forever on a cancelled/returned order.
     const courierChanged = updates.courier !== undefined && updates.courier !== existingOrder.courier;
-    const justCancelled =
+    const justCancelledOrReturned =
       updates.status !== undefined &&
       updates.status !== existingOrder.status &&
-      updates.status === OrderStatus.CANCELLED;
+      (updates.status === OrderStatus.CANCELLED || updates.status === OrderStatus.RETURNED);
 
-    if (courierChanged || justCancelled) {
+    if (courierChanged || justCancelledOrReturned) {
       await supabaseAdmin
         .from("courier_tracking")
         .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -116,6 +129,17 @@ export async function updateOrder(
 
     // Feed the risk profile and release/suppress any held Facebook Purchase event
     await handleRiskAndPurchaseEvent(existingOrder, updates, orderId);
+
+    // Reverse any tracked due-sale payments for this order in the customer
+    // dues ledger — no-op if the order was never paid or has no ledger trail.
+    if (becomingReturned) {
+      await handleOrderReturned({
+        storeId: storeResult.storeId,
+        orderId,
+        customerId: existingOrder.customer_id ?? null,
+        wasPaid,
+      });
+    }
 
     return {
       success: true,
@@ -131,10 +155,13 @@ export async function updateOrder(
   }
 }
 
-// Feeds the phone's risk profile on delivered/cancelled, and — for orders whose
-// Purchase event was held at creation because the phone looked high-risk —
-// either fires it now (delivered, so it was real) or suppresses it forever
-// (cancelled, so it never trains Facebook's ad algorithm on a fake order).
+// Feeds the phone's risk profile on delivered/cancelled/returned, and — for
+// orders whose Purchase event was held at creation because the phone looked
+// high-risk — either fires it now (delivered, so it was real) or suppresses
+// it forever (cancelled/returned, so it never trains Facebook's ad algorithm
+// on a fake or voided order). Cancelled and returned are recorded as
+// distinct outcomes (separate risk-profile counters, see riskScoring.ts) but
+// both still suppress a held pixel event the same way.
 async function handleRiskAndPurchaseEvent(
   existingOrder: any,
   updates: UpdateOrderData,
@@ -142,15 +169,15 @@ async function handleRiskAndPurchaseEvent(
 ): Promise<void> {
   try {
     if (!updates.status || updates.status === existingOrder.status) return;
-    if (updates.status !== "delivered" && updates.status !== "cancelled") return;
+    if (updates.status !== "delivered" && updates.status !== "cancelled" && updates.status !== "returned") return;
 
     const phone = existingOrder.shipping_address?.phone ?? null;
-    const outcome = updates.status === "delivered" ? "delivered" : "cancelled";
+    const outcome = updates.status as "delivered" | "cancelled" | "returned";
     await recordOrderOutcome(phone, existingOrder.store_id, outcome);
 
     if (existingOrder.fb_purchase_event_status !== "held") return;
 
-    if (outcome === "cancelled") {
+    if (outcome === "cancelled" || outcome === "returned") {
       await supabaseAdmin
         .from("orders")
         .update({ fb_purchase_event_status: "suppressed" })
@@ -238,7 +265,21 @@ async function handleInventoryUpdates(
         // Deduct reserved stock when order is delivered
         await deductReservedStock(orderItems);
         break;
-        
+
+      case 'returned':
+        // Once delivered, stock is already fully out of quantity_reserved
+        // (deductReservedStock never touched quantity_available) — so a
+        // return from delivered has nothing left to move out of "reserved"
+        // and must add straight back to "available". A return from any
+        // earlier status (stock still sitting in quantity_reserved) is the
+        // same case cancelled already handles.
+        if (existingOrder.status === 'delivered') {
+          await restockDeliveredReturn(orderItems);
+        } else {
+          await returnReservedStockToAvailable(orderItems);
+        }
+        break;
+
       case 'confirmed':
         // Additional logic for confirmed orders if needed
         break;
@@ -302,6 +343,54 @@ async function returnReservedStockToAvailable(orderItems: any[]): Promise<void> 
       }
     } catch (error) {
       console.error(`Error returning stock for item ${item.id}:`, error);
+    }
+  }
+}
+
+// Add stock straight back to available when a DELIVERED order is returned —
+// deductReservedStock already zeroed quantity_reserved for these items with
+// no corresponding add to quantity_available, so there's nothing to "return
+// from reserved" the way returnReservedStockToAvailable does for cancels.
+async function restockDeliveredReturn(orderItems: any[]): Promise<void> {
+  for (const item of orderItems) {
+    try {
+      if (item.variant_id) {
+        const { data: inventory } = await supabaseAdmin
+          .from('product_inventory')
+          .select('quantity_available')
+          .eq('variant_id', item.variant_id)
+          .single();
+
+        if (inventory) {
+          await supabaseAdmin
+            .from('product_inventory')
+            .update({
+              quantity_available: (inventory.quantity_available || 0) + item.quantity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('variant_id', item.variant_id);
+        }
+      } else {
+        const { data: inventory } = await supabaseAdmin
+          .from('product_inventory')
+          .select('quantity_available')
+          .eq('product_id', item.product_id)
+          .is('variant_id', null)
+          .single();
+
+        if (inventory) {
+          await supabaseAdmin
+            .from('product_inventory')
+            .update({
+              quantity_available: (inventory.quantity_available || 0) + item.quantity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('product_id', item.product_id)
+            .is('variant_id', null);
+        }
+      }
+    } catch (error) {
+      console.error(`Error restocking returned item ${item.id}:`, error);
     }
   }
 }

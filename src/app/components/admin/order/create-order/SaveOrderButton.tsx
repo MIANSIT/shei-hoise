@@ -31,6 +31,7 @@ interface SaveOrderButtonProps {
   amountReceivedNow?: number | null;
   paymentReference?: string;
   courier?: string;
+  orderDate: string;
   disabled?: boolean;
   onCustomerCreated?: () => void;
   onOrderCreated?: () => void;
@@ -55,6 +56,7 @@ export default function SaveOrderButton({
   amountReceivedNow,
   paymentReference,
   courier,
+  orderDate,
   disabled = false,
   onCustomerCreated,
   onOrderCreated,
@@ -224,6 +226,7 @@ export default function SaveOrderButton({
         paymentStatus,
         paymentMethod,
         courier,
+        orderDate,
         currency: displayCurrencySafe,
         deliveryOption: finalCustomerInfo.deliveryOption,
       };

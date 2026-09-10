@@ -19,6 +19,8 @@ export interface OrderDraftData {
   paymentStatus: PaymentStatus;
   paymentMethod: string;
   courier: string;
+  /** "YYYY-MM-DD" */
+  orderDate: string;
 }
 
 /* =======================

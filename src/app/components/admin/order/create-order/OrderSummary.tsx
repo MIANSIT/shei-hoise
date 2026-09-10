@@ -14,12 +14,14 @@ import {
   Statistic,
   Alert,
   Tooltip,
+  DatePicker,
 } from "antd";
 import { InfoCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
+import dayjs, { Dayjs } from "dayjs";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
@@ -44,6 +46,7 @@ interface OrderSummaryDirtyFields {
   paymentStatus?: boolean;
   paymentMethod?: boolean;
   courier?: boolean;
+  orderDate?: boolean;
 }
 
 interface OrderSummaryProps {
@@ -72,6 +75,8 @@ interface OrderSummaryProps {
   setPaymentReference?: (reference: string) => void;
   courier: string;
   setCourier: (courier: string) => void;
+  orderDate: Dayjs;
+  setOrderDate: (date: Dayjs) => void;
   deliveryCouriers?: DeliveryCourier[];
   courierTrackingAllowed?: boolean;
   courierConsignmentId?: string | null;
@@ -107,6 +112,8 @@ export default function OrderSummary({
   setPaymentReference,
   courier,
   setCourier,
+  orderDate,
+  setOrderDate,
   deliveryCouriers = [],
   courierTrackingAllowed = false,
   courierConsignmentId,
@@ -128,6 +135,7 @@ export default function OrderSummary({
     { value: OrderStatus.SHIPPED, label: t.admin.bulkShipped },
     { value: OrderStatus.DELIVERED, label: t.admin.bulkDelivered },
     { value: OrderStatus.CANCELLED, label: t.admin.bulkCancelled },
+    { value: OrderStatus.RETURNED, label: t.admin.bulkReturned },
   ];
 
   const paymentStatusOptions = [
@@ -483,6 +491,30 @@ export default function OrderSummary({
 
         {/* Order Status & Payment */}
         <Space orientation="vertical" style={{ width: "100%" }} size="middle">
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={
+                  <span className="flex items-center gap-1">
+                    {t.admin.orderSummaryOrderDate}
+                    {dirtyFields.orderDate && <EditedBadge />}
+                  </span>
+                }
+              >
+                <DatePicker
+                  value={orderDate}
+                  onChange={(date) => date && setOrderDate(date)}
+                  disabledDate={(current) =>
+                    !!current && current > dayjs().endOf("day")
+                  }
+                  allowClear={false}
+                  style={{ width: "100%" }}
+                  size="large"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item

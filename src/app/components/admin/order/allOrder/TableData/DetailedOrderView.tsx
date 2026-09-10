@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { createReviewInviteLink } from "@/lib/queries/reviews/createReviewInviteLink";
+import OrderDeliveryCostSection from "./OrderDeliveryCostSection";
 
 interface Props {
   order: StoreOrder;
@@ -144,7 +145,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             </div>
             <p className="text-blue-100 text-xs flex items-center gap-1 mt-1">
               <Calendar size={12} />
-              Placed on {new Date(order.created_at).toLocaleDateString()}
+              Placed on {new Date(order.order_date || order.created_at).toLocaleDateString()}
             </p>
           </div>
           <div className="mt-2 sm:mt-0 text-right">
@@ -542,6 +543,13 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
               {(order.shipping_fee || 0).toFixed(2)}
             </span>
           </div>
+
+          {/* Actual courier cost vs. what the customer was charged above */}
+          <OrderDeliveryCostSection
+            orderId={order.id}
+            shippingFee={order.shipping_fee || 0}
+            currencyIcon={displayCurrencyIconSafe}
+          />
 
           {/* Tax */}
           {(order.tax_amount ?? 0) > 0 && (

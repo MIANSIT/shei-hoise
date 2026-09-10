@@ -39,6 +39,7 @@ import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 import CustomerOrderHistoryTags from "@/app/components/admin/order/common/CustomerOrderHistoryTags";
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
+import dayjs, { Dayjs } from "dayjs";
 const { Option } = Select;
 
 const { Title, Text } = Typography;
@@ -106,6 +107,7 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [courier, setCourier] = useState("");
   const [deliveryCouriers, setDeliveryCouriers] = useState<DeliveryCourier[]>([]);
+  const [orderDate, setOrderDate] = useState<Dayjs>(dayjs());
 
   const [orderId, setOrderId] = useState("");
   const [customerHistory, setCustomerHistory] = useState<CustomerHistoryEntry[]>(
@@ -387,6 +389,7 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
         setPaymentStatus(order.payment_status as PaymentStatus); // ✅ Type casting
         setPaymentMethod(order.payment_method || "cash");
         setCourier(order.courier || "");
+        setOrderDate(order.order_date ? dayjs(order.order_date) : dayjs(order.created_at));
 
         // Set financial data - INCLUDING discount_amount AND additional_charges
         setSubtotal(Number(order.subtotal));
@@ -876,6 +879,8 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
                   setPaymentMethod={setPaymentMethod}
                   courier={courier}
                   setCourier={setCourier}
+                  orderDate={orderDate}
+                  setOrderDate={setOrderDate}
                   deliveryCouriers={deliveryCouriers}
                   courierTrackingAllowed={courierTrackingAllowed}
                   courierConsignmentId={originalOrder?.courier_consignment_id}
@@ -906,6 +911,7 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
                   paymentStatus={paymentStatus}
                   paymentMethod={paymentMethod}
                   courier={courier}
+                  orderDate={orderDate.format("YYYY-MM-DD")}
                   disabled={!isFormValid || !user?.store_id || !!emailError}
                   emailError={emailError}
                   returnUrl={returnUrl}

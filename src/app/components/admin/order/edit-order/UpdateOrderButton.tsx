@@ -26,6 +26,7 @@ interface UpdateOrderButtonProps {
   paymentStatus: PaymentStatus; // ✅ Using enum
   paymentMethod: string;
   courier?: string;
+  orderDate: string;
   disabled?: boolean;
   onOrderUpdated?: () => void;
   emailError?: string;
@@ -48,6 +49,7 @@ export default function UpdateOrderButton({
   paymentStatus,
   paymentMethod,
   courier,
+  orderDate,
   disabled = false,
   onOrderUpdated,
   emailError,
@@ -207,6 +209,7 @@ export default function UpdateOrderButton({
         paymentStatus: paymentStatus, // ✅ Already using enum
         paymentMethod: paymentMethod,
         courier: courier,
+        orderDate,
         currency: displayCurrencySafe,
         deliveryOption: customerInfo.deliveryOption || "",
         // ✅ ADDED: Shipping address object for the backend

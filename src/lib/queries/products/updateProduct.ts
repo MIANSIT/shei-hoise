@@ -1,11 +1,50 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+
+/**
+ * Sets an inventory row to an absolute quantity via the same `set_inventory`
+ * RPC the Stock Management page uses, so a stock edit made from the product
+ * edit form logs to stock_movements too — this used to write
+ * `product_inventory` directly, which silently skipped that audit trail
+ * (the "Recent activity" popover always showed "No changes recorded yet"
+ * for a product only ever edited from this form). Falls back to a plain
+ * insert for a row that doesn't exist yet (a new product/variant has
+ * nothing to log a *change* against).
+ */
+async function setInventoryAudited(
+  productId: string,
+  variantId: string | null,
+  quantity: number,
+  storeId: string,
+  createdBy: string | null,
+): Promise<void> {
+  const { error } = await supabaseAdmin.rpc("set_inventory", {
+    p_product_id: productId,
+    p_variant_id: variantId,
+    p_quantity: quantity,
+    p_reason: "manual_adjustment",
+    p_created_by: createdBy,
+    p_caller_store_id: storeId,
+  });
+  if (!error) return;
+  if (!error.message.includes("No inventory row")) throw error;
+
+  const { error: insertError } = await supabaseAdmin.from("product_inventory").insert({
+    product_id: productId,
+    variant_id: variantId,
+    quantity_available: quantity,
+    quantity_reserved: 0,
+    track_inventory: true,
+  });
+  if (insertError) throw insertError;
+}
 
 export type UpdateProductResult =
   | { success: true }
@@ -21,6 +60,11 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
   const storeResult = await getAuthenticatedStoreId();
   if (!storeResult.ok) throw new Error(storeResult.error);
   const store_id = storeResult.storeId;
+
+  const {
+    data: { user },
+  } = await createClient().auth.getUser();
+  const created_by = user?.id ?? null;
 
   const { data: existingProduct, error: ownerLookupError } = await supabaseAdmin
     .from("products")
@@ -110,44 +154,13 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
         variantId = data.id;
       }
 
-      const { error: invError } = await supabaseAdmin
-        .from("product_inventory")
-        .upsert(
-          {
-            product_id: id,
-            variant_id: variantId,
-            quantity_available: variantStock ?? 0,
-            quantity_reserved: 0,
-            track_inventory: true,
-          },
-          { onConflict: "product_id,variant_id" }, // ✅ keep string
-        );
-      if (invError) throw invError;
+      await setInventoryAudited(id, variantId ?? null, variantStock ?? 0, store_id, created_by);
     }
   }
 
   // 3️⃣ Simple product inventory (no variants)
   if ((!variants || variants.length === 0) && stock !== undefined) {
-    const { data: updated, error: updateError } = await supabaseAdmin
-      .from("product_inventory")
-      .update({ quantity_available: stock, track_inventory: true })
-      .eq("product_id", id)
-      .is("variant_id", null)
-      .select("id");
-    if (updateError) throw updateError;
-
-    if (!updated || updated.length === 0) {
-      const { error: insertError } = await supabaseAdmin
-        .from("product_inventory")
-        .insert({
-          product_id: id,
-          variant_id: null,
-          quantity_available: stock,
-          quantity_reserved: 0,
-          track_inventory: true,
-        });
-      if (insertError) throw insertError;
-    }
+    await setInventoryAudited(id, null, stock, store_id, created_by);
   }
 
   // 4️⃣ Handle Images

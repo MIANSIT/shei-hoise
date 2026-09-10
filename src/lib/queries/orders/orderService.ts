@@ -31,6 +31,8 @@ export interface CreateOrderData {
   channel?: "online" | "pos";
   /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received in lib/types/order.ts. */
   cashReceived?: number | null;
+  /** "YYYY-MM-DD" — when the sale actually happened, for backfilling manual orders. Defaults to today (DB default) when omitted, e.g. from Quick Sale. */
+  orderDate?: string;
 }
 
 export interface CreateOrderResult {
@@ -289,6 +291,7 @@ export async function createOrder(
       currency = "BDT",
       channel = "online",
       cashReceived,
+      orderDate,
     } = orderData;
 
     // Validate required fields
@@ -353,6 +356,7 @@ export async function createOrder(
       courier: orderData.courier || null,
       channel,
       cash_received: cashReceived ?? null,
+      ...(orderDate ? { order_date: orderDate } : {}),
     };
 
 
