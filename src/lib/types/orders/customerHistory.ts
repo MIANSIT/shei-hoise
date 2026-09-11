@@ -7,7 +7,10 @@ export interface CustomerHistoryEntry {
   orderId: string;
   orderNumber: string;
   status: string;
-  createdAt: string;
+  /** The order's own order_date — when the sale actually happened, not when
+   *  the row was inserted (those diverge for backfilled/manually-dated
+   *  orders, where created_at is just the import time). */
+  orderDate: string;
 }
 
 /** How many prior orders the UI shows per customer. */
