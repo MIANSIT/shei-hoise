@@ -239,6 +239,7 @@ export default function VendorDetailPage() {
         description: e.description,
         receivable: e.receivable,
         paid: e.paid,
+        value: e.value,
       }));
 
       const res = await fetch("/api/vendor-invoices/statement", {
