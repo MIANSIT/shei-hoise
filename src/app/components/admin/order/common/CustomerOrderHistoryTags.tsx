@@ -53,6 +53,13 @@ function CustomerOrderHistoryTags({
 
   return (
     <Tooltip
+      // Rows near the top of the table sit right under the status filter
+      // buttons — the default "top" placement popped the tooltip up over
+      // them. Preferring "bottom" keeps it inside the table for nearly every
+      // row; antd's own overflow adjustment still flips it back up for rows
+      // right at the bottom edge of the viewport.
+      placement="bottom"
+      overlayStyle={{ maxWidth: 280 }}
       title={
         <div className="text-[12px] leading-relaxed">
           <div className="font-semibold mb-1">
@@ -61,8 +68,8 @@ function CustomerOrderHistoryTags({
             {returned > 0 ? ` · ${returned} returned` : ""}
           </div>
           {prior.map((h) => (
-            <div key={h.orderId} className="whitespace-nowrap">
-              {dayjs(h.createdAt).format("DD MMM YY")} · {h.orderNumber} ·{" "}
+            <div key={h.orderId}>
+              {dayjs(h.orderDate).format("DD MMM YY")} · {h.orderNumber} ·{" "}
               <span className="capitalize">{h.status}</span>
             </div>
           ))}

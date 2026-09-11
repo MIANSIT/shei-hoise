@@ -10,6 +10,9 @@ interface VendorStatementEntry {
   description: string;
   receivable?: number;
   paid?: number;
+  // Informational only (e.g. a dispatch's order grand_total) — never folded
+  // into the running balance, just shown for reference.
+  value?: number;
 }
 
 interface VendorStatementStore {
@@ -99,6 +102,7 @@ export async function POST(req: NextRequest) {
         TYPE_LABEL[entry.type],
         entry.reference,
         entry.description,
+        entry.value ? entry.value.toFixed(2) : "—",
         entry.receivable ? entry.receivable.toFixed(2) : "—",
         entry.paid ? entry.paid.toFixed(2) : "—",
         runningBalance.toFixed(2),
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest) {
 
     autoTable(pdf, {
       startY: y,
-      head: [["Date", "Type", "Ref", "Description", "Receivable", "Paid", "Balance"]],
+      head: [["Date", "Type", "Ref", "Description", "Value", "Receivable", "Paid", "Balance"]],
       body: rows,
       theme: "striped",
       styles: { fontSize: 8, cellPadding: 2.5, overflow: "linebreak", lineWidth: 0 },

@@ -45,15 +45,19 @@ export async function getCustomerOrderHistory(
     id: string;
     order_number: string;
     status: string;
-    created_at: string;
+    order_date: string;
     phone: string | null;
   }>((from, to) =>
     supabaseAdmin
       .from("orders")
-      .select("id, order_number, status, created_at, shipping_address->>phone")
+      .select("id, order_number, status, order_date, shipping_address->>phone")
       .eq("store_id", storeId)
       .in("shipping_address->>phone", safe)
-      .order("created_at", { ascending: false })
+      // order_date (when the sale happened), not created_at (when the row
+      // was inserted) — a backfilled order's created_at is just import time
+      // and would otherwise sort it as "most recent" regardless of how long
+      // ago it actually happened.
+      .order("order_date", { ascending: false })
       .range(from, to),
   );
 
@@ -72,7 +76,7 @@ export async function getCustomerOrderHistory(
       orderId: row.id,
       orderNumber: row.order_number,
       status: row.status,
-      createdAt: row.created_at,
+      orderDate: row.order_date,
     });
   }
 

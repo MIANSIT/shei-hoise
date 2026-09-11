@@ -243,6 +243,11 @@ export interface VendorLedgerEntry {
   quantity?: number;
   receivable?: number; // increases due (dispatch has none; settlement sold does)
   paid?: number; // decreases due
+  // Informational only — the dispatched order's grand_total. Never folded
+  // into receivable/the running balance: a dispatch isn't a financial event
+  // in the consignment model, this just lets the statement show what a
+  // dispatch was worth without changing CURRENT DUE.
+  value?: number;
   paymentMethod?: VendorPaymentMethod; // only set on "payment" entries
   // The underlying row's real id (settlement or payment) — dispatch
   // entries don't carry one, there's nothing to delete from this page.

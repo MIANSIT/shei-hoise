@@ -38,6 +38,7 @@ export async function getVendorLedger(
       reference: order.invoice_number,
       description: `Dispatched ${order.total_quantity} unit(s) to vendor`,
       quantity: order.total_quantity,
+      value: order.grand_total,
     });
   }
 
