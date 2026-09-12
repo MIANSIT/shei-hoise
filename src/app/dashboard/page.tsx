@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import MainDashboard from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import {
   getDashboardSummary,
   DashboardSummaryPayload,
@@ -32,6 +33,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 export default function DashboardPage() {
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
+  const { allowed: analyticsAllowed } = useFeatureGate(storeId, "analytics");
 
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("monthly");
   const [summary, setSummary] = useState<DashboardSummaryPayload | null>(null);
@@ -394,6 +396,7 @@ export default function DashboardPage() {
       alerts={metrics.alerts}
       timePeriod={timePeriod}
       onTimePeriodChange={setTimePeriod}
+      analyticsAllowed={analyticsAllowed}
     />
   );
 }
