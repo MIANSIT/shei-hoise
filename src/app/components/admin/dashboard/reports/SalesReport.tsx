@@ -16,6 +16,7 @@ import {
   SalesReportRow,
 } from "@/lib/queries/orders/getSalesReport";
 import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import {
   exportSalesReportCSV,
@@ -193,6 +194,10 @@ export default function SalesReport() {
   const currencyIcon = typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
 
   const { allowed: exportAllowed } = useFeatureGate(user?.store_id, "export_data");
+  const { loading: reportsFeatureLoading, allowed: advancedReportsAllowed } = useFeatureGate(
+    user?.store_id,
+    "advanced_reports",
+  );
   const { storeData } = useInvoiceData({ storeId: user?.store_id ?? undefined });
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "xlsx" | "csv" | null>(null);
 
@@ -304,6 +309,18 @@ export default function SalesReport() {
       render: (v: number) => money(v),
     },
   ];
+
+  if (reportsFeatureLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!advancedReportsAllowed) {
+    return <FeatureLocked title="Sales Report" />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

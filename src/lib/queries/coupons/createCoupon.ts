@@ -19,7 +19,7 @@ export async function createCoupon(
     .eq("is_active", true);
 
   const subscription = await getStoreFeatureSubscription(storeId);
-  const limitCheck = checkLimit(subscription, "max_active_coupons", currentActiveCount ?? 0);
+  const limitCheck = checkLimit(subscription, "max_coupons", currentActiveCount ?? 0);
   if (!limitCheck.allowed) {
     throw new Error(
       `You've reached your plan's limit of ${limitCheck.limit} active coupons. Upgrade your plan to add more.`,
