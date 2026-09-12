@@ -17,6 +17,7 @@ import {
 import { SearchOutlined, CameraOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ProductImage } from "@/app/components/products/ProductImage";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useStore } from "@/lib/hook/stores/useStore";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import dataService from "@/lib/queries/dataService";
@@ -43,6 +44,7 @@ import VariantPickerModal from "./VariantPickerModal";
 import ReceiptPreviewModal from "./ReceiptPreviewModal";
 import ScanToAddModal from "./ScanToAddModal";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 const { Text, Title } = Typography;
 
@@ -81,6 +83,10 @@ export default function QuickSale() {
   const router = useRouter();
   const { user, storeSlug } = useCurrentUser();
   const { store } = useStore(user?.store_id ?? null);
+  const { loading: posFeatureLoading, allowed: posAllowed } = useFeatureGate(
+    user?.store_id,
+    "pos",
+  );
   const { icon: currencyIconRaw, loading: currencyLoading } = useUserCurrencyIcon();
   // icon is typed ReactNode (some currencies render as an icon component),
   // but every place here needs a plain string — safe today since only BDT
@@ -498,6 +504,18 @@ export default function QuickSale() {
       setSubmitting(false);
     }
   };
+
+  if (posFeatureLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500" />
+      </div>
+    );
+  }
+
+  if (!posAllowed) {
+    return <FeatureLocked title="Quick Sale" />;
+  }
 
   return (
     <div className="space-y-5 pb-24 lg:pb-0">

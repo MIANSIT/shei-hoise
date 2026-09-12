@@ -9,6 +9,7 @@ import SalesTrendChart from "./SalesTrendChart";
 import TopProducts from "./TopProducts";
 import CustomerSnapshot from "./CustomerSnapshot";
 import AlertsSection from "./AlertsSection";
+import LockedSection from "@/app/components/admin/common/LockedSection";
 
 // Imported rather than redeclared — a local copy silently drifted out of sync
 // with the canonical type when "all" was added.
@@ -71,6 +72,8 @@ interface MainDashboardProps {
   }[];
   timePeriod: TimePeriod;
   onTimePeriodChange: (period: TimePeriod) => void;
+  /** Gates the sales trend chart, top products and customer insights widgets — the deeper analytics on the dashboard home, distinct from the dedicated Sales Report page (advanced_reports). */
+  analyticsAllowed: boolean;
 }
 
 // ─── Period Selector ──────────────────────────────────────────────────────────
@@ -361,6 +364,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   alerts,
   timePeriod,
   onTimePeriodChange,
+  analyticsAllowed,
 }) => {
   const t = useTranslation();
   const periodLabel =
@@ -524,7 +528,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             accentClass="bg-sky-500"
           />
           <Card className="p-3 sm:p-5">
-            <SalesTrendChart data={salesTrend} />
+            {analyticsAllowed ? <SalesTrendChart data={salesTrend} /> : <LockedSection />}
           </Card>
         </div>
 
@@ -574,7 +578,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
               accentClass="bg-violet-500"
             />
             <Card className="p-3 sm:p-5">
-              <TopProducts products={topProducts} />
+              {analyticsAllowed ? <TopProducts products={topProducts} /> : <LockedSection />}
             </Card>
           </div>
           <div>
@@ -584,7 +588,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
               accentClass="bg-cyan-500"
             />
             <Card className="p-3 sm:p-5">
-              <CustomerSnapshot stats={customerStats} />
+              {analyticsAllowed ? <CustomerSnapshot stats={customerStats} /> : <LockedSection />}
             </Card>
           </div>
         </div>

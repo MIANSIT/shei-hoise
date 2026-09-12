@@ -19,7 +19,7 @@ export async function getCouponLimitStatus(storeId: string): Promise<CouponLimit
     .eq("is_active", true);
 
   const subscription = await getStoreFeatureSubscription(storeId);
-  const { allowed, limit, current } = checkLimit(subscription, "max_active_coupons", count ?? 0);
+  const { allowed, limit, current } = checkLimit(subscription, "max_coupons", count ?? 0);
 
   return { current, limit, allowed };
 }

@@ -128,6 +128,7 @@ export const sideMenu: MenuItem[] = [
   {
     title: "POS",
     icon: Receipt,
+    requiredFeature: "pos",
     children: [
       {
         title: "Quick Sale",
@@ -139,12 +140,16 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/orders/quick-sale/audit",
         icon: Calculator,
       },
-      {
-        title: "Sales Report",
-        href: "/dashboard/reports/sales",
-        icon: BarChart2,
-      },
     ],
+  },
+  {
+    // Split out of the POS group — Sales Report is gated by advanced_reports,
+    // not pos, so it can't share the POS node's requiredFeature. Kept visible
+    // regardless of plan; entitlement is enforced by the page itself
+    // (FeatureLocked), matching every other page-level gate except Vendors/POS.
+    title: "Sales Report",
+    href: "/dashboard/reports/sales",
+    icon: BarChart2,
   },
   {
     title: "Vendors",

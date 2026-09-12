@@ -5,6 +5,7 @@ import { DatePicker, Table, Typography, InputNumber, Tag, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import {
   getQuickSaleDailySummary,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/queries/orders/getQuickSaleDailySummary";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
+import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
 const { Text, Title } = Typography;
 
@@ -52,6 +54,10 @@ function StatCard({
 
 export default function QuickSaleAudit() {
   const { user } = useCurrentUser();
+  const { loading: posFeatureLoading, allowed: posAllowed } = useFeatureGate(
+    user?.store_id,
+    "pos",
+  );
   const { icon: currencyIconRaw, loading: currencyLoading } = useUserCurrencyIcon();
   const currencyIcon =
     !currencyLoading && typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
@@ -144,6 +150,18 @@ export default function QuickSaleAudit() {
       render: (_, row) => <StatusTag status={row.status} size="small" />,
     },
   ];
+
+  if (posFeatureLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!posAllowed) {
+    return <FeatureLocked title="Register Audit" />;
+  }
 
   return (
     <div className="space-y-4 pb-10">
