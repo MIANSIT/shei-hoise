@@ -376,6 +376,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         </section>
       )}
 
+      <PromoBannerSplit banners={promoBanners} />
+
       {/* ══════════════════════════════════════════
           FLASH SALE — time-boxed discounts (discounted_price +
           sale_starts_at/sale_ends_at set on a product in Add Product).
@@ -536,8 +538,6 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           )}
         </div>
       </section>
-
-      <PromoBannerSplit banners={promoBanners} />
 
       {storeData?.id && <CustomerReviewsTeaser storeId={storeData.id} storeSlug={store_slug} />}
     </div>

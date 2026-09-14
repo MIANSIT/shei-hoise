@@ -29,11 +29,11 @@ export function CouponStrip({ coupon, storeSlug }: CouponStripProps) {
 
   return (
     <div className="bg-linear-to-r from-foreground via-foreground/90 to-foreground text-background">
-      <div className="max-w-7xl mx-auto px-4 h-11 flex items-center justify-center gap-3 text-xs sm:text-sm font-medium">
+      <div className="max-w-7xl mx-auto px-4 h-11 flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-medium">
         <span className="hidden sm:inline-flex bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0">
           Offer
         </span>
-        <span className="truncate">
+        <span className="truncate min-w-0">
           {coupon.title || discountLabel}
         </span>
         <button
@@ -46,9 +46,10 @@ export function CouponStrip({ coupon, storeSlug }: CouponStripProps) {
         </button>
         <Link
           href={`/${storeSlug}/coupons`}
-          className="hidden sm:inline text-background/75 hover:text-background underline underline-offset-2 shrink-0"
+          className="text-background/75 hover:text-background underline underline-offset-2 shrink-0"
         >
-          {t.home.couponViewOffers}
+          <span className="hidden sm:inline">{t.home.couponViewOffers}</span>
+          <span className="sm:hidden">{t.home.viewAll}</span>
         </Link>
       </div>
     </div>
