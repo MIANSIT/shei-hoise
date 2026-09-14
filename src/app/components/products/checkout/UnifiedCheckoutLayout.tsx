@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { m } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,10 @@ import { CustomerCheckoutFormValues } from "@/lib/schema/checkoutSchema";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useIsMobile } from "@/lib/hook/useIsMobile";
-import type { CouponValidationResult } from "@/lib/types/coupon";
+import type { Coupon, CouponValidationResult } from "@/lib/types/coupon";
+import { CouponDiscountType } from "@/lib/types/enums";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { getStorefrontCoupons } from "@/lib/queries/coupons/getStorefrontCoupons";
 
 interface UnifiedCheckoutLayoutProps {
   storeSlug: string;
@@ -36,7 +40,8 @@ interface UnifiedCheckoutLayoutProps {
   expiresAt?: string | null;
   couponCode?: string;
   onCouponCodeChange?: (code: string) => void;
-  onApplyCoupon?: () => void;
+  /** Pass a code to apply it directly (e.g. picked from the dropdown) instead of reading the couponCode state, avoiding a stale-value race between the two. */
+  onApplyCoupon?: (code?: string) => void;
   onRemoveCoupon?: () => void;
   appliedCoupon?: CouponValidationResult | null;
   couponValidating?: boolean;
@@ -110,6 +115,48 @@ export default function UnifiedCheckoutLayout({
   const { removeItem, updateQuantity, clearStoreCart } = useCartStore();
   const t = useTranslation();
   const n = useLocalNum();
+
+  // Coupons the store owner has flagged to show on the storefront — offered
+  // here as a pick list so a customer doesn't have to already know a code.
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+  const [showCouponDropdown, setShowCouponDropdown] = useState(false);
+  const couponFieldRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mode !== "checkout") return;
+    let cancelled = false;
+    (async () => {
+      const storeId = await getStoreIdBySlug(storeSlug);
+      if (!storeId || cancelled) return;
+      const coupons = await getStorefrontCoupons(storeId);
+      if (!cancelled) setAvailableCoupons(coupons);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, storeSlug]);
+
+  useEffect(() => {
+    if (!showCouponDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (couponFieldRef.current && !couponFieldRef.current.contains(e.target as Node)) {
+        setShowCouponDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showCouponDropdown]);
+
+  const formatCouponDiscount = (coupon: Coupon) =>
+    coupon.discount_type === CouponDiscountType.PERCENTAGE
+      ? `${n(coupon.discount_value)}% ${t.checkout.couponOffSuffix}`
+      : `${displayCurrencyIconSafe}${n(coupon.discount_value)} ${t.checkout.couponOffSuffix}`;
+
+  const handleSelectCoupon = (coupon: Coupon) => {
+    setShowCouponDropdown(false);
+    onCouponCodeChange?.(coupon.code);
+    onApplyCoupon?.(coupon.code);
+  };
   // The cart/details split is a two-step flow on mobile and a two-column
   // layout on desktop. The slide only makes sense in the first case — on
   // desktop both panels are permanently visible, so animating them on
@@ -283,7 +330,7 @@ export default function UnifiedCheckoutLayout({
         </div>
         <div className='w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2'>
           <div
-            className='bg-stone-900 dark:bg-white h-2 rounded-full transition-all duration-300'
+            className='bg-primary h-2 rounded-full transition-all duration-300'
             style={{ width: activeSection === "cart" ? "50%" : "100%" }}
           ></div>
         </div>
@@ -368,12 +415,13 @@ export default function UnifiedCheckoutLayout({
                           </button>
                         </div>
                       ) : (
-                        <div className='space-y-1.5'>
+                        <div className='space-y-1.5 relative' ref={couponFieldRef}>
                           <div className='flex gap-2'>
                             <Input
                               placeholder={t.checkout.couponPlaceholder}
                               value={couponCode}
                               onChange={(e) => onCouponCodeChange(e.target.value)}
+                              onFocus={() => setShowCouponDropdown(true)}
                               disabled={couponValidating}
                               className='h-9 text-sm'
                             />
@@ -381,7 +429,7 @@ export default function UnifiedCheckoutLayout({
                               type='button'
                               variant='outline'
                               className='h-9 shrink-0'
-                              onClick={onApplyCoupon}
+                              onClick={() => onApplyCoupon()}
                               disabled={couponValidating || !couponCode.trim()}
                             >
                               {couponValidating ? t.checkout.couponApplying : t.checkout.couponApply}
@@ -389,6 +437,51 @@ export default function UnifiedCheckoutLayout({
                           </div>
                           {appliedCoupon && appliedCoupon.valid === false && appliedCoupon.error && (
                             <p className='text-sm text-red-600'>{appliedCoupon.error}</p>
+                          )}
+
+                          {showCouponDropdown && (
+                            <div className='absolute left-0 right-0 top-full mt-1.5 z-20 bg-popover border border-border rounded-md shadow-md max-h-72 overflow-y-auto'>
+                              <div className='px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border sticky top-0 bg-popover'>
+                                {t.checkout.couponAvailableLabel}
+                              </div>
+                              {availableCoupons.length === 0 ? (
+                                <p className='px-3 py-3 text-sm text-muted-foreground'>
+                                  {t.checkout.couponNoneAvailable}
+                                </p>
+                              ) : (
+                                availableCoupons.map((coupon) => (
+                                  <button
+                                    key={coupon.id}
+                                    type='button'
+                                    onClick={() => handleSelectCoupon(coupon)}
+                                    className='w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left border-b border-border last:border-b-0 hover:bg-accent transition-colors'
+                                  >
+                                    <span className='min-w-0'>
+                                      <span className='block font-mono font-bold text-sm tracking-wide truncate'>
+                                        {coupon.code}
+                                      </span>
+                                      <span className='block text-xs text-muted-foreground truncate'>
+                                        {coupon.title
+                                          ? coupon.title
+                                          : coupon.min_order_amount
+                                            ? `${t.checkout.couponMinOrderPrefix} ${displayCurrencyIconSafe}${n(coupon.min_order_amount)}`
+                                            : null}
+                                      </span>
+                                    </span>
+                                    <span className='shrink-0 text-xs font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded-full'>
+                                      {formatCouponDiscount(coupon)}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                              <Link
+                                href={`/${storeSlug}/coupons`}
+                                target='_blank'
+                                className='block px-3 py-2.5 text-center text-xs font-semibold text-primary hover:underline border-t border-border sticky bottom-0 bg-popover'
+                              >
+                                {t.checkout.couponViewAllOffers}
+                              </Link>
+                            </div>
                           )}
                         </div>
                       )}
@@ -480,7 +573,7 @@ export default function UnifiedCheckoutLayout({
                   </div>
 
                   <Button
-                    className='w-full lg:hidden bg-stone-900 hover:bg-stone-700 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 mt-4'
+                    className='w-full lg:hidden bg-primary hover:bg-primary-hover text-primary-foreground mt-4'
                     onClick={() => setActiveSection("customer")}
                     disabled={!meetsMinOrderAmount}
                   >

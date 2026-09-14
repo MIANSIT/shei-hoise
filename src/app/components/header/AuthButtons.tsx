@@ -58,7 +58,7 @@ export default function AuthButtons({
             href={`${link.path}${redirectParam}`}
             className={`text-sm font-medium px-4 py-1.5 rounded-md ${
               link.isHighlighted
-                ? "bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+                ? "bg-primary text-primary-foreground font-semibold hover:bg-primary-hover"
                 : "text-muted-foreground hover:text-foreground border border-border"
             } block transition-colors`}
           >

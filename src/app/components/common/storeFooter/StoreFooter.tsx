@@ -49,7 +49,7 @@ function linkify(text: string) {
         href={part}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary underline hover:opacity-80 transition-opacity dark:text-primary-400"
+        className="text-primary underline hover:opacity-80 transition-opacity"
       >
         {part}
       </a>
@@ -132,7 +132,7 @@ export default function StoreFooter({
           className="group relative"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-gray-100 to-white border border-gray-200 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700">
-            <FaLinkedinIn className="text-gray-600 group-hover:text-[#0077B5] dark:text-gray-400 dark:group-hover:text-[#0077B5]" />
+            <FaLinkedinIn className="text-footer-foreground/70 group-hover:text-[#0077B5] dark:group-hover:text-[#0077B5]" />
           </span>
         </Link>
       )}
@@ -144,7 +144,7 @@ export default function StoreFooter({
           className="group relative"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-gray-100 to-white border border-gray-200 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700">
-            <FaTiktok className="text-primary group-hover:text-[#000000] dark:text-gray-400 dark:group-hover:text-[#000000]" />
+            <FaTiktok className="text-primary group-hover:text-[#000000] dark:group-hover:text-[#000000]" />
           </span>
         </Link>
       )}
@@ -152,7 +152,7 @@ export default function StoreFooter({
   );
 
   return (
-    <footer className="bg-linear-to-b from-gray-50 to-white border-t border-gray-200 dark:from-black dark:to-black dark:border-gray-800">
+    <footer className="bg-footer text-footer-foreground border-t border-footer-foreground/10">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
         {/* Desktop Layout - Cleaner 4-column layout */}
@@ -181,7 +181,7 @@ export default function StoreFooter({
                 {storeName && (
                   <Link
                     href={`/${storeSlug}`}
-                    className="text-xl font-bold text-gray-900 hover:text-primary transition-colors dark:text-white dark:hover:text-primary-400"
+                    className="text-xl font-bold text-footer-foreground hover:text-primary transition-colors"
                   >
                     {storeName}
                   </Link>
@@ -190,13 +190,13 @@ export default function StoreFooter({
             </div>
 
             {storeDescription && (
-              <p className="text-gray-600 leading-relaxed text-sm dark:text-gray-300">
+              <p className="text-footer-foreground/70 leading-relaxed text-sm">
                 {linkify(storeDescription)}
               </p>
             )}
             {socialLinks && (
               <div className="pt-4">
-                <p className="text-sm font-semibold text-gray-900 mb-3 dark:text-white">
+                <p className="text-sm font-semibold text-footer-foreground mb-3">
                   {t.nav.footerConnect}
                 </p>
                 {renderSocialIcons()}
@@ -206,7 +206,7 @@ export default function StoreFooter({
 
           {/* Column 2: Company */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 dark:text-white">
+            <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider mb-4">
               {t.nav.footerCompany}
             </h4>
             <ul className="space-y-3">
@@ -214,7 +214,7 @@ export default function StoreFooter({
                 <li>
                   <Link
                     href={aboutLink}
-                    className="text-gray-600 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1 dark:text-gray-400 dark:hover:text-primary-400"
+                    className="text-footer-foreground/70 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1"
                   >
                     {t.nav.footerAbout}
                   </Link>
@@ -225,16 +225,16 @@ export default function StoreFooter({
 
           {/* Column 3: Contact */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 dark:text-white">
+            <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider mb-4">
               {t.nav.footerContact}
             </h4>
             <ul className="space-y-4">
               {contactEmail && (
                 <li className="flex items-start gap-3">
-                  <FiMail className="w-5 h-5 text-primary mt-0.5 shrink-0 dark:text-primary-400" />
+                  <FiMail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <a
                     href={`mailto:${contactEmail}`}
-                    className="text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
+                    className="text-footer-foreground/70 hover:text-primary transition-colors"
                   >
                     {contactEmail}
                   </a>
@@ -242,10 +242,10 @@ export default function StoreFooter({
               )}
               {contactPhone && (
                 <li className="flex items-center gap-3">
-                  <FiPhone className="w-5 h-5 text-primary shrink-0 dark:text-primary-400" />
+                  <FiPhone className="w-5 h-5 text-primary shrink-0" />
                   <a
                     href={`tel:${contactPhone}`}
-                    className="text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
+                    className="text-footer-foreground/70 hover:text-primary transition-colors"
                   >
                     {contactPhone}
                   </a>
@@ -253,8 +253,8 @@ export default function StoreFooter({
               )}
               {contactAddress && (
                 <li className="flex items-start gap-3">
-                  <FiMapPin className="w-5 h-5 text-primary mt-0.5 shrink-0 dark:text-primary-400" />
-                  <span className="text-muted-foreground">
+                  <FiMapPin className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <span className="text-footer-foreground/70">
                     {contactAddress}
                   </span>
                 </li>
@@ -264,7 +264,7 @@ export default function StoreFooter({
 
           {/* Column 4: Legal */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 dark:text-white">
+            <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider mb-4">
               {t.nav.footerLegal}
             </h4>
             <ul className="space-y-3">
@@ -278,7 +278,7 @@ export default function StoreFooter({
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-gray-600 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1 dark:text-gray-400 dark:hover:text-primary-400"
+                      className="text-footer-foreground/70 hover:text-primary hover:translate-x-1 transition-all duration-300 inline-block py-1"
                     >
                       {label}
                     </Link>
@@ -295,7 +295,7 @@ export default function StoreFooter({
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               {storeLogo && (
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-white shadow-sm dark:bg-gray-800">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-muted shadow-sm">
                   <Image
                     src={storeLogo}
                     alt={
@@ -311,7 +311,7 @@ export default function StoreFooter({
                 {storeName && (
                   <Link
                     href={`/${storeSlug}`}
-                    className="text-xl font-bold text-gray-900 hover:text-primary transition-colors dark:text-white dark:hover:text-primary-400"
+                    className="text-xl font-bold text-footer-foreground hover:text-primary transition-colors"
                   >
                     {storeName}
                   </Link>
@@ -320,7 +320,7 @@ export default function StoreFooter({
             </div>
 
             {storeDescription && (
-              <p className="text-gray-600 leading-relaxed text-sm dark:text-gray-300">
+              <p className="text-footer-foreground/70 leading-relaxed text-sm">
                 {linkify(storeDescription)}
               </p>
             )}
@@ -329,7 +329,7 @@ export default function StoreFooter({
           {/* Links Grid - 2 columns for mobile */}
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
+              <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider">
                 {t.nav.footerCompany}
               </h4>
               <ul className="space-y-3">
@@ -337,7 +337,7 @@ export default function StoreFooter({
                   <li>
                     <Link
                       href={aboutLink}
-                      className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
+                      className="text-sm text-footer-foreground/70 hover:text-primary transition-colors"
                     >
                       {t.nav.footerAbout}
                     </Link>
@@ -347,7 +347,7 @@ export default function StoreFooter({
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
+              <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider">
                 {t.nav.footerLegal}
               </h4>
               <ul className="space-y-3">
@@ -361,7 +361,7 @@ export default function StoreFooter({
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400"
+                        className="text-sm text-footer-foreground/70 hover:text-primary transition-colors"
                       >
                         {label}
                       </Link>
@@ -375,7 +375,7 @@ export default function StoreFooter({
           {/* Contact Section */}
           {(contactEmail || contactPhone || contactAddress) && (
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
+              <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider">
                 {t.nav.footerContact}
               </h4>
               <ul className="space-y-3">
@@ -383,7 +383,7 @@ export default function StoreFooter({
                   <li>
                     <a
                       href={`mailto:${contactEmail}`}
-                      className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400 flex items-center gap-2"
+                      className="text-sm text-footer-foreground/70 hover:text-primary transition-colors flex items-center gap-2"
                     >
                       <FiMail className="w-4 h-4" />
                       {contactEmail}
@@ -394,7 +394,7 @@ export default function StoreFooter({
                   <li>
                     <a
                       href={`tel:${contactPhone}`}
-                      className="text-sm text-gray-600 hover:text-primary transition-colors dark:text-gray-400 dark:hover:text-primary-400 flex items-center gap-2"
+                      className="text-sm text-footer-foreground/70 hover:text-primary transition-colors flex items-center gap-2"
                     >
                       <FiPhone className="w-4 h-4" />
                       {contactPhone}
@@ -403,8 +403,8 @@ export default function StoreFooter({
                 )}
                 {contactAddress && (
                   <li className="flex items-start gap-2">
-                    <FiMapPin className="w-4 h-4 text-primary mt-1 shrink-0 dark:text-primary-400" />
-                    <span className="text-sm text-muted-foreground">
+                    <FiMapPin className="w-4 h-4 text-primary mt-1 shrink-0" />
+                    <span className="text-sm text-footer-foreground/70">
                       {contactAddress}
                     </span>
                   </li>
@@ -416,7 +416,7 @@ export default function StoreFooter({
           {/* Social Media */}
           {socialLinks && (
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider dark:text-white">
+              <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider">
                 {t.nav.footerFollow}
               </h4>
               {renderSocialIcons()}
@@ -425,13 +425,13 @@ export default function StoreFooter({
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-border">
+        <div className="pt-8 border-t border-footer-foreground/10">
           <div className="flex flex-col md:flex-row justify-center items-center gap-4">
-            <div className="text-sm text-gray-500 text-center md:text-left dark:text-gray-400">
+            <div className="text-sm text-footer-foreground/70 text-center md:text-left">
               © {new Date().getFullYear()}{" "}
               <Link
                 href="/"
-                className="text-gray-900 font-semibold hover:text-primary transition-colors dark:text-white dark:hover:text-primary-400"
+                className="text-footer-foreground font-semibold hover:text-primary transition-colors"
               >
                 {brandName}
               </Link>

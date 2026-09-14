@@ -18,6 +18,9 @@ export const createCouponSchema = z
     starts_at: z.string().optional().nullable(),
     ends_at: z.string().optional().nullable(),
     is_active: z.boolean().default(true),
+    title: z.string().trim().max(120).optional().nullable(),
+    is_featured: z.boolean().default(false),
+    show_on_storefront: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     if (data.discount_type === CouponDiscountType.PERCENTAGE && data.discount_value > 100) {

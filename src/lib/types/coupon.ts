@@ -15,6 +15,9 @@ export interface Coupon {
   starts_at: string | null;
   ends_at: string | null;
   is_active: boolean;
+  title: string | null;
+  is_featured: boolean;
+  show_on_storefront: boolean;
   created_at: string;
   updated_at: string;
 }

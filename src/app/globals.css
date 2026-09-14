@@ -42,10 +42,21 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  /* Store owner's explicit hover color for primary buttons (Storefront
+     Design page). Falls back to an auto-darkened primary below when no
+     custom palette/hover color is set. */
+  --color-primary-hover: var(--primary-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Per-store brand theming (src/lib/utils/storeTheme.ts) overrides these at
+     the [store_slug] layout root; defaults below match the app's existing
+     look so a store with no custom palette renders unchanged. */
+  --color-header-foreground: var(--header-foreground);
+  --color-header: var(--header);
+  --color-footer-foreground: var(--footer-foreground);
+  --color-footer: var(--footer);
   /* text-badge is used in FinalizeAccount.tsx — same undefined-token bug
      class as --breakpoint-xs above: without this mapping the class
      compiles to nothing and the text silently falls back to inherited color. */
@@ -67,6 +78,7 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
+  --primary-hover: color-mix(in oklch, var(--primary) 88%, black);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -94,6 +106,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --header: oklch(1 0 0);
+  --header-foreground: oklch(0.145 0 0);
+  --footer: oklch(0.985 0 0);
+  --footer-foreground: oklch(0.205 0 0);
 }
 
 /* Dark theme */
@@ -106,6 +122,7 @@
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
+  --primary-hover: color-mix(in oklch, var(--primary) 88%, black);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -130,6 +147,10 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
   --badge: oklch(54.01% 0.21013 262.799);
+  --header: oklch(0.145 0 0);
+  --header-foreground: oklch(0.985 0 0);
+  --footer: oklch(0.145 0 0);
+  --footer-foreground: oklch(0.985 0 0);
 }
 
 @layer base {

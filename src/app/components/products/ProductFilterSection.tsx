@@ -6,9 +6,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Search, X, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, X, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, KeyboardEvent, useEffect } from "react";
+import { useState } from "react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 
@@ -47,13 +47,8 @@ export default function ProductFilterSection({
   onSearchChange,
 }: ProductFilterSectionProps) {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [localSearch, setLocalSearch] = useState(searchQuery);
   const t = useTranslation();
   const n = useLocalNum();
-
-  useEffect(() => {
-    setLocalSearch(searchQuery);
-  }, [searchQuery]);
 
   const activeCategories = categories.filter((c) => c.is_active);
   const allCategories = [
@@ -61,77 +56,18 @@ export default function ProductFilterSection({
     ...activeCategories.map(c => ({ ...c, displayName: c.name })),
   ];
 
-  const handleSearchSubmit = () => {
-    if (onSearchChange) onSearchChange(localSearch.trim());
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleSearchSubmit();
-  };
-
   const handleClearSearch = () => {
-    setLocalSearch("");
-    if (onSearchChange) onSearchChange("");
+    onSearchChange?.("");
   };
 
   return (
     <section className="w-full mb-2">
-      {/* ── Top bar: Search + Count ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-5">
-        {/* Search */}
-        <div className="flex items-center gap-2 flex-1 max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
-            <input
-              type="text"
-              placeholder={t.filter.searchPlaceholder}
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="
-                w-full pl-10 pr-10 py-2.5 text-sm
-                bg-gray-50 dark:bg-gray-800
-                border border-gray-200 dark:border-gray-700
-                rounded-xl
-                placeholder:text-gray-400 dark:placeholder:text-gray-500
-                text-gray-900 dark:text-gray-100
-                focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-gray-100/10
-                focus:border-gray-400 dark:focus:border-gray-500
-                transition-all duration-200
-              "
-            />
-            {localSearch && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={handleSearchSubmit}
-            className="
-              h-10 px-4 rounded-xl
-              bg-gray-900 dark:bg-gray-100
-              text-white dark:text-gray-900
-              text-sm font-semibold
-              hover:bg-gray-700 dark:hover:bg-gray-300
-              active:scale-[0.97] transition-all duration-200
-              whitespace-nowrap shrink-0
-            "
-          >
-            {t.filter.search}
-          </button>
-        </div>
-
-        {/* Spacer + count */}
-        <div className="flex items-center gap-3 sm:ml-auto">
-          <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
-            {n(totalProducts)}{" "}
-            {totalProducts === 1 ? t.filter.product : t.filter.products}
-          </span>
-        </div>
+      {/* ── Top bar: count only — search now lives in the header (global, reachable from every page) ── */}
+      <div className="flex items-center justify-end gap-3 py-5">
+        <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
+          {n(totalProducts)}{" "}
+          {totalProducts === 1 ? t.filter.product : t.filter.products}
+        </span>
       </div>
 
       {/* ── Category Pills (Desktop) ── */}

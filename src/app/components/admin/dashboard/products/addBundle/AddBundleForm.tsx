@@ -251,7 +251,7 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
           </Section>
 
           <Section icon={Tag} title="Pricing" subtitle="Set independently of the component prices.">
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
               <div>
                 <FieldLabel label={`Selling price (${displayCurrency})`} required />
                 <FormField name="base_price" type="number" control={control} required placeholder="e.g. 999" />

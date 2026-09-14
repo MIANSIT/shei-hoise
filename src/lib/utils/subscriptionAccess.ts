@@ -13,6 +13,13 @@ export interface AccessCheckable {
   current_period_end?: string | null;
 }
 
+// Only these statuses can ever grant access, and only for as long as their
+// period hasn't lapsed (past the grace period below). Every other status
+// (canceled, expired, paused, incomplete, or anything unrecognized) means no
+// paid/trial access exists right now, so it locks immediately — there is no
+// period to grace-period from.
+const ENTITLED_STATUSES = new Set(["active", "trialing", "past_due"]);
+
 /**
  * Computed lazily on every read — there is no cron in this project to flip
  * statuses on a schedule. A missing subscription record is always treated as
@@ -24,13 +31,7 @@ export interface AccessCheckable {
 export function getSubscriptionAccessState(subscription: AccessCheckable | null): SubscriptionAccess {
   if (!subscription) return { state: "open" };
 
-  if (subscription.status === "canceled") return { state: "locked" };
-
-  if (subscription.status !== "active" && subscription.status !== "trialing") {
-    // incomplete / past_due / paused / expired — none of these are produced
-    // by a lapsed period in this codebase today; don't actively lock on them.
-    return { state: "open" };
-  }
+  if (!ENTITLED_STATUSES.has(subscription.status)) return { state: "locked" };
 
   const periodEnd = subscription.trial_ends_at ?? subscription.current_period_end;
   if (!periodEnd) return { state: "open" };

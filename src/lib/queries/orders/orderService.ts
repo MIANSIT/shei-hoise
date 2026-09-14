@@ -8,6 +8,7 @@ import { explodeBundleOrderProducts } from "./bundleExplosion";
 import { bundleItemKey } from "./bundleItemKey";
 import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
 import { redeemCoupon } from "@/lib/queries/coupons/redeemCoupon";
+import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
 
 export interface CreateOrderData {
   storeId: string;
@@ -508,7 +509,11 @@ export async function createCustomerOrder(
       orderNumber,
       customerInfo,
       orderProducts,
-      subtotal,
+      // subtotal is caller-supplied and never trusted — recomputed below
+      // from each item's server-verified price instead (see the price
+      // re-validation block right after the stores.is_active check).
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      subtotal: _clientSubtotal,
       taxAmount,
       couponCode,
       additionalCharges,
@@ -545,10 +550,66 @@ export async function createCustomerOrder(
       throw new Error("This store is currently unavailable.");
     }
 
+    // Per-item pricing is never trusted from the client either — the same
+    // rule as the coupon re-check just below, extended to cover the actual
+    // sale price. Without this, a cart built while a flash sale was live
+    // (or a tampered request) could still check out at that price after
+    // sale_ends_at has passed: getEffectivePrice() is what makes a flash
+    // sale stop *displaying* everywhere else in the app, but nothing here
+    // previously re-ran it before charging for the order. A bundle's own
+    // header line is a normal products row too (product_type = 'bundle'),
+    // so this recomputes its price the same way — its components carry 0
+    // price and are unaffected (see explodeBundleOrderProducts).
+    const priceProductIds = [...new Set((orderProducts as OrderProduct[]).map((i) => i.product_id))];
+    const priceVariantIds = [
+      ...new Set((orderProducts as OrderProduct[]).filter((i) => i.variant_id).map((i) => i.variant_id as string)),
+    ];
+    const [{ data: priceProducts, error: priceProductsError }, { data: priceVariants, error: priceVariantsError }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("products")
+          .select("id, base_price, discounted_price, sale_starts_at, sale_ends_at")
+          .in("id", priceProductIds),
+        priceVariantIds.length > 0
+          ? supabaseAdmin.from("product_variants").select("id, base_price, discounted_price").in("id", priceVariantIds)
+          : Promise.resolve({ data: [] as { id: string; base_price: number; discounted_price: number | null }[], error: null }),
+      ]);
+    if (priceProductsError) throw new Error(priceProductsError.message);
+    if (priceVariantsError) throw new Error(priceVariantsError.message);
+
+    const priceProductMap = new Map((priceProducts ?? []).map((p) => [p.id, p]));
+    const priceVariantMap = new Map((priceVariants ?? []).map((v) => [v.id, v]));
+
+    let subtotal = 0;
+    for (const item of orderProducts as OrderProduct[]) {
+      const productRow = priceProductMap.get(item.product_id);
+      if (!productRow) throw new Error(`Product not found: ${item.product_id}`);
+
+      // Variants have no sale_starts_at/sale_ends_at of their own (schema
+      // only carries a schedule on products) — a variant discount, unlike a
+      // product's, is a standing discount rather than a scheduled flash
+      // sale, matching how every other getEffectivePrice call site treats it.
+      const variantRow = item.variant_id ? priceVariantMap.get(item.variant_id) : undefined;
+      const effective = variantRow
+        ? getEffectivePrice({ base_price: variantRow.base_price ?? 0, discounted_price: variantRow.discounted_price })
+        : getEffectivePrice({
+            base_price: productRow.base_price ?? 0,
+            discounted_price: productRow.discounted_price,
+            sale_starts_at: productRow.sale_starts_at,
+            sale_ends_at: productRow.sale_ends_at,
+          });
+
+      item.unit_price = effective.price;
+      item.total_price = effective.price * item.quantity;
+      subtotal += item.total_price;
+    }
+
     // Coupon discount is never trusted from the client — re-validate here,
     // right before commit, and use the server-computed amount for both
     // discount_amount and total_amount below. This is the same "re-check
     // right before insert" treatment as the stores.is_active check above.
+    // Uses the just-recomputed subtotal too, so a coupon's min_order_amount
+    // can't be satisfied by an inflated client-submitted subtotal.
     let finalDiscount = 0;
     let redeemedCoupon: { id: string; code: string } | null = null;
     if (couponCode) {

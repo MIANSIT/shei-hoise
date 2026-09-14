@@ -8,6 +8,7 @@ import AuthButtons from "../header/AuthButtons";
 import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartSidebar from "../cart/CartSidebar";
+import { HeaderSearch } from "./HeaderSearch";
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
 import UserDropdownDesktop from "./UserDropdownDesktop";
 import {
@@ -21,11 +22,13 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 interface DesktopHeaderProps {
   storeSlug: string;
   isAdmin?: boolean;
+  hasAnnouncement?: boolean;
 }
 
 export default function DesktopHeader({
   storeSlug,
   isAdmin = false,
+  hasAnnouncement = false,
 }: DesktopHeaderProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -90,7 +93,11 @@ export default function DesktopHeader({
 
   return (
     <>
-      <header className="hidden md:flex fixed top-0 left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md">
+      <header
+        className={`store-desktop-header hidden md:flex fixed left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md ${
+          hasAnnouncement ? "top-9" : "top-0"
+        }`}
+      >
         <div className="flex items-center gap-8">
           {/* Store Logo & Title */}
           {isStoreLoading ? (
@@ -164,6 +171,7 @@ export default function DesktopHeader({
             </div>
           ) : (
             <>
+              <HeaderSearch storeSlug={storeSlug} />
               <LanguageSwitcher />
               <ThemeToggle />
               <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />

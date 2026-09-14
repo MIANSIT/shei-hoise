@@ -212,9 +212,9 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between gap-3 border-b border-border pb-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
             <Boxes className="h-4 w-4" />
           </span>
           <div>
@@ -226,7 +226,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
             </p>
           </div>
         </div>
-        <Space>
+        <Space wrap>
           <AntButton onClick={handleAdd}>Add product</AntButton>
           <AntButton icon={<Layers className="h-4 w-4" />} onClick={handleAddGroup}>
             Add choice group

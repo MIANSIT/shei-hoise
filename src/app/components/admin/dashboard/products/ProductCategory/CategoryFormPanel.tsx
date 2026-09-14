@@ -8,7 +8,7 @@ import type { CreateCategoryType } from "@/lib/schema/category.schema";
 interface CategoryFormPanelProps {
   showForm: boolean;
   editingCategory: Category | null;
-  onSubmit: (data: CreateCategoryType) => void;
+  onSubmit: (data: CreateCategoryType, imageFile?: File | null) => void;
   allCategories: Category[];
 }
 

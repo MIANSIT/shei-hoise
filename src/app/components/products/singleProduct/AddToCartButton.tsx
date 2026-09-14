@@ -46,7 +46,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
         ? "bg-blue-500 text-white cursor-not-allowed"
         : showSuccess
           ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50"
-          : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-lg shadow-black/10 dark:shadow-black/30 hover:bg-gray-800 dark:hover:bg-white cursor-pointer",
+          : "bg-primary text-primary-foreground shadow-lg shadow-black/10 dark:shadow-black/30 hover:bg-primary-hover cursor-pointer",
     className,
   ]
     .filter(Boolean)

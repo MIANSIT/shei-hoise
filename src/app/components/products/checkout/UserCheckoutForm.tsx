@@ -370,7 +370,7 @@ const CheckoutForm = ({
       {/* Submit Button */}
       <Button
         type="submit"
-        className="w-full mt-6 bg-stone-900 dark:bg-white text-white dark:text-gray-900 hover:bg-stone-700 dark:hover:bg-gray-100 cursor-pointer transition-colors duration-300 h-14 text-lg font-semibold"
+        className="w-full mt-6 bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer transition-colors duration-300 h-14 text-lg font-semibold"
         disabled={isSubmitting || !form.formState.isValid}
       >
         {isSubmitting ? (

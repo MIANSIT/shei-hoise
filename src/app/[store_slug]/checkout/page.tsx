@@ -202,13 +202,19 @@ export default function CheckoutPage() {
   // always (re)computed server-side again in createCustomerOrder right
   // before the order commits, so a stale/raced preview here can never
   // overcharge or undercharge the actual order.
-  const handleApplyCoupon = useCallback(async () => {
-    if (!couponCode.trim()) return;
+  const handleApplyCoupon = useCallback(async (codeOverride?: string) => {
+    // Accepts an explicit code (e.g. picked from the checkout coupon dropdown)
+    // instead of always reading the couponCode state, since calling
+    // setCouponCode(code) and applying in the same tick would otherwise apply
+    // against the not-yet-updated state value.
+    const code = codeOverride ?? couponCode;
+    if (!code.trim()) return;
+    if (codeOverride) setCouponCode(codeOverride);
     setCouponValidating(true);
     try {
       const storeId = await getStoreIdBySlug(store_slug);
       if (!storeId) throw new Error("Store not found");
-      const result = await validateCoupon(couponCode, storeId, calculations.subtotal);
+      const result = await validateCoupon(code, storeId, calculations.subtotal);
       setAppliedCoupon(result);
       if (!result.valid) {
         notify.error(result.error || "Invalid coupon code");
@@ -608,7 +614,7 @@ export default function CheckoutPage() {
           <p className="text-sm text-muted-foreground mt-2">{t.cart.addProductsPrompt}</p>
           <button
             onClick={() => router.push(`/${store_slug}/shop`)}
-            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-stone-900 dark:bg-white text-white dark:text-gray-900 hover:bg-stone-700 dark:hover:bg-gray-100 active:scale-95 transition-all duration-200"
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-primary text-primary-foreground hover:bg-primary-hover active:scale-95 transition-all duration-200"
           >
             {t.cart.continueShoppingAt} {store_slug}
           </button>

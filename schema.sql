@@ -499,6 +499,55 @@ CREATE TABLE IF NOT EXISTS "public"."store_customers" (
 ALTER TABLE "public"."store_customers" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."store_branding" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "theme_palette" "jsonb",
+    "announcement_text" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_branding" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."store_hero_slides" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "image_url" "text" NOT NULL,
+    "headline" "text",
+    "subtext" "text",
+    "button_text" "text",
+    "button_link" "text",
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_hero_slides" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."store_promo_banners" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "image_url" "text" NOT NULL,
+    "headline" "text",
+    "subtext" "text",
+    "button_text" "text",
+    "button_link" "text",
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_promo_banners" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."store_reviews" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "store_id" "uuid",
@@ -902,6 +951,26 @@ ALTER TABLE ONLY "public"."store_customers"
 
 
 
+ALTER TABLE ONLY "public"."store_branding"
+    ADD CONSTRAINT "store_branding_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."store_branding"
+    ADD CONSTRAINT "store_branding_store_id_key" UNIQUE ("store_id");
+
+
+
+ALTER TABLE ONLY "public"."store_hero_slides"
+    ADD CONSTRAINT "store_hero_slides_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."store_promo_banners"
+    ADD CONSTRAINT "store_promo_banners_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_pkey" PRIMARY KEY ("id");
 
@@ -1256,6 +1325,21 @@ ALTER TABLE ONLY "public"."store_reviews"
 
 
 
+ALTER TABLE ONLY "public"."store_branding"
+    ADD CONSTRAINT "store_branding_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."store_hero_slides"
+    ADD CONSTRAINT "store_hero_slides_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."store_promo_banners"
+    ADD CONSTRAINT "store_promo_banners_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
@@ -1380,6 +1464,30 @@ CREATE POLICY "plans_public_read" ON "public"."subscription_plans" FOR SELECT US
 
 
 CREATE POLICY "plans_service_write" ON "public"."subscription_plans" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "store_branding_public_read" ON "public"."store_branding" FOR SELECT USING (true);
+
+
+
+CREATE POLICY "store_branding_service_write" ON "public"."store_branding" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "store_hero_slides_public_read" ON "public"."store_hero_slides" FOR SELECT USING (("is_active" = true));
+
+
+
+CREATE POLICY "store_hero_slides_service_write" ON "public"."store_hero_slides" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "store_promo_banners_public_read" ON "public"."store_promo_banners" FOR SELECT USING (("is_active" = true));
+
+
+
+CREATE POLICY "store_promo_banners_service_write" ON "public"."store_promo_banners" USING (("auth"."role"() = 'service_role'::"text"));
 
 
 

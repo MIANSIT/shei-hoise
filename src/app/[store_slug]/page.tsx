@@ -5,13 +5,23 @@ import Link from "next/link";
 import Image from "next/image";
 import { m } from "framer-motion";
 import { ProductImage } from "@/app/components/products/ProductImage";
-import { ShoppingBag, ArrowRight, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye, Zap } from "lucide-react";
+import { ShoppingBag, ArrowRight, Loader2, Sparkles, Tag, Truck, RefreshCw, ShieldCheck, Wallet, BadgeCheck, Eye, Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { getStoreBySlugFull, StoreFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getFeaturedProducts } from "@/lib/queries/products/getFeaturedProducts";
 import { getActiveFlashSaleProducts } from "@/lib/queries/products/getActiveFlashSaleProducts";
 import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
 import { getStorefrontBundles } from "@/lib/queries/bundles/getStorefrontBundles";
+import { getActiveHeroSlides } from "@/lib/queries/storefront/heroSlides/getActiveHeroSlides";
+import { HeroSlider } from "@/app/components/storefront/HeroSlider";
+import type { HeroSlide } from "@/lib/types/heroSlide";
+import { getStorefrontCoupon } from "@/lib/queries/coupons/getStorefrontCoupon";
+import { CouponStrip } from "@/app/components/storefront/CouponStrip";
+import type { Coupon } from "@/lib/types/coupon";
+import { CustomerReviewsTeaser } from "@/app/components/storefront/CustomerReviewsTeaser";
+import { getActivePromoBanners } from "@/lib/queries/storefront/promoBanners/getActivePromoBanners";
+import { PromoBannerSplit } from "@/app/components/storefront/PromoBannerSplit";
+import type { PromoBanner } from "@/lib/types/promoBanner";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRatingSummary";
 import { StarRating } from "@/app/components/products/reviews/StarRating";
@@ -49,6 +59,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const [flashSaleProducts, setFlashSaleProducts] = useState<Product[]>([]);
   const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [bundles, setBundles] = useState<Product[]>([]);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+  const [promoBanners, setPromoBanners] = useState<PromoBanner[]>([]);
+  const [storefrontCoupon, setStorefrontCoupon] = useState<Coupon | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
@@ -65,7 +78,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setStoreData(fullStore);
         setStoreExists(true);
 
-        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating] =
+        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating, activeHeroSlides, featuredCoupon, activePromoBanners] =
           await Promise.all([
             getCategoriesQuery(fullStore.id),
             getFeaturedProducts(store_slug, 5),
@@ -73,6 +86,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             getStoreSettings(fullStore.id),
             getActiveFlashSaleProducts(store_slug, 8),
             getStoreRatingSummary(fullStore.id),
+            getActiveHeroSlides(fullStore.id),
+            getStorefrontCoupon(fullStore.id),
+            getActivePromoBanners(fullStore.id),
           ]);
 
         if (categoriesData.data) setCategories(categoriesData.data);
@@ -80,6 +96,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setStoreSettings(settings);
         setFlashSaleProducts(flashSale);
         setStoreRatingSummary(storeRating);
+        setHeroSlides(activeHeroSlides);
+        setStorefrontCoupon(featuredCoupon);
+        setPromoBanners(activePromoBanners);
 
         if (featured.length > 0) {
           setFeaturedProducts(featured);
@@ -151,11 +170,19 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const showNoReturn = storeSettings?.return_policy_days === 0;
 
   return (
-    <div className="min-h-screen bg-[#F8F8F6] dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
+
+      {storefrontCoupon && <CouponStrip coupon={storefrontCoupon} storeSlug={store_slug} />}
 
       {/* ══════════════════════════════════════════
-          HERO — compact on mobile (h-36), full on desktop
+          HERO — admin-managed slide carousel takes over whenever the store
+          has at least one active slide; otherwise fall back to the identity
+          banner/no-banner hero below exactly as before.
       ══════════════════════════════════════════ */}
+      {heroSlides.length > 0 && <HeroSlider slides={heroSlides} />}
+
+      {heroSlides.length === 0 && (
+      <>
       <section className="relative w-full">
         {hasBanner && (
           /* Mobile: fixed h-40 | Tablet sm: h-52 | Desktop md+: true 16:4 via aspectRatio */
@@ -296,7 +323,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             >
               <Link
                 href={`/${store_slug}/shop`}
-                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full font-bold text-sm sm:text-base bg-stone-900 dark:bg-white text-white dark:text-gray-900 shadow-lg hover:bg-stone-700 dark:hover:bg-gray-100 active:scale-95 transition-all duration-200"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full font-bold text-sm sm:text-base bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:scale-95 transition-all duration-200"
               >
                 <ShoppingBag className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                 {t.home.shopAll}
@@ -304,6 +331,8 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             </m.div>
           </div>
         </div>
+      )}
+      </>
       )}
 
       <TrustStrip
@@ -316,6 +345,28 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
       />
 
       {/* ══════════════════════════════════════════
+          SHOP BY CATEGORY — circular avatars, one row always (never wraps
+          to a 2nd/3rd line, on any screen size) — a horizontally scrollable
+          strip with arrow nav once there are more than fit on screen. Leads
+          right after the trust strip so browsing-by-category is the first
+          choice a visitor makes, before any product listing.
+      ══════════════════════════════════════════ */}
+      {categories.length > 0 && (
+        <section className="pt-8 sm:pt-14 pb-10 sm:pb-14">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionHeader
+              eyebrow={t.home.browseCollection}
+              title={t.home.shopByCategory}
+              href={`/${store_slug}/shop`}
+              ctaLabel={t.home.viewAll}
+            />
+
+            <CategoryScrollRow categories={categories} store_slug={store_slug} />
+          </div>
+        </section>
+      )}
+
+      {/* ══════════════════════════════════════════
           FLASH SALE — time-boxed discounts (discounted_price +
           sale_starts_at/sale_ends_at set on a product in Add Product).
           Leads before bundles/featured: urgency sells first.
@@ -325,7 +376,11 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <FlashSaleHeader products={flashSaleProducts} />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <AdaptiveProductGrid
+              count={flashSaleProducts.length}
+              maxCols={4}
+              fluidClassName="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+            >
               {flashSaleProducts.map((product, i) => (
                 <ProductCard
                   key={product.id}
@@ -341,7 +396,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   currencyIcon={curr}
                 />
               ))}
-            </div>
+            </AdaptiveProductGrid>
           </div>
         </section>
       )}
@@ -368,7 +423,11 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               }
             />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <AdaptiveProductGrid
+              count={bundles.length}
+              maxCols={4}
+              fluidClassName="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+            >
               {bundles.map((bundle, i) => (
                 <ProductCard
                   key={bundle.id}
@@ -384,7 +443,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
                   currencyIcon={curr}
                 />
               ))}
-            </div>
+            </AdaptiveProductGrid>
           </div>
         </section>
       )}
@@ -458,7 +517,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
               </p>
               <Link
                 href={`/${store_slug}/shop`}
-                className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full border-2 border-stone-200 dark:border-gray-700 text-stone-700 dark:text-gray-300 font-bold text-sm hover:border-stone-800 dark:hover:border-gray-400 hover:bg-stone-900 dark:hover:bg-white hover:text-white dark:hover:text-gray-900 active:scale-95 transition-all duration-200 group"
+                className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full border-2 border-border text-muted-foreground font-bold text-sm hover:border-primary-hover hover:bg-primary-hover hover:text-primary-foreground active:scale-95 transition-all duration-200 group"
               >
                 {t.home.browseAll}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform duration-200" />
@@ -468,56 +527,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
-          MOBILE — category chip strip
-          Sits immediately below the hero / header,
-          visible only on mobile (<sm)
-      ══════════════════════════════════════════ */}
-      {categories.length > 0 && (
-        <div className="sm:hidden pt-3 pb-1">
-          <div className="flex gap-2 overflow-x-auto px-4 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {categories.map((cat, i) => (
-              <CategoryChip key={cat.id} category={cat} store_slug={store_slug} index={i} />
-            ))}
-            <m.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: Math.min(categories.length * 0.05, 0.4), duration: 0.28 }}
-              className="shrink-0"
-            >
-              <Link
-                href={`/${store_slug}/shop`}
-                className="flex items-center gap-1 px-3.5 py-2 rounded-full bg-stone-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all duration-150"
-              >
-                All <ArrowRight className="h-3 w-3" />
-              </Link>
-            </m.div>
-          </div>
-        </div>
-      )}
+      <PromoBannerSplit banners={promoBanners} />
 
-      {/* ══════════════════════════════════════════
-          DESKTOP — full category card section
-          Hidden on mobile, shown on sm+
-      ══════════════════════════════════════════ */}
-      {categories.length > 0 && (
-        <section className="hidden sm:block border-t border-stone-100 dark:border-gray-800/60 pt-16 pb-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <SectionHeader
-              eyebrow={t.home.browseCollection}
-              title={t.home.shopByCategory}
-              href={`/${store_slug}/shop`}
-              ctaLabel={t.home.viewAll}
-            />
-
-            <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
-              {categories.slice(0, 6).map((cat, i) => (
-                <CategoryCard key={cat.id} category={cat} store_slug={store_slug} index={i} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {storeData?.id && <CustomerReviewsTeaser storeId={storeData.id} storeSlug={store_slug} />}
     </div>
   );
 }
@@ -658,6 +670,45 @@ function SectionHeader({ eyebrow, title, href, ctaLabel, badge }: SectionHeaderP
   );
 }
 
+/*
+  ADAPTIVE PRODUCT GRID — the equal-card grids below (flash sale, bundles,
+  categories) are fluid N-column grids sized to fill the full container width,
+  which looks fine once a store has enough items to fill a row but leaves an
+  awkward, mostly-empty row when it doesn't (e.g. one bundle in a 4-column
+  grid). When there are at least `maxCols` items, this renders the exact same
+  fluid grid as before (zero visual change for well-stocked stores). Below
+  that count, it switches to an explicit `repeat(count, minmax(0, cardMax))`
+  template sized to fit-content (only as many tracks as there are cards, each
+  capped at a normal card width instead of stretching) and left-aligns that
+  now-narrower block, same edge as every other section's heading/content on
+  the page, instead of floating it in the middle of the row.
+*/
+function AdaptiveProductGrid({
+  count,
+  maxCols,
+  fluidClassName,
+  cardMaxPx = 280,
+  children,
+}: {
+  count: number;
+  maxCols: number;
+  fluidClassName: string;
+  cardMaxPx?: number;
+  children: React.ReactNode;
+}) {
+  if (count >= maxCols) {
+    return <div className={fluidClassName}>{children}</div>;
+  }
+  return (
+    <div
+      className="grid gap-3 sm:gap-4 w-fit max-w-full"
+      style={{ gridTemplateColumns: `repeat(${count}, minmax(0, ${cardMaxPx}px))` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────
    TRUST STRIP — compact value-prop row right under the hero.
    Always renders a full, balanced set of four badges — delivery,
@@ -775,67 +826,118 @@ function TrustStrip({
 }
 
 /* ─────────────────────────────────────────────────────────
-   CATEGORY CHIP — mobile pill strip
+   CATEGORY SCROLL ROW — always a single horizontally-scrollable
+   row (mobile and desktop alike), never a wrapping grid, so any
+   number of categories stays one line. Arrow buttons appear only
+   once the row actually overflows its own width — measured live,
+   not guessed from the category count, since the same count can
+   fit or overflow depending on viewport width (a wide desktop
+   screen can fit 10 circles that would overflow at 6 on a laptop).
+   Each arrow also hides itself once scrolled to that end.
 ───────────────────────────────────────────────────────── */
-interface CategoryChipProps {
-  category: Category;
-  store_slug: string;
-  index: number;
-}
+function CategoryScrollRow({ categories, store_slug }: { categories: Category[]; store_slug: string }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(true);
 
-function CategoryChip({ category, store_slug, index }: CategoryChipProps) {
+  const measure = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setOverflowing(el.scrollWidth > el.clientWidth + 1);
+    setAtStart(el.scrollLeft <= 1);
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
+  };
+
+  useEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [categories.length]);
+
+  const scroll = (direction: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
+  };
+
   return (
-    <m.div
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.05, duration: 0.28, ease: "easeOut" }}
-      className="shrink-0"
-    >
-      <Link
-        href={`/${store_slug}/shop?category=${encodeURIComponent(category.name)}`}
-        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-gray-900 border border-stone-100 dark:border-gray-700 shadow-sm text-[11px] font-bold text-stone-700 dark:text-gray-200 hover:bg-stone-50 dark:hover:bg-gray-800 active:scale-95 transition-all duration-150 whitespace-nowrap"
+    <div className="relative">
+      {overflowing && !atStart && (
+        <button
+          type="button"
+          onClick={() => scroll(-1)}
+          aria-label="Scroll categories left"
+          className="hidden sm:flex absolute -left-4 top-10 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow-md items-center justify-center text-foreground hover:bg-accent transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      )}
+      {overflowing && !atEnd && (
+        <button
+          type="button"
+          onClick={() => scroll(1)}
+          aria-label="Scroll categories right"
+          className="hidden sm:flex absolute -right-4 top-10 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow-md items-center justify-center text-foreground hover:bg-accent transition-colors"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+      <div
+        ref={scrollRef}
+        onScroll={measure}
+        className="flex gap-4 sm:gap-5 overflow-x-auto scroll-smooth pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
-        <Tag className="h-3 w-3 text-stone-400 shrink-0" />
-        {category.name}
-      </Link>
-    </m.div>
+        {categories.map((cat, i) => (
+          <CategoryAvatar key={cat.id} category={cat} store_slug={store_slug} index={i} />
+        ))}
+      </div>
+    </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────
-   CATEGORY CARD — desktop grid
+   CATEGORY AVATAR — circular image chip, same design on every
+   screen size (see CategoryScrollRow above for the row itself).
+   Falls back to a generic tag icon when the category has no
+   image set yet.
 ───────────────────────────────────────────────────────── */
-interface CategoryCardProps {
+interface CategoryAvatarProps {
   category: Category;
   store_slug: string;
   index: number;
 }
 
-function CategoryCard({ category, store_slug, index }: CategoryCardProps) {
-  const t = useTranslation();
+function CategoryAvatar({ category, store_slug, index }: CategoryAvatarProps) {
   return (
     <m.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.38, ease: "easeOut" }}
+      transition={{ delay: Math.min(index * 0.05, 0.4), duration: 0.32, ease: "easeOut" }}
+      className="shrink-0 w-18 sm:w-24"
     >
       <Link
         href={`/${store_slug}/shop?category=${encodeURIComponent(category.name)}`}
-        className="group flex flex-col items-center text-center rounded-2xl bg-white dark:bg-gray-900 border border-stone-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+        className="group flex flex-col items-center text-center gap-2"
       >
-        <div className="w-full h-0.5 bg-linear-to-r from-transparent via-stone-200 to-transparent group-hover:via-stone-400 dark:group-hover:via-gray-500 transition-all duration-300" />
-        <div className="flex flex-col items-center gap-3 px-3 py-7 w-full">
-          <div className="w-11 h-11 rounded-xl bg-stone-50 dark:bg-gray-800 border border-stone-100 dark:border-gray-700 flex items-center justify-center shrink-0 group-hover:bg-stone-100 dark:group-hover:bg-gray-700 transition-colors duration-300">
-            <Tag className="h-4.5 w-4.5 text-stone-400 dark:text-gray-500 group-hover:text-stone-600 dark:group-hover:text-gray-300 transition-colors duration-300" />
-          </div>
-          <p className="text-[13px] font-bold text-stone-800 dark:text-gray-100 leading-snug line-clamp-2 tracking-tight group-hover:text-stone-900 dark:group-hover:text-white transition-colors duration-200">
-            {category.name}
-          </p>
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-stone-400 dark:text-gray-500 group-hover:text-stone-700 dark:group-hover:text-gray-300 group-hover:translate-x-0.5 transition-all duration-300">
-            {t.home.browse}
-            <ArrowRight className="h-3 w-3" />
-          </span>
+        <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full overflow-hidden border-2 border-border p-1 group-hover:border-primary transition-colors duration-300">
+          {category.image_url ? (
+            <div className="relative w-full h-full rounded-full overflow-hidden bg-muted">
+              <Image
+                src={category.image_url}
+                alt={category.name}
+                fill
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                sizes="80px"
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full rounded-full bg-muted flex items-center justify-center">
+              <Tag className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
         </div>
+        <p className="text-[12.5px] sm:text-[13px] font-bold text-foreground leading-snug line-clamp-1 tracking-tight">
+          {category.name}
+        </p>
       </Link>
     </m.div>
   );
@@ -923,7 +1025,7 @@ function ProductCard({
             </span>
           )}
           {!inStock && (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-sm text-white">
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-primary/80 backdrop-blur-sm text-primary-foreground">
               {t.home.soldOut}
             </span>
           )}
@@ -1007,7 +1109,7 @@ function ProductCard({
             <Link
               href={`/${store_slug}/product/${product.slug}`}
               aria-label={`${t.card.viewOptions} — ${product.name}`}
-              className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-stone-900 dark:bg-white text-white dark:text-gray-900 active:scale-90 transition-all duration-150 shadow-sm"
+              className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground active:scale-90 transition-all duration-150 shadow-sm"
             >
               <Eye className="h-3.5 w-3.5" />
             </Link>
@@ -1016,7 +1118,7 @@ function ProductCard({
               onClick={() => onAddToCart(product)}
               disabled={!inStock || loadingProductId === product.id}
               aria-label={`Add ${product.name} to cart`}
-              className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-stone-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed active:scale-90 transition-all duration-150 shadow-sm"
+              className="sm:hidden shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed active:scale-90 transition-all duration-150 shadow-sm"
             >
               {loadingProductId === product.id
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -9,7 +9,11 @@ import { FacebookPixelScript } from "@/app/components/common/FacebookPixelScript
 import { StoreOffline } from "@/app/components/common/StoreOffline";
 import { footerContent } from "@/lib/store/footerContent";
 import { getStoreBySlugFull } from "@/lib/queries/stores/getStoreBySlugFull";
+import { getStoreBranding } from "@/lib/queries/stores/getStoreBranding";
+import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getStoreAccessStateAdmin } from "@/lib/utils/getStoreAccessStateAdmin";
+import { buildStoreThemeCss, deriveStoreThemeVars, isBrandPalette } from "@/lib/utils/storeTheme";
+import { AnnouncementBar } from "@/app/components/common/AnnouncementBar";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -84,17 +88,43 @@ export default async function StoreLayout({
 
   // Storefront stays live through the trial and its grace period — only goes
   // offline once the grace period has fully lapsed with no payment.
-  const access = await getStoreAccessStateAdmin(storeData.id);
+  const [access, branding, settings] = await Promise.all([
+    getStoreAccessStateAdmin(storeData.id),
+    getStoreBranding(storeData.id),
+    getStoreSettings(storeData.id),
+  ]);
   if (access.state === "locked") {
     return <StoreOffline storeName={storeData.store_name} />;
   }
 
+  const palette = branding?.theme_palette && isBrandPalette(branding.theme_palette) ? branding.theme_palette : null;
+  const themeVars = deriveStoreThemeVars(palette);
+  const themeCss = palette ? buildStoreThemeCss(storeData.id, themeVars) : "";
+
+  // The announcement bar prefers the owner's manual text; when they haven't
+  // set one, it falls back to an auto-composed free-shipping line so that
+  // number can never go stale relative to the real setting (see
+  // AnnouncementBar.tsx). Resolved here (not just inside the component) so
+  // StoreHeader's fixed-position offset is correct on first paint.
+  const hasFreeShipping = !!settings?.free_shipping_threshold && settings.free_shipping_threshold > 0;
+  const showAnnouncement = !!branding?.announcement_text?.trim() || hasFreeShipping;
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col bg-background text-foreground"
+      data-store-theme={palette ? storeData.id : undefined}
+    >
+      {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
       {storeData.facebook_pixel_id && (
         <FacebookPixelScript pixelId={storeData.facebook_pixel_id} storeSlug={store_slug} />
       )}
-      <StoreHeader storeSlug={store_slug} />
+      {showAnnouncement && (
+        <AnnouncementBar
+          manualText={branding?.announcement_text ?? null}
+          freeShippingThreshold={settings?.free_shipping_threshold ?? null}
+        />
+      )}
+      <StoreHeader storeSlug={store_slug} hasAnnouncement={showAnnouncement} />
       <main className="grow">
         {children}
       </main>

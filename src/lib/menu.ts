@@ -30,6 +30,9 @@ import {
   Wallet,
   Calculator,
   Receipt,
+  Palette,
+  Images,
+  GalleryHorizontal,
 } from "lucide-react";
 import React from "react";
 
@@ -194,6 +197,21 @@ export const sideMenu: MenuItem[] = [
         title: "Shipping",
         href: "/dashboard/shipping-Management",
         icon: Truck,
+      },
+      {
+        title: "Storefront Design",
+        href: "/dashboard/storefront-design",
+        icon: Palette,
+      },
+      {
+        title: "Hero Slider",
+        href: "/dashboard/hero-slides",
+        icon: GalleryHorizontal,
+      },
+      {
+        title: "Promo Banners",
+        href: "/dashboard/promo-banners",
+        icon: Images,
       },
       // {
       //   title: "Store Management",
