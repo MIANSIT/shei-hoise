@@ -21,6 +21,9 @@ export interface CouponFormValues {
   starts_at?: Dayjs | null;
   ends_at?: Dayjs | null;
   is_active: boolean;
+  title?: string | null;
+  is_featured: boolean;
+  show_on_storefront: boolean;
 }
 
 interface CouponFormModalProps {
@@ -65,10 +68,18 @@ function CouponFormModal({
         starts_at: editingCoupon.starts_at ? dayjs(editingCoupon.starts_at) : null,
         ends_at: editingCoupon.ends_at ? dayjs(editingCoupon.ends_at) : null,
         is_active: editingCoupon.is_active,
+        title: editingCoupon.title ?? undefined,
+        is_featured: editingCoupon.is_featured,
+        show_on_storefront: editingCoupon.show_on_storefront,
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ discount_type: CouponDiscountType.PERCENTAGE, is_active: true });
+      form.setFieldsValue({
+        discount_type: CouponDiscountType.PERCENTAGE,
+        is_active: true,
+        is_featured: false,
+        show_on_storefront: false,
+      });
     }
   }, [open, mode, editingCoupon, form]);
 
@@ -129,6 +140,14 @@ function CouponFormModal({
     >
       <div className="px-6 pt-5 pb-2">
         <Form form={form} layout="vertical">
+          <Form.Item
+            name="title"
+            label={<FieldLabel>Display Title (optional)</FieldLabel>}
+            tooltip="Shown to customers on the storefront (homepage strip, coupons page) instead of the raw code — e.g. 'Get 5% off your first order'."
+          >
+            <Input placeholder="e.g. Get 5% off your first order" maxLength={120} className="rounded-lg h-9.5" />
+          </Form.Item>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item
               name="code"
@@ -243,9 +262,30 @@ function CouponFormModal({
             </Form.Item>
           </div>
 
-          <Form.Item name="is_active" label={<FieldLabel>Active</FieldLabel>} valuePropName="checked" style={{ marginBottom: 0 }}>
+          <Form.Item name="is_active" label={<FieldLabel>Active</FieldLabel>} valuePropName="checked">
             <Switch />
           </Form.Item>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <Form.Item
+              name="show_on_storefront"
+              label={<FieldLabel>Show on Storefront</FieldLabel>}
+              tooltip="Displays this coupon in the homepage offer strip and coupons page for customers to see and copy."
+              valuePropName="checked"
+              style={{ marginBottom: 0 }}
+            >
+              <Switch />
+            </Form.Item>
+            <Form.Item
+              name="is_featured"
+              label={<FieldLabel>Featured</FieldLabel>}
+              tooltip="When multiple coupons are shown on the storefront, the featured one is preferred over the best-discount default."
+              valuePropName="checked"
+              style={{ marginBottom: 0 }}
+            >
+              <Switch />
+            </Form.Item>
+          </div>
         </Form>
       </div>
     </Modal>

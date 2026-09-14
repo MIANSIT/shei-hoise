@@ -597,7 +597,7 @@ export default function ProductPage() {
   if (loading) return <ProductPageSkeleton />;
   if (!product)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white dark:bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           {t.product.productNotFound}
         </p>
@@ -615,9 +615,9 @@ export default function ProductPage() {
   const totalPrice = displayPrice * quantity;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
+    <div className="min-h-screen bg-background transition-colors duration-200">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-end gap-4">
           <Breadcrumb
             store={store_slug}
@@ -653,7 +653,7 @@ export default function ProductPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.08 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_12px_rgba(0,0,0,0.4)] p-6 md:p-8 transition-colors duration-200"
+            className="bg-card rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_12px_rgba(0,0,0,0.4)] p-6 md:p-8 transition-colors duration-200"
           >
             {/* Category + stars */}
             <div className="flex items-center justify-between mb-3">

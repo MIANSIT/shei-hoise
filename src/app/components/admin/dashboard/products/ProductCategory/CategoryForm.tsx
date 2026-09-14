@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useZodForm } from "@/lib/utils/useZodForm";
 import {
   createCategorySchema,
@@ -11,9 +11,11 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import type { Category } from "@/lib/types/category";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
+import { ImageUploader } from "@/app/components/admin/dashboard/store-settings/storeCard/ImageUploader";
 
 interface AddCategoryCardFormProps {
-  onSubmit?: (data: CreateCategoryType) => Promise<void> | void;
+  // imageFile: undefined = unchanged, null = image removed, File = new/replacement image.
+  onSubmit?: (data: CreateCategoryType, imageFile?: File | null) => Promise<void> | void;
   editingCategory?: (CreateCategoryType & { id?: string }) | Category | null;
   onSuccess?: () => void;
   allCategories?: Category[]; // kept in interface for compatibility, not used
@@ -31,6 +33,15 @@ export default function AddCategoryCardForm({
   // We skip one slug-sync cycle after reset so we don't overwrite
   // the incoming slug, but allow all subsequent name changes to sync.
   const justResetRef = useRef(false);
+
+  // undefined = leave the existing image alone (edit mode, untouched),
+  // null = no image (create mode, or explicitly removed in edit mode),
+  // File = a newly picked image. CategoryFormPanel remounts this component
+  // (via `key`) whenever the editing target changes, so this only needs to
+  // be right at mount time, not resynced on prop changes.
+  const [imageFile, setImageFile] = useState<File | null | undefined>(
+    editingCategory ? undefined : null,
+  );
 
   const form = useZodForm<CreateCategoryType>(createCategorySchema, {
     name: "",
@@ -96,7 +107,7 @@ export default function AddCategoryCardForm({
     };
     try {
       if (onSubmit) {
-        await onSubmit(normalized);
+        await onSubmit(normalized, imageFile);
       } else {
         toast.info("No submission handler provided.");
       }
@@ -135,6 +146,17 @@ export default function AddCategoryCardForm({
         onSubmit={form.handleSubmit(handleSubmit)}
         className="p-4 sm:p-5 space-y-3 sm:space-y-4"
       >
+        <ImageUploader
+          value={
+            imageFile === undefined
+              ? ((editingCategory as any)?.image_url ?? undefined)
+              : undefined
+          }
+          onChange={setImageFile}
+          label="Category Image (optional)"
+          aspectHint="1:1 recommended"
+        />
+
         <FormField
           control={form.control}
           name="name"

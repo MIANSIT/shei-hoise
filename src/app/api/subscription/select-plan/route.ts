@@ -54,11 +54,21 @@ export async function POST(req: Request) {
     // Existing subscription (if any) — used both to detect a plan switch and to reuse its id
     const { data: existingSub } = await supabaseAdmin
       .from("store_subscriptions")
-      .select("id, plan_id")
+      .select("id, plan_id, billing_cycle, current_period_end")
       .eq("store_id", storeId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // Custom-cycle subscriptions are priced and scheduled manually by the
+    // super admin — self-checkout must never overwrite that arrangement with
+    // a standard monthly/yearly price.
+    if (existingSub?.billing_cycle === "custom") {
+      return Response.json(
+        { error: "Your plan is custom-priced. Contact us to renew or make changes." },
+        { status: 400 },
+      );
+    }
 
     // Block duplicate pending payments on the same subscription
     if (existingSub) {
@@ -102,7 +112,18 @@ export async function POST(req: Request) {
     }
 
     const now = new Date();
-    const periodEnd = computePeriodEnd(now, billing_cycle);
+
+    // Renewing the same plan while time is already paid for must extend from
+    // where the current period ends, not reset to today — otherwise a store
+    // that pays early loses the days it already paid for. A plan switch still
+    // starts fresh from now, since it's a different price/feature set.
+    const isSamePlanRenewal = existingSub?.plan_id === plan_id;
+    const existingPeriodEnd = existingSub?.current_period_end ? new Date(existingSub.current_period_end) : null;
+    const periodStart =
+      isSamePlanRenewal && existingPeriodEnd && existingPeriodEnd.getTime() > now.getTime()
+        ? existingPeriodEnd
+        : now;
+    const periodEnd = computePeriodEnd(periodStart, billing_cycle);
 
     let subscriptionId = existingSub?.id ?? null;
 
@@ -139,7 +160,7 @@ export async function POST(req: Request) {
         currency: plan.currency,
         billing_cycle,
         status: "submitted",
-        period_start: now.toISOString(),
+        period_start: periodStart.toISOString(),
         period_end: periodEnd.toISOString(),
         due_date: now.toISOString(),
         payment_method: payment.method,

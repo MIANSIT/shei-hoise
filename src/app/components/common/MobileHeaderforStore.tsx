@@ -8,6 +8,7 @@ import { NavLink } from "../header/NavMenu";
 import ThemeToggle from "../theme/ThemeToggle";
 import ShoppingCartIcon from "../cart/ShoppingCartIcon";
 import CartBottomBar from "../cart/CartBottomBar";
+import { HeaderSearch } from "./HeaderSearch";
 import StoreLogoTitle from "../header/StoreLogoTitle";
 import UserDropdownMobile from "./UserDropdownMobile";
 import { useCurrentCustomer } from "@/lib/hook/useCurrentCustomer";
@@ -23,15 +24,18 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 interface MobileHeaderProps {
   storeSlug: string;
   isAdmin?: boolean;
+  hasAnnouncement?: boolean;
 }
 
 export default function MobileHeader({
   storeSlug,
   isAdmin = false,
+  hasAnnouncement = false,
 }: MobileHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [isStoreLoading, setIsStoreLoading] = useState(true);
 
@@ -120,10 +124,12 @@ export default function MobileHeader({
     <>
       <header
         ref={menuRef}
-        className="bg-background px-4 py-3 shadow-md lg:hidden fixed top-0 left-0 w-full z-50"
+        className={`bg-header text-header-foreground px-4 py-3 shadow-md lg:hidden fixed left-0 w-full z-50 ${
+          hasAnnouncement ? "top-9" : "top-0"
+        }`}
       >
         <div className="flex items-center justify-between">
-          {/* Store Logo & Title */}
+          {/* Store Logo & Title — title hides while search is expanded to free up room for it */}
           {isStoreLoading ? (
             <div className="flex items-center gap-3">
               <SheiSkeleton className="w-8 h-8 rounded" />
@@ -134,11 +140,11 @@ export default function MobileHeader({
               storeSlug={storeSlug}
               storeName={store?.store_name}
               logoUrl={store?.logo_url}
-              showTitle={true}
+              showTitle={!searchExpanded}
             />
           )}
 
-          {/* Header Icons */}
+          {/* Header Icons — collapse to just search while it's expanded, same tight-header reasoning */}
           {customerLoading ? (
             <div className="flex items-center gap-2">
               <SheiSkeleton className="w-6 h-6 rounded" />
@@ -147,20 +153,24 @@ export default function MobileHeader({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <LanguageSwitcher />
-              <ThemeToggle />
-              <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
-              <button
-                className="text-foreground hover:bg-accent p-2 rounded-md"
-                onClick={() => setMenuOpen((prev) => !prev)}
-                aria-label={menuOpen ? "Close menu" : "Open menu"}
-              >
-                {menuOpen ? (
-                  <HiOutlineX size={18} />
-                ) : (
-                  <HiOutlineMenu size={18} />
-                )}
-              </button>
+              <HeaderSearch storeSlug={storeSlug} onExpandedChange={setSearchExpanded} />
+              {!searchExpanded && (
+                <>
+                  <ThemeToggle />
+                  <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
+                  <button
+                    className="text-foreground hover:bg-accent p-2 rounded-md"
+                    onClick={() => setMenuOpen((prev) => !prev)}
+                    aria-label={menuOpen ? "Close menu" : "Open menu"}
+                  >
+                    {menuOpen ? (
+                      <HiOutlineX size={18} />
+                    ) : (
+                      <HiOutlineMenu size={18} />
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -229,6 +239,12 @@ export default function MobileHeader({
                       </Link>
                     </li>
                   )}
+
+                  {/* Language — moved out of the top icon row (too tight alongside search/cart/theme/menu on mobile) into here, where there's room */}
+                  <li className="flex items-center justify-between py-2 px-3">
+                    <span className="text-sm text-muted-foreground">{t.nav.language}</span>
+                    <LanguageSwitcher />
+                  </li>
 
                   {/* User Section */}
                   {customerLoading ? (

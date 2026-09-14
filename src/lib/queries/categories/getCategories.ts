@@ -11,7 +11,7 @@ export async function getCategoriesQuery(
 ) {
   let query = supabase
     .from("categories")
-    .select("id,name,slug,description,parent_id,is_active,created_at", {
+    .select("id,name,slug,description,parent_id,image_url,is_active,created_at", {
       count: "exact",
     })
     .eq("store_id", storeId)

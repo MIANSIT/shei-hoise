@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Skeleton, Empty, App } from "antd";
-import { ArrowLeft, Package, CheckCircle, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Package, CheckCircle, CheckCircle2, Sparkles, ChevronDown, ChevronUp, Phone, Mail } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { getPlansForStore } from "@/lib/queries/subscription/getPlansForStore";
 import { parseFeatures, parseLimits, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
+import { CONTACT_INFO } from "@/lib/store/contact";
 
 // ── Plan card ─────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ function PlanCard({
   billingCycle,
   hasSubscription,
   showAction,
+  isCustomCycle,
   onSelect,
 }: {
   plan: PublicPlan;
@@ -25,6 +27,7 @@ function PlanCard({
   billingCycle: string;
   hasSubscription: boolean;
   showAction: boolean;
+  isCustomCycle: boolean;
   onSelect: (plan: PublicPlan) => void;
 }) {
   const t = useTranslation();
@@ -91,26 +94,43 @@ function PlanCard({
         )}
       </div>
 
-      <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
-            {currency}{price.toLocaleString("en-BD")}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {isYearly ? t.admin.subPerYear : t.admin.subPerMonth}
-          </span>
+      {isCustomCycle ? (
+        <div className="rounded-xl bg-muted/60 border border-border px-4 py-3">
+          <p className="text-sm font-semibold text-foreground mb-2">{t.admin.subCustomPlanTitle}</p>
+          <p className="text-xs text-muted-foreground mb-3">{t.admin.subCustomPlanDesc}</p>
+          <div className="space-y-1.5">
+            <a href={CONTACT_INFO.phoneHref} className="flex items-center gap-2 text-sm font-medium text-foreground hover:underline">
+              <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              {CONTACT_INFO.phone}
+            </a>
+            <a href={CONTACT_INFO.emailHref} className="flex items-center gap-2 text-sm font-medium text-foreground hover:underline">
+              <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              {CONTACT_INFO.email}
+            </a>
+          </div>
         </div>
-        {isYearly && (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-            {t.admin.subApproxPrefix} {currency}{Math.round(perMonth).toLocaleString("en-BD")}{t.admin.subPerMonth} {t.admin.subBilledYearly}
-          </p>
-        )}
-        {plan.trial_days > 0 && (
-          <p className="text-xs text-violet-600 dark:text-violet-400 mt-1 font-medium">
-            {plan.trial_days} {t.admin.subFreeTrialDays}
-          </p>
-        )}
-      </div>
+      ) : (
+        <div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+              {currency}{price.toLocaleString("en-BD")}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {isYearly ? t.admin.subPerYear : t.admin.subPerMonth}
+            </span>
+          </div>
+          {isYearly && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+              {t.admin.subApproxPrefix} {currency}{Math.round(perMonth).toLocaleString("en-BD")}{t.admin.subPerMonth} {t.admin.subBilledYearly}
+            </p>
+          )}
+          {plan.trial_days > 0 && (
+            <p className="text-xs text-violet-600 dark:text-violet-400 mt-1 font-medium">
+              {plan.trial_days} {t.admin.subFreeTrialDays}
+            </p>
+          )}
+        </div>
+      )}
 
       {features.length > 0 && (
         <div className="flex-1">
@@ -142,7 +162,7 @@ function PlanCard({
         </div>
       )}
 
-      {showAction && (
+      {showAction && !isCustomCycle && (
         <button
           type="button"
           onClick={() => onSelect(plan)}
@@ -169,6 +189,7 @@ export default function SubscriptionPlansPage() {
 
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [isCustomCycle, setIsCustomCycle] = useState(false);
   const [plans, setPlans] = useState<PublicPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -186,6 +207,7 @@ export default function SubscriptionPlansPage() {
       const sub = storeId ? await getStoreSubscription(storeId) : null;
       setCurrentPlanId(sub?.plan_id ?? null);
       setHasSubscription(!!sub);
+      setIsCustomCycle(sub?.billing_cycle === "custom");
       if (sub?.billing_cycle === "yearly" || sub?.billing_cycle === "monthly") {
         setBillingCycle(sub.billing_cycle);
       }
@@ -321,6 +343,7 @@ export default function SubscriptionPlansPage() {
               billingCycle={billingCycle}
               hasSubscription={hasSubscription}
               showAction={canPay}
+              isCustomCycle={isCustomCycle}
               onSelect={handleSelectPlan}
             />
           ))}

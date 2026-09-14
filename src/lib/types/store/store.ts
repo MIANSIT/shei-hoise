@@ -1,6 +1,7 @@
 // /lib/types/store/store.ts
 
 import { Currency } from "../enums";
+import type { BrandPalette } from "@/lib/utils/storeTheme";
 
 // Store types
 export interface StoreData {
@@ -71,6 +72,15 @@ export interface StoreSettings {
   facebook_pixel_id?: string | null;
   facebook_capi_access_token?: string | null;
   facebook_test_event_code?: string | null;
+  created_at?: Date | string;
+  updated_at?: Date | string;
+}
+
+export interface StoreBranding {
+  id: string;
+  store_id: string;
+  theme_palette: BrandPalette | null;
+  announcement_text: string | null;
   created_at?: Date | string;
   updated_at?: Date | string;
 }

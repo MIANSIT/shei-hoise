@@ -325,12 +325,12 @@ export default function SalesReport() {
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b border-border px-4 sm:px-8 py-4 sm:py-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-linear-to-br from-indigo-400 to-purple-600 flex items-center justify-center shrink-0">
               <BarChart2 size={18} color="white" strokeWidth={2} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
                 Sales Report
               </h1>
@@ -456,6 +456,7 @@ export default function SalesReport() {
               dataSource={report.rows}
               rowKey="period_key"
               pagination={false}
+              scroll={{ x: 640 }}
               locale={{ emptyText: "No sales in this period" }}
               expandable={{
                 expandedRowRender: (row) => {

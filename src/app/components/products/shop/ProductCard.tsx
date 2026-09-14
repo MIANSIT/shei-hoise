@@ -285,7 +285,7 @@ export default function ProductCard({
               href={`/${store_slug}/product/${product.slug}`}
               className="flex-1"
             >
-              <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-semibold tracking-wide hover:bg-gray-700 dark:hover:bg-gray-300 active:scale-[0.98] transition-all duration-200">
+              <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold tracking-wide hover:bg-primary-hover active:scale-[0.98] transition-all duration-200">
                 <Eye className="w-3.5 h-3.5" />
                 {t.card.viewOptions}
               </button>
@@ -306,7 +306,7 @@ export default function ProductCard({
                     ${
                       showSuccess
                         ? "bg-emerald-500 text-white"
-                        : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300"
+                        : "bg-primary text-primary-foreground hover:bg-primary-hover"
                     }
                   `}
                 >
@@ -320,7 +320,7 @@ export default function ProductCard({
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${adding && !showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}
                   >
-                    <div className="w-3 h-3 border-2 border-white dark:border-gray-900 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                   </span>
                   <span
                     className={`flex items-center gap-1.5 transition-all duration-200 ${showSuccess ? "opacity-100 scale-100" : "opacity-0 scale-75"} absolute`}

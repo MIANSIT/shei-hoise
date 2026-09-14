@@ -36,6 +36,9 @@ function toCreateCouponType(values: CouponFormValues): CreateCouponType {
     starts_at: values.starts_at ? values.starts_at.toISOString() : null,
     ends_at: values.ends_at ? values.ends_at.toISOString() : null,
     is_active: values.is_active,
+    title: values.title ?? null,
+    is_featured: values.is_featured,
+    show_on_storefront: values.show_on_storefront,
   };
 }
 
@@ -123,16 +126,24 @@ export default function CouponsPage() {
     setSubmitting(true);
     try {
       if (modalMode === "create") {
-        await createCoupon(toCreateCouponType(values), storeId);
+        const created = await createCoupon(toCreateCouponType(values), storeId);
+        if (!created) {
+          error("Failed to save coupon. Please try again.");
+          return;
+        }
         success("Coupon created successfully");
         closeModal();
         fetchCoupons();
         fetchLimitStatus();
       } else if (editingCoupon) {
-        await updateCoupon(
+        const updated = await updateCoupon(
           { id: editingCoupon.id, ...toCreateCouponType(values) },
           storeId,
         );
+        if (!updated) {
+          error("Failed to save coupon. Please try again.");
+          return;
+        }
         success("Coupon updated successfully");
         closeModal();
         fetchCoupons();

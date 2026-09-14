@@ -10,7 +10,6 @@ export const createCategorySchema = z.object({
     .transform((val) => (val === "" ? null : val))
     .nullable()
     .optional(),
-  // image: z.string().url().optional().nullable(),
   is_active: z.boolean().default(true),
 });
 

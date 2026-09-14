@@ -40,7 +40,13 @@ function computeMargin(
 export function buildStockRows(products: ProductWithStock[]): StockExportRow[] {
   const rows: StockExportRow[] = [];
 
-  for (const p of products) {
+  // Alphabetical by product name (A, B, C...) rather than whatever order the
+  // fetch happened to return — makes a long export actually scannable.
+  const sortedProducts = [...products].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
+
+  for (const p of sortedProducts) {
     if (p.variants?.length) {
       for (const v of p.variants) {
         const sellingPrice =

@@ -27,6 +27,7 @@ type RawCategory = {
   slug: string;
   description?: string | null;
   parent_id?: string | null;
+  image_url?: string | null;
   is_active: boolean;
   created_at?: string;
 };
@@ -118,6 +119,7 @@ export default function CategoryPage() {
           slug: c.slug,
           description: c.description ?? undefined,
           parent_id: c.parent_id ?? null,
+          image_url: c.image_url ?? null,
           is_active: c.is_active,
           createdAt: c.created_at
             ? new Date(c.created_at).toISOString().split("T")[0]
@@ -210,7 +212,7 @@ export default function CategoryPage() {
   );
 
   const handleFormSubmit = useCallback(
-    async (data: CreateCategoryType) => {
+    async (data: CreateCategoryType, imageFile?: File | null) => {
       if (!user?.store_id) return;
       const parent_id =
         data.parent_id === "" || data.parent_id === null
@@ -237,14 +239,19 @@ export default function CategoryPage() {
               is_active: data.is_active ?? true,
             },
             user.store_id,
+            imageFile,
           );
           notify.info(`"${data.name}" ${t.admin.prodCatUpdated}`);
         } else {
-          await createCategory(
+          const result = await createCategory(
             { ...data, parent_id, is_active: data.is_active ?? true },
             user.store_id,
+            imageFile,
           );
           notify.success(`"${data.name}" ${t.admin.prodCatCreated}`);
+          if (result.imageError) {
+            notify.error(`Category saved, but the image failed to upload: ${result.imageError}`);
+          }
         }
         setShowForm(false);
         setEditingCategory(null);

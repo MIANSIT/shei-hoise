@@ -66,9 +66,14 @@ export async function getQuickSaleDailySummary(
 ): Promise<QuickSaleDailySummary> {
   if (!storeId) return EMPTY;
 
-  // Explicit +06:00 (Dhaka has no DST) — same day-boundary convention as
-  // getSalesReport.ts, so this view and the Sales Report never disagree
-  // about which calendar day an order near midnight falls on.
+  // Filters on order_date (when the sale actually happened — a plain date,
+  // independently settable from created_at, see getCustomerOrderHistory.ts),
+  // not created_at (when the row was written). A Quick Sale entered for an
+  // earlier transaction, or an order edited after the fact, keeps its own
+  // order_date — filtering by created_at would silently drop it from (or
+  // wrongly add it to) the day it actually belongs to for cash reconciliation.
+  // Still sorted by created_at for a sensible within-day sequence, since
+  // order_date alone has no time-of-day to order by.
   const [ordersRes, paymentsRes] = await Promise.all([
     supabase
       .from("orders")
@@ -78,8 +83,7 @@ export async function getQuickSaleDailySummary(
       .eq("store_id", storeId)
       .neq("status", OrderStatus.CANCELLED)
       .neq("status", OrderStatus.RETURNED)
-      .gte("created_at", `${dateStr}T00:00:00+06:00`)
-      .lte("created_at", `${dateStr}T23:59:59.999+06:00`)
+      .eq("order_date", dateStr)
       .order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")

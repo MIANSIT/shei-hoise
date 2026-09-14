@@ -45,9 +45,9 @@ function StatCard({
         ? "text-emerald-600 dark:text-emerald-400"
         : "text-foreground";
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/50 p-4 flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className={`text-xl font-bold ${toneClass}`}>{value}</span>
+    <div className="rounded-2xl border border-border/60 bg-card/50 p-4 flex flex-col gap-1 min-w-0">
+      <span className="text-xs font-medium text-muted-foreground truncate">{label}</span>
+      <span className={`text-xl font-bold truncate ${toneClass}`}>{value}</span>
     </div>
   );
 }
@@ -232,7 +232,7 @@ export default function QuickSaleAudit() {
                   value={countedCash}
                   onChange={(v) => setCountedCash(v)}
                   placeholder="0.00"
-                  style={{ width: 140 }}
+                  style={{ width: "100%", maxWidth: 140 }}
                 />
               </div>
               {variance != null && (
