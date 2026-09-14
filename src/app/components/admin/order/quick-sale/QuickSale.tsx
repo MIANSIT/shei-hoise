@@ -7,6 +7,7 @@ import {
   Button,
   Segmented,
   InputNumber,
+  DatePicker,
   Empty,
   Space,
   Switch,
@@ -14,6 +15,7 @@ import {
   Tag,
   notification,
 } from "antd";
+import dayjs, { Dayjs } from "dayjs";
 import { SearchOutlined, CameraOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ProductImage } from "@/app/components/products/ProductImage";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -107,6 +109,11 @@ export default function QuickSale() {
   const [cashReceived, setCashReceived] = useState<number | null>(null);
   const [isDueSale, setIsDueSale] = useState(false);
   const [amountReceivedNow, setAmountReceivedNow] = useState<number | null>(null);
+  // Optional — defaults to today, same as the Create Order flow's Order Date.
+  // Lets a cashier record a sale that actually happened on an earlier day
+  // (e.g. entering yesterday's counter slips) so it lands in the right day's
+  // register audit / reports, which filter on order_date.
+  const [orderDate, setOrderDate] = useState<Dayjs>(dayjs());
   const [submitting, setSubmitting] = useState(false);
 
   const [variantPickerProduct, setVariantPickerProduct] =
@@ -438,6 +445,7 @@ export default function QuickSale() {
         channel: "pos",
         currency: "BDT",
         cashReceived: receiptCashReceived,
+        orderDate: orderDate.format("YYYY-MM-DD"),
       };
 
       const result = await dataService.createOrder(orderData);
@@ -452,7 +460,7 @@ export default function QuickSale() {
             orderId: result.orderId,
             amount: receivedNow,
             paymentMethod,
-            paymentDate: now.toISOString().slice(0, 10),
+            paymentDate: orderDate.format("YYYY-MM-DD"),
           });
           if (!paymentResult.success) {
             notification.warning({
@@ -482,7 +490,9 @@ export default function QuickSale() {
           due: isDueSale ? dueAmount : null,
           customerName: isDueSale ? walkInName.trim() : null,
           customerPhone: isDueSale ? walkInPhone.trim() : null,
-          date: now,
+          // Prints the sale's own date (back-dated when the cashier changed
+          // it), keeping the current clock time since order_date has none.
+          date: orderDate.hour(now.getHours()).minute(now.getMinutes()).toDate(),
         });
         setCart([]);
         setDiscount(0);
@@ -491,6 +501,7 @@ export default function QuickSale() {
         setCashReceived(null);
         setIsDueSale(false);
         setAmountReceivedNow(null);
+        setOrderDate(dayjs());
         fetchProducts();
       } else {
         notification.error({ message: "Sale failed", description: result.error });
@@ -742,6 +753,25 @@ export default function QuickSale() {
                 {total.toFixed(2)}
               </span>
             </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between gap-2">
+              <Text type="secondary" className="text-xs">
+                Sale date (optional)
+              </Text>
+              <DatePicker
+                value={orderDate}
+                onChange={(date) => date && setOrderDate(date)}
+                disabledDate={(current) => !!current && current > dayjs().endOf("day")}
+                allowClear={false}
+                format="DD/MM/YYYY"
+                style={{ width: 150 }}
+              />
+            </div>
+            <Text type="secondary" className="text-[11px] block">
+              Defaults to today — change it only when recording an earlier sale.
+            </Text>
           </div>
 
           <div className="space-y-2 pt-1">

@@ -5,11 +5,16 @@ import { useSearchParams } from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../../components/products/ProductGrid";
-import ProductFilterSection from "@/app/components/products/ProductFilterSection";
+import ProductFilterSection, {
+  ALL_CATEGORIES,
+} from "@/app/components/products/ProductFilterSection";
 import { StorePageSkeleton } from "../../components/skeletons/StorePageSkeleton";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
-import { clientGetProducts } from "@/lib/queries/products/clientGetProducts";
+import {
+  clientGetProducts,
+  type ProductSortOption,
+} from "@/lib/queries/products/clientGetProducts";
 import { Product } from "@/lib/types/product";
 import { Category } from "@/lib/types/category";
 import NotFoundPage from "../../not-found";
@@ -22,6 +27,19 @@ import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 
 interface ShopPageProps {
   params: Promise<{ store_slug: string }>;
+}
+
+const SORT_OPTIONS: ProductSortOption[] = [
+  "default",
+  "newest",
+  "price_asc",
+  "price_desc",
+  "name_asc",
+];
+
+/** Guards the ?sort= param — anything unrecognised falls back to the default. */
+function parseSortParam(value: string | null): ProductSortOption {
+  return SORT_OPTIONS.find((o) => o === value) ?? "default";
 }
 
 export default function ShopPage({ params }: ShopPageProps) {
@@ -39,11 +57,16 @@ export default function ShopPage({ params }: ShopPageProps) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Held as a category *slug* so a shared ?category= link survives the shop
+  // owner renaming the category.
   const [activeCategory, setActiveCategory] = useState<string>(
-    searchParams.get("category") || "All Products",
+    searchParams.get("category") || ALL_CATEGORIES,
   );
   const [searchQuery, setSearchQuery] = useState<string>(
     searchParams.get("search") || "",
+  );
+  const [sortOption, setSortOption] = useState<ProductSortOption>(
+    parseSortParam(searchParams.get("sort")),
   );
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,10 +78,15 @@ export default function ShopPage({ params }: ShopPageProps) {
   const storeIdRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
 
-  const updateURLParams = (category: string, search: string) => {
+  const updateURLParams = (
+    category: string,
+    search: string,
+    sort: ProductSortOption,
+  ) => {
     const p = new URLSearchParams();
-    if (category !== "All Products") p.set("category", category);
+    if (category !== ALL_CATEGORIES) p.set("category", category);
     if (search.trim()) p.set("search", search.trim());
+    if (sort !== "default") p.set("sort", sort);
     const qs = p.toString();
     window.history.replaceState(
       {},
@@ -72,6 +100,7 @@ export default function ShopPage({ params }: ShopPageProps) {
       page: number,
       category: string,
       search: string,
+      sort: ProductSortOption,
       isInitialLoad: boolean = false,
     ) => {
       if (isLoadingRef.current) return;
@@ -81,7 +110,7 @@ export default function ShopPage({ params }: ShopPageProps) {
         else setLoadingMore(true);
 
         const categoryFilter =
-          category === "All Products" ? undefined : category;
+          category === ALL_CATEGORIES ? undefined : category;
         const searchFilter = search.trim() || undefined;
 
         const result = await clientGetProducts(
@@ -90,6 +119,7 @@ export default function ShopPage({ params }: ShopPageProps) {
           ITEMS_PER_PAGE,
           categoryFilter,
           searchFilter,
+          sort,
         );
 
         if (isInitialLoad) setProducts(result.products);
@@ -126,10 +156,26 @@ export default function ShopPage({ params }: ShopPageProps) {
 
         const [categoriesData] = await Promise.all([
           getCategoriesQuery(storeId),
-          loadProducts(1, activeCategory, searchQuery, true),
+          loadProducts(1, activeCategory, searchQuery, sortOption, true),
         ]);
 
-        if (categoriesData.data) setCategories(categoriesData.data);
+        if (categoriesData.data) {
+          setCategories(categoriesData.data);
+
+          // Links shared before the filter moved to slugs carry a category
+          // *name* (e.g. ?category=Men's%20Shirts). Swap it for the matching
+          // slug so the pills highlight correctly and the URL self-heals —
+          // the query resolved it either way, so nothing was broken meanwhile.
+          if (activeCategory !== ALL_CATEGORIES) {
+            const bySlug = categoriesData.data.find(
+              (c) => c.slug === activeCategory,
+            );
+            const byName = categoriesData.data.find(
+              (c) => c.name.toLowerCase() === activeCategory.toLowerCase(),
+            );
+            if (!bySlug && byName) setActiveCategory(byName.slug);
+          }
+        }
       } catch (err) {
         console.error(err);
         showError(t.shop.failedStore);
@@ -137,7 +183,7 @@ export default function ShopPage({ params }: ShopPageProps) {
     }
 
     init();
-    updateURLParams(activeCategory, searchQuery);
+    updateURLParams(activeCategory, searchQuery, sortOption);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store_slug]);
 
@@ -151,19 +197,23 @@ export default function ShopPage({ params }: ShopPageProps) {
 
     setCurrentPage(1);
     setHasMore(true);
-    loadProducts(1, activeCategory, searchQuery, true);
-    updateURLParams(activeCategory, searchQuery);
+    loadProducts(1, activeCategory, searchQuery, sortOption, true);
+    updateURLParams(activeCategory, searchQuery, sortOption);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, searchQuery]);
+  }, [activeCategory, searchQuery, sortOption]);
 
-  const handleCategoryChange = useCallback((category: string) => {
-    setActiveCategory(category);
+  const handleCategoryChange = useCallback((categorySlug: string) => {
+    setActiveCategory(categorySlug);
     setSearchQuery("");
+  }, []);
+
+  const handleSortChange = useCallback((sort: ProductSortOption) => {
+    setSortOption(sort);
   }, []);
 
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    setActiveCategory("All Products");
+    setActiveCategory(ALL_CATEGORIES);
     if (query.trim()) {
       fbq(FbEvent.SEARCH, { search_string: query.trim() }, store_slug);
     }
@@ -173,13 +223,14 @@ export default function ShopPage({ params }: ShopPageProps) {
     if (!hasMore || loadingMore || isLoadingRef.current) return;
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    await loadProducts(nextPage, activeCategory, searchQuery, false);
+    await loadProducts(nextPage, activeCategory, searchQuery, sortOption, false);
   }, [
     hasMore,
     loadingMore,
     currentPage,
     activeCategory,
     searchQuery,
+    sortOption,
     loadProducts,
   ]);
 
@@ -226,6 +277,10 @@ export default function ShopPage({ params }: ShopPageProps) {
     }
   };
 
+  // The empty state names the category the shopper sees, not its slug.
+  const activeCategoryName =
+    categories.find((c) => c.slug === activeCategory)?.name ?? activeCategory;
+
   if (loading && products.length === 0) return <StorePageSkeleton />;
   if (storeExists === false) return <NotFoundPage />;
 
@@ -242,6 +297,8 @@ export default function ShopPage({ params }: ShopPageProps) {
           onCategoryChange={handleCategoryChange}
           categories={categories}
           totalProducts={totalProducts}
+          sortOption={sortOption}
+          onSortChange={handleSortChange}
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
         />
@@ -263,9 +320,9 @@ export default function ShopPage({ params }: ShopPageProps) {
             <p className="text-gray-700 dark:text-gray-200 font-semibold text-base">
               {searchQuery
                 ? `${t.shop.noResultsFor} "${searchQuery}"`
-                : activeCategory === "All Products"
+                : activeCategory === ALL_CATEGORIES
                   ? t.shop.noProducts
-                  : `${t.shop.nothingIn} "${activeCategory}" ${t.shop.yet}`.trim()}
+                  : `${t.shop.nothingIn} "${activeCategoryName}" ${t.shop.yet}`.trim()}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
               {t.shop.tryDifferent}

@@ -1,6 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  DragHandle,
+  SortableTableRow,
+} from "@/app/components/admin/common/SortableTableRow";
+import { reorderProducts } from "@/lib/queries/products/reorderProducts";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
@@ -65,6 +85,8 @@ interface ProductTableProps {
   storeSlug?: string;
   storeName?: string;
   storeLogoUrl?: string | null;
+  /** Called after a drag is saved, so the list can be refetched. */
+  onReorderSuccess?: () => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -207,6 +229,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   storeSlug,
   storeName,
   storeLogoUrl,
+  onReorderSuccess,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -236,6 +259,46 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
   const cur = currencyLoading ? "" : (currencyIcon ?? "৳");
+
+  // Mirrors the fetched page so a drag lands instantly; replaced whenever the
+  // parent refetches (filter, search, page change, saved reorder).
+  const [orderedProducts, setOrderedProducts] = useState(products);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  useEffect(() => {
+    setOrderedProducts(products);
+  }, [products]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 0, tolerance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedProducts.findIndex((p) => p.id === active.id);
+    const newIndex = orderedProducts.findIndex((p) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const previous = orderedProducts;
+    const reordered = arrayMove(orderedProducts, oldIndex, newIndex);
+    setOrderedProducts(reordered);
+    setSavingOrder(true);
+    try {
+      const result = await reorderProducts(reordered.map((p) => p.id));
+      if (!result.success) {
+        setOrderedProducts(previous);
+        sheiNotif.error(result.error ?? t.admin.reorderFailed);
+        return;
+      }
+      onReorderSuccess?.();
+    } finally {
+      setSavingOrder(false);
+    }
+  };
 
   const getFeatured = (record: ProductWithVariants) =>
     featuredOverrides[record.id] ?? record.featured;
@@ -344,6 +407,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
   // ── Desktop columns ─────────────────────────────────────────────────────────
 
   const columns: ColumnsType<ProductWithVariants> = [
+    {
+      title: "",
+      key: "drag",
+      align: "center",
+      width: 44,
+      responsive: ["md"],
+      render: () => <DragHandle disabled={savingOrder} />,
+    },
     {
       title: "",
       key: "image",
@@ -585,7 +656,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
       {/* ── Mobile cards ── */}
       <div className="md:hidden flex flex-col gap-2.5 p-3">
-        {products.length === 0 && !loading && (
+        {orderedProducts.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <span className="text-4xl">📦</span>
             <p className="text-sm text-muted-foreground">
@@ -594,7 +665,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
           </div>
         )}
 
-        {products.map((record) => {
+        {orderedProducts.map((record) => {
           const basePrice = getLowestBasePrice(record);
           const discountedPrice = getLowestDiscountedPrice(record);
           const variants = record.product_variants || [];
@@ -721,23 +792,38 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
       {/* ── Desktop table ── */}
       <div className="hidden md:block">
-        <DataTable<ProductWithVariants>
-          columns={columns}
-          data={products}
-          rowKey="id"
-          pagination={false}
-          loading={loading}
-          size="middle"
-          bordered={false}
-          rowSelection={
-            storeSlug
-              ? {
-                  selectedRowKeys: selectedIds,
-                  onChange: (keys) => setSelectedIds(keys as string[]),
-                }
-              : undefined
-          }
-        />
+        <p className="px-4 pb-2 text-xs text-muted-foreground">
+          {t.admin.dragToReorderHint}
+        </p>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={orderedProducts.map((p) => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <DataTable<ProductWithVariants>
+              columns={columns}
+              data={orderedProducts}
+              rowKey="id"
+              pagination={false}
+              loading={loading}
+              size="middle"
+              bordered={false}
+              components={{ body: { row: SortableTableRow } }}
+              rowSelection={
+                storeSlug
+                  ? {
+                      selectedRowKeys: selectedIds,
+                      onChange: (keys) => setSelectedIds(keys as string[]),
+                    }
+                  : undefined
+              }
+            />
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* ── Delete Modal ── */}

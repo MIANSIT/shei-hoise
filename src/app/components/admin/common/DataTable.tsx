@@ -23,6 +23,8 @@ interface DataTableProps<T> {
   responsive?: boolean;
   renderCard?: (record: T) => React.ReactNode;
   className?: string;
+  /** Passed straight to antd — used to swap in a drag-sortable row renderer. */
+  components?: TableProps<T>["components"];
 }
 
 function DataTable<T extends object>({
@@ -39,6 +41,7 @@ function DataTable<T extends object>({
   scroll,
   renderCard,
   className,
+  components,
 }: DataTableProps<T>) {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -81,6 +84,7 @@ function DataTable<T extends object>({
         size={size}
         expandable={expandable}
         rowClassName={rowClassName}
+        components={components}
         scroll={scroll ?? { x: "max-content" }}
       />
     </div>

@@ -13,6 +13,26 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import ConfirmModal from "@/app/components/admin/common/ConfirmModal";
 import ProductCardLayout from "@/app/components/admin/common/ProductCardLayout";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  DragHandle,
+  SortableTableRow,
+} from "@/app/components/admin/common/SortableTableRow";
+import { reorderProducts } from "@/lib/queries/products/reorderProducts";
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +47,9 @@ const Bundles: React.FC = () => {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [pendingDelete, setPendingDelete] = useState<BundleListItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<BundleListItem | null>(
+    null,
+  );
   const [deleting, setDeleting] = useState(false);
   // Optimistic overrides so the toggle responds instantly without refetching
   // the page; rolled back if the write fails.
@@ -37,6 +59,35 @@ const Bundles: React.FC = () => {
   const [togglingFreeDeliveryId, setTogglingFreeDeliveryId] = useState<
     string | null
   >(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 0, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor),
+  );
+
+  // Bundles are rows in `products`, so they share the catalog's sort_order and
+  // the same reorder call the product list uses.
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = bundles.findIndex((b) => b.id === active.id);
+    const newIndex = bundles.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const previous = bundles;
+    const reordered = arrayMove(bundles, oldIndex, newIndex);
+    setBundles(reordered);
+
+    const result = await reorderProducts(reordered.map((b) => b.id));
+    if (!result.success) {
+      setBundles(previous);
+      notif.error({ title: "Couldn't save the new order" });
+    }
+  };
 
   const getFreeDelivery = (bundle: BundleListItem) =>
     freeDeliveryOverrides[bundle.id] ?? bundle.free_delivery;
@@ -113,7 +164,9 @@ const Bundles: React.FC = () => {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Bundles</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Bundles
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Combos made of your existing products, sold as one item.
           </p>
@@ -141,7 +194,9 @@ const Bundles: React.FC = () => {
       {/* ── Mobile cards ── */}
       <div className="md:hidden flex flex-col gap-2.5">
         {loading && (
-          <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            Loading…
+          </div>
         )}
         {!loading && bundles.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 py-12">
@@ -173,7 +228,9 @@ const Bundles: React.FC = () => {
               <>
                 <button
                   onClick={() =>
-                    router.push(`/dashboard/products/bundles/edit-bundle/${bundle.slug}`)
+                    router.push(
+                      `/dashboard/products/bundles/edit-bundle/${bundle.slug}`,
+                    )
                   }
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label="Edit bundle"
@@ -233,7 +290,8 @@ const Bundles: React.FC = () => {
                     {bundle.status}
                   </span>
                 </div>
-                {bundle.component_value > (bundle.discounted_price ?? bundle.base_price) && (
+                {bundle.component_value >
+                  (bundle.discounted_price ?? bundle.base_price) && (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400">
                     Worth {currency}
                     {bundle.component_value} separately
@@ -241,12 +299,17 @@ const Bundles: React.FC = () => {
                 )}
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>
-                    {bundle.component_count} product{bundle.component_count === 1 ? "" : "s"}
+                    {bundle.component_count} product
+                    {bundle.component_count === 1 ? "" : "s"}
                   </span>
                   <span>
                     Available:{" "}
                     <span
-                      className={bundle.available > 0 ? "text-foreground" : "font-medium text-rose-500"}
+                      className={
+                        bundle.available > 0
+                          ? "text-foreground"
+                          : "font-medium text-rose-500"
+                      }
                     >
                       {bundle.available}
                     </span>
@@ -259,145 +322,185 @@ const Bundles: React.FC = () => {
       </div>
 
       {/* ── Desktop table ── */}
+      <p className="hidden md:block text-xs text-muted-foreground">
+        Drag a row by its handle to set the order shoppers see in your shop.
+      </p>
       <div className="hidden md:block overflow-x-auto rounded-2xl border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Bundle</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Contains</th>
-              <th className="px-4 py-3">Available</th>
-              <th className="px-4 py-3 text-center">Free Delivery</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading…
-                </td>
-              </tr>
-            )}
-            {!loading && bundles.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                  No bundles yet.
-                </td>
-              </tr>
-            )}
-            {bundles.map((bundle) => (
-              <tr key={bundle.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    {bundle.primary_image ? (
-                      <Image
-                        src={bundle.primary_image.image_url}
-                        alt={bundle.name}
-                        width={36}
-                        height={36}
-                        className="rounded-lg object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                        <Boxes className="h-4 w-4" />
-                      </span>
-                    )}
-                    <div>
-                      <p className="font-medium text-foreground">{bundle.name}</p>
-                      {bundle.sku && (
-                        <p className="text-xs text-muted-foreground">SKU: {bundle.sku}</p>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  {bundle.discounted_price ? (
-                    <>
-                      <span className="font-medium">
-                        {currency}
-                        {bundle.discounted_price}
-                      </span>{" "}
-                      <span className="text-xs text-muted-foreground line-through">
-                        {currency}
-                        {bundle.base_price}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-medium">
-                      {currency}
-                      {bundle.base_price}
-                    </span>
-                  )}
-                  {bundle.component_value > (bundle.discounted_price ?? bundle.base_price) && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                      Worth {currency}
-                      {bundle.component_value} separately
-                    </p>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {bundle.component_count} product{bundle.component_count === 1 ? "" : "s"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={
-                      bundle.available > 0
-                        ? "text-foreground"
-                        : "font-medium text-rose-500"
-                    }
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={bundles.map((b) => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <table className="w-full text-sm">
+              <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="w-11 px-2 py-3" aria-label="Reorder" />
+                  <th className="px-4 py-3">Bundle</th>
+                  <th className="px-4 py-3">Price</th>
+                  <th className="px-4 py-3">Contains</th>
+                  <th className="px-4 py-3">Available</th>
+                  <th className="px-4 py-3 text-center">Free Delivery</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {!loading && bundles.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                      No bundles yet.
+                    </td>
+                  </tr>
+                )}
+                {bundles.map((bundle) => (
+                  <SortableTableRow
+                    key={bundle.id}
+                    data-row-key={bundle.id}
+                    className="border-b border-border last:border-0"
                   >
-                    {bundle.available}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => handleToggleFreeDelivery(bundle)}
-                      disabled={togglingFreeDeliveryId === bundle.id}
-                      title={
-                        getFreeDelivery(bundle)
-                          ? "Turn off free delivery — normal delivery charge applies"
-                          : "Turn on free delivery — orders with this bundle ship free"
-                      }
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+                    <td className="px-2 py-3">
+                      <div className="flex justify-center">
+                        <DragHandle />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {bundle.primary_image ? (
+                          <Image
+                            src={bundle.primary_image.image_url}
+                            alt={bundle.name}
+                            width={36}
+                            height={36}
+                            className="rounded-lg object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                            <Boxes className="h-4 w-4" />
+                          </span>
+                        )}
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {bundle.name}
+                          </p>
+                          {bundle.sku && (
+                            <p className="text-xs text-muted-foreground">
+                              SKU: {bundle.sku}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {bundle.discounted_price ? (
+                        <>
+                          <span className="font-medium">
+                            {currency}
+                            {bundle.discounted_price}
+                          </span>{" "}
+                          <span className="text-xs text-muted-foreground line-through">
+                            {currency}
+                            {bundle.base_price}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-medium">
+                          {currency}
+                          {bundle.base_price}
+                        </span>
+                      )}
+                      {bundle.component_value >
+                        (bundle.discounted_price ?? bundle.base_price) && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                          Worth {currency}
+                          {bundle.component_value} separately
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {bundle.component_count} product
+                      {bundle.component_count === 1 ? "" : "s"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={
+                          bundle.available > 0
+                            ? "text-foreground"
+                            : "font-medium text-rose-500"
+                        }
+                      >
+                        {bundle.available}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => handleToggleFreeDelivery(bundle)}
+                          disabled={togglingFreeDeliveryId === bundle.id}
+                          title={
+                            getFreeDelivery(bundle)
+                              ? "Turn off free delivery — normal delivery charge applies"
+                              : "Turn on free delivery — orders with this bundle ship free"
+                          }
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
                         ${
                           getFreeDelivery(bundle)
                             ? "border-emerald-300 bg-emerald-50 text-emerald-500 hover:bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-500/15"
                             : "border-border bg-card text-muted-foreground hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-400 dark:hover:bg-emerald-500/10"
                         }`}
-                      aria-label="Toggle free delivery"
-                    >
-                      <Truck className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </td>
-                <td className="px-4 py-3 capitalize text-muted-foreground">{bundle.status}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() =>
-                        router.push(`/dashboard/products/bundles/edit-bundle/${bundle.slug}`)
-                      }
-                      className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Edit bundle"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setPendingDelete(bundle)}
-                      className="rounded-lg p-2 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                      aria-label="Delete bundle"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                          aria-label="Toggle free delivery"
+                        >
+                          <Truck className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 capitalize text-muted-foreground">
+                      {bundle.status}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/products/bundles/edit-bundle/${bundle.slug}`,
+                            )
+                          }
+                          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          aria-label="Edit bundle"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setPendingDelete(bundle)}
+                          className="rounded-lg p-2 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                          aria-label="Delete bundle"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </SortableTableRow>
+                ))}
+              </tbody>
+            </table>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {total > PAGE_SIZE && (

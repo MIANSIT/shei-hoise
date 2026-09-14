@@ -32,7 +32,7 @@ export interface CreateOrderData {
   channel?: "online" | "pos";
   /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received in lib/types/order.ts. */
   cashReceived?: number | null;
-  /** "YYYY-MM-DD" — when the sale actually happened, for backfilling manual orders. Defaults to today (DB default) when omitted, e.g. from Quick Sale. */
+  /** "YYYY-MM-DD" — when the sale actually happened, for backfilling manual orders. Defaults to today (DB default) when omitted, e.g. from the storefront checkout. */
   orderDate?: string;
 }
 

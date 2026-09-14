@@ -180,7 +180,11 @@ export async function getProductsWithVariants({
   if (productIds && productIds.length > 0) {
     query.in("id", productIds);
   } else {
-    query.order("created_at", { ascending: false });
+    // Manual drag order first (see reorderProducts.ts), then A–Z. A product
+    // added after the catalog was numbered has no position yet, so it lands
+    // at the end with its alphabetical neighbours until it's dragged.
+    query.order("sort_order", { ascending: true, nullsFirst: false });
+    query.order("name", { ascending: true });
 
     if (search?.trim()) query.ilike("name", `%${search.trim()}%`);
     if (status) query.eq("status", status);

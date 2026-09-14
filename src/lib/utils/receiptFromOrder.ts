@@ -3,6 +3,7 @@ import type { StoreInvoiceData } from "@/lib/hook/useInvoiceData";
 import { generateReceiptPdfSet, ReceiptPdfSet } from "./generateReceiptPdf";
 import { getStorePublicUrl } from "./productQr";
 import { PAYMENT_LABELS } from "./paymentLabels";
+import { resolveOrderInvoiceDate } from "./orderInvoiceDate";
 
 /**
  * Rebuilds the same 58mm thermal receipt Quick Sale printed at checkout,
@@ -35,7 +36,9 @@ export async function buildReceiptPdfSetForOrder(
   return generateReceiptPdfSet({
     storeName: storeData.store_name,
     logoUrl: storeData.logo_url,
-    dateLabel: new Date(order.created_at).toLocaleString(),
+    dateLabel: new Date(
+      resolveOrderInvoiceDate(order.order_date, order.created_at) ?? order.created_at,
+    ).toLocaleString(),
     orderNumber: order.order_number,
     items: order.order_items.map((item) => ({
       name:

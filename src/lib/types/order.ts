@@ -174,6 +174,8 @@ export interface CreateOrderData {
   channel?: "online" | "pos";
   /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received. */
   cashReceived?: number | null;
+  /** "YYYY-MM-DD" — when the sale actually happened. Omit to let the DB default order_date to today. */
+  orderDate?: string;
 }
 
 // ===== CUSTOMER ORDER TYPES =====

@@ -491,6 +491,7 @@ const Products: React.FC = () => {
             loading={loading}
             pagination={undefined}
             onDeleteSuccess={fetchProducts}
+            onReorderSuccess={fetchProducts}
             storeSlug={storeSlug ?? undefined}
             storeName={store?.store_name ?? undefined}
             storeLogoUrl={store?.logo_url}

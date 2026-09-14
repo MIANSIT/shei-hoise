@@ -55,6 +55,7 @@ import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import ReceiptPreviewModal from "@/app/components/admin/order/quick-sale/ReceiptPreviewModal";
 import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
+import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
 
 interface Props {
   orders: StoreOrder[];
@@ -1348,7 +1349,12 @@ const OrdersTable: React.FC<Props> = ({
           orderStatus={selectedOrderForInvoice.status}
           // ✅ FIX 2: Pass notes from order
           notes={selectedOrderForInvoice.notes ?? ""}
-          orderCreatedAt={selectedOrderForInvoice.created_at}
+          // The order's own (admin-settable) date drives the invoice date —
+          // created_at is only a fallback for rows without one.
+          orderCreatedAt={resolveOrderInvoiceDate(
+            selectedOrderForInvoice.order_date,
+            selectedOrderForInvoice.created_at,
+          )}
           showPOSButton={false}
         />
       )}

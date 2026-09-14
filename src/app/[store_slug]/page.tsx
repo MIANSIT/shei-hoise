@@ -104,7 +104,17 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           setFeaturedProducts(featured);
           setIsFeaturedSection(true);
         } else {
-          const latest = await clientGetProducts(store_slug, 1, 5);
+          // Explicitly newest — this block is the fallback for a store with
+          // no featured products, so it should surface recent stock rather
+          // than the top of the shop's own A–Z/dragged order.
+          const latest = await clientGetProducts(
+            store_slug,
+            1,
+            5,
+            undefined,
+            undefined,
+            "newest",
+          );
           setFeaturedProducts(latest.products);
           setIsFeaturedSection(false);
         }
@@ -915,7 +925,7 @@ function CategoryAvatar({ category, store_slug, index }: CategoryAvatarProps) {
       className="shrink-0 w-18 sm:w-24"
     >
       <Link
-        href={`/${store_slug}/shop?category=${encodeURIComponent(category.name)}`}
+        href={`/${store_slug}/shop?category=${encodeURIComponent(category.slug)}`}
         className="group flex flex-col items-center text-center gap-2"
       >
         <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full overflow-hidden border-2 border-border p-1 group-hover:border-primary transition-colors duration-300">

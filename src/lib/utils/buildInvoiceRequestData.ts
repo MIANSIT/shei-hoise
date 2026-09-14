@@ -1,6 +1,7 @@
 import { StoreOrder } from "@/lib/types/order";
 import { getValidCurrency } from "@/lib/utils/currency";
 import { InvoicePdfData } from "@/lib/utils/invoicePdfHelpers";
+import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
 
 /**
  * Maps a StoreOrder into the flat shape the invoice PDF endpoints expect.
@@ -42,6 +43,8 @@ export function buildInvoiceRequestData(
     paymentMethod: order.payment_method ?? undefined,
     orderStatus: order.status,
     notes: order.notes ?? "",
-    orderCreatedAt: order.created_at,
+    // The invoice prints the order's own date (back-datable by the admin),
+    // falling back to the row's insert time only when it's missing.
+    orderCreatedAt: resolveOrderInvoiceDate(order.order_date, order.created_at),
   };
 }

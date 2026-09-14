@@ -45,7 +45,10 @@ export async function getBundles({
     )
     .eq("store_id", storeId)
     .eq("product_type", "bundle")
-    .order("created_at", { ascending: false });
+    // Same ordering as the product list — manual drag order first, then A–Z
+    // for anything with no position yet.
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
 
   if (search?.trim()) query = query.ilike("name", `%${search.trim()}%`);
   if (page !== undefined && pageSize !== undefined) {

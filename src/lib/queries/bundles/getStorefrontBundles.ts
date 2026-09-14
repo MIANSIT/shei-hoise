@@ -41,7 +41,10 @@ export async function getStorefrontBundles(
     .eq("store_id", storeData.id)
     .eq("status", ProductStatus.ACTIVE)
     .eq("product_type", "bundle")
-    .order("created_at", { ascending: false })
+    // Honours the order the owner dragged the bundles into in the dashboard,
+    // then A–Z for anything with no position yet.
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true })
     .limit(limit);
 
   if (error || !bundles) return [];

@@ -122,6 +122,22 @@ $$;
 
 ALTER FUNCTION "public"."find_customer_by_email"("p_email" "text") OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."reorder_products"("p_store_id" "uuid", "p_ordered_ids" "uuid"[]) RETURNS void
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  UPDATE public.products p
+  SET sort_order = x.ord - 1,
+      updated_at = now()
+  FROM unnest(p_ordered_ids) WITH ORDINALITY AS x(id, ord)
+  WHERE p.id = x.id
+    AND p.store_id = p_store_id;
+$$;
+
+
+ALTER FUNCTION "public"."reorder_products"("p_store_id" "uuid", "p_ordered_ids" "uuid"[]) OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -465,6 +481,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "discount_amount" numeric,
     "tp_price" numeric,
     "free_delivery" boolean DEFAULT false NOT NULL,
+    "sort_order" integer,
     CONSTRAINT "products_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('draft'::character varying)::"text", ('active'::character varying)::"text", ('inactive'::character varying)::"text", ('archived'::character varying)::"text"])))
 );
 
@@ -1091,6 +1108,10 @@ CREATE INDEX "idx_expenses_user_date" ON "public"."expenses" USING "btree" ("sto
 
 
 CREATE INDEX "idx_expenses_user_id" ON "public"."expenses" USING "btree" ("store_id");
+
+
+
+CREATE INDEX "idx_products_store_id_sort_order" ON "public"."products" USING "btree" ("store_id", "sort_order");
 
 
 

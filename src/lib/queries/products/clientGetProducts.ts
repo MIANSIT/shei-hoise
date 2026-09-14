@@ -7,12 +7,46 @@ import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailab
 import { getBundleComponentValueMap } from "@/lib/queries/bundles/getBundleComponentValueMap";
 import { getBundleConfigurableMap } from "@/lib/queries/bundles/getBundleConfigurableMap";
 
+/**
+ * Storefront sort options.
+ *
+ * "default" is the shop's own order: whatever the owner dragged the catalog
+ * into, A–Z by name for anything they haven't positioned. The rest are
+ * explicit shopper choices.
+ */
+export type ProductSortOption =
+  | "default"
+  | "newest"
+  | "price_asc"
+  | "price_desc"
+  | "name_asc";
+
+/**
+ * Maps a sort option to the column ordering PostgREST applies.
+ *
+ * Price sorts run on `base_price` (the list price). A product whose
+ * `discounted_price` is live is still ordered by what it normally costs —
+ * ordering on the effective price would need a computed column, since
+ * PostgREST can only order by real columns.
+ */
+const SORT_COLUMNS: Record<
+  ProductSortOption,
+  { column: string; ascending: boolean }
+> = {
+  default: { column: "name", ascending: true },
+  newest: { column: "created_at", ascending: false },
+  price_asc: { column: "base_price", ascending: true },
+  price_desc: { column: "base_price", ascending: false },
+  name_asc: { column: "name", ascending: true },
+};
+
 export async function clientGetProducts(
   store_slug: string,
   page: number = 1,
   limit: number = 5,
-  categoryName?: string,
-  searchQuery?: string
+  categorySlug?: string,
+  searchQuery?: string,
+  sortOption: ProductSortOption = "default"
 ): Promise<{ products: Product[]; hasMore: boolean; totalCount: number }> {
 
   try {
@@ -59,6 +93,7 @@ export async function clientGetProducts(
         ),
         product_images(id, image_url, is_primary),
         product_inventory(quantity_available, quantity_reserved),
+        sort_order,
         created_at
       `,
         { count: "exact" }
@@ -66,19 +101,31 @@ export async function clientGetProducts(
       .eq("store_id", storeId)
       .eq("status", ProductStatus.ACTIVE);
 
-    // Apply category filter - IMPORTANT: Use inner join with categories
-    if (categoryName && categoryName !== "All Products") {
-      
-      // First, get the category ID
+    // Apply category filter — resolved by slug, so a renamed category doesn't
+    // break links already shared with a ?category= in them. Older links (and
+    // any caller still passing a display name) still resolve via the name
+    // fallback below.
+    if (categorySlug && categorySlug !== "all") {
       const { data: categoryData } = await supabase
         .from("categories")
         .select("id")
         .eq("store_id", storeId)
-        .eq("name", categoryName)
-        .single();
+        .eq("slug", categorySlug)
+        .maybeSingle();
 
-      if (categoryData) {
-        query = query.eq("category_id", categoryData.id);
+      const category =
+        categoryData ??
+        (
+          await supabase
+            .from("categories")
+            .select("id")
+            .eq("store_id", storeId)
+            .eq("name", categorySlug)
+            .maybeSingle()
+        ).data;
+
+      if (category) {
+        query = query.eq("category_id", category.id);
       }
     }
 
@@ -90,9 +137,17 @@ export async function clientGetProducts(
       );
     }
 
-    // Apply pagination and ordering
+    // Apply pagination and ordering. The default view leads with the order the
+    // shop owner dragged the catalog into (products.sort_order), then falls
+    // back to A–Z for anything with no position yet; an explicit price/name/
+    // newest sort is what the shopper asked for, so it wins outright.
+    if (sortOption === "default") {
+      query = query.order("sort_order", { ascending: true, nullsFirst: false });
+    }
+
+    const sort = SORT_COLUMNS[sortOption] ?? SORT_COLUMNS.newest;
     const { data: products, error: productError, count } = await query
-      .order("created_at", { ascending: false })
+      .order(sort.column, { ascending: sort.ascending })
       .range(start, end);
 
     if (productError) {
@@ -180,14 +235,23 @@ export async function clientGetProducts(
       } as Product;
     });
 
-    // Sort: in-stock first
-    const sortedProducts = mappedProducts.sort((a, b) => {
-      const aInStock = isProductInStock(a);
-      const bInStock = isProductInStock(b);
-      if (aInStock && !bInStock) return -1;
-      if (!aInStock && bInStock) return 1;
-      return 0;
-    });
+    // Sort: in-stock first — only on the default ordering, and only where the
+    // owner hasn't dragged the catalog into a deliberate order. Once there's
+    // either an explicit shopper sort or a manual position to respect, pulling
+    // sold-out items down would visibly break the order that was asked for.
+    const hasManualOrder = (products ?? []).some(
+      (p: any) => p.sort_order !== null && p.sort_order !== undefined,
+    );
+    const sortedProducts =
+      sortOption === "default" && !hasManualOrder
+        ? mappedProducts.sort((a, b) => {
+            const aInStock = isProductInStock(a);
+            const bInStock = isProductInStock(b);
+            if (aInStock && !bInStock) return -1;
+            if (!aInStock && bInStock) return 1;
+            return 0;
+          })
+        : mappedProducts;
 
     const hasMore = count ? end + 1 < count : false;
 
