@@ -565,6 +565,20 @@ CREATE TABLE IF NOT EXISTS "public"."store_promo_banners" (
 ALTER TABLE "public"."store_promo_banners" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."store_announcements" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "text" "text" NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_announcements" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."store_reviews" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "store_id" "uuid",
@@ -988,6 +1002,11 @@ ALTER TABLE ONLY "public"."store_promo_banners"
 
 
 
+ALTER TABLE ONLY "public"."store_announcements"
+    ADD CONSTRAINT "store_announcements_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_pkey" PRIMARY KEY ("id");
 
@@ -1112,6 +1131,10 @@ CREATE INDEX "idx_expenses_user_id" ON "public"."expenses" USING "btree" ("store
 
 
 CREATE INDEX "idx_products_store_id_sort_order" ON "public"."products" USING "btree" ("store_id", "sort_order");
+
+
+
+CREATE INDEX "store_announcements_store_sort_idx" ON "public"."store_announcements" USING "btree" ("store_id", "sort_order");
 
 
 
@@ -1361,6 +1384,11 @@ ALTER TABLE ONLY "public"."store_promo_banners"
 
 
 
+ALTER TABLE ONLY "public"."store_announcements"
+    ADD CONSTRAINT "store_announcements_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
@@ -1485,6 +1513,14 @@ CREATE POLICY "plans_public_read" ON "public"."subscription_plans" FOR SELECT US
 
 
 CREATE POLICY "plans_service_write" ON "public"."subscription_plans" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "store_announcements_public_read" ON "public"."store_announcements" FOR SELECT USING (("is_active" = true));
+
+
+
+CREATE POLICY "store_announcements_service_write" ON "public"."store_announcements" USING (("auth"."role"() = 'service_role'::"text"));
 
 
 

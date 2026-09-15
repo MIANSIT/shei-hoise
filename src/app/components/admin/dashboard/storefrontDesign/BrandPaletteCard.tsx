@@ -1,11 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Info, Palette as PaletteIcon } from "lucide-react";
+import { Check, Info, Palette as PaletteIcon, Sparkles } from "lucide-react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getStoreBrandingForAdmin } from "@/lib/queries/storefront/branding/getStoreBrandingForAdmin";
 import { saveStoreBranding } from "@/lib/queries/storefront/branding/saveStoreBranding";
 import { BRAND_PRESETS, type BrandPalette } from "@/lib/utils/storeTheme";
+
+// Two separate gates layered on this one card:
+// - "storefront_design" (checked one level up, by the page) decides whether a
+//   store can reach this card at all — that alone is enough for Default +
+//   the hand-picked presets below, since those are pre-verified to hold up
+//   in both light and dark mode.
+// - "custom_store_design" decides the extra step beyond that: picking fully
+//   arbitrary colors per field. No plan grants it yet, so today's stores see
+//   Default + presets only (or, for a store with a custom palette saved
+//   before presets existed, that legacy palette read-only) — never a "this
+//   feature is locked" wall, since the base storefront-design capability
+//   still works fully without it.
+const CUSTOM_COLOR_FEATURE_KEY = "custom_store_design";
 
 const COLOR_FIELDS: { key: keyof BrandPalette; label: string }[] = [
   { key: "primary", label: "Buttons & links" },
@@ -35,18 +50,18 @@ const DEFAULT_CUSTOM: BrandPalette = {
 
 export function BrandPaletteCard() {
   const notify = useSheiNotification();
+  const { storeId } = useCurrentUser();
+  const { loading: gateLoading, allowed: customColorsEnabled } = useFeatureGate(storeId, CUSTOM_COLOR_FEATURE_KEY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [isCustom, setIsCustom] = useState(false);
   const [customPalette, setCustomPalette] = useState<BrandPalette>(DEFAULT_CUSTOM);
   const [useDefault, setUseDefault] = useState(true);
-  const [announcementText, setAnnouncementText] = useState("");
 
   useEffect(() => {
     getStoreBrandingForAdmin()
       .then((branding) => {
-        setAnnouncementText(branding?.announcement_text ?? "");
         const palette = branding?.theme_palette;
         if (!palette) {
           setUseDefault(true);
@@ -79,7 +94,6 @@ export function BrandPaletteCard() {
     try {
       const result = await saveStoreBranding({
         theme_palette: activePalette,
-        announcement_text: announcementText,
       });
       if (!result.success) {
         notify.error(result.error ?? "Failed to save");
@@ -91,7 +105,7 @@ export function BrandPaletteCard() {
     }
   };
 
-  if (loading) {
+  if (loading || gateLoading) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -147,50 +161,78 @@ export function BrandPaletteCard() {
             {!useDefault && !isCustom && selectedPresetId === preset.id && <Check className="h-3.5 w-3.5" />}
           </button>
         ))}
+        {customColorsEnabled && (
+          <button
+            type="button"
+            onClick={() => {
+              setUseDefault(false);
+              setIsCustom(true);
+            }}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+              !useDefault && isCustom ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Custom
+          </button>
+        )}
       </div>
 
       {isCustom && !useDefault && (
         <div className="space-y-3">
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3 text-xs text-amber-800 dark:text-amber-300">
-            <Info className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>
-              This store is on a custom color set from before presets existed. Custom colors
-              can no longer be edited directly here — pick one of the presets above to change
-              your colors (a custom color sometimes looks wrong in dark mode, which is why this
-              is now locked to presets).
-            </span>
-          </div>
+          {!customColorsEnabled && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-3 text-xs text-amber-800 dark:text-amber-300">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                This store is on a custom color set from before presets existed. Custom colors
+                can no longer be edited directly here — pick one of the presets above to change
+                your colors (a custom color sometimes looks wrong in dark mode, which is why this
+                is now locked to presets).
+              </span>
+            </div>
+          )}
+          {customColorsEnabled && (
+            <p className="text-xs text-muted-foreground">
+              Pick your own colors — check that text stays readable against each one in both light and dark mode.
+            </p>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {COLOR_FIELDS.map(({ key, label }) => (
-              <div key={key} className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">{label}</label>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-9 h-9 rounded-lg border border-border shrink-0"
-                    style={{ background: customPalette[key] }}
-                  />
-                  <span className="text-xs font-mono text-muted-foreground uppercase">{customPalette[key]}</span>
+            {COLOR_FIELDS.map(({ key, label }) =>
+              customColorsEnabled ? (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={customPalette[key]}
+                      onChange={(e) => setCustomPalette((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="w-9 h-9 rounded-lg border border-border shrink-0 cursor-pointer bg-transparent p-0"
+                    />
+                    <input
+                      type="text"
+                      value={customPalette[key]}
+                      onChange={(e) => setCustomPalette((prev) => ({ ...prev, [key]: e.target.value }))}
+                      maxLength={7}
+                      className="w-24 px-2 py-1.5 rounded-lg border border-border bg-background text-xs font-mono uppercase text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ) : (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-9 h-9 rounded-lg border border-border shrink-0"
+                      style={{ background: customPalette[key] }}
+                    />
+                    <span className="text-xs font-mono text-muted-foreground uppercase">{customPalette[key]}</span>
+                  </div>
+                </div>
+              ),
+            )}
           </div>
         </div>
       )}
-
-      <div className="border-t border-border pt-5 space-y-1.5">
-        <label className="text-sm font-semibold text-foreground">Announcement Bar</label>
-        <p className="text-xs text-muted-foreground">
-          A short line shown above your homepage header. Leave blank to hide it.
-        </p>
-        <input
-          type="text"
-          value={announcementText}
-          onChange={(e) => setAnnouncementText(e.target.value)}
-          maxLength={200}
-          placeholder="e.g. Free shipping on orders over ৳2000"
-          className="w-full mt-2 px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground outline-none focus:border-primary"
-        />
-      </div>
 
       <button
         type="button"

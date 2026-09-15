@@ -11,6 +11,7 @@ import { footerContent } from "@/lib/store/footerContent";
 import { getStoreBySlugFull } from "@/lib/queries/stores/getStoreBySlugFull";
 import { getStoreBranding } from "@/lib/queries/stores/getStoreBranding";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
+import { getActiveAnnouncements } from "@/lib/queries/storefront/announcements/getActiveAnnouncements";
 import { getStoreAccessStateAdmin } from "@/lib/utils/getStoreAccessStateAdmin";
 import { buildStoreThemeCss, deriveStoreThemeVars, isBrandPalette } from "@/lib/utils/storeTheme";
 import { AnnouncementBar } from "@/app/components/common/AnnouncementBar";
@@ -88,10 +89,11 @@ export default async function StoreLayout({
 
   // Storefront stays live through the trial and its grace period — only goes
   // offline once the grace period has fully lapsed with no payment.
-  const [access, branding, settings] = await Promise.all([
+  const [access, branding, settings, announcements] = await Promise.all([
     getStoreAccessStateAdmin(storeData.id),
     getStoreBranding(storeData.id),
     getStoreSettings(storeData.id),
+    getActiveAnnouncements(storeData.id),
   ]);
   if (access.state === "locked") {
     return <StoreOffline storeName={storeData.store_name} />;
@@ -101,13 +103,14 @@ export default async function StoreLayout({
   const themeVars = deriveStoreThemeVars(palette);
   const themeCss = palette ? buildStoreThemeCss(storeData.id, themeVars) : "";
 
-  // The announcement bar prefers the owner's manual text; when they haven't
-  // set one, it falls back to an auto-composed free-shipping line so that
-  // number can never go stale relative to the real setting (see
-  // AnnouncementBar.tsx). Resolved here (not just inside the component) so
-  // StoreHeader's fixed-position offset is correct on first paint.
+  // The announcement bar rotates through every active row from the
+  // Announcements manager and, on top of those, an auto-composed
+  // free-shipping line when the store has a threshold set — that number can
+  // never go stale relative to the real setting (see AnnouncementBar.tsx).
+  // Resolved here (not just inside the component) so StoreHeader's
+  // fixed-position offset is correct on first paint.
   const hasFreeShipping = !!settings?.free_shipping_threshold && settings.free_shipping_threshold > 0;
-  const showAnnouncement = !!branding?.announcement_text?.trim() || hasFreeShipping;
+  const showAnnouncement = announcements.length > 0 || hasFreeShipping;
 
   return (
     <div
@@ -120,7 +123,7 @@ export default async function StoreLayout({
       )}
       {showAnnouncement && (
         <AnnouncementBar
-          manualText={branding?.announcement_text ?? null}
+          announcements={announcements.map((a) => a.text)}
           freeShippingThreshold={settings?.free_shipping_threshold ?? null}
         />
       )}

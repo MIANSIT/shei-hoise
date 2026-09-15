@@ -15,7 +15,7 @@ import { getStorefrontBundles } from "@/lib/queries/bundles/getStorefrontBundles
 import { getActiveHeroSlides } from "@/lib/queries/storefront/heroSlides/getActiveHeroSlides";
 import { HeroSlider } from "@/app/components/storefront/HeroSlider";
 import type { HeroSlide } from "@/lib/types/heroSlide";
-import { getStorefrontCoupon } from "@/lib/queries/coupons/getStorefrontCoupon";
+import { getStorefrontCoupons } from "@/lib/queries/coupons/getStorefrontCoupons";
 import { CouponStrip } from "@/app/components/storefront/CouponStrip";
 import type { Coupon } from "@/lib/types/coupon";
 import { CustomerReviewsTeaser } from "@/app/components/storefront/CustomerReviewsTeaser";
@@ -61,7 +61,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const [bundles, setBundles] = useState<Product[]>([]);
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [promoBanners, setPromoBanners] = useState<PromoBanner[]>([]);
-  const [storefrontCoupon, setStorefrontCoupon] = useState<Coupon | null>(null);
+  const [storefrontCoupons, setStorefrontCoupons] = useState<Coupon[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setStoreData(fullStore);
         setStoreExists(true);
 
-        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating, activeHeroSlides, featuredCoupon, activePromoBanners] =
+        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating, activeHeroSlides, liveCoupons, activePromoBanners] =
           await Promise.all([
             getCategoriesQuery(fullStore.id),
             getFeaturedProducts(store_slug, 5),
@@ -87,7 +87,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
             getActiveFlashSaleProducts(store_slug, 8),
             getStoreRatingSummary(fullStore.id),
             getActiveHeroSlides(fullStore.id),
-            getStorefrontCoupon(fullStore.id),
+            getStorefrontCoupons(fullStore.id),
             getActivePromoBanners(fullStore.id),
           ]);
 
@@ -97,7 +97,9 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setFlashSaleProducts(flashSale);
         setStoreRatingSummary(storeRating);
         setHeroSlides(activeHeroSlides);
-        setStorefrontCoupon(featuredCoupon);
+        // The strip rotates through these — capped so a store with many
+        // coupons doesn't turn the homepage banner into an endless loop.
+        setStorefrontCoupons(liveCoupons.slice(0, 5));
         setPromoBanners(activePromoBanners);
 
         if (featured.length > 0) {
@@ -182,7 +184,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   return (
     <div className="min-h-screen bg-background">
 
-      {storefrontCoupon && <CouponStrip coupon={storefrontCoupon} storeSlug={store_slug} />}
+      {storefrontCoupons.length > 0 && <CouponStrip coupons={storefrontCoupons} storeSlug={store_slug} />}
 
       {/* ══════════════════════════════════════════
           HERO — admin-managed slide carousel takes over whenever the store

@@ -33,6 +33,7 @@ import {
   Palette,
   Images,
   GalleryHorizontal,
+  Megaphone,
 } from "lucide-react";
 import React from "react";
 
@@ -212,6 +213,11 @@ export const sideMenu: MenuItem[] = [
         title: "Promo Banners",
         href: "/dashboard/promo-banners",
         icon: Images,
+      },
+      {
+        title: "Announcements",
+        href: "/dashboard/announcements",
+        icon: Megaphone,
       },
       // {
       //   title: "Store Management",
