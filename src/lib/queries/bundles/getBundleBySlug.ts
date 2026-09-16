@@ -49,7 +49,7 @@ export async function getBundleBySlug(
     .eq("store_id", storeId)
     .eq("slug", slug)
     .eq("product_type", "bundle")
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
   if (!data) return null;

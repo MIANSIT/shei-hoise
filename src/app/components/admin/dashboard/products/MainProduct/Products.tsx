@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Input, Space, Pagination, notification } from "antd";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined } from "@ant-design/icons";
-import { Star } from "lucide-react";
+import { Star, ArrowUpDown } from "lucide-react";
 import ProductTable from "./ProductTable";
+import { ProductReorderList } from "./ProductReorderList";
 import {
   getProductsWithVariants,
   ProductWithVariants,
@@ -28,6 +29,7 @@ const Products: React.FC = () => {
   const t = useTranslation();
   const n = useLocalNum();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, storeSlug } = useCurrentUser();
   const { store } = useStore(user?.store_id ?? null);
 
@@ -57,6 +59,24 @@ const Products: React.FC = () => {
   );
 
   const [localSearch, setLocalSearch] = useState(search);
+  // Transient, not URL-synced — reorder mode is a view toggle on this same
+  // page (see ProductReorderList), not a separate route or filter state.
+  const [reorderMode, setReorderMode] = useState(false);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // One-time landing from Add Product: ?reorder=1&justAdded=<id> opens
+  // straight into the unpaginated Reorder view with the new product
+  // highlighted, since a brand-new product always sorts to the very end of
+  // the catalog — several pages away from the page-1 default this route
+  // would otherwise land on. Stripped from the URL immediately after so a
+  // refresh doesn't keep reopening it.
+  useEffect(() => {
+    if (searchParams.get("reorder") !== "1") return;
+    setReorderMode(true);
+    setHighlightId(searchParams.get("justAdded"));
+    router.replace("/dashboard/products", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -379,6 +399,12 @@ const Products: React.FC = () => {
         {/* Download / QR labels */}
         <div className="flex items-center gap-2">
           <Button
+            icon={<ArrowUpDown className="h-3.5 w-3.5" />}
+            onClick={() => setReorderMode(true)}
+          >
+            Reorder
+          </Button>
+          <Button
             icon={<QrcodeOutlined />}
             loading={printingLabels}
             disabled={!storeSlug}
@@ -396,6 +422,18 @@ const Products: React.FC = () => {
         </div>
       </div>
 
+      {reorderMode && user?.store_id ? (
+        <ProductReorderList
+          storeId={user.store_id}
+          highlightId={highlightId}
+          onDone={() => {
+            setReorderMode(false);
+            setHighlightId(null);
+            fetchProducts();
+          }}
+        />
+      ) : (
+        <>
       {/* Status filters — visible on desktop, hidden on mobile */}
       <div className="hidden md:flex items-center gap-1.5 flex-wrap">
         {statusConfig.map(({ key, label }) => {
@@ -548,6 +586,8 @@ const Products: React.FC = () => {
           }}
         />
       </div>
+        </>
+      )}
 
       {/* ── FAB — mobile ── */}
       <button

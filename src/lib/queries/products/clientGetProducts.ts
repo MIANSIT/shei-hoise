@@ -6,6 +6,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
 import { getBundleComponentValueMap } from "@/lib/queries/bundles/getBundleComponentValueMap";
 import { getBundleConfigurableMap } from "@/lib/queries/bundles/getBundleConfigurableMap";
+import { searchProductIds } from "@/lib/queries/products/searchProductIds";
 
 /**
  * Storefront sort options.
@@ -105,6 +106,7 @@ export async function clientGetProducts(
     // break links already shared with a ?category= in them. Older links (and
     // any caller still passing a display name) still resolve via the name
     // fallback below.
+    let categoryId: string | undefined;
     if (categorySlug && categorySlug !== "all") {
       const { data: categoryData } = await supabase
         .from("categories")
@@ -125,30 +127,40 @@ export async function clientGetProducts(
         ).data;
 
       if (category) {
+        categoryId = category.id;
         query = query.eq("category_id", category.id);
       }
     }
 
-    // Apply search filter
-    if (searchQuery && searchQuery.trim() !== "") {
-      const searchTerm = `%${searchQuery}%`;
-      query = query.or(
-        `name.ilike.${searchTerm},description.ilike.${searchTerm}`
-      );
+    // A typed search resolves matching ids itself (substring or
+    // typo-tolerant — see searchProductIds.ts), best-match-first, instead of
+    // a plain ilike filter — a customer rarely types a product's exact full
+    // name, word order, or spelling. Since relevance order only exists in
+    // memory (not as a real column PostgREST can range() over), pagination
+    // for a search is done by hand below instead of via .range().
+    const isSearching = !!searchQuery && searchQuery.trim() !== "";
+    let relevanceOrder: string[] = [];
+    if (isSearching) {
+      relevanceOrder = await searchProductIds(storeId, searchQuery!, {
+        statusEq: ProductStatus.ACTIVE,
+        categoryId,
+      });
+      if (relevanceOrder.length === 0) {
+        return { products: [], hasMore: false, totalCount: 0 };
+      }
+      query = query.in("id", relevanceOrder);
+    } else {
+      // Default view leads with the order the shop owner dragged the
+      // catalog into (products.sort_order), then falls back to A–Z for
+      // anything with no position yet.
+      if (sortOption === "default") {
+        query = query.order("sort_order", { ascending: true, nullsFirst: false });
+      }
+      const sort = SORT_COLUMNS[sortOption] ?? SORT_COLUMNS.newest;
+      query = query.order(sort.column, { ascending: sort.ascending }).range(start, end);
     }
 
-    // Apply pagination and ordering. The default view leads with the order the
-    // shop owner dragged the catalog into (products.sort_order), then falls
-    // back to A–Z for anything with no position yet; an explicit price/name/
-    // newest sort is what the shopper asked for, so it wins outright.
-    if (sortOption === "default") {
-      query = query.order("sort_order", { ascending: true, nullsFirst: false });
-    }
-
-    const sort = SORT_COLUMNS[sortOption] ?? SORT_COLUMNS.newest;
-    const { data: products, error: productError, count } = await query
-      .order(sort.column, { ascending: sort.ascending })
-      .range(start, end);
+    const { data: products, error: productError, count } = await query;
 
     if (productError) {
       console.error("Product query error:", productError);
@@ -234,6 +246,35 @@ export async function clientGetProducts(
         created_at: p.created_at,
       } as Product;
     });
+
+    if (isSearching) {
+      // Relevance order only exists in memory — .in() doesn't preserve the
+      // order its ids were passed in, so the fetched rows are re-sorted to
+      // match relevanceOrder before pagination is applied by hand.
+      const byId = new Map(mappedProducts.map((p) => [p.id, p]));
+      const orderedProducts = relevanceOrder
+        .map((id) => byId.get(id))
+        .filter((p): p is Product => !!p);
+
+      const sort = SORT_COLUMNS[sortOption];
+      const finalOrder =
+        sortOption !== "default" && sort
+          ? [...orderedProducts].sort((a, b) => {
+              const aVal = (a as any)[sort.column];
+              const bVal = (b as any)[sort.column];
+              if (aVal === bVal) return 0;
+              const cmp = aVal > bVal ? 1 : -1;
+              return sort.ascending ? cmp : -cmp;
+            })
+          : orderedProducts;
+
+      const pageProducts = finalOrder.slice(start, end + 1);
+      return {
+        products: pageProducts,
+        hasMore: end + 1 < finalOrder.length,
+        totalCount: finalOrder.length,
+      };
+    }
 
     // Sort: in-stock first — only on the default ordering, and only where the
     // owner hasn't dragged the catalog into a deliberate order. Once there's

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { Select, InputNumber, Input, Button as AntButton, Space, Typography } from "antd";
+import { Select, InputNumber, Input, Button as AntButton, Space, Typography, notification } from "antd";
 import Image from "next/image";
 import { Trash2, Boxes, Layers } from "lucide-react";
 import { BundleType, BundleItemType } from "@/lib/schema/bundleSchema";
@@ -33,13 +33,19 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
   const bundlePrice = watch("discounted_price") || watch("base_price") || 0;
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const { currency } = useUserCurrencyIcon();
+  const [notif, contextHolder] = notification.useNotification();
 
   useEffect(() => {
     if (!storeId) return;
-    getProductsWithVariants({ storeId, excludeBundles: true }).then((res) => {
-      setProducts(res.data);
-    });
-  }, [storeId]);
+    getProductsWithVariants({ storeId, excludeBundles: true })
+      .then((res) => {
+        setProducts(res.data);
+      })
+      .catch((err) => {
+        console.error("Failed to load products for bundle picker:", err);
+        notif.error({ title: "Failed to load products" });
+      });
+  }, [storeId, notif]);
 
   const slots = useMemo<Slot[]>(() => {
     const seenGroups = new Set<string>();
@@ -212,6 +218,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6 lg:p-8">
+      {contextHolder}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">

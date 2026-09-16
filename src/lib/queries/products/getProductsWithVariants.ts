@@ -4,6 +4,7 @@
 import { supabase } from "@/lib/supabase";
 import { ProductStatus } from "@/lib/types/enums";
 import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
+import { searchProductIds } from "@/lib/queries/products/searchProductIds";
 
 /* =========================
    Types
@@ -177,8 +178,33 @@ export async function getProductsWithVariants({
     )
     .eq("store_id", storeId);
 
+  // A typed search resolves matching ids itself (substring or typo-tolerant
+  // against name/sku/description — see searchProductIds.ts) rather than a
+  // plain ilike on name alone, so a slightly misspelled or SKU-based search
+  // still finds the right product. Relevance order only exists in memory, so
+  // pagination for a search is applied by hand below instead of via range().
+  let relevanceOrder: string[] | null = null;
+
   if (productIds && productIds.length > 0) {
     query.in("id", productIds);
+  } else if (search?.trim()) {
+    relevanceOrder = await searchProductIds(storeId, search.trim(), {
+      statusEq: status,
+      excludeBundles,
+      featured,
+    });
+    if (relevanceOrder.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        counts: { [ProductStatus.ACTIVE]: 0, [ProductStatus.INACTIVE]: 0, [ProductStatus.DRAFT]: 0, ALL: 0 },
+        featuredCount: 0,
+      };
+    }
+    query.in("id", relevanceOrder);
+    if (status) query.eq("status", status);
+    if (featured !== undefined) query.eq("featured", featured);
+    if (excludeBundles) query.neq("product_type", "bundle");
   } else {
     // Manual drag order first (see reorderProducts.ts), then A–Z. A product
     // added after the catalog was numbered has no position yet, so it lands
@@ -186,7 +212,6 @@ export async function getProductsWithVariants({
     query.order("sort_order", { ascending: true, nullsFirst: false });
     query.order("name", { ascending: true });
 
-    if (search?.trim()) query.ilike("name", `%${search.trim()}%`);
     if (status) query.eq("status", status);
     if (featured !== undefined) query.eq("featured", featured);
     if (excludeBundles) query.neq("product_type", "bundle");
@@ -260,6 +285,26 @@ export async function getProductsWithVariants({
     }
   }
 
+  // Relevance order only exists in memory — the .in() filter above doesn't
+  // preserve the order its ids were passed in — so search results are
+  // re-sorted to match relevanceOrder and paginated by hand here instead of
+  // via range() (which was skipped for exactly this reason).
+  let finalProducts = products;
+  let total = count ?? 0;
+
+  if (relevanceOrder) {
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const ordered = relevanceOrder
+      .map((id) => byId.get(id))
+      .filter((p): p is ProductWithVariants => !!p);
+
+    total = ordered.length;
+    finalProducts =
+      page !== undefined && pageSize !== undefined
+        ? ordered.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
+        : ordered;
+  }
+
   // ------------------ 2️⃣ Fetch counts per status + featured ------------------
   const counts: Record<ProductStatus | "ALL", number> = {
     [ProductStatus.ACTIVE]: 0,
@@ -287,8 +332,8 @@ export async function getProductsWithVariants({
   }
 
   return {
-    data: products,
-    total: count ?? 0,
+    data: finalProducts,
+    total,
     counts,
     featuredCount,
   };

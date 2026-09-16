@@ -10,6 +10,8 @@ interface QrLabelPreviewModalProps {
   pdfBlob: Blob | null;
   fileName: string;
   onClose: () => void;
+  /** This modal is shared by the QR and barcode bulk-print flows — defaults to the original QR wording so existing callers don't need to change. */
+  title?: string;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function QrLabelPreviewModal({
   pdfBlob,
   fileName,
   onClose,
+  title = "QR Labels",
 }: QrLabelPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -68,7 +71,7 @@ export default function QrLabelPreviewModal({
     <Modal
       open={open}
       onCancel={onClose}
-      title="QR Labels"
+      title={title}
       centered
       width={420}
       footer={

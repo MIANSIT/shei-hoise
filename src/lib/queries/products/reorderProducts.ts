@@ -23,13 +23,17 @@ export async function reorderProducts(
   if (orderedIds.length === 0) return { success: true };
 
   // The store's full catalog in its current effective order — the same
-  // ordering every list applies: manual positions first, then newest.
+  // ordering every list applies: manual positions first, then A–Z for
+  // anything never dragged (must match getProductsWithVariants.ts and
+  // clientGetProducts.ts's tiebreak exactly — a mismatch here means every
+  // drag silently re-sorts un-dragged rows into a different order than the
+  // one the owner was just looking at, which is what "name asc" fixes).
   const { data: allRows, error: fetchError } = await supabaseAdmin
     .from("products")
     .select("id")
     .eq("store_id", storeId)
     .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("name", { ascending: true });
 
   if (fetchError) return { success: false, error: fetchError.message };
 

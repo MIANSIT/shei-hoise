@@ -38,13 +38,14 @@ import {
 import { CreateOrderData, OrderProduct } from "@/lib/types/order";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { generateReceiptPdfSet } from "@/lib/utils/generateReceiptPdf";
-import { unlockBeepAudio } from "@/lib/utils/beep";
-import { getStorePublicUrl } from "@/lib/utils/productQr";
+import { unlockBeepAudio, playBeep } from "@/lib/utils/beep";
+import { useHardwareBarcodeScanner } from "@/lib/hook/useHardwareBarcodeScanner";
+import { getStorePublicUrl, extractProductSlugFromScannedText } from "@/lib/utils/productQr";
 import { getOrCreateCustomerByPhone } from "@/lib/queries/customers/getOrCreateCustomerByPhone";
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import VariantPickerModal from "./VariantPickerModal";
 import ReceiptPreviewModal from "./ReceiptPreviewModal";
-import ScanToAddModal from "./ScanToAddModal";
+import ScanToAddModal, { type ScanResult } from "./ScanToAddModal";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 
@@ -259,6 +260,56 @@ export default function QuickSale() {
     addToCart(product);
     return "added";
   };
+
+  // Shared by both scan input channels — a physical scanner gun's keyboard
+  // input below, and the camera modal's decoded QR/barcode text — so a scan
+  // resolves identically no matter which device or code type produced it.
+  // A physical scanner "types" whatever it decodes regardless of symbology
+  // (a 2D-capable one reading a printed QR emits the same product-page URL
+  // a phone camera would decode, not a SKU), and the camera modal now reads
+  // both a QR and a 1D barcode itself — so a CODE128 barcode's exact SKU is
+  // checked first (resolves straight to one specific row — the product
+  // itself, or the one variant whose own SKU matched, no variant picker
+  // ever needed), and only if nothing matches as a SKU is the text tried as
+  // a scanned QR URL instead, going through the same "does this product
+  // need a variant picker" branch a tap already uses, since a QR only
+  // identifies the product, not a specific variant. Not wrapped in
+  // useCallback — useHardwareBarcodeScanner re-reads its callback via a ref
+  // every render, so a fresh closure here each time (always seeing the
+  // current `products`) is exactly what it expects, not a memoization gap.
+  const handleBarcodeScanned = (code: string): ScanResult => {
+    for (const product of products) {
+      if (product.sku === code) {
+        addToCart(product);
+        playBeep();
+        return { outcome: "added", productName: product.name };
+      }
+      const variant = (product.product_variants || []).find((v) => v.is_active && v.sku === code);
+      if (variant) {
+        addToCart(product, variant);
+        playBeep();
+        return { outcome: "added", productName: product.name };
+      }
+    }
+
+    const slug = extractProductSlugFromScannedText(code);
+    if (slug) {
+      const product = products.find((p) => p.slug === slug);
+      if (!product) return { outcome: "not-found" };
+      playBeep();
+      const tapOutcome = handleTapProduct(product);
+      return { outcome: tapOutcome, productName: product.name };
+    }
+
+    // Neither a known SKU nor a recognizable product URL — for the hardware
+    // listener this is silently ignored (see its own "no sound for a
+    // near-miss" note); the camera modal below turns this into a status
+    // message instead, since there a miss is something the cashier is
+    // actively watching for.
+    return { outcome: "invalid" };
+  };
+
+  useHardwareBarcodeScanner(handleBarcodeScanned);
 
   const updateCartQty = (index: number, newQty: number) => {
     setCart((prev) => {
@@ -930,9 +981,8 @@ export default function QuickSale() {
       <ScanToAddModal
         open={scanOpen}
         paused={!!variantPickerProduct}
-        products={products}
         onClose={() => setScanOpen(false)}
-        onProductFound={(product) => handleTapProduct(product)}
+        onCodeScanned={handleBarcodeScanned}
       />
 
       <ReceiptPreviewModal

@@ -37,7 +37,12 @@ export default function AddProductPage() {
       </div>
     );
     formRef.current?.reset();
-    router.push("/dashboard/products");
+    // New products always land at the end of the catalog's manual order
+    // (sort_order is NULL until dragged) — with normal pagination that could
+    // be several pages away from the page-1 default. Send the owner straight
+    // into the unpaginated Reorder view instead, where the new product is
+    // simply the last row and immediately visible, ready to drag into place.
+    router.push(`/dashboard/products?reorder=1&justAdded=${result.productId}`);
   };
 
   return (

@@ -2,21 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Modal, Button } from "antd";
+import { m } from "framer-motion";
+import { Check } from "lucide-react";
 import jsQR from "jsqr";
-import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { extractProductSlugFromScannedText } from "@/lib/utils/productQr";
-import { playBeep } from "@/lib/utils/beep";
+import {
+  BarcodeFormat,
+  BinaryBitmap,
+  DecodeHintType,
+  HybridBinarizer,
+  MultiFormatReader,
+  RGBLuminanceSource,
+} from "@zxing/library";
+
+/** Outcome of resolving one scanned code (QR or barcode) against the catalog — see QuickSale.tsx's handleBarcodeScanned, the single place both scan channels (this camera modal and the hardware-scanner keyboard listener) resolve a code through. */
+export type ScanResult =
+  | { outcome: "added"; productName: string }
+  | { outcome: "variant-needed"; productName: string }
+  | { outcome: "not-found" }
+  | { outcome: "invalid" };
 
 interface ScanToAddModalProps {
   open: boolean;
-  /** True while a variant picker opened by a scan is still awaiting the cashier's selection — scanning pauses so a held-up QR doesn't reopen/replace that picker mid-selection. */
+  /** True while a variant picker opened by a scan is still awaiting the cashier's selection — scanning pauses so a held-up code doesn't reopen/replace that picker mid-selection. */
   paused: boolean;
-  products: ProductWithVariants[];
   onClose: () => void;
-  onProductFound: (product: ProductWithVariants) => "added" | "variant-needed";
+  /** Resolves a decoded code (from either the QR or the barcode reader below) against the catalog and returns what happened, so this modal can show the right status message. */
+  onCodeScanned: (code: string) => ScanResult;
 }
 
-// Consecutive empty frames required before a held QR is considered "out of
+// Consecutive empty frames required before a held code is considered "out of
 // frame" and eligible to scan again — a couple of frames, not one, so a
 // single missed decode on a code that's still in view (motion blur, glare)
 // doesn't let it re-trigger without actually being moved away. At ~30fps
@@ -25,14 +39,49 @@ const MISS_FRAMES_TO_CLEAR = 5;
 
 // Only the centered box (this fraction of the frame's width/height) is
 // actually decoded — printed sheets of multiple product labels (see
-// "Print All QR Labels") put several small QR codes in view at once, and
-// decoding the full frame either can't resolve the tiny modules or locks
-// onto the wrong neighboring code. Cropping to a center box matching the
-// visible on-screen guide forces the cashier to align one code at a time,
-// and combined with the higher-resolution stream requested below, that
-// cropped region still has enough native pixels to resolve a code held
+// "Print All QR Labels"/"Barcode Labels") put several small codes in view at
+// once, and decoding the full frame either can't resolve the tiny modules or
+// locks onto the wrong neighboring code. Cropping to a center box matching
+// the visible on-screen guide forces the cashier to align one code at a
+// time, and combined with the higher-resolution stream requested below,
+// that cropped region still has enough native pixels to resolve a code held
 // close to the camera.
 const SCAN_BOX_FRACTION = 0.55;
+
+// Barcode formats a store's own printed labels (or a manufacturer's
+// packaging) are realistically in — QR is deliberately excluded here since
+// jsQR already owns that, tried first every frame; asking ZXing to also
+// look for QR would just be duplicate work.
+const BARCODE_HINTS = new Map<DecodeHintType, unknown>([
+  [
+    DecodeHintType.POSSIBLE_FORMATS,
+    [
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.CODE_39,
+    ],
+  ],
+]);
+
+/**
+ * ZXing's RGBLuminanceSource treats a Uint8ClampedArray input as already
+ * one-byte-per-pixel grayscale (only a 4-byte-per-pixel Int32Array gets its
+ * built-in RGB→luminance conversion) — so a canvas's raw RGBA ImageData
+ * would be silently misread pixel-for-pixel-wrong (4x too many "pixels", B
+ * and A channels included) if handed over directly the way jsQR accepts it.
+ * This does that conversion ourselves first.
+ */
+function toGrayscaleLuminance(imageData: ImageData): Uint8ClampedArray {
+  const { data, width, height } = imageData;
+  const gray = new Uint8ClampedArray(width * height);
+  for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+    gray[j] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0;
+  }
+  return gray;
+}
 
 function cameraErrorMessage(err: unknown): string {
   const name = err instanceof DOMException ? err.name : "";
@@ -51,15 +100,15 @@ function cameraErrorMessage(err: unknown): string {
 export default function ScanToAddModal({
   open,
   paused,
-  products,
   onClose,
-  onProductFound,
+  onCodeScanned,
 }: ScanToAddModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
-  // The raw text of the QR currently held in front of the camera — cleared
+  const barcodeReaderRef = useRef<MultiFormatReader | null>(null);
+  // The raw text of the code currently held in front of the camera — cleared
   // once it's actually removed (see MISS_FRAMES_TO_CLEAR), so holding a code
   // up longer than intended can't add it twice.
   const activeTextRef = useRef<string | null>(null);
@@ -68,12 +117,33 @@ export default function ScanToAddModal({
   const [status, setStatus] = useState("Starting camera…");
   const [cameraFailed, setCameraFailed] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
+  // How many items this scanning session has added — the small text status
+  // line under the video was easy to miss in a busy checkout, so this and
+  // the flash below give a harder-to-miss "yes, that worked" without
+  // forcing the cashier to close and reopen the scanner between items.
+  const [addedCount, setAddedCount] = useState(0);
+  // Re-keying this remounts the flash overlay below, restarting its fade
+  // from scratch even if the previous one hasn't finished yet — so two
+  // items scanned in quick succession each get their own visible flash
+  // instead of the second one silently doing nothing to an element that's
+  // already mid-animation.
+  const [flashKey, setFlashKey] = useState(0);
+
+  if (!barcodeReaderRef.current) {
+    barcodeReaderRef.current = new MultiFormatReader();
+  }
 
   useEffect(() => {
     pausedRef.current = paused;
     if (paused) setStatus("Finish selecting the variant in the popup, then keep scanning.");
-    else if (open) setStatus("Line up one QR code inside the box.");
+    else if (open) setStatus("Line up a QR code or barcode inside the box.");
   }, [paused, open]);
+
+  // Fresh count for each time the scanner is opened, not a running total
+  // across separate visits to the modal.
+  useEffect(() => {
+    if (open) setAddedCount(0);
+  }, [open]);
 
   const stopCamera = () => {
     if (rafRef.current) {
@@ -110,8 +180,8 @@ export default function ScanToAddModal({
           // Ideal, not exact — falls back gracefully on cameras that can't
           // hit this, but on most phones this is what actually gives the
           // cropped center box (see SCAN_BOX_FRACTION) enough real pixels
-          // to resolve a small QR code, e.g. one label on a printed sheet
-          // of several.
+          // to resolve a small code, e.g. one label on a printed sheet of
+          // several.
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         },
@@ -127,7 +197,7 @@ export default function ScanToAddModal({
           video.srcObject = stream;
           video.play();
         }
-        setStatus("Line up one QR code inside the box.");
+        setStatus("Line up a QR code or barcode inside the box.");
         rafRef.current = requestAnimationFrame(scanTick);
       })
       .catch((err) => {
@@ -148,17 +218,36 @@ export default function ScanToAddModal({
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           // Decode only the centered box matching the on-screen guide (see
           // SCAN_BOX_FRACTION) — keeps neighboring codes on a multi-label
-          // sheet out of the decode entirely, instead of leaving jsQR to
-          // arbitrarily pick one among several found in the full frame.
+          // sheet out of the decode entirely, instead of leaving the
+          // decoders to arbitrarily pick one among several found in the
+          // full frame.
           const boxWidth = canvas.width * SCAN_BOX_FRACTION;
           const boxHeight = canvas.height * SCAN_BOX_FRACTION;
           const boxX = (canvas.width - boxWidth) / 2;
           const boxY = (canvas.height - boxHeight) / 2;
           const imageData = ctx.getImageData(boxX, boxY, boxWidth, boxHeight);
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
-          if (code?.data) {
+
+          const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+          if (qrCode?.data) {
             sawCode = true;
-            handleScanned(code.data);
+            handleScanned(qrCode.data);
+          } else {
+            // Only worth trying the (more expensive) barcode decode when
+            // there's no QR in this frame at all.
+            try {
+              const luminanceSource = new RGBLuminanceSource(
+                toGrayscaleLuminance(imageData),
+                imageData.width,
+                imageData.height,
+              );
+              const bitmap = new BinaryBitmap(new HybridBinarizer(luminanceSource));
+              const result = barcodeReaderRef.current!.decode(bitmap, BARCODE_HINTS);
+              sawCode = true;
+              handleScanned(result.getText());
+            } catch {
+              // No barcode in this frame either — the normal case for most
+              // frames; ZXing throws rather than returning null.
+            }
           }
         }
       }
@@ -180,23 +269,23 @@ export default function ScanToAddModal({
       if (activeTextRef.current === text) return;
       activeTextRef.current = text;
 
-      const slug = extractProductSlugFromScannedText(text);
-      if (!slug) {
-        setStatus("That QR isn't a product code from this store.");
-        return;
+      const result = onCodeScanned(text);
+      switch (result.outcome) {
+        case "invalid":
+          setStatus("That code isn't a product code from this store.");
+          break;
+        case "not-found":
+          setStatus("Scanned, but that product isn't in this store's catalog.");
+          break;
+        case "variant-needed":
+          setStatus(`Select a variant for ${result.productName}…`);
+          break;
+        case "added":
+          setStatus(`✓ Added: ${result.productName}`);
+          setAddedCount((c) => c + 1);
+          setFlashKey((k) => k + 1);
+          break;
       }
-      const product = products.find((p) => p.slug === slug);
-      if (!product) {
-        setStatus("Scanned, but that product isn't in this store's catalog.");
-        return;
-      }
-      playBeep();
-      const outcome = onProductFound(product);
-      setStatus(
-        outcome === "variant-needed"
-          ? `Select a variant for ${product.name}…`
-          : `✓ Added: ${product.name}`,
-      );
     }
 
     return () => {
@@ -204,7 +293,7 @@ export default function ScanToAddModal({
       stopCamera();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, products, retryToken]);
+  }, [open, onCodeScanned, retryToken]);
 
   return (
     <Modal
@@ -215,7 +304,7 @@ export default function ScanToAddModal({
           Close
         </Button>
       }
-      title="Scan Product QR"
+      title="Scan QR or Barcode"
       centered
     >
       <div style={{ position: "relative" }}>
@@ -251,6 +340,55 @@ export default function ScanToAddModal({
             pointerEvents: "none",
           }}
         />
+
+        {/* A hard-to-miss confirmation the moment something is actually
+            added — the small status line below is easy to miss in a busy
+            checkout. Re-keyed by flashKey so a second item scanned right
+            after the first still gets its own full flash instead of being
+            silently absorbed into an animation already in progress. */}
+        {flashKey > 0 && (
+          <m.div
+            key={flashKey}
+            aria-hidden
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 8,
+              background: "rgba(16, 185, 129, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <Check size={72} color="#fff" strokeWidth={3} />
+          </m.div>
+        )}
+
+        {/* Running total for this scanning session — lets the cashier keep
+            scanning a whole basket without needing to close and reopen
+            between items to confirm each one landed. */}
+        {addedCount > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              background: "rgba(0,0,0,0.65)",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "4px 10px",
+              borderRadius: 999,
+              pointerEvents: "none",
+            }}
+          >
+            {addedCount} added this scan
+          </div>
+        )}
       </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
       <p style={{ margin: "8px 0 0", fontSize: 13, color: "#888", textAlign: "center", minHeight: 16 }}>
