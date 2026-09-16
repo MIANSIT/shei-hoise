@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, Input, Space, Pagination, notification } from "antd";
+import { Button, Input, Space, Pagination, notification, Popover } from "antd";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined, LockOutlined } from "@ant-design/icons";
 import { Star, ArrowUpDown } from "lucide-react";
 import ProductTable from "./ProductTable";
 import { ProductReorderList } from "./ProductReorderList";
@@ -12,7 +12,9 @@ import {
   ProductWithVariants,
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useStore } from "@/lib/hook/stores/useStore";
+import FeatureUpsell from "@/app/components/admin/common/FeatureUpsell";
 import {
   getProductPublicUrl,
   renderProductQrDataUrl,
@@ -32,6 +34,12 @@ const Products: React.FC = () => {
   const searchParams = useSearchParams();
   const { user, storeSlug } = useCurrentUser();
   const { store } = useStore(user?.store_id ?? null);
+  const { allowed: qrAllowed } = useFeatureGate(user?.store_id, "qr");
+  const { allowed: barcodeAllowed } = useFeatureGate(user?.store_id, "barcode");
+  // Its own flag, separate from the Stock page's "export_data" (stock
+  // export) and "trader_price_export" — each export surface is gated
+  // individually so a plan can grant one without the others.
+  const { allowed: csvExportAllowed } = useFeatureGate(user?.store_id, "product_csv_export");
 
   const statusConfig = [
     { key: "ALL", label: t.admin.allProductsFilter },
@@ -404,21 +412,51 @@ const Products: React.FC = () => {
           >
             Reorder
           </Button>
-          <Button
-            icon={<QrcodeOutlined />}
-            loading={printingLabels}
-            disabled={!storeSlug}
-            onClick={handlePrintAllQrLabels}
-          >
-            Print All QR Labels
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            loading={exporting}
-            onClick={handleDownloadProductsCsv}
-          >
-            {t.admin.productDownloadCsv}
-          </Button>
+          {qrAllowed ? (
+            <Button
+              icon={<QrcodeOutlined />}
+              loading={printingLabels}
+              disabled={!storeSlug}
+              onClick={handlePrintAllQrLabels}
+            >
+              Print All QR Labels
+            </Button>
+          ) : (
+            <Popover
+              content={
+                <FeatureUpsell
+                  title="QR labels are a Pro feature"
+                  description="Your current plan doesn't include QR code labels. Upgrade to print them for your catalog."
+                />
+              }
+              trigger="click"
+              placement="bottomRight"
+            >
+              <Button icon={<LockOutlined />}>Print All QR Labels</Button>
+            </Popover>
+          )}
+          {csvExportAllowed ? (
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting}
+              onClick={handleDownloadProductsCsv}
+            >
+              {t.admin.productDownloadCsv}
+            </Button>
+          ) : (
+            <Popover
+              content={
+                <FeatureUpsell
+                  title="Product export is a Pro feature"
+                  description="Your current plan doesn't include exporting your product catalog to CSV. Upgrade to download your full sheet anytime."
+                />
+              }
+              trigger="click"
+              placement="bottomRight"
+            >
+              <Button icon={<LockOutlined />}>{t.admin.productDownloadCsv}</Button>
+            </Popover>
+          )}
         </div>
       </div>
 
@@ -533,6 +571,8 @@ const Products: React.FC = () => {
             storeSlug={storeSlug ?? undefined}
             storeName={store?.store_name ?? undefined}
             storeLogoUrl={store?.logo_url}
+            qrAllowed={qrAllowed}
+            barcodeAllowed={barcodeAllowed}
           />
         </div>
       </div>

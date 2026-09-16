@@ -10,6 +10,7 @@
  */
 import { JsPDFInstance, loadImageBase64, registerBengaliFont, setTextFont } from "./pdfText";
 import { drawBarcodeVector } from "./pdfBarcode";
+import { encodeCode128B } from "./barcode128";
 
 export interface BarcodeLabelData {
   storeName: string;
@@ -31,6 +32,21 @@ const CONTENT_WIDTH_MM = PAGE_WIDTH_MM - MARGIN_MM * 2;
 // physical barcode sticker makes: keep SKUs short enough to print cleanly.
 const MIN_MODULE_WIDTH_MM = 0.25;
 const BARCODE_HEIGHT_MM = 11;
+
+/**
+ * True if `sku` is too long to hold MIN_MODULE_WIDTH_MM at this label's
+ * content width — i.e. the printed bars will come out thinner than what a
+ * typical label printer can reproduce distinctly, which reads as a
+ * "broken"/garbled barcode on paper even though the encoded data underneath
+ * is correct. There's a hard physical limit here (233 CODE128 modules for an
+ * 18-character SKU need 58mm of bars at 0.25mm/module — more than this
+ * entire 50mm-wide label, margins included), so the fix for a `true` here is
+ * a shorter SKU, not different drawing code.
+ */
+export function isSkuTooLongForBarcodeLabel(sku: string): boolean {
+  const requiredWidthMm = encodeCode128B(sku).modules * MIN_MODULE_WIDTH_MM;
+  return requiredWidthMm > CONTENT_WIDTH_MM;
+}
 
 function drawLabel(
   doc: JsPDFInstance,
@@ -59,9 +75,14 @@ function drawLabel(
   doc.text(nameLines[0], PAGE_WIDTH_MM / 2, y + 1.8, { align: "center" });
   y += 3.6;
 
-  const barcodeWidthMm = Math.max(CONTENT_WIDTH_MM, MIN_MODULE_WIDTH_MM * 134);
-  const drawWidthMm = Math.min(barcodeWidthMm, CONTENT_WIDTH_MM);
-  drawBarcodeVector(doc, data.sku, (PAGE_WIDTH_MM - drawWidthMm) / 2, y, drawWidthMm, BARCODE_HEIGHT_MM);
+  // Always drawn at the full content width — there's no room to grow into
+  // on a fixed 50mm label regardless of SKU length. A SKU long enough to
+  // fall under MIN_MODULE_WIDTH_MM at this width (see
+  // isSkuTooLongForBarcodeLabel) still gets its best-effort barcode here
+  // rather than nothing, but the caller should have already warned that
+  // it may not scan reliably — no amount of clever layout fits more bars
+  // into the same physical millimeters.
+  drawBarcodeVector(doc, data.sku, MARGIN_MM, y, CONTENT_WIDTH_MM, BARCODE_HEIGHT_MM);
   y += BARCODE_HEIGHT_MM + 1.5;
 
   doc.setFontSize(7);

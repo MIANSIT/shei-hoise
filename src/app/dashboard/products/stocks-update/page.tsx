@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useRef, useCallback } from "react";
-import { Button, Pagination } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { Button, Pagination, Popover } from "antd";
+import { SearchOutlined, LockOutlined } from "@ant-design/icons";
 import { Percent } from "lucide-react";
+import FeatureUpsell from "@/app/components/admin/common/FeatureUpsell";
 import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable";
 import StockExportButton from "@/app/components/admin/dashboard/products/stock/StockExportButton";
 import TraderPriceExportModal from "@/app/components/admin/dashboard/products/trader/TraderPriceExportModal";
@@ -36,6 +37,10 @@ const StockPage = () => {
   const n = useLocalNum();
   const { storeId, storeSlug } = useCurrentUser();
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
+  // Its own flag, separate from stock export ("export_data") and the
+  // Products page's "product_csv_export" — each export surface is gated
+  // individually so a plan can grant one without the others.
+  const { allowed: traderPriceAllowed } = useFeatureGate(storeId, "trader_price_export");
   const { currency } = useUserCurrencyIcon();
   const CURRENCY_SYMBOLS: Record<string, string> = {
     BDT: "৳",
@@ -137,7 +142,7 @@ const StockPage = () => {
             locked={!exportAllowed}
             fetchAllProducts={fetchAllProducts}
           />
-          {exportAllowed && (
+          {traderPriceAllowed ? (
             <Button
               icon={<Percent size={14} />}
               className="rounded-xl h-9 border-border dark:bg-gray-700 dark:text-gray-300 font-medium"
@@ -145,6 +150,24 @@ const StockPage = () => {
             >
               <span className="hidden sm:inline">Trader prices</span>
             </Button>
+          ) : (
+            <Popover
+              content={
+                <FeatureUpsell
+                  title="Trader prices are a Pro feature"
+                  description="Your current plan doesn't include exporting your trade (cost) prices. Upgrade to download them anytime."
+                />
+              }
+              trigger="click"
+              placement="bottomRight"
+            >
+              <Button
+                icon={<LockOutlined />}
+                className="rounded-xl h-9 border-border bg-background/60 text-muted-foreground font-medium"
+              >
+                <span className="hidden sm:inline">Trader prices</span>
+              </Button>
+            </Popover>
           )}
         </div>
       </div>

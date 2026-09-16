@@ -13,7 +13,8 @@ import { renderBarcodeToCanvas, renderBarcodeBlob, isBarcode128Encodable } from 
 import { downloadBlob, printPdfBlob, sanitizeFilename } from "@/lib/utils/printWindow";
 import { generateLabelPdf } from "@/lib/utils/generateLabelPdf";
 import { generateLabelSheetPdf } from "@/lib/utils/generateLabelSheetPdf";
-import { generateBarcodeLabelPdf } from "@/lib/utils/generateBarcodeLabelPdf";
+import { generateBarcodeLabelPdf, isSkuTooLongForBarcodeLabel } from "@/lib/utils/generateBarcodeLabelPdf";
+import { TriangleAlert } from "lucide-react";
 
 type CodeMode = "qr" | "barcode";
 type LabelFormat = "58mm" | "a4";
@@ -34,6 +35,10 @@ interface ProductQrModalProps {
   logoUrl?: string | null;
   /** Which tab to open on — e.g. the table's Barcode button opens straight into barcode mode instead of QR. */
   initialMode?: CodeMode;
+  /** Whether this store's plan includes QR labels — hides the QR tab entirely when false, same as the table's own per-row QR button being hidden. */
+  qrAllowed?: boolean;
+  /** Whether this store's plan includes barcode labels — hides the Barcode tab entirely when false. */
+  barcodeAllowed?: boolean;
 }
 
 export default function ProductQrModal({
@@ -44,6 +49,8 @@ export default function ProductQrModal({
   storeName,
   logoUrl,
   initialMode = "qr",
+  qrAllowed = true,
+  barcodeAllowed = true,
 }: ProductQrModalProps) {
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,10 +71,25 @@ export default function ProductQrModal({
     activeVariants.find((v) => v.id === selectedVariantId) ?? activeVariants[0] ?? null;
   const barcodeSku = activeVariants.length > 0 ? selectedVariant?.sku : product?.sku;
   const canShowBarcode = !!barcodeSku && isBarcode128Encodable(barcodeSku);
+  // A SKU this long can't hold a reliably-scannable module width on a fixed
+  // 50×32mm label, no matter how the bars are drawn — see
+  // isSkuTooLongForBarcodeLabel's doc comment. The barcode still gets
+  // generated (best effort), but the owner should know before printing a
+  // sheet of them that this specific one likely won't scan cleanly.
+  const skuTooLong = canShowBarcode && isSkuTooLongForBarcodeLabel(barcodeSku!);
 
   useEffect(() => {
     if (open) {
-      setMode(initialMode);
+      // Defensive fallback — the buttons that open this modal are already
+      // gated by the same flags, so initialMode should already be allowed;
+      // this just avoids landing on a tab that isn't there if that ever
+      // drifts out of sync.
+      const fallbackMode: CodeMode = qrAllowed ? "qr" : "barcode";
+      setMode(
+        (initialMode === "qr" && qrAllowed) || (initialMode === "barcode" && barcodeAllowed)
+          ? initialMode
+          : fallbackMode,
+      );
       setSelectedVariantId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,13 +187,17 @@ export default function ProductQrModal({
     setExporting(true);
     try {
       const blob = await build;
-      // preferShare: false — a label goes to a regular/photo/label printer
-      // via the OS print dialog, not an ESC/POS Bluetooth bridge app, so the
-      // mobile Share-sheet detour printPdfBlob otherwise takes for receipts
-      // (see its doc comment) would just be an extra hop with no printer on
-      // the other end here.
+      // QR labels (58mm/A4) go to a regular/photo printer via the OS print
+      // dialog, so preferShare: false skips the mobile Share-sheet detour
+      // printPdfBlob otherwise takes for receipts — an extra hop with no
+      // printer on the other end there. A 50×32mm barcode sticker is the
+      // opposite case: realistically a dedicated (often Bluetooth) label
+      // printer via its own bridge app, same as a receipt — and mobile
+      // Chrome's full-screen-iframe fallback (see printPdfViaIframe's doc
+      // comment) can't reliably render a PDF blob at all on that path,
+      // showing a bare "open this file" screen instead of printing anything.
       await printPdfBlob(blob, `${fileBaseName}-${mode === "barcode" ? "Barcode" : "QR"}.pdf`, {
-        preferShare: false,
+        preferShare: mode === "barcode",
       });
     } catch (err) {
       notification.error({
@@ -200,15 +226,17 @@ export default function ProductQrModal({
           width: "100%",
         }}
       >
-        <Segmented
-          value={mode}
-          onChange={(v) => setMode(v as CodeMode)}
-          options={[
-            { label: "QR Code", value: "qr" },
-            { label: "Barcode", value: "barcode" },
-          ]}
-          style={{ marginBottom: 14 }}
-        />
+        {qrAllowed && barcodeAllowed && (
+          <Segmented
+            value={mode}
+            onChange={(v) => setMode(v as CodeMode)}
+            options={[
+              { label: "QR Code", value: "qr" },
+              { label: "Barcode", value: "barcode" },
+            ]}
+            style={{ marginBottom: 14 }}
+          />
+        )}
 
         {mode === "barcode" && activeVariants.length > 0 && (
           <Select
@@ -249,16 +277,41 @@ export default function ProductQrModal({
             </Text>
           </>
         ) : canShowBarcode ? (
-          <canvas
-            ref={barcodeCanvasRef}
-            style={{
-              display: "block",
-              maxWidth: "100%",
-              border: "1px solid #eee",
-              borderRadius: 8,
-              background: "#fff",
-            }}
-          />
+          <>
+            <canvas
+              ref={barcodeCanvasRef}
+              style={{
+                display: "block",
+                maxWidth: "100%",
+                border: "1px solid #eee",
+                borderRadius: 8,
+                background: "#fff",
+              }}
+            />
+            {skuTooLong && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 6,
+                  marginTop: 8,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: "#fff1f0",
+                  border: "1px solid #ffa39e",
+                  color: "#a8071a",
+                  fontSize: 12,
+                }}
+              >
+                <TriangleAlert size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>
+                  This SKU is too long to print legibly on a 50×32mm label — the bars would come
+                  out too thin to scan. Printing is disabled here until the SKU is 13 characters
+                  or fewer.
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           <div
             style={{
@@ -309,10 +362,15 @@ export default function ProductQrModal({
             </>
           ) : (
             <>
-              <Button onClick={() => handleDownloadPdf("58mm")} loading={exporting} disabled={!canShowBarcode}>
+              <Button onClick={() => handleDownloadPdf("58mm")} loading={exporting} disabled={!canShowBarcode || skuTooLong}>
                 Download PDF (50×32mm)
               </Button>
-              <Button type="primary" onClick={() => handlePrint("58mm")} loading={exporting} disabled={!canShowBarcode}>
+              <Button
+                type="primary"
+                onClick={() => handlePrint("58mm")}
+                loading={exporting}
+                disabled={!canShowBarcode || skuTooLong}
+              >
                 Print Label
               </Button>
             </>

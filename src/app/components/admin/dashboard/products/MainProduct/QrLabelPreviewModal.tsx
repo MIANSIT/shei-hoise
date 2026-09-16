@@ -12,6 +12,8 @@ interface QrLabelPreviewModalProps {
   onClose: () => void;
   /** This modal is shared by the QR and barcode bulk-print flows — defaults to the original QR wording so existing callers don't need to change. */
   title?: string;
+  /** True for a barcode sticker (realistically a Bluetooth label printer via its own bridge app, like a receipt) — false (default) for a QR label headed to a regular/photo printer. See handlePrint's comment. */
+  preferShare?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export default function QrLabelPreviewModal({
   fileName,
   onClose,
   title = "QR Labels",
+  preferShare = false,
 }: QrLabelPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -58,10 +61,11 @@ export default function QrLabelPreviewModal({
     if (!pdfBlob) return;
     setPrinting(true);
     try {
-      // preferShare: false — a label goes to a regular/photo printer, not
-      // an ESC/POS Bluetooth bridge, so skip the mobile Share-sheet detour
-      // printPdfBlob otherwise takes for receipts.
-      await printPdfBlob(pdfBlob, fileName, { preferShare: false });
+      // See ProductQrModal.tsx's handlePrint for why this differs by type —
+      // a QR label goes to a regular/photo printer (skip the Share detour),
+      // a barcode sticker realistically goes to a Bluetooth label printer's
+      // own bridge app, the same case receipts already use Share for.
+      await printPdfBlob(pdfBlob, fileName, { preferShare });
     } finally {
       setPrinting(false);
     }

@@ -27,9 +27,11 @@ import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode } from "lucide-react";
 import { isSaleActive } from "@/lib/utils/getEffectivePrice";
-import { Modal, Checkbox, Button, Dropdown } from "antd";
+import { Modal, Checkbox, Button, Dropdown, Popover } from "antd";
+import { LockOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import ProductQrModal from "./ProductQrModal";
+import FeatureUpsell from "@/app/components/admin/common/FeatureUpsell";
 import { deleteProduct } from "@/lib/queries/products/deleteProduct";
 import { toggleProductFeatured } from "@/lib/queries/products/toggleProductFeatured";
 import { toggleProductFreeDelivery } from "@/lib/queries/products/toggleProductFreeDelivery";
@@ -44,7 +46,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { getProductPublicUrl } from "@/lib/utils/productQr";
 import { generateBulkLabelPdf } from "@/lib/utils/generateLabelPdf";
 import { generateLabelSheetPdf } from "@/lib/utils/generateLabelSheetPdf";
-import { generateBulkBarcodeLabelPdf } from "@/lib/utils/generateBarcodeLabelPdf";
+import { generateBulkBarcodeLabelPdf, isSkuTooLongForBarcodeLabel } from "@/lib/utils/generateBarcodeLabelPdf";
 import { isBarcode128Encodable } from "@/lib/utils/productBarcode";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import QrLabelPreviewModal from "./QrLabelPreviewModal";
@@ -89,6 +91,10 @@ interface ProductTableProps {
   storeLogoUrl?: string | null;
   /** Called after a drag is saved, so the list can be refetched. */
   onReorderSuccess?: () => void;
+  /** Whether this store's plan includes QR code labels — gates the per-row/bulk QR actions and the modal's QR tab. */
+  qrAllowed?: boolean;
+  /** Whether this store's plan includes barcode labels — gates the per-row/bulk barcode actions and the modal's Barcode tab. */
+  barcodeAllowed?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -243,6 +249,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
   storeName,
   storeLogoUrl,
   onReorderSuccess,
+  qrAllowed = false,
+  barcodeAllowed = false,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -269,6 +277,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [bulkLabelsBlob, setBulkLabelsBlob] = useState<Blob | null>(null);
   const [bulkLabelsFileName, setBulkLabelsFileName] = useState("");
   const [bulkLabelsTitle, setBulkLabelsTitle] = useState("QR Labels");
+  const [bulkLabelsPreferShare, setBulkLabelsPreferShare] = useState(false);
   const [bulkLabelsPreviewOpen, setBulkLabelsPreviewOpen] = useState(false);
   const sheiNotif = useSheiNotification();
   const { icon: currencyIcon, loading: currencyLoading } =
@@ -415,6 +424,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
       setBulkLabelsBlob(blob);
       setBulkLabelsFileName(`${sanitizeFilename(storeName || "My Shop")}-QR-Labels.pdf`);
       setBulkLabelsTitle("QR Labels");
+      setBulkLabelsPreferShare(false);
       setBulkLabelsPreviewOpen(true);
     } catch (err) {
       sheiNotif.error(
@@ -428,21 +438,33 @@ const ProductTable: React.FC<ProductTableProps> = ({
   // One label per SKU, not per product row — a product with variants has no
   // barcode-able SKU of its own (see productSchema.ts), only its variants
   // do, so a selected product with 3 variants becomes 3 separate 50×32mm
-  // labels here. Anything with no usable SKU is silently dropped rather than
-  // failing the whole batch; the owner is told how many that was.
+  // labels here. Two kinds of item get excluded before anything is
+  // generated, each reported separately: no SKU set at all, or a SKU too
+  // long to hold a reliably-scannable module width on this fixed label size
+  // (see isSkuTooLongForBarcodeLabel) — a barcode is never generated for one
+  // that's known in advance not to print legibly, rather than handing the
+  // owner a sheet with some labels that silently won't scan.
   const handleGenerateBarcodeLabels = async () => {
-    const items = selectedProducts.flatMap((p) => {
+    const candidates = selectedProducts.flatMap((p) => {
       const activeVariants = (p.product_variants || []).filter((v) => v.is_active);
       if (activeVariants.length > 0) {
-        return activeVariants
-          .filter((v) => v.sku && isBarcode128Encodable(v.sku))
-          .map((v) => ({ sku: v.sku as string, productName: `${p.name} — ${v.variant_name ?? "Unnamed"}` }));
+        return activeVariants.map((v) => ({
+          sku: v.sku,
+          productName: `${p.name} — ${v.variant_name ?? "Unnamed"}`,
+        }));
       }
-      return p.sku && isBarcode128Encodable(p.sku) ? [{ sku: p.sku, productName: p.name }] : [];
+      return [{ sku: p.sku, productName: p.name }];
     });
 
+    const noSkuCount = candidates.filter((c) => !c.sku || !isBarcode128Encodable(c.sku)).length;
+    const withSku = candidates.filter(
+      (c): c is { sku: string; productName: string } => !!c.sku && isBarcode128Encodable(c.sku),
+    );
+    const tooLong = withSku.filter((c) => isSkuTooLongForBarcodeLabel(c.sku));
+    const items = withSku.filter((c) => !isSkuTooLongForBarcodeLabel(c.sku));
+
     if (items.length === 0) {
-      sheiNotif.error("None of the selected products/variants have a usable SKU yet.");
+      sheiNotif.error("None of the selected products/variants have a SKU that fits this label size (13 characters or fewer).");
       return;
     }
 
@@ -452,13 +474,15 @@ const ProductTable: React.FC<ProductTableProps> = ({
       setBulkLabelsBlob(blob);
       setBulkLabelsFileName(`${sanitizeFilename(storeName || "My Shop")}-Barcode-Labels.pdf`);
       setBulkLabelsTitle("Barcode Labels");
+      setBulkLabelsPreferShare(true);
       setBulkLabelsPreviewOpen(true);
-      const skippedCount = selectedProducts.reduce(
-        (sum, p) => sum + Math.max((p.product_variants || []).filter((v) => v.is_active).length, 1),
-        0,
-      ) - items.length;
-      if (skippedCount > 0) {
-        sheiNotif.error(`${skippedCount} item(s) were skipped — no SKU set.`);
+      if (noSkuCount > 0) {
+        sheiNotif.error(`${noSkuCount} item(s) were skipped — no SKU set.`);
+      }
+      if (tooLong.length > 0) {
+        sheiNotif.error(
+          `${tooLong.length} item(s) were skipped — SKU too long for a 50×32mm label (13 characters max): ${tooLong.map((c) => c.productName).join(", ")}`,
+        );
       }
     } catch (err) {
       sheiNotif.error(err instanceof Error ? err.message : "Couldn't generate barcode labels");
@@ -664,7 +688,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
           className="flex gap-1.5 justify-center"
           onClick={(e) => e.stopPropagation()}
         >
-          {storeSlug && (
+          {storeSlug && qrAllowed && (
             <QrButton
               onClick={() => {
                 setQrInitialMode("qr");
@@ -672,7 +696,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               }}
             />
           )}
-          {storeSlug && <BarcodeButton onClick={() => handleShowBarcode(record)} />}
+          {storeSlug && barcodeAllowed && <BarcodeButton onClick={() => handleShowBarcode(record)} />}
           <EditButton onClick={() => handleEdit(record.slug)} />
           <DeleteButton onClick={() => showDeleteModal(record.id)} />
         </div>
@@ -704,29 +728,63 @@ const ProductTable: React.FC<ProductTableProps> = ({
             {n(selectedIds.length)} selected
           </span>
           <div className="flex items-center gap-2">
-            <Dropdown.Button
-              size="small"
-              type="primary"
-              onClick={() => handleGenerateLabels("pages")}
-              loading={bulkGenerating}
-              disabled={bulkGenerating}
-              menu={{
-                items: qrLayoutMenuItems,
-                onClick: ({ key }) => handleGenerateLabels(key as QrLayout),
-              }}
-            >
-              <QrCode className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
-              QR Labels
-            </Dropdown.Button>
-            <Button
-              size="small"
-              onClick={handleGenerateBarcodeLabels}
-              loading={bulkGenerating}
-              disabled={bulkGenerating}
-            >
-              <Barcode className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
-              Barcode Labels
-            </Button>
+            {qrAllowed ? (
+              <Dropdown.Button
+                size="small"
+                type="primary"
+                onClick={() => handleGenerateLabels("pages")}
+                loading={bulkGenerating}
+                disabled={bulkGenerating}
+                menu={{
+                  items: qrLayoutMenuItems,
+                  onClick: ({ key }) => handleGenerateLabels(key as QrLayout),
+                }}
+              >
+                <QrCode className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
+                QR Labels
+              </Dropdown.Button>
+            ) : (
+              <Popover
+                content={
+                  <FeatureUpsell
+                    title="QR labels are a Pro feature"
+                    description="Your current plan doesn't include QR code labels. Upgrade to print them for your catalog."
+                  />
+                }
+                trigger="click"
+                placement="bottomRight"
+              >
+                <Button size="small" icon={<LockOutlined />}>
+                  QR Labels
+                </Button>
+              </Popover>
+            )}
+            {barcodeAllowed ? (
+              <Button
+                size="small"
+                onClick={handleGenerateBarcodeLabels}
+                loading={bulkGenerating}
+                disabled={bulkGenerating}
+              >
+                <Barcode className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
+                Barcode Labels
+              </Button>
+            ) : (
+              <Popover
+                content={
+                  <FeatureUpsell
+                    title="Barcode labels are a Pro feature"
+                    description="Your current plan doesn't include barcode labels. Upgrade to print them for your catalog."
+                  />
+                }
+                trigger="click"
+                placement="bottomRight"
+              >
+                <Button size="small" icon={<LockOutlined />}>
+                  Barcode Labels
+                </Button>
+              </Popover>
+            )}
             <Button size="small" onClick={() => setSelectedIds([])} disabled={bulkGenerating}>
               Clear
             </Button>
@@ -854,7 +912,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           fill={getFeatured(record) ? "currentColor" : "none"}
                         />
                       </button>
-                      {storeSlug && (
+                      {storeSlug && qrAllowed && (
                         <QrButton
                           onClick={() => {
                             setQrInitialMode("qr");
@@ -862,7 +920,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           }}
                         />
                       )}
-                      {storeSlug && <BarcodeButton onClick={() => handleShowBarcode(record)} />}
+                      {storeSlug && barcodeAllowed && <BarcodeButton onClick={() => handleShowBarcode(record)} />}
                       <EditButton onClick={() => handleEdit(record.slug)} />
                       <DeleteButton
                         onClick={() => showDeleteModal(record.id)}
@@ -942,6 +1000,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
           storeName={storeName || "My Shop"}
           logoUrl={storeLogoUrl}
           initialMode={qrInitialMode}
+          qrAllowed={qrAllowed}
+          barcodeAllowed={barcodeAllowed}
         />
       )}
 
@@ -950,6 +1010,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         pdfBlob={bulkLabelsBlob}
         fileName={bulkLabelsFileName}
         title={bulkLabelsTitle}
+        preferShare={bulkLabelsPreferShare}
         onClose={() => setBulkLabelsPreviewOpen(false)}
       />
     </>
