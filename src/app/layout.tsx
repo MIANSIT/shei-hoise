@@ -19,6 +19,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Shei Hoise",
   description: "Shei Hoise is an e-commerce powered by MIANS",
+  verification: {
+    google: "696SaU0FXmEwqbLTAV6wbTuBrFDJc0dfnJrjF3Hi9Kg",
+  },
 };
 
 export default function RootLayout({

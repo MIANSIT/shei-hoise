@@ -112,11 +112,47 @@ export default async function StoreLayout({
   const hasFreeShipping = !!settings?.free_shipping_threshold && settings.free_shipping_threshold > 0;
   const showAnnouncement = announcements.length > 0 || hasFreeShipping;
 
+  // Organization structured data — tells Google this store is a distinct,
+  // named seller (not just a page on Shei Hoise) so it can surface the store
+  // itself for brand and category searches.
+  const storeUrl = `${baseUrl}/${store_slug}`;
+  const sameAs = [
+    storeData.social?.facebook_link,
+    storeData.social?.instagram_link,
+    storeData.social?.twitter_link,
+    storeData.social?.youtube_link,
+  ].filter((url): url is string => !!url);
+
+  const storeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: storeData.store_name,
+    url: storeUrl,
+    logo: storeData.logo_url ?? undefined,
+    image: storeData.banner_url ?? storeData.logo_url ?? undefined,
+    description: storeData.short_description ?? storeData.description ?? undefined,
+    ...(sameAs.length ? { sameAs } : {}),
+    ...(storeData.contact_email || storeData.contact_phone
+      ? {
+          contactPoint: {
+            "@type": "ContactPoint",
+            email: storeData.contact_email ?? undefined,
+            telephone: storeData.contact_phone ?? undefined,
+            contactType: "customer service",
+          },
+        }
+      : {}),
+  };
+
   return (
     <div
       className="min-h-screen flex flex-col bg-background text-foreground"
       data-store-theme={palette ? storeData.id : undefined}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }}
+      />
       {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
       {storeData.facebook_pixel_id && (
         <FacebookPixelScript pixelId={storeData.facebook_pixel_id} storeSlug={store_slug} />

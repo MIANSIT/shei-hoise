@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
@@ -707,10 +708,11 @@ export default function ProductPage() {
                       className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2"
                     >
                       {item.component?.primary_image?.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={item.component.primary_image.image_url}
                           alt={item.component?.name ?? ""}
+                          width={32}
+                          height={32}
                           className="h-8 w-8 rounded-lg object-cover"
                         />
                       ) : (
@@ -755,10 +757,11 @@ export default function ProductPage() {
                           } ${outOfStock ? "opacity-50 cursor-not-allowed" : "hover:border-gray-300 dark:hover:border-gray-600"}`}
                         >
                           {option.component?.primary_image?.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image
                               src={option.component.primary_image.image_url}
                               alt={option.component?.name ?? ""}
+                              width={32}
+                              height={32}
                               className="h-8 w-8 rounded-lg object-cover"
                             />
                           ) : (
