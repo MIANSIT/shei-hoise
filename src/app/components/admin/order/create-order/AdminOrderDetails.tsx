@@ -149,12 +149,15 @@ export default function AdminOrderDetails({
   const availableVariants =
     selectedProduct?.product_variants?.filter((v) => v.is_active) ?? [];
 
-  // Get available quantity for a variant
+  // Get available quantity for a variant — use raw quantity_available (not
+  // net of reservations) — Admin can sell against physical stock;
+  // reservation deduction is for customer checkout only (see
+  // OrderDetails.tsx's getAvailableQuantity for the same rule).
   const getAvailableQuantity = (variant?: ProductVariant) => {
     if (!variant) return 0;
     const stock = variant.product_inventory[0];
     if (!stock) return 0;
-    return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+    return Math.max(0, stock.quantity_available);
   };
 
   // Get available quantity for base product
@@ -162,7 +165,7 @@ export default function AdminOrderDetails({
     if (!product) return 0;
     const stock = product.product_inventory[0];
     if (!stock) return 0;
-    return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+    return Math.max(0, stock.quantity_available);
   };
 
   // How much of this exact product/variant is already reserved by THIS

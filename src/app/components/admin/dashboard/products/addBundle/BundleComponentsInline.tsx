@@ -261,7 +261,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
             return (
               <div
                 key={idx}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-end"
+                className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 lg:flex-row lg:items-end"
               >
                 <div className="flex-1">
                   <Text className="mb-1.5 block text-sm font-medium">Product</Text>
@@ -270,7 +270,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
                   )}
                 </div>
 
-                <div className="w-full sm:w-56">
+                <div className="w-full lg:w-56">
                   <Text className="mb-1.5 block text-sm font-medium">Variant</Text>
                   {renderVariantSelect(item, activeVariants, !!selectedProduct, (value) =>
                     updateItem(idx, {
@@ -279,7 +279,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
                   )}
                 </div>
 
-                <div className="w-full sm:w-32">
+                <div className="w-full lg:w-32">
                   <Text className="mb-1.5 block text-sm font-medium">Quantity</Text>
                   <InputNumber
                     min={1}
@@ -312,7 +312,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
               key={groupId}
               className="rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-4"
             >
-              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div className="flex-1">
                   <Text className="mb-1.5 block text-sm font-medium">
                     Slot label (shown to customers)
@@ -324,7 +324,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
                     onChange={(e) => updateGroup(groupId, { option_group_label: e.target.value })}
                   />
                 </div>
-                <div className="w-full sm:w-32">
+                <div className="w-full lg:w-32">
                   <Text className="mb-1.5 block text-sm font-medium">Quantity</Text>
                   <InputNumber
                     min={1}
@@ -353,7 +353,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
                   return (
                     <div
                       key={idx}
-                      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:items-end"
+                      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 lg:flex-row lg:items-end"
                     >
                       <div className="flex-1">
                         <Text className="mb-1.5 block text-xs text-muted-foreground">
@@ -366,7 +366,7 @@ const BundleComponentsInline: React.FC<BundleComponentsInlineProps> = ({
                           })
                         )}
                       </div>
-                      <div className="w-full sm:w-56">
+                      <div className="w-full lg:w-56">
                         <Text className="mb-1.5 block text-xs text-muted-foreground">
                           Variant
                         </Text>

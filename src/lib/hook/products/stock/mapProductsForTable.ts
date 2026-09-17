@@ -9,6 +9,7 @@ export interface VariantRow {
   tpPrice: number | null;
   sku: string | null;
   stock: number;
+  reserved: number;
   imageUrl: string | null;
   isLowStock: boolean;
   isOutOfStock: boolean;
@@ -23,6 +24,7 @@ export interface ProductRow {
   tpPrice: number | null;
   sku: string | null;
   stock: number;
+  reserved: number;
   imageUrl: string | null;
   variants?: VariantRow[];
   isLowStock: boolean;
@@ -66,6 +68,7 @@ export function mapProductsForModernTable(
                 : v.base_price,
             tpPrice: v.tp_price ?? null,
             stock: variantStock,
+            reserved: v.stock?.quantity_reserved ?? 0,
             imageUrl:
               v.primary_image?.image_url ?? p.primary_image?.image_url ?? null,
             isOutOfStock: variantStock === 0,
@@ -93,6 +96,7 @@ export function mapProductsForModernTable(
           : p.base_price,
       tpPrice: hasVariants ? null : (p.tp_price ?? null),
       stock: productStock,
+      reserved: p.stock?.quantity_reserved ?? 0,
       imageUrl: p.primary_image?.image_url ?? null,
       isOutOfStock: isProductOutOfStock,
       isLowStock: isProductLowStock,

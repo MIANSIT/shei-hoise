@@ -56,10 +56,13 @@ function getEffectivePrice(product: ProductWithVariants): number {
     ? product.discounted_price
     : product.base_price || 0;
 }
+// Use raw quantity_available (not net of reservations) — Admin can sell
+// against physical stock; reservation deduction is for customer checkout
+// only (see OrderDetails.tsx's getAvailableQuantity for the same rule).
 function getAvailableQuantity(product: ProductWithVariants): number {
   const stock = product.product_inventory[0];
   if (!stock) return 0;
-  return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+  return Math.max(0, stock.quantity_available);
 }
 function getVariantEffectivePrice(variant: ProductVariant): number {
   return variant.discounted_price && variant.discounted_price > 0
@@ -69,7 +72,7 @@ function getVariantEffectivePrice(variant: ProductVariant): number {
 function getVariantAvailableQuantity(variant: ProductVariant): number {
   const stock = variant.product_inventory[0];
   if (!stock) return 0;
-  return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+  return Math.max(0, stock.quantity_available);
 }
 // Mirrors ProductTable.tsx's getProductImage — same fallback order (product
 // primary image → product's first image → a variant's primary/first image).

@@ -378,6 +378,14 @@ const StockTable: React.FC<StockTableProps> = ({
               </span>
             )}
 
+            {record.reserved > 0 && (
+              <Tooltip title={t.admin.stockReservedTooltip}>
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+                  {record.reserved} {t.admin.stockReservedLabel}
+                </span>
+              </Tooltip>
+            )}
+
             <StockHistoryPopover productId={parentId} variantId={variantId} />
 
             {showSave && (

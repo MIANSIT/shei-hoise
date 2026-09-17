@@ -1,7 +1,7 @@
 // File: app/components/admin/dashboard/store-settings/storeCard/PoliciesCard.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import PolicyBlock from "@/app/components/admin/dashboard/store-settings/PolicyBlock";
@@ -31,6 +31,21 @@ import {
 import type { StoreSettings } from "@/lib/types/store/store";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
+// Word count from the rendered text, not the raw HTML — content is
+// rich-text HTML (from the Tiptap editor), so counting the raw string would
+// count markup/attributes as "words" too. `&nbsp;` is stripped separately
+// from tags since it's an entity, not a tag — left in, it survives the tag
+// strip as a lone non-empty token and counts as "1 word" for content that's
+// actually empty (an editor's empty-paragraph placeholder).
+function countWords(html: string): number {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 interface PolicySectionProps {
   title: string;
   content: string;
@@ -47,11 +62,24 @@ function PolicySection({
   onRemove,
 }: PolicySectionProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const clampRef = useRef<HTMLDivElement>(null);
   const t = useTranslation();
-  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
-  const previewContent = expanded
-    ? content
-    : content.slice(0, 500) + (content.length > 500 ? "..." : "");
+
+  const wordCount = countWords(content);
+
+  // Whether the policy actually overflows the collapsed height, measured
+  // against the real rendered content rather than a raw HTML
+  // character-length threshold — slicing an HTML string by character count
+  // (the previous approach) can cut off mid-tag and render blank or
+  // truncated text instead of a clean preview. Runs once per policy (not
+  // keyed on `expanded`, since removing the clamp to show the full policy
+  // would otherwise always measure as "not overflowing").
+  useEffect(() => {
+    const el = clampRef.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [content]);
 
   const typeConfig = {
     terms: {
@@ -104,17 +132,18 @@ function PolicySection({
       </div>
 
       <div
+        ref={clampRef}
         className={`relative flex-1 overflow-hidden rounded-xl border border-border/50 bg-muted/10 transition-all duration-300 ${expanded ? "" : "max-h-36"}`}
       >
         <div className="p-3">
-          <PolicyBlock title="" content={previewContent} compact={!expanded} />
+          <PolicyBlock title="" content={content} compact={!expanded} />
         </div>
-        {!expanded && content.length > 500 && (
+        {!expanded && isOverflowing && (
           <div className="absolute bottom-0 inset-x-0 h-10 bg-linear-to-t from-muted/20 to-transparent pointer-events-none rounded-b-xl" />
         )}
       </div>
 
-      {content.length > 500 && (
+      {isOverflowing && (
         <button
           onClick={() => setExpanded(!expanded)}
           className="mt-2 self-center flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -353,8 +382,7 @@ export function PoliciesCard({
                   {t.admin.storeMgmtPolicyContent}
                 </Label>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {formData.content.trim().split(/\s+/).filter(Boolean).length}{" "}
-                  {t.admin.storeMgmtPolicyWords}
+                  {countWords(formData.content)} {t.admin.storeMgmtPolicyWords}
                 </span>
               </div>
               <div className="min-h-64 sm:min-h-96">

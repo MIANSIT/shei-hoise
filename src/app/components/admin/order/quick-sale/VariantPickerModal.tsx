@@ -15,10 +15,13 @@ function getEffectivePrice(variant: ProductVariant): number {
     : variant.base_price || 0;
 }
 
+// Use raw quantity_available (not net of reservations) — Admin can sell
+// against physical stock; reservation deduction is for customer checkout
+// only (see OrderDetails.tsx's getAvailableQuantity for the same rule).
 function getAvailableQuantity(variant: ProductVariant): number {
   const stock = variant.product_inventory[0];
   if (!stock) return 0;
-  return Math.max(0, stock.quantity_available - stock.quantity_reserved);
+  return Math.max(0, stock.quantity_available);
 }
 
 interface VariantPickerModalProps {

@@ -93,6 +93,17 @@ const DeltaChip = ({ delta }: { delta: number }) => {
   );
 };
 
+const ReservedChip = ({ reserved, label, tooltip }: { reserved: number; label: string; tooltip: string }) => {
+  if (reserved <= 0) return null;
+  return (
+    <Tooltip title={tooltip}>
+      <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+        {reserved} {label}
+      </span>
+    </Tooltip>
+  );
+};
+
 const StockInput = ({
   value,
   stock,
@@ -314,6 +325,11 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                 <DeltaChip
                   delta={(editedStocks[product.id] ?? product.stock) - product.stock}
                 />
+                <ReservedChip
+                  reserved={product.reserved}
+                  label="reserved"
+                  tooltip="Held by orders not yet delivered or cancelled — not sellable until then."
+                />
                 <StockHistoryPopover productId={product.id} variantId={null} />
                 {product.id in editedStocks && !bulkActive && (
                   <SheiButton
@@ -407,6 +423,11 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           delta={
                             (editedStocks[variant.id] ?? variant.stock) - variant.stock
                           }
+                        />
+                        <ReservedChip
+                          reserved={variant.reserved}
+                          label="reserved"
+                          tooltip="Held by orders not yet delivered or cancelled — not sellable until then."
                         />
                         <StockHistoryPopover
                           productId={product.id}

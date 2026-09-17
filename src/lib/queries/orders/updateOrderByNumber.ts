@@ -431,6 +431,32 @@ async function updateOrderItems(
   }
 }
 
+// Which inventory bucket a quantity-diff edit on this order's line items
+// should move: an order still short of "delivered" holds its stock in
+// quantity_reserved, so a diff there shifts stock between reserved and
+// available. A delivered order already had that reservation finalized to
+// zero — editing its quantities afterward is really correcting how much
+// was actually sold, so the diff must move quantity_available directly
+// instead. Getting this wrong is exactly how quantity_reserved gets
+// permanently stuck non-zero: bumping a delivered order's quantity used to
+// add phantom reserved stock that no future status transition would ever
+// clear again (delivered → delivered is a no-op for
+// handleStatusChangeInventory below, so nothing was ever left to release
+// it). Cancelled/returned orders already had their stock fully settled
+// outside either bucket, so their line items are skipped entirely rather
+// than guessing which bucket to move.
+type InventoryAdjustMode = "reserved" | "available" | "skip";
+
+function getInventoryAdjustMode(orderStatus: string): InventoryAdjustMode {
+  if (orderStatus === OrderStatus.CANCELLED || orderStatus === OrderStatus.RETURNED) {
+    return "skip";
+  }
+  if (orderStatus === OrderStatus.DELIVERED) {
+    return "available";
+  }
+  return "reserved";
+}
+
 // Handle inventory updates based on status and quantity changes
 async function handleInventoryUpdates(
   existingOrder: any,
@@ -439,52 +465,51 @@ async function handleInventoryUpdates(
   newItems: any[]
 ): Promise<void> {
   try {
-    
+    const inventoryMode = getInventoryAdjustMode(existingOrder.status);
 
-    // Create maps for comparison
-    const existingItemsMap = new Map();
-    existingItems.forEach((item) => {
-      const key = `${item.product_id}-${item.variant_id || "no-variant"}`;
-      existingItemsMap.set(key, item);
-    });
+    if (inventoryMode !== "skip") {
+      // Create maps for comparison
+      const existingItemsMap = new Map();
+      existingItems.forEach((item) => {
+        const key = `${item.product_id}-${item.variant_id || "no-variant"}`;
+        existingItemsMap.set(key, item);
+      });
 
-    const newItemsMap = new Map();
-    newItems.forEach((item) => {
-      const key = `${item.product_id}-${item.variant_id || "no-variant"}`;
-      newItemsMap.set(key, item);
-    });
+      const newItemsMap = new Map();
+      newItems.forEach((item) => {
+        const key = `${item.product_id}-${item.variant_id || "no-variant"}`;
+        newItemsMap.set(key, item);
+      });
 
-
-    // Handle items that were REMOVED from the order
-    for (const [key, existingItem] of existingItemsMap) {
-      if (!newItemsMap.has(key)) {
-       
-        // Item was removed - return the reserved quantity to available
-        await adjustInventory(existingItem, -existingItem.quantity);
-      }
-    }
-
-    // Handle items that are in the NEW order (both existing and new items)
-    for (const [key, newItem] of newItemsMap) {
-      const existingItem = existingItemsMap.get(key);
-
-      if (existingItem) {
-        // Item exists in both - check for quantity changes
-        const quantityDiff = newItem.quantity - existingItem.quantity;
-      
-
-        if (quantityDiff !== 0) {
-          await adjustInventory(existingItem, quantityDiff);
+      // Handle items that were REMOVED from the order
+      for (const [key, existingItem] of existingItemsMap) {
+        if (!newItemsMap.has(key)) {
+          // Item was removed - return the reserved quantity to available
+          await adjustInventory(existingItem, -existingItem.quantity, inventoryMode);
         }
-      } else {
-        // This is a NEW item added to the order
-        await adjustInventory(newItem, newItem.quantity);
+      }
+
+      // Handle items that are in the NEW order (both existing and new items)
+      for (const [key, newItem] of newItemsMap) {
+        const existingItem = existingItemsMap.get(key);
+
+        if (existingItem) {
+          // Item exists in both - check for quantity changes
+          const quantityDiff = newItem.quantity - existingItem.quantity;
+
+          if (quantityDiff !== 0) {
+            await adjustInventory(existingItem, quantityDiff, inventoryMode);
+          }
+        } else {
+          // This is a NEW item added to the order
+          await adjustInventory(newItem, newItem.quantity, inventoryMode);
+        }
       }
     }
 
     // Handle status changes
     if (updateData.status !== existingOrder.status) {
-     
+
       await handleStatusChangeInventory(
         existingOrder.status,
         updateData.status,
@@ -499,13 +524,15 @@ async function handleInventoryUpdates(
 }
 
 // Adjust inventory based on quantity changes
-async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
+async function adjustInventory(
+  item: any,
+  quantityDiff: number,
+  mode: InventoryAdjustMode = "reserved"
+): Promise<void> {
   try {
-    if (quantityDiff === 0) {
+    if (quantityDiff === 0 || mode === "skip") {
       return;
     }
-
-    
 
     const inventoryQuery = item.variant_id
       ? supabaseAdmin
@@ -529,27 +556,29 @@ async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
 
     if (inventory) {
       const currentAvailable = inventory.quantity_available || 0;
-      const currentReserved = inventory.quantity_reserved || 0;
 
-      const newAvailable = Math.max(0, currentAvailable - quantityDiff);
-      const newReserved = Math.max(0, currentReserved + quantityDiff);
-
-      
+      // Delivered order: no reservation left to shift, so a quantity edit
+      // moves quantity_available directly and never touches
+      // quantity_reserved.
+      const updatePayload =
+        mode === "available"
+          ? { quantity_available: Math.max(0, currentAvailable - quantityDiff) }
+          : {
+              quantity_available: Math.max(0, currentAvailable - quantityDiff),
+              quantity_reserved: Math.max(
+                0,
+                (inventory.quantity_reserved || 0) + quantityDiff
+              ),
+            };
 
       const updateQuery = item.variant_id
         ? supabaseAdmin
             .from("product_inventory")
-            .update({
-              quantity_available: newAvailable,
-              quantity_reserved: newReserved,
-            })
+            .update(updatePayload)
             .eq("variant_id", item.variant_id)
         : supabaseAdmin
             .from("product_inventory")
-            .update({
-              quantity_available: newAvailable,
-              quantity_reserved: newReserved,
-            })
+            .update(updatePayload)
             .eq("product_id", item.product_id)
             .is("variant_id", null);
 
@@ -557,8 +586,6 @@ async function adjustInventory(item: any, quantityDiff: number): Promise<void> {
 
       if (updateError) {
         console.error(`❌ Error updating inventory:`, updateError);
-      } else {
-        
       }
     }
   } catch (error) {
