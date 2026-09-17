@@ -160,6 +160,14 @@ export const sideMenu: MenuItem[] = [
     icon: BarChart2,
   },
   {
+    // Same visibility convention as Sales Report — kept in the nav regardless
+    // of plan; entitlement is enforced by the page itself (FeatureLocked),
+    // gated by the same advanced_reports feature.
+    title: "Profit & Loss",
+    href: "/dashboard/reports/profit-loss",
+    icon: TrendingUp,
+  },
+  {
     title: "Vendors",
     icon: Warehouse,
     requiredFeature: "vendor_flow",
