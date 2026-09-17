@@ -164,44 +164,53 @@ const proseClasses =
   "[&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:pl-6 [&_ol]:list-decimal [&_li]:my-1 " +
   "[&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline focus:outline-none";
 
+// Defined at module scope (not inside useRichText) so it keeps the same
+// component identity across every render. A component created fresh inside
+// a hook body — `const Editor = () => {...}` defined per-call — gets a new
+// function reference each time its enclosing component re-renders, and
+// React treats that as a different component type: it unmounts the old one
+// (destroying the live Tiptap instance, DOM node and cursor position) and
+// mounts a brand new one. Since `onUpdate` below fires on every keystroke
+// and that re-renders the parent (via the caller's onChange), that bug
+// meant losing focus after every single character typed.
+function RichTextEditor({
+  initialValue,
+  onChange,
+}: {
+  initialValue: string;
+  onChange: (val: string) => void;
+}) {
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      Underline,
+      Link.configure({ openOnClick: false, autolink: true }),
+    ],
+    content: initialValue,
+    editorProps: {
+      attributes: { class: `${proseClasses} min-h-40 px-3 py-2` },
+    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  });
+
+  useEffect(() => {
+    if (!editor || editor.isFocused) return;
+    if (initialValue !== editor.getHTML()) {
+      editor.commands.setContent(initialValue || "", { emitUpdate: false });
+    }
+  }, [initialValue, editor]);
+
+  if (!editor) return null;
+
+  return (
+    <div>
+      <Toolbar editor={editor} />
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
+
 export const useRichText = () => {
-  const Editor = ({
-    initialValue,
-    onChange,
-  }: {
-    initialValue: string;
-    onChange: (val: string) => void;
-  }) => {
-    const editor = useEditor({
-      immediatelyRender: false,
-      extensions: [
-        StarterKit.configure({ heading: { levels: [2, 3] } }),
-        Underline,
-        Link.configure({ openOnClick: false, autolink: true }),
-      ],
-      content: initialValue,
-      editorProps: {
-        attributes: { class: `${proseClasses} min-h-40 px-3 py-2` },
-      },
-      onUpdate: ({ editor }) => onChange(editor.getHTML()),
-    });
-
-    useEffect(() => {
-      if (!editor || editor.isFocused) return;
-      if (initialValue !== editor.getHTML()) {
-        editor.commands.setContent(initialValue || "", { emitUpdate: false });
-      }
-    }, [initialValue, editor]);
-
-    if (!editor) return null;
-
-    return (
-      <div>
-        <Toolbar editor={editor} />
-        <EditorContent editor={editor} />
-      </div>
-    );
-  };
-
-  return { Editor };
+  return { Editor: RichTextEditor };
 };
