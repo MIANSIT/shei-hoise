@@ -8,6 +8,8 @@ interface InventoryAlertCardProps {
   icon?: React.ReactNode;
   color: string; // legacy: "bg-green-100" | "bg-amber-100" | "bg-red-100" | "bg-indigo-100"
   actionText?: string;
+  /** Makes the whole card a nav target instead of a static tile — used by the compact Alerts grid. */
+  onClick?: () => void;
 }
 
 const colorMap: Record<
@@ -49,12 +51,17 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
   value,
   icon,
   color,
+  onClick,
 }) => {
   const t = colorMap[color] ?? colorMap["bg-indigo-100"];
+  const Wrapper = onClick ? "button" : "div";
 
   return (
-    <div
-      className={`flex flex-col gap-3 p-4 rounded-2xl border ${t.card} transition-colors`}
+    <Wrapper
+      onClick={onClick}
+      className={`flex flex-col gap-3 p-4 rounded-2xl border text-left w-full ${t.card} transition-colors ${
+        onClick ? "cursor-pointer hover:brightness-95 dark:hover:brightness-125" : ""
+      }`}
     >
       {/* Icon row */}
       <div className="flex items-center justify-between">
@@ -77,7 +84,7 @@ const InventoryAlertCard: React.FC<InventoryAlertCardProps> = ({
           {title}
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 };
 

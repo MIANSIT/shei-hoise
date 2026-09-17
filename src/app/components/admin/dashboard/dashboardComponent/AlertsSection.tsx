@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { StockFilter } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import InventoryAlertCard from "./InventoryAlertCard";
 
 interface AlertsSectionProps {
   alerts: {
@@ -15,34 +16,10 @@ interface AlertsSectionProps {
 }
 
 const alertMeta = {
-  stock: {
-    icon: "📦",
-    row: "bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/25",
-    text: "text-amber-700 dark:text-amber-300",
-    btn: "border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20",
-    sub: "text-amber-600/70 dark:text-amber-400/60",
-  },
-  order: {
-    icon: "🛒",
-    row: "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/25",
-    text: "text-rose-700 dark:text-rose-300",
-    btn: "border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20",
-    sub: "text-rose-600/70 dark:text-rose-400/60",
-  },
-  payment: {
-    icon: "💳",
-    row: "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/25",
-    text: "text-violet-700 dark:text-violet-300",
-    btn: "border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20",
-    sub: "text-violet-600/70 dark:text-violet-400/60",
-  },
-  expense: {
-    icon: "💸",
-    row: "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/25",
-    text: "text-rose-700 dark:text-rose-300",
-    btn: "border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20",
-    sub: "text-rose-600/70 dark:text-rose-400/60",
-  },
+  stock: { icon: "📦", color: "bg-amber-100" },
+  order: { icon: "🛒", color: "bg-red-100" },
+  payment: { icon: "💳", color: "bg-indigo-100" },
+  expense: { icon: "💸", color: "bg-red-100" },
 };
 
 const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
@@ -50,18 +27,19 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   const t = useTranslation();
   const n = useLocalNum();
 
-  const translateMessage = (message: string): string => {
+  // Short, card-sized titles — the full sentence (translateFullMessage)
+  // still exists for anywhere that needs the longer explanation.
+  const shortTitle = (message: string): string => {
     const map: Record<string, string> = {
-      "Products completely out of stock": t.admin.alertOutOfStock,
-      "Products with some variants out of stock": t.admin.alertPartialOOS,
-      "Low stock products need attention": t.admin.alertLowStock,
-      "Pending orders require action": t.admin.alertPendingOrders,
-      "Pending payments awaiting confirmation": t.admin.alertPendingPayments,
-      "Net profit is negative this period": t.admin.alertNegativeProfit,
+      "Products completely out of stock": t.admin.alertOutOfStockShort,
+      "Products with some variants out of stock": t.admin.alertPartialOOSShort,
+      "Low stock products need attention": t.admin.alertLowStockShort,
+      "Pending orders require action": t.admin.alertPendingOrdersShort,
+      "Pending payments awaiting confirmation": t.admin.alertPendingPaymentsShort,
+      "Net profit is negative this period": t.admin.alertNegativeProfitShort,
     };
     if (map[message]) return map[message];
-    const expMatch = message.match(/^Expenses are (\d+)% of revenue/);
-    if (expMatch) return `${t.admin.alertExpensePrefix} ${n(expMatch[1])}${t.admin.alertExpenseSuffix}`;
+    if (message.startsWith("Expenses are")) return t.admin.alertHighExpensesShort;
     return message;
   };
 
@@ -92,32 +70,18 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       {alerts.map((alert, i) => {
         const m = alertMeta[alert.type] ?? alertMeta.order;
         return (
-          <div
+          <InventoryAlertCard
             key={i}
-            className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border ${m.row}`}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="text-base shrink-0">{m.icon}</span>
-              <div className="min-w-0">
-                <div className={`text-sm font-bold truncate ${m.text}`}>
-                  {translateMessage(alert.message)}
-                </div>
-                <div className={`text-[10px] mt-0.5 ${m.sub}`}>
-                  {n(alert.count)} {alert.count !== 1 ? t.admin.alertItemsAffected : t.admin.alertItemAffected}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => handleAction(alert)}
-              className={`shrink-0 text-[11px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${m.btn}`}
-            >
-              {t.admin.alertFix}
-            </button>
-          </div>
+            title={shortTitle(alert.message)}
+            value={n(alert.count)}
+            icon={m.icon}
+            color={m.color}
+            onClick={() => handleAction(alert)}
+          />
         );
       })}
     </div>
