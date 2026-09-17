@@ -7,7 +7,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 interface OrderAmountCardProps {
   title: string;
   amount: number;
-  status?: "paid" | "pending" | "refunded";
+  status?: "paid" | "pending" | "refunded" | "received" | "due";
 }
 
 const cfg = {
@@ -37,6 +37,24 @@ const cfg = {
     meta: "text-rose-500/80 dark:text-rose-400/70",
     icon: "↩",
     badge: "RETURNED",
+  },
+  received: {
+    row: "bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/25",
+    label: "text-teal-600 dark:text-teal-400",
+    title: "text-teal-700 dark:text-teal-300",
+    amount: "text-teal-700 dark:text-teal-200",
+    meta: "text-teal-500/80 dark:text-teal-400/70",
+    icon: "✓",
+    badge: "COLLECTED",
+  },
+  due: {
+    row: "bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/25",
+    label: "text-orange-600 dark:text-orange-400",
+    title: "text-orange-700 dark:text-orange-300",
+    amount: "text-orange-700 dark:text-orange-200",
+    meta: "text-orange-500/80 dark:text-orange-400/70",
+    icon: "◎",
+    badge: "OUTSTANDING",
   },
 };
 

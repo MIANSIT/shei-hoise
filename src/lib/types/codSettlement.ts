@@ -17,4 +17,6 @@ export interface UnsettledCodOrder {
   courier: string | null;
   customer_name: string;
   total_amount: number;
+  /** What's actually left for the courier to hand over — total_amount minus anything the customer already paid directly (e.g. via Customer Dues). */
+  due_remaining: number;
 }

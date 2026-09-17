@@ -65,6 +65,12 @@ interface DashboardMetrics {
   paymentAmounts: Record<PaymentStatus, number>;
   alerts: { type: AlertType; message: string; count: number }[];
   expenseMetrics: ExpenseMetrics;
+  vendorPayments: {
+    received: number;
+    totalDue: number;
+    hasActivity: boolean;
+    changePercentage: number;
+  };
 }
 
 const defaultExpenseMetrics: ExpenseMetrics = {
@@ -107,6 +113,7 @@ const emptyMetrics: DashboardMetrics = {
   paymentAmounts: { paid: 0, pending: 0, refunded: 0 },
   alerts: [],
   expenseMetrics: defaultExpenseMetrics,
+  vendorPayments: { received: 0, totalDue: 0, hasActivity: false, changePercentage: 0 },
 };
 
 // previous === 0 is treated as "no prior baseline": any positive current
@@ -268,6 +275,15 @@ export const useDashboardMetrics = (
           netProfit: calculateChange(netProfit, prevNetProfit),
         },
         expenseCount: summary.expense_metrics.expense_count,
+      },
+      vendorPayments: {
+        received: summary.vendor_payments.received,
+        totalDue: summary.vendor_payments.total_due,
+        hasActivity: summary.vendor_payments.has_activity,
+        changePercentage: calculateChange(
+          summary.vendor_payments.received,
+          summary.vendor_payments.prev_received,
+        ),
       },
     };
   }, [summary]);

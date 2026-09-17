@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { DatePicker, Table, Typography, InputNumber, Tag, Spin } from "antd";
+import { Button, DatePicker, Table, Typography, InputNumber, Tag, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -13,6 +13,9 @@ import {
   QuickSaleDailySummary,
   QuickSaleDailyOrderRow,
 } from "@/lib/queries/orders/getQuickSaleDailySummary";
+import { getRegisterOpeningCash } from "@/lib/queries/orders/registerOpeningCash";
+import { setRegisterOpeningCash } from "@/lib/queries/orders/setRegisterOpeningCash";
+import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
@@ -64,11 +67,20 @@ export default function QuickSaleAudit() {
   const currencyIcon =
     !currencyLoading && typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
   const money = (v: number) => `${currencyIcon}${v.toFixed(2)}`;
+  const { success, error } = useSheiNotification();
 
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [summary, setSummary] = useState<QuickSaleDailySummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
   const [countedCash, setCountedCash] = useState<number | null>(null);
+
+  // Opening cash is saved (unlike countedCash below) — it's the actual float
+  // the drawer started with, not a one-time spot check, so it needs to
+  // survive a reload and be visible to whoever's checking the audit later.
+  const [openingCash, setOpeningCash] = useState<number | null>(null);
+  const [openingCashDraft, setOpeningCashDraft] = useState<number | null>(null);
+  const [openingCashLoading, setOpeningCashLoading] = useState(true);
+  const [savingOpeningCash, setSavingOpeningCash] = useState(false);
 
   const dateStr = selectedDate.format("YYYY-MM-DD");
 
@@ -83,9 +95,25 @@ export default function QuickSaleAudit() {
     }
   }, [user?.store_id, dateStr]);
 
+  const fetchOpeningCash = useCallback(async () => {
+    if (!user?.store_id) return;
+    setOpeningCashLoading(true);
+    try {
+      const result = await getRegisterOpeningCash(user.store_id, dateStr);
+      setOpeningCash(result);
+      setOpeningCashDraft(result);
+    } finally {
+      setOpeningCashLoading(false);
+    }
+  }, [user?.store_id, dateStr]);
+
   useEffect(() => {
     fetchSummary();
   }, [fetchSummary]);
+
+  useEffect(() => {
+    fetchOpeningCash();
+  }, [fetchOpeningCash]);
 
   // The cash count is a per-visit spot check, not a saved record — it
   // shouldn't carry over when the cashier switches to a different day.
@@ -93,10 +121,26 @@ export default function QuickSaleAudit() {
     setCountedCash(null);
   }, [dateStr]);
 
-  // Cash on hand for the day also includes any COD payout a courier handed
-  // over today — see codCashSettled's doc comment — not just cash-method
-  // Quick Sale/online transactions.
-  const cashExpected = (summary.collectedByMethod["cash"] ?? 0) + summary.codCashSettled;
+  const handleSaveOpeningCash = async () => {
+    if (!user?.store_id || openingCashDraft == null) return;
+    setSavingOpeningCash(true);
+    try {
+      await setRegisterOpeningCash(dateStr, openingCashDraft);
+      setOpeningCash(openingCashDraft);
+      success("Opening cash saved");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Failed to save opening cash");
+    } finally {
+      setSavingOpeningCash(false);
+    }
+  };
+
+  // Cash on hand for the day also includes whatever float the drawer
+  // started with, plus any COD payout a courier handed over today (see
+  // codCashSettled's doc comment) — not just cash-method Quick
+  // Sale/online transactions.
+  const cashExpected =
+    (openingCash ?? 0) + (summary.collectedByMethod["cash"] ?? 0) + summary.codCashSettled;
   const variance = countedCash != null ? countedCash - cashExpected : null;
 
   const columns: ColumnsType<QuickSaleDailyOrderRow> = [
@@ -236,6 +280,30 @@ export default function QuickSaleAudit() {
               </Text>
             )}
             <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Opening cash (Day Start)</div>
+                <div className="flex items-center gap-2">
+                  <InputNumber
+                    min={0}
+                    value={openingCashDraft}
+                    onChange={(v) => setOpeningCashDraft(v)}
+                    disabled={openingCashLoading}
+                    placeholder="0.00"
+                    style={{ width: 120 }}
+                  />
+                  {openingCashDraft !== openingCash && (
+                    <Button
+                      type="link"
+                      size="small"
+                      className="p-0 h-auto text-xs"
+                      loading={savingOpeningCash}
+                      onClick={handleSaveOpeningCash}
+                    >
+                      Save
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Expected cash</div>
                 <div className="text-lg font-bold">{money(cashExpected)}</div>

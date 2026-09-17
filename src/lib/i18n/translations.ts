@@ -577,6 +577,11 @@ export const translations = {
       pendingAmount: "Pending Amount",
       paidAmount: "Paid Amount",
       refundedAmount: "Refunded Amount",
+      // Vendor payments
+      vendorPayments: "Vendor Payments",
+      thisPeriodFinancial: "This period",
+      receivedFromVendors: "Received from Vendors",
+      vendorDueOutstanding: "Vendor Due Outstanding",
       // Inventory
       inStockUnits: "In Stock (Units)",
       lowStockProducts: "Low Stock (Products)",
@@ -2888,6 +2893,11 @@ export const translations = {
       pendingAmount: "অপেক্ষমাণ পরিমাণ",
       paidAmount: "পেইড পরিমাণ",
       refundedAmount: "রিফান্ড পরিমাণ",
+      // Vendor payments
+      vendorPayments: "ভেন্ডর পেমেন্ট",
+      thisPeriodFinancial: "এই সময়ে",
+      receivedFromVendors: "ভেন্ডর থেকে প্রাপ্ত",
+      vendorDueOutstanding: "ভেন্ডরের বকেয়া",
       // Inventory
       inStockUnits: "স্টকে আছে (ইউনিট)",
       lowStockProducts: "কম স্টক (পণ্য)",

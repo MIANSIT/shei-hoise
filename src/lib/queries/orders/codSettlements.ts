@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabase";
-import { OrderStatus, PaymentMethod } from "@/lib/types/enums";
+import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
+import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
 import type { CodSettlement, UnsettledCodOrder } from "@/lib/types/codSettlement";
 
 /**
@@ -18,7 +20,7 @@ export async function getUnsettledCodOrders(
 
   let query = supabase
     .from("orders")
-    .select("id, order_number, order_date, courier, total_amount, shipping_address")
+    .select("id, order_number, order_date, courier, customer_id, total_amount, shipping_address")
     .eq("store_id", storeId)
     .eq("payment_method", PaymentMethod.COD)
     .eq("status", OrderStatus.DELIVERED)
@@ -34,15 +36,76 @@ export async function getUnsettledCodOrders(
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((order: any) => ({
-    id: order.id,
-    order_number: order.order_number,
-    order_date: order.order_date,
-    courier: order.courier,
-    customer_name: order.shipping_address?.customer_name || "Unknown Customer",
-    total_amount: Number(order.total_amount) || 0,
-  }));
+  const candidates = (data ?? []) as any[];
+  if (candidates.length === 0) return [];
+
+  // A candidate's own total_amount overstates what the courier actually
+  // owes if the customer already paid part of it directly (e.g. a Customer
+  // Dues collection recorded before/after delivery) — net that out via the
+  // same per-customer waterfall every other due balance in the app uses
+  // (customerDueMath.ts), not just this order in isolation, since an
+  // unpinned payment can apply to any of a customer's due orders, not
+  // necessarily this one.
+  const customerIds = [...new Set(candidates.map((o) => o.customer_id).filter(Boolean))];
+
+  const dueRemainingByOrderId = new Map<string, number>();
+  if (customerIds.length > 0) {
+    const [customerOrdersRes, paymentsRes] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id, customer_id, total_amount, created_at")
+        .eq("store_id", storeId)
+        .in("customer_id", customerIds)
+        .neq("payment_status", PaymentStatus.PAID)
+        .neq("payment_status", PaymentStatus.REFUNDED)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("customer_payments")
+        .select("order_id, amount, customer_id")
+        .eq("store_id", storeId)
+        .in("customer_id", customerIds),
+    ]);
+
+    const ordersByCustomer = new Map<string, { id: string; total_amount: number }[]>();
+    for (const o of (customerOrdersRes.data ?? []) as any[]) {
+      const list = ordersByCustomer.get(o.customer_id) ?? [];
+      list.push({ id: o.id, total_amount: Number(o.total_amount) });
+      ordersByCustomer.set(o.customer_id, list);
+    }
+    const paymentsByCustomer = new Map<string, { order_id: string | null; amount: number }[]>();
+    for (const p of (paymentsRes.data ?? []) as any[]) {
+      const list = paymentsByCustomer.get(p.customer_id) ?? [];
+      list.push({ order_id: p.order_id, amount: Number(p.amount) });
+      paymentsByCustomer.set(p.customer_id, list);
+    }
+
+    for (const customerId of customerIds) {
+      const balances = computeOrderBalances(
+        ordersByCustomer.get(customerId) ?? [],
+        paymentsByCustomer.get(customerId) ?? [],
+      );
+      for (const b of balances) dueRemainingByOrderId.set(b.order_id, b.due_remaining);
+    }
+  }
+
+  // Orders already fully paid off (directly, ahead of or instead of a
+  // courier collection) have nothing left for a courier to hand over, so
+  // they're dropped rather than shown at a misleading full total_amount.
+  return candidates
+    .map((order) => {
+      const total = Number(order.total_amount) || 0;
+      const dueRemaining = order.customer_id ? (dueRemainingByOrderId.get(order.id) ?? 0) : total;
+      return {
+        id: order.id,
+        order_number: order.order_number,
+        order_date: order.order_date,
+        courier: order.courier,
+        customer_name: order.shipping_address?.customer_name || "Unknown Customer",
+        total_amount: total,
+        due_remaining: Math.max(0, dueRemaining),
+      };
+    })
+    .filter((o) => o.due_remaining > 0.01);
 }
 
 export interface CodSettlementListResult {

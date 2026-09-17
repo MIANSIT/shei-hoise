@@ -24,7 +24,7 @@ const fetchProductData = cache(async (store_slug: string, slug: string) => {
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, name, meta_title, meta_description, short_description, base_price, discounted_price, product_images(image_url, is_primary), product_inventory(quantity_available, quantity_reserved), categories(id, name, slug)",
+      "id, name, sku, meta_title, meta_description, short_description, base_price, discounted_price, product_images(image_url, is_primary), product_inventory(quantity_available, quantity_reserved), categories(id, name, slug)",
     )
     .eq("slug", slug)
     .eq("store_id", store.id)
@@ -144,7 +144,7 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
     description:
       product.meta_description || product.short_description || `Buy ${product.name} at ${store.store_name}`,
     image: sortedImages.map((img) => img.image_url),
-    sku: product.id,
+    sku: (product.sku as string | null) || product.id,
     brand: { "@type": "Brand", name: store.store_name },
     offers: {
       "@type": "Offer",

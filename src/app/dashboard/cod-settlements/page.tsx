@@ -92,7 +92,7 @@ export default function CodSettlementsPage() {
     () =>
       unsettled
         .filter((o) => selectedIds.includes(o.id))
-        .reduce((sum, o) => sum + o.total_amount, 0),
+        .reduce((sum, o) => sum + o.due_remaining, 0),
     [unsettled, selectedIds],
   );
 
@@ -100,7 +100,7 @@ export default function CodSettlementsPage() {
     setSelectedIds(ids as string[]);
     const total = unsettled
       .filter((o) => ids.includes(o.id))
-      .reduce((sum, o) => sum + o.total_amount, 0);
+      .reduce((sum, o) => sum + o.due_remaining, 0);
     setAmountReceived(total > 0 ? total : null);
   };
 
@@ -164,11 +164,19 @@ export default function CodSettlementsPage() {
     },
     { title: "Courier", key: "courier", render: (_, row) => courierName(row.courier) },
     {
-      title: "Amount",
-      dataIndex: "total_amount",
-      key: "total_amount",
+      title: "Due from Courier",
+      key: "due_remaining",
       align: "right" as const,
-      render: (v: number) => money(v),
+      render: (_, row) => (
+        <div>
+          <div className="font-medium">{money(row.due_remaining)}</div>
+          {row.due_remaining < row.total_amount - 0.005 && (
+            <div className="text-xs text-muted-foreground">
+              of {money(row.total_amount)} — rest already paid
+            </div>
+          )}
+        </div>
+      ),
     },
   ];
 

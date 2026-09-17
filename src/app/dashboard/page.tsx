@@ -394,6 +394,7 @@ export default function DashboardPage() {
       topProducts={topProductsDisplay}
       customerStats={customerStats}
       alerts={metrics.alerts}
+      vendorPayments={metrics.vendorPayments}
       timePeriod={timePeriod}
       onTimePeriodChange={setTimePeriod}
       analyticsAllowed={analyticsAllowed}

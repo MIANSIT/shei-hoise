@@ -378,6 +378,26 @@ ALTER TABLE "public"."store_cod_settlements" OWNER TO "postgres";
 COMMENT ON TABLE "public"."store_cod_settlements" IS 'One row per courier payout covering several delivered COD orders at once. orders.cod_settlement_id links each order to the settlement its cash arrived with, so Register Audit counts it exactly once, on the date it was actually received rather than the date the sale happened.';
 
 
+-- The cash float an admin starts the day with, one row per store per date —
+-- Register Audit adds this to the day's own cash collections to get the
+-- drawer's true expected cash instead of assuming it started at zero.
+CREATE TABLE IF NOT EXISTS "public"."store_register_openings" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL,
+    "store_id" uuid NOT NULL,
+    "register_date" date NOT NULL,
+    "opening_amount" numeric(10,2) DEFAULT 0 NOT NULL,
+    "created_by" uuid,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_register_openings" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."store_register_openings" IS 'The cash float an admin starts the day with, one row per store per calendar date. Register Audit adds this to the day''s own cash collections (and any COD settled) to get the drawer''s true expected cash.';
+
+
 -- History of what the store actually paid the courier for an order (one row
 -- per revision — estimate, correction, final invoice), as opposed to
 -- orders.shipping_fee, which is what the customer was charged. The most
@@ -1038,6 +1058,16 @@ ALTER TABLE ONLY "public"."store_cod_settlements"
 
 
 
+ALTER TABLE ONLY "public"."store_register_openings"
+    ADD CONSTRAINT "store_register_openings_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."store_register_openings"
+    ADD CONSTRAINT "store_register_openings_store_date_unique" UNIQUE ("store_id", "register_date");
+
+
+
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_pkey" PRIMARY KEY ("id");
 
@@ -1330,6 +1360,11 @@ ALTER TABLE ONLY "public"."orders"
 
 ALTER TABLE ONLY "public"."store_cod_settlements"
     ADD CONSTRAINT "store_cod_settlements_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."store_register_openings"
+    ADD CONSTRAINT "store_register_openings_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
 
 
@@ -1707,6 +1742,12 @@ GRANT ALL ON TABLE "public"."orders" TO "service_role";
 GRANT ALL ON TABLE "public"."store_cod_settlements" TO "anon";
 GRANT ALL ON TABLE "public"."store_cod_settlements" TO "authenticated";
 GRANT ALL ON TABLE "public"."store_cod_settlements" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."store_register_openings" TO "anon";
+GRANT ALL ON TABLE "public"."store_register_openings" TO "authenticated";
+GRANT ALL ON TABLE "public"."store_register_openings" TO "service_role";
 
 
 

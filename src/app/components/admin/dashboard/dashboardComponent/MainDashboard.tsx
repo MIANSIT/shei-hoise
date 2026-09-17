@@ -70,6 +70,12 @@ interface MainDashboardProps {
     message: string;
     count: number;
   }[];
+  /** Only rendered when hasActivity — a store that's never dispatched stock to a vendor gets no vendor block at all rather than a card full of zeros. */
+  vendorPayments: {
+    received: number;
+    totalDue: number;
+    hasActivity: boolean;
+  };
   timePeriod: TimePeriod;
   onTimePeriodChange: (period: TimePeriod) => void;
   /** Gates the sales trend chart, top products and customer insights widgets — the deeper analytics on the dashboard home, distinct from the dedicated Sales Report page (advanced_reports). */
@@ -362,6 +368,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   topProducts,
   customerStats,
   alerts,
+  vendorPayments,
   timePeriod,
   onTimePeriodChange,
   analyticsAllowed,
@@ -566,6 +573,30 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             </Card>
           </div>
         </div>
+
+        {vendorPayments.hasActivity && (
+          <div>
+            <SectionHeader
+              title={t.admin.vendorPayments}
+              sub={t.admin.thisPeriodFinancial}
+              accentClass="bg-teal-500"
+            />
+            <Card className="p-3 sm:p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                <OrderAmountCard
+                  title={t.admin.receivedFromVendors}
+                  amount={vendorPayments.received}
+                  status="received"
+                />
+                <OrderAmountCard
+                  title={t.admin.vendorDueOutstanding}
+                  amount={vendorPayments.totalDue}
+                  status="due"
+                />
+              </div>
+            </Card>
+          </div>
+        )}
 
         <Divider />
 
