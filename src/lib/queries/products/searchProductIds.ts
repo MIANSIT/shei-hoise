@@ -35,12 +35,50 @@ function applyStructuralFilters(query: any, storeId: string, options: SearchProd
 const MAX_SUBSTRING_MATCHES = 5000;
 
 /**
+ * How well a row matches, for ranking tier 1's results (which the DB-level
+ * `.or()` filter below only treats as yes/no per row). More of the typed
+ * words matching wins first — otherwise a second, more generic word (e.g.
+ * "step" typed after "clean") floods the result set with rows that merely
+ * contain that one common word somewhere in a long description, burying the
+ * actual multi-word match past whatever limit/page is showing. A match in
+ * name/sku then outranks one only found in the description.
+ */
+function relevanceScore(
+  words: string[],
+  row: SearchCandidateRow,
+): { matchedCount: number; bestWeight: number } {
+  const fields: { text: string | null; weight: number }[] = [
+    { text: row.name, weight: 0 },
+    { text: row.sku, weight: 0 },
+    { text: row.short_description, weight: 0.5 },
+    { text: row.description, weight: 1 },
+  ];
+
+  let matchedCount = 0;
+  let bestWeight = Infinity;
+  for (const word of words) {
+    const lower = word.toLowerCase();
+    let hitWeight = Infinity;
+    for (const { text, weight } of fields) {
+      if (text && text.toLowerCase().includes(lower)) {
+        hitWeight = Math.min(hitWeight, weight);
+      }
+    }
+    if (hitWeight !== Infinity) {
+      matchedCount++;
+      bestWeight = Math.min(bestWeight, hitWeight);
+    }
+  }
+  return { matchedCount, bestWeight };
+}
+
+/**
  * Tier 1: does ANY word in the query appear as a substring anywhere in
- * name/sku/short_description/description? Filtered and matched entirely in
- * the database — only ids come back, never the row text — so this scales to
- * any catalog size a store ever reaches; it isn't the tier that needs a
- * bound on how much gets scored, because nothing gets scored, Postgres just
- * answers "yes/no" per row via an indexed filter.
+ * name/sku/short_description/description? Filtered in the database — Postgres
+ * answers "yes/no" per row via an indexed filter, so this scales to any
+ * catalog size a store ever reaches — but which rows come back says nothing
+ * about how well each one matches, so relevanceScore() above ranks them
+ * in-app before returning.
  *
  * This alone covers the common real-world miss this whole feature exists
  * for: a customer who types the right words in the wrong order, or only
@@ -64,14 +102,22 @@ async function findSubstringMatchIds(
     .join(",");
 
   const query = applyStructuralFilters(
-    supabase.from("products").select("id"),
+    supabase.from("products").select("id, name, sku, short_description, description"),
     storeId,
     options,
   ).or(orFilter).limit(MAX_SUBSTRING_MATCHES);
 
   const { data, error } = await query;
   if (error || !data) return [];
-  return data.map((row: { id: string }) => row.id);
+
+  return (data as SearchCandidateRow[])
+    .map((row) => ({ id: row.id, ...relevanceScore(words, row) }))
+    .sort((a, b) =>
+      b.matchedCount !== a.matchedCount
+        ? b.matchedCount - a.matchedCount
+        : a.bestWeight - b.bestWeight,
+    )
+    .map((r) => r.id);
 }
 
 // This tier is what genuinely needs a hard ceiling: it fetches candidates'

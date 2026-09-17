@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
+import { getCodCashSettledForDate } from "@/lib/queries/orders/codSettlements";
 
 export interface QuickSaleDailyOrderRow {
   id: string;
@@ -25,6 +26,8 @@ export interface QuickSaleDailySummary {
   dueOutstanding: number;
   /** Every customer_payments row dated today, any method, whether against a brand-new due sale or an older one — the total due collection activity for the day. */
   dueCollectedToday: number;
+  /** COD cash a courier actually handed over today, from settlements recorded against this date — see codSettlements.ts. Independent of when the covered orders were originally sold. */
+  codCashSettled: number;
   orders: QuickSaleDailyOrderRow[];
 }
 
@@ -34,6 +37,7 @@ const EMPTY: QuickSaleDailySummary = {
   collectedByMethod: {},
   dueOutstanding: 0,
   dueCollectedToday: 0,
+  codCashSettled: 0,
   orders: [],
 };
 
@@ -74,7 +78,7 @@ export async function getQuickSaleDailySummary(
   // wrongly add it to) the day it actually belongs to for cash reconciliation.
   // Still sorted by created_at for a sensible within-day sequence, since
   // order_date alone has no time-of-day to order by.
-  const [ordersRes, paymentsRes] = await Promise.all([
+  const [ordersRes, paymentsRes, codCashSettled] = await Promise.all([
     supabase
       .from("orders")
       .select(
@@ -90,11 +94,16 @@ export async function getQuickSaleDailySummary(
       .select("order_id, amount, payment_method")
       .eq("store_id", storeId)
       .eq("payment_date", dateStr),
+    // A settlement can land on a day with no Quick Sale/order activity of
+    // its own (e.g. a courier payout day with nothing newly sold), so this
+    // is fetched unconditionally rather than folded into the early-return
+    // guard below.
+    getCodCashSettledForDate(storeId, dateStr),
   ]);
 
   const orders = ordersRes.data ?? [];
   const payments = paymentsRes.data ?? [];
-  if (orders.length === 0 && payments.length === 0) return EMPTY;
+  if (orders.length === 0 && payments.length === 0 && codCashSettled === 0) return EMPTY;
 
   const paidOrderIds = new Set(
     orders.filter((o) => o.payment_status === PaymentStatus.PAID).map((o) => o.id),
@@ -158,6 +167,7 @@ export async function getQuickSaleDailySummary(
     collectedByMethod,
     dueOutstanding,
     dueCollectedToday,
+    codCashSettled,
     orders: rows,
   };
 }

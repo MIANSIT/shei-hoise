@@ -2,31 +2,15 @@ import { supabase } from "@/lib/supabase";
 import { OrderStatus } from "@/lib/types/enums";
 import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 
-const STORE_TIMEZONE = "Asia/Dhaka";
+const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
-const toDhakaDateString = (date: Date): string =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone: STORE_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-
-const toDhakaMonthKey = (date: Date): string =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone: STORE_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-  })
-    .format(date)
-    .replace(/\//g, "-"); // en-CA gives YYYY-MM already, but normalize just in case
-
-const toDhakaMonthLabel = (date: Date): string =>
-  new Intl.DateTimeFormat("en-US", {
-    timeZone: STORE_TIMEZONE,
-    year: "numeric",
-    month: "short",
-  }).format(date);
+/** "2026-09" → "Sep 2026" — no Date/timezone conversion needed since order_date is already a plain calendar date, not a UTC instant. */
+function monthKeyToLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-");
+  return `${MONTH_LABELS[Number(month) - 1] ?? month} ${year}`;
+}
 
 export interface SalesReportRow {
   /** Sortable YYYY-MM-DD or YYYY-MM key — also used to re-query this row's own orders for drill-down. */
@@ -61,6 +45,16 @@ const EMPTY_RESULT: SalesReportResult = {
  * day/week/month view) or per-month (for a year view, so it doesn't render
  * 365 rows) — plus an online-vs-Quick-Sale split via `orders.channel`.
  *
+ * Grouped and filtered by `orders.order_date`, not `created_at`. order_date
+ * is a plain `date` column an admin can set/back-date independently of when
+ * the row was actually inserted (e.g. entering yesterday's paper Quick Sale
+ * receipts today, or importing historical orders) — see the migration that
+ * added it and resolveOrderInvoiceDate.ts, which already treats order_date
+ * as the order's real date for invoices. Bucketing by created_at instead
+ * would put a backdated order under today's date, not the day it actually
+ * happened. Being a plain date (no time-of-day), order_date also needs no
+ * timezone offset math the way a created_at timestamp comparison would.
+ *
  * "Sales"/"revenue" here means net product revenue — `subtotal −
  * discount_amount` — not `total_amount`. `total_amount` also bundles in
  * `shipping_fee` and `tax_amount`, both of which are collected from the
@@ -72,31 +66,27 @@ const EMPTY_RESULT: SalesReportResult = {
  */
 export async function getSalesReport(
   storeId: string,
-  fromDate: string, // YYYY-MM-DD, Asia/Dhaka
+  fromDate: string, // YYYY-MM-DD
   toDate: string,
   bucket: "day" | "month",
 ): Promise<SalesReportResult> {
   if (!storeId) return EMPTY_RESULT;
 
-  // Explicit +06:00 (Dhaka has no DST, so this offset is always correct) —
-  // without it, Postgres/PostgREST would interpret these as UTC, shifting
-  // the day boundary by 6 hours and miscounting orders near midnight.
-  //
   // Paged, because a single request is capped at PGRST_DB_MAX_ROWS (1000) —
   // a store with more than 1000 non-cancelled orders in the selected range
   // (e.g. a "Year" view) would silently have every total (revenue, order
   // count, average order value) computed from only the first 1000.
-  let orders: { subtotal: number; discount_amount: number; channel: string; created_at: string }[];
+  let orders: { subtotal: number; discount_amount: number; channel: string; order_date: string }[];
   try {
     orders = await fetchAllPaged((from, to) =>
       supabase
         .from("orders")
-        .select("subtotal, discount_amount, channel, created_at")
+        .select("subtotal, discount_amount, channel, order_date")
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
         .neq("status", OrderStatus.RETURNED)
-        .gte("created_at", `${fromDate}T00:00:00+06:00`)
-        .lte("created_at", `${toDate}T23:59:59.999+06:00`)
+        .gte("order_date", fromDate)
+        .lte("order_date", toDate)
         .range(from, to),
     );
   } catch (error) {
@@ -120,9 +110,9 @@ export async function getSalesReport(
     if (isPos) posRevenue += amount;
     else onlineRevenue += amount;
 
-    const createdAt = new Date(order.created_at);
-    const key = bucket === "day" ? toDhakaDateString(createdAt) : toDhakaMonthKey(createdAt);
-    const label = bucket === "day" ? key : toDhakaMonthLabel(createdAt);
+    const dateStr = order.order_date.slice(0, 10); // YYYY-MM-DD
+    const key = bucket === "day" ? dateStr : dateStr.slice(0, 7);
+    const label = bucket === "day" ? key : monthKeyToLabel(key);
 
     const row =
       rowByKey.get(key) ??
@@ -169,8 +159,9 @@ export interface SalesReportOrderRow {
  * The individual orders behind one SalesReportRow — lets the admin see
  * exactly which orders make up a given period's revenue number, drilled
  * down by expanding that row in the report table. Uses the exact same
- * revenue formula and status filter as getSalesReport so the sum of these
- * rows always matches the aggregated figure.
+ * revenue formula, status filter, and order_date-based date range as
+ * getSalesReport so the sum of these rows always matches the aggregated
+ * figure exactly.
  */
 export async function getSalesReportOrdersForPeriod(
   storeId: string,
@@ -184,13 +175,13 @@ export async function getSalesReportOrdersForPeriod(
     data = await fetchAllPaged((from, to) =>
       supabase
         .from("orders")
-        .select("order_number, subtotal, discount_amount, channel, created_at, shipping_address, store_customers!customer_id(name)")
+        .select("order_number, subtotal, discount_amount, channel, created_at, order_date, shipping_address, store_customers!customer_id(name)")
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
         .neq("status", OrderStatus.RETURNED)
-        .gte("created_at", `${fromDate}T00:00:00+06:00`)
-        .lte("created_at", `${toDate}T23:59:59.999+06:00`)
-        .order("created_at", { ascending: false })
+        .gte("order_date", fromDate)
+        .lte("order_date", toDate)
+        .order("order_date", { ascending: false })
         .range(from, to),
     );
   } catch (error) {

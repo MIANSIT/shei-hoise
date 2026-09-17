@@ -216,7 +216,29 @@ const TrustBadge = ({
 );
 
 // ─── Description renderer ─────────────────────────────────────────────────────
+const richDescriptionClasses =
+  "prose prose-sm prose-gray dark:prose-invert max-w-none " +
+  "[&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1.5 " +
+  "[&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2.5 [&_h3]:mb-1.5 " +
+  "[&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:pl-5 [&_ol]:list-decimal [&_li]:my-1 " +
+  "[&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline";
+
 function renderDescription(description: string): React.ReactNode[] {
+  // Descriptions written with the rich text editor are stored as HTML
+  // (sanitized server-side before save); older products were saved as plain
+  // text with a "•" bullet / ALL-CAPS heading convention, parsed below —
+  // detect which shape this one is so old products keep rendering exactly
+  // as they always have.
+  if (/^\s*</.test(description)) {
+    return [
+      <div
+        key="html"
+        className={richDescriptionClasses}
+        dangerouslySetInnerHTML={{ __html: description }}
+      />,
+    ];
+  }
+
   const lines = description.split("\n");
   const els: React.ReactNode[] = [];
   let list: string[] = [];

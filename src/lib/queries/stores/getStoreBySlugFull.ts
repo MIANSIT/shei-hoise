@@ -8,6 +8,8 @@ export interface StoreFull {
   banner_url: string | null;
   short_description: string | null;
   description: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
   created_at: string;
   contact_email: string | null;
   contact_phone: string | null;
@@ -40,6 +42,8 @@ export async function getStoreBySlugFull(store_slug: string): Promise<StoreFull 
       banner_url,
       short_description,
       description,
+      seo_title,
+      seo_description,
       contact_email,
       contact_phone,
       business_address,

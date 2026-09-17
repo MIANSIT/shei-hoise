@@ -33,20 +33,23 @@ export async function generateMetadata({
   }
 
   const storeUrl = `${baseUrl}/${store_slug}`;
+  const title = store.seo_title || store.store_name;
+  const description =
+    store.seo_description ?? store.short_description ?? store.description ?? `Shop at ${store.store_name} – browse our latest products.`;
 
   return {
     title: {
-      default: store.store_name,
+      default: title,
       template: `%s | ${store.store_name}`,
     },
-    description: store.short_description ?? store.description ?? `Shop at ${store.store_name} – browse our latest products.`,
+    description,
     metadataBase: new URL(baseUrl),
     alternates: {
       canonical: storeUrl,
     },
     openGraph: {
-      title: store.store_name,
-      description: store.short_description ?? store.description ?? `Shop at ${store.store_name}`,
+      title,
+      description,
       url: storeUrl,
       siteName: store.store_name,
       images: store.banner_url
@@ -58,8 +61,8 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: store.store_name,
-      description: store.short_description ?? store.description ?? `Shop at ${store.store_name}`,
+      title,
+      description,
       images: store.banner_url ? [store.banner_url] : store.logo_url ? [store.logo_url] : [],
     },
   };
@@ -130,7 +133,7 @@ export default async function StoreLayout({
     url: storeUrl,
     logo: storeData.logo_url ?? undefined,
     image: storeData.banner_url ?? storeData.logo_url ?? undefined,
-    description: storeData.short_description ?? storeData.description ?? undefined,
+    description: storeData.seo_description ?? storeData.short_description ?? storeData.description ?? undefined,
     ...(sameAs.length ? { sameAs } : {}),
     ...(storeData.contact_email || storeData.contact_phone
       ? {

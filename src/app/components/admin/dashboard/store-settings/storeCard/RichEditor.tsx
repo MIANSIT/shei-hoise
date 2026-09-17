@@ -21,7 +21,7 @@ export function RichTextController({
     dark:border-gray-700
   "
     >
-      <Editor initialValue={value ?? ""} onBlur={onChange} />
+      <Editor initialValue={value ?? ""} onChange={onChange} />
     </div>
   );
 }

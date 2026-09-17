@@ -5,7 +5,6 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useStore } from "@/lib/hook/stores/useStore";
 import { useStoreSettings } from "@/lib/hook/stores/useStoreSettings";
 import { useUpdateStore } from "@/lib/hook/stores/update/useUpdateStore";
-import type { UpdatedStoreSocialMedia } from "@/lib/types/store/store";
 import { StoreHeader } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreHeader";
 import { StoreInfoCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreInfoCard";
 import { StoreSettingsCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSettingsCard";
@@ -13,8 +12,7 @@ import { FacebookCatalogCard } from "@/app/components/admin/dashboard/store-sett
 import { ShippingFeesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/ShippingFeesCard";
 import { PoliciesCard } from "@/app/components/admin/dashboard/store-settings/storeCard/PoliciesCard";
 import { SheiSkeleton } from "@/app/components/ui/shei-skeleton";
-import { StoreSocialMediaCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSocialMediaCard";
-import { Store, Info, Settings, Share2, Truck, Shield } from "lucide-react";
+import { Store, Info, Settings, Truck, Shield } from "lucide-react";
 
 import type {
   StoreData,
@@ -29,12 +27,7 @@ export default function StorePage() {
   const t = useTranslation();
   const safeStoreId = storeId ?? "";
 
-  const {
-    store: fetchedStore,
-    socialMedia,
-    setSocialMedia,
-    loading: storeLoading,
-  } = useStore(safeStoreId);
+  const { store: fetchedStore, loading: storeLoading } = useStore(safeStoreId);
 
   const { settings, loading: settingsLoading } = useStoreSettings(safeStoreId);
   const { update } = useUpdateStore(safeStoreId);
@@ -90,14 +83,6 @@ export default function StorePage() {
     return resultStore;
   };
 
-  const handleUpdateSocialMedia = async (
-    socialMediaData: UpdatedStoreSocialMedia,
-  ): Promise<void> => {
-    if (!store) return;
-    const updated = await update({ socialMediaData });
-    if (updated.socialMedia) setSocialMedia(updated.socialMedia);
-  };
-
   if (userLoading) return <SheiSkeleton />;
 
   if (!storeId) {
@@ -138,7 +123,6 @@ export default function StorePage() {
   const navItems = [
     { id: "store-info", label: t.admin.storeMgmtNavInfo, icon: <Info className="h-3.5 w-3.5" /> },
     { id: "store-settings", label: t.admin.storeMgmtNavSettings, icon: <Settings className="h-3.5 w-3.5" /> },
-    { id: "social-media", label: t.admin.storeMgmtNavSocial, icon: <Share2 className="h-3.5 w-3.5" /> },
     { id: "shipping", label: t.admin.storeMgmtNavShipping, icon: <Truck className="h-3.5 w-3.5" /> },
     { id: "policies", label: t.admin.storeMgmtNavPolicies, icon: <Shield className="h-3.5 w-3.5" /> },
   ];
@@ -206,13 +190,6 @@ export default function StorePage() {
             <FacebookCatalogCard storeSlug={store.store_slug} />
           </div>
         )}
-      </div>
-
-      <div id="social-media">
-        <StoreSocialMediaCard
-          socialMedia={socialMedia}
-          onUpdate={handleUpdateSocialMedia}
-        />
       </div>
 
       {settings && (

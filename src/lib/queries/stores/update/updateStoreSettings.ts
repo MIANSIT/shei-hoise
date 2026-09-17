@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/utils/encryption";
+import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 import type {
   UpdatedStoreSettings,
   StoreSettings,
@@ -20,6 +21,13 @@ export async function updateStoreSettings(
   // here, never a risk of double-encrypting an already-encrypted value.
   if (finalPayload.facebook_capi_access_token) {
     finalPayload.facebook_capi_access_token = encrypt(finalPayload.facebook_capi_access_token);
+  }
+
+  if (finalPayload.terms_and_conditions) {
+    finalPayload.terms_and_conditions = sanitizeHtml(finalPayload.terms_and_conditions);
+  }
+  if (finalPayload.privacy_policy) {
+    finalPayload.privacy_policy = sanitizeHtml(finalPayload.privacy_policy);
   }
 
   const { data, error } = await supabase

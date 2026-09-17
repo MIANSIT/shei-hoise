@@ -342,6 +342,7 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "whatsapp_notified_at" timestamp with time zone,
     "cash_received" numeric(10,2),
     "order_date" date DEFAULT CURRENT_DATE NOT NULL,
+    "cod_settlement_id" uuid,
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
     CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text", ('returned'::character varying)::"text"]))),
     CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
@@ -352,6 +353,29 @@ ALTER TABLE "public"."orders" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."orders"."delivery_option" IS 'Delivery Option Like (Pathao, Courier)';
+
+
+-- One row per courier payout covering several delivered COD orders at once
+-- (couriers settle in a batch, not per order). orders.cod_settlement_id
+-- links each covered order to the settlement its cash arrived with, so
+-- Register Audit counts it exactly once, on the date actually received.
+CREATE TABLE IF NOT EXISTS "public"."store_cod_settlements" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL,
+    "store_id" uuid NOT NULL,
+    "courier" character varying(20),
+    "settlement_date" date NOT NULL,
+    "total_amount" numeric(10,2) NOT NULL,
+    "order_count" integer DEFAULT 0 NOT NULL,
+    "note" text,
+    "created_by" uuid,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE "public"."store_cod_settlements" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."store_cod_settlements" IS 'One row per courier payout covering several delivered COD orders at once. orders.cod_settlement_id links each order to the settlement its cash arrived with, so Register Audit counts it exactly once, on the date it was actually received rather than the date the sale happened.';
 
 
 -- History of what the store actually paid the courier for an order (one row
@@ -682,6 +706,8 @@ CREATE TABLE IF NOT EXISTS "public"."stores" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "short_description" "text",
+    "seo_title" character varying(70),
+    "seo_description" character varying(200),
     CONSTRAINT "stores_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('approved'::character varying)::"text", ('suspended'::character varying)::"text", ('rejected'::character varying)::"text", ('trial'::character varying)::"text"])))
 );
 
@@ -1007,6 +1033,11 @@ ALTER TABLE ONLY "public"."store_announcements"
 
 
 
+ALTER TABLE ONLY "public"."store_cod_settlements"
+    ADD CONSTRAINT "store_cod_settlements_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."store_reviews"
     ADD CONSTRAINT "store_reviews_pkey" PRIMARY KEY ("id");
 
@@ -1135,6 +1166,14 @@ CREATE INDEX "idx_products_store_id_sort_order" ON "public"."products" USING "bt
 
 
 CREATE INDEX "store_announcements_store_sort_idx" ON "public"."store_announcements" USING "btree" ("store_id", "sort_order");
+
+
+
+CREATE INDEX "store_cod_settlements_store_date_idx" ON "public"."store_cod_settlements" USING "btree" ("store_id", "settlement_date");
+
+
+
+CREATE INDEX "orders_cod_settlement_id_idx" ON "public"."orders" USING "btree" ("cod_settlement_id");
 
 
 
@@ -1281,6 +1320,16 @@ ALTER TABLE ONLY "public"."orders"
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_cod_settlement_id_fkey" FOREIGN KEY ("cod_settlement_id") REFERENCES "public"."store_cod_settlements"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."store_cod_settlements"
+    ADD CONSTRAINT "store_cod_settlements_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
 
 
 
@@ -1652,6 +1701,12 @@ GRANT ALL ON TABLE "public"."order_tracking" TO "service_role";
 GRANT ALL ON TABLE "public"."orders" TO "anon";
 GRANT ALL ON TABLE "public"."orders" TO "authenticated";
 GRANT ALL ON TABLE "public"."orders" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."store_cod_settlements" TO "anon";
+GRANT ALL ON TABLE "public"."store_cod_settlements" TO "authenticated";
+GRANT ALL ON TABLE "public"."store_cod_settlements" TO "service_role";
 
 
 

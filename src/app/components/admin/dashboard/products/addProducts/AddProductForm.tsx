@@ -6,10 +6,11 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { useForm, FieldErrors } from "react-hook-form";
+import { useForm, FieldErrors, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
+import { RichTextController } from "@/app/components/admin/dashboard/store-settings/storeCard/RichEditor";
 import ProductImages from "./ProductImages";
 import ProductVariantsInline from "./ProductVariantsInline";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,12 @@ import {
   ChevronDown,
   AlertTriangle,
   Info,
+  Search,
 } from "lucide-react";
 import { useAddProductDraftStore } from "@/lib/store/addProductDraftStore";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import LockedSection from "@/app/components/admin/common/LockedSection";
 import { isoToDatetimeLocal, datetimeLocalToIso } from "@/lib/utils/datetimeLocal";
 
 interface AddProductFormProps {
@@ -187,6 +191,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
       handleSubmit,
       formState: { isSubmitting },
     } = form;
+
+    const { allowed: seoAllowed } = useFeatureGate(storeId, "seo_tools");
 
     const [categories, setCategories] = useState<
       { id: string; name: string; is_active: boolean }[]
@@ -578,16 +584,61 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   required
                   tooltip={t.admin.addProductDescTooltip}
                 />
-                <FormField
+                <Controller
                   name="description"
-                  as="textarea"
                   control={control}
-                  required
-                  placeholder="Describe features, materials, usage instructions, warranty…"
-                  className="min-h-30 w-full"
+                  render={({ field }) => (
+                    <RichTextController
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
+                {form.formState.errors.description && (
+                  <p className="mt-1 text-xs font-medium text-rose-500">
+                    {form.formState.errors.description.message}
+                  </p>
+                )}
               </div>
             </div>
+          </Section>
+
+          {/* ── SEO ── */}
+          <Section icon={Search} title={t.admin.addProductSeoSection}>
+            {seoAllowed ? (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                  <FieldLabel
+                    label={t.admin.addProductMetaTitleLabel}
+                    tooltip={t.admin.addProductMetaTitleTooltip}
+                  />
+                  <FormField
+                    name="meta_title"
+                    type="text"
+                    control={control}
+                    maxLength={70}
+                    placeholder={t.admin.addProductMetaTitlePlaceholder}
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel
+                    label={t.admin.addProductMetaDescLabel}
+                    tooltip={t.admin.addProductMetaDescTooltip}
+                  />
+                  <FormField
+                    name="meta_description"
+                    as="textarea"
+                    control={control}
+                    maxLength={200}
+                    className="min-h-20"
+                    placeholder={t.admin.addProductMetaDescPlaceholder}
+                  />
+                </div>
+              </div>
+            ) : (
+              <LockedSection />
+            )}
           </Section>
 
           {/* ── Pricing ── */}

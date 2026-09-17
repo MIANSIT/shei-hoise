@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { DatePicker, Table, Typography, InputNumber, Tag, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
@@ -24,6 +25,7 @@ const EMPTY_SUMMARY: QuickSaleDailySummary = {
   collectedByMethod: {},
   dueOutstanding: 0,
   dueCollectedToday: 0,
+  codCashSettled: 0,
   orders: [],
 };
 
@@ -91,7 +93,10 @@ export default function QuickSaleAudit() {
     setCountedCash(null);
   }, [dateStr]);
 
-  const cashExpected = summary.collectedByMethod["cash"] ?? 0;
+  // Cash on hand for the day also includes any COD payout a courier handed
+  // over today — see codCashSettled's doc comment — not just cash-method
+  // Quick Sale/online transactions.
+  const cashExpected = (summary.collectedByMethod["cash"] ?? 0) + summary.codCashSettled;
   const variance = countedCash != null ? countedCash - cashExpected : null;
 
   const columns: ColumnsType<QuickSaleDailyOrderRow> = [
@@ -217,9 +222,19 @@ export default function QuickSaleAudit() {
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card/50 p-4 space-y-3">
-            <Text strong className="text-sm">
-              Cash drawer count
-            </Text>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Text strong className="text-sm">
+                Cash drawer count
+              </Text>
+              <Link href="/dashboard/cod-settlements" className="text-xs">
+                Record a COD settlement →
+              </Link>
+            </div>
+            {summary.codCashSettled > 0 && (
+              <Text type="secondary" className="text-xs block -mt-1">
+                Includes {money(summary.codCashSettled)} COD cash settled by a courier today.
+              </Text>
+            )}
             <div className="flex flex-wrap items-end gap-4">
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Expected cash</div>

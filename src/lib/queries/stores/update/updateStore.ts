@@ -2,6 +2,8 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { UpdatedStoreData, StoreData } from "@/lib/types/store/store";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
 
 export async function updateStore(
   storeId: string,
@@ -22,6 +24,8 @@ export async function updateStore(
     store_slug,
     short_description,
     description,
+    seo_title,
+    seo_description,
     logo_url,
     banner_url,
     is_active,
@@ -34,6 +38,20 @@ export async function updateStore(
     setup_progress,
   } = payload;
 
+  // Server-side mirror of the client's useFeatureGate check on the Store SEO
+  // page — a direct call would otherwise let a plan without SEO tools set a
+  // custom SEO title/description anyway. Stripped rather than rejected so
+  // the rest of the store still saves.
+  let seoTitle = seo_title;
+  let seoDescription = seo_description;
+  if (seo_title !== undefined || seo_description !== undefined) {
+    const subscription = await getStoreFeatureSubscription(storeId);
+    if (!hasFeature(subscription, "seo_tools")) {
+      seoTitle = seo_title !== undefined ? null : undefined;
+      seoDescription = seo_description !== undefined ? null : undefined;
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from("stores")
     .update({
@@ -41,6 +59,8 @@ export async function updateStore(
       store_slug,
       short_description,
       description,
+      seo_title: seoTitle,
+      seo_description: seoDescription,
       logo_url,
       banner_url,
       is_active,

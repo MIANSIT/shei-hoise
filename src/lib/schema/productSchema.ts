@@ -37,8 +37,16 @@ export const productSchema = z
     featured: z.boolean(),
     /** Waives the delivery fee for any order containing this product. */
     free_delivery: z.boolean().optional(),
-    meta_title: z.string().optional().nullable(),
-    meta_description: z.string().optional().nullable(),
+    meta_title: z
+      .string()
+      .max(70, "SEO title must be 70 characters or fewer")
+      .optional()
+      .nullable(),
+    meta_description: z
+      .string()
+      .max(200, "SEO description must be 200 characters or fewer")
+      .optional()
+      .nullable(),
 
     variants: z.array(variantSchema).optional(),
     images: z

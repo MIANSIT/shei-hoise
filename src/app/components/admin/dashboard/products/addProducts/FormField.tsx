@@ -21,6 +21,7 @@ type BaseProps<T extends FieldValues> = {
   type?: "text" | "email" | "password" | "number";
   options?: Option[];
   isDirty?: boolean;
+  maxLength?: number;
 };
 
 export type FormFieldProps<T extends FieldValues> = BaseProps<T>;
@@ -35,6 +36,8 @@ const readOnlyInput =
 const dirtyBorder = "border-amber-400 dark:border-amber-500";
 
 const errorText = "mt-1 text-xs text-rose-500";
+
+const counterText = "mt-1 text-right text-xs text-muted-foreground";
 
 const EditedBadge = () => (
   <span className="ml-1.5 rounded border border-amber-300 bg-amber-50 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
@@ -59,6 +62,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
     type = "text",
     options = [],
     isDirty = false,
+    maxLength,
   } = props;
 
   const showDirty = isDirty && !readOnly;
@@ -86,6 +90,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             id={name}
             placeholder={placeholder}
             rows={4}
+            maxLength={maxLength}
             className={`${baseInput} resize-none ${showDirty ? dirtyBorder : ""} ${className ?? ""}`}
             disabled={readOnly || disabled}
             value={inputValue as string}
@@ -94,6 +99,11 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
               onChange?.(e.target.value as T[Path<T>]);
             }}
           />
+          {maxLength !== undefined && (
+            <p className={counterText}>
+              {(inputValue as string).length}/{maxLength}
+            </p>
+          )}
           {fieldState?.error?.message && (
             <p className={errorText}>{fieldState.error.message}</p>
           )}
@@ -163,6 +173,7 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
           type={type}
           id={name}
           placeholder={placeholder}
+          maxLength={maxLength}
           className={`${baseInput} ${readOnly ? readOnlyInput : ""} ${showDirty ? dirtyBorder : ""} ${className ?? ""}`}
           readOnly={readOnly}
           disabled={disabled}
@@ -183,6 +194,11 @@ const FormField = <T extends FieldValues>(props: FormFieldProps<T>) => {
             if (type === "number") e.currentTarget.blur();
           }}
         />
+        {maxLength !== undefined && (
+          <p className={counterText}>
+            {(inputValue as string).length}/{maxLength}
+          </p>
+        )}
         {fieldState?.error?.message && (
           <p className={errorText}>{fieldState.error.message}</p>
         )}

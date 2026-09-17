@@ -5,9 +5,10 @@ import { ProductType, ProductVariantType } from "@/lib/schema/productSchema";
 import { createInventory } from "@/lib/queries/inventory/createInventory";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
 import { ProductStatus } from "@/lib/types/enums";
-import { checkLimit } from "@/lib/utils/planFeatures";
+import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 
 export type CreateProductResult =
   | { success: true; productId: string }
@@ -44,6 +45,14 @@ async function createProductInternal(product: ProductType): Promise<string> {
     throw new Error(
       `You've reached your plan's limit of ${limitCheck.limit} products. Upgrade your plan to add more.`,
     );
+  }
+
+  // Server-side mirror of the client's useFeatureGate check on the SEO
+  // section — a direct call would otherwise let a plan without SEO tools
+  // set custom meta tags anyway. Stripped rather than rejected so the rest
+  // of the product still saves.
+  if (!hasFeature(subscription, "seo_tools")) {
+    product = { ...product, meta_title: null, meta_description: null };
   }
 
   let productId: string | null = null;
@@ -98,8 +107,10 @@ async function createProductInternal(product: ProductType): Promise<string> {
         category_id: product.category_id,
         name: product.name.trim(),
         slug: product.slug.trim(),
-        description: product.description.trim(),
+        description: sanitizeHtml(product.description.trim()),
         short_description: product.short_description,
+        meta_title: product.meta_title || null,
+        meta_description: product.meta_description || null,
         base_price: resolvedBasePrice,
         tp_price: product.tp_price,
         discounted_price: product.discounted_price,

@@ -18,9 +18,20 @@ function esc(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
-// Strip markdown so catalog descriptions show as plain readable text
+// Strip HTML (rich-text product descriptions) and markdown so catalog
+// descriptions show as plain readable text in the merchant feed.
 function stripMarkdown(str: string): string {
   return str
+    .replace(/<\/(p|h[1-6]|li|div)>/gi, "\n") // block ends → line breaks
+    .replace(/<li[^>]*>/gi, "• ")             // list items → bullet prefix
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")                  // strip remaining tags
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
     .replace(/#{1,6}\s*/g, "")      // ## headings
     .replace(/\*\*(.+?)\*\*/g, "$1") // **bold**
     .replace(/\*(.+?)\*/g, "$1")     // *italic*

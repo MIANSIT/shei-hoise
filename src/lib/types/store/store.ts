@@ -11,6 +11,8 @@ export interface StoreData {
   store_slug: string;
   short_description?: string | null;
   description?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
   contact_email?: string;

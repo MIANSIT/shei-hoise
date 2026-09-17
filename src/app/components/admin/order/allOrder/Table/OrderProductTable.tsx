@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   OrderStatus,
   PaymentStatus,
@@ -57,6 +57,56 @@ const OrderProductTable: React.FC<Props> = ({
   );
   const [cancelNote, setCancelNote] = useState(order.notes || "");
   const [saving, setSaving] = useState(false);
+
+  // This component instance is reused across refreshes (React keys the
+  // expanded row by order.id, which doesn't change), so `order` can update
+  // in place — e.g. after Collect Payment flips payment_status to "paid" —
+  // without ever remounting to re-run the useState initializers above. Sync
+  // each local draft forward when the field it mirrors changes upstream,
+  // but only while it still matches the *previous* order value — i.e. the
+  // user hasn't made an unsaved edit of their own that would otherwise be
+  // silently overwritten by this resync.
+  const prevOrderRef = useRef(order);
+  useEffect(() => {
+    const prev = prevOrderRef.current;
+    if (order.status !== prev.status && selectedStatus === prev.status) {
+      setSelectedStatus(order.status);
+    }
+    if (
+      order.payment_status !== prev.payment_status &&
+      selectedPaymentStatus === prev.payment_status
+    ) {
+      setSelectedPaymentStatus(order.payment_status);
+    }
+    const prevDelivery = prev.delivery_option ?? DeliveryOption.COURIER;
+    const nextDelivery = order.delivery_option ?? DeliveryOption.COURIER;
+    if (nextDelivery !== prevDelivery && selectedDeliveryOption === prevDelivery) {
+      setSelectedDeliveryOption(nextDelivery);
+    }
+    const prevMethod = (prev.payment_method as PaymentMethod) || "cod";
+    const nextMethod = (order.payment_method as PaymentMethod) || "cod";
+    if (nextMethod !== prevMethod && selectedPaymentMethod === prevMethod) {
+      setSelectedPaymentMethod(nextMethod);
+    }
+    const prevCourier = prev.courier || "";
+    const nextCourier = order.courier || "";
+    if (nextCourier !== prevCourier && selectedCourier === prevCourier) {
+      setSelectedCourier(nextCourier);
+    }
+    if (
+      order.shipping_fee !== prev.shipping_fee &&
+      selectedShippingFee === prev.shipping_fee
+    ) {
+      setSelectedShippingFee(order.shipping_fee);
+    }
+    const prevNotes = prev.notes || "";
+    const nextNotes = order.notes || "";
+    if (nextNotes !== prevNotes && cancelNote === prevNotes) {
+      setCancelNote(nextNotes);
+    }
+    prevOrderRef.current = order;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order]);
 
   const isLocked = false;
 

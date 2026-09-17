@@ -34,6 +34,10 @@ import {
   Images,
   GalleryHorizontal,
   Megaphone,
+  Store,
+  Share2,
+  Layers,
+  Search,
 } from "lucide-react";
 import React from "react";
 
@@ -186,19 +190,9 @@ export const sideMenu: MenuItem[] = [
     ],
   },
   {
-    title: "Setting",
-    icon: Settings,
+    title: "Storefront",
+    icon: Layers,
     children: [
-      // {
-      //   title: "Profile",
-      //   href: "/dashboard/admin-profile",
-      //   icon: UserCircle,
-      // },
-      {
-        title: "Shipping",
-        href: "/dashboard/shipping-Management",
-        icon: Truck,
-      },
       {
         title: "Storefront Design",
         href: "/dashboard/storefront-design",
@@ -219,11 +213,37 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/announcements",
         icon: Megaphone,
       },
+    ],
+  },
+  {
+    title: "Setting",
+    icon: Settings,
+    children: [
       // {
-      //   title: "Store Management",
-      //   href: "/dashboard/store-management",
-      //   icon: Store,
+      //   title: "Profile",
+      //   href: "/dashboard/admin-profile",
+      //   icon: UserCircle,
       // },
+      {
+        title: "Store Management",
+        href: "/dashboard/store-management",
+        icon: Store,
+      },
+      {
+        title: "Store SEO",
+        href: "/dashboard/store-seo",
+        icon: Search,
+      },
+      {
+        title: "Social Platform",
+        href: "/dashboard/social-media",
+        icon: Share2,
+      },
+      {
+        title: "Shipping",
+        href: "/dashboard/shipping-Management",
+        icon: Truck,
+      },
     ],
   },
   {
@@ -242,6 +262,7 @@ export const sideMenu: MenuItem[] = [
     icon: PackageCheck,
     children: [
       { title: "Delivery Courier", href: "/dashboard/courier/manage", icon: PackageCheck },
+      { title: "COD Settlements", href: "/dashboard/cod-settlements", icon: HandCoins },
     ],
   },
   {

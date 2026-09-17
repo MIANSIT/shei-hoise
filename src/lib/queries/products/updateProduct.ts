@@ -4,9 +4,10 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
-import { checkLimit } from "@/lib/utils/planFeatures";
+import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 
 /**
  * Sets an inventory row to an absolute quantity via the same `set_inventory`
@@ -77,10 +78,11 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
     throw new Error("You do not have permission to update this product");
   }
 
+  const subscription = await getStoreFeatureSubscription(store_id);
+
   // Whole-set check — this replaces the product's entire variant list at
   // once (delete-then-upsert below), not one variant at a time.
   if (variants && variants.length > 0) {
-    const subscription = await getStoreFeatureSubscription(store_id);
     const variantLimitCheck = checkLimit(subscription, "max_variants_per_product", variants.length - 1);
     if (!variantLimitCheck.allowed) {
       throw new Error(
@@ -88,6 +90,12 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
       );
     }
   }
+
+  // Server-side mirror of the client's useFeatureGate check on the SEO
+  // section — a direct call would otherwise let a plan without SEO tools
+  // set custom meta tags anyway. Stripped rather than rejected so the rest
+  // of the product still saves.
+  const seoAllowed = hasFeature(subscription, "seo_tools");
 
   // 1️⃣ Update main product (without stock)
   // Discount fields are normalised to null when absent: supabase-js drops
@@ -97,6 +105,18 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
     .from("products")
     .update({
       ...productData,
+      description:
+        productData.description !== undefined
+          ? sanitizeHtml(productData.description)
+          : undefined,
+      meta_title:
+        productData.meta_title !== undefined && !seoAllowed
+          ? null
+          : productData.meta_title,
+      meta_description:
+        productData.meta_description !== undefined && !seoAllowed
+          ? null
+          : productData.meta_description,
       discounted_price: productData.discounted_price ?? null,
       discount_amount: productData.discount_amount ?? null,
       sale_starts_at: productData.sale_starts_at ?? null,
