@@ -151,21 +151,16 @@ export const sideMenu: MenuItem[] = [
     ],
   },
   {
-    // Split out of the POS group — Sales Report is gated by advanced_reports,
-    // not pos, so it can't share the POS node's requiredFeature. Kept visible
-    // regardless of plan; entitlement is enforced by the page itself
-    // (FeatureLocked), matching every other page-level gate except Vendors/POS.
-    title: "Sales Report",
-    href: "/dashboard/reports/sales",
+    // Grouped together since both are report pages an owner checks side by
+    // side. Neither child carries requiredFeature — both stay visible in the
+    // nav regardless of plan; entitlement is enforced by each page itself
+    // (FeatureLocked), gated by advanced_reports and profit_loss respectively.
+    title: "Reports",
     icon: BarChart2,
-  },
-  {
-    // Same visibility convention as Sales Report — kept in the nav regardless
-    // of plan; entitlement is enforced by the page itself (FeatureLocked),
-    // gated by the same advanced_reports feature.
-    title: "Profit & Loss",
-    href: "/dashboard/reports/profit-loss",
-    icon: TrendingUp,
+    children: [
+      { title: "Sales Report", href: "/dashboard/reports/sales", icon: BarChart2 },
+      { title: "Profit & Loss", href: "/dashboard/reports/profit-loss", icon: TrendingUp },
+    ],
   },
   {
     title: "Vendors",

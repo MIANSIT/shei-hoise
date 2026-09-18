@@ -116,6 +116,7 @@ export async function exportProfitLossReportPDF(
     { label: "COGS", value: `${meta.currencySymbol}${money(report.cogs)}` },
     { label: "Gross Profit", value: `${meta.currencySymbol}${money(report.grossProfit)}` },
     { label: "Total Expense", value: `${meta.currencySymbol}${money(report.totalExpenses)}` },
+    { label: "Delivery Cost", value: `${meta.currencySymbol}${money(report.deliveryNetCost)}` },
     { label: "Net Profit", value: `${meta.currencySymbol}${money(report.netProfit)}` },
   ];
 
@@ -142,6 +143,7 @@ export async function exportProfitLossReportPDF(
       kpi.label === "Net Profit" && report.netProfit < 0 ? 29 : 41,
       kpi.label === "Net Profit" && report.netProfit < 0 ? 72 : 55,
     );
+    applyBengaliFontBrowser(pdf, kpi.value, bengaliLoaded);
     pdf.text(kpi.value, x + 3, cardsTop + 17);
     pdf.setFont("helvetica", "normal");
   });
@@ -161,6 +163,15 @@ export async function exportProfitLossReportPDF(
     headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: "bold" },
     alternateRowStyles: { fillColor: [248, 249, 251] },
     columnStyles: { 1: { halign: "right" } },
+    didParseCell: (cell) => {
+      if (bengaliLoaded && cell.section !== "head") {
+        const cellText = String(cell.cell.raw ?? "");
+        if (hasBengaliChar(cellText)) {
+          cell.cell.styles.font = "NotoSansBengali";
+          cell.cell.styles.fontStyle = "normal";
+        }
+      }
+    },
     margin: { left: margin, right: margin, bottom: 16 },
   });
 

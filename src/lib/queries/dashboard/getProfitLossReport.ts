@@ -10,6 +10,8 @@ export interface ProfitLossReport {
   cogs: number;
   grossProfit: number;
   totalExpenses: number;
+  /** What was actually paid to the courier minus what was charged the customer for shipping — positive eats into profit, negative is extra income from shipping. Already netted into netProfit; shown on its own so it isn't hidden. */
+  deliveryNetCost: number;
   netProfit: number;
   trend: ProfitLossTrendPoint[];
 }
@@ -19,14 +21,15 @@ const EMPTY: ProfitLossReport = {
   cogs: 0,
   grossProfit: 0,
   totalExpenses: 0,
+  deliveryNetCost: 0,
   netProfit: 0,
   trend: [],
 };
 
 /**
  * Profit & Loss for an arbitrary date range, via the get_profit_loss_report
- * RPC — see that migration for why cogs is derived rather than its own
- * query, and why the trend is already gap-filled server-side.
+ * RPC — see that migration for why cogs is its own query (not derived from
+ * gross_profit) and why the trend is already gap-filled server-side.
  */
 export async function getProfitLossReport(
   storeId: string,
@@ -51,6 +54,7 @@ export async function getProfitLossReport(
     cogs: Number(data.cogs) || 0,
     grossProfit: Number(data.gross_profit) || 0,
     totalExpenses: Number(data.total_expenses) || 0,
+    deliveryNetCost: Number(data.delivery_net_cost) || 0,
     netProfit: Number(data.net_profit) || 0,
     trend: (data.trend ?? []).map((p: { date: string; net_profit: number }) => ({
       date: p.date,
