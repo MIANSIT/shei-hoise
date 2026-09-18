@@ -37,10 +37,12 @@ const methodLabel = (method: string) => PAYMENT_LABELS[method] || method;
 function StatCard({
   label,
   value,
+  hint,
   tone = "default",
 }: {
   label: string;
   value: string;
+  hint?: string;
   tone?: "default" | "warning" | "success";
 }) {
   const toneClass =
@@ -53,6 +55,7 @@ function StatCard({
     <div className="rounded-2xl border border-border/60 bg-card/50 p-4 flex flex-col gap-1 min-w-0">
       <span className="text-xs font-medium text-muted-foreground truncate">{label}</span>
       <span className={`text-xl font-bold truncate ${toneClass}`}>{value}</span>
+      {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
     </div>
   );
 }
@@ -239,7 +242,11 @@ export default function QuickSaleAudit() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard label="Transactions" value={`${summary.transactionCount}`} />
-            <StatCard label="Gross Sales" value={money(summary.grossSales)} />
+            <StatCard
+              label="Gross Sales"
+              value={money(summary.grossSales)}
+              hint="Excludes shipping & tax"
+            />
             <StatCard
               label="Due Outstanding (today's sales)"
               value={money(summary.dueOutstanding)}

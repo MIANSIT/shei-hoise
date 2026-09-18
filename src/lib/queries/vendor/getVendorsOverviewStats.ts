@@ -31,7 +31,7 @@ export async function getVendorsOverviewStats(
   const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
   const slowMovingCutoff = dayjs().subtract(SLOW_MOVING_DAYS, "day");
 
-  const [vendorCountRes, stockRes, settlementsRes, paymentsRes, orderItemsRes] =
+  const [vendorCountRes, stockRes, settlementsRes, paymentsRes, orderItemsRes, deliveryCostRes] =
     await Promise.all([
       supabase
         .from("vendors")
@@ -57,6 +57,11 @@ export async function getVendorsOverviewStats(
         )
         .eq("order.store_id", storeId)
         .eq("order.status", "confirmed"),
+      supabase
+        .from("vendor_orders")
+        .select("delivery_cost")
+        .eq("store_id", storeId)
+        .eq("status", "confirmed"),
     ]);
 
   const stockRows = stockRes.data ?? [];
@@ -85,6 +90,10 @@ export async function getVendorsOverviewStats(
     (sum, r) => sum + r.quantity * (Number(r.vendor_tp) - Number(r.original_tp)),
     0,
   );
+  const totalDeliveryCostInvoiced = (deliveryCostRes.data ?? []).reduce(
+    (sum, r) => sum + Number(r.delivery_cost ?? 0),
+    0,
+  );
 
   return {
     total_vendors: vendorCountRes.count ?? 0,
@@ -93,6 +102,7 @@ export async function getVendorsOverviewStats(
     total_due: calculateVendorCurrentDue({
       unsettledStockValue: totalStockValue,
       totalReceivable,
+      totalDeliveryCostInvoiced,
       totalPaid,
     }),
     total_stock_value: totalStockValue,

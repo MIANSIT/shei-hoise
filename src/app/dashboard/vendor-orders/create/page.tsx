@@ -583,12 +583,22 @@ export default function CreateVendorOrderPage() {
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500">Paid Amount</span>
-            <InputNumber
-              min={0}
-              value={paidAmount}
-              onChange={(v) => setPaidAmount(v ?? 0)}
-              className="w-32 rounded-lg"
-            />
+            <Space.Compact>
+              <InputNumber
+                min={0}
+                value={paidAmount}
+                onChange={(v) => setPaidAmount(v ?? 0)}
+                className="w-24 rounded-l-lg"
+              />
+              <Button
+                size="small"
+                className="rounded-r-lg h-auto"
+                onClick={() => setPaidAmount(grandTotal)}
+                title="Set paid amount to the full grand total (including delivery cost and discount)"
+              >
+                Full
+              </Button>
+            </Space.Compact>
           </div>
           <div className="flex justify-between text-sm font-semibold text-red-500">
             <span>Due Amount</span>

@@ -33,7 +33,7 @@ export async function getVendorDashboardStats(
         .eq("vendor_id", vendorId),
       supabase
         .from("vendor_orders")
-        .select("total_quantity")
+        .select("total_quantity, delivery_cost")
         .eq("vendor_id", vendorId)
         .eq("status", "confirmed"),
       supabase
@@ -69,6 +69,10 @@ export async function getVendorDashboardStats(
 
   const totalDispatched = (ordersRes.data ?? []).reduce(
     (sum, r) => sum + r.total_quantity,
+    0,
+  );
+  const totalDeliveryCostInvoiced = (ordersRes.data ?? []).reduce(
+    (sum, r) => sum + Number(r.delivery_cost ?? 0),
     0,
   );
   const marginDispatched = (orderItemsRes.data ?? []).reduce(
@@ -123,6 +127,7 @@ export async function getVendorDashboardStats(
     current_due: calculateVendorCurrentDue({
       unsettledStockValue,
       totalReceivable,
+      totalDeliveryCostInvoiced,
       totalPaid,
     }),
     last_payment_date: payments[0]?.payment_date ?? null,

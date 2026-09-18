@@ -28,7 +28,7 @@ export async function getVendorPaymentStatsForPeriod(
 ): Promise<VendorPaymentStats> {
   if (!storeId) return EMPTY;
 
-  const [activityRes, stockRes, settlementsRes, paymentsRes] = await Promise.all([
+  const [activityRes, stockRes, settlementsRes, paymentsRes, deliveryCostRes] = await Promise.all([
     supabase
       .from("vendor_order_items")
       .select("id, order:vendor_orders!inner(store_id, status)", { count: "exact", head: true })
@@ -40,6 +40,11 @@ export async function getVendorPaymentStatsForPeriod(
       .eq("store_id", storeId),
     supabase.from("vendor_settlements").select("total_receivable").eq("store_id", storeId),
     supabase.from("vendor_payments").select("amount, payment_date").eq("store_id", storeId),
+    supabase
+      .from("vendor_orders")
+      .select("delivery_cost")
+      .eq("store_id", storeId)
+      .eq("status", "confirmed"),
   ]);
 
   const hasActivity = (activityRes.count ?? 0) > 0;
@@ -51,6 +56,10 @@ export async function getVendorPaymentStatsForPeriod(
   );
   const totalReceivable = (settlementsRes.data ?? []).reduce(
     (sum, r) => sum + Number(r.total_receivable),
+    0,
+  );
+  const totalDeliveryCostInvoiced = (deliveryCostRes.data ?? []).reduce(
+    (sum, r) => sum + Number(r.delivery_cost ?? 0),
     0,
   );
   const payments = paymentsRes.data ?? [];
@@ -67,6 +76,7 @@ export async function getVendorPaymentStatsForPeriod(
     total_due: calculateVendorCurrentDue({
       unsettledStockValue: totalStockValue,
       totalReceivable,
+      totalDeliveryCostInvoiced,
       totalPaid,
     }),
     has_activity: true,

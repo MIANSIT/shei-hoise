@@ -14,6 +14,7 @@ import { confirmVendorOrder } from "@/lib/queries/vendorOrder/confirmVendorOrder
 import { cancelVendorOrder } from "@/lib/queries/vendorOrder/cancelVendorOrder";
 import { deleteVendorOrder } from "@/lib/queries/vendorOrder/deleteVendorOrder";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
+import { getVendorInvoiceBalances } from "@/lib/queries/vendor/getVendorInvoiceBalances";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type { VendorOrder, VendorOrderItem, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
@@ -39,6 +40,15 @@ export default function VendorOrderDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // vendor_orders.paid_amount/due_amount are only ever written at draft-save
+  // time — a later "Record Payment" or settlement against this same invoice
+  // never touches these columns, so they go stale the moment that happens.
+  // getVendorInvoiceBalances runs the same paid/due waterfall the vendor
+  // detail page's Invoices table already trusts; we mirror it here for
+  // confirmed orders so the on-screen totals and the downloaded invoice
+  // can't disagree with it. Drafts have no payments to wait for, so their
+  // stored paid_amount/due_amount stay authoritative.
+  const [liveBalance, setLiveBalance] = useState<{ paid_allocated: number; due_remaining: number } | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!storeId) return;
@@ -54,6 +64,25 @@ export default function VendorOrderDetailPage() {
   useEffect(() => {
     fetchOrder();
   }, [fetchOrder]);
+
+  useEffect(() => {
+    if (!order || order.status !== "confirmed") {
+      setLiveBalance(null);
+      return;
+    }
+    let cancelled = false;
+    getVendorInvoiceBalances(order.vendor_id).then((balances) => {
+      if (cancelled) return;
+      const match = balances.find((b) => b.order_id === order.id);
+      setLiveBalance(match ? { paid_allocated: match.paid_allocated, due_remaining: match.due_remaining } : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [order]);
+
+  const displayPaidAmount = liveBalance?.paid_allocated ?? Number(order?.paid_amount ?? 0);
+  const displayDueAmount = liveBalance?.due_remaining ?? Number(order?.due_amount ?? 0);
 
   const handleConfirm = () => {
     modal.confirm({
@@ -162,8 +191,8 @@ export default function VendorOrderDetailPage() {
           deliveryCost: Number(order.delivery_cost),
           discountAmount: Number(order.discount_amount),
           grandTotal: Number(order.grand_total),
-          paidAmount: Number(order.paid_amount),
-          dueAmount: Number(order.due_amount),
+          paidAmount: displayPaidAmount,
+          dueAmount: displayDueAmount,
           deliveryDate: order.delivery_date ? dayjs(order.delivery_date).format("DD MMM YYYY") : null,
           deliveryPerson: order.delivery_person,
           vehicleNumber: order.vehicle_number,
@@ -396,11 +425,11 @@ export default function VendorOrderDetailPage() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Paid</span>
-            <span className="font-medium">{Number(order.paid_amount).toFixed(2)}</span>
+            <span className="font-medium">{displayPaidAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm font-semibold text-red-500">
             <span>Due</span>
-            <span>{Number(order.due_amount).toFixed(2)}</span>
+            <span>{displayDueAmount.toFixed(2)}</span>
           </div>
         </div>
 

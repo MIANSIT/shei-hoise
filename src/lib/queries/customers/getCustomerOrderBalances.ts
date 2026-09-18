@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { PaymentStatus } from "@/lib/types/enums";
+import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "./customerDueMath";
 
 export interface CustomerOrderBalance {
@@ -32,6 +32,10 @@ export async function getCustomerOrderBalances(
       // A returned order that was auto-refunded shouldn't reappear as an
       // outstanding due once its refund row pushes due_remaining back up.
       .neq("payment_status", PaymentStatus.REFUNDED)
+      // A cancelled or returned order was never fulfilled, so it isn't a
+      // debt the customer owes — see getCustomersWithDue.ts for the same fix.
+      .neq("status", OrderStatus.CANCELLED)
+      .neq("status", OrderStatus.RETURNED)
       .order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")

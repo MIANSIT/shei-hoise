@@ -52,6 +52,180 @@ interface VendorInvoiceRequest {
   notes?: string | null;
 }
 
+const PAGE_WIDTH = 210;
+const MARGIN = 15;
+
+// Draws the full invoice onto an already-created jsPDF instance and returns
+// the Y position it finished at. Called twice: once against a throwaway,
+// generously-tall canvas purely to measure how much height the real content
+// needs (item count, MRP column, notes length, and — critically — every item
+// row wrapping to two lines for its SKU all affect this unpredictably), then
+// again against a canvas sized exactly to that measurement. Guessing the
+// final height up front from a character-count heuristic (the previous
+// approach) reliably undershot it — a real invoice with 8 line items had its
+// Grand Total, Paid Amount and Due Amount silently drawn below the bottom of
+// a too-short page and never appeared in the downloaded PDF at all.
+function renderInvoice(
+  pdf: jsPDF,
+  body: VendorInvoiceRequest,
+  hasMrp: boolean,
+  isQuotation: boolean,
+): number {
+  const storeInfo = [body.store.address, body.store.phone, body.store.email].filter(
+    Boolean,
+  ) as string[];
+
+  let y = drawVendorPdfHeader(pdf, {
+    storeName: body.store.name,
+    storeInfoLines: storeInfo,
+    title: isQuotation ? "Quotation" : "Vendor Invoice",
+    metaLines: [
+      `${isQuotation ? "Quotation Ref" : "Invoice #"}: ${body.invoiceNumber}`,
+      `Order Date: ${body.orderDate}`,
+    ],
+    pageWidth: PAGE_WIDTH,
+    margin: MARGIN,
+  });
+
+  const vendorLineCount = (body.vendor.address ? 1 : 0) + (body.vendor.phone ? 1 : 0) + 1;
+  const panelHeight = 16 + vendorLineCount * 5;
+  drawPanel(pdf, MARGIN, y, PAGE_WIDTH - MARGIN * 2, panelHeight);
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.setTextColor(...PDF_COLORS.brand);
+  pdf.text(isQuotation ? "QUOTATION FOR" : "BILL TO", MARGIN + 5, y + 6);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.setTextColor(20, 20, 20);
+  const vendorInfo = [
+    body.vendor.name,
+    body.vendor.address,
+    body.vendor.phone ? `Phone: ${body.vendor.phone}` : null,
+  ].filter(Boolean) as string[];
+  vendorInfo.forEach((line, i) => pdf.text(line, MARGIN + 5, y + 12 + i * 5));
+
+  y += panelHeight + 8;
+  pdf.setTextColor(0, 0, 0);
+
+  if (isQuotation) {
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...PDF_COLORS.textMuted);
+    pdf.text(
+      "This is a price quotation for review — stock has not been dispatched yet.",
+      MARGIN,
+      y,
+    );
+    pdf.setTextColor(0, 0, 0);
+    y += 6;
+  }
+
+  const head = hasMrp
+    ? ["Item", "Qty", "Unit Price", "MRP", "Total"]
+    : ["Item", "Qty", "Unit Price", "Total"];
+
+  autoTable(pdf, {
+    startY: y,
+    head: [head],
+    body: body.items.map((item) => {
+      const row = [
+        item.sku ? `${item.name}\n(${item.sku})` : item.name,
+        item.qty.toString(),
+        item.vendorTp.toFixed(2),
+      ];
+      if (hasMrp) row.push(item.mrp != null ? item.mrp.toFixed(2) : "—");
+      row.push((item.qty * item.vendorTp).toFixed(2));
+      return row;
+    }),
+    theme: "striped",
+    styles: { fontSize: 9, cellPadding: 3, overflow: "linebreak", lineWidth: 0 },
+    headStyles: { fillColor: PDF_COLORS.brand, textColor: [255, 255, 255], fontStyle: "bold" },
+    alternateRowStyles: { fillColor: PDF_COLORS.panelBg },
+    margin: { left: MARGIN, right: MARGIN },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let finalY = (pdf as any).lastAutoTable.finalY + 8;
+
+  const summaryWidth = 80;
+  const summaryX = PAGE_WIDTH - MARGIN - summaryWidth;
+  const summaryRows: [string, number][] = [
+    ["Subtotal", body.subtotal],
+    ["Delivery Cost", body.deliveryCost],
+    ["Discount", -Math.abs(body.discountAmount)],
+  ].filter(([, value]) => value !== 0) as [string, number][];
+
+  const summaryPanelHeight = summaryRows.length * 6 + 30;
+  drawPanel(pdf, summaryX, finalY, summaryWidth, summaryPanelHeight);
+  finalY += 6;
+
+  pdf.setFontSize(9.5);
+  summaryRows.forEach(([label, value]) => {
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(...PDF_COLORS.textMuted);
+    pdf.text(label, summaryX + 5, finalY);
+    pdf.setTextColor(20, 20, 20);
+    pdf.text(value.toFixed(2), PAGE_WIDTH - MARGIN - 5, finalY, { align: "right" });
+    finalY += 6;
+  });
+
+  pdf.setDrawColor(...PDF_COLORS.border);
+  pdf.line(summaryX + 5, finalY - 1, PAGE_WIDTH - MARGIN - 5, finalY - 1);
+  finalY += 5;
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
+  pdf.setTextColor(...PDF_COLORS.brand);
+  pdf.text("GRAND TOTAL", summaryX + 5, finalY);
+  pdf.text(body.grandTotal.toFixed(2), PAGE_WIDTH - MARGIN - 5, finalY, { align: "right" });
+  finalY += 7;
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9.5);
+  pdf.setTextColor(...PDF_COLORS.textMuted);
+  pdf.text("Paid Amount", summaryX + 5, finalY);
+  pdf.setTextColor(...PDF_COLORS.success);
+  pdf.text(body.paidAmount.toFixed(2), PAGE_WIDTH - MARGIN - 5, finalY, { align: "right" });
+  finalY += 6;
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(...PDF_COLORS.danger);
+  pdf.text("Due Amount", summaryX + 5, finalY);
+  pdf.text(body.dueAmount.toFixed(2), PAGE_WIDTH - MARGIN - 5, finalY, { align: "right" });
+  finalY += 14;
+  pdf.setTextColor(0, 0, 0);
+
+  const extras = [
+    body.deliveryDate ? `Delivery Date: ${body.deliveryDate}` : null,
+    body.deliveryPerson ? `Delivery Person: ${body.deliveryPerson}` : null,
+    body.vehicleNumber ? `Vehicle Number: ${body.vehicleNumber}` : null,
+    body.referenceNumber ? `Reference: ${body.referenceNumber}` : null,
+  ].filter(Boolean) as string[];
+
+  if (extras.length) {
+    pdf.setFontSize(9);
+    pdf.setTextColor(...PDF_COLORS.textMuted);
+    pdf.setFont("helvetica", "normal");
+    extras.forEach((line, i) => pdf.text(line, MARGIN, finalY + i * 5));
+    finalY += extras.length * 5 + 4;
+  }
+
+  if (body.notes) {
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(9);
+    pdf.text("Notes:", MARGIN, finalY);
+    pdf.setFont("helvetica", "normal");
+    const notesLines = pdf.splitTextToSize(body.notes, PAGE_WIDTH - 2 * MARGIN);
+    notesLines.forEach((line: string, i: number) => pdf.text(line, MARGIN, finalY + 5 + i * 5));
+    finalY += 5 + notesLines.length * 5;
+  }
+
+  return finalY;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: VendorInvoiceRequest = await req.json();
@@ -62,167 +236,14 @@ export async function POST(req: NextRequest) {
     const hasMrp = body.items.some((i) => i.mrp !== null && i.mrp !== undefined);
     const isQuotation = body.docType === "quotation";
 
-    const pageWidth = 210;
-    const margin = 15;
+    // Measurement pass — tall enough that no realistic invoice could
+    // overflow it, discarded once we know how much height was actually used.
+    const measurePdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, 2000], compress: true });
+    const measuredHeight = renderInvoice(measurePdf, body, hasMrp, isQuotation);
 
-    let estimatedHeight = margin + 70;
-    estimatedHeight += body.items.length * 8 + 20;
-    estimatedHeight += 60;
-    if (body.notes) estimatedHeight += Math.ceil(body.notes.length / 90) * 5 + 10;
-    const dynamicHeight = Math.max(Math.ceil(estimatedHeight / 10) * 10, 220);
-
-    const pdf = new jsPDF({ unit: "mm", format: [pageWidth, dynamicHeight], compress: true });
-
-    const storeInfo = [body.store.address, body.store.phone, body.store.email].filter(
-      Boolean,
-    ) as string[];
-
-    let y = drawVendorPdfHeader(pdf, {
-      storeName: body.store.name,
-      storeInfoLines: storeInfo,
-      title: isQuotation ? "Quotation" : "Vendor Invoice",
-      metaLines: [
-        `${isQuotation ? "Quotation Ref" : "Invoice #"}: ${body.invoiceNumber}`,
-        `Order Date: ${body.orderDate}`,
-      ],
-      pageWidth,
-      margin,
-    });
-
-    const vendorLineCount = (body.vendor.address ? 1 : 0) + (body.vendor.phone ? 1 : 0) + 1;
-    const panelHeight = 16 + vendorLineCount * 5;
-    drawPanel(pdf, margin, y, pageWidth - margin * 2, panelHeight);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
-    pdf.setTextColor(...PDF_COLORS.brand);
-    pdf.text(isQuotation ? "QUOTATION FOR" : "BILL TO", margin + 5, y + 6);
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.setTextColor(20, 20, 20);
-    const vendorInfo = [
-      body.vendor.name,
-      body.vendor.address,
-      body.vendor.phone ? `Phone: ${body.vendor.phone}` : null,
-    ].filter(Boolean) as string[];
-    vendorInfo.forEach((line, i) => pdf.text(line, margin + 5, y + 12 + i * 5));
-
-    y += panelHeight + 8;
-    pdf.setTextColor(0, 0, 0);
-
-    if (isQuotation) {
-      pdf.setFont("helvetica", "italic");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(...PDF_COLORS.textMuted);
-      pdf.text(
-        "This is a price quotation for review — stock has not been dispatched yet.",
-        margin,
-        y,
-      );
-      pdf.setTextColor(0, 0, 0);
-      y += 6;
-    }
-
-    const head = hasMrp
-      ? ["Item", "Qty", "Unit Price", "MRP", "Total"]
-      : ["Item", "Qty", "Unit Price", "Total"];
-
-    autoTable(pdf, {
-      startY: y,
-      head: [head],
-      body: body.items.map((item) => {
-        const row = [
-          item.sku ? `${item.name}\n(${item.sku})` : item.name,
-          item.qty.toString(),
-          item.vendorTp.toFixed(2),
-        ];
-        if (hasMrp) row.push(item.mrp != null ? item.mrp.toFixed(2) : "—");
-        row.push((item.qty * item.vendorTp).toFixed(2));
-        return row;
-      }),
-      theme: "striped",
-      styles: { fontSize: 9, cellPadding: 3, overflow: "linebreak", lineWidth: 0 },
-      headStyles: { fillColor: PDF_COLORS.brand, textColor: [255, 255, 255], fontStyle: "bold" },
-      alternateRowStyles: { fillColor: PDF_COLORS.panelBg },
-      margin: { left: margin, right: margin },
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let finalY = (pdf as any).lastAutoTable.finalY + 8;
-
-    const summaryWidth = 80;
-    const summaryX = pageWidth - margin - summaryWidth;
-    const summaryRows: [string, number][] = [
-      ["Subtotal", body.subtotal],
-      ["Delivery Cost", body.deliveryCost],
-      ["Discount", -Math.abs(body.discountAmount)],
-    ].filter(([, value]) => value !== 0) as [string, number][];
-
-    const summaryPanelHeight = summaryRows.length * 6 + 30;
-    drawPanel(pdf, summaryX, finalY, summaryWidth, summaryPanelHeight);
-    finalY += 6;
-
-    pdf.setFontSize(9.5);
-    summaryRows.forEach(([label, value]) => {
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(...PDF_COLORS.textMuted);
-      pdf.text(label, summaryX + 5, finalY);
-      pdf.setTextColor(20, 20, 20);
-      pdf.text(value.toFixed(2), pageWidth - margin - 5, finalY, { align: "right" });
-      finalY += 6;
-    });
-
-    pdf.setDrawColor(...PDF_COLORS.border);
-    pdf.line(summaryX + 5, finalY - 1, pageWidth - margin - 5, finalY - 1);
-    finalY += 5;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(12);
-    pdf.setTextColor(...PDF_COLORS.brand);
-    pdf.text("GRAND TOTAL", summaryX + 5, finalY);
-    pdf.text(body.grandTotal.toFixed(2), pageWidth - margin - 5, finalY, { align: "right" });
-    finalY += 7;
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9.5);
-    pdf.setTextColor(...PDF_COLORS.textMuted);
-    pdf.text("Paid Amount", summaryX + 5, finalY);
-    pdf.setTextColor(...PDF_COLORS.success);
-    pdf.text(body.paidAmount.toFixed(2), pageWidth - margin - 5, finalY, { align: "right" });
-    finalY += 6;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(...PDF_COLORS.danger);
-    pdf.text("Due Amount", summaryX + 5, finalY);
-    pdf.text(body.dueAmount.toFixed(2), pageWidth - margin - 5, finalY, { align: "right" });
-    finalY += 14;
-    pdf.setTextColor(0, 0, 0);
-
-    const extras = [
-      body.deliveryDate ? `Delivery Date: ${body.deliveryDate}` : null,
-      body.deliveryPerson ? `Delivery Person: ${body.deliveryPerson}` : null,
-      body.vehicleNumber ? `Vehicle Number: ${body.vehicleNumber}` : null,
-      body.referenceNumber ? `Reference: ${body.referenceNumber}` : null,
-    ].filter(Boolean) as string[];
-
-    if (extras.length) {
-      pdf.setFontSize(9);
-      pdf.setTextColor(...PDF_COLORS.textMuted);
-      pdf.setFont("helvetica", "normal");
-      extras.forEach((line, i) => pdf.text(line, margin, finalY + i * 5));
-      finalY += extras.length * 5 + 4;
-    }
-
-    if (body.notes) {
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "italic");
-      pdf.setFontSize(9);
-      pdf.text("Notes:", margin, finalY);
-      pdf.setFont("helvetica", "normal");
-      const notesLines = pdf.splitTextToSize(body.notes, pageWidth - 2 * margin);
-      notesLines.forEach((line: string, i: number) => pdf.text(line, margin, finalY + 5 + i * 5));
-    }
+    const pageHeight = Math.max(Math.ceil((measuredHeight + MARGIN) / 10) * 10, 220);
+    const pdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, pageHeight], compress: true });
+    renderInvoice(pdf, body, hasMrp, isQuotation);
 
     const pdfBuffer = Buffer.from(pdf.output("arraybuffer"));
 

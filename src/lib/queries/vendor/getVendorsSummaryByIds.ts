@@ -12,7 +12,7 @@ export async function getVendorsSummaryByIds(
   const summary = new Map<string, VendorListSummary>();
   if (vendorIds.length === 0) return summary;
 
-  const [stockRes, settlementsRes, paymentsRes] = await Promise.all([
+  const [stockRes, settlementsRes, paymentsRes, deliveryCostRes] = await Promise.all([
     supabase
       .from("vendor_stock")
       .select("vendor_id, quantity_available, last_vendor_tp")
@@ -26,11 +26,17 @@ export async function getVendorsSummaryByIds(
       .select("vendor_id, amount, payment_date")
       .in("vendor_id", vendorIds)
       .order("payment_date", { ascending: false }),
+    supabase
+      .from("vendor_orders")
+      .select("vendor_id, delivery_cost")
+      .in("vendor_id", vendorIds)
+      .eq("status", "confirmed"),
   ]);
 
   if (stockRes.error) console.error("Error fetching vendor stock summary:", stockRes.error.message);
   if (settlementsRes.error) console.error("Error fetching vendor settlements summary:", settlementsRes.error.message);
   if (paymentsRes.error) console.error("Error fetching vendor payments summary:", paymentsRes.error.message);
+  if (deliveryCostRes.error) console.error("Error fetching vendor delivery cost summary:", deliveryCostRes.error.message);
 
   const stockQtyByVendor = new Map<string, number>();
   const stockValueByVendor = new Map<string, number>();
@@ -55,10 +61,19 @@ export async function getVendorsSummaryByIds(
     if (!lastPaymentByVendor.has(row.vendor_id)) lastPaymentByVendor.set(row.vendor_id, row.payment_date);
   }
 
+  const deliveryCostByVendor = new Map<string, number>();
+  for (const row of deliveryCostRes.data ?? []) {
+    deliveryCostByVendor.set(
+      row.vendor_id,
+      (deliveryCostByVendor.get(row.vendor_id) ?? 0) + Number(row.delivery_cost ?? 0),
+    );
+  }
+
   for (const vendorId of vendorIds) {
     const receivable = receivableByVendor.get(vendorId) ?? 0;
     const paid = paidByVendor.get(vendorId) ?? 0;
     const stockValue = stockValueByVendor.get(vendorId) ?? 0;
+    const deliveryCostInvoiced = deliveryCostByVendor.get(vendorId) ?? 0;
     summary.set(vendorId, {
       vendor_id: vendorId,
       stock_quantity: stockQtyByVendor.get(vendorId) ?? 0,
@@ -66,6 +81,7 @@ export async function getVendorsSummaryByIds(
       current_due: calculateVendorCurrentDue({
         unsettledStockValue: stockValue,
         totalReceivable: receivable,
+        totalDeliveryCostInvoiced: deliveryCostInvoiced,
         totalPaid: paid,
       }),
       last_payment_date: lastPaymentByVendor.get(vendorId) ?? null,

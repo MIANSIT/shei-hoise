@@ -19,7 +19,7 @@ import {
 import { InfoCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { OrderProduct } from "@/lib/types/order";
 import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { OrderStatus, PaymentStatus, PaymentMethod } from "@/lib/types/enums";
 import { useState, useEffect } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -145,11 +145,16 @@ export default function OrderSummary({
     { value: PaymentStatus.REFUNDED, label: t.admin.bulkRefunded },
   ];
 
+  // Matches Quick Sale's own option set (Cash / Card / Mobile Banking) so the
+  // same payment_method values land in the same Register Audit buckets
+  // instead of fragmenting into differently-spelled totals — plus Cash on
+  // Delivery, which Quick Sale has no use for (it's always an immediate,
+  // already-collected sale) but a courier-delivered order needs.
   const paymentMethodOptions = [
-    { value: "cod", label: "Cash on Delivery" },
-    { value: "card", label: t.admin.orderPayCard },
-    { value: "bkash", label: t.admin.orderPayBkash },
-    { value: "nagad", label: t.admin.orderPayNagad },
+    { value: PaymentMethod.CASH, label: t.admin.orderPayCash },
+    { value: PaymentMethod.COD, label: t.admin.orderCod },
+    { value: PaymentMethod.CARD, label: t.admin.orderPayCard },
+    { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
   ];
 
   // Pathao/Steadfast only stay selectable if the plan includes courier

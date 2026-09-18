@@ -5,6 +5,7 @@ import { Button, Space, Typography, App } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import dataService from "@/lib/queries/dataService";
+import { getOrCreateCustomerByPhone } from "@/lib/queries/customers/getOrCreateCustomerByPhone";
 import { OrderProduct, CustomerInfo } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -137,39 +138,39 @@ export default function UpdateOrderButton({
 
     setIsLoading(true);
     try {
-      // No customer linked (either the order never had one, or "New
-      // Customer" was clicked on the edit page) — create the customer
-      // record first, same as SaveOrderButton does on order creation, then
-      // link the order to it below.
+      // No customer linked — this is either a genuine "New Customer" save,
+      // or (far more often) a Quick Sale walk-in order being re-opened here:
+      // Quick Sale never creates a store_customers row for an anonymous
+      // sale, so its shipping_address snapshot ("Walk-in Customer" / "N/A")
+      // is all EditOrder has to show, and customer_id stays null. A phone
+      // number is the only reliable signal that this is a real customer
+      // worth a permanent record — "N/A" has none. Without this check, every
+      // single save here re-ran createCustomer unconditionally and inserted
+      // a brand-new duplicate "Walk-in Customer" row each time.
       let customerId = customerInfo.customer_id;
       if (!customerId) {
-        if (!customerInfo.name || !customerInfo.phone) {
-          throw new Error(
-            "Customer name and phone are required to create a customer record"
+        const cleanedPhone = (customerInfo.phone || "").replace(/\D/g, "");
+        if (cleanedPhone) {
+          // Same find-or-create Quick Sale itself uses for a due sale —
+          // reuses any existing store_customers row for this phone instead
+          // of inserting a new one.
+          const result = await getOrCreateCustomerByPhone(
+            storeId,
+            customerInfo.name || "",
+            customerInfo.phone,
           );
+          if (!result.customerId) {
+            throw new Error(result.error || "Failed to resolve customer record");
+          }
+          customerId = result.customerId;
+
+          notification.success({
+            title: "Customer Linked",
+            description: `Order linked to the customer record for ${customerInfo.phone}.`,
+          });
         }
-
-        const newCustomer = await dataService.createCustomer({
-          store_id: storeId,
-          email: customerInfo.email || undefined,
-          first_name: customerInfo.name,
-          phone: customerInfo.phone,
-          address_line_1: customerInfo.address,
-          city: customerInfo.city,
-          country: "Bangladesh",
-          postal_code: customerInfo.postal_code,
-        });
-
-        if (!newCustomer || !newCustomer.id) {
-          throw new Error("Customer creation failed - no customer ID returned");
-        }
-
-        customerId = newCustomer.id;
-
-        notification.success({
-          title: "Customer Created",
-          description: `A new customer record was created for ${customerInfo.name}.`,
-        });
+        // No real phone on file (anonymous walk-in) — leave customerId
+        // null, exactly as Quick Sale itself would for the same order.
       }
 
       // Prepare the update data with COMPLETE shipping address

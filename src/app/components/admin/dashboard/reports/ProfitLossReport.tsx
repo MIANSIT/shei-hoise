@@ -10,6 +10,7 @@ import {
   Receipt,
   TrendingDown,
   Truck,
+  Handshake,
   Download,
   Loader2,
   FileText,
@@ -62,6 +63,7 @@ const EMPTY: ProfitLossReportData = {
   grossProfit: 0,
   totalExpenses: 0,
   deliveryNetCost: 0,
+  vendorProfit: 0,
   netProfit: 0,
   trend: [],
 };
@@ -173,7 +175,7 @@ export default function ProfitLossReport() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
               <StatTile
                 icon={<DollarSign size={18} />}
                 label="Total Sales"
@@ -197,6 +199,12 @@ export default function ProfitLossReport() {
                 value={money(report.deliveryNetCost)}
                 hint={report.deliveryNetCost < 0 ? "Shipping charged covered more than cost" : undefined}
                 tone={report.deliveryNetCost > 0 ? "negative" : "default"}
+              />
+              <StatTile
+                icon={<Handshake size={18} />}
+                label="Vendor Profit"
+                value={money(report.vendorProfit)}
+                hint="Realized margin from vendor settlements"
               />
               <StatTile
                 icon={<TrendingDown size={18} />}

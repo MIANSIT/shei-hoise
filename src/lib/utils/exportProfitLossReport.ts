@@ -117,6 +117,7 @@ export async function exportProfitLossReportPDF(
     { label: "Gross Profit", value: `${meta.currencySymbol}${money(report.grossProfit)}` },
     { label: "Total Expense", value: `${meta.currencySymbol}${money(report.totalExpenses)}` },
     { label: "Delivery Cost", value: `${meta.currencySymbol}${money(report.deliveryNetCost)}` },
+    { label: "Vendor Profit", value: `${meta.currencySymbol}${money(report.vendorProfit)}` },
     { label: "Net Profit", value: `${meta.currencySymbol}${money(report.netProfit)}` },
   ];
 
