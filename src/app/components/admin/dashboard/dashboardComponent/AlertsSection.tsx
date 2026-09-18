@@ -70,18 +70,19 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts }) => {
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+    <div className="flex flex-wrap gap-2 sm:gap-3">
       {alerts.map((alert, i) => {
         const m = alertMeta[alert.type] ?? alertMeta.order;
         return (
-          <InventoryAlertCard
-            key={i}
-            title={shortTitle(alert.message)}
-            value={n(alert.count)}
-            icon={m.icon}
-            color={m.color}
-            onClick={() => handleAction(alert)}
-          />
+          <div key={i} className="w-[calc(50%-0.25rem)] sm:w-40">
+            <InventoryAlertCard
+              title={shortTitle(alert.message)}
+              value={n(alert.count)}
+              icon={m.icon}
+              color={m.color}
+              onClick={() => handleAction(alert)}
+            />
+          </div>
         );
       })}
     </div>
