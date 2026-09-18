@@ -32,6 +32,8 @@ interface DbProduct {
   tp_price?: number | null;
   description?: string | null;
   short_description?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
   base_price: number;
   discounted_price: number | null;
   discount_amount: number | null;
@@ -93,6 +95,8 @@ export async function getProductBySlug(
       tp_price,
       description,
       short_description,
+      meta_title,
+      meta_description,
       base_price,
       discounted_price,
       discount_amount,
@@ -155,6 +159,8 @@ export async function getProductBySlug(
     slug: p.slug,
     description: p.description ?? "",
     short_description: p.short_description ?? "",
+    meta_title: p.meta_title ?? null,
+    meta_description: p.meta_description ?? null,
     base_price: Number(p.base_price),
     tp_price: p.tp_price ?? 0,
     sku: p.sku ?? "",
