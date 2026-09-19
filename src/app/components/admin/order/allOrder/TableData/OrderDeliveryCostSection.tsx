@@ -167,7 +167,7 @@ export default function OrderDeliveryCostSection({ orderId, shippingFee, currenc
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <InputNumber
           min={0}
           placeholder="Courier charged…"
@@ -181,7 +181,7 @@ export default function OrderDeliveryCostSection({ orderId, shippingFee, currenc
           value={note}
           onChange={(e) => setNote(e.target.value)}
           size="small"
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 100 }}
         />
         <Button size="small" type="primary" loading={saving} onClick={handleRecord}>
           Record

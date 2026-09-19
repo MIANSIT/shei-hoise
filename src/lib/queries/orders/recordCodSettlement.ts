@@ -62,9 +62,13 @@ export async function recordCodSettlement(
 
   if (insertError) throw new Error(insertError.message);
 
+  // Handing the cash over is what makes a delivered COD order paid — without
+  // this the customer stayed "owing" the full total (courier charge included)
+  // in Customer Dues and the order never counted as paid revenue, even though
+  // the courier had already collected it.
   const { error: updateError } = await supabaseAdmin
     .from("orders")
-    .update({ cod_settlement_id: settlement.id })
+    .update({ cod_settlement_id: settlement.id, payment_status: "paid" })
     .eq("store_id", storeId)
     .in("id", eligibleIds);
 

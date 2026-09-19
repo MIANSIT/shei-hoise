@@ -17,6 +17,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import OrderDeliveryCostSection from "./OrderDeliveryCostSection";
 
 interface Props {
   order: StoreOrder;
@@ -312,6 +313,13 @@ const MobileDetailedViewFull: React.FC<Props> = ({
             {(order.shipping_fee || 0).toFixed(2)}
           </span>
         </div>
+        {/* Was only mounted in the desktop DetailedOrderView, so on mobile
+            there was no way to record the courier's actual charge at all. */}
+        <OrderDeliveryCostSection
+          orderId={order.id}
+          shippingFee={order.shipping_fee || 0}
+          currencyIcon={displayCurrencyIconSafe}
+        />
         {order.tax_amount > 0 && (
           <div className="flex justify-between">
             <span>Tax</span>

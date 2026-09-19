@@ -92,7 +92,7 @@ export default function CodSettlementsPage() {
     () =>
       unsettled
         .filter((o) => selectedIds.includes(o.id))
-        .reduce((sum, o) => sum + o.due_remaining, 0),
+        .reduce((sum, o) => sum + o.expected_from_courier, 0),
     [unsettled, selectedIds],
   );
 
@@ -100,7 +100,7 @@ export default function CodSettlementsPage() {
     setSelectedIds(ids as string[]);
     const total = unsettled
       .filter((o) => ids.includes(o.id))
-      .reduce((sum, o) => sum + o.due_remaining, 0);
+      .reduce((sum, o) => sum + o.expected_from_courier, 0);
     setAmountReceived(total > 0 ? total : null);
   };
 
@@ -138,7 +138,7 @@ export default function CodSettlementsPage() {
     setDeletingId(settlementId);
     try {
       await deleteCodSettlement(settlementId);
-      success("Settlement deleted — its orders are unsettled again");
+      success("Settlement deleted — its orders are unsettled again. Their payment status was not changed; set it back to pending on any order that wasn't actually paid.");
       fetchUnsettled();
       fetchSettlements();
     } catch (err) {
@@ -165,14 +165,16 @@ export default function CodSettlementsPage() {
     { title: "Courier", key: "courier", render: (_, row) => courierName(row.courier) },
     {
       title: "Due from Courier",
-      key: "due_remaining",
+      key: "expected_from_courier",
       align: "right" as const,
       render: (_, row) => (
         <div>
-          <div className="font-medium">{money(row.due_remaining)}</div>
-          {row.due_remaining < row.total_amount - 0.005 && (
+          <div className="font-medium">{money(row.expected_from_courier)}</div>
+          {(row.courier_deduction > 0.005 || row.due_remaining < row.total_amount - 0.005) && (
             <div className="text-xs text-muted-foreground">
-              of {money(row.total_amount)} — rest already paid
+              {money(row.due_remaining)} collected
+              {row.courier_deduction > 0.005 && ` − ${money(row.courier_deduction)} courier charge`}
+              {row.due_remaining < row.total_amount - 0.005 && " (rest already paid)"}
             </div>
           )}
         </div>

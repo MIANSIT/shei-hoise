@@ -20,7 +20,7 @@ export async function getUnsettledCodOrders(
 
   let query = supabase
     .from("orders")
-    .select("id, order_number, order_date, courier, customer_id, total_amount, shipping_address")
+    .select("id, order_number, order_date, courier, customer_id, total_amount, shipping_fee, shipping_address")
     .eq("store_id", storeId)
     .eq("payment_method", PaymentMethod.COD)
     .eq("status", OrderStatus.DELIVERED)
@@ -88,13 +88,37 @@ export async function getUnsettledCodOrders(
     }
   }
 
+  // The customer pays the courier the full amount owed (delivery charge
+  // included), and the courier keeps its own charge before handing the rest
+  // over — so what the store is actually owed is due_remaining minus that
+  // charge, not the full total. Uses the latest recorded actual delivery
+  // cost; falls back to the shipping fee charged when none is recorded yet
+  // (the usual case: the courier's rate is what the customer was quoted).
+  // A missing/erroring order_delivery_costs table just means "no recorded
+  // costs" here, never a failure of the whole list.
+  const actualCostByOrderId = new Map<string, number>();
+  const { data: costRows } = await supabase
+    .from("order_delivery_costs")
+    .select("order_id, amount, created_at")
+    .in("order_id", candidates.map((o) => o.id))
+    .order("created_at", { ascending: false });
+  for (const row of (costRows ?? []) as any[]) {
+    if (!actualCostByOrderId.has(row.order_id)) {
+      actualCostByOrderId.set(row.order_id, Number(row.amount) || 0);
+    }
+  }
+
   // Orders already fully paid off (directly, ahead of or instead of a
   // courier collection) have nothing left for a courier to hand over, so
   // they're dropped rather than shown at a misleading full total_amount.
   return candidates
     .map((order) => {
       const total = Number(order.total_amount) || 0;
-      const dueRemaining = order.customer_id ? (dueRemainingByOrderId.get(order.id) ?? 0) : total;
+      const dueRemaining = Math.max(
+        0,
+        order.customer_id ? (dueRemainingByOrderId.get(order.id) ?? 0) : total,
+      );
+      const courierDeduction = actualCostByOrderId.get(order.id) ?? (Number(order.shipping_fee) || 0);
       return {
         id: order.id,
         order_number: order.order_number,
@@ -102,7 +126,9 @@ export async function getUnsettledCodOrders(
         courier: order.courier,
         customer_name: order.shipping_address?.customer_name || "Unknown Customer",
         total_amount: total,
-        due_remaining: Math.max(0, dueRemaining),
+        due_remaining: dueRemaining,
+        courier_deduction: courierDeduction,
+        expected_from_courier: Math.max(0, dueRemaining - courierDeduction),
       };
     })
     .filter((o) => o.due_remaining > 0.01);
