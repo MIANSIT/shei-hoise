@@ -252,7 +252,11 @@ export default function QuickSaleAudit() {
               value={money(summary.dueOutstanding)}
               tone={summary.dueOutstanding > 0.01 ? "warning" : "default"}
             />
-            <StatCard label="Due Collected Today (all sources)" value={money(summary.dueCollectedToday)} />
+            <StatCard
+              label="Due Collected Today (all sources)"
+              value={money(summary.dueCollectedToday + summary.codCashSettled)}
+              hint={summary.codCashSettled > 0 ? "Includes COD settlements" : undefined}
+            />
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card/50 p-4 space-y-3">
@@ -260,14 +264,24 @@ export default function QuickSaleAudit() {
               Collected by payment method
             </Text>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {Object.keys(summary.collectedByMethod).length === 0 ? (
+              {Object.keys(summary.collectedByMethod).length === 0 &&
+              summary.codCashSettled === 0 ? (
                 <Text type="secondary" className="text-sm col-span-full">
                   Nothing collected on this day.
                 </Text>
               ) : (
-                Object.entries(summary.collectedByMethod).map(([method, amount]) => (
-                  <StatCard key={method} label={methodLabel(method)} value={money(amount)} />
-                ))
+                <>
+                  {Object.entries(summary.collectedByMethod).map(([method, amount]) => (
+                    <StatCard key={method} label={methodLabel(method)} value={money(amount)} />
+                  ))}
+                  {summary.codCashSettled > 0 && (
+                    <StatCard
+                      label={methodLabel("cod")}
+                      value={money(summary.codCashSettled)}
+                      hint="Handed over by courier"
+                    />
+                  )}
+                </>
               )}
             </div>
           </div>

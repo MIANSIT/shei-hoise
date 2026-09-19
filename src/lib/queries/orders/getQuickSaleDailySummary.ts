@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
 import { getCodCashSettledForDate } from "@/lib/queries/orders/codSettlements";
 
@@ -105,8 +105,17 @@ export async function getQuickSaleDailySummary(
   const payments = paymentsRes.data ?? [];
   if (orders.length === 0 && payments.length === 0 && codCashSettled === 0) return EMPTY;
 
+  // COD orders are left out of the per-order "collected" fold-in below (and
+  // out of paidOrderIds): their cash reaches the store on the courier's
+  // settlement date and is shown as its own COD figure (codCashSettled), not
+  // on the order's date under a "cod" method — otherwise a settled order
+  // would appear as collected twice, on two different days.
+  const isCod = (o: { payment_method: string | null }) => o.payment_method === PaymentMethod.COD;
+
   const paidOrderIds = new Set(
-    orders.filter((o) => o.payment_status === PaymentStatus.PAID).map((o) => o.id),
+    orders
+      .filter((o) => o.payment_status === PaymentStatus.PAID && !isCod(o))
+      .map((o) => o.id),
   );
 
   const collectedByMethod: Record<string, number> = {};
@@ -125,7 +134,7 @@ export async function getQuickSaleDailySummary(
     // changing hands, shipping fee included.
     const netRevenue = (Number(order.subtotal) || 0) - (Number(order.discount_amount) || 0);
     grossSales += netRevenue;
-    if (order.payment_status === PaymentStatus.PAID) {
+    if (order.payment_status === PaymentStatus.PAID && !isCod(order)) {
       addCollected(order.payment_method, total);
     }
   }
