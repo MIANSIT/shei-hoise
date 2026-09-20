@@ -128,8 +128,8 @@ export default function MobileHeader({
           hasAnnouncement ? "top-9" : "top-0"
         }`}
       >
-        <div className="flex items-center justify-between">
-          {/* Store Logo & Title — title hides while search is expanded to free up room for it */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Store Logo & Title — title stays visible (truncates) even while search is expanded */}
           {isStoreLoading ? (
             <div className="flex items-center gap-3">
               <SheiSkeleton className="w-8 h-8 rounded" />
@@ -140,7 +140,6 @@ export default function MobileHeader({
               storeSlug={storeSlug}
               storeName={store?.store_name}
               logoUrl={store?.logo_url}
-              showTitle={!searchExpanded}
             />
           )}
 
@@ -152,7 +151,7 @@ export default function MobileHeader({
               <SheiSkeleton className="w-6 h-6 rounded" />
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <HeaderSearch storeSlug={storeSlug} onExpandedChange={setSearchExpanded} />
               {!searchExpanded && (
                 <>

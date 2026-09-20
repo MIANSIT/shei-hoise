@@ -74,6 +74,7 @@ export default function StoreFooter({
   //   newsletterCTA,
 }: StoreFooterProps) {
   const t = useTranslation();
+  const hasSocialLinks = !!socialLinks && Object.values(socialLinks).some(Boolean);
   const renderSocialIcons = () => (
     <div className="flex gap-3">
       {socialLinks?.facebook && (
@@ -194,7 +195,7 @@ export default function StoreFooter({
                 {linkify(storeDescription)}
               </p>
             )}
-            {socialLinks && (
+            {hasSocialLinks && (
               <div className="pt-4">
                 <p className="text-sm font-semibold text-footer-foreground mb-3">
                   {t.nav.footerConnect}
@@ -414,7 +415,7 @@ export default function StoreFooter({
           )}
 
           {/* Social Media */}
-          {socialLinks && (
+          {hasSocialLinks && (
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider">
                 {t.nav.footerFollow}
