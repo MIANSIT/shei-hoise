@@ -2028,6 +2028,8 @@ export const translations = {
       undo: "Undo",
       redo: "Redo",
       linkPrompt: "Enter URL",
+      insertTable: "Insert Table",
+      deleteTable: "Delete Table",
     },
     checkout: {
       title: "Checkout",
@@ -4351,6 +4353,8 @@ export const translations = {
       undo: "আনডু",
       redo: "রিডু",
       linkPrompt: "URL লিখুন",
+      insertTable: "টেবিল যোগ করুন",
+      deleteTable: "টেবিল মুছুন",
     },
     checkout: {
       title: "চেকআউট",

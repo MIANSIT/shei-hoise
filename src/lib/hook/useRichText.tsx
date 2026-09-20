@@ -6,6 +6,14 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import {
+  Table,
+  TableRow,
+  TableHeader,
+  TableCell,
+} from "@tiptap/extension-table";
+import {
+  Table as TableIcon,
+  Trash2,
   Bold,
   Italic,
   Underline as UnderlineIcon,
@@ -135,6 +143,35 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <button
         type="button"
+        aria-label={t.richEditor.insertTable}
+        title={t.richEditor.insertTable}
+        className={toolbarButton}
+        onClick={() =>
+          editor
+            .chain()
+            .focus()
+            .insertTable({ rows: 3, cols: 2, withHeaderRow: true })
+            .run()
+        }
+      >
+        <TableIcon className="h-3.5 w-3.5" />
+      </button>
+      {editor.isActive("table") && (
+        <button
+          type="button"
+          aria-label={t.richEditor.deleteTable}
+          title={t.richEditor.deleteTable}
+          className={toolbarButton}
+          onClick={() => editor.chain().focus().deleteTable().run()}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      <span className="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" />
+
+      <button
+        type="button"
         aria-label={t.richEditor.undo}
         title={t.richEditor.undo}
         className={toolbarButton}
@@ -162,6 +199,7 @@ const proseClasses =
   "[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 " +
   "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-2 " +
   "[&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:pl-6 [&_ol]:list-decimal [&_li]:my-1 " +
+  "[&_table]:w-full [&_table]:border-collapse [&_th]:border [&_td]:border [&_th]:border-gray-300 [&_td]:border-gray-300 dark:[&_th]:border-gray-600 dark:[&_td]:border-gray-600 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_th]:px-2 [&_td]:px-2 [&_th]:py-1 [&_td]:py-1 [&_th]:text-left [&_td_p]:my-0 [&_th_p]:my-0 " +
   "[&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline focus:outline-none";
 
 // Defined at module scope (not inside useRichText) so it keeps the same
@@ -186,6 +224,10 @@ function RichTextEditor({
       StarterKit.configure({ heading: { levels: [2, 3] } }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
+      Table,
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: initialValue,
     editorProps: {

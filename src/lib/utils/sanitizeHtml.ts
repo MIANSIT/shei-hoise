@@ -13,6 +13,12 @@ const ALLOWED_TAGS = [
   "ol",
   "li",
   "a",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
 ];
 
 /**
@@ -23,7 +29,11 @@ const ALLOWED_TAGS = [
 export function sanitizeHtml(html: string): string {
   return sanitizeHtmlLib(html, {
     allowedTags: ALLOWED_TAGS,
-    allowedAttributes: { a: ["href", "target", "rel"] },
+    allowedAttributes: {
+      a: ["href", "target", "rel"],
+      th: ["colspan", "rowspan"],
+      td: ["colspan", "rowspan"],
+    },
     allowedSchemes: ["http", "https", "mailto", "tel"],
   });
 }
