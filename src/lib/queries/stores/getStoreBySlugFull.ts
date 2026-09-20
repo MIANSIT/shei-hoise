@@ -27,6 +27,13 @@ export interface StoreFull {
 const cache = new Map<string, { data: StoreFull | null; ts: number }>();
 const CACHE_TIME = 10 * 60 * 1000; // 10 min
 
+/** Drops the cached entry for a store so the next storefront render refetches it. */
+export function invalidateStoreFullCache(storeId: string): void {
+  for (const [slug, entry] of cache) {
+    if (entry.data?.id === storeId) cache.delete(slug);
+  }
+}
+
 export async function getStoreBySlugFull(store_slug: string): Promise<StoreFull | null> {
   const cached = cache.get(store_slug);
   if (cached && Date.now() - cached.ts < CACHE_TIME) return cached.data;

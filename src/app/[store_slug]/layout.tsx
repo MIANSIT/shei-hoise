@@ -174,6 +174,7 @@ export default async function StoreLayout({
         storeLogo={storeData.logo_url}
         storeName={storeData.store_name}
         storeSlug={store_slug}
+        storeId={storeData.id}
         brandName={footerContent.brand.name}
         bottomLinks={footerContent.bottomLinksStore(store_slug)}
         contactEmail={storeData.contact_email ?? undefined}
