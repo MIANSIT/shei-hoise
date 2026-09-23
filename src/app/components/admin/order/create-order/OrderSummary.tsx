@@ -25,7 +25,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
-import { isCourierLocked } from "@/lib/utils/courierStatus";
+import { isCourierLocked, isCourierStatusCancelled } from "@/lib/utils/courierStatus";
 import Link from "next/link";
 
 const { Option } = Select;
@@ -169,6 +169,15 @@ export default function OrderSummary({
     }));
 
   const courierLocked = isCourierLocked(courierConsignmentId, courierOrderStatus, status);
+
+  // A live (non-cancelled) courier shipment is out there expecting to collect
+  // cash on delivery — moving payment_method off COD here silently drops the
+  // order out of the COD Settlements list once it's delivered, with nothing
+  // else surfacing that mismatch.
+  const hasActiveCourierShipment =
+    !!courierConsignmentId && !isCourierStatusCancelled(courierOrderStatus);
+  const paymentMethodCourierMismatch =
+    hasActiveCourierShipment && paymentMethod !== PaymentMethod.COD;
 
   const {
     currency,
@@ -668,6 +677,11 @@ export default function OrderSummary({
                 </Option>
               ))}
             </Select>
+            {paymentMethodCourierMismatch && (
+              <Text type="warning" style={{ display: "block", fontSize: 12, marginTop: 4 }}>
+                {t.admin.orderSummaryPaymentMethodCourierWarning}
+              </Text>
+            )}
           </Form.Item>
 
           <Form.Item

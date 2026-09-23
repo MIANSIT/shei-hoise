@@ -14,7 +14,7 @@ import {
   PaymentMethod,
 } from "@/lib/types/enums";
 import { useTranslation } from "@/lib/hook/useTranslation";
-import { isCourierLocked } from "@/lib/utils/courierStatus";
+import { isCourierLocked, isCourierStatusCancelled } from "@/lib/utils/courierStatus";
 
 interface Props {
   status: OrderStatus;
@@ -82,6 +82,15 @@ const OrderControls: React.FC<Props> = ({
 
   const isCancelled = selectedStatus === "cancelled";
   const courierLocked = isCourierLocked(courierConsignmentId, courierOrderStatus, status);
+
+  // A live (non-cancelled) courier shipment is out there expecting to collect
+  // cash on delivery — moving payment_method off COD here silently drops the
+  // order out of the COD Settlements list once it's delivered, with nothing
+  // else surfacing that mismatch.
+  const hasActiveCourierShipment =
+    !!courierConsignmentId && !isCourierStatusCancelled(courierOrderStatus);
+  const paymentMethodCourierMismatch =
+    hasActiveCourierShipment && selectedPaymentMethod !== PaymentMethod.COD;
 
   const hasChanges =
     selectedStatus !== status ||
@@ -181,6 +190,11 @@ const OrderControls: React.FC<Props> = ({
           />
           {selectedPaymentMethod !== paymentMethod && (
             <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+          )}
+          {paymentMethodCourierMismatch && (
+            <span className="text-xs text-amber-600 font-medium">
+              {t.admin.orderSummaryPaymentMethodCourierWarning}
+            </span>
           )}
         </div>
       )}
