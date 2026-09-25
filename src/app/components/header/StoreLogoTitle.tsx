@@ -20,7 +20,7 @@ export default function StoreLogoTitle({
   return (
     <Link
       href={`/${storeSlug}`}
-      className="flex items-center gap-2 hover:text-gray-400"
+      className="flex items-center gap-2 min-w-0 hover:text-gray-400"
     >
       {logoUrl ? (
         <Image
@@ -28,16 +28,16 @@ export default function StoreLogoTitle({
           alt={storeName || "Store Logo"}
           width={32}
           height={32}
-          className="rounded-full"
+          className="rounded-full shrink-0"
           priority
         />
       ) : (
-        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+        <div className="w-8 h-8 shrink-0 bg-gray-300 rounded-full flex items-center justify-center">
           <span className="text-xs font-bold text-gray-700">{firstLetter}</span>
         </div>
       )}
       {showTitle && storeName && (
-        <span className="text-xl font-bold text-foreground">{storeName}</span>
+        <span className="text-xl font-bold text-foreground truncate">{storeName}</span>
       )}
     </Link>
   );

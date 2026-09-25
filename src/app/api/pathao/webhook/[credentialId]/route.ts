@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { decrypt } from "@/lib/utils/encryption";
+import { autoMarkOrderDeliveredFromCourier } from "@/lib/queries/orders/autoMarkOrderDelivered";
 
 export const dynamic = "force-dynamic";
 
@@ -75,14 +76,18 @@ export async function POST(
     // Status" button already writes via getOrderInfo.
     const orderStatusSlug = body?.order_status_slug;
     if (typeof orderStatusSlug === "string") {
-      const { error: statusError } = await supabaseAdmin
+      const { data: trackingRow, error: statusError } = await supabaseAdmin
         .from("courier_tracking")
         .update({ status: orderStatusSlug, updated_at: new Date().toISOString() })
         .eq("consignment_id", consignmentId)
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .select("order_id")
+        .maybeSingle();
 
       if (statusError) {
         console.error("Error applying Pathao webhook status update:", statusError);
+      } else if (trackingRow) {
+        await autoMarkOrderDeliveredFromCourier(trackingRow.order_id, orderStatusSlug);
       }
     }
 

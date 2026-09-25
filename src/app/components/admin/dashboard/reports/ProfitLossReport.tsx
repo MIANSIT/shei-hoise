@@ -14,6 +14,7 @@ import {
   Download,
   Loader2,
   FileText,
+  PlusCircle,
 } from "lucide-react";
 import { LockOutlined } from "@ant-design/icons";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -59,6 +60,7 @@ function StatTile({
 
 const EMPTY: ProfitLossReportData = {
   totalSales: 0,
+  additionalCharges: 0,
   cogs: 0,
   grossProfit: 0,
   totalExpenses: 0,
@@ -175,12 +177,18 @@ export default function ProfitLossReport() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-7 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatTile
                 icon={<DollarSign size={18} />}
                 label="Total Sales"
                 value={money(report.totalSales)}
-                hint="Incl. VAT/tax"
+                hint="Incl. VAT/tax & additional charges"
+              />
+              <StatTile
+                icon={<PlusCircle size={18} />}
+                label="Additional Charges"
+                value={money(report.additionalCharges)}
+                hint="Included in Total Sales"
               />
               <StatTile icon={<Package size={18} />} label="COGS" value={money(report.cogs)} />
               <StatTile
@@ -204,7 +212,7 @@ export default function ProfitLossReport() {
                 icon={<Handshake size={18} />}
                 label="Vendor Profit"
                 value={money(report.vendorProfit)}
-                hint="Realized margin from vendor settlements"
+                hint="Profit share of vendor payments received"
               />
               <StatTile
                 icon={<TrendingDown size={18} />}

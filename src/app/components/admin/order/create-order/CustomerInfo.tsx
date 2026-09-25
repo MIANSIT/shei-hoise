@@ -2,13 +2,41 @@
 "use client";
 
 import React from "react";
-import { Card, Row, Col, Space, Typography, Alert } from "antd";
+import { Card, Row, Col, Space, Typography, Alert, Button } from "antd";
 import { CustomerInfo as CustomerInfoType } from "@/lib/types/order";
 import type { ShippingFee } from "@/lib/types/store/store";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 
 const { Title, Text } = Typography;
+
+interface PhoneDeliveryStats {
+  totalOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  returnedOrders: number;
+  resolvedOrders: number;
+  successRate: number;
+  storeCount: number;
+  level: "new" | "low" | "medium" | "high";
+}
+
+type DeliveryHistoryState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "done"; stats: PhoneDeliveryStats | null };
+
+const RATING_STYLE: Record<
+  PhoneDeliveryStats["level"],
+  { bg: string; text: string }
+> = {
+  new: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300" },
+  low: { bg: "bg-emerald-100 dark:bg-emerald-950/60", text: "text-emerald-700 dark:text-emerald-400" },
+  medium: { bg: "bg-amber-100 dark:bg-amber-950/60", text: "text-amber-700 dark:text-amber-400" },
+  high: { bg: "bg-red-100 dark:bg-red-950/60", text: "text-red-700 dark:text-red-400" },
+};
 
 interface CustomerInfoProps {
   customerInfo: CustomerInfoType;
@@ -34,6 +62,7 @@ export default function CustomerInfo({
   dirtyFields = {},
 }: CustomerInfoProps) {
   const t = useTranslation();
+  const n = useLocalNum();
 
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(?:\+88|01)?\d{9,11}$/;
@@ -43,6 +72,34 @@ export default function CustomerInfo({
   const [touchedFields, setTouchedFields] = React.useState<
     Partial<Record<keyof CustomerInfoType, boolean>>
   >({});
+
+  // Keyed by the phone number it was fetched for — switching the phone field
+  // after a check invalidates the old result instead of leaving a stale
+  // panel showing another customer's history under the new number.
+  const [historyState, setHistoryState] = React.useState<DeliveryHistoryState>({
+    status: "idle",
+  });
+  const [historyPhone, setHistoryPhone] = React.useState<string | null>(null);
+
+  const checkDeliveryHistory = async () => {
+    const phone = customerInfo.phone.trim();
+    if (!validatePhone(phone)) return;
+
+    setHistoryState({ status: "loading" });
+    setHistoryPhone(phone);
+    try {
+      const res = await fetch("/api/orders/delivery-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      const data = await res.json();
+      setHistoryState({ status: "done", stats: data.stats ?? null });
+    } catch {
+      setHistoryState({ status: "error" });
+    }
+  };
 
   const handleFieldChange = (field: keyof CustomerInfoType, value: any) => {
     setCustomerInfo((prev) => ({ ...prev, [field]: value }));
@@ -140,6 +197,84 @@ export default function CustomerInfo({
                     ? t.admin.createOrderErrPhone
                     : t.admin.createOrderErrPhoneInvalid}
                 </Text>
+              )}
+              {validatePhone(customerInfo.phone) && (
+                <div style={{ marginTop: 8 }}>
+                  <Button
+                    size="small"
+                    onClick={checkDeliveryHistory}
+                    loading={historyState.status === "loading"}
+                  >
+                    {historyState.status === "loading"
+                      ? t.admin.checkDeliveryHistoryChecking
+                      : t.admin.checkDeliveryHistoryButton}
+                  </Button>
+
+                  {historyState.status === "error" &&
+                    historyPhone === customerInfo.phone.trim() && (
+                      <Alert
+                        style={{ marginTop: 8 }}
+                        type="error"
+                        showIcon
+                        description={t.admin.checkDeliveryHistoryError}
+                      />
+                    )}
+
+                  {historyState.status === "done" &&
+                    historyPhone === customerInfo.phone.trim() && (
+                      <div
+                        style={{ marginTop: 8 }}
+                        className="rounded-lg border border-border/60 bg-card/50 p-3"
+                      >
+                        {historyState.stats === null ? (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {t.admin.checkDeliveryHistoryNewCustomer}
+                          </Text>
+                        ) : (
+                          <Space orientation="vertical" size={4} style={{ width: "100%" }}>
+                            <Text strong style={{ fontSize: 13 }}>
+                              {t.admin.checkDeliveryHistoryTitle}
+                            </Text>
+                            <div className="flex justify-between text-[13px]">
+                              <span>{t.admin.checkDeliveryHistoryTotal}</span>
+                              <span>{n(historyState.stats.totalOrders)}</span>
+                            </div>
+                            <div className="flex justify-between text-[13px]">
+                              <span>{t.admin.checkDeliveryHistorySuccessful}</span>
+                              <span>{n(historyState.stats.deliveredOrders)}</span>
+                            </div>
+                            <div className="flex justify-between text-[13px]">
+                              <span>{t.admin.checkDeliveryHistoryRate}</span>
+                              <span>
+                                {historyState.stats.resolvedOrders > 0
+                                  ? `${n(historyState.stats.successRate)}%`
+                                  : "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-[13px]">
+                              <span>{t.admin.checkDeliveryHistoryRating}</span>
+                              <span
+                                className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${
+                                  RATING_STYLE[historyState.stats.level].bg
+                                } ${RATING_STYLE[historyState.stats.level].text}`}
+                              >
+                                {historyState.stats.level === "new"
+                                  ? t.admin.checkDeliveryHistoryRatingNew
+                                  : historyState.stats.level === "low"
+                                    ? t.admin.checkDeliveryHistoryRatingLow
+                                    : historyState.stats.level === "medium"
+                                      ? t.admin.checkDeliveryHistoryRatingMedium
+                                      : t.admin.checkDeliveryHistoryRatingHigh}
+                              </span>
+                            </div>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              {t.admin.checkDeliveryHistoryScopeNote}
+                            </Text>
+                          </Space>
+                        )}
+                      </div>
+                    )}
+                </div>
               )}
             </Col>
             <Col xs={24} md={12}>

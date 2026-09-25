@@ -7,6 +7,73 @@ export interface RiskAssessment {
   reason: string;
 }
 
+export interface PhoneDeliveryStats {
+  totalOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  returnedOrders: number;
+  resolvedOrders: number;
+  /** deliveredOrders / resolvedOrders * 100, rounded to 1 decimal. 0 when resolvedOrders is 0 — always computed here, never trusted from elsewhere. */
+  successRate: number;
+  storeCount: number;
+  level: RiskLevel;
+}
+
+/**
+ * Raw delivered/cancelled/returned counts behind getPhoneRiskLevel's verdict,
+ * for surfaces that want to show the numbers themselves (e.g. the "Check
+ * Delivery History" panel) instead of just a level + one-line reason. Reads
+ * the same cross-store tables — see getPhoneRiskLevel's own note. Returns
+ * null for a number with no profile yet (never ordered before, anywhere on
+ * the platform), which callers should treat as "new customer," not an error.
+ */
+export async function getPhoneDeliveryStats(
+  phoneNumber: string | null | undefined,
+): Promise<PhoneDeliveryStats | null> {
+  if (!phoneNumber) return null;
+
+  const { data: profile } = await supabaseAdmin
+    .from("customer_risk_profiles")
+    .select("total_orders, delivered_orders, cancelled_orders, returned_orders")
+    .eq("phone_number", phoneNumber)
+    .maybeSingle();
+
+  if (!profile) return null;
+
+  const deliveredOrders = profile.delivered_orders ?? 0;
+  const cancelledOrders = profile.cancelled_orders ?? 0;
+  const returnedOrders = profile.returned_orders ?? 0;
+  const badOutcomes = cancelledOrders + returnedOrders;
+  const resolvedOrders = deliveredOrders + badOutcomes;
+
+  const { count: distinctStores } = await supabaseAdmin
+    .from("customer_risk_store_touches")
+    .select("store_id", { count: "exact", head: true })
+    .eq("phone_number", phoneNumber);
+  const storeCount = distinctStores ?? 0;
+
+  const cancellationRate = resolvedOrders > 0 ? badOutcomes / resolvedOrders : 0;
+  const level: RiskLevel =
+    resolvedOrders === 0
+      ? "new"
+      : cancellationRate > 0.5 || (badOutcomes >= 3 && storeCount >= 2)
+        ? "high"
+        : cancellationRate >= 0.2
+          ? "medium"
+          : "low";
+
+  return {
+    totalOrders: profile.total_orders ?? resolvedOrders,
+    deliveredOrders,
+    cancelledOrders,
+    returnedOrders,
+    resolvedOrders,
+    successRate: resolvedOrders > 0 ? Math.round((deliveredOrders / resolvedOrders) * 1000) / 10 : 0,
+    storeCount,
+    level,
+  };
+}
+
 /**
  * Cross-store phone-number risk assessment for COD orders. Deliberately reads
  * from customer_risk_profiles / customer_risk_store_touches, which pool data
@@ -15,61 +82,38 @@ export interface RiskAssessment {
 export async function getPhoneRiskLevel(phoneNumber: string | null | undefined): Promise<RiskAssessment> {
   if (!phoneNumber) return { level: "new", reason: "No phone number on file" };
 
-  const { data: profile } = await supabaseAdmin
-    .from("customer_risk_profiles")
-    .select("delivered_orders, cancelled_orders, returned_orders")
-    .eq("phone_number", phoneNumber)
-    .maybeSingle();
-
-  if (!profile) return { level: "new", reason: "First order from this number" };
-
-  const returnedOrders = profile.returned_orders ?? 0;
-  // Cancelled (never accepted the delivery) and returned (accepted it, then
-  // sent it back) are different behaviors, tracked in separate columns — but
-  // both are still "didn't end up keeping the order", so both count toward
-  // the risk rate/threshold the same way. Only the reason text distinguishes
-  // them, so an admin can tell which pattern they're actually looking at.
-  const badOutcomes = profile.cancelled_orders + returnedOrders;
-  const resolved = profile.delivered_orders + badOutcomes;
-  if (resolved === 0) return { level: "new", reason: "No completed orders yet" };
-
-  const cancellationRate = badOutcomes / resolved;
-
-  const { count: distinctStores } = await supabaseAdmin
-    .from("customer_risk_store_touches")
-    .select("store_id", { count: "exact", head: true })
-    .eq("phone_number", phoneNumber);
-
-  const storeCount = distinctStores ?? 0;
+  const stats = await getPhoneDeliveryStats(phoneNumber);
+  if (!stats) return { level: "new", reason: "First order from this number" };
+  if (stats.resolvedOrders === 0) return { level: "new", reason: "No completed orders yet" };
 
   // "3 cancelled, 1 returned of 8 past orders" — omits whichever of the two
   // is zero instead of always naming both.
   const badOutcomeDetail = [
-    profile.cancelled_orders > 0 ? `${profile.cancelled_orders} cancelled` : null,
-    returnedOrders > 0 ? `${returnedOrders} returned` : null,
+    stats.cancelledOrders > 0 ? `${stats.cancelledOrders} cancelled` : null,
+    stats.returnedOrders > 0 ? `${stats.returnedOrders} returned` : null,
   ]
     .filter(Boolean)
     .join(", ");
 
-  if (cancellationRate > 0.5 || (badOutcomes >= 3 && storeCount >= 2)) {
+  if (stats.level === "high") {
     return {
       level: "high",
       reason:
-        `${badOutcomeDetail} of ${resolved} past orders` +
-        (storeCount >= 2 ? ` across ${storeCount} different stores` : ""),
+        `${badOutcomeDetail} of ${stats.resolvedOrders} past orders` +
+        (stats.storeCount >= 2 ? ` across ${stats.storeCount} different stores` : ""),
     };
   }
 
-  if (cancellationRate >= 0.2) {
+  if (stats.level === "medium") {
     return {
       level: "medium",
-      reason: `${badOutcomeDetail} of ${resolved} past orders`,
+      reason: `${badOutcomeDetail} of ${stats.resolvedOrders} past orders`,
     };
   }
 
   return {
     level: "low",
-    reason: `${profile.delivered_orders} of ${resolved} past orders delivered successfully`,
+    reason: `${stats.deliveredOrders} of ${stats.resolvedOrders} past orders delivered successfully`,
   };
 }
 

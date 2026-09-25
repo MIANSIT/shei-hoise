@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import {
   FaFacebookF,
@@ -16,6 +18,8 @@ import { FiMail, FiPhone, FiMapPin } from "react-icons/fi";
 export type StoreFooterProps = {
   brandName: string | React.ReactNode;
   storeSlug: string;
+  /** When set, social links are refetched live in the browser instead of trusting cached props. */
+  storeId?: string;
   storeLogo?: string | null;
   storeName?: string;
   storeDescription?: string;
@@ -69,11 +73,40 @@ export default function StoreFooter({
   contactPhone,
   contactAddress,
   aboutLink,
-  socialLinks,
+  socialLinks: initialSocialLinks,
+  storeId,
   bottomLinks,
   //   newsletterCTA,
 }: StoreFooterProps) {
   const t = useTranslation();
+
+  // The storefront layout is cached, so the server-rendered links can be stale.
+  // Refetch them live in the browser; the cached props are just the first paint.
+  const [liveLinks, setLiveLinks] = useState<StoreFooterProps["socialLinks"]>();
+  useEffect(() => {
+    if (!storeId) return;
+    let cancelled = false;
+    supabase
+      .from("store_social_media")
+      .select("facebook_link, instagram_link, twitter_link, youtube_link")
+      .eq("store_id", storeId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled || error) return;
+        setLiveLinks({
+          facebook: data?.facebook_link?.trim() || undefined,
+          instagram: data?.instagram_link?.trim() || undefined,
+          twitter: data?.twitter_link?.trim() || undefined,
+          youtube: data?.youtube_link?.trim() || undefined,
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId]);
+
+  const socialLinks = liveLinks ?? initialSocialLinks;
+  const hasSocialLinks = !!socialLinks && Object.values(socialLinks).some(Boolean);
   const renderSocialIcons = () => (
     <div className="flex gap-3">
       {socialLinks?.facebook && (
@@ -194,7 +227,7 @@ export default function StoreFooter({
                 {linkify(storeDescription)}
               </p>
             )}
-            {socialLinks && (
+            {hasSocialLinks && (
               <div className="pt-4">
                 <p className="text-sm font-semibold text-footer-foreground mb-3">
                   {t.nav.footerConnect}
@@ -414,7 +447,7 @@ export default function StoreFooter({
           )}
 
           {/* Social Media */}
-          {socialLinks && (
+          {hasSocialLinks && (
             <div className="space-y-4">
               <h4 className="text-sm font-semibold text-footer-foreground uppercase tracking-wider">
                 {t.nav.footerFollow}

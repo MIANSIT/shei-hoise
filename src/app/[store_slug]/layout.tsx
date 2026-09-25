@@ -174,6 +174,7 @@ export default async function StoreLayout({
         storeLogo={storeData.logo_url}
         storeName={storeData.store_name}
         storeSlug={store_slug}
+        storeId={storeData.id}
         brandName={footerContent.brand.name}
         bottomLinks={footerContent.bottomLinksStore(store_slug)}
         contactEmail={storeData.contact_email ?? undefined}
@@ -181,10 +182,10 @@ export default async function StoreLayout({
         contactAddress={storeData.business_address ?? undefined}
         aboutLink={`/${store_slug}/about-us`}
         socialLinks={{
-          facebook: storeData.social?.facebook_link ?? undefined,
-          instagram: storeData.social?.instagram_link ?? undefined,
-          twitter: storeData.social?.twitter_link ?? undefined,
-          youtube: storeData.social?.youtube_link ?? undefined,
+          facebook: storeData.social?.facebook_link?.trim() || undefined,
+          instagram: storeData.social?.instagram_link?.trim() || undefined,
+          twitter: storeData.social?.twitter_link?.trim() || undefined,
+          youtube: storeData.social?.youtube_link?.trim() || undefined,
         }}
       />
     </div>

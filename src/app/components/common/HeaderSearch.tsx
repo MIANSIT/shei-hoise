@@ -125,7 +125,7 @@ export function HeaderSearch({ storeSlug, className = "", onExpandedChange }: He
     <div ref={containerRef} className={`relative ${className}`}>
       <div
         className={`flex items-center gap-2 rounded-full border border-border bg-background transition-all duration-200 ${
-          expanded ? "w-48 sm:w-64 px-3.5 h-9" : "w-9 h-9 justify-center"
+          expanded ? "w-36 min-[400px]:w-48 sm:w-64 px-3.5 h-9" : "w-9 h-9 justify-center"
         }`}
       >
         <button

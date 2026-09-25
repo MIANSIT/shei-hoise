@@ -221,6 +221,7 @@ const richDescriptionClasses =
   "[&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1.5 " +
   "[&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2.5 [&_h3]:mb-1.5 " +
   "[&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:pl-5 [&_ol]:list-decimal [&_li]:my-1 " +
+  "[&_table]:w-full [&_table]:border-collapse [&_th]:border [&_td]:border [&_th]:border-gray-300 [&_td]:border-gray-300 dark:[&_th]:border-gray-600 dark:[&_td]:border-gray-600 [&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_th]:px-3 [&_td]:px-3 [&_th]:py-2 [&_td]:py-2 [&_th]:text-left [&_td_p]:my-0 [&_th_p]:my-0 " +
   "[&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline";
 
 function renderDescription(description: string): React.ReactNode[] {

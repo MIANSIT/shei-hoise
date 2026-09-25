@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 
 export interface VendorStoreProfitResult {
   vendor_profit: number;
@@ -6,17 +7,15 @@ export interface VendorStoreProfitResult {
 }
 
 /**
- * Returns realized vendor profit for a store within two time windows
- * (current period and previous period) so the dashboard can show
- * period-over-period comparison.
+ * Vendor profit for the current and previous period, counted as vendors pay.
  *
- * Realized profit per settlement item:
- *   receivable_amount  (sold_qty * unit_price charged to vendor)
- * − sold_qty * weighted_avg_original_tp  (what the stock actually cost us)
+ * For each vendor:
+ *   profit share = (vendor_tp − original_tp) × qty  ÷  (vendor_tp × qty + delivery cost)
+ *   profit       = payments in the period × profit share
  *
- * original_tp is pulled from all confirmed vendor_order_items for the store
- * and averaged per (product_id, variant_id) — this is stable cost-basis data
- * that doesn't change with the period filter.
+ * So a vendor paying little by little shows profit little by little, and an
+ * unpaid bill shows none. Paged because a single request is capped at
+ * PGRST_DB_MAX_ROWS (1000).
  */
 export async function getVendorStoreProfitForPeriod(
   storeId: string,
@@ -25,59 +24,61 @@ export async function getVendorStoreProfitForPeriod(
   prevPeriodStart: string,
   prevPeriodEnd: string,
 ): Promise<VendorStoreProfitResult> {
-  const [orderItemsRes, currentRes, prevRes] = await Promise.all([
-    // All confirmed dispatch items for this store → build original_tp cost map
-    supabase
-      .from("vendor_order_items")
-      .select(
-        "product_id, variant_id, quantity, original_tp, order:vendor_orders!inner(store_id, status)",
-      )
-      .eq("order.store_id", storeId)
-      .eq("order.status", "confirmed"),
+  const paymentsBetween = (start: string, end: string) =>
+    fetchAllPaged((from, to) =>
+      supabase
+        .from("vendor_payments")
+        .select("vendor_id, amount")
+        .eq("store_id", storeId)
+        .gte("payment_date", start)
+        .lte("payment_date", end)
+        .order("id")
+        .range(from, to),
+    );
 
-    // Settlement items in the current period
-    supabase
-      .from("vendor_settlement_items")
-      .select(
-        "product_id, variant_id, sold_quantity, receivable_amount, settlement:vendor_settlements!inner(store_id, settlement_date)",
-      )
-      .eq("settlement.store_id", storeId)
-      .gte("settlement.settlement_date", periodStart)
-      .lte("settlement.settlement_date", periodEnd),
+  try {
+    const [orders, payments, prevPayments] = await Promise.all([
+      fetchAllPaged((from, to) =>
+        supabase
+          .from("vendor_orders")
+          .select(
+            "vendor_id, delivery_cost, items:vendor_order_items(quantity, vendor_tp, original_tp)",
+          )
+          .eq("store_id", storeId)
+          .eq("status", "confirmed")
+          .order("id")
+          .range(from, to),
+      ),
+      paymentsBetween(periodStart, periodEnd),
+      paymentsBetween(prevPeriodStart, prevPeriodEnd),
+    ]);
 
-    // Settlement items in the previous period
-    supabase
-      .from("vendor_settlement_items")
-      .select(
-        "product_id, variant_id, sold_quantity, receivable_amount, settlement:vendor_settlements!inner(store_id, settlement_date)",
-      )
-      .eq("settlement.store_id", storeId)
-      .gte("settlement.settlement_date", prevPeriodStart)
-      .lte("settlement.settlement_date", prevPeriodEnd),
-  ]);
+    // Total bill and total margin per vendor
+    const totals = new Map<string, { bill: number; margin: number }>();
+    for (const order of orders) {
+      const t = totals.get(order.vendor_id) ?? { bill: 0, margin: 0 };
+      t.bill += Number(order.delivery_cost ?? 0);
+      for (const item of order.items) {
+        t.bill += item.quantity * Number(item.vendor_tp);
+        t.margin +=
+          item.quantity * (Number(item.vendor_tp) - Number(item.original_tp));
+      }
+      totals.set(order.vendor_id, t);
+    }
 
-  // Build weighted-average original_tp per (product_id, variant_id)
-  const costMap = new Map<string, { totalCost: number; totalQty: number }>();
-  for (const r of orderItemsRes.data ?? []) {
-    const key = `${r.product_id}::${r.variant_id ?? ""}`;
-    const prev = costMap.get(key) ?? { totalCost: 0, totalQty: 0 };
-    costMap.set(key, {
-      totalCost: prev.totalCost + Number(r.original_tp) * r.quantity,
-      totalQty: prev.totalQty + r.quantity,
-    });
+    const profitFrom = (list: { vendor_id: string; amount: number }[]) =>
+      list.reduce((sum, p) => {
+        const t = totals.get(p.vendor_id);
+        const share = t && t.bill > 0 ? t.margin / t.bill : 0;
+        return sum + Number(p.amount) * share;
+      }, 0);
+
+    return {
+      vendor_profit: profitFrom(payments),
+      prev_vendor_profit: profitFrom(prevPayments),
+    };
+  } catch (error) {
+    console.error("Failed to load vendor profit:", error);
+    return { vendor_profit: 0, prev_vendor_profit: 0 };
   }
-
-  const calcProfit = (items: typeof currentRes.data) =>
-    (items ?? []).reduce((sum, r) => {
-      if (!r.sold_quantity) return sum;
-      const key = `${r.product_id}::${r.variant_id ?? ""}`;
-      const entry = costMap.get(key);
-      const avgCost = entry && entry.totalQty > 0 ? entry.totalCost / entry.totalQty : 0;
-      return sum + Number(r.receivable_amount) - r.sold_quantity * avgCost;
-    }, 0);
-
-  return {
-    vendor_profit: calcProfit(currentRes.data),
-    prev_vendor_profit: calcProfit(prevRes.data),
-  };
 }

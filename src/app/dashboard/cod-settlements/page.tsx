@@ -113,11 +113,22 @@ export default function CodSettlementsPage() {
       error("Enter the amount the courier actually paid out");
       return;
     }
+    // The courier comes from the selected orders themselves, not the filter
+    // dropdown — that's null under "All couriers", so settlements saved from
+    // an unfiltered list had no courier recorded at all. Orders from more
+    // than one courier in a single batch leave it blank, since a single name
+    // would be wrong.
+    const selectedCouriers = new Set(
+      unsettled.filter((o) => selectedIds.includes(o.id)).map((o) => o.courier),
+    );
+    const settlementCourier =
+      selectedCouriers.size === 1 ? ([...selectedCouriers][0] ?? null) : courierFilter;
+
     setSubmitting(true);
     try {
       await recordCodSettlement({
         settlementDate: settlementDate.format("YYYY-MM-DD"),
-        courier: courierFilter,
+        courier: settlementCourier,
         totalAmount: amountReceived,
         orderIds: selectedIds,
         note: note || null,

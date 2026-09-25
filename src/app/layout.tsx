@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "./components/ui/sheiSonner/sonner"; // Import your custom Toaster
@@ -30,12 +31,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning>
-      <body
-        suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <AntdRegistry>
+<html lang='en' suppressHydrationWarning>
+  <head>
+    <Script
+      src='https://www.googletagmanager.com/gtag/js?id=GT-TXB8WH4D'
+      strategy='afterInteractive'
+    />
+    <Script id='google-analytics' strategy='afterInteractive'>
+      {`
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          window.dataLayer.push(arguments);
+        }
+        gtag('js', new Date());
+        gtag('config', 'GT-TXB8WH4D');
+      `}
+    </Script>
+  </head>
+  <body
+    suppressHydrationWarning
+    className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+  >
+          <AntdRegistry>
           <MotionProvider>
             <CartProvider>
               {children}

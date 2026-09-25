@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { getOrderInfo } from "@/lib/utils/pathaoApi";
+import { autoMarkOrderDeliveredFromCourier } from "@/lib/queries/orders/autoMarkOrderDelivered";
 
 export interface RefreshPathaoStatusResult {
   success: boolean;
@@ -40,6 +41,8 @@ export async function refreshPathaoOrderStatus(
     .eq("order_id", orderId)
     .eq("store_id", storeResult.storeId)
     .eq("is_active", true);
+
+  await autoMarkOrderDeliveredFromCourier(orderId, orderStatus);
 
   return { success: true, orderStatus };
 }

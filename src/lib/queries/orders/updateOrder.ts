@@ -162,7 +162,7 @@ export async function updateOrder(
 // on a fake or voided order). Cancelled and returned are recorded as
 // distinct outcomes (separate risk-profile counters, see riskScoring.ts) but
 // both still suppress a held pixel event the same way.
-async function handleRiskAndPurchaseEvent(
+export async function handleRiskAndPurchaseEvent(
   existingOrder: any,
   updates: UpdateOrderData,
   orderId: string,
@@ -227,7 +227,7 @@ async function handleRiskAndPurchaseEvent(
 }
 
 // Handle inventory updates based on status changes
-async function handleInventoryUpdates(
+export async function handleInventoryUpdates(
   existingOrder: any, 
   updates: UpdateOrderData, 
   orderId: string
