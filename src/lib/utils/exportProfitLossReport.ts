@@ -113,6 +113,7 @@ export async function exportProfitLossReportPDF(
 
   const kpis: { label: string; value: string }[] = [
     { label: "Total Sales", value: `${meta.currencySymbol}${money(report.totalSales)}` },
+    { label: "Extra Charges", value: `${meta.currencySymbol}${money(report.additionalCharges)}` },
     { label: "COGS", value: `${meta.currencySymbol}${money(report.cogs)}` },
     { label: "Gross Profit", value: `${meta.currencySymbol}${money(report.grossProfit)}` },
     { label: "Total Expense", value: `${meta.currencySymbol}${money(report.totalExpenses)}` },

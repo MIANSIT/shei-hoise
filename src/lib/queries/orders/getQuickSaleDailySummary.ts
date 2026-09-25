@@ -18,7 +18,7 @@ export interface QuickSaleDailyOrderRow {
 
 export interface QuickSaleDailySummary {
   transactionCount: number;
-  /** SUM(subtotal - discount_amount) for the day's orders — what went out the door, whether or not it's all been collected yet. Same "net product revenue" definition as the Sales Report (excludes shipping_fee and tax_amount, both pass-through, not earned revenue) — previously this summed the raw total_amount instead, so Gross Sales here and Total Sales on the Sales Report could show two different numbers for the identical day. */
+  /** SUM(subtotal - discount_amount + additional_charges) for the day's orders — what went out the door, whether or not it's all been collected yet. Same "net product revenue" definition as the Sales Report (excludes shipping_fee and tax_amount, both pass-through, not earned revenue) — previously this summed the raw total_amount instead, so Gross Sales here and Total Sales on the Sales Report could show two different numbers for the identical day. */
   grossSales: number;
   /** What actually came in today, by payment method — see the function doc for how due sales fold in without double-counting. */
   collectedByMethod: Record<string, number>;
@@ -82,7 +82,7 @@ export async function getQuickSaleDailySummary(
     supabase
       .from("orders")
       .select(
-        "id, order_number, created_at, total_amount, subtotal, discount_amount, payment_method, payment_status, status, shipping_address",
+        "id, order_number, created_at, total_amount, subtotal, discount_amount, additional_charges, payment_method, payment_status, status, shipping_address",
       )
       .eq("store_id", storeId)
       .neq("status", OrderStatus.CANCELLED)
@@ -132,7 +132,10 @@ export async function getQuickSaleDailySummary(
     // sales. "Collected by method" below still uses the real total (`total`,
     // not `netRevenue`) since that has to reconcile against actual cash
     // changing hands, shipping fee included.
-    const netRevenue = (Number(order.subtotal) || 0) - (Number(order.discount_amount) || 0);
+    const netRevenue =
+      (Number(order.subtotal) || 0) -
+      (Number(order.discount_amount) || 0) +
+      (Number(order.additional_charges) || 0);
     grossSales += netRevenue;
     if (order.payment_status === PaymentStatus.PAID && !isCod(order)) {
       addCollected(order.payment_method, total);
