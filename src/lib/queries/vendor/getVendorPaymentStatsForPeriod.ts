@@ -15,8 +15,8 @@ const EMPTY: VendorPaymentStats = { received: 0, prev_received: 0, total_due: 0,
 
 /**
  * Vendor-side cash-in for the main Dashboard's "Vendor Payments" block —
- * separate from vendor_profit (the store's margin, already folded into Net
- * Profit) since this is actual cash collected from vendors, distinct from
+ * vendor_profit (the store's margin, already folded into Net Profit) is the
+ * profit share of this same cash; this is the full amount collected, distinct from
  * the customer-order payment_status buckets Payment Flow already shows.
  */
 export async function getVendorPaymentStatsForPeriod(

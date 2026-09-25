@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
+import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 import { calculateVendorCurrentDue } from "./calculateVendorDue";
 import type { VendorDashboardStats } from "@/lib/types/vendor/type";
 
@@ -25,75 +26,100 @@ export async function getVendorDashboardStats(
 
   if (!vendorId) return empty;
 
-  const [stockRes, ordersRes, orderItemsRes, settlementItemsRes, paymentsRes] =
-    await Promise.all([
-      supabase
-        .from("vendor_stock")
-        .select("quantity_available, last_vendor_tp, updated_at")
-        .eq("vendor_id", vendorId),
-      supabase
-        .from("vendor_orders")
-        .select("total_quantity, delivery_cost")
-        .eq("vendor_id", vendorId)
-        .eq("status", "confirmed"),
-      supabase
-        .from("vendor_order_items")
-        .select(
-          "product_id, variant_id, quantity, original_tp, vendor_tp, order:vendor_orders!inner(vendor_id, status)",
-        )
-        .eq("order.vendor_id", vendorId)
-        .eq("order.status", "confirmed"),
-      supabase
-        .from("vendor_settlement_items")
-        .select(
-          "product_id, variant_id, sold_quantity, returned_quantity, unit_price, receivable_amount, settlement:vendor_settlements!inner(vendor_id)",
-        )
-        .eq("settlement.vendor_id", vendorId),
-      supabase
-        .from("vendor_payments")
-        .select("amount, payment_date")
-        .eq("vendor_id", vendorId)
-        .order("payment_date", { ascending: false }),
+  // Every query is paged: a single request is capped at PGRST_DB_MAX_ROWS
+  // (1000), and a long-running vendor past that would silently get totals,
+  // due and profit computed from only part of its history.
+  const loadRows = () =>
+    Promise.all([
+      fetchAllPaged((from, to) =>
+        supabase
+          .from("vendor_stock")
+          .select(
+            "product_id, variant_id, quantity_available, last_vendor_tp, updated_at",
+          )
+          .eq("vendor_id", vendorId)
+          .order("id")
+          .range(from, to),
+      ),
+      fetchAllPaged((from, to) =>
+        supabase
+          .from("vendor_orders")
+          .select("total_quantity, delivery_cost")
+          .eq("vendor_id", vendorId)
+          .eq("status", "confirmed")
+          .order("id")
+          .range(from, to),
+      ),
+      fetchAllPaged((from, to) =>
+        supabase
+          .from("vendor_order_items")
+          .select(
+            "product_id, variant_id, quantity, original_tp, vendor_tp, order:vendor_orders!inner(vendor_id, status)",
+          )
+          .eq("order.vendor_id", vendorId)
+          .eq("order.status", "confirmed")
+          .order("id")
+          .range(from, to),
+      ),
+      fetchAllPaged((from, to) =>
+        supabase
+          .from("vendor_settlement_items")
+          .select(
+            "product_id, variant_id, sold_quantity, returned_quantity, unit_price, receivable_amount, settlement:vendor_settlements!inner(vendor_id)",
+          )
+          .eq("settlement.vendor_id", vendorId)
+          .order("id")
+          .range(from, to),
+      ),
+      fetchAllPaged((from, to) =>
+        supabase
+          .from("vendor_payments")
+          .select("amount, payment_date")
+          .eq("vendor_id", vendorId)
+          .order("payment_date", { ascending: false })
+          .order("id")
+          .range(from, to),
+      ),
     ]);
 
-  const stockRows = stockRes.data ?? [];
-  const currentStock = stockRows.reduce((sum, r) => sum + r.quantity_available, 0);
+  let rows: Awaited<ReturnType<typeof loadRows>>;
+  try {
+    rows = await loadRows();
+  } catch (error) {
+    console.error("Failed to load vendor stats:", error);
+    return empty;
+  }
+  const [stockRows, orders, orderItems, settlementItems, payments] = rows;
+  const currentStock = stockRows.reduce(
+    (sum, r) => sum + r.quantity_available,
+    0,
+  );
   const unsettledStockValue = stockRows.reduce(
     (sum, r) => sum + r.quantity_available * Number(r.last_vendor_tp ?? 0),
     0,
   );
   const slowMovingCutoff = dayjs().subtract(SLOW_MOVING_DAYS, "day");
   const slowMovingCount = stockRows.filter(
-    (r) => r.quantity_available > 0 && dayjs(r.updated_at).isBefore(slowMovingCutoff),
+    (r) =>
+      r.quantity_available > 0 &&
+      dayjs(r.updated_at).isBefore(slowMovingCutoff),
   ).length;
 
-  const totalDispatched = (ordersRes.data ?? []).reduce(
-    (sum, r) => sum + r.total_quantity,
-    0,
-  );
-  const totalDeliveryCostInvoiced = (ordersRes.data ?? []).reduce(
+  const totalDispatched = orders.reduce((sum, r) => sum + r.total_quantity, 0);
+  const totalDeliveryCostInvoiced = orders.reduce(
     (sum, r) => sum + Number(r.delivery_cost ?? 0),
     0,
   );
-  const marginDispatched = (orderItemsRes.data ?? []).reduce(
-    (sum, r) => sum + r.quantity * (Number(r.vendor_tp) - Number(r.original_tp)),
+  const marginDispatched = orderItems.reduce(
+    (sum, r) =>
+      sum + r.quantity * (Number(r.vendor_tp) - Number(r.original_tp)),
     0,
   );
 
-  // Build a weighted-average original_tp per (product_id, variant_id) from
-  // all confirmed dispatch orders. Used below to calculate realized margin.
-  const originalTpMap = new Map<string, { totalCost: number; totalQty: number }>();
-  for (const r of orderItemsRes.data ?? []) {
-    const key = `${r.product_id}::${r.variant_id ?? ""}`;
-    const existing = originalTpMap.get(key) ?? { totalCost: 0, totalQty: 0 };
-    originalTpMap.set(key, {
-      totalCost: existing.totalCost + Number(r.original_tp) * r.quantity,
-      totalQty: existing.totalQty + r.quantity,
-    });
-  }
-
-  const settlementItems = settlementItemsRes.data ?? [];
-  const totalSold = settlementItems.reduce((sum, r) => sum + r.sold_quantity, 0);
+  const totalSold = settlementItems.reduce(
+    (sum, r) => sum + r.sold_quantity,
+    0,
+  );
   const totalReturned = settlementItems.reduce(
     (sum, r) => sum + r.returned_quantity,
     0,
@@ -103,18 +129,16 @@ export async function getVendorDashboardStats(
     0,
   );
 
-  // Realized margin: for each sold item, profit = receivable - (sold_qty * avg_original_tp).
-  // avg_original_tp is the weighted average across all confirmed dispatches for that product.
-  const marginRealized = settlementItems.reduce((sum, r) => {
-    if (!r.sold_quantity) return sum;
-    const key = `${r.product_id}::${r.variant_id ?? ""}`;
-    const entry = originalTpMap.get(key);
-    const avgOriginalTp = entry && entry.totalQty > 0 ? entry.totalCost / entry.totalQty : 0;
-    return sum + Number(r.receivable_amount) - r.sold_quantity * avgOriginalTp;
-  }, 0);
-
-  const payments = paymentsRes.data ?? [];
   const totalPaid = payments.reduce((sum, r) => sum + Number(r.amount), 0);
+
+  // Profit is counted as the vendor pays: total paid × profit share, where
+  // profit share = margin ÷ full bill (goods + delivery). Same formula as
+  // getVendorStoreProfitForPeriod.
+  const totalBill =
+    orderItems.reduce((sum, r) => sum + r.quantity * Number(r.vendor_tp), 0) +
+    totalDeliveryCostInvoiced;
+  const marginRealized =
+    totalBill > 0 ? totalPaid * (marginDispatched / totalBill) : 0;
 
   return {
     vendor_id: vendorId,

@@ -39,6 +39,8 @@ export interface ReceiptPdfData {
   items: ReceiptPdfItem[];
   subtotal: number;
   discount: number;
+  /** Packaging/handling/etc. — printed only when > 0. */
+  additionalCharges?: number;
   total: number;
   paymentLabel: string;
   cashReceived: number | null;
@@ -181,6 +183,9 @@ function drawReceiptCopy(
 
   y = totalRow(doc, y, "Subtotal", amountText(data.currencyIcon, data.subtotal), false, 7.5, bengaliLoaded);
   y = totalRow(doc, y, "Discount", amountText(data.currencyIcon, data.discount), false, 7.5, bengaliLoaded);
+  if ((data.additionalCharges ?? 0) > 0) {
+    y = totalRow(doc, y, "Extra charges", amountText(data.currencyIcon, data.additionalCharges ?? 0), false, 7.5, bengaliLoaded);
+  }
   y += 1;
   dashedLine(doc, y);
   // TOTAL is drawn larger/bolder (9pt) than the rows around it — needs more

@@ -55,8 +55,9 @@ const EMPTY_RESULT: SalesReportResult = {
  * happened. Being a plain date (no time-of-day), order_date also needs no
  * timezone offset math the way a created_at timestamp comparison would.
  *
- * "Sales"/"revenue" here means net product revenue — `subtotal −
- * discount_amount` — not `total_amount`. `total_amount` also bundles in
+ * "Sales"/"revenue" here means net revenue — `subtotal − discount_amount +
+ * additional_charges` (packaging/handling/etc. is money the store earns) —
+ * not `total_amount`. `total_amount` also bundles in
  * `shipping_fee` and `tax_amount`, both of which are collected from the
  * customer only to be passed straight through (to the courier, to tax),
  * not actual sales revenue, so they're deliberately excluded. This is not
@@ -76,12 +77,18 @@ export async function getSalesReport(
   // a store with more than 1000 non-cancelled orders in the selected range
   // (e.g. a "Year" view) would silently have every total (revenue, order
   // count, average order value) computed from only the first 1000.
-  let orders: { subtotal: number; discount_amount: number; channel: string; order_date: string }[];
+  let orders: {
+    subtotal: number;
+    discount_amount: number;
+    additional_charges: number | null;
+    channel: string;
+    order_date: string;
+  }[];
   try {
     orders = await fetchAllPaged((from, to) =>
       supabase
         .from("orders")
-        .select("subtotal, discount_amount, channel, order_date")
+        .select("subtotal, discount_amount, additional_charges, channel, order_date")
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
         .neq("status", OrderStatus.RETURNED)
@@ -103,7 +110,10 @@ export async function getSalesReport(
   const rowByKey = new Map<string, SalesReportRow>();
 
   for (const order of orders) {
-    const amount = (Number(order.subtotal) || 0) - (Number(order.discount_amount) || 0);
+    const amount =
+      (Number(order.subtotal) || 0) -
+      (Number(order.discount_amount) || 0) +
+      (Number(order.additional_charges) || 0);
     const isPos = order.channel === "pos";
 
     totalRevenue += amount;
@@ -175,7 +185,7 @@ export async function getSalesReportOrdersForPeriod(
     data = await fetchAllPaged((from, to) =>
       supabase
         .from("orders")
-        .select("order_number, subtotal, discount_amount, channel, created_at, order_date, shipping_address, store_customers!customer_id(name)")
+        .select("order_number, subtotal, discount_amount, additional_charges, channel, created_at, order_date, shipping_address, store_customers!customer_id(name)")
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
         .neq("status", OrderStatus.RETURNED)
@@ -198,7 +208,10 @@ export async function getSalesReportOrdersForPeriod(
       order_number: order.order_number,
       customer_name: order.shipping_address?.customer_name || customer?.name || "Unknown Customer",
       channel: order.channel === "pos" ? "pos" : "online",
-      revenue: (Number(order.subtotal) || 0) - (Number(order.discount_amount) || 0),
+      revenue:
+        (Number(order.subtotal) || 0) -
+        (Number(order.discount_amount) || 0) +
+        (Number(order.additional_charges) || 0),
       created_at: order.created_at,
     };
   });

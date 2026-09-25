@@ -269,8 +269,7 @@ export interface VendorDashboardStats {
   last_payment_date: string | null;
   // Potential margin on all confirmed dispatches: sum(qty * (vendor_tp - original_tp)).
   margin_dispatched: number;
-  // Realized margin on actually settled (sold) items:
-  // sum(receivable_amount - sold_qty * weighted_avg_original_tp).
+  // Profit counted as the vendor pays: total_paid × (margin_dispatched ÷ full bill).
   margin_realized: number;
   slow_moving_count: number;
 }

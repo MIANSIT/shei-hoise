@@ -107,6 +107,7 @@ export default function QuickSale() {
 
   const [cart, setCart] = useState<OrderProduct[]>([]);
   const [discount, setDiscount] = useState(0);
+  const [additionalCharges, setAdditionalCharges] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [walkInName, setWalkInName] = useState("");
   const [walkInPhone, setWalkInPhone] = useState("");
@@ -336,7 +337,7 @@ export default function QuickSale() {
   };
 
   const subtotal = cart.reduce((sum, it) => sum + it.total_price, 0);
-  const total = Math.max(0, subtotal - discount);
+  const total = Math.max(0, subtotal - discount + additionalCharges);
   const changeDue =
     !isDueSale && paymentMethod === PaymentMethod.CASH && cashReceived != null
       ? Math.max(0, cashReceived - total)
@@ -351,6 +352,7 @@ export default function QuickSale() {
     items: OrderProduct[];
     subtotal: number;
     discount: number;
+    additionalCharges: number;
     total: number;
     paymentMethod: PaymentMethod;
     cashReceived: number | null;
@@ -389,6 +391,7 @@ export default function QuickSale() {
       })),
       subtotal: order.subtotal,
       discount: order.discount,
+      additionalCharges: order.additionalCharges,
       total: order.total,
       paymentLabel: PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod,
       cashReceived: order.cashReceived,
@@ -480,7 +483,7 @@ export default function QuickSale() {
         subtotal,
         taxAmount: 0,
         discount,
-        additionalCharges: 0,
+        additionalCharges,
         deliveryCost: 0,
         totalAmount: total,
         status: OrderStatus.DELIVERED,
@@ -536,6 +539,7 @@ export default function QuickSale() {
           items: cart,
           subtotal,
           discount,
+          additionalCharges,
           total,
           paymentMethod,
           cashReceived: receiptCashReceived,
@@ -550,6 +554,7 @@ export default function QuickSale() {
         });
         setCart([]);
         setDiscount(0);
+        setAdditionalCharges(0);
         setWalkInName("");
         setWalkInPhone("");
         setCashReceived(null);
@@ -797,6 +802,17 @@ export default function QuickSale() {
                 min={0}
                 value={discount}
                 onChange={(v) => setDiscount(v || 0)}
+                style={{ width: 110 }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <Text type="secondary">Extra charges</Text>
+              <InputNumber
+                min={0}
+                value={additionalCharges}
+                onChange={(v) => setAdditionalCharges(v || 0)}
+                placeholder="Packaging, handling"
+                aria-label="Extra charges"
                 style={{ width: 110 }}
               />
             </div>

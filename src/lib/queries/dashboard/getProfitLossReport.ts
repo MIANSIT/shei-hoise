@@ -8,12 +8,14 @@ export interface ProfitLossTrendPoint {
 
 export interface ProfitLossReport {
   totalSales: number;
+  /** Packaging/handling/etc. charged to the customer on paid orders. Already inside totalSales — shown on its own so it isn't hidden. */
+  additionalCharges: number;
   cogs: number;
   grossProfit: number;
   totalExpenses: number;
   /** What was actually paid to the courier minus what was charged the customer for shipping — positive eats into profit, negative is extra income from shipping. Already netted into netProfit; shown on its own so it isn't hidden. */
   deliveryNetCost: number;
-  /** Realized margin from vendor/dropship settlements this period — the same figure the main Dashboard's Net Profit already folds in (getVendorStoreProfitForPeriod). Also netted into netProfit here so a store using vendor distribution doesn't see two different "Net Profit" numbers between Dashboard and this report. */
+  /** Margin recognized from vendor payments received this period — the same figure the main Dashboard's Net Profit already folds in (getVendorStoreProfitForPeriod). Also netted into netProfit here so a store using vendor distribution doesn't see two different "Net Profit" numbers between Dashboard and this report. */
   vendorProfit: number;
   netProfit: number;
   trend: ProfitLossTrendPoint[];
@@ -21,6 +23,7 @@ export interface ProfitLossReport {
 
 const EMPTY: ProfitLossReport = {
   totalSales: 0,
+  additionalCharges: 0,
   cogs: 0,
   grossProfit: 0,
   totalExpenses: 0,
@@ -62,6 +65,7 @@ export async function getProfitLossReport(
 
   return {
     totalSales: Number(data.total_sales) || 0,
+    additionalCharges: Number(data.additional_charges) || 0,
     cogs: Number(data.cogs) || 0,
     grossProfit: Number(data.gross_profit) || 0,
     totalExpenses: Number(data.total_expenses) || 0,
