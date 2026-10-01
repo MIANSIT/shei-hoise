@@ -33,11 +33,14 @@ import {
   SortableTableRow,
 } from "@/app/components/admin/common/SortableTableRow";
 import { reorderProducts } from "@/lib/queries/products/reorderProducts";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const PAGE_SIZE = 20;
 
 const Bundles: React.FC = () => {
   const router = useRouter();
+  const { can } = usePermissions();
   const { user } = useCurrentUser();
   const { currency } = useUserCurrencyIcon();
   const [notif, contextHolder] = notification.useNotification();
@@ -165,13 +168,14 @@ const Bundles: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Bundles
+            <MenuLabel labelKey="menuBundles" />
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Combos made of your existing products, sold as one item.
           </p>
         </div>
         <button
+          hidden={!can("products.add")}
           onClick={() => router.push("/dashboard/products/bundles/add-bundle")}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
         >
@@ -234,12 +238,13 @@ const Bundles: React.FC = () => {
                   }
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label="Edit bundle"
+                  hidden={!can("products.edit")}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleToggleFreeDelivery(bundle)}
-                  disabled={togglingFreeDeliveryId === bundle.id}
+                  disabled={togglingFreeDeliveryId === bundle.id || !can("products.edit")}
                   title={
                     getFreeDelivery(bundle)
                       ? "Turn off free delivery — normal delivery charge applies"
@@ -259,6 +264,7 @@ const Bundles: React.FC = () => {
                   onClick={() => setPendingDelete(bundle)}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                   aria-label="Delete bundle"
+                  hidden={!can("products.delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -452,7 +458,7 @@ const Bundles: React.FC = () => {
                       <div className="flex justify-center">
                         <button
                           onClick={() => handleToggleFreeDelivery(bundle)}
-                          disabled={togglingFreeDeliveryId === bundle.id}
+                          disabled={togglingFreeDeliveryId === bundle.id || !can("products.edit")}
                           title={
                             getFreeDelivery(bundle)
                               ? "Turn off free delivery — normal delivery charge applies"
@@ -483,6 +489,7 @@ const Bundles: React.FC = () => {
                           }
                           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                           aria-label="Edit bundle"
+                  hidden={!can("products.edit")}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -490,6 +497,7 @@ const Bundles: React.FC = () => {
                           onClick={() => setPendingDelete(bundle)}
                           className="rounded-lg p-2 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                           aria-label="Delete bundle"
+                  hidden={!can("products.delete")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface AddOrderDeliveryCostResult {
   success: boolean;
@@ -26,7 +26,7 @@ export async function addOrderDeliveryCost(
       return { success: false, error: "Amount must be zero or greater" };
     }
 
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("orders.edit");
     if (!storeResult.ok) return { success: false, error: storeResult.error };
 
     // order_delivery_costs has no RLS write policy (all writes go through

@@ -14,6 +14,7 @@ import {
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import { PaymentMethod } from "@/lib/types/enums";
 import CustomerQuickPaymentModal from "./CustomerQuickPaymentModal";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 export default function CustomerDues() {
   const { user } = useCurrentUser();
@@ -157,7 +158,7 @@ export default function CustomerDues() {
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-              Customer Dues
+              <MenuLabel labelKey="menuCustomerDues" />
             </h1>
             <p className="text-xs text-muted-foreground m-0">
               Walk-in customers with an outstanding balance from Quick Sale

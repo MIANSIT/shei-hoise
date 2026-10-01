@@ -1,6 +1,11 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import {
+  checkStockAdjustmentLimit,
+  getAuthorizedStoreId,
+  logActivity,
+  type Actor,
+} from "@/lib/permissions/server";
 
 interface InventoryTarget {
   product_id: string;
@@ -14,13 +19,15 @@ interface InventoryTarget {
 // tied to actually belongs to the caller's store before adjusting/setting
 // its stock, and hand the verified store back so it can also be passed to
 // the RPC for a second, database-level check.
-async function requireOwnedProductStoreId(productId: string): Promise<string> {
-  const storeResult = await getAuthenticatedStoreId();
+async function requireOwnedProductStoreId(
+  productId: string,
+): Promise<{ storeId: string; actor: Actor; productName: string }> {
+  const storeResult = await getAuthorizedStoreId("stock.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { data: product, error } = await supabaseAdmin
     .from("products")
-    .select("store_id")
+    .select("store_id, name")
     .eq("id", productId)
     .single();
 
@@ -28,7 +35,13 @@ async function requireOwnedProductStoreId(productId: string): Promise<string> {
     throw new Error("You do not have permission to modify this product's inventory");
   }
 
-  return storeResult.storeId;
+  return { storeId: storeResult.storeId, actor: storeResult.actor, productName: product.name };
+}
+
+async function currentAvailable(productId: string, variantId: string | null): Promise<number> {
+  const query = supabaseAdmin.from("product_inventory").select("quantity_available").eq("product_id", productId);
+  const { data } = await (variantId ? query.eq("variant_id", variantId) : query.is("variant_id", null)).maybeSingle();
+  return Number(data?.quantity_available ?? 0);
 }
 
 /**
@@ -44,7 +57,12 @@ export async function updateInventory({
   note = null,
   created_by = null,
 }: InventoryTarget & { quantity_available: number }) {
-  const storeId = await requireOwnedProductStoreId(product_id);
+  const { storeId, actor, productName } = await requireOwnedProductStoreId(product_id);
+
+  // A recount is still a change of (new - current) units for the role's limit.
+  const before = await currentAvailable(product_id, variant_id);
+  const limited = checkStockAdjustmentLimit(actor, quantity_available - before);
+  if (limited) throw new Error(limited);
 
   const { data, error } = await supabaseAdmin.rpc("set_inventory", {
     p_product_id: product_id,
@@ -52,7 +70,7 @@ export async function updateInventory({
     p_quantity: quantity_available,
     p_reason: reason,
     p_note: note,
-    p_created_by: created_by,
+    p_created_by: created_by ?? actor.userId,
     p_caller_store_id: storeId,
   });
 
@@ -60,6 +78,14 @@ export async function updateInventory({
     console.error("Failed to set inventory:", error);
     throw new Error(error.message);
   }
+
+  await logActivity(actor, {
+    action: "stock.edit",
+    entityType: "product",
+    entityId: product_id,
+    summary: `${productName}: ${before} → ${quantity_available} (${reason})`,
+    details: { variant_id, note },
+  });
 
   return data;
 }
@@ -77,7 +103,10 @@ export async function adjustInventory({
   note = null,
   created_by = null,
 }: InventoryTarget & { delta: number }) {
-  const storeId = await requireOwnedProductStoreId(product_id);
+  const { storeId, actor, productName } = await requireOwnedProductStoreId(product_id);
+
+  const limited = checkStockAdjustmentLimit(actor, delta);
+  if (limited) throw new Error(limited);
 
   const { data, error } = await supabaseAdmin.rpc("adjust_inventory", {
     p_product_id: product_id,
@@ -85,7 +114,7 @@ export async function adjustInventory({
     p_delta: delta,
     p_reason: reason,
     p_note: note,
-    p_created_by: created_by,
+    p_created_by: created_by ?? actor.userId,
     p_caller_store_id: storeId,
   });
 
@@ -93,6 +122,14 @@ export async function adjustInventory({
     console.error("Failed to adjust inventory:", error);
     throw new Error(error.message);
   }
+
+  await logActivity(actor, {
+    action: "stock.edit",
+    entityType: "product",
+    entityId: product_id,
+    summary: `${productName}: ${delta > 0 ? "+" : ""}${delta} (${reason})`,
+    details: { variant_id, note },
+  });
 
   return data;
 }

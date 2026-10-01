@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireOwner } from "@/lib/permissions/server";
 
 interface DismissResult {
   success: boolean;
@@ -19,6 +20,9 @@ export async function dismissStoreSetupPrompt(
     } = await supabase.auth.getSession();
     if (sessionError) return { success: false, message: sessionError.message };
     if (!session) return { success: false, message: "You must be logged in." };
+
+    const auth = await requireOwner({ storeId });
+    if (!auth.ok) return { success: false, message: auth.error };
 
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")

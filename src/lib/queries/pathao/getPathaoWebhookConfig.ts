@@ -1,9 +1,9 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
 import { generateWebhookSecret } from "@/lib/utils/generateWebhookSecret";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 export interface PathaoWebhookConfigResult {
   success: boolean;
@@ -26,7 +26,7 @@ const APP_URL =
 export async function getPathaoWebhookConfig(
   credentialId: string,
 ): Promise<PathaoWebhookConfigResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

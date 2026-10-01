@@ -1,14 +1,14 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 export async function selectPathaoStore(
   credentialId: string,
   pathaoStoreId: number,
   pathaoStoreName: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

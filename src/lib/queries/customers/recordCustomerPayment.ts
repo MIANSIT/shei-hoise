@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { updatePaymentStatus } from "@/lib/queries/orders/updateOrder";
 import { PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "./customerDueMath";
+import { authorizeForStoreAny, logActivity } from "@/lib/permissions/server";
 
 export interface RecordCustomerPaymentInput {
   storeId: string;
@@ -40,6 +41,14 @@ export async function recordCustomerPayment(
       return { success: false, error: "Amount must be greater than zero" };
     }
 
+    // Collected from Customer Dues, or taken as part of a new order / Quick Sale.
+    const auth = await authorizeForStoreAny(input.storeId, [
+      "customers.collect_payment",
+      "orders.add",
+      "pos.add",
+    ]);
+    if (!auth.ok) return { success: false, error: auth.error };
+
     const { error: insertError } = await supabaseAdmin.from("customer_payments").insert({
       store_id: input.storeId,
       customer_id: input.customerId,
@@ -48,12 +57,20 @@ export async function recordCustomerPayment(
       payment_date: input.paymentDate,
       payment_method: input.paymentMethod,
       notes: input.notes || null,
-      created_by: input.createdBy || null,
+      created_by: input.createdBy || auth.actor.userId,
     });
 
     if (insertError) {
       return { success: false, error: insertError.message };
     }
+
+    await logActivity(auth.actor, {
+      action: "customers.collect_payment",
+      entityType: "customer",
+      entityId: input.customerId,
+      summary: `Collected ৳${input.amount} (${input.paymentMethod})`,
+      details: { order_id: input.orderId ?? null, payment_date: input.paymentDate, notes: input.notes ?? null },
+    });
 
     const [ordersRes, paymentsRes] = await Promise.all([
       supabaseAdmin

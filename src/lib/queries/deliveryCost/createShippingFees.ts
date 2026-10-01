@@ -2,6 +2,7 @@
 "use server";
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin';
 import { ShippingOption } from './getShippingFees';
+import { requireOwner } from "@/lib/permissions/server";
 
 export async function createShippingFees(
   storeId: string,
@@ -13,6 +14,9 @@ export async function createShippingFees(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const auth = await requireOwner({ storeId });
+    if (!auth.ok) return { success: false, error: auth.error };
+
     const { error } = await supabase
       .from('store_settings')
       .insert({

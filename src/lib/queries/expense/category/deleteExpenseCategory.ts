@@ -2,12 +2,12 @@
 
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function deleteCategory(id: string): Promise<void> {
   // id is caller-supplied — scope both the lookup and the delete to a
   // category that actually belongs to the caller's own store.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("expenses.delete");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { data: category, error: fetchError } = await supabase

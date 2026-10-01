@@ -3,8 +3,8 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { BundleType } from "@/lib/schema/bundleSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
  * Updates a bundle's own fields and replaces its bundle_items recipe
@@ -20,7 +20,7 @@ export async function updateBundle(data: BundleType) {
 
   // id and data.store_id are caller-supplied — never trust either. Resolve
   // the caller's real store and confirm the bundle being edited belongs to it.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("products.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const store_id = storeResult.storeId;
 

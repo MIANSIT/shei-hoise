@@ -1,10 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getSteadfastCredentials } from "@/lib/utils/getSteadfastCredentials";
 import { getStatusByTrackingCode } from "@/lib/utils/steadfastApi";
 import { autoMarkOrderDeliveredFromCourier } from "@/lib/queries/orders/autoMarkOrderDelivered";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface RefreshSteadfastStatusResult {
   success: boolean;
@@ -18,7 +18,7 @@ export async function refreshSteadfastOrderStatus(
   orderId: string,
   trackingCode: string,
 ): Promise<RefreshSteadfastStatusResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("courier.view");
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

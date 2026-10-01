@@ -1,10 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getSteadfastCredentials } from "@/lib/utils/getSteadfastCredentials";
 import { normalizeBdPhone } from "@/lib/utils/normalizeBdPhone";
 import { createOrder } from "@/lib/utils/steadfastApi";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface CreateSteadfastShipmentInput {
   recipientName: string;
@@ -37,7 +37,7 @@ export async function createSteadfastShipment(
   merchantOrderNumber: string,
   input: CreateSteadfastShipmentInput,
 ): Promise<CreateSteadfastShipmentResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("courier.add");
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

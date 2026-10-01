@@ -1,13 +1,13 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function toggleProductFeatured(
   productId: string,
   featured: boolean,
 ): Promise<void> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("products.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { error } = await supabaseAdmin

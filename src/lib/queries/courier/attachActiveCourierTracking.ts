@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface ActiveTrackingFields {
   courier_consignment_id: string | null;
@@ -24,7 +24,7 @@ export async function getActiveCourierTrackingByOrderIds(
 
   // orderIds is caller-supplied — narrow it down to orders that actually
   // belong to the caller's own store before reading their courier tracking.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("courier.add");
   if (!storeResult.ok) return {};
 
   const { data: ownedOrders } = await supabaseAdmin

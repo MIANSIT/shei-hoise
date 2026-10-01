@@ -333,7 +333,7 @@ const MainOrders: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                {t.admin.allOrdersTitle}
+                {t.admin.menuAllOrders}
               </h1>
               <p className="text-xs text-muted-foreground m-0">
                 {t.admin.allOrdersDesc}

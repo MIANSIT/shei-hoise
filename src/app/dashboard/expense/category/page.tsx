@@ -283,7 +283,7 @@ export default function CategoriesPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                {t.admin.expCatTitle}
+                {t.admin.menuCategory}
               </h1>
               <p className="text-xs text-muted-foreground m-0 hidden sm:block">
                 {t.admin.expCatSubtitle}

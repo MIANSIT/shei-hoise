@@ -1,9 +1,28 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeForStore, checkDeleteWindow, logDeleted } from "@/lib/permissions/server";
 
 export async function deleteCoupon(id: string, storeId: string): Promise<boolean> {
   try {
+    const auth = await authorizeForStore(storeId, "coupons.delete");
+    if (!auth.ok) {
+      console.error("deleteCoupon:", auth.error);
+      return false;
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from("coupons")
+      .select("*")
+      .eq("id", id)
+      .eq("store_id", storeId)
+      .maybeSingle();
+    const tooOld = checkDeleteWindow(auth.actor, existing?.created_at);
+    if (tooOld) {
+      console.error("deleteCoupon:", tooOld);
+      return false;
+    }
+
     // A coupon that's already been redeemed carries order history via
     // coupon_redemptions — deleting it would cascade-wipe that history, so
     // block it the same way deleteVendor blocks deleting a vendor with
@@ -30,6 +49,10 @@ export async function deleteCoupon(id: string, storeId: string): Promise<boolean
     if (error) {
       console.error("Error deleting coupon:", error.message);
       return false;
+    }
+
+    if (existing && (data?.length ?? 0) > 0) {
+      await logDeleted(auth.actor, "coupons", "coupon", existing, `Deleted coupon ${existing.code}`);
     }
 
     return (data?.length ?? 0) > 0;

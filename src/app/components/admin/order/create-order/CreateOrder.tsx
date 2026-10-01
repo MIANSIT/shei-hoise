@@ -789,7 +789,7 @@ export default function CreateOrder() {
         <Space orientation="vertical" size="large" className="w-full">
           <div>
             <Title level={2} className="m-0">
-              {t.admin.createOrderTitle}
+              {t.admin.menuCreateOrder}
             </Title>
             <Text type="secondary">
               {t.admin.createOrderDesc}

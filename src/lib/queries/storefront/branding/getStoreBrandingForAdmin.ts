@@ -1,12 +1,12 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { StoreBranding } from "@/lib/types/store/store";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /** The caller's own branding row, for prefilling the Storefront Design form. */
 export async function getStoreBrandingForAdmin(): Promise<StoreBranding | null> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.view");
   if (!storeResult.ok) return null;
 
   const { data, error } = await supabaseAdmin

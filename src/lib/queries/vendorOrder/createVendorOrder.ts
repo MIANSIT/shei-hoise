@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { CreateVendorOrderInput, VendorOrder } from "@/lib/types/vendor/type";
+import { authorizeForStore } from "@/lib/permissions/server";
 
 const MAX_INVOICE_NUMBER_ATTEMPTS = 3;
 const UNIQUE_VIOLATION = "23505";
@@ -23,6 +24,9 @@ export async function createVendorOrder(
   if (!input.items?.length) {
     throw new Error("At least one product is required");
   }
+
+  const auth = await authorizeForStore(input.store_id, "vendors.add");
+  if (!auth.ok) throw new Error(auth.error);
 
   const totalQuantity = input.items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = input.items.reduce(

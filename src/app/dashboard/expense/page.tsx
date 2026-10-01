@@ -42,6 +42,7 @@ import {
   type StoreSubscription,
 } from "@/lib/queries/subscription/getStoreSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 dayjs.extend(relativeTime);
 
@@ -51,6 +52,7 @@ const PAGE_SIZE = 10;
 
 export default function ExpensesPage() {
   const { storeId, storeSlug, loading: userLoading } = useCurrentUser();
+  const { can } = usePermissions();
   const { success, error } = useSheiNotification();
   const t = useTranslation();
   const router = useRouter();
@@ -353,7 +355,7 @@ export default function ExpensesPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                {t.admin.expenseTitle}
+                {t.admin.menuExpense}
               </h1>
               <p className="text-xs text-muted-foreground m-0 hidden sm:block">
                 {t.admin.expenseSubtitle}
@@ -376,6 +378,7 @@ export default function ExpensesPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
+              hidden={!can("expenses.add")}
               onClick={openCreateModal}
               className="font-semibold rounded-xl h-9"
               style={{

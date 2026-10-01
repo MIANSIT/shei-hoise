@@ -23,6 +23,7 @@ import { DetailedCustomer } from "@/lib/types/users";
 import { deleteUserWithCheck } from "@/lib/queries/user/deleteUserWithCheck";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 const { Text, Title } = Typography;
 
@@ -45,6 +46,7 @@ export function CustomerTable({
 }: CustomerTableProps) {
   const { notification, modal } = App.useApp();
   const t = useTranslation();
+  const { can } = usePermissions();
   const n = useLocalNum();
 
   const handleDelete = (customer: DetailedCustomer) => {
@@ -160,6 +162,7 @@ export function CustomerTable({
           <Button
             icon={<EditOutlined />}
             size="small"
+            hidden={!can("customers.edit")}
             onClick={() => onEdit(record)}
           >
             {t.admin.customerTableEditBtn}
@@ -168,6 +171,7 @@ export function CustomerTable({
             danger
             icon={<DeleteOutlined />}
             size="small"
+            hidden={!can("customers.delete")}
             onClick={() => handleDelete(record)}
           >
             {t.admin.customerTableDeleteBtn}

@@ -5,6 +5,7 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { AnnouncementsCard } from "@/app/components/admin/dashboard/storefrontDesign/AnnouncementsCard";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 export default function AnnouncementsPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
@@ -23,7 +24,7 @@ export default function AnnouncementsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Announcements</h1>
+        <h1 className="text-2xl font-bold text-foreground"><MenuLabel labelKey="menuAnnouncements" /></h1>
         <p className="text-sm text-muted-foreground mt-1">
           Manage the scrolling announcement bar shown above your homepage header.
         </p>

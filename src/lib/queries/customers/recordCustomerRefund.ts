@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeForStoreAny } from "@/lib/permissions/server";
 
 export interface RecordCustomerRefundInput {
   storeId: string;
@@ -29,6 +30,14 @@ export async function recordCustomerRefund(
     if (!(input.amount > 0)) {
       return { success: false, error: "Refund amount must be greater than zero" };
     }
+
+    // Runs when an order is marked returned (handleOrderReturned).
+    const auth = await authorizeForStoreAny(input.storeId, [
+      "orders.change_status",
+      "orders.edit",
+      "customers.collect_payment",
+    ]);
+    if (!auth.ok) return { success: false, error: auth.error };
 
     const { error } = await supabaseAdmin.from("customer_payments").insert({
       store_id: input.storeId,

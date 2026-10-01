@@ -15,6 +15,8 @@ import { recordCodSettlement } from "@/lib/queries/orders/recordCodSettlement";
 import { deleteCodSettlement } from "@/lib/queries/orders/deleteCodSettlement";
 import type { DeliveryCourier } from "@/lib/types/store/store";
 import type { CodSettlement, UnsettledCodOrder } from "@/lib/types/codSettlement";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const { Text, Title } = Typography;
 const PAGE_SIZE = 10;
@@ -50,6 +52,7 @@ export default function CodSettlementsPage() {
   const [settlementsPage, setSettlementsPage] = useState(1);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { can } = usePermissions();
 
   useEffect(() => {
     if (!storeId) return;
@@ -214,7 +217,8 @@ export default function CodSettlementsPage() {
       title: "",
       key: "actions",
       width: 50,
-      render: (_, record) => (
+      render: (_, record) =>
+        can("cod.delete") && (
         <Popconfirm
           title="Delete this settlement? Its orders become unsettled again."
           okText="Delete"
@@ -229,7 +233,7 @@ export default function CodSettlementsPage() {
             loading={deletingId === record.id}
           />
         </Popconfirm>
-      ),
+        ),
     },
   ];
 
@@ -249,7 +253,7 @@ export default function CodSettlementsPage() {
             <Truck size={20} color="white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground m-0">COD Settlements</h1>
+            <h1 className="text-lg font-bold text-foreground m-0"><MenuLabel labelKey="menuCodSettlements" /></h1>
             <p className="text-xs text-muted-foreground m-0">
               Record the cash a courier hands over for delivered COD orders — it&apos;s added to
               that date&apos;s Register Audit cash.
@@ -325,6 +329,7 @@ export default function CodSettlementsPage() {
               <Button
                 type="primary"
                 loading={submitting}
+                hidden={!can("cod.add")}
                 onClick={handleRecordSettlement}
                 className="rounded-xl h-9 font-semibold border-none"
                 style={{

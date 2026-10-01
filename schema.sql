@@ -398,6 +398,62 @@ ALTER TABLE "public"."store_register_openings" OWNER TO "postgres";
 COMMENT ON TABLE "public"."store_register_openings" IS 'The cash float an admin starts the day with, one row per store per calendar date. Register Audit adds this to the day''s own cash collections (and any COD settled) to get the drawer''s true expected cash.';
 
 
+-- Staff logins and role permissions (plan feature staff_accounts, limit
+-- max_staff) — see 20261001000000_add_staff_accounts.sql. All three are
+-- service-role only (RLS on, no policies). Permission strings live in
+-- src/lib/permissions/catalog.ts; public.has_store_permission() checks them.
+CREATE TABLE IF NOT EXISTS "public"."store_roles" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "name" text NOT NULL,
+    "description" text,
+    "permissions" text[] DEFAULT '{}'::text[] NOT NULL,
+    "limits" jsonb DEFAULT '{}'::jsonb NOT NULL,
+    "is_system" boolean DEFAULT false NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."store_staff" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "user_id" uuid NOT NULL UNIQUE REFERENCES "public"."users"("id") ON DELETE CASCADE,
+    "username" text NOT NULL UNIQUE,
+    "display_name" text NOT NULL,
+    "phone" text,
+    "role_id" uuid NOT NULL REFERENCES "public"."store_roles"("id") ON DELETE RESTRICT,
+    "all_branches" boolean DEFAULT true NOT NULL,
+    "branch_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "must_change_password" boolean DEFAULT true NOT NULL,
+    "failed_login_count" integer DEFAULT 0 NOT NULL,
+    "locked_until" timestamp with time zone,
+    "last_login_at" timestamp with time zone,
+    "deactivated_at" timestamp with time zone,
+    "created_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Append-only (an UPDATE trigger raises); written only by server code.
+CREATE TABLE IF NOT EXISTS "public"."store_activity_log" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "user_id" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    "actor_name" text,
+    "actor_role" text,
+    "branch_id" uuid,
+    "action" text NOT NULL,
+    "entity_type" text,
+    "entity_id" text,
+    "summary" text,
+    "details" jsonb,
+    "ip" text,
+    "user_agent" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
 -- History of what the store actually paid the courier for an order (one row
 -- per revision — estimate, correction, final invoice), as opposed to
 -- orders.shipping_fee, which is what the customer was charged. The most
@@ -864,7 +920,7 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "store_id" "uuid",
-    CONSTRAINT "users_user_type_check" CHECK ((("user_type")::"text" = ANY (ARRAY[('super_admin'::character varying)::"text", ('store_owner'::character varying)::"text", ('customer'::character varying)::"text"])))
+    CONSTRAINT "users_user_type_check" CHECK ((("user_type")::"text" = ANY (ARRAY['super_admin'::"text", 'store_owner'::"text", 'customer'::"text", 'store_staff'::"text"])))
 );
 
 

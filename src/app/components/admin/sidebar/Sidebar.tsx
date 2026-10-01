@@ -7,6 +7,7 @@ import SidebarMenu from "./SidebarMenu";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const { Sider } = Layout;
 
@@ -25,13 +26,14 @@ export default function Sidebar({
 }: SidebarProps) {
   const { storeSlug } = useCurrentUser();
   const router = useRouter();
+  const t = useTranslation();
 
   const storeMenu = {
     items: [
       {
         key: "go",
         icon: <Home className="w-5 h-5" />,
-        label: "Go to Store",
+        label: t.admin.menuViewStore,
         onClick: () => {
           router.push(`/${storeSlug}`);
           onMobileMenuClick?.(); // Close drawer on mobile
@@ -40,16 +42,16 @@ export default function Sidebar({
       {
         key: "copy",
         icon: <Copy className="w-5 h-5" />,
-        label: "Copy Store Link",
+        label: t.admin.menuCopyStoreLink,
         onClick: () => {
           const storeUrl = `${window.location.origin}/${storeSlug}`;
           navigator.clipboard
             .writeText(storeUrl)
             .then(() => {
-              toast.success("Store link copied!");
+              toast.success(t.admin.menuStoreLinkCopied);
               onMobileMenuClick?.(); // Close drawer on mobile
             })
-            .catch(() => toast.error("Failed to copy link"));
+            .catch(() => toast.error(t.admin.menuStoreLinkCopyFailed));
         },
       },
     ],
@@ -60,6 +62,9 @@ export default function Sidebar({
       collapsible
       collapsed={collapsed}
       trigger={null}
+      // antd's default 200px cut off nested labels ("Storefront Desi…",
+      // "Announce…"), especially in Bangla.
+      width={256}
       className="flex flex-col"
       style={{
         background: "var(--sidebar)",
@@ -109,7 +114,7 @@ export default function Sidebar({
                       d="M9 22V12h6v10"
                     />
                   </svg>
-                  {!collapsed && <span>Store Options</span>}
+                  {!collapsed && <span>{t.admin.menuStoreOptions}</span>}
                 </button>
               </Dropdown>
             </div>

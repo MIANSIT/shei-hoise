@@ -1,7 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { RecordVendorSettlementInput } from "@/lib/types/vendor/type";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // Records a settlement visit atomically via the record_vendor_settlement RPC
 // — decrements vendor stock, auto-returns any returned_quantity back into
@@ -17,7 +17,7 @@ export async function recordVendorSettlement(
   // input.store_id is caller-supplied — never trust it for authorization.
   // Always settle against the session's own store, and the RPC itself
   // separately verifies the vendor belongs to that store.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("vendors.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { data, error } = await supabaseAdmin.rpc("record_vendor_settlement", {

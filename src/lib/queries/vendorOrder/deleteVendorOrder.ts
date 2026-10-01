@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // Draft and cancelled orders can be deleted safely:
 // - Draft: no stock was ever moved.
@@ -13,7 +13,7 @@ export async function deleteVendorOrder(
   try {
     // storeId is caller-supplied — never trust it for authorization on its
     // own. Only allow deleting orders under the session's own store.
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("vendors.delete");
     if (!storeResult.ok || storeResult.storeId !== storeId) {
       console.error("deleteVendorOrder: unauthorized store access attempt", { storeId });
       return false;

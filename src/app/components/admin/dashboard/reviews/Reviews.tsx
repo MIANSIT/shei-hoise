@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ProductReviewsTable from "./ProductReviewsTable";
 import StoreReviewsTable from "./StoreReviewsTable";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 type ReviewsTab = "product" | "store";
 
@@ -17,7 +18,7 @@ const Reviews: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reviews</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground"><MenuLabel labelKey="menuReviews" /></h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {activeTab === "product"
             ? "Customer reviews across all your products."

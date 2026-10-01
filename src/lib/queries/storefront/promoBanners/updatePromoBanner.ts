@@ -1,7 +1,6 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   uploadPromoBannerImage,
   deletePromoBannerImage,
@@ -9,13 +8,14 @@ import {
 } from "@/lib/utils/promoBannerImageStorage";
 import { promoBannerFieldsSchema, type PromoBannerFieldsType } from "@/lib/schema/promoBanner.schema";
 import type { PromoBanner } from "@/lib/types/promoBanner";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function updatePromoBanner(
   bannerId: string,
   fields: PromoBannerFieldsType,
   file: File | null,
 ): Promise<{ success: true; banner: PromoBanner } | { success: false; error: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

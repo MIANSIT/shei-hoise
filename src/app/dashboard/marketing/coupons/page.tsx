@@ -20,6 +20,8 @@ import CouponTable from "@/app/components/admin/dashboard/marketing/coupons/Coup
 import CouponFormModal, {
   type CouponFormValues,
 } from "@/app/components/admin/dashboard/marketing/coupons/CouponFormModal";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 type ModalMode = "create" | "edit";
 const PAGE_SIZE = 10;
@@ -62,6 +64,7 @@ export default function CouponsPage() {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { can } = usePermissions();
 
   const fetchCoupons = useCallback(async () => {
     if (!storeId) return;
@@ -192,7 +195,7 @@ export default function CouponsPage() {
               <TagIcon size={20} color="white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0">Coupons</h1>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white m-0"><MenuLabel labelKey="menuCoupons" /></h1>
               <p className="text-xs text-gray-400 dark:text-gray-500 m-0">
                 Discount codes customers can apply at checkout
                 {limitStatus && limitStatus.limit !== -1 && (
@@ -206,6 +209,7 @@ export default function CouponsPage() {
             icon={<PlusOutlined />}
             onClick={openCreateModal}
             disabled={atLimit}
+            hidden={!can("coupons.add")}
             title={atLimit ? `Your plan allows up to ${limitStatus?.limit} active coupons` : undefined}
             className="rounded-xl h-9 font-semibold border-none"
             style={{

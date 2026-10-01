@@ -2,6 +2,7 @@
 
 import React, { memo } from "react";
 import { Select } from "antd";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 import { PaymentMethod } from "../../../../../../lib/types/enums";
 import { useTranslation } from "../../../../../../lib/hook/useTranslation";
 
@@ -13,7 +14,8 @@ interface Props {
 const PaymentMethodSelect: React.FC<{
   value: PaymentMethod;
   onChange: (v: PaymentMethod) => void;
-}> = ({ value, onChange }) => {
+  disabled?: boolean;
+}> = ({ value, onChange, disabled }) => {
   const t = useTranslation();
   // Matches the Create/Edit Order and Quick Sale option sets so every
   // screen writes the same payment_method values into the same orders —
@@ -32,6 +34,7 @@ const PaymentMethodSelect: React.FC<{
       style={{ width: 150 }}
       onChange={onChange}
       options={options}
+      disabled={disabled}
     />
   );
 };
@@ -39,10 +42,12 @@ const PaymentMethodSelect: React.FC<{
 const MemoizedPaymentMethodSelect = memo(PaymentMethodSelect);
 
 const EditablePaymentMethod: React.FC<Props> = ({ method, onSave }) => {
+  const { can } = usePermissions();
   return (
     <MemoizedPaymentMethodSelect
       value={method}
       onChange={onSave}
+      disabled={!can("orders.edit")}
     />
   );
 };

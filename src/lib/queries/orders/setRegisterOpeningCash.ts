@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId, logActivity } from "@/lib/permissions/server";
 
 /**
  * Sets (or corrects, same day) the drawer's opening cash for a date — one
@@ -11,7 +11,7 @@ export async function setRegisterOpeningCash(
   dateStr: string,
   amount: number,
 ): Promise<void> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("register.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { error } = await supabaseAdmin.from("store_register_openings").upsert(
@@ -25,4 +25,10 @@ export async function setRegisterOpeningCash(
   );
 
   if (error) throw new Error(error.message);
+
+  await logActivity(storeResult.actor, {
+    action: "register.add",
+    entityType: "register",
+    summary: `Opening cash for ${dateStr}: ৳${amount}`,
+  });
 }

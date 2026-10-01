@@ -57,6 +57,9 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
 
   // --- Fetch products ---
   useEffect(() => {
+    // Only the newest request may update the table — an older, slower
+    // response (e.g. for a shorter search) must not overwrite newer results.
+    let stale = false;
     const fetchProducts = async () => {
       if (!storeSlug) return;
       setLoading(true);
@@ -70,19 +73,24 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
           stockSort,
         );
 
+        if (stale) return;
         const mapped: ProductRow[] = mapProductsForModernTable(result.data);
         setProducts(mapped);
         if (onTotalChange) onTotalChange(result.total);
         if (onStatsChange) onStatsChange(result.stats);
       } catch (err) {
+        if (stale) return;
         console.error(err);
         notify.error("Failed to fetch products");
       } finally {
-        setLoading(false);
+        if (!stale) setLoading(false);
       }
     };
 
     if (!userLoading && storeSlug) fetchProducts();
+    return () => {
+      stale = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     userLoading,

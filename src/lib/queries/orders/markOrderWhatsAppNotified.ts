@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface MarkOrderWhatsAppNotifiedResult {
   success: boolean;
@@ -19,7 +19,7 @@ export async function markOrderWhatsAppNotified(
   orderId: string,
 ): Promise<MarkOrderWhatsAppNotifiedResult> {
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("orders.view");
     if (!storeResult.ok) {
       return { success: false, error: storeResult.error };
     }

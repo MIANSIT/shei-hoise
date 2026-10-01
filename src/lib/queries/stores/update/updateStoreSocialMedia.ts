@@ -3,11 +3,15 @@ import { revalidatePath } from "next/cache";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import { invalidateStoreFullCache } from "@/lib/queries/stores/getStoreBySlugFull";
 import type { UpdatedStoreSocialMedia } from "@/lib/types/store/store";
+import { requireOwner } from "@/lib/permissions/server";
 
 export async function updateStoreSocialMedia(
   store_id: string,
   data: UpdatedStoreSocialMedia,
 ) {
+  const auth = await requireOwner({ storeId: store_id });
+  if (!auth.ok) throw new Error(auth.error);
+
   const { data: result, error } = await supabase
     .from("store_social_media")
     .upsert(

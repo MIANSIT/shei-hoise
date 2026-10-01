@@ -34,6 +34,8 @@ import { getStoreSubscription, type StoreSubscription } from "@/lib/queries/subs
 import { getSubscriptionAccessState } from "@/lib/utils/subscriptionAccess";
 import LanguageSwitcher from "@/app/components/common/LanguageSwitcher";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { PermissionsProvider } from "@/lib/context/PermissionsContext";
+import { StaffAccessGuard } from "@/app/components/admin/staff/StaffAccessGuard";
 // import { supabase } from "@/lib/supabase";
 // import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
@@ -53,6 +55,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const {
+    user,
     role,
     storeId,
     storeSlug,
@@ -80,7 +83,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!authLoading && !session) {
       router.replace("/admin-login");
     }
-    if (role !== undefined && role !== USERTYPE.STORE_OWNER) {
+    // Store owners and their staff use the dashboard; what staff see inside
+    // it is decided by StaffAccessGuard and the sidebar.
+    if (
+      role !== undefined &&
+      role !== USERTYPE.STORE_OWNER &&
+      role !== USERTYPE.STORE_STAFF
+    ) {
       router.push("/");
     }
   }, [authLoading, session, router, role]);
@@ -359,8 +368,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const isStaff = role === USERTYPE.STORE_STAFF;
+
   // Show dashboard
   return (
+    <PermissionsProvider userKey={user?.id ?? null}>
     <ConfigProvider
       theme={{
         algorithm:
@@ -513,7 +525,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <GracePeriodBanner daysLeftInGrace={accessState.daysLeftInGrace} />
               )}
 
-              {store && storeId && !store.setup_completed_at && (
+              {!isStaff && store && storeId && !store.setup_completed_at && (
                 <SetupChecklistBanner
                   storeId={storeId}
                   storeSlug={store.store_slug}
@@ -537,7 +549,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="flex-1 p-3 bg-background"
                 ref={mainContentRef}
               >
-                {children}
+                <StaffAccessGuard>{children}</StaffAccessGuard>
               </div>
             </main>
           </div>
@@ -560,6 +572,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </AntdApp>
     </ConfigProvider>
+    </PermissionsProvider>
   );
 }
 

@@ -9,6 +9,7 @@ import { bundleItemKey } from "./bundleItemKey";
 import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
 import { redeemCoupon } from "@/lib/queries/coupons/redeemCoupon";
 import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
+import { authorizeForStore, can, checkDiscountLimit, logActivity, permissionDeniedMessage } from "@/lib/permissions/server";
 
 export interface CreateOrderData {
   storeId: string;
@@ -312,6 +313,19 @@ export async function createOrder(
       throw new Error("At least one product is required");
     }
 
+    // Dashboard-only path (the storefront uses createCustomerOrder): the
+    // caller must belong to storeId and may add orders / Quick Sale orders,
+    // within their role's discount limit.
+    const auth = await authorizeForStore(storeId, channel === "pos" ? "pos.add" : "orders.add");
+    if (!auth.ok) throw new Error(auth.error);
+    if (discount > 0) {
+      if (channel === "pos" && !can(auth.actor, "pos.discount")) {
+        throw new Error(permissionDeniedMessage("pos.discount"));
+      }
+      const discountDenied = checkDiscountLimit(auth.actor, discount, subtotal);
+      if (discountDenied) throw new Error(discountDenied);
+    }
+
     // Step 0: Resolve any bundle lines into their component purchases, then
     // validate stock against the resolved (bundle-header-free) list — a
     // bundle header has no product_inventory row of its own.
@@ -486,6 +500,15 @@ export async function createOrder(
         );
       }
     }
+
+    await logActivity(auth.actor, {
+      action: channel === "pos" ? "pos.add" : "orders.add",
+      entityType: "order",
+      entityId: order.id,
+      summary: `${channel === "pos" ? "Quick Sale" : "Order"} #${order.order_number} · ৳${totalAmount}${
+        discount > 0 ? ` · discount ৳${discount}` : ""
+      }`,
+    });
 
     return {
       success: true,

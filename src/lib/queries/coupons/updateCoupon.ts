@@ -4,8 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { updateCouponSchema, type UpdateCouponType } from "@/lib/schema/coupon.schema";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { Coupon } from "@/lib/types/coupon";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- _storeId is caller-supplied and never trusted; the real store is resolved from the session below
 export async function updateCoupon(
@@ -18,7 +18,7 @@ export async function updateCoupon(
   // storeId is caller-supplied — never trust it for authorization. This uses
   // the service-role client below, which bypasses RLS entirely, so this is
   // the only thing standing between one store and another store's coupons.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("coupons.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const storeId = storeResult.storeId;
 

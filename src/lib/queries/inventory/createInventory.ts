@@ -2,6 +2,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeProduct } from "@/lib/permissions/server";
 
 interface InventoryType {
   product_id: string;
@@ -13,6 +14,9 @@ interface InventoryType {
 }
 
 export async function createInventory(inventory: InventoryType) {
+  const auth = await authorizeProduct(inventory.product_id, ["products.add", "products.edit"]);
+  if (!auth.ok) throw new Error(auth.error);
+
   // Determine if this inventory is for a variant or main product
   const isVariant = !!inventory.variant_id;
 

@@ -1,9 +1,9 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { UpdatedStoreData, StoreData } from "@/lib/types/store/store";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 export async function updateStore(
   storeId: string,
@@ -13,7 +13,7 @@ export async function updateStore(
 
   // storeId is caller-supplied — never trust it for authorization on its
   // own. Only allow updating the store the session's own account owns.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok || storeResult.storeId !== storeId) {
     console.error("updateStore: unauthorized store access attempt", { storeId });
     return null;

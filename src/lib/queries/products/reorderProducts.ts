@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
  * Persists a drag-and-drop reorder of the catalog.
@@ -16,7 +16,7 @@ import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 export async function reorderProducts(
   orderedIds: string[],
 ): Promise<{ success: boolean; error?: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("products.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
+import { authorizeProduct } from "@/lib/permissions/server";
 
 interface InventoryRecord {
   product_id: string;
@@ -26,6 +27,9 @@ export async function createProductInventory(
   trackInventory = true
 ) {
   try {
+    const auth = await authorizeProduct(productId, ["products.add", "products.edit"]);
+    if (!auth.ok) throw new Error(auth.error);
+
     const inventoryRecords: InventoryRecord[] = [];
 
     if (!variantIds || variantIds.length === 0) {
