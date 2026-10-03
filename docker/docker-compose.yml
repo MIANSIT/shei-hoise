@@ -297,6 +297,12 @@ services:
         # Needed at build time too — see Dockerfile comment.
         UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
         UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+        # The env file calls this SERVICE_ROLE_KEY; the app reads
+        # process.env.SUPABASE_SERVICE_ROLE_KEY. The runtime `environment:`
+        # block below already bridges the two names — the build needs the
+        # same bridge, because prerendering a storefront page touches
+        # supabaseAdmin, which throws when the key is unset.
+        SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
     restart: unless-stopped
     depends_on:
       kong:

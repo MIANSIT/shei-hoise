@@ -52,3 +52,14 @@ docker/scripts/migrate-data/auth-id-mapping.json
 docker/*.dump
 docker/SERVICE_CREDENTIALS.md
 docker/.env.local-vps-backend
+
+# investor material — pitch decks, business plans and their exports. Kept out
+# of the repo because they carry unaudited projections and round figures that
+# shouldn't travel with the code. docs/DEVELOPER_GUIDE.html and the migration
+# notes stay tracked; these do not.
+docs/*.pptx
+docs/*.potx
+docs/*.pdf
+docs/investment-deck.html
+docs/Shei-Hoise-*
+/PawfectBD Business Tracker.xlsx
