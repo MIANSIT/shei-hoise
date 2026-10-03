@@ -3,7 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
 import { optimizeImage } from "@/lib/utils/optimizeImage";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 type MediaType = "logo" | "banner";
 
@@ -18,7 +18,7 @@ export async function uploadStoreMedia(
     // storeId is caller-supplied — never trust it for authorization on its
     // own. Only allow uploading media for the store the session's own
     // account owns.
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getOwnerStoreId();
     if (!storeResult.ok || storeResult.storeId !== storeId) {
       console.error("uploadStoreMedia: unauthorized store access attempt", { storeId });
       return null;
@@ -79,7 +79,7 @@ export async function deleteStoreMedia(
   const folderPath = `store/${storeId}/`;
 
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getOwnerStoreId();
     if (!storeResult.ok || storeResult.storeId !== storeId) {
       console.error("deleteStoreMedia: unauthorized store access attempt", { storeId });
       return;

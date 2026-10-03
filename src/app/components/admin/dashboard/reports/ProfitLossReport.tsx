@@ -26,6 +26,7 @@ import { exportProfitLossReportPDF } from "@/lib/utils/exportProfitLossReport";
 import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import ProfitTrendChart from "@/app/components/admin/dashboard/dashboardComponent/ProfitTrendChart";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 function StatTile({
   icon,
@@ -138,7 +139,7 @@ export default function ProfitLossReport() {
   }
 
   if (!profitLossAllowed) {
-    return <FeatureLocked title="Profit & Loss Report" />;
+    return <FeatureLocked title={<MenuLabel labelKey="menuProfitLoss" />} />;
   }
 
   return (
@@ -151,7 +152,7 @@ export default function ProfitLossReport() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                Profit &amp; Loss Report
+                <MenuLabel labelKey="menuProfitLoss" />
               </h1>
               <p className="text-xs text-muted-foreground m-0">
                 Sales, cost of goods, expenses and net profit for any date range

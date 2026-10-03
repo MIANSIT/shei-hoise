@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeForStoreAny } from "@/lib/permissions/server";
 
 export interface GetOrCreateCustomerResult {
   customerId: string | null;
@@ -25,6 +26,15 @@ export async function getOrCreateCustomerByPhone(
   if (!cleanedPhone) {
     return { customerId: null, error: "Phone number is required" };
   }
+
+  // Quick Sale and the order editor resolve walk-in customers through this.
+  const auth = await authorizeForStoreAny(storeId, [
+    "customers.add",
+    "orders.add",
+    "orders.edit",
+    "pos.add",
+  ]);
+  if (!auth.ok) return { customerId: null, error: auth.error };
 
   // .limit(1) instead of .maybeSingle() — phone has no unique constraint on
   // store_customers, so more than one existing row can already share a

@@ -32,6 +32,7 @@ import type {
   VendorSettlementItemInput,
   VendorPaymentMethod,
 } from "@/lib/types/vendor/type";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const PAGE_SIZE = 10;
 
@@ -316,7 +317,7 @@ export default function VendorSettlementsPage() {
               <HandCoins size={20} color="white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground m-0">Vendor Settlements</h1>
+              <h1 className="text-lg font-bold text-foreground m-0"><MenuLabel labelKey="menuVendorSettlements" /></h1>
               <p className="text-xs text-muted-foreground m-0">
                 Every sold/returned reconciliation and payment collected from vendors
               </p>

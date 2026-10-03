@@ -1,11 +1,11 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /** `orderedIds` is the full announcement list in its new drag-and-drop order — each id's index becomes its new sort_order. */
 export async function reorderAnnouncements(orderedIds: string[]): Promise<{ success: boolean; error?: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

@@ -1,11 +1,11 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { deletePromoBannerImage } from "@/lib/utils/promoBannerImageStorage";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function deletePromoBanner(bannerId: string): Promise<{ success: boolean; error?: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.delete");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
 
   const { data: existing, error: fetchError } = await supabaseAdmin

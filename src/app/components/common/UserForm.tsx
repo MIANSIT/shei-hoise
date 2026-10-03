@@ -9,6 +9,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 import {
+  AdminLoginFormSchema,
   LoginFormSchema,
   LoginFormType,
   signUpSchema,
@@ -21,6 +22,9 @@ import { PasswordStrength } from "../common/PasswordStrength";
 import { SheiLoader } from "../ui/SheiLoader/loader";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { supabase } from "../../../lib/supabase";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { isStaffLoginValue } from "@/lib/permissions/staffIdentity";
+import { recordOwnerLogin } from "@/lib/queries/staff/recordLogin";
 
 // ✅ Simplified interface
 interface UserFormProps {
@@ -39,6 +43,7 @@ export function UserForm({
   isAdmin = false // Default to false
 }: UserFormProps) {
   const { success, error } = useSheiNotification();
+  const t = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -47,7 +52,9 @@ export function UserForm({
   
   const emailFromParams = searchParams.get("email");
 
-  const schema = mode === "signup" ? signUpSchema : LoginFormSchema;
+  // The dashboard login also accepts staff usernames, which aren't emails.
+  const schema =
+    mode === "signup" ? signUpSchema : isAdmin ? AdminLoginFormSchema : LoginFormSchema;
   
   const form = useForm<any>({
     resolver: zodResolver(schema),
@@ -103,6 +110,8 @@ export function UserForm({
       } catch (err) {
         error("Sign up failed. Please try again.");
       }
+    } else if (isAdmin && isStaffLoginValue(values.username)) {
+      await handleStaffLogin(values.username, values.password);
     } else {
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: values.username,
@@ -119,10 +128,46 @@ export function UserForm({
       }
 
       success("Login successful!");
+      if (isAdmin) recordOwnerLogin();
 
       setTimeout(() => {
         router.push(redirectTo);
       }, 500);
+    }
+  };
+
+  // Staff sign in through a server route (lockout + login history); it sets
+  // the same session cookie, so a full page load picks the session up.
+  const handleStaffLogin = async (username: string, password: string) => {
+    try {
+      const res = await fetch("/api/auth/staff-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        code?: string;
+        minutes?: number;
+        mustChangePassword?: boolean;
+      };
+
+      if (!res.ok || !body.ok) {
+        const messages: Record<string, string> = {
+          invalid: t.staff.loginInvalid,
+          locked: t.staff.loginLocked.replace("{minutes}", String(body.minutes ?? 15)),
+          deactivated: t.staff.loginDeactivated,
+          not_available: t.staff.loginNotAvailable,
+          too_many: t.staff.loginTooMany,
+        };
+        error(messages[body.code ?? ""] ?? t.staff.loginFailed);
+        return;
+      }
+
+      success("Login successful!");
+      window.location.assign(body.mustChangePassword ? "/dashboard/change-password" : "/dashboard");
+    } catch {
+      error(t.staff.loginFailed);
     }
   };
 
@@ -155,11 +200,11 @@ export function UserForm({
       <div className="space-y-2">
         <PillField
           id="email"
-          type="email"
-          label="Email"
+          type={isAdmin && mode === "login" ? "text" : "email"}
+          label={isAdmin && mode === "login" ? t.staff.loginFieldLabel : "Email"}
           value={watchedEmail || ""}
           onChange={(value) => setValue(emailFieldName, value, { shouldValidate: true })}
-          placeholder="Enter your email"
+          placeholder={isAdmin && mode === "login" ? t.staff.loginFieldPlaceholder : "Enter your email"}
           disabled={isSubmitting}
         />
         {/* ✅ Fixed TypeScript error by safely accessing error message */}

@@ -6,7 +6,12 @@ import {
   PaymentStatus,
   DeliveryOption,
 } from "@/lib/types/enums";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import {
+  checkOrderChange,
+  getAuthorizedStoreId,
+  logOrderChange,
+  type OrderChange,
+} from "@/lib/permissions/server";
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
 
@@ -56,7 +61,7 @@ export async function bulkUpdateOrders(
   updateData: BulkUpdateData
 ): Promise<BulkUpdateResult> {
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("orders.view");
     if (!storeResult.ok) {
       return { success: false, error: storeResult.error };
     }
@@ -88,6 +93,28 @@ export async function bulkUpdateOrders(
         success: false,
         error: "No update fields provided",
       };
+    }
+
+    // Every selected order must pass the caller's role rules (e.g. a role
+    // that can only cancel pending orders can't bulk-cancel shipped ones).
+    const { data: ordersToCheck } = await supabaseAdmin
+      .from("orders")
+      .select("id, order_number, status, payment_status")
+      .in("id", updateData.orderIds)
+      .eq("store_id", storeId);
+    const changesByOrder = (ordersToCheck ?? []).map((order) => {
+      const change: OrderChange = {
+        fromStatus: order.status,
+        toStatus: status,
+        paymentStatusChanged: !!payment_status && payment_status !== order.payment_status,
+        toPaymentStatus: payment_status,
+        otherFieldsChanged: !!(delivery_option || payment_method || notes),
+      };
+      return { order, change };
+    });
+    for (const { order, change } of changesByOrder) {
+      const denied = checkOrderChange(storeResult.actor, change);
+      if (denied) return { success: false, error: `#${order.order_number}: ${denied}` };
     }
 
     // Prepare update data with proper typing
@@ -237,6 +264,19 @@ export async function bulkUpdateOrders(
         }
       }
     }
+
+    await Promise.all(
+      changesByOrder.map(({ order, change }) =>
+        logOrderChange(storeResult.actor, order, {
+          ...change,
+          fields: [
+            delivery_option && "delivery",
+            payment_method && "payment method",
+            notes && "notes",
+          ].filter((f): f is string => !!f),
+        }),
+      ),
+    );
 
     return {
       success: true,

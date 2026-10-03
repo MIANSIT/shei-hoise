@@ -4,7 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus, DeliveryOption } from "@/lib/types/enums";
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { fireServerPixelEvent } from "@/lib/utils/pixelEventServer";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import {
+  checkOrderChange,
+  getAuthorizedStoreId,
+  logOrderChange,
+  type OrderChange,
+} from "@/lib/permissions/server";
 import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
 
 export interface UpdateOrderData {
@@ -31,7 +36,7 @@ export async function updateOrder(
   updates: UpdateOrderData
 ): Promise<UpdateOrderResult> {
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("orders.view");
     if (!storeResult.ok) {
       return { success: false, error: storeResult.error };
     }
@@ -51,6 +56,24 @@ export async function updateOrder(
         error: `Order not found: ${fetchError.message}`
       };
     }
+
+    // Staff: cancel / change status / edit each need their own permission,
+    // within the role's status and discount limits.
+    const otherFields = Object.keys(updates).filter(
+      (key) => key !== "status" && key !== "payment_status",
+    );
+    const change: OrderChange = {
+      fromStatus: existingOrder.status,
+      toStatus: updates.status,
+      paymentStatusChanged:
+        updates.payment_status !== undefined && updates.payment_status !== existingOrder.payment_status,
+      toPaymentStatus: updates.payment_status,
+      otherFieldsChanged: otherFields.length > 0,
+      discount: updates.discount_amount,
+      subtotal: Number(existingOrder.subtotal) || 0,
+    };
+    const denied = checkOrderChange(storeResult.actor, change);
+    if (denied) return { success: false, error: denied };
 
     // A paid order becoming returned auto-flips to refunded — this is what
     // makes the dashboard's payment_status-keyed revenue math correctly
@@ -140,6 +163,11 @@ export async function updateOrder(
         wasPaid,
       });
     }
+
+    await logOrderChange(storeResult.actor, existingOrder, {
+      ...change,
+      fields: otherFields,
+    });
 
     return {
       success: true,

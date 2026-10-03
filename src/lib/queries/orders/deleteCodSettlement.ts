@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { checkDeleteWindow, getAuthorizedStoreId, logDeleted } from "@/lib/permissions/server";
 
 /**
  * Undoes a mistakenly-recorded COD settlement — frees every order it covered
@@ -8,19 +8,22 @@ import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
  * deleting the settlement row itself.
  */
 export async function deleteCodSettlement(settlementId: string): Promise<void> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("cod.delete");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const storeId = storeResult.storeId;
 
   const { data: settlement, error: fetchError } = await supabaseAdmin
     .from("store_cod_settlements")
-    .select("id")
+    .select("*")
     .eq("id", settlementId)
     .eq("store_id", storeId)
     .maybeSingle();
 
   if (fetchError) throw new Error(fetchError.message);
   if (!settlement) throw new Error("Settlement not found");
+
+  const tooOld = checkDeleteWindow(storeResult.actor, settlement.created_at);
+  if (tooOld) throw new Error(tooOld);
 
   const { error: updateError } = await supabaseAdmin
     .from("orders")
@@ -37,4 +40,12 @@ export async function deleteCodSettlement(settlementId: string): Promise<void> {
     .eq("store_id", storeId);
 
   if (deleteError) throw new Error(deleteError.message);
+
+  await logDeleted(
+    storeResult.actor,
+    "cod",
+    "cod_settlement",
+    settlement,
+    `Deleted COD settlement of ৳${settlement.total_amount} (${settlement.order_count} orders)`,
+  );
 }

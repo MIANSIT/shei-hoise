@@ -1,13 +1,13 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 /** Delete-by-id is identical regardless of which courier the account belongs to. */
 export async function disconnectCourierAccount(
   credentialId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

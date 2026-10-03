@@ -72,6 +72,13 @@ export interface ProductWithVariants {
    Query Options
 ========================= */
 
+/**
+ * List order when not searching. "store" is the manual drag order customers
+ * see on the storefront; "newest" is what an owner usually wants while
+ * managing products (a just-added one lands on top).
+ */
+export type ProductListSort = "store" | "newest" | "name";
+
 export async function getProductsWithVariants({
   storeId,
   search,
@@ -82,6 +89,7 @@ export async function getProductsWithVariants({
   excludeBundles,
   withCounts = true,
   productIds,
+  sort = "store",
 }: {
   storeId: string;
   search?: string;
@@ -95,6 +103,8 @@ export async function getProductsWithVariants({
   withCounts?: boolean;
   /** Fetch exactly these product IDs instead of paging through the store's catalog — e.g. resolving an existing order's line items without loading everything else. Ignores search/page/pageSize/status/featured/excludeBundles. */
   productIds?: string[];
+  /** Order when not searching (a search is always ordered by relevance). Defaults to "store". */
+  sort?: ProductListSort;
 }): Promise<{
   data: ProductWithVariants[];
   total: number;
@@ -201,16 +211,36 @@ export async function getProductsWithVariants({
         featuredCount: 0,
       };
     }
-    query.in("id", relevanceOrder);
-    if (status) query.eq("status", status);
-    if (featured !== undefined) query.eq("featured", featured);
-    if (excludeBundles) query.neq("product_type", "bundle");
+    // searchProductIds already applied status/featured/bundle filters, so
+    // only the ids on the requested page need their full product rows —
+    // loading every match (with variants, images and stock) and slicing in
+    // the browser made broad searches slow, and past 1000 matches PostgREST
+    // silently dropped rows.
+    const pageIds =
+      page !== undefined && pageSize !== undefined
+        ? relevanceOrder.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
+        : relevanceOrder;
+    if (pageIds.length === 0) {
+      return {
+        data: [],
+        total: relevanceOrder.length,
+        counts: { [ProductStatus.ACTIVE]: 0, [ProductStatus.INACTIVE]: 0, [ProductStatus.DRAFT]: 0, ALL: 0 },
+        featuredCount: 0,
+      };
+    }
+    query.in("id", pageIds);
   } else {
     // Manual drag order first (see reorderProducts.ts), then A–Z. A product
     // added after the catalog was numbered has no position yet, so it lands
     // at the end with its alphabetical neighbours until it's dragged.
-    query.order("sort_order", { ascending: true, nullsFirst: false });
-    query.order("name", { ascending: true });
+    if (sort === "newest") {
+      query.order("created_at", { ascending: false });
+    } else if (sort === "name") {
+      query.order("name", { ascending: true });
+    } else {
+      query.order("sort_order", { ascending: true, nullsFirst: false });
+      query.order("name", { ascending: true });
+    }
 
     if (status) query.eq("status", status);
     if (featured !== undefined) query.eq("featured", featured);
@@ -298,11 +328,9 @@ export async function getProductsWithVariants({
       .map((id) => byId.get(id))
       .filter((p): p is ProductWithVariants => !!p);
 
-    total = ordered.length;
-    finalProducts =
-      page !== undefined && pageSize !== undefined
-        ? ordered.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
-        : ordered;
+    // Only this page's rows were fetched; the total is every match.
+    total = relevanceOrder.length;
+    finalProducts = ordered;
   }
 
   // ------------------ 2️⃣ Fetch counts per status + featured ------------------

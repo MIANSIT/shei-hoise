@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // Cancels a confirmed vendor order by reversing all stock:
 // vendor_stock → product_inventory for every line item.
@@ -13,7 +13,7 @@ export async function cancelVendorOrder(
   // own store before letting the RPC move any stock. p_caller_store_id is
   // also passed through so the RPC itself re-checks (see
   // supabase/migrations/20260822000000_add_vendor_rpc_ownership_checks.sql).
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("vendors.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { error } = await supabaseAdmin.rpc("cancel_vendor_order", {

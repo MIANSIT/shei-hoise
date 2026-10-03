@@ -24,6 +24,7 @@ import {
   exportSalesReportXLSX,
   SalesReportMeta,
 } from "@/lib/utils/exportSalesReport";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 type Granularity = "day" | "week" | "month" | "year" | "custom";
 
@@ -319,7 +320,7 @@ export default function SalesReport() {
   }
 
   if (!advancedReportsAllowed) {
-    return <FeatureLocked title="Sales Report" />;
+    return <FeatureLocked title={<MenuLabel labelKey="menuSalesReport" />} />;
   }
 
   return (
@@ -332,7 +333,7 @@ export default function SalesReport() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                Sales Report
+                <MenuLabel labelKey="menuSalesReport" />
               </h1>
               <p className="text-xs text-muted-foreground m-0">
                 Track sales by day, week, month, year, or a custom range — online vs. Quick Sale

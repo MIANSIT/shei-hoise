@@ -18,6 +18,8 @@ import {
 import { hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreBySlugWithLogo } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { onStoreSetupCompleted } from "@/lib/utils/storeSetupEvent";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { routeRequirement } from "@/lib/permissions/routes";
 
 interface SidebarMenuProps {
   themeMode: "light" | "dark";
@@ -36,7 +38,7 @@ function renderIcon(
 
 function mapMenuItem(
   item: MenuItem,
-  translateTitle: (title: string) => string,
+  labelFor: (item: MenuItem) => string,
   storeSlug?: string | null,
   onMobileMenuClick?: () => void,
 ): AntdMenuItem {
@@ -48,8 +50,8 @@ function mapMenuItem(
         return {
           key: `/${storeSlug}/generate-orders-link`,
           icon: renderIcon(child.icon),
-          label: translateTitle(child.title),
-          title: translateTitle(child.title),
+          label: labelFor(child),
+          title: labelFor(child),
           onClick: (e) => {
             e.domEvent.stopPropagation();
             window.open(`/${storeSlug}/generate-orders-link`, "_blank");
@@ -61,14 +63,15 @@ function mapMenuItem(
       return {
         key: child.href || child.title,
         icon: renderIcon(child.icon),
-        label: translateTitle(child.title),
+        // title: the full name on hover, in case a long label is still cut off.
+        label: <span title={labelFor(child)}>{labelFor(child)}</span>,
       };
     });
 
     return {
       key: item.title,
       icon,
-      label: translateTitle(item.title),
+      label: labelFor(item),
       children,
     };
   }
@@ -76,7 +79,7 @@ function mapMenuItem(
   return {
     key: item.href || item.title,
     icon,
-    label: translateTitle(item.title),
+    label: labelFor(item),
   };
 }
 
@@ -89,6 +92,7 @@ export default function SidebarMenu({
   const router = useRouter();
   const t = useTranslation();
   const { storeId } = useCurrentUser();
+  const { can, isOwner, loading: permissionsLoading } = usePermissions();
 
   const [couriers, setCouriers] = useState<DeliveryCourier[]>([]);
   const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
@@ -126,62 +130,62 @@ export default function SidebarMenu({
   // (FeatureLocked), not by hiding the link. "Vendors" is the one exception:
   // items with requiredFeature set are filtered out of the sidebar entirely
   // when the store's plan doesn't include that feature.
+  //
+  // Staff additionally only see links their role allows (see
+  // src/lib/permissions/routes.ts); a group left with no links is dropped.
+  // StaffAccessGuard in the dashboard layout is what actually blocks a page.
   const resolvedMenu = useMemo<MenuItem[]>(() => {
+    if (permissionsLoading) return [];
+
+    const isAllowed = (item: MenuItem): boolean => {
+      if (isOwner) return true;
+      if (item.ownerOnly) return false;
+      if (!item.href) return true;
+      // Opens the public order-link generator; only useful to someone who can add orders.
+      if (!item.href.startsWith("/dashboard")) return can("orders.add");
+      const requirement = routeRequirement(item.href);
+      if (requirement === "owner") return false;
+      if (requirement === "any") return true;
+      return can(requirement);
+    };
+
     return sideMenu
       .filter((item) => !item.requiredFeature || hasFeature(subscription, item.requiredFeature))
-      .filter((item) => !item.hideWhenSetupComplete || !setupCompleted)
+      .filter((item) => !item.hideWhenSetupComplete || (!setupCompleted && isOwner))
+      .filter(isAllowed)
+      .map((item) =>
+        item.children ? { ...item, children: item.children.filter(isAllowed) } : item,
+      )
       .map((item) => {
         if (item.title !== "Courier" || !item.children) return item;
         return {
           ...item,
           children: [
-            ...couriers.map((courier) => ({
-              title: courier.name,
-              href: courierHref(courier),
-              icon: Truck,
-            })),
+            ...couriers
+              .map((courier) => ({
+                title: courier.name,
+                href: courierHref(courier),
+                icon: Truck,
+              }))
+              .filter(isAllowed),
             ...item.children,
           ],
         };
-      });
-  }, [couriers, subscription, setupCompleted]);
+      })
+      .filter((item) => !item.children || item.children.length > 0);
+  }, [couriers, subscription, setupCompleted, permissionsLoading, isOwner, can]);
 
-  const translateTitle = (title: string): string => {
-    const map: Record<string, string> = {
-      "Dashboard": t.admin.menuDashboard,
-      "Complete Setup": t.admin.menuCompleteSetup,
-      "Users": t.admin.menuUsers,
-      "All Users": t.admin.menuAllUsers,
-      "Create Users": t.admin.menuCreateUsers,
-      "Products": t.admin.menuProducts,
-      "Add Product": t.admin.menuAddProduct,
-      "Stock Update": t.admin.menuStockUpdate,
-      "All Products": t.admin.menuAllProducts,
-      "Bundles": t.admin.menuBundles,
-      "All Categories": t.admin.menuAllCategories,
-      "Reviews": t.admin.menuReviews,
-      "Orders": t.admin.menuOrders,
-      "Create Order": t.admin.menuCreateOrder,
-      "All Orders": t.admin.menuAllOrders,
-      "Generate Order Link": t.admin.menuGenerateOrderLink,
-      "Marketing": t.admin.menuMarketing,
-      "Coupons": t.admin.menuCoupons,
-      "Setting": t.admin.menuSetting,
-      "Shipping": t.admin.menuShipping,
-      "Financial": t.admin.menuFinancial,
-      "Expense": t.admin.menuExpense,
-      "Category": t.admin.menuCategory,
-      "Pixel Analytics": t.admin.menuPixelAnalytics,
-      "Subscription": t.admin.menuSubscription,
-      "Courier": t.admin.menuCourier,
-      "Pathao": t.admin.pathaoCardTitle,
-      "Steadfast": t.admin.steadfastCardTitle,
-    };
-    return map[title] ?? title;
+  // Courier children come from the DB (Pathao, Steadfast, custom names);
+  // the two built-in ones get their translated card titles.
+  const courierLabels: Record<string, string> = {
+    Pathao: t.admin.pathaoCardTitle,
+    Steadfast: t.admin.steadfastCardTitle,
   };
+  const labelFor = (item: MenuItem): string =>
+    item.labelKey ? t.admin[item.labelKey] : courierLabels[item.title] ?? item.title;
 
   const items = useMemo(
-    () => resolvedMenu.map((i) => mapMenuItem(i, translateTitle, storeSlug, onMobileMenuClick)),
+    () => resolvedMenu.map((i) => mapMenuItem(i, labelFor, storeSlug, onMobileMenuClick)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [resolvedMenu, storeSlug, onMobileMenuClick, t],
   );
@@ -214,6 +218,8 @@ export default function SidebarMenu({
   return (
     <Menu
       mode="inline"
+      // Default 24px per level indents sub-items 48px, leaving little room for the label.
+      inlineIndent={16}
       selectedKeys={[pathname]}
       defaultOpenKeys={defaultOpenKeys}
       items={items}

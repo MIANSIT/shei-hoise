@@ -3,12 +3,16 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
 import { optimizeImage } from "@/lib/utils/optimizeImage";
+import { authorizeProduct } from "@/lib/permissions/server";
 
 export async function uploadProductImage(
   file: File,
   productId: string
 ): Promise<string> {
   try {
+    const auth = await authorizeProduct(productId, ["products.add", "products.edit"]);
+    if (!auth.ok) throw new Error(auth.error);
+
     // Filenames carry a timestamp, so a given URL's bytes never change — safe
     // to cache in the browser for a year.
     const baseName = file.name.replace(/\.[^./]+$/, "");

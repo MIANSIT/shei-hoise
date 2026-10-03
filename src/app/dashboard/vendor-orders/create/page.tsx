@@ -34,6 +34,7 @@ import type {
   VendorOrderItemInput,
 } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 interface DraftLineItem extends VendorOrderItemInput {
   key: string;
@@ -429,7 +430,7 @@ export default function CreateVendorOrderPage() {
             <PackagePlus size={20} color="white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground m-0">New Vendor Order</h1>
+            <h1 className="text-lg font-bold text-foreground m-0"><MenuLabel labelKey="menuNewVendorOrder" /></h1>
             <p className="text-xs text-muted-foreground m-0">
               Dispatch stock to a vendor — saved as a draft until confirmed
             </p>

@@ -5,6 +5,7 @@ import { ShippingManager } from "@/app/components/shipping/ShippingManager";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useEffect } from "react";
 import { Truck, Store } from "lucide-react";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 export default function AdminShippingPage() {
   const { storeSlug, loading: userLoading } = useCurrentUser();
@@ -86,7 +87,7 @@ export default function AdminShippingPage() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                Shipping
+                <MenuLabel labelKey="menuShipping" />
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Manage delivery methods &amp; costs

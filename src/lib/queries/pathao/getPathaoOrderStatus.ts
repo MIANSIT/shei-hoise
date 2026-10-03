@@ -1,10 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { getOrderInfo } from "@/lib/utils/pathaoApi";
 import { autoMarkOrderDeliveredFromCourier } from "@/lib/queries/orders/autoMarkOrderDelivered";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface RefreshPathaoStatusResult {
   success: boolean;
@@ -18,7 +18,7 @@ export async function refreshPathaoOrderStatus(
   orderId: string,
   consignmentId: string,
 ): Promise<RefreshPathaoStatusResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("courier.view");
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

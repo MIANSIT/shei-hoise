@@ -19,6 +19,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const { Text, Title } = Typography;
 
@@ -212,7 +213,7 @@ export default function QuickSaleAudit() {
   }
 
   if (!posAllowed) {
-    return <FeatureLocked title="Register Audit" />;
+    return <FeatureLocked title={<MenuLabel labelKey="menuRegisterAudit" />} />;
   }
 
   return (
@@ -220,7 +221,7 @@ export default function QuickSaleAudit() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Title level={2} style={{ margin: 0 }}>
-            Register Audit
+            <MenuLabel labelKey="menuRegisterAudit" />
           </Title>
           <Text type="secondary" className="text-xs">
             End-of-shift cash count for the day&apos;s sales — online and in-store.

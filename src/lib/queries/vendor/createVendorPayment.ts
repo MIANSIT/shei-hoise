@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { CreateVendorPaymentInput, VendorPayment } from "@/lib/types/vendor/type";
+import { authorizeForStore, logActivity } from "@/lib/permissions/server";
 
 // Records cash collected from a vendor with no product breakdown required —
 // a pure ledger entry against the vendor. Record Settlement stays for
@@ -14,6 +15,9 @@ export async function createVendorPayment(
     throw new Error("Payment amount must be greater than zero");
   }
 
+  const auth = await authorizeForStore(input.store_id, "vendors.add");
+  if (!auth.ok) throw new Error(auth.error);
+
   const { data, error } = await supabaseAdmin
     .from("vendor_payments")
     .insert({
@@ -23,13 +27,20 @@ export async function createVendorPayment(
       payment_date: input.payment_date,
       payment_method: input.payment_method,
       notes: input.notes || null,
-      created_by: input.created_by || null,
+      created_by: input.created_by || auth.actor.userId,
       vendor_order_id: input.vendor_order_id || null,
     })
     .select("*")
     .single();
 
   if (error) throw new Error(error.message);
+
+  await logActivity(auth.actor, {
+    action: "vendors.add",
+    entityType: "vendor_payment",
+    entityId: data.id,
+    summary: `Vendor payment ৳${input.amount} (${input.payment_method})`,
+  });
 
   return data as VendorPayment;
 }

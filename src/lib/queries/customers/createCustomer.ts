@@ -1,6 +1,7 @@
 "use server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { staffPermissionError } from "@/lib/permissions/server";
 
 export interface CreateCustomerData {
   store_id: string;
@@ -16,6 +17,15 @@ export interface CreateCustomerData {
 
 export async function createCustomer(customerData: CreateCustomerData) {
   try {
+    // Also used by storefront checkout and sign-up, so only staff are checked.
+    const denied = await staffPermissionError([
+      "customers.add",
+      "orders.add",
+      "orders.edit",
+      "pos.add",
+    ]);
+    if (denied) throw new Error(denied);
+
     // Check if a customer with this email already exists (only if email is provided)
     if (customerData.email) {
       const { data: existingCustomer, error: checkError } = await supabaseAdmin

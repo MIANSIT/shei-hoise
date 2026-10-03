@@ -34,6 +34,13 @@ export const LoginFormSchema = z.object({
   password: z.string().min(1, { message: "Password is required" }),
 });
 
+// Dashboard login: owners type an email, staff a username (no "@") —
+// see src/lib/permissions/staffIdentity.ts.
+export const AdminLoginFormSchema = z.object({
+  username: z.string().trim().min(1, { message: "Enter your email or username" }),
+  password: z.string().min(1, { message: "Password is required" }),
+});
+
 // Checkout schema
 export const userCheckoutSchema = z.object({
   name: validators.name,

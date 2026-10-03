@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { DeliveryCourier } from "@/lib/types/store/store";
+import { requireOwner } from "@/lib/permissions/server";
 
 /**
  * store_settings has no unique constraint on store_id (only its own `id` PK),
@@ -13,6 +14,9 @@ export async function updateDeliveryCouriers(
   storeId: string,
   deliveryCouriers: DeliveryCourier[],
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await requireOwner({ storeId });
+  if (!auth.ok) return { success: false, error: auth.error };
+
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("store_settings")
     .update({

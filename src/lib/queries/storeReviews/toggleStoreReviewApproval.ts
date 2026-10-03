@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export type ToggleStoreReviewApprovalResult =
   | { success: true }
@@ -11,7 +11,7 @@ async function toggleStoreReviewApprovalInternal(
   reviewId: string,
   isApproved: boolean,
 ): Promise<void> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("reviews.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   // reviewId is caller-supplied — confirm it belongs to the caller's store

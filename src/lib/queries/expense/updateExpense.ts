@@ -1,7 +1,7 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { Expense } from "@/lib/types/expense/type";
+import { checkExpenseLimit, getAuthorizedStoreId, logActivity } from "@/lib/permissions/server";
 
 export interface UpdateExpenseInput {
   id: string;
@@ -24,10 +24,18 @@ export async function updateExpense(
 
     // id is caller-supplied — scope the update to an expense that actually
     // belongs to the caller's own store.
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("expenses.edit");
     if (!storeResult.ok) {
       console.error("updateExpense: unauthorized store access attempt");
       return null;
+    }
+
+    if (rawFields.amount !== undefined) {
+      const overLimit = checkExpenseLimit(storeResult.actor, Number(rawFields.amount) || 0);
+      if (overLimit) {
+        console.error("updateExpense:", overLimit);
+        return null;
+      }
     }
 
     // Strip undefined values so we never accidentally null out existing DB columns
@@ -52,6 +60,14 @@ export async function updateExpense(
       console.error("Error updating expense:", error.message);
       return null;
     }
+
+    await logActivity(storeResult.actor, {
+      action: "expenses.edit",
+      entityType: "expense",
+      entityId: id,
+      summary: `${data.title}: ৳${data.amount}`,
+      details: { changed: fields },
+    });
 
     return data as Expense;
   } catch (err) {

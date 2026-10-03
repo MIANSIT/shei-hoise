@@ -1,5 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeForStore } from "@/lib/permissions/server";
 
 // Deletes a standalone Record Payment entry — no side effects beyond the
 // row itself (unlike a settlement or an order's upfront payment), so a
@@ -11,6 +12,12 @@ export async function deleteVendorPayment(
   paymentId: string,
   storeId: string,
 ): Promise<boolean> {
+  const auth = await authorizeForStore(storeId, "vendors.delete");
+  if (!auth.ok) {
+    console.error("deleteVendorPayment:", auth.error);
+    return false;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("vendor_payments")
     .delete()

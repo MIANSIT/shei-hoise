@@ -1,15 +1,15 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { announcementFieldsSchema, type AnnouncementFieldsType } from "@/lib/schema/announcement.schema";
 import type { Announcement } from "@/lib/types/announcement";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function updateAnnouncement(
   announcementId: string,
   fields: AnnouncementFieldsType,
 ): Promise<{ success: true; announcement: Announcement } | { success: false; error: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

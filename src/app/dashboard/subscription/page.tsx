@@ -676,7 +676,7 @@ export default function SubscriptionPage() {
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">
-          {t.admin.subPageTitle}
+          {t.admin.menuSubscription}
         </h1>
         <p className="text-sm text-muted-foreground">
           {t.admin.subPageDesc}

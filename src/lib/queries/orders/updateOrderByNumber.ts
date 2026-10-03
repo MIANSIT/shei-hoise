@@ -4,6 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
+import {
+  authorizeForStore,
+  checkOrderChange,
+  logOrderChange,
+  type OrderChange,
+} from "@/lib/permissions/server";
 
 export interface UpdateOrderByNumberData {
   orderId: string;
@@ -83,6 +89,11 @@ export async function updateOrderByNumber(
       orderDate,
     } = updateData;
 
+    // storeId comes from the client — the caller must belong to it and be
+    // allowed to edit orders.
+    const auth = await authorizeForStore(storeId, "orders.edit");
+    if (!auth.ok) return { success: false, error: auth.error };
+
     // Validate order exists and belongs to store
     const { data: existingOrder, error: fetchError } = await supabaseAdmin
       .from("orders")
@@ -98,6 +109,18 @@ export async function updateOrderByNumber(
         error: `Order not found: ${fetchError.message}`,
       };
     }
+
+    const change: OrderChange = {
+      fromStatus: existingOrder.status,
+      toStatus: status,
+      paymentStatusChanged: paymentStatus !== existingOrder.payment_status,
+      toPaymentStatus: paymentStatus,
+      otherFieldsChanged: true,
+      discount: Number(discount) || 0,
+      subtotal: Number(subtotal) || 0,
+    };
+    const denied = checkOrderChange(auth.actor, change);
+    if (denied) return { success: false, error: denied };
 
     // Get existing order items to compare
     const { data: existingOrderItemsRaw, error: itemsFetchError } =
@@ -308,6 +331,11 @@ export async function updateOrderByNumber(
       )
       .eq("id", orderId)
       .single();
+
+    await logOrderChange(auth.actor, existingOrder, {
+      ...change,
+      fields: ["order details"],
+    });
 
     return {
       success: true,

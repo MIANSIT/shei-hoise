@@ -2,13 +2,13 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { encrypt } from "@/lib/utils/encryption";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   issueToken,
   getMerchantStores,
   getResolvedPathaoEnvironment,
   type PathaoStore,
 } from "@/lib/utils/pathaoApi";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 export interface ConnectPathaoInput {
   label: string;
@@ -35,7 +35,7 @@ export interface ConnectPathaoResult {
 export async function connectPathaoAccount(
   input: ConnectPathaoInput,
 ): Promise<ConnectPathaoResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

@@ -13,12 +13,15 @@ import {
   StoreWithLogo,
 } from "@/lib/queries/stores/getStoreBySlugWithLogo";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { clearUserCache } from "@/lib/hook/useCurrentUser";
 
 export default function SidebarProfile() {
   const { user, storeSlug } = useCurrentUser();
   const router = useRouter();
   const notify = useSheiNotification();
   const t = useTranslation();
+  const { access, isOwner } = usePermissions();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [store, setStore] = useState<StoreWithLogo | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
@@ -43,6 +46,7 @@ export default function SidebarProfile() {
     try {
       setLogoutLoading(true);
       await supabase.auth.signOut();
+      clearUserCache();
       notify.success(t.admin.logoutSuccess);
       router.push("/admin-login");
     } catch (err: unknown) {
@@ -57,6 +61,31 @@ export default function SidebarProfile() {
     }
   };
 
+  // Staff log in with a username; their auth email is an internal
+  // placeholder, so show "username · role" instead.
+  const subtitle =
+    access?.kind === "staff" ? `${access.username} · ${access.roleName}` : user?.email;
+
+  // Profile and store management are owner-only pages.
+  const ownerItems: NonNullable<MenuProps["items"]> = isOwner
+    ? [
+        {
+          key: "profile",
+          icon: <User className="w-4 h-4" />,
+          label: <span className="text-sm font-medium">{t.admin.profileMenuItem}</span>,
+          onClick: () => router.push("/dashboard/admin-profile"),
+          className: "!py-2",
+        },
+        {
+          key: "store-management",
+          icon: <Store className="w-4 h-4" />,
+          label: <span className="text-sm font-medium">{t.admin.storeManagement}</span>,
+          onClick: () => router.push("/dashboard/store-management"),
+          className: "!py-2",
+        },
+      ]
+    : [];
+
   const userMenu: MenuProps = {
     items: [
       {
@@ -67,27 +96,14 @@ export default function SidebarProfile() {
               {user?.first_name} {user?.last_name}
             </p>
             <p className="text-xs text-muted-foreground truncate">
-              {user?.email}
+              {subtitle}
             </p>
           </div>
         ),
         disabled: true,
         className: "!cursor-default hover:!bg-transparent",
       },
-      {
-        key: "profile",
-        icon: <User className="w-4 h-4" />,
-        label: <span className="text-sm font-medium">{t.admin.profileMenuItem}</span>,
-        onClick: () => router.push("/dashboard/admin-profile"),
-        className: "!py-2",
-      },
-      {
-        key: "store-management",
-        icon: <Store className="w-4 h-4" />,
-        label: <span className="text-sm font-medium">{t.admin.storeManagement}</span>,
-        onClick: () => router.push("/dashboard/store-management"),
-        className: "!py-2",
-      },
+      ...ownerItems,
       {
         type: "divider",
       },

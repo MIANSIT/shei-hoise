@@ -1,10 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { normalizeBdPhone } from "@/lib/utils/normalizeBdPhone";
 import { createOrder } from "@/lib/utils/pathaoApi";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface CreatePathaoShipmentInput {
   recipientName: string;
@@ -52,7 +52,7 @@ export async function createPathaoShipment(
   merchantOrderNumber: string,
   input: CreatePathaoShipmentInput,
 ): Promise<CreatePathaoShipmentResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("courier.add");
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

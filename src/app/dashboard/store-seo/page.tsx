@@ -9,6 +9,7 @@ import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { StoreSeoCard } from "@/app/components/admin/dashboard/store-settings/storeCard/StoreSeoCard";
 import type { UpdatedStoreData, StoreData } from "@/lib/types/store/store";
 import { useEffect, useState } from "react";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 export default function StoreSeoPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
@@ -43,7 +44,7 @@ export default function StoreSeoPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Store SEO</h1>
+        <h1 className="text-2xl font-bold text-foreground"><MenuLabel labelKey="menuStoreSeo" /></h1>
         <p className="text-sm text-muted-foreground mt-1">
           Controls how your store appears in Google search results — separate from the description shown to customers on your storefront.
         </p>

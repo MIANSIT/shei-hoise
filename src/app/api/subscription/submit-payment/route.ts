@@ -38,6 +38,10 @@ export async function POST(req: Request) {
     if (!isSuperAdmin && dbUser?.store_id !== validated.store_id) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+    // Staff carry users.store_id too, but paying for the plan is the owner's job.
+    if (dbUser?.user_type === "store_staff") {
+      return Response.json({ error: "Only the store owner can pay for the plan" }, { status: 403 });
+    }
 
     // Use the service-role admin client to bypass RLS for the UPDATE.
     // Auth has already been verified above.

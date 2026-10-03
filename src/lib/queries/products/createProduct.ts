@@ -7,8 +7,8 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export type CreateProductResult =
   | { success: true; productId: string }
@@ -21,7 +21,7 @@ export type CreateProductResult =
 async function createProductInternal(product: ProductType): Promise<string> {
   // product.store_id is caller-supplied — never trust it for authorization.
   // Always create under the session's own store, regardless of what was sent.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("products.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
   product = { ...product, store_id: storeResult.storeId };
 

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef } from "react";
-import { useRouter } from "next/navigation"; // App Router
+import React, { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation"; // App Router
 import AddProductForm, {
   AddProductFormRef,
 } from "@/app/components/admin/dashboard/products/addProducts/AddProductForm";
@@ -9,18 +9,63 @@ import { ProductType } from "@/lib/schema/productSchema";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { createProduct } from "@/lib/queries/products/createProduct";
+import { getProductBySlug } from "@/lib/queries/products/getProductBySlug";
+import { toDuplicateDraft } from "@/lib/utils/duplicateProduct";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
+// useSearchParams needs a Suspense boundary on a statically rendered page.
 export default function AddProductPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <AddProductPageContent />
+    </Suspense>
+  );
+}
+
+function AddProductPageContent() {
   const router = useRouter();
+  const t = useTranslation();
   const { success, error } = useSheiNotification();
   const { user, loading } = useCurrentUser();
   const formRef = useRef<AddProductFormRef>(null);
+
+  // ?duplicate=<slug>: start from a copy of that product (Products → Duplicate).
+  const duplicateSlug = useSearchParams().get("duplicate");
+  const [duplicate, setDuplicate] = useState<{ draft: ProductType; from: string } | null>(null);
+  const [duplicateLoading, setDuplicateLoading] = useState(!!duplicateSlug);
+  const copySuffix = t.admin.productCopySuffix;
+
+  useEffect(() => {
+    if (!duplicateSlug || !user?.store_id) return;
+    let cancelled = false;
+    setDuplicateLoading(true);
+    getProductBySlug(user.store_id, duplicateSlug)
+      .then((source) => {
+        if (cancelled) return;
+        if (!source) {
+          error(t.admin.productDuplicateLoadFailed);
+          return;
+        }
+        setDuplicate({ draft: toDuplicateDraft(source, copySuffix), from: source.name });
+      })
+      .catch(() => {
+        if (!cancelled) error(t.admin.productDuplicateLoadFailed);
+      })
+      .finally(() => {
+        if (!cancelled) setDuplicateLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicateSlug, user?.store_id]);
 
   // Only block render on the very first load (no cached user yet).
   // If loading re-triggers due to Supabase token refresh on tab focus,
   // keep the form mounted so the draft isn't lost.
   if (loading && !user) return <p>Loading...</p>;
   if (!user || !user.store_id) return <p>No store found for this user.</p>;
+  if (duplicateLoading) return <p>Loading...</p>;
 
   const handleSubmit = async (product: ProductType) => {
     const result = await createProduct(product);
@@ -37,17 +82,18 @@ export default function AddProductPage() {
       </div>
     );
     formRef.current?.reset();
-    // New products always land at the end of the catalog's manual order
-    // (sort_order is NULL until dragged) — with normal pagination that could
-    // be several pages away from the page-1 default. Send the owner straight
-    // into the unpaginated Reorder view instead, where the new product is
-    // simply the last row and immediately visible, ready to drag into place.
-    router.push(`/dashboard/products?reorder=1&justAdded=${result.productId}`);
+    // The product list opens newest-first, so the new product is the first
+    // row; justAdded highlights it for a moment.
+    router.push(`/dashboard/products?justAdded=${result.productId}`);
   };
 
   return (
     <AddProductForm
+      // Remount when switching between a blank form and a duplicate.
+      key={duplicate ? `dup-${duplicateSlug}` : "new"}
       ref={formRef}
+      initialProduct={duplicate?.draft}
+      duplicatedFrom={duplicate?.from}
       storeId={user.store_id}
       onSubmit={(product) => handleSubmit(product)}
     />

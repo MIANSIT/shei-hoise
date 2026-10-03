@@ -25,7 +25,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode } from "lucide-react";
+import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode, Copy, MoreHorizontal } from "lucide-react";
 import { isSaleActive } from "@/lib/utils/getEffectivePrice";
 import { Modal, Checkbox, Button, Dropdown, Popover } from "antd";
 import { LockOutlined } from "@ant-design/icons";
@@ -50,6 +50,7 @@ import { generateBulkBarcodeLabelPdf, isSkuTooLongForBarcodeLabel } from "@/lib/
 import { isBarcode128Encodable } from "@/lib/utils/productBarcode";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import QrLabelPreviewModal from "./QrLabelPreviewModal";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 type QrLayout = "pages" | "strip" | "sheet";
 
@@ -95,6 +96,10 @@ interface ProductTableProps {
   qrAllowed?: boolean;
   /** Whether this store's plan includes barcode labels — gates the per-row/bulk barcode actions and the modal's Barcode tab. */
   barcodeAllowed?: boolean;
+  /** Drag-to-reorder only makes sense while the list is in store order. */
+  allowDrag?: boolean;
+  /** A just-saved product to highlight. */
+  highlightId?: string | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -207,37 +212,18 @@ const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   </button>
 );
 
-const DeleteButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <button
-    onClick={onClick}
-    className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15 hover:border-red-300 dark:hover:border-red-500 hover:scale-105 active:scale-95 transition-all duration-150"
-    aria-label="Delete"
-  >
-    <Trash2 className="w-3.5 h-3.5" />
-  </button>
-);
+/** At or below this many units a product shows as "Low". */
+const LOW_STOCK_AT = 5;
 
-const QrButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <button
-    onClick={onClick}
-    className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/15 hover:border-emerald-300 dark:hover:border-emerald-500 hover:scale-105 active:scale-95 transition-all duration-150"
-    aria-label="Generate QR"
-    title="Generate QR"
-  >
-    <QrCode className="w-3.5 h-3.5" />
-  </button>
-);
-
-const BarcodeButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <button
-    onClick={onClick}
-    className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-500 hover:scale-105 active:scale-95 transition-all duration-150"
-    aria-label="Generate barcode"
-    title="Generate barcode"
-  >
-    <Barcode className="w-3.5 h-3.5" />
-  </button>
-);
+/** Units available to sell: summed over variants, or the product's own row. */
+function getTotalStock(record: ProductWithVariants): number {
+  const sum = (rows?: { quantity_available?: number | null }[] | null) =>
+    (rows ?? []).reduce((total, row) => total + (row.quantity_available ?? 0), 0);
+  const variants = record.product_variants ?? [];
+  return variants.length > 0
+    ? variants.reduce((total, v) => total + sum(v.product_inventory), 0)
+    : sum(record.product_inventory);
+}
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
@@ -251,6 +237,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
   onReorderSuccess,
   qrAllowed = false,
   barcodeAllowed = false,
+  allowDrag = false,
+  highlightId = null,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -258,6 +246,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { can } = usePermissions();
+  const canEdit = can("products.edit");
+  const canDelete = can("products.delete");
+  const canAdd = can("products.add");
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [qrProduct, setQrProduct] = useState<ProductWithVariants | null>(null);
@@ -369,6 +361,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
     router.push(
       `/dashboard/products/edit-product/${slug}?returnUrl=${encodeURIComponent(returnUrl)}`,
     );
+  };
+
+  // Opens Add Product pre-filled from this product; nothing is saved until
+  // the owner reviews it and presses Save.
+  const handleDuplicate = (slug: string) => {
+    router.push(`/dashboard/products/add-product?duplicate=${encodeURIComponent(slug)}`);
   };
 
   const showDeleteModal = (id: string) => {
@@ -491,9 +489,168 @@ const ProductTable: React.FC<ProductTableProps> = ({
     }
   };
 
+  // ── Row helpers ─────────────────────────────────────────────────────────────
+
+  const renderBadges = (record: ProductWithVariants) => {
+    const featured = getFeatured(record);
+    const freeDelivery = getFreeDelivery(record);
+    const flashSale = hasActiveFlashSale(record);
+    if (!featured && !freeDelivery && !flashSale) return null;
+    return (
+      <div className="flex flex-wrap gap-1">
+        {featured && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+            <Star className="h-2.5 w-2.5 fill-current" aria-hidden="true" />
+            {t.admin.productFeaturedBadge}
+          </span>
+        )}
+        {freeDelivery && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+            <Truck className="h-2.5 w-2.5" aria-hidden="true" />
+            {t.admin.productFreeDeliveryBadge}
+          </span>
+        )}
+        {flashSale && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+            <Zap className="h-2.5 w-2.5 fill-current" aria-hidden="true" />
+            {t.admin.productFlashSaleBadge}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const renderPrice = (record: ProductWithVariants) => {
+    const basePrice = getLowestBasePrice(record);
+    const discountedPrice = getLowestDiscountedPrice(record);
+    if (discountedPrice) {
+      return (
+        <div className="inline-flex flex-col items-center leading-tight">
+          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+            {cur}
+            {n(discountedPrice.toFixed(2))}
+          </span>
+          {basePrice ? (
+            <span className="text-xs text-muted-foreground line-through">
+              {cur}
+              {n(basePrice.toFixed(2))}
+            </span>
+          ) : null}
+        </div>
+      );
+    }
+    return (
+      <span className="text-sm font-medium text-foreground">
+        {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
+      </span>
+    );
+  };
+
+  const renderStock = (record: ProductWithVariants) => {
+    const stock = getTotalStock(record);
+    if (stock <= 0) {
+      return (
+        <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+          {t.admin.productOutOfStock}
+        </span>
+      );
+    }
+    return (
+      <span
+        className={`text-sm font-medium ${stock <= LOW_STOCK_AT ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}
+      >
+        {n(stock)}
+        {stock <= LOW_STOCK_AT && (
+          <span className="ml-1 text-[10px] font-semibold uppercase">{t.admin.productLowStock}</span>
+        )}
+      </span>
+    );
+  };
+
+  // Everything except Edit lives in one "⋯" menu, so a row has two controls
+  // instead of six, and only shows what this person is allowed to do.
+  const menuFor = (record: ProductWithVariants): NonNullable<MenuProps["items"]> => {
+    const items: NonNullable<MenuProps["items"]> = [];
+    if (canAdd) {
+      items.push({
+        key: "duplicate",
+        icon: <Copy className="h-3.5 w-3.5" />,
+        label: t.admin.productDuplicate,
+        onClick: () => handleDuplicate(record.slug),
+      });
+    }
+    if (canEdit) {
+      items.push({
+        key: "featured",
+        icon: <Star className="h-3.5 w-3.5" fill={getFeatured(record) ? "currentColor" : "none"} />,
+        label: getFeatured(record) ? t.admin.removeFromFeatured : t.admin.markAsFeatured,
+        disabled: togglingId === record.id,
+        onClick: () => handleToggleFeatured(record),
+      });
+      items.push({
+        key: "free-delivery",
+        icon: <Truck className="h-3.5 w-3.5" />,
+        label: getFreeDelivery(record) ? t.admin.productFreeDeliveryOff : t.admin.productFreeDeliveryOn,
+        disabled: togglingFreeDeliveryId === record.id,
+        onClick: () => handleToggleFreeDelivery(record),
+      });
+    }
+    if (storeSlug && qrAllowed) {
+      items.push({
+        key: "qr",
+        icon: <QrCode className="h-3.5 w-3.5" />,
+        label: t.admin.productQrCode,
+        onClick: () => {
+          setQrInitialMode("qr");
+          setQrProduct(record);
+        },
+      });
+    }
+    if (storeSlug && barcodeAllowed) {
+      items.push({
+        key: "barcode",
+        icon: <Barcode className="h-3.5 w-3.5" />,
+        label: t.admin.productBarcode,
+        onClick: () => handleShowBarcode(record),
+      });
+    }
+    if (canDelete) {
+      if (items.length > 0) items.push({ type: "divider" });
+      items.push({
+        key: "delete",
+        danger: true,
+        icon: <Trash2 className="h-3.5 w-3.5" />,
+        label: t.admin.productDeleteAction,
+        onClick: () => showDeleteModal(record.id),
+      });
+    }
+    return items;
+  };
+
+  const renderActions = (record: ProductWithVariants) => {
+    const items = menuFor(record);
+    return (
+      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+        {canEdit && <EditButton onClick={() => handleEdit(record.slug)} />}
+        {items.length > 0 && (
+          <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items }}>
+            <button
+              type="button"
+              aria-label={t.admin.productMoreActions}
+              title={t.admin.productMoreActions}
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-150"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </Dropdown>
+        )}
+      </div>
+    );
+  };
+
   // ── Desktop columns ─────────────────────────────────────────────────────────
 
-  const columns: ColumnsType<ProductWithVariants> = [
+  const allColumns: ColumnsType<ProductWithVariants> = [
     {
       title: "",
       key: "drag",
@@ -521,188 +678,58 @@ const ProductTable: React.FC<ProductTableProps> = ({
     {
       title: t.admin.productCol,
       key: "name",
-      render: (_, record) => (
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground leading-tight">
-            {record.name}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {record.category?.name || t.admin.uncategorized}
-          </span>
-        </div>
-      ),
-    },
-    {
-      title: t.admin.variantsCol,
-      key: "variants",
-      width: 220,
-      responsive: ["md"],
+      // Capped so short names don't push Price/Stock/Status to the far edge;
+      // those three share the rest of the row evenly.
+      width: "40%",
       render: (_, record) => {
-        const vars = record.product_variants || [];
-        if (!vars.length)
-          return (
-            <span className="text-xs text-muted-foreground italic">
-              {t.admin.noVariants}
+        const variantCount = record.product_variants?.length ?? 0;
+        return (
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-sm font-semibold text-foreground leading-tight line-clamp-2" title={record.name}>
+              {record.name}
             </span>
-          );
-        return (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <VariantChip
-              label={`${vars[0].variant_name ?? "Unnamed"}: ${cur}${n(vars[0].base_price ?? 0)}`}
-            />
-            {vars.length > 1 && (
-              <span className="text-[11px] text-muted-foreground">
-                +{n(vars.length - 1)}
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: t.admin.basePriceCol,
-      key: "base_price",
-      align: "right",
-      responsive: ["md"],
-      render: (_, record) => {
-        const price = getLowestBasePrice(record);
-        return (
-          <span className="text-sm font-medium text-foreground">
-            {price ? `${cur}${n(price.toFixed(2))}` : "—"}
-          </span>
-        );
-      },
-    },
-    {
-      title: t.admin.salePriceCol,
-      key: "discounted_price",
-      align: "right",
-      responsive: ["md"],
-      render: (_, record) => {
-        const price = getLowestDiscountedPrice(record);
-        const onFlashSale = hasActiveFlashSale(record);
-        return price ? (
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-sm font-semibold text-emerald-500">
-              {cur}
-              {n(price.toFixed(2))}
+            <span className="text-xs text-muted-foreground">
+              {record.category?.name || t.admin.uncategorized}
+              {variantCount > 0 &&
+                ` · ${t.admin.productVariantCount.replace("{count}", n(variantCount))}`}
             </span>
-            {onFlashSale && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                <Zap className="h-2.5 w-2.5 fill-current" />
-                Flash Sale
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-sm text-muted-foreground">—</span>
-        );
-      },
-    },
-    {
-      title: t.admin.featuredCol,
-      key: "featured",
-      align: "center",
-      width: 88,
-      responsive: ["md"],
-      render: (_, record) => {
-        const isFeatured = getFeatured(record);
-        const isToggling = togglingId === record.id;
-        return (
-          <div className="flex justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleToggleFeatured(record);
-              }}
-              disabled={isToggling}
-              title={isFeatured ? t.admin.removeFromFeatured : t.admin.markAsFeatured}
-              className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
-                ${
-                  isFeatured
-                    ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500 text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/25"
-                    : "bg-card border-border text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:border-amber-300 hover:text-amber-400"
-                }`}
-            >
-              <Star
-                className="w-3.5 h-3.5"
-                fill={isFeatured ? "currentColor" : "none"}
-              />
-            </button>
+            {renderBadges(record)}
           </div>
         );
       },
     },
     {
-      title: t.admin.freeDeliveryCol,
-      key: "free_delivery",
+      title: t.admin.productPriceCol,
+      key: "price",
       align: "center",
-      width: 110,
       responsive: ["md"],
-      render: (_, record) => {
-        const isFree = getFreeDelivery(record);
-        const isToggling = togglingFreeDeliveryId === record.id;
-        return (
-          <div className="flex justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleToggleFreeDelivery(record);
-              }}
-              disabled={isToggling}
-              title={
-                isFree
-                  ? t.admin.freeDeliveryDisableHint
-                  : t.admin.freeDeliveryEnableHint
-              }
-              className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
-                ${
-                  isFree
-                    ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-500/25"
-                    : "bg-card border-border text-muted-foreground hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:border-emerald-300 hover:text-emerald-400"
-                }`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        );
-      },
+      render: (_, record) => renderPrice(record),
+    },
+    {
+      title: t.admin.productStockCol,
+      key: "stock",
+      align: "center",
+      responsive: ["md"],
+      render: (_, record) => renderStock(record),
     },
     {
       title: t.admin.statusCol,
       key: "status",
       align: "center",
-      width: 110,
       responsive: ["md"],
-      render: (_, record) => (
-        <StatusBadge status={record.status as ProductStatus} />
-      ),
+      render: (_, record) => <StatusBadge status={record.status as ProductStatus} />,
     },
     {
-      title: t.admin.actionsCol,
+      title: "",
       key: "actions",
-      align: "center",
-      width: 130,
-      render: (_, record) => (
-        <div
-          className="flex gap-1.5 justify-center"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {storeSlug && qrAllowed && (
-            <QrButton
-              onClick={() => {
-                setQrInitialMode("qr");
-                setQrProduct(record);
-              }}
-            />
-          )}
-          {storeSlug && barcodeAllowed && <BarcodeButton onClick={() => handleShowBarcode(record)} />}
-          <EditButton onClick={() => handleEdit(record.slug)} />
-          <DeleteButton onClick={() => showDeleteModal(record.id)} />
-        </div>
-      ),
+      align: "right",
+      width: 96,
+      render: (_, record) => renderActions(record),
     },
   ];
+  // The drag handle only appears in store order — dragging a newest-first or
+  // A–Z list would reorder the storefront by an order nobody is looking at.
+  const columns = allowDrag ? allColumns : allColumns.filter((column) => column.key !== "drag");
 
   return (
     <>
@@ -713,7 +740,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             🛍️
           </div>
           <h2 className="text-sm font-bold text-foreground tracking-tight">
-            {t.admin.productListTitle}
+            {t.admin.menuAllProducts}
           </h2>
         </div>
         <span className="text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full">
@@ -804,8 +831,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
         )}
 
         {orderedProducts.map((record) => {
-          const basePrice = getLowestBasePrice(record);
-          const discountedPrice = getLowestDiscountedPrice(record);
           const variants = record.product_variants || [];
 
           return (
@@ -850,82 +875,16 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   )}
 
-                  {/* Price + Status + Actions */}
+                  {renderBadges(record)}
+
+                  {/* Price + Stock + Status + Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    {/* Price */}
-                    <div className="flex items-center gap-1.5">
-                      {discountedPrice ? (
-                        <>
-                          <span className="text-xs text-gray-400 line-through">
-                            {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
-                          </span>
-                          <span className="text-sm font-bold text-emerald-500">
-                            {cur}
-                            {n(discountedPrice.toFixed(2))}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-sm font-bold text-foreground">
-                          {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-3">
+                      {renderPrice(record)}
+                      {renderStock(record)}
                     </div>
-
-                    {/* Status */}
                     <StatusBadge status={record.status as ProductStatus} />
-
-                    {/* Actions */}
-                    <div
-                      className="flex gap-1.5 ml-auto"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => handleToggleFreeDelivery(record)}
-                        disabled={togglingFreeDeliveryId === record.id}
-                        title={
-                          getFreeDelivery(record)
-                            ? t.admin.freeDeliveryDisableHint
-                            : t.admin.freeDeliveryEnableHint
-                        }
-                        className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50
-                          ${
-                            getFreeDelivery(record)
-                              ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500 text-emerald-500"
-                              : "bg-card border-border text-muted-foreground"
-                          }`}
-                      >
-                        <Truck className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleFeatured(record)}
-                        disabled={togglingId === record.id}
-                        title={getFeatured(record) ? t.admin.removeFromFeatured : t.admin.markAsFeatured}
-                        className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-150 disabled:opacity-50
-                          ${
-                            getFeatured(record)
-                              ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500 text-amber-500"
-                              : "bg-card border-border text-muted-foreground"
-                          }`}
-                      >
-                        <Star
-                          className="w-3.5 h-3.5"
-                          fill={getFeatured(record) ? "currentColor" : "none"}
-                        />
-                      </button>
-                      {storeSlug && qrAllowed && (
-                        <QrButton
-                          onClick={() => {
-                            setQrInitialMode("qr");
-                            setQrProduct(record);
-                          }}
-                        />
-                      )}
-                      {storeSlug && barcodeAllowed && <BarcodeButton onClick={() => handleShowBarcode(record)} />}
-                      <EditButton onClick={() => handleEdit(record.slug)} />
-                      <DeleteButton
-                        onClick={() => showDeleteModal(record.id)}
-                      />
-                    </div>
+                    <div className="ml-auto">{renderActions(record)}</div>
                   </div>
                 </div>
               }
@@ -936,9 +895,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
       {/* ── Desktop table ── */}
       <div className="hidden md:block">
-        <p className="px-4 pb-2 text-xs text-muted-foreground">
-          {t.admin.dragToReorderHint}
-        </p>
+        {allowDrag && (
+          <p className="px-4 pb-2 text-xs text-muted-foreground">{t.admin.productDragHint}</p>
+        )}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -956,7 +915,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
               loading={loading}
               size="middle"
               bordered={false}
-              components={{ body: { row: SortableTableRow } }}
+              components={allowDrag ? { body: { row: SortableTableRow } } : undefined}
+              rowClassName={(record) =>
+                record.id === highlightId ? "bg-emerald-50 dark:bg-emerald-500/10" : ""
+              }
               rowSelection={
                 storeSlug
                   ? {

@@ -56,6 +56,7 @@ import ReceiptPreviewModal from "@/app/components/admin/order/quick-sale/Receipt
 import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 interface Props {
   orders: StoreOrder[];
@@ -208,6 +209,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const { storeId } = useCurrentUser();
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
+  const { can } = usePermissions();
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
@@ -243,7 +245,14 @@ const OrdersTable: React.FC<Props> = ({
       setDeleteLoading(orderId);
 
       // Call your API to delete the order
-      await dataService.deleteOrder(orderId);
+      const result = await dataService.deleteOrder(orderId);
+      if (!result.success) {
+        notification.error({
+          title: t.admin.orderDeleteFailed,
+          description: result.error || "Failed to delete order. Please try again.",
+        });
+        return;
+      }
 
       notification.success({
         title: t.admin.orderDeletedSuccess,
@@ -493,6 +502,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const renderActionButtons = (order: StoreOrder) => (
     <div className="flex items-center justify-center gap-1.5">
+      {can("orders.edit") && (
       <Tooltip title="Edit Order">
         <Button
           type="text"
@@ -504,6 +514,8 @@ const OrdersTable: React.FC<Props> = ({
           className={`${ACTION_CHIP_BASE} bg-linear-to-b from-blue-50 to-blue-100/80 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200/70 dark:border-blue-800/40 text-blue-600! dark:text-blue-400! hover:from-blue-100 hover:to-blue-200/80 dark:hover:from-blue-900/60 dark:hover:to-blue-800/40`}
         />
       </Tooltip>
+      )}
+      {can("orders.delete") && (
       <Tooltip title="Delete Order">
         <Button
           type="text"
@@ -517,6 +529,7 @@ const OrdersTable: React.FC<Props> = ({
           className={`${ACTION_CHIP_BASE} bg-linear-to-b from-rose-50 to-rose-100/80 dark:from-rose-950/50 dark:to-rose-900/30 border-rose-200/70 dark:border-rose-800/40 text-rose-600! dark:text-rose-400! hover:from-rose-100 hover:to-rose-200/80 dark:hover:from-rose-900/60 dark:hover:to-rose-800/40`}
         />
       </Tooltip>
+      )}
     </div>
   );
 

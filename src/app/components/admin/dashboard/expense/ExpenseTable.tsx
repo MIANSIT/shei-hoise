@@ -19,6 +19,7 @@ import {
   PaymentCell,
 } from "./ExpenseTableCells";
 import { ExpenseDetailDrawer } from "./ExpenseDetailDrawer";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 interface ExpenseTableProps {
   data: Expense[];
@@ -78,6 +79,7 @@ function ExpenseTable({
 }: ExpenseTableProps) {
   const t = useTranslation();
   const { modal } = App.useApp();
+  const { can } = usePermissions();
   const { icon: currencyIcon } = useUserCurrencyIcon();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -110,7 +112,8 @@ function ExpenseTable({
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   const getRowMenuItems = useCallback(
-    (record: Expense): MenuProps["items"] => [
+    (record: Expense): MenuProps["items"] => {
+      const items: NonNullable<MenuProps["items"]> = [
       {
         key: "view",
         icon: <ReceiptText size={14} color="#6366f1" />,
@@ -152,8 +155,17 @@ function ExpenseTable({
           confirmDelete(record);
         },
       },
-    ],
-    [deletingId, onEdit, openDrawer, confirmDelete],
+      ];
+      // Staff: only the actions their role allows.
+      return items.filter((item) => {
+        if (!item) return false;
+        if (item.type === "divider") return can("expenses.delete");
+        if (item.key === "edit") return can("expenses.edit");
+        if (item.key === "delete") return can("expenses.delete");
+        return true;
+      });
+    },
+    [deletingId, onEdit, openDrawer, confirmDelete, can],
   );
 
   const columns: ColumnsType<Expense> = [

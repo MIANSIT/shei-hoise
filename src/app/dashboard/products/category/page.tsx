@@ -296,7 +296,7 @@ export default function CategoryPage() {
               {t.admin.prodCatSubtitle}
             </p>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground">
-              {t.admin.prodCatTitle}
+              {t.admin.menuAllCategories}
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
               {n(total)} {t.admin.prodCatTotalDesc} &middot; {n(activeCount)} {t.admin.prodCatActiveDesc} &middot;{" "}

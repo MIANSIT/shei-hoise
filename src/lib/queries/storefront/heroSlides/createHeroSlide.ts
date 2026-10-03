@@ -1,10 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { uploadHeroSlideImage, HERO_SLIDE_BUCKET } from "@/lib/utils/heroSlideImageStorage";
 import { heroSlideFieldsSchema, type HeroSlideFieldsType } from "@/lib/schema/heroSlide.schema";
 import type { HeroSlide } from "@/lib/types/heroSlide";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // A flat, generous cap independent of the plan-feature gate on this page —
 // stops an unbounded slide list from degrading the homepage regardless of
@@ -15,7 +15,7 @@ export async function createHeroSlide(
   file: File,
   fields: HeroSlideFieldsType,
 ): Promise<{ success: true; slide: HeroSlide } | { success: false; error: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.add");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

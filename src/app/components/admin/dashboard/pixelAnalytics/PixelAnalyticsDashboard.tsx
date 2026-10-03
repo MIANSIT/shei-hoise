@@ -555,7 +555,7 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
               <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             </div>
             <h1 className="text-xl font-bold text-foreground">
-              {t.admin.pixelTitle}
+              {t.admin.menuPixelAnalytics}
             </h1>
           </div>
           <p className="text-xs text-muted-foreground">

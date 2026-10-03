@@ -4,6 +4,7 @@ import { Button, Drawer, Spin, App } from "antd";
 import { EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import type { Expense } from "@/lib/types/expense/type";
 import { ExpenseDetailContent } from "./ExpenseDetailContent";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 // import { ReceiptText } from "lucide-react";
 // import { getCategoryColor, hexToRgba } from "@/lib/types/expense/expense-utils";
 // import DynamicLucideIcon from "./DynamicLucideIcon";
@@ -29,6 +30,7 @@ export function ExpenseDetailDrawer({
   deletingId,
 }: ExpenseDetailDrawerProps) {
   const { modal } = App.useApp();
+  const { can } = usePermissions();
 
   if (!expense) return null;
 
@@ -78,6 +80,7 @@ export function ExpenseDetailDrawer({
       <div className="px-5 py-4 border-t border-border bg-card flex gap-2 mt-2">
         <Button
           block
+          hidden={!can("expenses.edit")}
           icon={<EditOutlined />}
           onClick={() => { onEdit(expense); onClose(); }}
           className="rounded-xl h-9 font-semibold"
@@ -88,6 +91,7 @@ export function ExpenseDetailDrawer({
         <Button
           block
           danger
+          hidden={!can("expenses.delete")}
           onClick={confirmDelete}
           icon={deletingId === expense.id ? <Spin size="small" /> : <DeleteOutlined />}
           className="rounded-xl h-9 font-semibold"

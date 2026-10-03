@@ -1,17 +1,17 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   ExpenseCategory,
   CreateCategoryInput,
 } from "@/lib/types/expense/type";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function createCategory(
   payload: CreateCategoryInput,
 ): Promise<ExpenseCategory> {
   // payload.store_id is caller-supplied — never trust it for authorization.
   // Always create under the session's own store, regardless of what was sent.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("expenses.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { data, error } = await supabase

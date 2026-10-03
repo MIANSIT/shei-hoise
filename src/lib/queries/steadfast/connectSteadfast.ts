@@ -2,8 +2,8 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { encrypt } from "@/lib/utils/encryption";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getBalance } from "@/lib/utils/steadfastApi";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 export interface ConnectSteadfastInput {
   label: string;
@@ -25,7 +25,7 @@ export interface ConnectSteadfastResult {
 export async function connectSteadfastAccount(
   input: ConnectSteadfastInput,
 ): Promise<ConnectSteadfastResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok) {
     return { success: false, error: storeResult.error };
   }

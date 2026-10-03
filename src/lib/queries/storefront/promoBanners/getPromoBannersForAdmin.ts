@@ -1,12 +1,12 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { PromoBanner } from "@/lib/types/promoBanner";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /** All of the caller's own promo banners (active + inactive), for the Storefront Design admin list. */
 export async function getPromoBannersForAdmin(): Promise<PromoBanner[]> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.view");
   if (!storeResult.ok) return [];
 
   const { data, error } = await supabaseAdmin

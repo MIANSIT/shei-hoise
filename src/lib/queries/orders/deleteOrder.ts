@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { checkDeleteWindow, getAuthorizedStoreId, logDeleted } from "@/lib/permissions/server";
 import { OrderStatus } from "@/lib/types/enums";
 
 // Statuses whose stock still sits in quantity_reserved (order creation
@@ -78,19 +78,23 @@ export async function deleteOrder(
   orderId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("orders.delete");
     if (!storeResult.ok) {
       return { success: false, error: storeResult.error };
     }
 
+    // Full row + items: copied into the activity log before they're gone.
     const { data: order, error: fetchError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, status")
+      .select("*, order_items (*)")
       .eq("id", orderId)
       .eq("store_id", storeResult.storeId)
       .single();
 
     if (fetchError || !order) return { success: false, error: "Order not found" };
+
+    const tooOld = checkDeleteWindow(storeResult.actor, order.created_at);
+    if (tooOld) return { success: false, error: tooOld };
 
     if (RESERVED_STATUSES.includes(order.status)) {
       await releaseReservedStock(orderId);
@@ -108,6 +112,14 @@ export async function deleteOrder(
       .eq("id", orderId)
       .eq("store_id", storeResult.storeId);
     if (deleteError) return { success: false, error: "Failed to delete order" };
+
+    await logDeleted(
+      storeResult.actor,
+      "orders",
+      "order",
+      order,
+      `Deleted order #${order.order_number} (${order.status}, ৳${order.total_amount})`,
+    );
 
     return { success: true };
   } catch (error) {

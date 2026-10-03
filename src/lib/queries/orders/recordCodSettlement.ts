@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId, logActivity } from "@/lib/permissions/server";
 
 export interface RecordCodSettlementInput {
   settlementDate: string; // YYYY-MM-DD
@@ -29,7 +29,7 @@ export async function recordCodSettlement(
     throw new Error("Enter the amount actually received");
   }
 
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("cod.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const storeId = storeResult.storeId;
 
@@ -78,6 +78,13 @@ export async function recordCodSettlement(
     await supabaseAdmin.from("store_cod_settlements").delete().eq("id", settlement.id);
     throw new Error(updateError.message);
   }
+
+  await logActivity(storeResult.actor, {
+    action: "cod.add",
+    entityType: "cod_settlement",
+    entityId: settlement.id as string,
+    summary: `Recorded COD settlement of ৳${input.totalAmount} for ${eligibleIds.length} orders`,
+  });
 
   return settlement.id as string;
 }

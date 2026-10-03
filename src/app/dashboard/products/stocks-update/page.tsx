@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button, Pagination, Popover } from "antd";
 import { SearchOutlined, LockOutlined } from "@ant-design/icons";
 import { Percent } from "lucide-react";
@@ -87,6 +87,16 @@ const StockPage = () => {
   const [traderModalOpen, setTraderModalOpen] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // The box keeps its own text so typing is instant; the URL (and the fetch
+  // it triggers) only updates once typing pauses. Binding the input straight
+  // to the URL made every keystroke wait for a navigation before the next
+  // letter could appear.
+  const [searchInput, setSearchInput] = useState(searchText);
+  useEffect(() => {
+    // Back/forward or a cleared filter changed the URL from outside the box.
+    if (!typingTimeoutRef.current) setSearchInput(searchText);
+  }, [searchText]);
+
   // Shared by both exports: fetch every product matching the current filters,
   // ignoring pagination. Memoised because TraderPriceExportModal takes it as an
   // effect dependency — a new identity each render would re-trigger the load.
@@ -103,11 +113,16 @@ const StockPage = () => {
   }, [storeSlug, searchText, stockFilter]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchText(e.target.value);
-    setCurrentPage(1);
+    const value = e.target.value;
+    setSearchInput(value);
     setIsTyping(true);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 800);
+    typingTimeoutRef.current = setTimeout(() => {
+      typingTimeoutRef.current = null;
+      setIsTyping(false);
+      setSearchText(value);
+      setCurrentPage(1);
+    }, 350);
   };
 
   const totalPages = Math.ceil(totalProducts / pageSize) || 1;
@@ -118,7 +133,7 @@ const StockPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">
-            {t.admin.stockTitle}
+            {t.admin.menuStockUpdate}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {t.admin.stockSubtitle}
@@ -195,7 +210,7 @@ const StockPage = () => {
           <input
             type="text"
             placeholder={t.admin.stockSearchPlaceholder}
-            value={searchText}
+            value={searchInput}
             onChange={handleSearchChange}
             className="
               w-full pl-9 pr-4 py-2.5

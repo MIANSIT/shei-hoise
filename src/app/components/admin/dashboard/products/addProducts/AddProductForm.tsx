@@ -37,7 +37,15 @@ import LockedSection from "@/app/components/admin/common/LockedSection";
 import { isoToDatetimeLocal, datetimeLocalToIso } from "@/lib/utils/datetimeLocal";
 
 interface AddProductFormProps {
+  /** Editing this product. */
   product?: ProductType;
+  /**
+   * A new product pre-filled from an existing one (Duplicate). Saved as a new
+   * product like a blank add; only `product` switches the form to editing.
+   */
+  initialProduct?: ProductType;
+  /** Name of the product being copied, for the page header. */
+  duplicatedFrom?: string;
   storeId: string;
   onSubmit: (
     product: ProductType,
@@ -128,10 +136,13 @@ const withMinDuration = async <T,>(promise: Promise<T>, ms = 350): Promise<T> =>
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
-  ({ product, storeId, onSubmit }, ref) => {
+  ({ product, initialProduct, duplicatedFrom, storeId, onSubmit }, ref) => {
     const t = useTranslation();
     const { currency, loading: currencyLoading } = useUserCurrencyIcon();
     const isAddMode = !product;
+    // The saved add-product draft is for a blank product; a duplicate must
+    // neither be overwritten by it nor overwrite it.
+    const usesDraft = isAddMode && !initialProduct;
 
     // Subscribe to hydration flag — fires once after localStorage is read
     const hasHydrated = useAddProductDraftStore((s) => s._hasHydrated);
@@ -174,9 +185,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         is_digital: false,
         meta_title: null,
         meta_description: null,
-        ...product,
+        ...(product ?? initialProduct),
       }),
-      [product, storeId],
+      [product, initialProduct, storeId],
     );
 
     const form = useForm<ProductType>({
@@ -294,7 +305,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     // We must wait for _hasHydrated because getState() returns initial values
     // synchronously before the persist middleware has loaded from storage.
     useEffect(() => {
-      if (!isAddMode || !hasHydrated) return;
+      if (!usesDraft || !hasHydrated) return;
       const draft = useAddProductDraftStore.getState();
       if (draft.formValues) {
         form.reset({
@@ -310,26 +321,26 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
     // Sync all form value changes → draft store (no re-renders)
     useEffect(() => {
-      if (!isAddMode) return;
+      if (!usesDraft) return;
       const subscription = watch((values) => {
         useAddProductDraftStore
           .getState()
           .setFormValues(values as Partial<ProductType>);
       });
       return () => subscription.unsubscribe();
-    }, [isAddMode, watch]);
+    }, [usesDraft, watch]);
 
     // Sync priceMode → draft store
     useEffect(() => {
-      if (!isAddMode) return;
+      if (!usesDraft) return;
       useAddProductDraftStore.getState().setPriceMode(priceMode);
-    }, [priceMode, isAddMode]);
+    }, [priceMode, usesDraft]);
 
     // Sync priceValue → draft store
     useEffect(() => {
-      if (!isAddMode) return;
+      if (!usesDraft) return;
       useAddProductDraftStore.getState().setPriceValue(priceValue);
-    }, [priceValue, isAddMode]);
+    }, [priceValue, usesDraft]);
 
     const handleNameChange = (value: unknown) => {
       if (typeof value !== "string") return;
@@ -346,7 +357,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     useImperativeHandle(ref, () => ({
       reset: () => {
         form.reset(initialValues);
-        if (isAddMode) useAddProductDraftStore.getState().clearDraft();
+        if (usesDraft) useAddProductDraftStore.getState().clearDraft();
       },
       formValues: () => form.getValues(),
     }));
@@ -490,12 +501,18 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
           {/* Page header */}
           <div className="mb-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {product ? t.admin.addProductEditTitle : t.admin.addProductNewTitle}
+              {product
+                ? t.admin.addProductEditTitle
+                : initialProduct
+                  ? t.admin.addProductDuplicateTitle
+                  : t.admin.addProductNewTitle}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {product
                 ? t.admin.addProductUpdateDesc
-                : t.admin.addProductAddDesc}
+                : initialProduct
+                  ? t.admin.addProductDuplicateDesc.replace("{name}", duplicatedFrom ?? "")
+                  : t.admin.addProductAddDesc}
             </p>
           </div>
 
