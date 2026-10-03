@@ -95,19 +95,28 @@ export function OrderBranchPanel({ orderId, onChanged }: OrderBranchPanelProps) 
             value={target}
             onChange={setTarget}
             aria-label={t.branches.orderBranch}
+            popupMatchSelectWidth={false}
+            styles={{ popup: { root: { minWidth: 280, maxWidth: "min(420px, calc(100vw - 32px))" } } }}
             options={info.options.map((o) => ({
               value: o.branchId,
               label: (
-                <div className="flex flex-col leading-tight py-0.5">
-                  <span>
+                <div className="flex flex-col leading-snug py-0.5" style={{ whiteSpace: "normal" }}>
+                  <span className="font-medium">
                     {o.name}
                     {o.isCurrent ? ` · ${t.branches.currentBranch}` : ""}
                   </span>
-                  <span
-                    className={`text-[11px] ${o.canFulfil ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-                  >
-                    {o.canFulfil ? t.branches.hasEverything : `${t.branches.missingLabel}: ${o.missing.join(", ")}`}
-                  </span>
+                  {o.canFulfil ? (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400">{t.branches.hasEverything}</span>
+                  ) : (
+                    <span className="text-[11px] text-red-600 dark:text-red-400 break-words">
+                      {t.branches.missingLabel}:
+                      {o.missing.map((m) => (
+                        <span key={m} className="block pl-2">
+                          • {m}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </div>
               ),
             }))}
