@@ -18,6 +18,8 @@ import { getVendorInvoiceBalances } from "@/lib/queries/vendor/getVendorInvoiceB
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type { VendorOrder, VendorOrderItem, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const STATUS_COLORS: Record<VendorOrderStatus, string> = {
   draft: "gold",
@@ -30,6 +32,9 @@ export default function VendorOrderDetailPage() {
   const orderId = params.id as string;
   const router = useRouter();
   const { storeId, user } = useCurrentUser();
+  // Stores with branches: goods are sent from the branch you work at.
+  const { enabled: branchesOn, workBranchId, workBranch } = useBranches();
+  const t = useTranslation();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const { modal } = App.useApp();
@@ -88,13 +93,21 @@ export default function VendorOrderDetailPage() {
     modal.confirm({
       title: "Confirm this vendor order?",
       icon: <ExclamationCircleOutlined />,
-      content:
-        "This will move stock out of the warehouse into the vendor's stock. This cannot be undone from here.",
+      content: (
+        <>
+          <p className="m-0">
+            This will move stock out of the warehouse into the vendor&apos;s stock. This cannot be undone from here.
+          </p>
+          {branchesOn && workBranch && (
+            <p className="m-0 mt-2 font-semibold">{t.branches.vendorSendFrom.replace("{name}", workBranch.name)}</p>
+          )}
+        </>
+      ),
       okText: "Confirm & Dispatch",
       onOk: async () => {
         setConfirming(true);
         try {
-          await confirmVendorOrder(orderId, user?.id ?? null);
+          await confirmVendorOrder(orderId, user?.id ?? null, workBranchId);
           success("Vendor order confirmed — stock transferred");
           fetchOrder();
         } catch (err) {

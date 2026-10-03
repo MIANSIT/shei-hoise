@@ -7,6 +7,7 @@ import { FrontendImage } from "@/lib/types/frontendImage";
 import { ProductImageType } from "@/lib/schema/productImageSchema";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { authorizeForStoreAny } from "@/lib/permissions/server";
 
 /**
  * Extracts the storage file path from a Supabase public URL.
@@ -32,12 +33,58 @@ function extractStoragePath(
 
 const BUCKET = "shei-hoise-product";
 
+/**
+ * Gives a product its own copy of an image file that currently belongs to
+ * another product (e.g. one it was duplicated from), and returns the new
+ * public URL — or null when no copy could be made.
+ *
+ * Tries a server-side storage copy first; if the key worked out from the URL
+ * doesn't exist (older uploads aren't always stored under the path their URL
+ * suggests — that surfaced as "NoSuchKey"), falls back to downloading the
+ * image from its public URL and uploading it fresh.
+ */
+async function copyImageForProduct(
+  sourceUrl: string,
+  storeId: string,
+  productId: string,
+  index: number,
+): Promise<string | null> {
+  const filePath = `${storeId}/${productId}-${Date.now()}-${index}.webp`;
+  const publicUrlFor = (path: string) =>
+    toPublicStorageUrl(supabaseAdmin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
+
+  const sourcePath = extractStoragePath(sourceUrl, BUCKET);
+  if (sourcePath) {
+    const { error } = await supabaseAdmin.storage.from(BUCKET).copy(sourcePath, filePath);
+    if (!error) return publicUrlFor(filePath);
+    console.warn(`Storage copy failed for ${sourcePath}, re-uploading instead:`, error.message);
+  }
+
+  try {
+    const response = await fetch(sourceUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const optimized = await optimizeImage(await response.arrayBuffer());
+    const { error } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, optimized, {
+      contentType: "image/webp",
+      cacheControl: "31536000",
+    });
+    if (error) throw error;
+    return publicUrlFor(filePath);
+  } catch (err) {
+    console.warn(`Could not copy image ${sourceUrl}; keeping the original URL:`, err);
+    return null;
+  }
+}
+
 export async function uploadOrUpdateProductImages(
   storeId: string,
   productId: string,
   images: (FrontendImage & { variantId?: string; isPrimary?: boolean })[],
 ) {
   if (!images || images.length === 0) return [];
+
+  const auth = await authorizeForStoreAny(storeId, ["products.add", "products.edit"]);
+  if (!auth.ok) throw new Error(auth.error);
 
   // This call saves the whole desired image set at once (not one-at-a-time),
   // so we check the final count directly against the plan's per-product
@@ -136,6 +183,16 @@ export async function uploadOrUpdateProductImages(
         .getPublicUrl(filePath);
 
       imageUrl = toPublicStorageUrl(publicUrlData.publicUrl);
+    } else if (!existingImage) {
+      // An already-uploaded image that belongs to a *different* product — a
+      // duplicated product starts with the original's image URLs. Give this
+      // product its own copy of the file: deleting or replacing an image
+      // removes the file from storage (see step 2 above and deleteProduct),
+      // which would otherwise break the other product's picture too.
+      // Never let this block saving the product: if no copy can be made,
+      // keep the shared URL exactly as before this copy step existed.
+      const copiedUrl = await copyImageForProduct(img.imageUrl, storeId, productId, i);
+      if (copiedUrl) imageUrl = copiedUrl;
     }
 
     finalImages.push({

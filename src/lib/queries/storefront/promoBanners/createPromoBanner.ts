@@ -1,10 +1,10 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { uploadPromoBannerImage, PROMO_BANNER_BUCKET } from "@/lib/utils/promoBannerImageStorage";
 import { promoBannerFieldsSchema, type PromoBannerFieldsType } from "@/lib/schema/promoBanner.schema";
 import type { PromoBanner } from "@/lib/types/promoBanner";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // A flat cap independent of any plan-feature gate — stops an unbounded
 // banner list from degrading the homepage regardless of plan, same
@@ -15,7 +15,7 @@ export async function createPromoBanner(
   file: File,
   fields: PromoBannerFieldsType,
 ): Promise<{ success: true; banner: PromoBanner } | { success: false; error: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.add");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

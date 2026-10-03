@@ -1,8 +1,27 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
+import { authorizeForStore, checkDeleteWindow, logDeleted } from "@/lib/permissions/server";
 
 export async function deleteExpense(id: string, storeId: string): Promise<boolean> {
   try {
+    const auth = await authorizeForStore(storeId, "expenses.delete");
+    if (!auth.ok) {
+      console.error("deleteExpense:", auth.error);
+      return false;
+    }
+
+    const { data: existing } = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("id", id)
+      .eq("store_id", storeId)
+      .maybeSingle();
+    const tooOld = checkDeleteWindow(auth.actor, existing?.created_at);
+    if (tooOld) {
+      console.error("deleteExpense:", tooOld);
+      return false;
+    }
+
     const { data, error } = await supabase
       .from("expenses")
       .delete()
@@ -21,6 +40,10 @@ export async function deleteExpense(id: string, storeId: string): Promise<boolea
     if (!data || data.length === 0) {
       console.error(`Delete matched no expense: id=${id} storeId=${storeId}`);
       return false;
+    }
+
+    if (existing) {
+      await logDeleted(auth.actor, "expenses", "expense", existing, `Deleted expense ${existing.title}: ৳${existing.amount}`);
     }
 
     return true;

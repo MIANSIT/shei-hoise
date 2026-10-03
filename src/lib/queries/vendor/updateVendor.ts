@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import { Vendor, VendorFormValues } from "@/lib/types/vendor/type";
+import { authorizeForStore } from "@/lib/permissions/server";
 
 export interface UpdateVendorInput extends Partial<VendorFormValues> {
   id: string;
@@ -12,6 +13,12 @@ export async function updateVendor(
 ): Promise<Vendor | null> {
   try {
     const { id, store_id, ...rest } = input;
+
+    const auth = await authorizeForStore(store_id, "vendors.edit");
+    if (!auth.ok) {
+      console.error("updateVendor:", auth.error);
+      return null;
+    }
     const sanitized = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),
     );

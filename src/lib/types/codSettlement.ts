@@ -6,6 +6,8 @@ export interface CodSettlement {
   total_amount: number;
   order_count: number;
   note: string | null;
+  /** Stores with branches: the branch whose orders it covers. */
+  branch_id?: string | null;
   created_at: string;
 }
 
@@ -16,6 +18,8 @@ export interface UnsettledCodOrder {
   order_date: string;
   courier: string | null;
   customer_name: string;
+  /** Stores with branches: the order's branch. */
+  branch_id: string | null;
   total_amount: number;
   /** What the customer still owes on the order — total_amount minus anything they already paid directly (e.g. via Customer Dues). The courier collects this from the customer. */
   due_remaining: number;

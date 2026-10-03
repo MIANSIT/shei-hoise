@@ -13,6 +13,7 @@ import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getVendorOrders } from "@/lib/queries/vendorOrder/getVendorOrders";
 import type { VendorOrder, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const PAGE_SIZE = 10;
 
@@ -123,7 +124,7 @@ export default function VendorOrdersPage() {
               <PackageSearch size={20} color="white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground m-0">Vendor Orders</h1>
+              <h1 className="text-lg font-bold text-foreground m-0"><MenuLabel labelKey="menuAllVendorOrders" /></h1>
               <p className="text-xs text-muted-foreground m-0">
                 Stock dispatched to vendors, and their invoices
               </p>

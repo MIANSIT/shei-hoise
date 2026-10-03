@@ -10,6 +10,7 @@ import TopProducts from "./TopProducts";
 import CustomerSnapshot from "./CustomerSnapshot";
 import AlertsSection from "./AlertsSection";
 import LockedSection from "@/app/components/admin/common/LockedSection";
+import { ProfitStory, type BranchProfit, type ProfitStoryFigures } from "./ProfitStory";
 
 // Imported rather than redeclared — a local copy silently drifted out of sync
 // with the canonical type when "all" was added.
@@ -80,6 +81,17 @@ interface MainDashboardProps {
   onTimePeriodChange: (period: TimePeriod) => void;
   /** Gates the sales trend chart, top products and customer insights widgets — the deeper analytics on the dashboard home, distinct from the dedicated Sales Report page (advanced_reports). */
   analyticsAllowed: boolean;
+  /** Stores with branches: which branch these figures are for (shown under the title). */
+  branchLabel?: string;
+  /** Stores with branches: the branch comparison, shown above the snapshot on "All branches". */
+  branchComparison?: React.ReactNode;
+  /** The P&L as a step-by-step story (sales → costs → net). Replaces the three-cell bar when given. */
+  profitStory?: {
+    figures: ProfitStoryFigures;
+    formatMoney: (amount: number) => React.ReactNode;
+    branchProfits?: BranchProfit[];
+    onOpenBranch?: (branchId: string) => void;
+  };
 }
 
 // ─── Period Selector ──────────────────────────────────────────────────────────
@@ -372,6 +384,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   timePeriod,
   onTimePeriodChange,
   analyticsAllowed,
+  branchLabel,
+  branchComparison,
+  profitStory,
 }) => {
   const t = useTranslation();
   const periodLabel =
@@ -379,7 +394,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
       ? t.admin.periodLast7
       : timePeriod === "monthly"
         ? t.admin.periodLast30
-        : t.admin.periodLast365;
+        : timePeriod === "yearly"
+          ? t.admin.periodLast365
+          : t.admin.periodAllTime;
 
   const revenueValue = stats[0]?.value ?? "—";
   const expensesValue = expenseStats[0]?.value ?? "—";
@@ -432,6 +449,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
                 {dateStr}
               </p>
             </div>
+            {branchLabel && (
+              <span className="shrink-0 max-w-32 sm:max-w-none truncate rounded-full bg-teal-50 dark:bg-teal-500/15 border border-teal-200 dark:border-teal-500/30 px-2.5 py-0.5 text-[11px] sm:text-xs font-semibold text-teal-700 dark:text-teal-300">
+                {branchLabel}
+              </span>
+            )}
           </div>
           <PeriodSelector value={timePeriod} onChange={onTimePeriodChange} />
         </div>
@@ -459,20 +481,32 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
         )}
 
+        {branchComparison}
+
         {/* P&L HERO */}
         <div>
           <SectionHeader
             title={t.admin.profitLossSnapshot}
-            sub={`${periodLabel} · ${t.admin.revenueVsExpenses}`}
+            sub={profitStory ? t.admin.psSectionSub : `${periodLabel} · ${t.admin.revenueVsExpenses}`}
             accentClass="bg-emerald-500"
           />
-          <PLHeroBar
-            revenue={revenueValue}
-            expenses={expensesValue}
-            netProfit={netProfitValue}
-            netChangeType={netChangeType}
-            periodLabel={periodLabel}
-          />
+          {profitStory ? (
+            <ProfitStory
+              figures={profitStory.figures}
+              periodLabel={periodLabel}
+              formatMoney={profitStory.formatMoney}
+              branchProfits={profitStory.branchProfits}
+              onOpenBranch={profitStory.onOpenBranch}
+            />
+          ) : (
+            <PLHeroBar
+              revenue={revenueValue}
+              expenses={expensesValue}
+              netProfit={netProfitValue}
+              netChangeType={netChangeType}
+              periodLabel={periodLabel}
+            />
+          )}
           {expenseCategoryBreakdown && expenseCategoryBreakdown.length > 0 && (
             <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">
               <span

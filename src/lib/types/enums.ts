@@ -96,6 +96,8 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
 
 export enum USERTYPE {
   STORE_OWNER = "store_owner",
+  // Owner-created dashboard login; what they may do comes from store_roles.
+  STORE_STAFF = "store_staff",
   CUSTOMER = "customer",
   ADMIN = "admin",
   SUPER_ADMIN = "super_admin",

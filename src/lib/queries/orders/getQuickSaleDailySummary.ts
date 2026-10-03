@@ -67,8 +67,29 @@ const EMPTY: QuickSaleDailySummary = {
 export async function getQuickSaleDailySummary(
   storeId: string,
   dateStr: string, // YYYY-MM-DD, Asia/Dhaka
+  /** Stores with branches: one branch's drawer — its orders, the payments it took and its COD payouts. */
+  branchId?: string | null,
 ): Promise<QuickSaleDailySummary> {
   if (!storeId) return EMPTY;
+
+  let ordersQuery = supabase
+    .from("orders")
+    .select(
+      "id, order_number, created_at, total_amount, subtotal, discount_amount, additional_charges, payment_method, payment_status, status, shipping_address",
+    )
+    .eq("store_id", storeId)
+    .neq("status", OrderStatus.CANCELLED)
+    .neq("status", OrderStatus.RETURNED)
+    .eq("order_date", dateStr);
+  let paymentsQuery = supabase
+    .from("customer_payments")
+    .select("order_id, amount, payment_method")
+    .eq("store_id", storeId)
+    .eq("payment_date", dateStr);
+  if (branchId) {
+    ordersQuery = ordersQuery.eq("branch_id", branchId);
+    paymentsQuery = paymentsQuery.eq("branch_id", branchId);
+  }
 
   // Filters on order_date (when the sale actually happened — a plain date,
   // independently settable from created_at, see getCustomerOrderHistory.ts),
@@ -79,26 +100,13 @@ export async function getQuickSaleDailySummary(
   // Still sorted by created_at for a sensible within-day sequence, since
   // order_date alone has no time-of-day to order by.
   const [ordersRes, paymentsRes, codCashSettled] = await Promise.all([
-    supabase
-      .from("orders")
-      .select(
-        "id, order_number, created_at, total_amount, subtotal, discount_amount, additional_charges, payment_method, payment_status, status, shipping_address",
-      )
-      .eq("store_id", storeId)
-      .neq("status", OrderStatus.CANCELLED)
-      .neq("status", OrderStatus.RETURNED)
-      .eq("order_date", dateStr)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("customer_payments")
-      .select("order_id, amount, payment_method")
-      .eq("store_id", storeId)
-      .eq("payment_date", dateStr),
+    ordersQuery.order("created_at", { ascending: true }),
+    paymentsQuery,
     // A settlement can land on a day with no Quick Sale/order activity of
     // its own (e.g. a courier payout day with nothing newly sold), so this
     // is fetched unconditionally rather than folded into the early-return
     // guard below.
-    getCodCashSettledForDate(storeId, dateStr),
+    getCodCashSettledForDate(storeId, dateStr, branchId),
   ]);
 
   const orders = ordersRes.data ?? [];

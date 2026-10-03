@@ -15,6 +15,8 @@ export interface VariantRow {
   isOutOfStock: boolean;
   lowStockThreshold: number;
   isActive: boolean;
+  /** Stores with branches: available units per branch. */
+  branchStock?: { branch_id: string; available: number }[];
 }
 
 export interface ProductRow {
@@ -34,6 +36,8 @@ export interface ProductRow {
   hasOutOfStockVariant: boolean;
   status: ProductStatus;
   isInactiveProduct: boolean;
+  /** Stores with branches: available units per branch. */
+  branchStock?: { branch_id: string; available: number }[];
 }
 
 export function mapProductsForModernTable(
@@ -76,6 +80,7 @@ export function mapProductsForModernTable(
               variantStock > 0 && variantStock <= variantLowStockThreshold,
             lowStockThreshold: variantLowStockThreshold,
             isActive: v.is_active,
+            branchStock: v.stock?.branches,
           };
         })
       : undefined;
@@ -107,6 +112,7 @@ export function mapProductsForModernTable(
       status: p.status,
       isInactiveProduct:
         p.status === ProductStatus.DRAFT || p.status === ProductStatus.INACTIVE,
+      branchStock: p.stock?.branches,
     };
   });
 }

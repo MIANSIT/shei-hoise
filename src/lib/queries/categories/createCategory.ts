@@ -4,15 +4,15 @@ import { createCategorySchema, type CreateCategoryType } from "@/lib/schema/cate
 import { createClient } from "@/lib/supabase/server";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { uploadCategoryImage } from "@/lib/utils/categoryImageStorage";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- _store_id is caller-supplied and never trusted; the real store is resolved from the session below
 export async function createCategory(data: CreateCategoryType, _store_id: string, imageFile?: File | null) {
   const supabase = createClient();
   const payload = createCategorySchema.parse(data);
 
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("categories.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const store_id = storeResult.storeId;
 

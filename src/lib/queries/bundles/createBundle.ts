@@ -6,8 +6,8 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
  * Creates a bundle: a products row (product_type = "bundle") with no
@@ -19,7 +19,7 @@ import { validateBundleOptionGroups } from "./validateBundleOptionGroups";
 export async function createBundle(bundle: BundleType) {
   // bundle.store_id is caller-supplied — never trust it for authorization.
   // Always create under the session's own store, regardless of what was sent.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("products.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
   bundle = { ...bundle, store_id: storeResult.storeId };
 

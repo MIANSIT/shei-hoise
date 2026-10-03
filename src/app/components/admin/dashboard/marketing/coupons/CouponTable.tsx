@@ -13,6 +13,7 @@ import {
   getCouponRedemptions,
   type CouponRedemptionRow,
 } from "@/lib/queries/coupons/getCouponRedemptions";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 interface CouponTableProps {
   data: Coupon[];
@@ -54,6 +55,7 @@ const EmptyCoupons = () => (
 
 function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdit, onDelete }: CouponTableProps) {
   const { modal } = App.useApp();
+  const { can } = usePermissions();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [redemptionCoupon, setRedemptionCoupon] = useState<Coupon | null>(null);
@@ -96,7 +98,8 @@ function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdi
   );
 
   const getRowMenuItems = useCallback(
-    (record: Coupon): MenuProps["items"] => [
+    (record: Coupon): MenuProps["items"] => {
+      const items: NonNullable<MenuProps["items"]> = [
       {
         key: "edit",
         icon: <EditOutlined style={{ color: "#10b981" }} />,
@@ -119,8 +122,17 @@ function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdi
           confirmDelete(record);
         },
       },
-    ],
-    [deletingId, onEdit, confirmDelete],
+      ];
+      // Staff: only the actions their role allows.
+      return items.filter((item) => {
+        if (!item) return false;
+        if (item.type === "divider") return can("coupons.edit") && can("coupons.delete");
+        if (item.key === "edit") return can("coupons.edit");
+        if (item.key === "delete") return can("coupons.delete");
+        return true;
+      });
+    },
+    [deletingId, onEdit, confirmDelete, can],
   );
 
   const columns: ColumnsType<Coupon> = [

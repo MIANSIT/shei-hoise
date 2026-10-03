@@ -15,6 +15,10 @@ import { recordCodSettlement } from "@/lib/queries/orders/recordCodSettlement";
 import { deleteCodSettlement } from "@/lib/queries/orders/deleteCodSettlement";
 import type { DeliveryCourier } from "@/lib/types/store/store";
 import type { CodSettlement, UnsettledCodOrder } from "@/lib/types/codSettlement";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const { Text, Title } = Typography;
 const PAGE_SIZE = 10;
@@ -50,6 +54,12 @@ export default function CodSettlementsPage() {
   const [settlementsPage, setSettlementsPage] = useState(1);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { can } = usePermissions();
+  // Stores with branches: lists follow the header's branch; one settlement = one branch.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchName } = useBranches();
+  const listBranchId = branchesOn ? selectedBranchId : null;
+  const showBranch = branchesOn && !listBranchId;
+  const t = useTranslation();
 
   useEffect(() => {
     if (!storeId) return;
@@ -57,28 +67,34 @@ export default function CodSettlementsPage() {
   }, [storeId]);
 
   const fetchUnsettled = useCallback(async () => {
-    if (!storeId) return;
+    if (!storeId || branchesLoading) return;
     setUnsettledLoading(true);
     try {
-      const rows = await getUnsettledCodOrders(storeId, courierFilter);
+      const rows = await getUnsettledCodOrders(storeId, courierFilter, listBranchId);
       setUnsettled(rows);
       setSelectedIds([]);
     } finally {
       setUnsettledLoading(false);
     }
-  }, [storeId, courierFilter]);
+  }, [storeId, courierFilter, listBranchId, branchesLoading]);
 
   const fetchSettlements = useCallback(async () => {
-    if (!storeId) return;
+    if (!storeId || branchesLoading) return;
     setSettlementsLoading(true);
     try {
-      const result = await getCodSettlementsList(storeId, settlementsPage, PAGE_SIZE);
+      const result = await getCodSettlementsList(storeId, settlementsPage, PAGE_SIZE, listBranchId);
       setSettlements(result.data);
       setSettlementsTotal(result.total);
     } finally {
       setSettlementsLoading(false);
     }
-  }, [storeId, settlementsPage]);
+  }, [storeId, settlementsPage, listBranchId, branchesLoading]);
+
+  // On "All branches", once an order is ticked only orders of that branch can join it.
+  const selectionBranch = useMemo(() => {
+    if (!branchesOn || selectedIds.length === 0) return undefined;
+    return unsettled.find((o) => o.id === selectedIds[0])?.branch_id ?? null;
+  }, [branchesOn, selectedIds, unsettled]);
 
   useEffect(() => {
     fetchUnsettled();
@@ -174,6 +190,15 @@ export default function CodSettlementsPage() {
       render: (d: string) => dayjs(d).format("DD MMM YYYY"),
     },
     { title: "Courier", key: "courier", render: (_, row) => courierName(row.courier) },
+    ...(showBranch
+      ? [
+          {
+            title: t.branches.orderBranch,
+            key: "branch",
+            render: (_: unknown, row: UnsettledCodOrder) => branchName(row.branch_id) || "—",
+          },
+        ]
+      : []),
     {
       title: "Due from Courier",
       key: "expected_from_courier",
@@ -201,6 +226,15 @@ export default function CodSettlementsPage() {
       render: (d: string) => dayjs(d).format("DD MMM YYYY"),
     },
     { title: "Courier", key: "courier", render: (_, row) => courierName(row.courier) },
+    ...(showBranch
+      ? [
+          {
+            title: t.branches.orderBranch,
+            key: "branch",
+            render: (_: unknown, row: CodSettlement) => branchName(row.branch_id) || "—",
+          },
+        ]
+      : []),
     { title: "Orders", dataIndex: "order_count", key: "order_count", align: "right" as const },
     {
       title: "Amount Received",
@@ -214,7 +248,8 @@ export default function CodSettlementsPage() {
       title: "",
       key: "actions",
       width: 50,
-      render: (_, record) => (
+      render: (_, record) =>
+        can("cod.delete") && (
         <Popconfirm
           title="Delete this settlement? Its orders become unsettled again."
           okText="Delete"
@@ -229,7 +264,7 @@ export default function CodSettlementsPage() {
             loading={deletingId === record.id}
           />
         </Popconfirm>
-      ),
+        ),
     },
   ];
 
@@ -249,7 +284,7 @@ export default function CodSettlementsPage() {
             <Truck size={20} color="white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground m-0">COD Settlements</h1>
+            <h1 className="text-lg font-bold text-foreground m-0"><MenuLabel labelKey="menuCodSettlements" /></h1>
             <p className="text-xs text-muted-foreground m-0">
               Record the cash a courier hands over for delivered COD orders — it&apos;s added to
               that date&apos;s Register Audit cash.
@@ -286,6 +321,9 @@ export default function CodSettlementsPage() {
             rowSelection={{
               selectedRowKeys: selectedIds,
               onChange: handleSelectionChange,
+              getCheckboxProps: (row) => ({
+                disabled: selectionBranch !== undefined && (row.branch_id ?? null) !== selectionBranch,
+              }),
             }}
           />
 
@@ -325,6 +363,7 @@ export default function CodSettlementsPage() {
               <Button
                 type="primary"
                 loading={submitting}
+                hidden={!can("cod.add")}
                 onClick={handleRecordSettlement}
                 className="rounded-xl h-9 font-semibold border-none"
                 style={{

@@ -5,7 +5,7 @@ import { Lock } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface FeatureLockedProps {
-  title?: string;
+  title?: React.ReactNode;
 }
 
 /** Full-page lock shown when the store's plan doesn't include a given feature (e.g. expense tracking). */

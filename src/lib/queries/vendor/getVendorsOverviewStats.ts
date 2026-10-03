@@ -22,8 +22,14 @@ const EMPTY: VendorsOverviewStats = {
 // collection pace. Scoped by store_id directly on each table rather than
 // going through a vendor id list first, since every vendor table already
 // carries store_id for tenant isolation.
+//
+// Stores with branches, one branch picked: what moved through that branch —
+// money it collected and margin on goods it sent out. Stock with vendors and
+// the amount due stay vendor-wide: a vendor has one account with the store,
+// whichever branch sent the goods.
 export async function getVendorsOverviewStats(
   storeId: string,
+  branchId?: string | null,
 ): Promise<VendorsOverviewStats> {
   if (!storeId) return EMPTY;
 
@@ -48,15 +54,24 @@ export async function getVendorsOverviewStats(
         .eq("store_id", storeId),
       supabase
         .from("vendor_payments")
-        .select("amount, payment_date")
+        .select(branchId ? "amount, payment_date, branch_id" : "amount, payment_date")
         .eq("store_id", storeId),
-      supabase
-        .from("vendor_order_items")
-        .select(
-          "quantity, original_tp, vendor_tp, order:vendor_orders!inner(store_id, status)",
-        )
-        .eq("order.store_id", storeId)
-        .eq("order.status", "confirmed"),
+      branchId
+        ? supabase
+            .from("vendor_order_items")
+            .select(
+              "quantity, original_tp, vendor_tp, order:vendor_orders!inner(store_id, status, branch_id)",
+            )
+            .eq("order.store_id", storeId)
+            .eq("order.status", "confirmed")
+            .eq("order.branch_id", branchId)
+        : supabase
+            .from("vendor_order_items")
+            .select(
+              "quantity, original_tp, vendor_tp, order:vendor_orders!inner(store_id, status)",
+            )
+            .eq("order.store_id", storeId)
+            .eq("order.status", "confirmed"),
       supabase
         .from("vendor_orders")
         .select("delivery_cost")
@@ -77,16 +92,20 @@ export async function getVendorsOverviewStats(
     (sum, r) => sum + Number(r.total_receivable),
     0,
   );
-  const payments = paymentsRes.data ?? [];
+  type PaymentRow = { amount: number; payment_date: string; branch_id?: string | null };
+  const payments = (paymentsRes.data ?? []) as unknown as PaymentRow[];
+  // The due needs every payment; "collected" is this branch's only.
   const totalPaid = payments.reduce((sum, r) => sum + Number(r.amount), 0);
-  const collectedThisWeek = payments
+  const collected = branchId ? payments.filter((p) => p.branch_id === branchId) : payments;
+  const collectedThisWeek = collected
     .filter((p) => p.payment_date >= weekStart)
     .reduce((sum, r) => sum + Number(r.amount), 0);
-  const collectedThisMonth = payments
+  const collectedThisMonth = collected
     .filter((p) => p.payment_date >= monthStart)
     .reduce((sum, r) => sum + Number(r.amount), 0);
 
-  const totalMarginDispatched = (orderItemsRes.data ?? []).reduce(
+  type ItemRow = { quantity: number; original_tp: number; vendor_tp: number };
+  const totalMarginDispatched = ((orderItemsRes.data ?? []) as unknown as ItemRow[]).reduce(
     (sum, r) => sum + r.quantity * (Number(r.vendor_tp) - Number(r.original_tp)),
     0,
   );

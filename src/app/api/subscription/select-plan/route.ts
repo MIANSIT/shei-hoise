@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     if (dbUser?.user_type === "super_admin") {
       return Response.json({ error: "Admins cannot subscribe to a plan" }, { status: 403 });
     }
+    // Staff carry users.store_id too, but the plan is the owner's decision.
+    if (dbUser?.user_type === "store_staff") {
+      return Response.json({ error: "Only the store owner can change the plan" }, { status: 403 });
+    }
 
     const storeId = dbUser?.store_id;
     if (!storeId) {

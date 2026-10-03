@@ -14,12 +14,19 @@ import {
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import { PaymentMethod } from "@/lib/types/enums";
 import CustomerQuickPaymentModal from "./CustomerQuickPaymentModal";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 export default function CustomerDues() {
   const { user } = useCurrentUser();
   const { icon: currencyIconRaw } = useUserCurrencyIcon();
   const currencyIcon = typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
   const notify = useSheiNotification();
+  const t = useTranslation();
+  // Stores with branches: dues are per branch, and the list follows the header's branch.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchName } = useBranches();
+  const listBranchId = branchesOn ? selectedBranchId : null;
 
   const [dues, setDues] = useState<CustomerWithDue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,15 +38,15 @@ export default function CustomerDues() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchDues = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const data = await getCustomersWithDue(user.store_id);
+      const data = await getCustomersWithDue(user.store_id, listBranchId, branchesOn);
       setDues(data);
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id]);
+  }, [user?.store_id, listBranchId, branchesOn, branchesLoading]);
 
   useEffect(() => {
     fetchDues();
@@ -49,7 +56,12 @@ export default function CustomerDues() {
     if (!user?.store_id) return;
     setSelectedCustomer(customer);
     setModalOpen(true);
-    const balances = await getCustomerOrderBalances(user.store_id, customer.customer_id);
+    const balances = await getCustomerOrderBalances(
+      user.store_id,
+      customer.customer_id,
+      customer.branch_id,
+      branchesOn,
+    );
     setOrderOptions(balances.filter((b) => b.due_remaining > 0.01));
   };
 
@@ -72,6 +84,8 @@ export default function CustomerDues() {
         notes: payload.notes,
         orderId: payload.orderId,
         createdBy: user.id,
+        // The money is collected for this row's branch.
+        branchId: selectedCustomer.branch_id,
       });
       if (result.success) {
         notify.success("Payment recorded");
@@ -106,6 +120,17 @@ export default function CustomerDues() {
         </span>
       ),
     },
+    ...(branchesOn && !listBranchId
+      ? [
+          {
+            title: t.branches.orderBranch,
+            key: "branch",
+            render: (_: unknown, record: CustomerWithDue) => (
+              <span className="text-sm text-teal-700 dark:text-teal-300">{branchName(record.branch_id) || "—"}</span>
+            ),
+          },
+        ]
+      : []),
     {
       title: "Phone",
       dataIndex: "phone",
@@ -157,7 +182,7 @@ export default function CustomerDues() {
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-              Customer Dues
+              <MenuLabel labelKey="menuCustomerDues" />
             </h1>
             <p className="text-xs text-muted-foreground m-0">
               Walk-in customers with an outstanding balance from Quick Sale
@@ -187,7 +212,8 @@ export default function CustomerDues() {
           <Table
             columns={columns}
             dataSource={filteredDues}
-            rowKey="customer_id"
+            rowKey="row_key"
+            scroll={{ x: "max-content" }}
             pagination={false}
           />
         )}

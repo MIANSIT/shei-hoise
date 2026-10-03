@@ -1,9 +1,9 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { announcementFieldsSchema, type AnnouncementFieldsType } from "@/lib/schema/announcement.schema";
 import type { Announcement } from "@/lib/types/announcement";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // A flat cap, same spirit as MAX_SLIDES/MAX_BANNERS — stops an unbounded
 // announcement list from making the ticker unreadably long.
@@ -12,7 +12,7 @@ const MAX_ANNOUNCEMENTS = 10;
 export async function createAnnouncement(
   fields: AnnouncementFieldsType,
 ): Promise<{ success: true; announcement: Announcement } | { success: false; error: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.add");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

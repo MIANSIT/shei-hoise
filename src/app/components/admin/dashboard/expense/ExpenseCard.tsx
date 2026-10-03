@@ -10,6 +10,7 @@ import DynamicLucideIcon from "./DynamicLucideIcon";
 import { getCategoryColor, hexToRgba } from "@/lib/types/expense/expense-utils";
 import { AmountCell, CategoryCell, PaymentCell } from "./ExpenseTableCells";
 import { ExpenseDetailContent } from "./ExpenseDetailContent";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 
 interface ExpenseCardProps {
   record: Expense;
@@ -29,6 +30,8 @@ export function ExpenseCard({
   const color = record.category ? getCategoryColor(record.category) : "#6366f1";
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { modal } = App.useApp();
+
+  const { can } = usePermissions();
 
   const confirmDelete = () => {
     modal.confirm({
@@ -149,6 +152,7 @@ export function ExpenseCard({
         <div className="px-5 py-4 border-t border-border bg-card flex gap-2">
           <Button
             block
+            hidden={!can("expenses.edit")}
             icon={<EditOutlined />}
             onClick={() => {
               onEdit(record);
@@ -162,6 +166,7 @@ export function ExpenseCard({
           <Button
             block
             danger
+            hidden={!can("expenses.delete")}
             onClick={confirmDelete}
             icon={
               deletingId === record.id ? (

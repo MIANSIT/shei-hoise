@@ -1,7 +1,6 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   uploadHeroSlideImage,
   deleteHeroSlideImage,
@@ -9,13 +8,14 @@ import {
 } from "@/lib/utils/heroSlideImageStorage";
 import { heroSlideFieldsSchema, type HeroSlideFieldsType } from "@/lib/schema/heroSlide.schema";
 import type { HeroSlide } from "@/lib/types/heroSlide";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function updateHeroSlide(
   slideId: string,
   fields: HeroSlideFieldsType,
   file: File | null,
 ): Promise<{ success: true; slide: HeroSlide } | { success: false; error: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

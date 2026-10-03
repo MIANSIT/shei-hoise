@@ -7,11 +7,18 @@ import type {
   UpdatedStoreSettings,
   StoreSettings,
 } from "@/lib/types/store/store";
+import { requireOwner } from "@/lib/permissions/server";
 
 export async function updateStoreSettings(
   storeId: string,
   payload: UpdatedStoreSettings
 ): Promise<StoreSettings | null> {
+  const auth = await requireOwner({ storeId });
+  if (!auth.ok) {
+    console.error("updateStoreSettings:", auth.error);
+    return null;
+  }
+
   const supabase = createClient();
   const finalPayload = { ...payload };
 

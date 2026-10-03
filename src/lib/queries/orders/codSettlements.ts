@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
-import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
+import { computeBranchOrderBalances } from "@/lib/queries/customers/customerDueMath";
 import type { CodSettlement, UnsettledCodOrder } from "@/lib/types/codSettlement";
 
 /**
@@ -15,12 +15,14 @@ import type { CodSettlement, UnsettledCodOrder } from "@/lib/types/codSettlement
 export async function getUnsettledCodOrders(
   storeId: string,
   courier?: string | null,
+  /** Stores with branches: a settlement only covers one branch's orders. */
+  branchId?: string | null,
 ): Promise<UnsettledCodOrder[]> {
   if (!storeId) return [];
 
   let query = supabase
     .from("orders")
-    .select("id, order_number, order_date, courier, customer_id, total_amount, shipping_fee, shipping_address")
+    .select("id, order_number, order_date, courier, customer_id, total_amount, shipping_fee, shipping_address, branch_id")
     .eq("store_id", storeId)
     .eq("payment_method", PaymentMethod.COD)
     .eq("status", OrderStatus.DELIVERED)
@@ -29,6 +31,7 @@ export async function getUnsettledCodOrders(
     .order("order_date", { ascending: true });
 
   if (courier) query = query.eq("courier", courier);
+  if (branchId) query = query.eq("branch_id", branchId);
 
   const { data, error } = await query;
   if (error) {
@@ -53,7 +56,7 @@ export async function getUnsettledCodOrders(
     const [customerOrdersRes, paymentsRes] = await Promise.all([
       supabase
         .from("orders")
-        .select("id, customer_id, total_amount, created_at")
+        .select("id, customer_id, total_amount, created_at, branch_id")
         .eq("store_id", storeId)
         .in("customer_id", customerIds)
         .neq("payment_status", PaymentStatus.PAID)
@@ -61,26 +64,26 @@ export async function getUnsettledCodOrders(
         .order("created_at", { ascending: true }),
       supabase
         .from("customer_payments")
-        .select("order_id, amount, customer_id")
+        .select("*")
         .eq("store_id", storeId)
         .in("customer_id", customerIds),
     ]);
 
-    const ordersByCustomer = new Map<string, { id: string; total_amount: number }[]>();
+    const ordersByCustomer = new Map<string, { id: string; total_amount: number; branch_id: string | null }[]>();
     for (const o of (customerOrdersRes.data ?? []) as any[]) {
       const list = ordersByCustomer.get(o.customer_id) ?? [];
-      list.push({ id: o.id, total_amount: Number(o.total_amount) });
+      list.push({ id: o.id, total_amount: Number(o.total_amount), branch_id: o.branch_id ?? null });
       ordersByCustomer.set(o.customer_id, list);
     }
-    const paymentsByCustomer = new Map<string, { order_id: string | null; amount: number }[]>();
+    const paymentsByCustomer = new Map<string, { order_id: string | null; amount: number; branch_id: string | null }[]>();
     for (const p of (paymentsRes.data ?? []) as any[]) {
       const list = paymentsByCustomer.get(p.customer_id) ?? [];
-      list.push({ order_id: p.order_id, amount: Number(p.amount) });
+      list.push({ order_id: p.order_id, amount: Number(p.amount), branch_id: p.branch_id ?? null });
       paymentsByCustomer.set(p.customer_id, list);
     }
 
     for (const customerId of customerIds) {
-      const balances = computeOrderBalances(
+      const balances = computeBranchOrderBalances(
         ordersByCustomer.get(customerId) ?? [],
         paymentsByCustomer.get(customerId) ?? [],
       );
@@ -125,6 +128,7 @@ export async function getUnsettledCodOrders(
         order_date: order.order_date,
         courier: order.courier,
         customer_name: order.shipping_address?.customer_name || "Unknown Customer",
+        branch_id: order.branch_id ?? null,
         total_amount: total,
         due_remaining: dueRemaining,
         courier_deduction: courierDeduction,
@@ -144,16 +148,19 @@ export async function getCodSettlementsList(
   storeId: string,
   page = 1,
   pageSize = 10,
+  branchId?: string | null,
 ): Promise<CodSettlementListResult> {
   if (!storeId) return { data: [], total: 0 };
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from("store_cod_settlements")
     .select("*", { count: "exact" })
-    .eq("store_id", storeId)
+    .eq("store_id", storeId);
+  if (branchId) query = query.eq("branch_id", branchId);
+  const { data, error, count } = await query
     .order("settlement_date", { ascending: false })
     .range(from, to);
 
@@ -174,14 +181,18 @@ export async function getCodSettlementsList(
 export async function getCodCashSettledForDate(
   storeId: string,
   dateStr: string,
+  /** Stores with branches: cash handed over to this branch's drawer. */
+  branchId?: string | null,
 ): Promise<number> {
   if (!storeId) return 0;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("store_cod_settlements")
     .select("total_amount")
     .eq("store_id", storeId)
     .eq("settlement_date", dateStr);
+  if (branchId) query = query.eq("branch_id", branchId);
+  const { data, error } = await query;
 
   if (error) {
     console.error("Failed to load COD cash settled for date:", error.message);

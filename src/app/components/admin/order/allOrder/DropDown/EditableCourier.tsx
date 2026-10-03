@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getDeliveryCouriers } from "@/lib/queries/deliveryCouriers/getDeliveryCouriers";
 import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { STEADFAST_LIVE } from "@/lib/config/courierAvailability";
 import type { DeliveryCourier } from "@/lib/types/store/store";
@@ -39,6 +40,7 @@ const MemoizedCourierSelect = memo(CourierSelect);
 
 const EditableCourier: React.FC<Props> = ({ courier, storeId, onSave, disabled }) => {
   const t = useTranslation();
+  const { can } = usePermissions();
   const [couriers, setCouriers] = useState<DeliveryCourier[]>([]);
   const [courierTrackingAllowed, setCourierTrackingAllowed] = useState(false);
 
@@ -93,7 +95,7 @@ const EditableCourier: React.FC<Props> = ({ courier, storeId, onSave, disabled }
       value={courier}
       options={options}
       onChange={onSave}
-      disabled={disabled}
+      disabled={disabled || !can("orders.edit")}
     />
   );
 };

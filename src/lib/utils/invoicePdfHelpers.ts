@@ -51,6 +51,8 @@ export interface InvoicePdfData {
   orderStatus?: string;
   notes?: string;
   orderCreatedAt?: string | null;
+  /** Stores with branches: this invoice's own header (its branch), instead of the request's shared store. */
+  store?: InvoicePdfStore;
 }
 
 // ==================== BENGALI FONT SUPPORT ====================

@@ -6,8 +6,8 @@ import { ProductUpdateType } from "@/lib/schema/productUpdateSchema";
 import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProductImages";
 import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
  * Sets an inventory row to an absolute quantity via the same `set_inventory`
@@ -58,7 +58,7 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
   // id and data.store_id are caller-supplied — never trust either for
   // authorization. Resolve the caller's real store and confirm the product
   // being edited actually belongs to it.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("products.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const store_id = storeResult.storeId;
 

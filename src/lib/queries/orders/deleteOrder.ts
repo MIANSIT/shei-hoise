@@ -1,7 +1,14 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import {
+  BRANCH_SCOPE_ERROR,
+  canUseBranch,
+  checkDeleteWindow,
+  getAuthorizedStoreId,
+  logDeleted,
+} from "@/lib/permissions/server";
 import { OrderStatus } from "@/lib/types/enums";
+import { moveOrderStock } from "./orderStock";
 
 // Statuses whose stock still sits in quantity_reserved (order creation
 // reserves it immediately, regardless of payment status — see
@@ -15,82 +22,40 @@ const RESERVED_STATUSES: string[] = [
   OrderStatus.SHIPPED,
 ];
 
-interface ReleasableOrderItem {
-  product_id: string;
-  variant_id: string | null;
-  quantity: number;
-  // PostgREST embeds a to-one relation as a single object at runtime, but
-  // without a generated Database type this client infers it as an array —
-  // asserted below rather than typed `any`.
-  products: { product_type: string } | null;
-}
 
 async function releaseReservedStock(orderId: string): Promise<void> {
   const { data: items } = await supabaseAdmin
     .from("order_items")
-    .select("product_id, variant_id, quantity, products(product_type)")
+    .select("product_id, variant_id, quantity")
     .eq("order_id", orderId);
-
-  // Bundle header rows carry no product_inventory of their own — the real
-  // stock lives on their exploded component rows.
-  const stockItems = ((items as unknown as ReleasableOrderItem[]) || []).filter(
-    (item) => item.products?.product_type !== "bundle",
-  );
-
-  for (const item of stockItems) {
-    const inventoryQuery = item.variant_id
-      ? supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("variant_id", item.variant_id)
-          .single()
-      : supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
-
-    const { data: inventory } = await inventoryQuery;
-    if (!inventory) continue;
-
-    const updatePayload = {
-      quantity_available: (inventory.quantity_available || 0) + item.quantity,
-      quantity_reserved: Math.max(0, (inventory.quantity_reserved || 0) - item.quantity),
-    };
-
-    if (item.variant_id) {
-      await supabaseAdmin
-        .from("product_inventory")
-        .update(updatePayload)
-        .eq("variant_id", item.variant_id);
-    } else {
-      await supabaseAdmin
-        .from("product_inventory")
-        .update(updatePayload)
-        .eq("product_id", item.product_id)
-        .is("variant_id", null);
-    }
-  }
+  // Bundle header rows are skipped by order_stock_move (no stock of their own).
+  await moveOrderStock(orderId, items ?? [], "release");
 }
 
 export async function deleteOrder(
   orderId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("orders.delete");
     if (!storeResult.ok) {
       return { success: false, error: storeResult.error };
     }
 
+    // Full row + items: copied into the activity log before they're gone.
     const { data: order, error: fetchError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, status")
+      .select("*, order_items (*)")
       .eq("id", orderId)
       .eq("store_id", storeResult.storeId)
       .single();
 
     if (fetchError || !order) return { success: false, error: "Order not found" };
+
+    const tooOld = checkDeleteWindow(storeResult.actor, order.created_at);
+    if (tooOld) return { success: false, error: tooOld };
+    if (order.branch_id && !canUseBranch(storeResult.actor, order.branch_id)) {
+      return { success: false, error: BRANCH_SCOPE_ERROR };
+    }
 
     if (RESERVED_STATUSES.includes(order.status)) {
       await releaseReservedStock(orderId);
@@ -108,6 +73,14 @@ export async function deleteOrder(
       .eq("id", orderId)
       .eq("store_id", storeResult.storeId);
     if (deleteError) return { success: false, error: "Failed to delete order" };
+
+    await logDeleted(
+      storeResult.actor,
+      "orders",
+      "order",
+      order,
+      `Deleted order #${order.order_number} (${order.status}, ৳${order.total_amount})`,
+    );
 
     return { success: true };
   } catch (error) {

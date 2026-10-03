@@ -42,6 +42,8 @@ import {
   type StoreSubscription,
 } from "@/lib/queries/subscription/getStoreSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
 
 dayjs.extend(relativeTime);
 
@@ -51,9 +53,13 @@ const PAGE_SIZE = 10;
 
 export default function ExpensesPage() {
   const { storeId, storeSlug, loading: userLoading } = useCurrentUser();
+  const { can } = usePermissions();
   const { success, error } = useSheiNotification();
   const t = useTranslation();
   const router = useRouter();
+  // Stores with branches: the list follows the header's branch.
+  const { enabled: branchesOn, selectedBranchId, branchFileSuffix } = useBranches();
+  const listBranchId = branchesOn ? selectedBranchId : null;
 
   // ── Data ──
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -113,6 +119,7 @@ export default function ExpensesPage() {
         paymentMethod: paymentFilter,
         dateFrom: dateRange ? dateRange[0].format("YYYY-MM-DD") : null,
         dateTo: dateRange ? dateRange[1].format("YYYY-MM-DD") : null,
+        branchId: listBranchId,
         page,
         pageSize: PAGE_SIZE,
       };
@@ -131,6 +138,7 @@ export default function ExpensesPage() {
     categoryFilter,
     paymentFilter,
     dateRange,
+    listBranchId,
     page,
     error,
   ]);
@@ -148,11 +156,12 @@ export default function ExpensesPage() {
       paymentMethod: paymentFilter,
       dateFrom: dateRange ? dateRange[0].format("YYYY-MM-DD") : null,
       dateTo: dateRange ? dateRange[1].format("YYYY-MM-DD") : null,
+      branchId: listBranchId,
       page: 1,
       pageSize: 1_000_000,
     });
     return result.data;
-  }, [storeId, debouncedSearch, categoryFilter, paymentFilter, dateRange]);
+  }, [storeId, debouncedSearch, categoryFilter, paymentFilter, dateRange, listBranchId]);
 
   // ── Fetch categories once ──
   const fetchCategories = useCallback(async () => {
@@ -259,6 +268,7 @@ export default function ExpensesPage() {
             ...(values.platform && { platform: values.platform }),
             ...(values.vendor_name && { vendor_name: values.vendor_name }),
             ...(values.notes && { notes: values.notes }),
+            ...(values.branch_id && { branch_id: values.branch_id }),
           };
           const created = await createExpense(input);
           if (created) {
@@ -280,6 +290,7 @@ export default function ExpensesPage() {
             platform: values.platform ?? undefined,
             vendor_name: values.vendor_name ?? undefined,
             notes: values.notes ?? undefined,
+            branch_id: values.branch_id ?? undefined,
           };
           const updated = await updateExpense(input);
           if (updated) {
@@ -353,7 +364,7 @@ export default function ExpensesPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                {t.admin.expenseTitle}
+                {t.admin.menuExpense}
               </h1>
               <p className="text-xs text-muted-foreground m-0 hidden sm:block">
                 {t.admin.expenseSubtitle}
@@ -363,7 +374,7 @@ export default function ExpensesPage() {
           <div className="flex items-center gap-2 shrink-0">
             <ExpenseExportButton
               fetchExpenses={fetchAllExpensesForExport}
-              storeSlug={storeSlug ?? undefined}
+              storeSlug={storeSlug ? `${storeSlug}${branchFileSuffix}` : undefined}
             />
             <Button
               icon={<PlusOutlined />}
@@ -376,6 +387,7 @@ export default function ExpensesPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
+              hidden={!can("expenses.add")}
               onClick={openCreateModal}
               className="font-semibold rounded-xl h-9"
               style={{

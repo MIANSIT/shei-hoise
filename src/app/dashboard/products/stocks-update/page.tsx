@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button, Pagination, Popover } from "antd";
 import { SearchOutlined, LockOutlined } from "@ant-design/icons";
 import { Percent } from "lucide-react";
@@ -12,6 +12,7 @@ import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useBranches } from "@/lib/context/BranchContext";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -36,6 +37,11 @@ const StockPage = () => {
   const t = useTranslation();
   const n = useLocalNum();
   const { storeId, storeSlug } = useCurrentUser();
+  // Stores with branches: the header's branch picker decides whose stock this
+  // page shows and changes. "All branches" is read-only.
+  const { enabled: branchesOn, selectedBranchId, selectedBranch, branchFileSuffix } = useBranches();
+  const stockBranchId = branchesOn ? selectedBranchId : null;
+  const stockReadOnly = branchesOn && !selectedBranchId;
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
   // Its own flag, separate from stock export ("export_data") and the
   // Products page's "product_csv_export" — each export surface is gated
@@ -87,6 +93,16 @@ const StockPage = () => {
   const [traderModalOpen, setTraderModalOpen] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // The box keeps its own text so typing is instant; the URL (and the fetch
+  // it triggers) only updates once typing pauses. Binding the input straight
+  // to the URL made every keystroke wait for a navigation before the next
+  // letter could appear.
+  const [searchInput, setSearchInput] = useState(searchText);
+  useEffect(() => {
+    // Back/forward or a cleared filter changed the URL from outside the box.
+    if (!typingTimeoutRef.current) setSearchInput(searchText);
+  }, [searchText]);
+
   // Shared by both exports: fetch every product matching the current filters,
   // ignoring pagination. Memoised because TraderPriceExportModal takes it as an
   // effect dependency — a new identity each render would re-trigger the load.
@@ -98,16 +114,23 @@ const StockPage = () => {
       stockFilter,
       1,
       Number.MAX_SAFE_INTEGER,
+      null,
+      stockBranchId,
     );
     return result.data;
-  }, [storeSlug, searchText, stockFilter]);
+  }, [storeSlug, searchText, stockFilter, stockBranchId]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchText(e.target.value);
-    setCurrentPage(1);
+    const value = e.target.value;
+    setSearchInput(value);
     setIsTyping(true);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 800);
+    typingTimeoutRef.current = setTimeout(() => {
+      typingTimeoutRef.current = null;
+      setIsTyping(false);
+      setSearchText(value);
+      setCurrentPage(1);
+    }, 350);
   };
 
   const totalPages = Math.ceil(totalProducts / pageSize) || 1;
@@ -118,7 +141,7 @@ const StockPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">
-            {t.admin.stockTitle}
+            {t.admin.menuStockUpdate}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {t.admin.stockSubtitle}
@@ -138,7 +161,7 @@ const StockPage = () => {
             </span>
           )}
           <StockExportButton
-            storeSlug={storeSlug ?? undefined}
+            storeSlug={storeSlug ? `${storeSlug}${branchFileSuffix}` : undefined}
             locked={!exportAllowed}
             fetchAllProducts={fetchAllProducts}
           />
@@ -195,7 +218,7 @@ const StockPage = () => {
           <input
             type="text"
             placeholder={t.admin.stockSearchPlaceholder}
-            value={searchText}
+            value={searchInput}
             onChange={handleSearchChange}
             className="
               w-full pl-9 pr-4 py-2.5
@@ -268,7 +291,23 @@ const StockPage = () => {
       </div>
 
       {/* ── Table ── */}
+      {branchesOn && (
+        <div
+          className={`rounded-xl border px-4 py-2.5 text-sm ${
+            stockReadOnly
+              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+              : "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-300"
+          }`}
+        >
+          {stockReadOnly
+            ? t.branches.stockAllBranchesNote
+            : t.branches.stockBranchNote.replace("{name}", selectedBranch?.name ?? "")}
+        </div>
+      )}
+
       <StockChangeTable
+        branchId={stockBranchId}
+        readOnly={stockReadOnly}
         searchText={searchText}
         stockFilter={stockFilter}
         currentPage={currentPage}

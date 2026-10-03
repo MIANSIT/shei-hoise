@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeForStore, logDeleted } from "@/lib/permissions/server";
 
 interface DeleteResult {
   success: boolean;
@@ -21,10 +22,13 @@ export async function deleteUserWithCheck(
     if (sessionError) return { success: false, message: sessionError.message };
     if (!session) return { success: false, message: "You must be logged in." };
 
+    const auth = await authorizeForStore(storeId, "customers.delete");
+    if (!auth.ok) return { success: false, message: auth.error };
+
     // 2. Check if customer exists
     const { data: customer, error: customerError } = await supabaseAdmin
       .from("store_customers")
-      .select("id")
+      .select("*")
       .eq("id", customerId)
       .single();
 
@@ -83,6 +87,14 @@ export async function deleteUserWithCheck(
 
     // 7. Delete customer
     await supabaseAdmin.from("store_customers").delete().eq("id", customerId);
+
+    await logDeleted(
+      auth.actor,
+      "customers",
+      "customer",
+      customer,
+      `Deleted customer ${customer.name ?? ""} ${customer.phone ?? ""}`.trim(),
+    );
 
     return { success: true, message: "Customer deleted successfully." };
   } catch (error) {

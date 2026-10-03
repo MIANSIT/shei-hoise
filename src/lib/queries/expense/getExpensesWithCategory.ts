@@ -8,6 +8,8 @@ export interface ExpenseQueryParams {
   paymentMethod?: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;
+  /** Stores with branches: one branch's expenses. */
+  branchId?: string | null;
   page?: number;
   pageSize?: number;
 }
@@ -30,6 +32,7 @@ export async function getExpensesWithCategory(
     paymentMethod,
     dateFrom,
     dateTo,
+    branchId,
     page = 1,
     pageSize = 20,
   } = params;
@@ -69,6 +72,10 @@ export async function getExpensesWithCategory(
 
   if (dateTo) {
     query = query.lte("expense_date", dateTo);
+  }
+
+  if (branchId) {
+    query = query.eq("branch_id", branchId);
   }
 
   const { data, error, count } = await query;

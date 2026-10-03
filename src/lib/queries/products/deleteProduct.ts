@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { checkDeleteWindow, getAuthorizedStoreId, logDeleted } from "@/lib/permissions/server";
 
 /**
  * Fully atomic product deletion.
@@ -13,12 +13,12 @@ export async function deleteProduct(productId: string) {
   try {
     // productId is caller-supplied — confirm it belongs to the caller's own
     // store before deleting anything.
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("products.delete");
     if (!storeResult.ok) throw new Error(storeResult.error);
 
     const { data: product, error: productLookupError } = await supabaseAdmin
       .from("products")
-      .select("store_id")
+      .select("*, product_variants (*), product_inventory (*)")
       .eq("id", productId)
       .single();
 
@@ -26,6 +26,9 @@ export async function deleteProduct(productId: string) {
     if (product.store_id !== storeResult.storeId) {
       throw new Error("You do not have permission to delete this product");
     }
+
+    const tooOld = checkDeleteWindow(storeResult.actor, product.created_at);
+    if (tooOld) throw new Error(tooOld);
 
     // 1️⃣ Fetch ALL images for this product (including variant images)
     //    product_images rows are linked by product_id regardless of variant_id
@@ -77,6 +80,14 @@ export async function deleteProduct(productId: string) {
         .eq(column, productId);
       if (error) console.error(`Failed to delete from ${table}:`, error);
     }
+
+    await logDeleted(
+      storeResult.actor,
+      "products",
+      product.product_type === "bundle" ? "bundle" : "product",
+      product,
+      `Deleted ${product.product_type === "bundle" ? "bundle" : "product"} ${product.name}`,
+    );
 
     return true;
   } catch (err) {

@@ -1,12 +1,12 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { HeroSlide } from "@/lib/types/heroSlide";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /** All of the caller's own slides (active + inactive), for the Storefront Design admin list. */
 export async function getHeroSlidesForAdmin(): Promise<HeroSlide[]> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.view");
   if (!storeResult.ok) return [];
 
   const { data, error } = await supabaseAdmin

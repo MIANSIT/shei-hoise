@@ -40,6 +40,8 @@ import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Im
 import CustomerOrderHistoryTags from "@/app/components/admin/order/common/CustomerOrderHistoryTags";
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import dayjs, { Dayjs } from "dayjs";
+import { useBranches } from "@/lib/context/BranchContext";
+import { OrderBranchTag } from "@/app/components/admin/branches/OrderBranchTag";
 const { Option } = Select;
 
 const { Title, Text } = Typography;
@@ -116,6 +118,9 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   // const [customerProfile, setCustomerProfile] =
   //   useState<CustomerProfile | null>(null);
   // const [profileLoading, setProfileLoading] = useState(false);
+  // Stores with branches: the order keeps its branch while it's edited —
+  // stock shown and changed is that branch's.
+  const { enabled: branchesOn, branchName } = useBranches();
   const [originalOrder, setOriginalOrder] = useState<OrderWithItems | null>(
     null
   );
@@ -267,6 +272,7 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
         storeId: user.store_id,
         productIds: ids,
         withCounts: false,
+        branchId: branchesOn ? (originalOrder?.branch_id ?? null) : null,
       })
       .then((res) => mergeProducts(res.data))
       .catch((err) => {
@@ -279,6 +285,8 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   }, [
     user?.store_id,
     originalOrderProducts,
+    branchesOn,
+    originalOrder?.branch_id,
     mergeProducts,
     notification,
     t.admin.createOrderErrLoadProducts,
@@ -846,9 +854,23 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
 
             <Divider />
 
+            {branchesOn && originalOrder?.branch_id && (
+              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">{t.branches.orderBranch}:</span>
+                <span className="font-semibold text-teal-800 dark:text-teal-200">{branchName(originalOrder.branch_id)}</span>
+                <OrderBranchTag
+                  branchId={null}
+                  needsTransfer={originalOrder.needs_transfer}
+                  confirmed={originalOrder.branch_confirmed}
+                />
+                <span className="text-xs text-muted-foreground basis-full sm:basis-auto">{t.branches.editOrderBranchHint}</span>
+              </div>
+            )}
+
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={12}>
                 <AdminOrderDetails
+                  branchId={branchesOn ? (originalOrder?.branch_id ?? null) : undefined}
                   storeId={user?.store_id || ""}
                   products={products}
                   orderProducts={orderProducts}

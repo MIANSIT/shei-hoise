@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
 import { getVendorPaymentStatsForPeriod } from "@/lib/queries/vendor/getVendorPaymentStatsForPeriod";
+import { getSalesSummary, type SalesSummary } from "./getSalesSummary";
 
 export interface DashboardSummaryPayload {
   revenue: number;
@@ -49,6 +50,8 @@ export interface DashboardSummaryPayload {
   };
   vendor_profit: number;
   prev_vendor_profit: number;
+  /** Sales (all orders) / received / to collect — null when the database predates them. */
+  sales_summary: SalesSummary | null;
   vendor_payments: {
     received: number;
     prev_received: number;
@@ -70,14 +73,18 @@ export async function getDashboardSummary(
   periodEnd: string,
   prevPeriodStart: string,
   prevPeriodEnd: string,
+  /** Stores with branches: one branch's dashboard. Omitted/null = the whole store. */
+  branchId?: string | null,
 ): Promise<DashboardSummaryPayload> {
-  const [{ data, error }, vendorProfit, vendorPayments] = await Promise.all([
+  const [{ data, error }, vendorProfit, vendorPayments, salesSummary] = await Promise.all([
     supabase.rpc("get_dashboard_summary", {
       p_store_id: storeId,
       p_period_start: periodStart,
       p_period_end: periodEnd,
       p_prev_period_start: prevPeriodStart,
       p_prev_period_end: prevPeriodEnd,
+      // Only sent for a branch, so stores whose database predates branches keep working.
+      ...(branchId ? { p_branch_id: branchId } : {}),
     }),
     getVendorStoreProfitForPeriod(
       storeId,
@@ -85,6 +92,7 @@ export async function getDashboardSummary(
       periodEnd,
       prevPeriodStart,
       prevPeriodEnd,
+      branchId ?? null,
     ),
     getVendorPaymentStatsForPeriod(
       storeId,
@@ -92,7 +100,9 @@ export async function getDashboardSummary(
       periodEnd,
       prevPeriodStart,
       prevPeriodEnd,
+      branchId ?? null,
     ),
+    getSalesSummary(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId),
   ]);
 
   if (error) throw new Error(error.message);
@@ -101,5 +111,6 @@ export async function getDashboardSummary(
     vendor_profit: vendorProfit.vendor_profit,
     prev_vendor_profit: vendorProfit.prev_vendor_profit,
     vendor_payments: vendorPayments,
+    sales_summary: salesSummary,
   };
 }

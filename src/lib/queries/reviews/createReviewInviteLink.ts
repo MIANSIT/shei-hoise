@@ -1,8 +1,8 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { generateReviewInviteToken } from "@/lib/utils/reviewInviteToken";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export type CreateReviewInviteLinkResult =
   | { success: true; url: string }
@@ -14,7 +14,7 @@ async function createReviewInviteLinkInternal(
   orderId: string,
   productId: string,
 ): Promise<string> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("orders.view");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { data: order, error: orderError } = await supabaseAdmin

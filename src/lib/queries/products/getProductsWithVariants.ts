@@ -72,6 +72,13 @@ export interface ProductWithVariants {
    Query Options
 ========================= */
 
+/**
+ * List order when not searching. "store" is the manual drag order customers
+ * see on the storefront; "newest" is what an owner usually wants while
+ * managing products (a just-added one lands on top).
+ */
+export type ProductListSort = "store" | "newest" | "name";
+
 export async function getProductsWithVariants({
   storeId,
   search,
@@ -82,6 +89,8 @@ export async function getProductsWithVariants({
   excludeBundles,
   withCounts = true,
   productIds,
+  sort = "store",
+  branchId,
 }: {
   storeId: string;
   search?: string;
@@ -95,6 +104,13 @@ export async function getProductsWithVariants({
   withCounts?: boolean;
   /** Fetch exactly these product IDs instead of paging through the store's catalog — e.g. resolving an existing order's line items without loading everything else. Ignores search/page/pageSize/status/featured/excludeBundles. */
   productIds?: string[];
+  /** Order when not searching (a search is always ordered by relevance). Defaults to "store". */
+  sort?: ProductListSort;
+  /**
+   * Stores with branches: report this branch's stock instead of the store
+   * total (Quick Sale and Create Order sell from the selected branch).
+   */
+  branchId?: string | null;
 }): Promise<{
   data: ProductWithVariants[];
   total: number;
@@ -201,16 +217,36 @@ export async function getProductsWithVariants({
         featuredCount: 0,
       };
     }
-    query.in("id", relevanceOrder);
-    if (status) query.eq("status", status);
-    if (featured !== undefined) query.eq("featured", featured);
-    if (excludeBundles) query.neq("product_type", "bundle");
+    // searchProductIds already applied status/featured/bundle filters, so
+    // only the ids on the requested page need their full product rows —
+    // loading every match (with variants, images and stock) and slicing in
+    // the browser made broad searches slow, and past 1000 matches PostgREST
+    // silently dropped rows.
+    const pageIds =
+      page !== undefined && pageSize !== undefined
+        ? relevanceOrder.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
+        : relevanceOrder;
+    if (pageIds.length === 0) {
+      return {
+        data: [],
+        total: relevanceOrder.length,
+        counts: { [ProductStatus.ACTIVE]: 0, [ProductStatus.INACTIVE]: 0, [ProductStatus.DRAFT]: 0, ALL: 0 },
+        featuredCount: 0,
+      };
+    }
+    query.in("id", pageIds);
   } else {
     // Manual drag order first (see reorderProducts.ts), then A–Z. A product
     // added after the catalog was numbered has no position yet, so it lands
     // at the end with its alphabetical neighbours until it's dragged.
-    query.order("sort_order", { ascending: true, nullsFirst: false });
-    query.order("name", { ascending: true });
+    if (sort === "newest") {
+      query.order("created_at", { ascending: false });
+    } else if (sort === "name") {
+      query.order("name", { ascending: true });
+    } else {
+      query.order("sort_order", { ascending: true, nullsFirst: false });
+      query.order("name", { ascending: true });
+    }
 
     if (status) query.eq("status", status);
     if (featured !== undefined) query.eq("featured", featured);
@@ -264,6 +300,8 @@ export async function getProductsWithVariants({
     product_type: p.product_type ?? "simple",
   })) as ProductWithVariants[];
 
+  if (branchId) await overlayBranchStock(products, branchId);
+
   // Bundles have no product_inventory row of their own — patch in the
   // computed "how many can I sell right now" so every downstream consumer
   // (stock badges, cart quantity clamping) reads it exactly like a normal
@@ -298,11 +336,9 @@ export async function getProductsWithVariants({
       .map((id) => byId.get(id))
       .filter((p): p is ProductWithVariants => !!p);
 
-    total = ordered.length;
-    finalProducts =
-      page !== undefined && pageSize !== undefined
-        ? ordered.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
-        : ordered;
+    // Only this page's rows were fetched; the total is every match.
+    total = relevanceOrder.length;
+    finalProducts = ordered;
   }
 
   // ------------------ 2️⃣ Fetch counts per status + featured ------------------
@@ -337,4 +373,36 @@ export async function getProductsWithVariants({
     counts,
     featuredCount,
   };
+}
+
+/**
+ * Replaces each product/variant's stock with one branch's numbers (a product
+ * the branch has never held shows 0). Store-wide totals are untouched for
+ * everyone else.
+ */
+async function overlayBranchStock(products: ProductWithVariants[], branchId: string): Promise<void> {
+  const ids = products.map((p) => p.id);
+  if (ids.length === 0) return;
+  const rows: { product_id: string; variant_id: string | null; quantity_available: number; quantity_reserved: number }[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await supabase
+      .from("branch_inventory")
+      .select("product_id, variant_id, quantity_available, quantity_reserved")
+      .eq("branch_id", branchId)
+      .in("product_id", ids.slice(i, i + 200));
+    rows.push(...((data as typeof rows) ?? []));
+  }
+  const key = (productId: string, variantId: string | null) => `${productId}:${variantId ?? ""}`;
+  const byKey = new Map(rows.map((r) => [key(r.product_id, r.variant_id), r]));
+  const stockFor = (productId: string, variantId: string | null): ProductStock[] => {
+    const row = byKey.get(key(productId, variantId));
+    return [{ quantity_available: row?.quantity_available ?? 0, quantity_reserved: row?.quantity_reserved ?? 0 }];
+  };
+  for (const product of products) {
+    if (product.product_type === "bundle") continue;
+    product.product_inventory = stockFor(product.id, null);
+    for (const variant of product.product_variants) {
+      variant.product_inventory = stockFor(product.id, variant.id);
+    }
+  }
 }

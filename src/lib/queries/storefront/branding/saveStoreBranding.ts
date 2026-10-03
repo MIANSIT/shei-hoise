@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
 import { isBrandPalette, type BrandPalette } from "@/lib/utils/storeTheme";
 import { invalidateStoreBrandingCache } from "@/lib/queries/stores/getStoreBranding";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export interface SaveStoreBrandingInput {
   theme_palette: BrandPalette | null;
@@ -21,7 +21,7 @@ export interface SaveStoreBrandingInput {
 export async function saveStoreBranding(
   input: SaveStoreBrandingInput,
 ): Promise<{ success: boolean; error?: string }> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("storefront.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
   const storeId = storeResult.storeId;
 

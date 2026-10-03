@@ -17,6 +17,8 @@ export interface ProductStock {
   quantity_reserved: number;
   low_stock_threshold: number;
   track_inventory: boolean;
+  /** Stores with branches: available units in each branch (admin only). */
+  branches?: { branch_id: string; available: number }[];
 }
 
 export interface ProductVariant {
@@ -104,6 +106,8 @@ export async function getProductWithStock(
   page: number = 1,
   pageSize: number = 10,
   stockSort: StockSort = null,
+  /** Show (and filter/sort by) one branch's stock instead of the store total. */
+  branchId: string | null = null,
 ): Promise<{ data: ProductWithStock[]; total: number; stats: StockAggregateStats }> {
   let query = supabaseAdmin
     .from("products")
@@ -212,6 +216,8 @@ export async function getProductWithStock(
     };
   });
 
+  await applyBranchStock(mapped, branchId);
+
   // --- Shared bucket predicate, reused for both the active filter and the
   // per-bucket counts shown on the filter pills ---
   function matchesFilter(product: ProductWithStock, filter: StockFilter): boolean {
@@ -308,4 +314,71 @@ export async function getProductWithStock(
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return { data: paginated, total, stats };
+}
+
+interface BranchStockRow {
+  branch_id: string;
+  product_id: string;
+  variant_id: string | null;
+  quantity_available: number;
+  quantity_reserved: number;
+  low_stock_threshold: number;
+}
+
+/**
+ * Stores with branches: attaches each product/variant's per-branch stock, and
+ * when `branchId` is set, replaces the store total with that branch's numbers
+ * so the stock filters, sort and KPIs describe the branch being looked at.
+ * A store without branches has no rows here and is left unchanged.
+ */
+async function applyBranchStock(products: ProductWithStock[], branchId: string | null): Promise<void> {
+  const productIds = products.map((p) => p.id);
+  if (productIds.length === 0) return;
+
+  const rows: BranchStockRow[] = [];
+  const chunk = 200;
+  for (let i = 0; i < productIds.length; i += chunk) {
+    const { data } = await supabaseAdmin
+      .from("branch_inventory")
+      .select("branch_id, product_id, variant_id, quantity_available, quantity_reserved, low_stock_threshold, store_branches!inner(is_active)")
+      .in("product_id", productIds.slice(i, i + chunk))
+      .eq("store_branches.is_active", true);
+    rows.push(...((data as unknown as BranchStockRow[]) ?? []));
+  }
+  if (rows.length === 0) return;
+
+  const byKey = new Map<string, BranchStockRow[]>();
+  for (const row of rows) {
+    const key = row.variant_id ?? `p:${row.product_id}`;
+    byKey.set(key, [...(byKey.get(key) ?? []), row]);
+  }
+
+  const apply = (stock: ProductStock | null, key: string): ProductStock | null => {
+    const list = byKey.get(key) ?? [];
+    const base: ProductStock = stock ?? {
+      quantity_available: 0,
+      quantity_reserved: 0,
+      low_stock_threshold: 10,
+      track_inventory: true,
+    };
+    const withBreakdown: ProductStock = {
+      ...base,
+      branches: list.map((r) => ({ branch_id: r.branch_id, available: r.quantity_available })),
+    };
+    if (!branchId) return withBreakdown;
+    const row = list.find((r) => r.branch_id === branchId);
+    return {
+      ...withBreakdown,
+      quantity_available: row?.quantity_available ?? 0,
+      quantity_reserved: row?.quantity_reserved ?? 0,
+      low_stock_threshold: row?.low_stock_threshold ?? base.low_stock_threshold,
+    };
+  };
+
+  for (const product of products) {
+    product.stock = apply(product.stock, `p:${product.id}`);
+    for (const variant of product.variants) {
+      variant.stock = apply(variant.stock, variant.id) as ProductStock;
+    }
+  }
 }

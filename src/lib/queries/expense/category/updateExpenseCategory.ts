@@ -1,17 +1,17 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import {
   ExpenseCategory,
   UpdateCategoryInput,
 } from "@/lib/types/expense/type";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function updateCategory(
   payload: UpdateCategoryInput,
 ): Promise<ExpenseCategory> {
   // payload.id is caller-supplied — scope the update to a category that
   // actually belongs to the caller's own store.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("expenses.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
   const { data, error } = await supabase

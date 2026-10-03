@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
+import { getSalesSummary } from "./getSalesSummary";
 
 export interface ProfitLossTrendPoint {
   date: string; // YYYY-MM-DD
@@ -7,6 +8,11 @@ export interface ProfitLossTrendPoint {
 }
 
 export interface ProfitLossReport {
+  /** Every order that isn't cancelled or returned, paid or not. */
+  salesAll: number;
+  /** Sales − received. */
+  toCollect: number;
+  /** Received: paid sales, the base the profit is worked out on. */
   totalSales: number;
   /** Packaging/handling/etc. charged to the customer on paid orders. Already inside totalSales — shown on its own so it isn't hidden. */
   additionalCharges: number;
@@ -22,6 +28,8 @@ export interface ProfitLossReport {
 }
 
 const EMPTY: ProfitLossReport = {
+  salesAll: 0,
+  toCollect: 0,
   totalSales: 0,
   additionalCharges: 0,
   cogs: 0,
@@ -42,18 +50,22 @@ export async function getProfitLossReport(
   storeId: string,
   fromDate: string,
   toDate: string,
+  /** Stores with branches: one branch's P&L. Omitted/null = the whole store. */
+  branchId?: string | null,
 ): Promise<ProfitLossReport> {
   if (!storeId) return EMPTY;
 
-  const [{ data, error }, vendorProfitResult] = await Promise.all([
+  const [{ data, error }, vendorProfitResult, salesSummary] = await Promise.all([
     supabase.rpc("get_profit_loss_report", {
       p_store_id: storeId,
       p_period_start: fromDate,
       p_period_end: toDate,
+      ...(branchId ? { p_branch_id: branchId } : {}),
     }),
     // No "previous period" concept in this report — same range twice, only
     // vendor_profit (not prev_vendor_profit) is used below.
-    getVendorStoreProfitForPeriod(storeId, fromDate, toDate, fromDate, toDate),
+    getVendorStoreProfitForPeriod(storeId, fromDate, toDate, fromDate, toDate, branchId ?? null),
+    getSalesSummary(storeId, fromDate, toDate, null, null, branchId),
   ]);
 
   if (error) {
@@ -63,8 +75,11 @@ export async function getProfitLossReport(
 
   const vendorProfit = vendorProfitResult.vendor_profit;
 
+  const received = Number(data.total_sales) || 0;
   return {
-    totalSales: Number(data.total_sales) || 0,
+    salesAll: salesSummary?.sales ?? received,
+    toCollect: salesSummary?.toCollect ?? 0,
+    totalSales: received,
     additionalCharges: Number(data.additional_charges) || 0,
     cogs: Number(data.cogs) || 0,
     grossProfit: Number(data.gross_profit) || 0,

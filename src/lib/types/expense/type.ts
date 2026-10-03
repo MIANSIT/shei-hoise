@@ -49,6 +49,8 @@ export interface Expense {
   payment_method?: string;
   platform?: string;
   notes?: string;
+  /** Stores with branches: the branch that carries this expense. */
+  branch_id?: string | null;
   created_at: string;
   updated_at: string;
   category?: ExpenseCategory;
@@ -66,4 +68,5 @@ export interface ExpenseFormValues {
   platform?: string;
   vendor_name?: string;
   notes?: string;
+  branch_id?: string;
 }

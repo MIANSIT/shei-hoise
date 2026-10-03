@@ -1,7 +1,7 @@
 "use server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { callVendorRpc } from "@/lib/queries/vendor/vendorBranchRpc";
 import type { VendorOrderItemInput } from "@/lib/types/vendor/type";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function addItemsToConfirmedOrder(
   vendorOrderId: string,
@@ -14,10 +14,11 @@ export async function addItemsToConfirmedOrder(
   // own store before letting the RPC move any stock. p_caller_store_id is
   // also passed through so the RPC itself re-checks (see
   // supabase/migrations/20260822000000_add_vendor_rpc_ownership_checks.sql).
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("vendors.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
-  const { error } = await supabaseAdmin.rpc("add_items_to_confirmed_vendor_order", {
+  // Stores with branches: the extra goods come from the order's own branch.
+  const { error } = await callVendorRpc("add_items_to_confirmed_vendor_order", {
     p_vendor_order_id: vendorOrderId,
     p_caller_store_id: storeResult.storeId,
     p_items: items.map((i) => ({

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Avatar,
   Space,
@@ -56,6 +56,10 @@ import ReceiptPreviewModal from "@/app/components/admin/order/quick-sale/Receipt
 import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { OrderBranchTag } from "@/app/components/admin/branches/OrderBranchTag";
+import { useBranches } from "@/lib/context/BranchContext";
+import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
 
 interface Props {
   orders: StoreOrder[];
@@ -189,6 +193,12 @@ const OrdersTable: React.FC<Props> = ({
   const { storeData } = useInvoiceData({
     storeId: selectedOrderForInvoice?.store_id ?? receiptOrder?.store_id,
   });
+  // Stores with branches: invoices and receipts print the order's branch.
+  const { enabled: branchesOn, branches, branchFileSuffix } = useBranches();
+  const orderBranch = useCallback(
+    (branchId?: string | null) => (branchesOn ? (branches.find((b) => b.id === branchId) ?? null) : null),
+    [branchesOn, branches],
+  );
 
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState<StoreOrder | null>(null);
@@ -208,6 +218,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const { storeId } = useCurrentUser();
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
+  const { can } = usePermissions();
 
   // const handleSearchChange = (value: string) => setSearchOrderId(value);
 
@@ -243,7 +254,14 @@ const OrdersTable: React.FC<Props> = ({
       setDeleteLoading(orderId);
 
       // Call your API to delete the order
-      await dataService.deleteOrder(orderId);
+      const result = await dataService.deleteOrder(orderId);
+      if (!result.success) {
+        notification.error({
+          title: t.admin.orderDeleteFailed,
+          description: result.error || "Failed to delete order. Please try again.",
+        });
+        return;
+      }
 
       notification.success({
         title: t.admin.orderDeletedSuccess,
@@ -283,6 +301,7 @@ const OrdersTable: React.FC<Props> = ({
       storeData,
       paidAmountByOrderId[receiptOrder.id] ?? 0,
       currencyIcon,
+      orderBranch(receiptOrder.branch_id),
     )
       .then(({ combined, customerCopy, shopCopy }) => {
         if (cancelled) return;
@@ -309,7 +328,7 @@ const OrdersTable: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [receiptOrder, storeData, paidAmountByOrderId, currencyIcon, notification]);
+  }, [receiptOrder, storeData, paidAmountByOrderId, currencyIcon, notification, orderBranch]);
 
   // Bulk selection handlers
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
@@ -413,7 +432,7 @@ const OrdersTable: React.FC<Props> = ({
         ]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Orders");
-        XLSX.writeFile(wb, `orders_${datePart}.xlsx`);
+        XLSX.writeFile(wb, `orders${branchFileSuffix}_${datePart}.xlsx`);
       } else {
         const escape = (v: any) => {
           if (v == null) return "";
@@ -431,7 +450,7 @@ const OrdersTable: React.FC<Props> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `orders_${datePart}.csv`;
+        a.download = `orders${branchFileSuffix}_${datePart}.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -493,6 +512,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const renderActionButtons = (order: StoreOrder) => (
     <div className="flex items-center justify-center gap-1.5">
+      {can("orders.edit") && (
       <Tooltip title="Edit Order">
         <Button
           type="text"
@@ -504,6 +524,8 @@ const OrdersTable: React.FC<Props> = ({
           className={`${ACTION_CHIP_BASE} bg-linear-to-b from-blue-50 to-blue-100/80 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200/70 dark:border-blue-800/40 text-blue-600! dark:text-blue-400! hover:from-blue-100 hover:to-blue-200/80 dark:hover:from-blue-900/60 dark:hover:to-blue-800/40`}
         />
       </Tooltip>
+      )}
+      {can("orders.delete") && (
       <Tooltip title="Delete Order">
         <Button
           type="text"
@@ -517,6 +539,7 @@ const OrdersTable: React.FC<Props> = ({
           className={`${ACTION_CHIP_BASE} bg-linear-to-b from-rose-50 to-rose-100/80 dark:from-rose-950/50 dark:to-rose-900/30 border-rose-200/70 dark:border-rose-800/40 text-rose-600! dark:text-rose-400! hover:from-rose-100 hover:to-rose-200/80 dark:hover:from-rose-900/60 dark:hover:to-rose-800/40`}
         />
       </Tooltip>
+      )}
     </div>
   );
 
@@ -638,6 +661,11 @@ const OrdersTable: React.FC<Props> = ({
               POS
             </Tag>
           )}
+          <OrderBranchTag
+            branchId={order.branch_id}
+            needsTransfer={order.needs_transfer}
+            confirmed={order.branch_confirmed}
+          />
           {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
             order.payment_status !== PaymentStatus.PAID && (
               <Tooltip title="Part of this order has already been paid — the rest is still outstanding">
@@ -819,6 +847,11 @@ const OrdersTable: React.FC<Props> = ({
                 <Tag color={order.channel === "pos" ? "gold" : "blue"} style={{ marginInlineEnd: 0 }}>
                   {order.channel === "pos" ? "Quick Sale" : "Online"}
                 </Tag>
+                <OrderBranchTag
+                  branchId={order.branch_id}
+                  needsTransfer={order.needs_transfer}
+                  confirmed={order.branch_confirmed}
+                />
                 {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
                   order.payment_status !== PaymentStatus.PAID && (
                     <Tag color="blue" style={{ marginInlineEnd: 0 }}>
@@ -1300,12 +1333,7 @@ const OrdersTable: React.FC<Props> = ({
             setShowInvoice(false);
             setSelectedOrderForInvoice(null);
           }}
-          store={{
-            name: storeData.store_name,
-            address: storeData.business_address,
-            phone: storeData.contact_phone,
-            email: storeData.contact_email,
-          }}
+          store={invoiceStoreFor(storeData, orderBranch(selectedOrderForInvoice.branch_id))}
           orderId={selectedOrderForInvoice.order_number}
           customer={{
             name: getCustomerName(selectedOrderForInvoice),

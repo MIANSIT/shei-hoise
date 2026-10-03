@@ -19,6 +19,8 @@ import {
   PaymentCell,
 } from "./ExpenseTableCells";
 import { ExpenseDetailDrawer } from "./ExpenseDetailDrawer";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
 
 interface ExpenseTableProps {
   data: Expense[];
@@ -78,7 +80,11 @@ function ExpenseTable({
 }: ExpenseTableProps) {
   const t = useTranslation();
   const { modal } = App.useApp();
+  const { can } = usePermissions();
   const { icon: currencyIcon } = useUserCurrencyIcon();
+  // On "All branches", say which branch carries each expense.
+  const { enabled: branchesOn, selectedBranchId, branchName } = useBranches();
+  const showBranch = branchesOn && !selectedBranchId;
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Which row's "..." menu is open. Dropdown's own open/close-on-item-click
@@ -110,7 +116,8 @@ function ExpenseTable({
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   const getRowMenuItems = useCallback(
-    (record: Expense): MenuProps["items"] => [
+    (record: Expense): MenuProps["items"] => {
+      const items: NonNullable<MenuProps["items"]> = [
       {
         key: "view",
         icon: <ReceiptText size={14} color="#6366f1" />,
@@ -152,15 +159,33 @@ function ExpenseTable({
           confirmDelete(record);
         },
       },
-    ],
-    [deletingId, onEdit, openDrawer, confirmDelete],
+      ];
+      // Staff: only the actions their role allows.
+      return items.filter((item) => {
+        if (!item) return false;
+        if (item.type === "divider") return can("expenses.delete");
+        if (item.key === "edit") return can("expenses.edit");
+        if (item.key === "delete") return can("expenses.delete");
+        return true;
+      });
+    },
+    [deletingId, onEdit, openDrawer, confirmDelete, can],
   );
 
   const columns: ColumnsType<Expense> = [
     {
       title: t.admin.expenseColTitle,
       key: "title",
-      render: (_, record) => <ExpenseCell record={record} />,
+      render: (_, record) => (
+        <>
+          <ExpenseCell record={record} />
+          {showBranch && record.branch_id && (
+            <span className="mt-1 inline-block rounded bg-teal-50 dark:bg-teal-500/15 px-1.5 py-0.5 text-[11px] text-teal-700 dark:text-teal-300">
+              {branchName(record.branch_id)}
+            </span>
+          )}
+        </>
+      ),
     },
     {
       title: t.admin.expenseCatCol,

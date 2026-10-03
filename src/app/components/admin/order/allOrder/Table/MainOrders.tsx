@@ -15,6 +15,8 @@ import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import { getCustomerPaymentsSummaryByOrderIds } from "@/lib/queries/customers/getCustomerPaymentsSummaryByOrderIds";
 import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorStatCard";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { useBranches } from "@/lib/context/BranchContext";
+import type { GetStoreOrdersOptions } from "@/lib/queries/orders/getStoreOrders";
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
@@ -52,6 +54,30 @@ const MainOrders: React.FC = () => {
     "all",
     (v) => (v === "online" || v === "pos" ? v : "all"),
     0
+  );
+
+  // Stores with branches: the header's branch picker scopes the list, and
+  // "Needs a branch" shows orders waiting for someone to confirm or fix theirs.
+  const { enabled: branchesOn, selectedBranchId, branches, canSeeAllBranches } = useBranches();
+  const [needsBranchOnly, setNeedsBranchOnly] = useUrlSync<boolean>(
+    "needs_branch",
+    false,
+    (v) => v === "true",
+    0
+  );
+  const branchIdsKey = !branchesOn
+    ? ""
+    : selectedBranchId
+      ? selectedBranchId
+      : canSeeAllBranches
+        ? ""
+        : branches.map((b) => b.id).join(",");
+  const branchFilters = React.useMemo<NonNullable<GetStoreOrdersOptions["filters"]>>(
+    () => ({
+      ...(branchIdsKey ? { branchIds: branchIdsKey.split(",") } : {}),
+      ...(branchesOn && needsBranchOnly ? { needsBranch: true } : {}),
+    }),
+    [branchIdsKey, branchesOn, needsBranchOnly]
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -94,8 +120,7 @@ const MainOrders: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const filters: { status?: string; payment_status?: string; channel?: "online" | "pos" } =
-          {};
+        const filters: NonNullable<GetStoreOrdersOptions["filters"]> = { ...branchFilters };
         if (category === "order" && status && status !== "all")
           filters.status = status;
         else if (
@@ -166,7 +191,7 @@ const MainOrders: React.FC = () => {
         setLoading(false);
       }
     },
-    [user?.store_id]
+    [user?.store_id, branchFilters]
   );
 
   // ✅ ADD: refresh function
@@ -180,7 +205,7 @@ const MainOrders: React.FC = () => {
   const handleExportOrders = useCallback(async (): Promise<StoreOrder[]> => {
     if (!user?.store_id) return [];
 
-    const filters: { status?: string; payment_status?: string; channel?: "online" | "pos" } = {};
+    const filters: NonNullable<GetStoreOrdersOptions["filters"]> = { ...branchFilters };
     if (category === "order" && statusFilter && statusFilter !== "all")
       filters.status = statusFilter;
     else if (
@@ -200,7 +225,7 @@ const MainOrders: React.FC = () => {
     });
 
     return result.orders;
-  }, [user?.store_id, search, category, statusFilter, paymentStatusFilter, channelFilter]);
+  }, [user?.store_id, search, category, statusFilter, paymentStatusFilter, channelFilter, branchFilters]);
 
   useEffect(() => {
     if (!user?.store_id) return;
@@ -333,7 +358,7 @@ const MainOrders: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-foreground m-0 tracking-tight leading-tight">
-                {t.admin.allOrdersTitle}
+                {t.admin.menuAllOrders}
               </h1>
               <p className="text-xs text-muted-foreground m-0">
                 {t.admin.allOrdersDesc}
@@ -387,6 +412,27 @@ const MainOrders: React.FC = () => {
             tone="sky"
           />
         </div>
+
+      {branchesOn && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={needsBranchOnly}
+            onClick={() => {
+              setNeedsBranchOnly(!needsBranchOnly);
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all ${
+              needsBranchOnly
+                ? "border-amber-500 bg-amber-500 text-white"
+                : "border-border bg-card text-muted-foreground hover:border-amber-400 hover:text-amber-600"
+            }`}
+          >
+            {t.branches.needsBranchFilter}
+          </button>
+          <span className="text-xs text-muted-foreground">{t.branches.needsBranchHint}</span>
+        </div>
+      )}
 
       <OrdersTable
         orders={orders}

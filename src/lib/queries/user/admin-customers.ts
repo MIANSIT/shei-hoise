@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
+import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // Interface matching your database
 interface UpdateCustomerData {
@@ -25,7 +25,7 @@ export async function updateCustomerProfileAsAdmin(
   profileData: UpdateProfileData
 ) {
   try {
-    const storeResult = await getAuthenticatedStoreId();
+    const storeResult = await getAuthorizedStoreId("customers.edit");
     if (!storeResult.ok) {
       throw new Error(storeResult.error);
     }

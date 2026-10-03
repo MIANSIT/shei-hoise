@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { VendorOrderItemInput } from "@/lib/types/vendor/type";
+import { authorizeForStore } from "@/lib/permissions/server";
 
 export interface UpdateVendorOrderInput {
   order_id: string;
@@ -31,6 +32,9 @@ export async function updateVendorOrder(
   if (!input.items?.length) {
     throw new Error("At least one product is required");
   }
+
+  const auth = await authorizeForStore(input.store_id, "vendors.edit");
+  if (!auth.ok) throw new Error(auth.error);
 
   const { error } = await supabaseAdmin.rpc("update_vendor_order_draft", {
     p_order_id: input.order_id,

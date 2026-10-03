@@ -48,6 +48,12 @@ import ReceiptPreviewModal from "./ReceiptPreviewModal";
 import ScanToAddModal, { type ScanResult } from "./ScanToAddModal";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { branchReceiptLines } from "@/lib/utils/invoiceStore";
 
 const { Text, Title } = Typography;
 
@@ -101,12 +107,19 @@ export default function QuickSale() {
     !currencyLoading && typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
+  // Stores with branches: a Quick Sale comes out of your work branch, which is
+  // the header's branch or (with "All branches") the last one you sold from.
+  const { enabled: branchesOn, workBranchId, workBranch } = useBranches();
+  const saleBranchId = branchesOn ? workBranchId : null;
+  const needsBranchPick = branchesOn && !workBranchId;
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
   const [cart, setCart] = useState<OrderProduct[]>([]);
   const [discount, setDiscount] = useState(0);
+  const { can, limits } = usePermissions();
+  const t = useTranslation();
   const [additionalCharges, setAdditionalCharges] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [walkInName, setWalkInName] = useState("");
@@ -155,6 +168,8 @@ export default function QuickSale() {
         status: ProductStatus.ACTIVE,
         excludeBundles: true,
         withCounts: false,
+        // Stores with branches sell from the selected branch's shelf.
+        branchId: saleBranchId,
       });
       setProducts(res.data);
     } catch (err) {
@@ -162,7 +177,7 @@ export default function QuickSale() {
     } finally {
       setLoadingProducts(false);
     }
-  }, [user?.store_id]);
+  }, [user?.store_id, saleBranchId]);
 
   useEffect(() => {
     fetchProducts();
@@ -338,6 +353,16 @@ export default function QuickSale() {
 
   const subtotal = cart.reduce((sum, it) => sum + it.total_price, 0);
   const total = Math.max(0, subtotal - discount + additionalCharges);
+
+  // Staff: the role's discount cap (amount and/or % of subtotal). The server
+  // enforces the same cap; this just stops the cashier typing past it.
+  const canDiscount = can("pos.discount");
+  const discountCap = Math.min(
+    limits.max_discount_amount ?? Infinity,
+    limits.max_discount_percent !== undefined
+      ? Math.floor((subtotal * limits.max_discount_percent) / 100)
+      : Infinity,
+  );
   const changeDue =
     !isDueSale && paymentMethod === PaymentMethod.CASH && cashReceived != null
       ? Math.max(0, cashReceived - total)
@@ -345,6 +370,7 @@ export default function QuickSale() {
   const receivedNow = isDueSale ? Math.min(Math.max(amountReceivedNow || 0, 0), total) : total;
   const dueAmount = isDueSale ? Math.max(0, total - receivedNow) : 0;
   const canCompleteSale =
+    !needsBranchPick &&
     cart.length > 0 && (!isDueSale || (walkInName.trim() !== "" && walkInPhone.trim() !== ""));
 
   const printReceipt = async (order: {
@@ -381,6 +407,8 @@ export default function QuickSale() {
     // just the combined 2-pager) so each can be printed as its own job.
     const { combined, customerCopy, shopCopy } = await generateReceiptPdfSet({
       storeName: storeDisplayName,
+      // Stores with branches: the branch the sale was made at.
+      branchLines: branchesOn ? branchReceiptLines(workBranch) : [],
       logoUrl,
       dateLabel: order.date.toLocaleString(),
       orderNumber: order.orderNumber,
@@ -502,6 +530,7 @@ export default function QuickSale() {
         channel: "pos",
         currency: "BDT",
         cashReceived: receiptCashReceived,
+        branchId: saleBranchId,
         orderDate: orderDate.format("YYYY-MM-DD"),
       };
 
@@ -592,14 +621,21 @@ export default function QuickSale() {
       <div className="flex flex-wrap items-start justify-between gap-3 pb-1">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
-            Quick Sale
+            <MenuLabel labelKey="menuQuickSale" />
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             Ring up a walk-in customer without leaving the counter.
           </p>
+          <WorkBranchPicker
+            label={t.branches.sellingFromLabel}
+            // The cart's stock was checked against the old branch.
+            onBeforeChange={() => {
+              if (cart.length > 0) setCart([]);
+            }}
+          />
         </div>
         <Button onClick={() => router.push("/dashboard/orders/quick-sale/audit")}>
-          Register Audit
+          <MenuLabel labelKey="menuRegisterAudit" />
         </Button>
       </div>
 
@@ -798,12 +834,21 @@ export default function QuickSale() {
             </div>
             <div className="flex items-center justify-between text-sm">
               <Text type="secondary">Discount</Text>
-              <InputNumber
-                min={0}
-                value={discount}
-                onChange={(v) => setDiscount(v || 0)}
-                style={{ width: 110 }}
-              />
+              <div className="flex flex-col items-end gap-0.5">
+                <InputNumber
+                  min={0}
+                  max={Number.isFinite(discountCap) ? discountCap : undefined}
+                  value={discount}
+                  disabled={!canDiscount}
+                  onChange={(v) => setDiscount(v || 0)}
+                  style={{ width: 110 }}
+                />
+                {canDiscount && Number.isFinite(discountCap) && (
+                  <span className="text-[11px] text-muted-foreground">
+                    {t.staff.discountCap.replace("{amount}", `${currencyIcon}${discountCap}`)}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-between text-sm">
               <Text type="secondary">Extra charges</Text>

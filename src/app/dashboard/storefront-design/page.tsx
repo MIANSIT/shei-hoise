@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { BrandPaletteCard } from "@/app/components/admin/dashboard/storefrontDesign/BrandPaletteCard";
+import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 export default function StorefrontDesignPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
@@ -25,7 +26,7 @@ export default function StorefrontDesignPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Storefront Design</h1>
+        <h1 className="text-2xl font-bold text-foreground"><MenuLabel labelKey="menuStorefrontDesign" /></h1>
         <p className="text-sm text-muted-foreground mt-1">
           Customize your homepage brand colors.
         </p>

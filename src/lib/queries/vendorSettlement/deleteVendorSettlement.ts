@@ -1,5 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { authorizeForStore, logActivity } from "@/lib/permissions/server";
+import { callVendorRpc } from "@/lib/queries/vendor/vendorBranchRpc";
 
 // Undoes a mistakenly-recorded settlement — reverses the stock it moved
 // (both sold and returned quantities go back to the vendor's pool; the
@@ -29,11 +31,22 @@ export async function deleteVendorSettlement(
   storeId: string,
   deletedBy?: string | null,
 ): Promise<void> {
-  const { error } = await supabaseAdmin.rpc("delete_vendor_settlement", {
+  const auth = await authorizeForStore(storeId, "vendors.delete");
+  if (!auth.ok) throw new Error(auth.error);
+
+  // Stores with branches: the returns come back out of the branch they went to.
+  const { error } = await callVendorRpc("delete_vendor_settlement", {
     p_settlement_id: settlementId,
     p_caller_store_id: storeId,
-    p_deleted_by: deletedBy || null,
+    p_deleted_by: deletedBy || auth.actor.userId,
   });
 
   if (error) throw new Error(await humanizeError(error.message));
+
+  await logActivity(auth.actor, {
+    action: "vendors.delete",
+    entityType: "vendor_settlement",
+    entityId: settlementId,
+    summary: "Deleted vendor settlement",
+  });
 }

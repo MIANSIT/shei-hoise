@@ -30,6 +30,7 @@ import {
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
 import dataService from "@/lib/queries/dataService";
+import { useBranches } from "@/lib/context/BranchContext";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -55,6 +56,11 @@ interface OrderDetailsProps {
   // lookups for already-added order items keep working even after the
   // picker's own search results have moved on to a different query.
   onProductsFetched?: (products: ProductWithVariants[]) => void;
+  /**
+   * Edit Order: the order's own branch, so the stock shown is the shelf the
+   * order takes from. Omitted = the header's branch (Create Order).
+   */
+  branchId?: string | null;
 }
 
 export default function AdminOrderDetails({
@@ -64,6 +70,7 @@ export default function AdminOrderDetails({
   setOrderProducts,
   originalOrderProducts = [],
   onProductsFetched,
+  branchId,
 }: OrderDetailsProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedVariantId, setSelectedVariantId] =
@@ -82,6 +89,10 @@ export default function AdminOrderDetails({
   const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  // Stores with branches: stock shown is the selected branch's ("All
+  // branches" shows the store total and the order gets a branch on save).
+  const { enabled: branchesOn, selectedBranchId } = useBranches();
+  const pickerBranchId = branchesOn ? (branchId !== undefined ? branchId : selectedBranchId) : null;
 
   const runPickerSearch = async (search: string) => {
     if (!storeId) return;
@@ -93,6 +104,7 @@ export default function AdminOrderDetails({
         page: 1,
         pageSize: PICKER_PAGE_SIZE,
         withCounts: false,
+        branchId: pickerBranchId,
       });
       setPickerResults(res.data);
       onProductsFetched?.(res.data);
@@ -107,7 +119,7 @@ export default function AdminOrderDetails({
   useEffect(() => {
     runPickerSearch("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId]);
+  }, [storeId, pickerBranchId]);
 
   const handlePickerSearch = (value: string) => {
     if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);

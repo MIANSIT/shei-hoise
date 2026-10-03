@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { Button, Input, Space, Pagination, notification, Popover } from "antd";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { Button, Input, Space, Pagination, notification, Popover, Select } from "antd";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined, LockOutlined } from "@ant-design/icons";
 import { Star, ArrowUpDown } from "lucide-react";
@@ -10,6 +10,7 @@ import { ProductReorderList } from "./ProductReorderList";
 import {
   getProductsWithVariants,
   ProductWithVariants,
+  type ProductListSort,
 } from "@/lib/queries/products/getProductsWithVariants";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -26,6 +27,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useBranches } from "@/lib/context/BranchContext";
 
 const Products: React.FC = () => {
   const t = useTranslation();
@@ -33,6 +35,9 @@ const Products: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, storeSlug } = useCurrentUser();
+  // Stores with branches: stock shown is the header's branch (the store total on "All branches").
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchFileSuffix } = useBranches();
+  const stockBranchId = branchesOn ? selectedBranchId : null;
   const { store } = useStore(user?.store_id ?? null);
   const { allowed: qrAllowed } = useFeatureGate(user?.store_id, "qr");
   const { allowed: barcodeAllowed } = useFeatureGate(user?.store_id, "barcode");
@@ -66,23 +71,36 @@ const Products: React.FC = () => {
     (v) => v === "true",
   );
 
+  // Newest first by default, so a product you just saved is the first row.
+  // "Store order" is the drag order customers see; only it allows dragging.
+  const [sort, setSort] = useUrlSync<ProductListSort>(
+    "sort",
+    "newest",
+    (v) => (v === "store" || v === "name" || v === "newest" ? v : "newest"),
+  );
+
+  const sortOptions = [
+    { value: "newest", label: t.admin.productSortNewest },
+    { value: "store", label: t.admin.productSortStore },
+    { value: "name", label: t.admin.productSortName },
+  ];
+
   const [localSearch, setLocalSearch] = useState(search);
   // Transient, not URL-synced — reorder mode is a view toggle on this same
   // page (see ProductReorderList), not a separate route or filter state.
   const [reorderMode, setReorderMode] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
-  // One-time landing from Add Product: ?reorder=1&justAdded=<id> opens
-  // straight into the unpaginated Reorder view with the new product
-  // highlighted, since a brand-new product always sorts to the very end of
-  // the catalog — several pages away from the page-1 default this route
-  // would otherwise land on. Stripped from the URL immediately after so a
-  // refresh doesn't keep reopening it.
+  // One-time landing from Add Product: ?justAdded=<id>. The list opens
+  // newest-first, so the new product is the first row — highlight it for a
+  // few seconds. Stripped from the URL so a refresh doesn't repeat it.
   useEffect(() => {
-    if (searchParams.get("reorder") !== "1") return;
-    setReorderMode(true);
-    setHighlightId(searchParams.get("justAdded"));
+    const justAdded = searchParams.get("justAdded");
+    if (!justAdded) return;
+    setHighlightId(justAdded);
     router.replace("/dashboard/products", { scroll: false });
+    const timer = setTimeout(() => setHighlightId(null), 6000);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
@@ -98,8 +116,14 @@ const Products: React.FC = () => {
   });
   const [featuredCount, setFeaturedCount] = useState(0);
 
+  // Each fetch gets a number; only the newest may update the list, so a slow
+  // response for an earlier keystroke can't overwrite the latest results.
+  const latestRequestRef = useRef(0);
+
   const fetchProducts = useCallback(async () => {
-    if (!user?.store_id) return;
+    // Wait for the branch selection so the first list isn't the wrong branch's stock.
+    if (!user?.store_id || branchesLoading) return;
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     try {
       const res = await getProductsWithVariants({
@@ -110,17 +134,21 @@ const Products: React.FC = () => {
         status: status === "ALL" ? undefined : status,
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
+        sort,
+        branchId: stockBranchId,
       });
+      if (requestId !== latestRequestRef.current) return;
       setProducts(res.data);
       setTotal(res.total);
       setCounts(res.counts);
       setFeaturedCount(res.featuredCount);
     } catch (error) {
+      if (requestId !== latestRequestRef.current) return;
       console.error("Failed to fetch products:", error);
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
-  }, [user?.store_id, search, page, pageSize, status, featuredOnly]);
+  }, [user?.store_id, search, page, pageSize, status, featuredOnly, sort, stockBranchId, branchesLoading]);
 
   useEffect(() => {
     fetchProducts();
@@ -132,7 +160,7 @@ const Products: React.FC = () => {
         setSearch(localSearch);
         setPage(1);
       }
-    }, 100);
+    }, 350);
     return () => clearTimeout(handler);
   }, [localSearch, search, setSearch, setPage]);
 
@@ -147,6 +175,8 @@ const Products: React.FC = () => {
         status: status === "ALL" ? undefined : status,
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
+        sort,
+        branchId: stockBranchId,
       });
 
       const productsToExport = res.data;
@@ -268,7 +298,7 @@ const Products: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `products_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute("download", `products${branchFileSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
@@ -303,6 +333,8 @@ const Products: React.FC = () => {
         status: status === "ALL" ? undefined : status,
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
+        sort,
+        branchId: stockBranchId,
       });
 
       if (!res.data.length) {
@@ -535,10 +567,32 @@ const Products: React.FC = () => {
             {n(featuredCount)}
           </span>
         </button>
+
+        <Select
+          className="ml-auto min-w-40"
+          size="small"
+          aria-label={t.admin.productSortLabel}
+          value={sort}
+          onChange={(v: ProductListSort) => {
+            setSort(v);
+            setPage(1);
+          }}
+          options={sortOptions}
+        />
       </div>
 
-      {/* Status — mobile dropdown */}
-      <div className="md:hidden">
+      {/* Status + sort — mobile */}
+      <div className="md:hidden flex gap-2">
+        <Select
+          className="min-w-36"
+          aria-label={t.admin.productSortLabel}
+          value={sort}
+          onChange={(v: ProductListSort) => {
+            setSort(v);
+            setPage(1);
+          }}
+          options={sortOptions}
+        />
         <MobileFilter<ProductStatus | "ALL">
           value={status}
           defaultValue="ALL"
@@ -573,6 +627,8 @@ const Products: React.FC = () => {
             storeLogoUrl={store?.logo_url}
             qrAllowed={qrAllowed}
             barcodeAllowed={barcodeAllowed}
+            allowDrag={sort === "store" && !search}
+            highlightId={highlightId}
           />
         </div>
       </div>

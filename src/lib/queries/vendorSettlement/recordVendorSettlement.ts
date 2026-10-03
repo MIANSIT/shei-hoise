@@ -1,7 +1,7 @@
 "use server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import type { RecordVendorSettlementInput } from "@/lib/types/vendor/type";
+import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
+import { callVendorRpc } from "@/lib/queries/vendor/vendorBranchRpc";
 
 // Records a settlement visit atomically via the record_vendor_settlement RPC
 // — decrements vendor stock, auto-returns any returned_quantity back into
@@ -17,10 +17,16 @@ export async function recordVendorSettlement(
   // input.store_id is caller-supplied — never trust it for authorization.
   // Always settle against the session's own store, and the RPC itself
   // separately verifies the vendor belongs to that store.
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getAuthorizedStoreId("vendors.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
+  if (input.branch_id && !canUseBranch(storeResult.actor, input.branch_id)) {
+    throw new Error(BRANCH_SCOPE_ERROR);
+  }
 
-  const { data, error } = await supabaseAdmin.rpc("record_vendor_settlement", {
+  // Stores with branches: returns and the payment land in input.branch_id.
+  const { data, error } = await callVendorRpc<string>(
+    "record_vendor_settlement",
+    {
     p_vendor_id: input.vendor_id,
     p_store_id: storeResult.storeId,
     p_settlement_date: input.settlement_date,
@@ -35,7 +41,9 @@ export async function recordVendorSettlement(
     p_notes: input.notes || null,
     p_created_by: input.created_by || null,
     p_payment_method: input.payment_method ?? "cash",
-  });
+    },
+    { p_branch_id: input.branch_id || null },
+  );
 
   if (error) {
     throw new Error(error.message);

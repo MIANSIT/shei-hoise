@@ -1,9 +1,9 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getAuthenticatedStoreId } from "@/lib/utils/getAuthenticatedStoreId";
 import { getValidPathaoAccessToken } from "@/lib/utils/getValidPathaoAccessToken";
 import { getMerchantStores } from "@/lib/utils/pathaoApi";
+import { getOwnerStoreId } from "@/lib/permissions/server";
 
 export interface CheckApprovalResult {
   success: boolean;
@@ -20,7 +20,7 @@ export async function checkPathaoStoreApproval(
   credentialId: string,
   expectedStoreName: string,
 ): Promise<CheckApprovalResult> {
-  const storeResult = await getAuthenticatedStoreId();
+  const storeResult = await getOwnerStoreId();
   if (!storeResult.ok) {
     return { success: false, connected: false, error: storeResult.error };
   }

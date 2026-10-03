@@ -6,6 +6,10 @@ import { getActiveCourierTrackingByOrderIds } from "@/lib/queries/courier/attach
 
 export interface OrderWithItems {
   id: string;
+  /** Stores with branches: the branch that fulfils the order. */
+  branch_id?: string | null;
+  needs_transfer?: boolean;
+  branch_confirmed?: boolean;
   order_number: string;
   customer_id: string;
   store_id: string;
