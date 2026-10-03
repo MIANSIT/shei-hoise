@@ -3,20 +3,16 @@ export function isCourierStatusCancelled(status?: string | null): boolean {
   return !!status && status.toLowerCase().includes("cancel");
 }
 
-/**
- * Same free-text-heuristic problem as isCourierStatusCancelled, but for
- * "actually delivered." "partial_delivery" and "delivered_pending_return"
- * both contain "deliver" without meaning the parcel was fully handed over,
- * so those (and any hold/return/cancel/fail status) are excluded first —
- * mirrors the precedence getCourierStatusStyle already uses for coloring.
- */
+// Exact match, not a keyword check: in-progress statuses like Pathao's
+// "Assigned_for_Delivery" also contain "deliver" and must not count.
+const DELIVERED_COURIER_STATUSES = new Set([
+  "delivered", // Pathao "Delivered", Steadfast "delivered"
+  "delivered_approval_pending", // Steadfast
+]);
+
 export function isCourierStatusDelivered(status?: string | null): boolean {
   if (!status) return false;
-  const s = status.toLowerCase();
-  if (s.includes("partial") || s.includes("return") || s.includes("cancel") || s.includes("fail") || s.includes("hold")) {
-    return false;
-  }
-  return s.includes("deliver");
+  return DELIVERED_COURIER_STATUSES.has(status.trim().toLowerCase().replace(/[\s-]+/g, "_"));
 }
 
 /**

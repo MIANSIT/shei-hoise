@@ -17,6 +17,18 @@ export async function setRegisterOpeningCash(
   if (branchId && !canUseBranch(storeResult.actor, branchId)) throw new Error(BRANCH_SCOPE_ERROR);
   const storeId = storeResult.storeId;
 
+  // The insert trigger files a branchless opening under the default branch,
+  // so look it up there too — otherwise a re-save misses it and the insert
+  // hits the unique key.
+  let effectiveBranchId = branchId ?? null;
+  if (!effectiveBranchId) {
+    const { data: defaultBranch, error: branchError } = await supabaseAdmin.rpc("default_store_branch", {
+      p_store_id: storeId,
+    });
+    if (branchError) throw new Error(branchError.message);
+    effectiveBranchId = (defaultBranch as string | null) ?? null;
+  }
+
   // The unique key includes a nullable branch, which upsert's onConflict
   // can't target — so update the day's row, or insert it.
   let existing = supabaseAdmin
@@ -24,7 +36,7 @@ export async function setRegisterOpeningCash(
     .select("id")
     .eq("store_id", storeId)
     .eq("register_date", dateStr);
-  existing = branchId ? existing.eq("branch_id", branchId) : existing.is("branch_id", null);
+  existing = effectiveBranchId ? existing.eq("branch_id", effectiveBranchId) : existing.is("branch_id", null);
   const { data: row, error: readError } = await existing.maybeSingle();
   if (readError) throw new Error(readError.message);
 
