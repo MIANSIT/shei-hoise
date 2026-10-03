@@ -56,6 +56,11 @@ interface OrderDetailsProps {
   // lookups for already-added order items keep working even after the
   // picker's own search results have moved on to a different query.
   onProductsFetched?: (products: ProductWithVariants[]) => void;
+  /**
+   * Edit Order: the order's own branch, so the stock shown is the shelf the
+   * order takes from. Omitted = the header's branch (Create Order).
+   */
+  branchId?: string | null;
 }
 
 export default function AdminOrderDetails({
@@ -65,6 +70,7 @@ export default function AdminOrderDetails({
   setOrderProducts,
   originalOrderProducts = [],
   onProductsFetched,
+  branchId,
 }: OrderDetailsProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedVariantId, setSelectedVariantId] =
@@ -86,7 +92,7 @@ export default function AdminOrderDetails({
   // Stores with branches: stock shown is the selected branch's ("All
   // branches" shows the store total and the order gets a branch on save).
   const { enabled: branchesOn, selectedBranchId } = useBranches();
-  const pickerBranchId = branchesOn ? selectedBranchId : null;
+  const pickerBranchId = branchesOn ? (branchId !== undefined ? branchId : selectedBranchId) : null;
 
   const runPickerSearch = async (search: string) => {
     if (!storeId) return;

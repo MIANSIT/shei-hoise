@@ -32,10 +32,20 @@ export interface ProfitStoryFigures {
   allSales?: number;
 }
 
+/** One branch's profit, shown in the card on "All branches". */
+export interface BranchProfit {
+  branchId: string;
+  name: string;
+  netProfit: number;
+}
+
 interface ProfitStoryProps {
   figures: ProfitStoryFigures;
   periodLabel: string;
   formatMoney: (amount: number) => React.ReactNode;
+  /** "All branches": each branch's profit; tapping one opens that branch. */
+  branchProfits?: BranchProfit[];
+  onOpenBranch?: (branchId: string) => void;
 }
 
 interface Step {
@@ -62,7 +72,7 @@ const BAR: Record<Step["tone"], string> = {
  * big each part is next to sales, so the owner sees at a glance where the
  * money went.
  */
-export function ProfitStory({ figures, periodLabel, formatMoney }: ProfitStoryProps) {
+export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
   const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales } = figures;
@@ -130,6 +140,31 @@ export function ProfitStory({ figures, periodLabel, formatMoney }: ProfitStoryPr
             </div>
             <div className="text-xs text-white/85 mt-1">{isLoss ? t.admin.psLossExplain : t.admin.psProfitExplain}</div>
           </div>
+          {branchProfits && branchProfits.length > 0 && (
+            <div className="rounded-xl bg-white/15 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-white/85 mb-1.5">
+                {t.admin.psByBranch}
+              </div>
+              <ul className="m-0 p-0 list-none space-y-1">
+                {branchProfits.map((b) => (
+                  <li key={b.branchId}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenBranch?.(b.branchId)}
+                      className="w-full flex items-center justify-between gap-3 rounded-lg px-2 py-1 text-left text-sm hover:bg-white/15 transition-colors"
+                      title={t.branches.cmpOpenBranch}
+                    >
+                      <span className="truncate font-medium">{b.name}</span>
+                      <span className="whitespace-nowrap font-bold tabular-nums">
+                        {b.netProfit < 0 ? `${t.admin.psLossShort} ` : ""}
+                        {formatMoney(Math.abs(b.netProfit))}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {margin != null && (
               <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">

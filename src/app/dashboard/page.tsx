@@ -32,6 +32,10 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useBranches } from "@/lib/context/BranchContext";
 import { BranchComparison } from "@/app/components/admin/branches/BranchComparison";
+import {
+  getBranchComparison,
+  type BranchComparisonRow,
+} from "@/lib/queries/dashboard/getBranchComparison";
 
 export default function DashboardPage() {
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
@@ -52,8 +56,32 @@ export default function DashboardPage() {
     selectedBranchId,
     selectedBranch,
     canSeeAllBranches,
+    setSelectedBranchId,
   } = useBranches();
   const dashboardBranchId = branchesOn ? selectedBranchId : null;
+  // "All branches": every branch side by side (table + profit per branch in the card).
+  const showComparison = branchesOn && !dashboardBranchId && canSeeAllBranches;
+  const [comparison, setComparison] = useState<BranchComparisonRow[] | null>(null);
+  const [comparisonFailed, setComparisonFailed] = useState(false);
+
+  useEffect(() => {
+    if (!storeId || !showComparison) return;
+    let cancelled = false;
+    setComparison(null);
+    setComparisonFailed(false);
+    const { periodStart, periodEnd } = getDashboardPeriodRange(timePeriod);
+    getBranchComparison(storeId, periodStart, periodEnd)
+      .then((rows) => {
+        if (!cancelled) setComparison(rows);
+      })
+      .catch((err) => {
+        console.error("Branch comparison failed:", err);
+        if (!cancelled) setComparisonFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId, showComparison, timePeriod]);
 
   // Plain-text money for card descriptions (which are strings).
   const renderCurrencyText = (amount: number) =>
@@ -446,15 +474,16 @@ export default function DashboardPage() {
           ...(salesSummary ? { allSales: salesSummary.sales } : {}),
         },
         formatMoney: (amount: number) => renderCurrency(amount),
+        ...(showComparison && comparison && comparison.length > 1
+          ? {
+              branchProfits: comparison.map((r) => ({ branchId: r.branchId, name: r.name, netProfit: r.net })),
+              onOpenBranch: (id: string) => setSelectedBranchId(id),
+            }
+          : {}),
       }}
       branchComparison={
-        branchesOn && !dashboardBranchId && canSeeAllBranches && storeId ? (
-          <BranchComparison
-            storeId={storeId}
-            periodStart={getDashboardPeriodRange(timePeriod).periodStart}
-            periodEnd={getDashboardPeriodRange(timePeriod).periodEnd}
-            currency={typeof CurrencyIcon === "string" ? CurrencyIcon : "৳"}
-          />
+        showComparison && !comparisonFailed ? (
+          <BranchComparison rows={comparison} currency={typeof CurrencyIcon === "string" ? CurrencyIcon : "৳"} />
         ) : undefined
       }
     />

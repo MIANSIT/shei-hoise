@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Spin } from "antd";
 import { Building2 } from "lucide-react";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
-import { getBranchComparison, type BranchComparisonRow } from "@/lib/queries/dashboard/getBranchComparison";
+import type { BranchComparisonRow } from "@/lib/queries/dashboard/getBranchComparison";
 
 interface BranchComparisonProps {
-  storeId: string;
-  periodStart: string;
-  periodEnd: string;
+  /** null while loading. */
+  rows: BranchComparisonRow[] | null;
   /** Currency symbol, e.g. "৳". */
   currency: string;
 }
@@ -34,31 +32,10 @@ const ZERO: Totals = {
  * Every branch side by side, with the brand total underneath (stores with
  * branches, "All branches" selected). Tapping a branch opens its dashboard.
  */
-export function BranchComparison({ storeId, periodStart, periodEnd, currency }: BranchComparisonProps) {
+export function BranchComparison({ rows, currency }: BranchComparisonProps) {
   const t = useTranslation();
   const n = useLocalNum();
   const { setSelectedBranchId } = useBranches();
-  const [rows, setRows] = useState<BranchComparisonRow[] | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setRows(null);
-    setFailed(false);
-    getBranchComparison(storeId, periodStart, periodEnd)
-      .then((r) => {
-        if (!cancelled) setRows(r);
-      })
-      .catch((err) => {
-        console.error("Branch comparison failed:", err);
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [storeId, periodStart, periodEnd]);
-
-  if (failed) return null;
 
   const money = (v: number) => `${currency}${n(Math.round(v).toLocaleString("en-IN"))}`;
   const totals = (rows ?? []).reduce<Totals>(

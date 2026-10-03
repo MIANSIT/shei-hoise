@@ -10,7 +10,7 @@ import TopProducts from "./TopProducts";
 import CustomerSnapshot from "./CustomerSnapshot";
 import AlertsSection from "./AlertsSection";
 import LockedSection from "@/app/components/admin/common/LockedSection";
-import { ProfitStory, type ProfitStoryFigures } from "./ProfitStory";
+import { ProfitStory, type BranchProfit, type ProfitStoryFigures } from "./ProfitStory";
 
 // Imported rather than redeclared — a local copy silently drifted out of sync
 // with the canonical type when "all" was added.
@@ -86,7 +86,12 @@ interface MainDashboardProps {
   /** Stores with branches: the branch comparison, shown above the snapshot on "All branches". */
   branchComparison?: React.ReactNode;
   /** The P&L as a step-by-step story (sales → costs → net). Replaces the three-cell bar when given. */
-  profitStory?: { figures: ProfitStoryFigures; formatMoney: (amount: number) => React.ReactNode };
+  profitStory?: {
+    figures: ProfitStoryFigures;
+    formatMoney: (amount: number) => React.ReactNode;
+    branchProfits?: BranchProfit[];
+    onOpenBranch?: (branchId: string) => void;
+  };
 }
 
 // ─── Period Selector ──────────────────────────────────────────────────────────
@@ -490,6 +495,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
               figures={profitStory.figures}
               periodLabel={periodLabel}
               formatMoney={profitStory.formatMoney}
+              branchProfits={profitStory.branchProfits}
+              onOpenBranch={profitStory.onOpenBranch}
             />
           ) : (
             <PLHeroBar
