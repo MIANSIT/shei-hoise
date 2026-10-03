@@ -129,6 +129,17 @@ export function can(actor: Actor, permission: string): boolean {
   return actor.kind === "owner" || actor.permissions.has(permission);
 }
 
+/**
+ * Branch scope: the owner and staff given "All branches" can act in any
+ * branch; other staff only in the branches assigned to them.
+ */
+export function canUseBranch(actor: Actor, branchId: string | null | undefined): boolean {
+  if (actor.kind === "owner" || actor.allBranches) return true;
+  return !!branchId && actor.branchIds.includes(branchId);
+}
+
+export const BRANCH_SCOPE_ERROR = "You're not assigned to this branch. Ask the store owner for access.";
+
 /** "orders.delete" -> "Delete · Orders", for messages shown to staff. */
 export function describePermission(permission: string): string {
   const [areaKey, actionKey] = permission.split(".");
@@ -325,6 +336,8 @@ export function checkDiscountLimit(actor: Actor, discount: number, subtotal: num
 export interface OrderChange {
   /** Status the order has right now. */
   fromStatus: string | null | undefined;
+  /** The order's branch (stores with branches): staff may only change their branches' orders. */
+  branchId?: string | null;
   /** New status, when the change sets one. */
   toStatus?: string | null;
   /** payment_status is being set (marking paid/refunded counts as a status change). */
@@ -344,6 +357,7 @@ export interface OrderChange {
  */
 export function checkOrderChange(actor: Actor, change: OrderChange): string | null {
   if (actor.kind === "owner") return null;
+  if (change.branchId && !canUseBranch(actor, change.branchId)) return BRANCH_SCOPE_ERROR;
 
   const statusChanging =
     !!change.toStatus && change.toStatus !== change.fromStatus;
@@ -394,6 +408,8 @@ export function checkExpenseLimit(actor: Actor, amount: number): string | null {
 
 export interface ActivityEntry {
   action: string;
+  /** Stores with branches: the branch this happened in. */
+  branchId?: string | null;
   entityType?: string;
   entityId?: string | null;
   summary?: string;
@@ -436,6 +452,7 @@ export async function logActivity(
       actor_name: actor?.name ?? entry.actorName ?? null,
       actor_role: actor ? (actor.kind === "owner" ? "Owner" : actor.roleName) : entry.actorRole ?? null,
       action: entry.action,
+      branch_id: entry.branchId ?? null,
       entity_type: entry.entityType ?? null,
       entity_id: entry.entityId ?? null,
       summary: entry.summary ?? null,

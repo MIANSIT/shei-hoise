@@ -13,6 +13,9 @@ export interface StaffListItem {
   lockedUntil: string | null;
   lastLoginAt: string | null;
   createdAt: string;
+  /** Branch scope (stores with branches): all, or only branchIds. */
+  allBranches: boolean;
+  branchIds: string[];
 }
 
 export interface RoleListItem {
@@ -55,6 +58,8 @@ export interface ActivityRow {
   details: Record<string, unknown> | null;
   ip: string | null;
   userAgent: string | null;
+  /** Stores with branches: the branch the action happened in (null for store-wide actions like logins). */
+  branchId: string | null;
 }
 
 export interface ActivityPerson {

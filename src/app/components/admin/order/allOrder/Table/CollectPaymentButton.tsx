@@ -8,6 +8,7 @@ import { PaymentStatus, PaymentMethod } from "@/lib/types/enums";
 import { getCustomerOrderBalances } from "@/lib/queries/customers/getCustomerOrderBalances";
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
+import { useBranches } from "@/lib/context/BranchContext";
 import CustomerQuickPaymentModal from "@/app/components/admin/dashboard/customers/dues/CustomerQuickPaymentModal";
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
 // is NOT NULL — there's nowhere to attribute the payment.
 export default function CollectPaymentButton({ order, onCollected }: Props) {
   const notify = useSheiNotification();
+  const { enabled: branchesOn } = useBranches();
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingDue, setLoadingDue] = useState(false);
   const [totalDue, setTotalDue] = useState(0);
@@ -33,7 +35,12 @@ export default function CollectPaymentButton({ order, onCollected }: Props) {
   const openModal = async () => {
     setLoadingDue(true);
     try {
-      const balances = await getCustomerOrderBalances(order.store_id, order.customer_id as string);
+      const balances = await getCustomerOrderBalances(
+        order.store_id,
+        order.customer_id as string,
+        order.branch_id ?? null,
+        branchesOn,
+      );
       const thisOrder = balances.find((b) => b.order_id === order.id);
       setTotalDue(thisOrder?.due_remaining ?? Number(order.total_amount));
       setModalOpen(true);

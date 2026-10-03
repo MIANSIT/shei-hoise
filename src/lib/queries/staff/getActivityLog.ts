@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { requirePermission } from "@/lib/permissions/server";
+import { BRANCH_SCOPE_ERROR, canUseBranch, requirePermission } from "@/lib/permissions/server";
 import type { ActivityPerson, ActivityRow } from "./types";
 
 export interface ActivityLogFilters {
@@ -13,6 +13,8 @@ export interface ActivityLogFilters {
   /** ISO dates (inclusive), Asia/Dhaka calendar days */
   from?: string | null;
   to?: string | null;
+  /** Stores with branches: only this branch's actions. */
+  branchId?: string | null;
 }
 
 export type ActivityLogResult =
@@ -32,6 +34,7 @@ interface ActivityDbRow {
   details: Record<string, unknown> | null;
   ip: string | null;
   user_agent: string | null;
+  branch_id: string | null;
 }
 
 const ACTION_PREFIX_PATTERN = /^[a-z_]+\.[a-z_]*$/;
@@ -43,6 +46,9 @@ export async function getActivityLog(filters: ActivityLogFilters = {}): Promise<
     const auth = await requirePermission("activity.view");
     if (!auth.ok) return auth;
     const { storeId } = auth.actor;
+    if (filters.branchId && !canUseBranch(auth.actor, filters.branchId)) {
+      return { ok: false, error: BRANCH_SCOPE_ERROR };
+    }
 
     const pageSize = Math.min(Math.max(filters.pageSize ?? 25, 1), 100);
     const page = Math.max(filters.page ?? 1, 1);
@@ -51,7 +57,7 @@ export async function getActivityLog(filters: ActivityLogFilters = {}): Promise<
     let query = supabaseAdmin
       .from("store_activity_log")
       .select(
-        "id, created_at, user_id, actor_name, actor_role, action, entity_type, entity_id, summary, details, ip, user_agent",
+        "id, created_at, user_id, actor_name, actor_role, action, entity_type, entity_id, summary, details, ip, user_agent, branch_id",
         { count: "exact" },
       )
       .eq("store_id", storeId)
@@ -59,6 +65,14 @@ export async function getActivityLog(filters: ActivityLogFilters = {}): Promise<
       .range(from, from + pageSize - 1);
 
     if (filters.userId) query = query.eq("user_id", filters.userId);
+    if (filters.branchId) {
+      query = query.eq("branch_id", filters.branchId);
+    } else if (auth.actor.kind === "staff" && !auth.actor.allBranches) {
+      // Staff limited to some branches only see their branches' actions.
+      query = auth.actor.branchIds.length
+        ? query.in("branch_id", auth.actor.branchIds)
+        : query.eq("branch_id", "00000000-0000-0000-0000-000000000000");
+    }
     const prefixes = (filters.actionPrefixes ?? []).filter((p) => ACTION_PREFIX_PATTERN.test(p));
     if (prefixes.length > 0) {
       query = query.or(prefixes.map((p) => `action.like.${p}*`).join(","));
@@ -109,6 +123,7 @@ export async function getActivityLog(filters: ActivityLogFilters = {}): Promise<
       details: r.details,
       ip: r.ip,
       userAgent: r.user_agent,
+      branchId: r.branch_id ?? null,
     }));
 
     return { ok: true, rows, total: count ?? 0, people };

@@ -30,6 +30,7 @@ import {
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
 import dataService from "@/lib/queries/dataService";
+import { useBranches } from "@/lib/context/BranchContext";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -82,6 +83,10 @@ export default function AdminOrderDetails({
   const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  // Stores with branches: stock shown is the selected branch's ("All
+  // branches" shows the store total and the order gets a branch on save).
+  const { enabled: branchesOn, selectedBranchId } = useBranches();
+  const pickerBranchId = branchesOn ? selectedBranchId : null;
 
   const runPickerSearch = async (search: string) => {
     if (!storeId) return;
@@ -93,6 +98,7 @@ export default function AdminOrderDetails({
         page: 1,
         pageSize: PICKER_PAGE_SIZE,
         withCounts: false,
+        branchId: pickerBranchId,
       });
       setPickerResults(res.data);
       onProductsFetched?.(res.data);
@@ -107,7 +113,7 @@ export default function AdminOrderDetails({
   useEffect(() => {
     runPickerSearch("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId]);
+  }, [storeId, pickerBranchId]);
 
   const handlePickerSearch = (value: string) => {
     if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);

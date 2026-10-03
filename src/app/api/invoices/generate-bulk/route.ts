@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (layout === "1up") {
       invoices.forEach((data, i) => {
         if (i > 0) pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-        drawFullInvoice(pdf, data, store, bengaliLoaded);
+        drawFullInvoice(pdf, data, data.store ?? store, bengaliLoaded);
       });
     } else if (layout === "3up") {
       const margin = 8;
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         if (i > 0 && posInPage === 0) pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
         const bandTopY = margin + posInPage * bandHeight;
-        drawCompactInvoice(pdf, data, store, bandTopY, bandHeight, bengaliLoaded);
+        drawCompactInvoice(pdf, data, data.store ?? store, bandTopY, bandHeight, bengaliLoaded);
 
         if (posInPage < perPage - 1) {
           pdf.setDrawColor(180, 180, 180);
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         const row = Math.floor(posInPage / cols);
         const cellX = margin + col * cellW;
         const cellY = margin + row * cellH;
-        drawMiniSlip(pdf, data, store, cellX, cellY, cellW, cellH, bengaliLoaded);
+        drawMiniSlip(pdf, data, data.store ?? store, cellX, cellY, cellW, cellH, bengaliLoaded);
       });
     }
 

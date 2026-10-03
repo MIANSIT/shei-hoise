@@ -163,6 +163,8 @@ export interface RecordVendorSettlementInput {
   payment_method?: VendorPaymentMethod;
   notes?: string;
   created_by?: string | null;
+  /** Stores with branches: the branch that takes the returns and the payment. */
+  branch_id?: string | null;
 }
 
 export interface VendorSettlementItem {
@@ -217,6 +219,8 @@ export interface CreateVendorPaymentInput {
   // invoice it belongs to — useful when the vendor says outright which
   // invoice they're paying off.
   vendor_order_id?: string | null;
+  /** Stores with branches: the branch that received the money (default branch when omitted). */
+  branch_id?: string | null;
 }
 
 export interface VendorPayment {

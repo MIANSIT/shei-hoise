@@ -38,6 +38,7 @@ import type {
   VendorPaymentMethod,
 } from "@/lib/types/vendor/type";
 import { toWhatsAppNumber } from "@/lib/utils/phoneNumber";
+import { useBranches } from "@/lib/context/BranchContext";
 
 const LEDGER_TAG_COLOR: Record<VendorLedgerEntry["type"], string> = {
   dispatch: "blue",
@@ -67,6 +68,8 @@ export default function VendorDetailPage() {
   const vendorId = params.id as string;
   const router = useRouter();
   const { storeId, user } = useCurrentUser();
+  // Stores with branches: vendor money is credited to the branch you work at.
+  const { workBranchId } = useBranches();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const { icon: currencyIcon } = useUserCurrencyIcon();
@@ -163,6 +166,7 @@ export default function VendorDetailPage() {
         payment_method: payload.paymentMethod,
         notes: payload.notes,
         created_by: user?.id ?? null,
+        branch_id: workBranchId,
       });
       success("Settlement recorded");
       setSettlementOpen(false);
@@ -194,6 +198,7 @@ export default function VendorDetailPage() {
         notes: payload.notes,
         created_by: user?.id ?? null,
         vendor_order_id: payload.vendorOrderId,
+        branch_id: workBranchId,
       });
       success("Payment recorded");
       setQuickPaymentOpen(false);

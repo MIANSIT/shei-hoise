@@ -33,6 +33,8 @@ export interface ReceiptPdfItem {
 
 export interface ReceiptPdfData {
   storeName: string;
+  /** Stores with branches: branch name, address and phone under the store name. */
+  branchLines?: string[];
   logoUrl?: string | null;
   dateLabel: string;
   orderNumber: string;
@@ -163,6 +165,11 @@ function drawReceiptCopy(
 
   centeredText(doc, data.storeName, y, 10, true, bengaliLoaded);
   y += 4.5;
+
+  for (const line of data.branchLines ?? []) {
+    centeredText(doc, line, y, 7, false, bengaliLoaded);
+    y += 3.3;
+  }
 
   centeredText(doc, data.dateLabel, y, 7.5, false, bengaliLoaded);
   y += 3.6;

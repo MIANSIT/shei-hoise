@@ -1,6 +1,8 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
+  BRANCH_SCOPE_ERROR,
+  canUseBranch,
   checkStockAdjustmentLimit,
   getAuthorizedStoreId,
   logActivity,
@@ -10,6 +12,11 @@ import {
 interface InventoryTarget {
   product_id: string;
   variant_id?: string | null;
+  /**
+   * Change one branch's stock (stores with branches). Without it the
+   * store-wide row changes, which the database spreads over the branches.
+   */
+  branch_id?: string | null;
   reason?: string;
   note?: string | null;
   created_by?: string | null;
@@ -38,10 +45,24 @@ async function requireOwnedProductStoreId(
   return { storeId: storeResult.storeId, actor: storeResult.actor, productName: product.name };
 }
 
-async function currentAvailable(productId: string, variantId: string | null): Promise<number> {
-  const query = supabaseAdmin.from("product_inventory").select("quantity_available").eq("product_id", productId);
+async function currentAvailable(
+  productId: string,
+  variantId: string | null,
+  branchId: string | null = null,
+): Promise<number> {
+  const query = branchId
+    ? supabaseAdmin
+        .from("branch_inventory")
+        .select("quantity_available")
+        .eq("branch_id", branchId)
+        .eq("product_id", productId)
+    : supabaseAdmin.from("product_inventory").select("quantity_available").eq("product_id", productId);
   const { data } = await (variantId ? query.eq("variant_id", variantId) : query.is("variant_id", null)).maybeSingle();
   return Number(data?.quantity_available ?? 0);
+}
+
+function assertBranchAccess(actor: Actor, branchId: string | null | undefined): void {
+  if (branchId && !canUseBranch(actor, branchId)) throw new Error(BRANCH_SCOPE_ERROR);
 }
 
 /**
@@ -56,15 +77,18 @@ export async function updateInventory({
   reason = "recount",
   note = null,
   created_by = null,
+  branch_id = null,
 }: InventoryTarget & { quantity_available: number }) {
   const { storeId, actor, productName } = await requireOwnedProductStoreId(product_id);
+  assertBranchAccess(actor, branch_id);
 
   // A recount is still a change of (new - current) units for the role's limit.
-  const before = await currentAvailable(product_id, variant_id);
+  const before = await currentAvailable(product_id, variant_id, branch_id);
   const limited = checkStockAdjustmentLimit(actor, quantity_available - before);
   if (limited) throw new Error(limited);
 
-  const { data, error } = await supabaseAdmin.rpc("set_inventory", {
+  const { data, error } = await supabaseAdmin.rpc(branch_id ? "set_branch_inventory" : "set_inventory", {
+    ...(branch_id ? { p_branch_id: branch_id } : {}),
     p_product_id: product_id,
     p_variant_id: variant_id,
     p_quantity: quantity_available,
@@ -84,7 +108,7 @@ export async function updateInventory({
     entityType: "product",
     entityId: product_id,
     summary: `${productName}: ${before} → ${quantity_available} (${reason})`,
-    details: { variant_id, note },
+    details: { variant_id, branch_id, note },
   });
 
   return data;
@@ -102,13 +126,16 @@ export async function adjustInventory({
   reason = "manual_adjustment",
   note = null,
   created_by = null,
+  branch_id = null,
 }: InventoryTarget & { delta: number }) {
   const { storeId, actor, productName } = await requireOwnedProductStoreId(product_id);
+  assertBranchAccess(actor, branch_id);
 
   const limited = checkStockAdjustmentLimit(actor, delta);
   if (limited) throw new Error(limited);
 
-  const { data, error } = await supabaseAdmin.rpc("adjust_inventory", {
+  const { data, error } = await supabaseAdmin.rpc(branch_id ? "adjust_branch_inventory" : "adjust_inventory", {
+    ...(branch_id ? { p_branch_id: branch_id } : {}),
     p_product_id: product_id,
     p_variant_id: variant_id,
     p_delta: delta,
@@ -128,7 +155,7 @@ export async function adjustInventory({
     entityType: "product",
     entityId: product_id,
     summary: `${productName}: ${delta > 0 ? "+" : ""}${delta} (${reason})`,
-    details: { variant_id, note },
+    details: { variant_id, branch_id, note },
   });
 
   return data;

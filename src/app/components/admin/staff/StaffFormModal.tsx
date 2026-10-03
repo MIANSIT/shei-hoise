@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Input, Modal, Select } from "antd";
+import { Button, Input, Modal, Radio, Select } from "antd";
 import { Copy, Check } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLanguageStore } from "@/lib/store/languageStore";
@@ -14,6 +14,7 @@ import {
   STAFF_NAME_PATTERN,
 } from "@/lib/permissions/staffIdentity";
 import { fillTemplate, generatePassword } from "./staffUi";
+import { useBranches } from "@/lib/context/BranchContext";
 
 interface StaffFormModalProps {
   open: boolean;
@@ -45,6 +46,10 @@ export function StaffFormModal({ open, staff, roles, storeSlug, onClose, onSaved
   const [saving, setSaving] = useState(false);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [copied, setCopied] = useState(false);
+  // Branch access: only asked when the store has branches turned on.
+  const { enabled: branchesOn, branches } = useBranches();
+  const [allBranches, setAllBranches] = useState(true);
+  const [branchIds, setBranchIds] = useState<string[]>([]);
 
   const isEdit = !!staff;
 
@@ -66,6 +71,8 @@ export function StaffFormModal({ open, staff, roles, storeSlug, onClose, onSaved
     setRoleId(
       staff?.roleId ?? currentRoles.find((r) => r.name === "Cashier")?.id ?? currentRoles[0]?.id,
     );
+    setAllBranches(staff?.allBranches ?? true);
+    setBranchIds(staff?.branchIds ?? []);
     setErrors({});
     setCredentials(null);
     setCopied(false);
@@ -81,6 +88,7 @@ export function StaffFormModal({ open, staff, roles, storeSlug, onClose, onSaved
       if (password.length < STAFF_MIN_PASSWORD_LENGTH) next.password = t.staff.validationPassword;
     }
     if (!roleId) next.roleId = t.staff.validationRole;
+    if (branchesOn && !allBranches && branchIds.length === 0) next.branches = t.staff.validationBranches;
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -90,7 +98,13 @@ export function StaffFormModal({ open, staff, roles, storeSlug, onClose, onSaved
     setSaving(true);
 
     if (isEdit && staff) {
-      const result = await updateStaff({ staffId: staff.id, displayName, phone, roleId });
+      const result = await updateStaff({
+        staffId: staff.id,
+        displayName,
+        phone,
+        roleId,
+        ...(branchesOn ? { allBranches, branchIds } : {}),
+      });
       setSaving(false);
       if (!result.ok) {
         notify.error(result.error);
@@ -102,7 +116,14 @@ export function StaffFormModal({ open, staff, roles, storeSlug, onClose, onSaved
       return;
     }
 
-    const result = await createStaff({ displayName, name: shortName, password, phone, roleId });
+    const result = await createStaff({
+      displayName,
+      name: shortName,
+      password,
+      phone,
+      roleId,
+      ...(branchesOn ? { allBranches, branchIds } : {}),
+    });
     setSaving(false);
     if (!result.ok) {
       notify.error(result.error);
@@ -227,6 +248,28 @@ export function StaffFormModal({ open, staff, roles, storeSlug, onClose, onSaved
             options={roles.map((r) => ({ value: r.id, label: r.name }))}
           />
         </Field>
+
+        {branchesOn && (
+          <Field label={t.staff.fieldBranches} error={errors.branches} hint={t.staff.fieldBranchesHint}>
+            <div className="space-y-2">
+              <Radio.Group value={allBranches} onChange={(e) => setAllBranches(e.target.value)}>
+                <Radio value={true}>{t.staff.branchesAll}</Radio>
+                <Radio value={false}>{t.staff.branchesOnly}</Radio>
+              </Radio.Group>
+              {!allBranches && (
+                <Select
+                  mode="multiple"
+                  className="w-full"
+                  value={branchIds}
+                  onChange={setBranchIds}
+                  placeholder={t.staff.branchesPlaceholder}
+                  status={errors.branches ? "error" : undefined}
+                  options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                />
+              )}
+            </div>
+          </Field>
+        )}
 
         <Field label={t.staff.fieldPhone} hint={t.staff.fieldPhoneHint}>
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} inputMode="tel" />

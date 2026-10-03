@@ -52,6 +52,7 @@ export const PERMISSION_AREAS: readonly PermissionArea[] = [
     extras: [
       { key: "change_status", label: "Change status", labelBn: "স্ট্যাটাস পরিবর্তন" },
       { key: "cancel", label: "Cancel order", labelBn: "অর্ডার বাতিল" },
+      { key: "move_branch", label: "Move to another branch", labelBn: "অন্য ব্রাঞ্চে সরানো" },
     ],
   },
   {
@@ -119,6 +120,19 @@ export const PERMISSION_AREAS: readonly PermissionArea[] = [
     hintBn: "স্টকের পরিমাণ ও পরিবর্তন",
     actions: ["view", "edit"],
     extras: [],
+  },
+  {
+    key: "transfers",
+    label: "Stock transfers",
+    labelBn: "স্টক ট্রান্সফার",
+    hint: "Move stock between branches (only with branches turned on)",
+    hintBn: "এক ব্রাঞ্চ থেকে আরেক ব্রাঞ্চে স্টক পাঠানো (ব্রাঞ্চ চালু থাকলে)",
+    // add = create a draft, delete = cancel one
+    actions: ["view", "add", "delete"],
+    extras: [
+      { key: "send", label: "Send", labelBn: "পাঠানো" },
+      { key: "receive", label: "Receive", labelBn: "গ্রহণ" },
+    ],
   },
   {
     key: "reviews",
@@ -213,7 +227,7 @@ export const PERMISSION_SECTIONS: readonly PermissionSection[] = [
     key: "catalog",
     label: "Products & stock",
     labelBn: "পণ্য ও স্টক",
-    areas: ["products", "categories", "stock", "reviews"],
+    areas: ["products", "categories", "stock", "transfers", "reviews"],
   },
   {
     key: "money",
@@ -397,7 +411,16 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
   {
     name: "Stock Keeper",
     description: "Keeps products and stock up to date.",
-    permissions: ["products.view", "categories.view", "stock.view", "stock.edit"],
+    permissions: [
+      "products.view",
+      "categories.view",
+      "stock.view",
+      "stock.edit",
+      "transfers.view",
+      "transfers.add",
+      "transfers.send",
+      "transfers.receive",
+    ],
     limits: { max_stock_adjustment: 50 },
   },
   {

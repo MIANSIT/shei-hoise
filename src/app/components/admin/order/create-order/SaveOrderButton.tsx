@@ -11,6 +11,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
+import { useBranches } from "@/lib/context/BranchContext";
 const { Text } = Typography;
 
 interface SaveOrderButtonProps {
@@ -67,6 +68,10 @@ export default function SaveOrderButton({
   const n = useLocalNum();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  // The header's branch fulfils the order; "All branches" lets the store pick
+  // the best one (priority order, then whoever has the stock).
+  const { enabled: branchesOn, selectedBranchId, selectedBranch } = useBranches();
+  const orderBranchId = branchesOn ? selectedBranchId : null;
   const {
     currency,
     icon: currencyIcon,
@@ -89,6 +94,11 @@ export default function SaveOrderButton({
           <Text>{t.admin.saveOrderConfirmMsg}</Text>
           <Text type="secondary">{t.admin.saveOrderOrderIdLabel} {orderId}</Text>
           <Text type="secondary">{t.admin.saveOrderConfirmCustomer} {customerInfo.name}</Text>
+          {branchesOn && (
+            <Text type="secondary">
+              {t.branches.orderBranch}: {selectedBranch?.name ?? t.branches.branchAutoPick}
+            </Text>
+          )}
           {customerInfo.email && (
             <Text type="secondary">{t.admin.saveOrderConfirmEmail} {customerInfo.email}</Text>
           )}
@@ -229,6 +239,7 @@ export default function SaveOrderButton({
         orderDate,
         currency: displayCurrencySafe,
         deliveryOption: finalCustomerInfo.deliveryOption,
+        branchId: orderBranchId,
       };
 
       const result = await dataService.createOrder(orderData);

@@ -33,6 +33,7 @@ import type {
   VendorPaymentMethod,
 } from "@/lib/types/vendor/type";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { useBranches } from "@/lib/context/BranchContext";
 
 const PAGE_SIZE = 10;
 
@@ -47,6 +48,8 @@ const PAYMENT_METHOD_LABEL: Record<VendorPaymentMethod, string> = {
 
 export default function VendorSettlementsPage() {
   const { storeId, user, loading: userLoading } = useCurrentUser();
+  // Stores with branches: vendor money is credited to the branch you work at.
+  const { workBranchId } = useBranches();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const router = useRouter();
@@ -155,6 +158,7 @@ export default function VendorSettlementsPage() {
         payment_method: payload.paymentMethod,
         notes: payload.notes,
         created_by: user?.id ?? null,
+        branch_id: workBranchId,
       });
       success("Settlement recorded");
       setSettlementOpen(false);
@@ -187,6 +191,7 @@ export default function VendorSettlementsPage() {
         notes: payload.notes,
         created_by: user?.id ?? null,
         vendor_order_id: payload.vendorOrderId,
+        branch_id: workBranchId,
       });
       success("Payment recorded");
       setQuickPaymentOpen(false);

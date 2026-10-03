@@ -20,6 +20,9 @@ import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
 
 const { Text, Title } = Typography;
 
@@ -87,29 +90,33 @@ export default function QuickSaleAudit() {
   const [savingOpeningCash, setSavingOpeningCash] = useState(false);
 
   const dateStr = selectedDate.format("YYYY-MM-DD");
+  const t = useTranslation();
+  // Stores with branches: each branch has its own drawer — the one you work at.
+  const { enabled: branchesOn, loading: branchesLoading, workBranchId } = useBranches();
+  const drawerBranchId = branchesOn ? workBranchId : null;
 
   const fetchSummary = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const result = await getQuickSaleDailySummary(user.store_id, dateStr);
+      const result = await getQuickSaleDailySummary(user.store_id, dateStr, drawerBranchId);
       setSummary(result);
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id, dateStr]);
+  }, [user?.store_id, dateStr, drawerBranchId, branchesLoading]);
 
   const fetchOpeningCash = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || branchesLoading) return;
     setOpeningCashLoading(true);
     try {
-      const result = await getRegisterOpeningCash(user.store_id, dateStr);
+      const result = await getRegisterOpeningCash(user.store_id, dateStr, drawerBranchId);
       setOpeningCash(result);
       setOpeningCashDraft(result);
     } finally {
       setOpeningCashLoading(false);
     }
-  }, [user?.store_id, dateStr]);
+  }, [user?.store_id, dateStr, drawerBranchId, branchesLoading]);
 
   useEffect(() => {
     fetchSummary();
@@ -123,13 +130,13 @@ export default function QuickSaleAudit() {
   // shouldn't carry over when the cashier switches to a different day.
   useEffect(() => {
     setCountedCash(null);
-  }, [dateStr]);
+  }, [dateStr, drawerBranchId]);
 
   const handleSaveOpeningCash = async () => {
     if (!user?.store_id || openingCashDraft == null) return;
     setSavingOpeningCash(true);
     try {
-      await setRegisterOpeningCash(dateStr, openingCashDraft);
+      await setRegisterOpeningCash(dateStr, openingCashDraft, drawerBranchId);
       setOpeningCash(openingCashDraft);
       success("Opening cash saved");
     } catch (err) {
@@ -226,6 +233,7 @@ export default function QuickSaleAudit() {
           <Text type="secondary" className="text-xs">
             End-of-shift cash count for the day&apos;s sales — online and in-store.
           </Text>
+          <WorkBranchPicker label={t.branches.drawerLabel} />
         </div>
         <DatePicker
           value={selectedDate}

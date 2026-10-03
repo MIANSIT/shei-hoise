@@ -33,6 +33,10 @@ interface StockChangeTableProps {
   onTotalChange?: (total: number) => void;
   onStatsChange?: (stats: StockAggregateStats) => void;
   onSortChange?: (sort: StockSort) => void;
+  /** Stores with branches: show and change this branch's stock (null = store total). */
+  branchId?: string | null;
+  /** "All branches" view: numbers only, no editing (a change needs a branch). */
+  readOnly?: boolean;
 }
 
 const StockChangeTable: React.FC<StockChangeTableProps> = ({
@@ -44,6 +48,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   onTotalChange,
   onStatsChange,
   onSortChange,
+  branchId = null,
+  readOnly = false,
 }) => {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
@@ -71,6 +77,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
           currentPage,
           pageSize,
           stockSort,
+          branchId,
         );
 
         if (stale) return;
@@ -100,6 +107,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     currentPage,
     pageSize,
     stockSort,
+    branchId,
     onTotalChange,
     onStatsChange,
   ]);
@@ -114,6 +122,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         currentPage,
         pageSize,
         stockSort,
+        branchId,
       );
       setProducts(mapProductsForModernTable(result.data));
       if (onTotalChange) onTotalChange(result.total);
@@ -165,6 +174,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       await adjustInventory({
         product_id: productId,
         ...(variantId ? { variant_id: variantId } : {}),
+        branch_id: branchId,
         delta,
         created_by: user?.id ?? null,
       });
@@ -249,6 +259,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
             product_id: productId,
             ...(variantId ? { variant_id: variantId } : {}),
             quantity_available: 0,
+            branch_id: branchId,
             reason: "bulk_set_zero",
             created_by: user?.id ?? null,
           });
@@ -257,6 +268,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
             product_id: productId,
             ...(variantId ? { variant_id: variantId } : {}),
             delta: value,
+            branch_id: branchId,
             reason: "bulk_adjustment",
             created_by: user?.id ?? null,
           });
@@ -336,11 +348,15 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         <p className="text-center text-muted-foreground">No products found.</p>
       ) : (
         <>
-          <BulkStockUpdate
-            selectedCount={selectedRowKeys.length}
-            onUpdate={handleBulkUpdate}
-            loading={bulkActive}
-          />
+          {!readOnly && (
+            <BulkStockUpdate
+              selectedCount={selectedRowKeys.length}
+              onUpdate={handleBulkUpdate}
+              loading={bulkActive}
+            />
+          )}
+          {/* A disabled fieldset disables every input and button inside it. */}
+          <fieldset disabled={readOnly} className="contents">
           <div className="block md:hidden">
             <StockTableMobile
               products={products}
@@ -365,6 +381,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               onSortChange={onSortChange}
             />
           </div>
+          </fieldset>
         </>
       )}
     </div>

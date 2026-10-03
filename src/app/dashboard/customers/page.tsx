@@ -18,6 +18,7 @@ import { updateCustomerProfileAsAdmin } from "@/lib/queries/user/admin-customers
 import { useUrlSync, parseInteger } from "@/lib/hook/filterWithUrl/useUrlSync";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useBranches } from "@/lib/context/BranchContext";
 
 // Constants for pagination
 const DEFAULT_PAGE_SIZE = 10;
@@ -34,6 +35,9 @@ export default function CustomerPage() {
   const router = useRouter();
 
   const { storeId, loading: userLoading } = useCurrentUser();
+  // Stores with branches: the list follows the header's branch.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId } = useBranches();
+  const listBranchId = branchesOn ? selectedBranchId : null;
   const notificationRef = useRef(notification);
   notificationRef.current = notification;
   const userFormData = useCustomerFormData(selectedCustomer);
@@ -53,7 +57,7 @@ export default function CustomerPage() {
 
   // Fetch customers with search and pagination
   useEffect(() => {
-    if (!storeId || userLoading) return;
+    if (!storeId || userLoading || branchesLoading) return;
 
     const fetchCustomers = async () => {
       try {
@@ -63,7 +67,8 @@ export default function CustomerPage() {
           storeId,
           searchTerm,
           currentPage,
-          pageSize
+          pageSize,
+          listBranchId,
         );
 
         if (
@@ -92,7 +97,7 @@ export default function CustomerPage() {
     };
 
     fetchCustomers();
-  }, [storeId, userLoading, searchTerm, currentPage, pageSize]);
+  }, [storeId, userLoading, searchTerm, currentPage, pageSize, listBranchId, branchesLoading]);
 
   // Update customer - Use ProfileFormData type
   const handleUpdateCustomer = async (

@@ -10,6 +10,7 @@ import {
   logOrderChange,
   type OrderChange,
 } from "@/lib/permissions/server";
+import { adjustOrderLineStock, moveOrderStock } from "./orderStock";
 
 export interface UpdateOrderByNumberData {
   orderId: string;
@@ -112,6 +113,7 @@ export async function updateOrderByNumber(
 
     const change: OrderChange = {
       fromStatus: existingOrder.status,
+      branchId: existingOrder.branch_id ?? null,
       toStatus: status,
       paymentStatusChanged: paymentStatus !== existingOrder.payment_status,
       toPaymentStatus: paymentStatus,
@@ -513,7 +515,7 @@ async function handleInventoryUpdates(
       for (const [key, existingItem] of existingItemsMap) {
         if (!newItemsMap.has(key)) {
           // Item was removed - return the reserved quantity to available
-          await adjustInventory(existingItem, -existingItem.quantity, inventoryMode);
+          await adjustInventory(existingOrder.id, existingItem, -existingItem.quantity, inventoryMode);
         }
       }
 
@@ -526,11 +528,11 @@ async function handleInventoryUpdates(
           const quantityDiff = newItem.quantity - existingItem.quantity;
 
           if (quantityDiff !== 0) {
-            await adjustInventory(existingItem, quantityDiff, inventoryMode);
+            await adjustInventory(existingOrder.id, existingItem, quantityDiff, inventoryMode);
           }
         } else {
           // This is a NEW item added to the order
-          await adjustInventory(newItem, newItem.quantity, inventoryMode);
+          await adjustInventory(existingOrder.id, newItem, newItem.quantity, inventoryMode);
         }
       }
     }
@@ -539,6 +541,7 @@ async function handleInventoryUpdates(
     if (updateData.status !== existingOrder.status) {
 
       await handleStatusChangeInventory(
+        existingOrder.id,
         existingOrder.status,
         updateData.status,
         newItems
@@ -553,76 +556,20 @@ async function handleInventoryUpdates(
 
 // Adjust inventory based on quantity changes
 async function adjustInventory(
+  orderId: string,
   item: any,
   quantityDiff: number,
   mode: InventoryAdjustMode = "reserved"
 ): Promise<void> {
-  try {
-    if (quantityDiff === 0 || mode === "skip") {
-      return;
-    }
-
-    const inventoryQuery = item.variant_id
-      ? supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("variant_id", item.variant_id)
-          .single()
-      : supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
-
-    const { data: inventory, error: inventoryError } = await inventoryQuery;
-
-    if (inventoryError) {
-      console.error(`❌ Inventory not found for item:`, item, inventoryError);
-      return;
-    }
-
-    if (inventory) {
-      const currentAvailable = inventory.quantity_available || 0;
-
-      // Delivered order: no reservation left to shift, so a quantity edit
-      // moves quantity_available directly and never touches
-      // quantity_reserved.
-      const updatePayload =
-        mode === "available"
-          ? { quantity_available: Math.max(0, currentAvailable - quantityDiff) }
-          : {
-              quantity_available: Math.max(0, currentAvailable - quantityDiff),
-              quantity_reserved: Math.max(
-                0,
-                (inventory.quantity_reserved || 0) + quantityDiff
-              ),
-            };
-
-      const updateQuery = item.variant_id
-        ? supabaseAdmin
-            .from("product_inventory")
-            .update(updatePayload)
-            .eq("variant_id", item.variant_id)
-        : supabaseAdmin
-            .from("product_inventory")
-            .update(updatePayload)
-            .eq("product_id", item.product_id)
-            .is("variant_id", null);
-
-      const { error: updateError } = await updateQuery;
-
-      if (updateError) {
-        console.error(`❌ Error updating inventory:`, updateError);
-      }
-    }
-  } catch (error) {
-    console.error(`❌ Error adjusting inventory for item ${item.id}:`, error);
-  }
+  if (quantityDiff === 0 || mode === "skip") return;
+  // Delivered order: no reservation left to shift, so the change moves
+  // available stock directly. Row-locked on the order's branch — see orderStock.ts.
+  await adjustOrderLineStock(orderId, item, quantityDiff, mode);
 }
 
 // Handle inventory updates based on status changes
 async function handleStatusChangeInventory(
+  orderId: string,
   oldStatus: string,
   newStatus: OrderStatus, // ✅ Using enum
   orderItems: any[]
@@ -637,7 +584,7 @@ async function handleStatusChangeInventory(
       oldStatus !== OrderStatus.CANCELLED &&
       newStatus === OrderStatus.CANCELLED
     ) {
-      await returnReservedStockToAvailable(orderItems);
+      await returnReservedStockToAvailable(orderId, orderItems);
     }
 
     // Moving to returned: once delivered, deductReservedStock (below) has
@@ -648,9 +595,9 @@ async function handleStatusChangeInventory(
     // already handles.
     if (oldStatus !== OrderStatus.RETURNED && newStatus === OrderStatus.RETURNED) {
       if (oldStatus === OrderStatus.DELIVERED) {
-        await restockDeliveredReturn(orderItems);
+        await restockDeliveredReturn(orderId, orderItems);
       } else {
-        await returnReservedStockToAvailable(orderItems);
+        await returnReservedStockToAvailable(orderId, orderItems);
       }
     }
 
@@ -659,12 +606,12 @@ async function handleStatusChangeInventory(
       (oldStatus === OrderStatus.CANCELLED || oldStatus === OrderStatus.RETURNED) &&
       (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
-      await reserveStock(orderItems);
+      await reserveStock(orderId, orderItems);
     }
 
     // From any status to delivered - deduct reserved stock (finalize)
     if (newStatus === OrderStatus.DELIVERED) {
-      await deductReservedStock(orderItems);
+      await deductReservedStock(orderId, orderItems);
     }
 
     // From delivered back to confirmed/pending - reverse the deduction
@@ -672,7 +619,7 @@ async function handleStatusChangeInventory(
       oldStatus === OrderStatus.DELIVERED &&
       (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
     ) {
-      await reserveStock(orderItems);
+      await reserveStock(orderId, orderItems);
     }
 
 
@@ -682,220 +629,27 @@ async function handleStatusChangeInventory(
 }
 
 // Reserve stock when order is confirmed
-async function reserveStock(orderItems: any[]): Promise<void> {
-  for (const item of orderItems) {
-    try {
-      if (item.variant_id) {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("variant_id", item.variant_id)
-          .single();
-
-        if (inventory) {
-          const newAvailable = Math.max(
-            0,
-            (inventory.quantity_available || 0) - item.quantity
-          );
-          const newReserved =
-            (inventory.quantity_reserved || 0) + item.quantity;
-
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_available: newAvailable,
-              quantity_reserved: newReserved,
-            })
-            .eq("variant_id", item.variant_id);
-        }
-      } else {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
-
-        if (inventory) {
-          const newAvailable = Math.max(
-            0,
-            (inventory.quantity_available || 0) - item.quantity
-          );
-          const newReserved =
-            (inventory.quantity_reserved || 0) + item.quantity;
-
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_available: newAvailable,
-              quantity_reserved: newReserved,
-            })
-            .eq("product_id", item.product_id)
-            .is("variant_id", null);
-        }
-      }
-    } catch (error) {
-      console.error(`Error reserving stock for item ${item.id}:`, error);
-    }
-  }
+async function reserveStock(orderId: string, orderItems: any[]): Promise<void> {
+  await moveOrderStock(orderId, orderItems, "reserve");
 }
 
 // Return reserved stock to available when order is cancelled
 async function returnReservedStockToAvailable(
+  orderId: string,
   orderItems: any[]
 ): Promise<void> {
-  for (const item of orderItems) {
-    try {
-      if (item.variant_id) {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("variant_id", item.variant_id)
-          .single();
-
-        if (inventory) {
-          const newAvailable =
-            (inventory.quantity_available || 0) + item.quantity;
-          const newReserved = Math.max(
-            0,
-            (inventory.quantity_reserved || 0) - item.quantity
-          );
-
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_available: newAvailable,
-              quantity_reserved: newReserved,
-            })
-            .eq("variant_id", item.variant_id);
-        }
-      } else {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available, quantity_reserved")
-          .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
-
-        if (inventory) {
-          const newAvailable =
-            (inventory.quantity_available || 0) + item.quantity;
-          const newReserved = Math.max(
-            0,
-            (inventory.quantity_reserved || 0) - item.quantity
-          );
-
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_available: newAvailable,
-              quantity_reserved: newReserved,
-            })
-            .eq("product_id", item.product_id)
-            .is("variant_id", null);
-        }
-      }
-    } catch (error) {
-      console.error(`Error returning stock for item ${item.id}:`, error);
-    }
-  }
+  await moveOrderStock(orderId, orderItems, "release");
 }
 
 // Add stock straight back to available when a DELIVERED order is returned —
 // deductReservedStock (below) already zeroed quantity_reserved for these
 // items with no corresponding add to quantity_available, so there's nothing
 // to "return from reserved" the way returnReservedStockToAvailable does.
-async function restockDeliveredReturn(orderItems: any[]): Promise<void> {
-  for (const item of orderItems) {
-    try {
-      if (item.variant_id) {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available")
-          .eq("variant_id", item.variant_id)
-          .single();
-
-        if (inventory) {
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_available: (inventory.quantity_available || 0) + item.quantity,
-            })
-            .eq("variant_id", item.variant_id);
-        }
-      } else {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_available")
-          .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
-
-        if (inventory) {
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_available: (inventory.quantity_available || 0) + item.quantity,
-            })
-            .eq("product_id", item.product_id)
-            .is("variant_id", null);
-        }
-      }
-    } catch (error) {
-      console.error(`Error restocking returned item ${item.id}:`, error);
-    }
-  }
+async function restockDeliveredReturn(orderId: string, orderItems: any[]): Promise<void> {
+  await moveOrderStock(orderId, orderItems, "restock");
 }
 
 // Deduct reserved stock when order is delivered
-async function deductReservedStock(orderItems: any[]): Promise<void> {
-  for (const item of orderItems) {
-    try {
-      if (item.variant_id) {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_reserved")
-          .eq("variant_id", item.variant_id)
-          .single();
-
-        if (inventory) {
-          const newReserved = Math.max(
-            0,
-            (inventory.quantity_reserved || 0) - item.quantity
-          );
-
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_reserved: newReserved,
-            })
-            .eq("variant_id", item.variant_id);
-        }
-      } else {
-        const { data: inventory } = await supabaseAdmin
-          .from("product_inventory")
-          .select("quantity_reserved")
-          .eq("product_id", item.product_id)
-          .is("variant_id", null)
-          .single();
-
-        if (inventory) {
-          const newReserved = Math.max(
-            0,
-            (inventory.quantity_reserved || 0) - item.quantity
-          );
-
-          await supabaseAdmin
-            .from("product_inventory")
-            .update({
-              quantity_reserved: newReserved,
-            })
-            .eq("product_id", item.product_id)
-            .is("variant_id", null);
-        }
-      }
-    } catch (error) {
-      console.error(`Error deducting stock for item ${item.id}:`, error);
-    }
-  }
+async function deductReservedStock(orderId: string, orderItems: any[]): Promise<void> {
+  await moveOrderStock(orderId, orderItems, "finalize");
 }

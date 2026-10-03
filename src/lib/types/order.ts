@@ -83,6 +83,12 @@ export interface StoreOrder {
   order_number: string;
   customer_id: string | null;
   store_id: string;
+  /** Stores with branches: the branch fulfilling this order. */
+  branch_id?: string | null;
+  /** No branch had every item when the order came in. */
+  needs_transfer?: boolean;
+  /** false = branch picked automatically, waiting for a person to confirm. */
+  branch_confirmed?: boolean;
   status: OrderStatus;
   subtotal: number;
   tax_amount: number;
@@ -176,6 +182,8 @@ export interface CreateOrderData {
   cashReceived?: number | null;
   /** "YYYY-MM-DD" — when the sale actually happened. Omit to let the DB default order_date to today. */
   orderDate?: string;
+  /** Stores with branches: the branch that fulfils the order. Omitted/null = picked automatically. */
+  branchId?: string | null;
 }
 
 // ===== CUSTOMER ORDER TYPES =====

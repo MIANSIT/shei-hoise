@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
-import { computeOrderBalances } from "./customerDueMath";
+import { computeBranchOrderBalances } from "./customerDueMath";
 
 export interface CustomerOrderBalance {
   order_id: string;
@@ -15,6 +15,10 @@ export interface CustomerOrderBalance {
 export async function getCustomerOrderBalances(
   storeId: string,
   customerId: string,
+  /** Stores with branches: only orders of this branch (balances are per branch either way). */
+  branchId?: string | null,
+  /** Read branch columns (stores with branches). */
+  withBranches = false,
 ): Promise<CustomerOrderBalance[]> {
   if (!storeId || !customerId) return [];
 
@@ -25,7 +29,7 @@ export async function getCustomerOrderBalances(
     // would otherwise make it look 100% unpaid instead of not due.
     supabase
       .from("orders")
-      .select("id, order_number, created_at, total_amount")
+      .select(withBranches ? "id, order_number, created_at, total_amount, branch_id" : "id, order_number, created_at, total_amount")
       .eq("store_id", storeId)
       .eq("customer_id", customerId)
       .neq("payment_status", PaymentStatus.PAID)
@@ -39,18 +43,21 @@ export async function getCustomerOrderBalances(
       .order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")
-      .select("amount, order_id")
+      .select(withBranches ? "amount, order_id, branch_id" : "amount, order_id")
       .eq("store_id", storeId)
       .eq("customer_id", customerId),
   ]);
 
-  const orders = ordersRes.data ?? [];
-  const payments = paymentsRes.data ?? [];
+  type OrderRow = { id: string; order_number: string; created_at: string; total_amount: number; branch_id?: string | null };
+  type PaymentRow = { amount: number; order_id: string | null; branch_id?: string | null };
+  const allOrders = (ordersRes.data ?? []) as unknown as OrderRow[];
+  const payments = (paymentsRes.data ?? []) as unknown as PaymentRow[];
 
-  const balances = computeOrderBalances(
-    orders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount) })),
+  const balances = computeBranchOrderBalances(
+    allOrders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount), branch_id: o.branch_id ?? null })),
     payments,
   );
+  const orders = branchId ? allOrders.filter((o) => o.branch_id === branchId) : allOrders;
   const balanceByOrderId = new Map(balances.map((b) => [b.order_id, b]));
 
   // Computed oldest-first (the waterfall applies in that order); display newest-first.

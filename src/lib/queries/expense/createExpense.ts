@@ -1,7 +1,13 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import { Expense } from "@/lib/types/expense/type";
-import { authorizeForStore, checkExpenseLimit, logActivity } from "@/lib/permissions/server";
+import {
+  BRANCH_SCOPE_ERROR,
+  authorizeForStore,
+  canUseBranch,
+  checkExpenseLimit,
+  logActivity,
+} from "@/lib/permissions/server";
 
 export interface CreateExpenseInput {
   store_id: string;
@@ -14,6 +20,8 @@ export interface CreateExpenseInput {
   payment_method?: string;
   platform?: string;
   notes?: string;
+  /** Stores with branches: the branch that carries it (default branch when omitted). */
+  branch_id?: string;
 }
 
 export async function createExpense(
@@ -23,6 +31,10 @@ export async function createExpense(
     const auth = await authorizeForStore(input.store_id, "expenses.add");
     if (!auth.ok) {
       console.error("createExpense:", auth.error);
+      return null;
+    }
+    if (input.branch_id && !canUseBranch(auth.actor, input.branch_id)) {
+      console.error("createExpense:", BRANCH_SCOPE_ERROR);
       return null;
     }
     const overLimit = checkExpenseLimit(auth.actor, Number(input.amount) || 0);
@@ -56,6 +68,7 @@ export async function createExpense(
       action: "expenses.add",
       entityType: "expense",
       entityId: data.id,
+      branchId: data.branch_id ?? null,
       summary: `${input.title}: ৳${input.amount} (${input.expense_date})`,
     });
 

@@ -14,6 +14,8 @@ const ROUTE_REQUIREMENTS: ReadonlyArray<readonly [string, RouteRequirement]> = [
   ["/dashboard/no-access", "any"],
 
   ["/dashboard/staff", "owner"],
+  ["/dashboard/branches", "owner"],
+  ["/dashboard/stock-transfers", "transfers.view"],
   ["/dashboard/activity", "activity.view"],
 
   ["/dashboard/orders/quick-sale/audit", "register.view"],

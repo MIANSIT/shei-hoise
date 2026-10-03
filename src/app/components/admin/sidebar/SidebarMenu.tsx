@@ -154,7 +154,16 @@ export default function SidebarMenu({
       .filter((item) => !item.hideWhenSetupComplete || (!setupCompleted && isOwner))
       .filter(isAllowed)
       .map((item) =>
-        item.children ? { ...item, children: item.children.filter(isAllowed) } : item,
+        item.children
+          ? {
+              ...item,
+              children: item.children.filter(
+                (child) =>
+                  (!child.requiredFeature || hasFeature(subscription, child.requiredFeature)) &&
+                  isAllowed(child),
+              ),
+            }
+          : item,
       )
       .map((item) => {
         if (item.title !== "Courier" || !item.children) return item;

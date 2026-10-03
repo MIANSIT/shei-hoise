@@ -25,6 +25,8 @@ export async function getVendorPaymentStatsForPeriod(
   periodEnd: string,
   prevPeriodStart: string,
   prevPeriodEnd: string,
+  /** Stores with branches: only money received at this branch. The due stays vendor-wide. */
+  branchId?: string | null,
 ): Promise<VendorPaymentStats> {
   if (!storeId) return EMPTY;
 
@@ -39,7 +41,9 @@ export async function getVendorPaymentStatsForPeriod(
       .select("quantity_available, last_vendor_tp")
       .eq("store_id", storeId),
     supabase.from("vendor_settlements").select("total_receivable").eq("store_id", storeId),
-    supabase.from("vendor_payments").select("amount, payment_date").eq("store_id", storeId),
+    branchId
+      ? supabase.from("vendor_payments").select("amount, payment_date, branch_id").eq("store_id", storeId).eq("branch_id", branchId)
+      : supabase.from("vendor_payments").select("amount, payment_date").eq("store_id", storeId),
     supabase
       .from("vendor_orders")
       .select("delivery_cost")

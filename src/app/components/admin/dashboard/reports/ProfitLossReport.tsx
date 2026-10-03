@@ -27,6 +27,9 @@ import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import ProfitTrendChart from "@/app/components/admin/dashboard/dashboardComponent/ProfitTrendChart";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { ProfitStory } from "@/app/components/admin/dashboard/dashboardComponent/ProfitStory";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 function StatTile({
   icon,
@@ -60,6 +63,8 @@ function StatTile({
 }
 
 const EMPTY: ProfitLossReportData = {
+  salesAll: 0,
+  toCollect: 0,
   totalSales: 0,
   additionalCharges: 0,
   cogs: 0,
@@ -84,6 +89,11 @@ export default function ProfitLossReport() {
   );
   const { storeData } = useInvoiceData({ storeId: user?.store_id ?? undefined });
   const [exporting, setExporting] = useState(false);
+  // Stores with branches: the header's branch, or the whole brand on "All branches".
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, selectedBranch } = useBranches();
+  const t = useTranslation();
+  const reportBranchId = branchesOn ? selectedBranchId : null;
+  const branchName = branchesOn ? (selectedBranch?.name ?? t.branches.allBranches) : null;
 
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(89, "day"), dayjs()]);
   const [report, setReport] = useState<ProfitLossReportData>(EMPTY);
@@ -93,15 +103,15 @@ export default function ProfitLossReport() {
   const toDate = range[1].format("YYYY-MM-DD");
 
   const fetchReport = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const result = await getProfitLossReport(user.store_id, fromDate, toDate);
+      const result = await getProfitLossReport(user.store_id, fromDate, toDate, reportBranchId);
       setReport(result);
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id, fromDate, toDate]);
+  }, [user?.store_id, fromDate, toDate, reportBranchId, branchesLoading]);
 
   useEffect(() => {
     fetchReport();
@@ -114,7 +124,9 @@ export default function ProfitLossReport() {
     setExporting(true);
     try {
       await exportProfitLossReportPDF(report, {
-        storeName: storeData?.store_name ?? "Store",
+        storeName: branchName
+          ? `${storeData?.store_name ?? "Store"} — ${branchName}`
+          : (storeData?.store_name ?? "Store"),
         fromDate,
         toDate,
         currencySymbol: currencyIcon,
@@ -155,6 +167,7 @@ export default function ProfitLossReport() {
                 <MenuLabel labelKey="menuProfitLoss" />
               </h1>
               <p className="text-xs text-muted-foreground m-0">
+                {branchName && <span className="font-semibold text-teal-700 dark:text-teal-300">{branchName} · </span>}
                 Sales, cost of goods, expenses and net profit for any date range
               </p>
             </div>
@@ -178,12 +191,33 @@ export default function ProfitLossReport() {
           </div>
         ) : (
           <>
+            <ProfitStory
+              periodLabel={`${range[0].format("DD MMM YYYY")} – ${range[1].format("DD MMM YYYY")}`}
+              formatMoney={money}
+              figures={{
+                sales: report.totalSales,
+                grossProfit: report.grossProfit,
+                expenses: report.totalExpenses,
+                vendorProfit: report.vendorProfit,
+                netProfit: report.netProfit,
+                netChangePct: null,
+                deliveryCost: report.deliveryNetCost,
+                allSales: report.salesAll,
+              }}
+            />
+
+            <details className="group rounded-2xl border border-border/80 bg-card">
+              <summary className="cursor-pointer select-none list-none px-4 py-3 text-sm font-semibold text-foreground flex items-center justify-between">
+                {t.admin.psAllFigures}
+                <span className="text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+              </summary>
+              <div className="px-4 pb-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatTile
                 icon={<DollarSign size={18} />}
-                label="Total Sales"
+                label={t.admin.psReceived}
                 value={money(report.totalSales)}
-                hint="Incl. VAT/tax & additional charges"
+                hint={t.admin.psReceivedTileHint}
               />
               <StatTile
                 icon={<PlusCircle size={18} />}
@@ -222,6 +256,8 @@ export default function ProfitLossReport() {
                 tone={report.netProfit < 0 ? "negative" : "default"}
               />
             </div>
+              </div>
+            </details>
 
             <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
               <h2 className="text-sm font-bold text-foreground mb-3">Profit Overview</h2>

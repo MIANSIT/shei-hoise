@@ -4,15 +4,18 @@ import { supabase } from "@/lib/supabase";
 export async function getRegisterOpeningCash(
   storeId: string,
   dateStr: string,
+  /** Stores with branches: that branch's drawer. */
+  branchId?: string | null,
 ): Promise<number | null> {
   if (!storeId) return null;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("store_register_openings")
     .select("opening_amount")
     .eq("store_id", storeId)
-    .eq("register_date", dateStr)
-    .maybeSingle();
+    .eq("register_date", dateStr);
+  if (branchId) query = query.eq("branch_id", branchId);
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     console.error("Failed to load register opening cash:", error.message);

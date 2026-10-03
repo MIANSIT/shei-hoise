@@ -10,6 +10,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { forceLogoutStaff, setStaffActive, unlockStaff } from "@/lib/queries/staff/manageStaff";
 import type { StaffListItem } from "@/lib/queries/staff/types";
 import { fillTemplate, formatDateTime } from "./staffUi";
+import { useBranches } from "@/lib/context/BranchContext";
 
 interface StaffTableProps {
   staff: StaffListItem[];
@@ -23,6 +24,9 @@ export function StaffTable({ staff, onEdit, onResetPassword, onChanged }: StaffT
   const lang = useLanguageStore((s) => s.lang);
   const notify = useSheiNotification();
   const { modal } = App.useApp();
+  const { enabled: branchesOn, branchName } = useBranches();
+  const scopeLabel = (s: StaffListItem) =>
+    s.allBranches ? t.staff.branchesAll : s.branchIds.map(branchName).filter(Boolean).join(", ");
   // Phones get one card per person instead of a sideways-scrolling table.
   const screens = Grid.useBreakpoint();
   const isWide = screens.md ?? true;
@@ -166,7 +170,16 @@ export function StaffTable({ staff, onEdit, onResetPassword, onChanged }: StaffT
       key: "username",
       render: (username: string) => <span className="font-mono text-sm">{username}</span>,
     },
-    { title: t.staff.colRole, dataIndex: "roleName", key: "role" },
+    {
+      title: t.staff.colRole,
+      key: "role",
+      render: (_, s) => (
+        <div>
+          <div>{s.roleName}</div>
+          {branchesOn && <div className="text-xs text-muted-foreground">{scopeLabel(s)}</div>}
+        </div>
+      ),
+    },
     {
       title: t.staff.colStatus,
       key: "status",
@@ -202,7 +215,10 @@ export function StaffTable({ staff, onEdit, onResetPassword, onChanged }: StaffT
                 </div>
                 {actionsMenu(s)}
               </div>
-              <div className="text-sm text-foreground">{s.roleName}</div>
+              <div className="text-sm text-foreground">
+                {s.roleName}
+                {branchesOn && <span className="text-muted-foreground"> · {scopeLabel(s)}</span>}
+              </div>
               {statusTags(s)}
               <div className="text-xs text-muted-foreground">
                 {t.staff.colLastLogin}:{" "}

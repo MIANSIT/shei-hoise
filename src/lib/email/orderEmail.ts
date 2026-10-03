@@ -18,6 +18,18 @@ interface SendOrderEmailParams {
   currency?: string;
   notes?: string;
   deliveryOption?: string;
+  /** Stores with branches: the branch that fulfils the order. Omitted = no branch line. */
+  branchName?: string;
+  /** e.g. "Needs a stock transfer", shown next to the branch. */
+  branchNote?: string;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatCurrency(amount: number, currency = "BDT"): string {
@@ -50,6 +62,7 @@ function buildPlainText(params: SendOrderEmailParams): string {
     `Method  : ${paymentMethod || "—"}`,
     `Status  : ${paymentStatus}`,
     deliveryOption ? `Delivery: ${deliveryOption}` : "",
+    params.branchName ? `Branch  : ${params.branchName}${params.branchNote ? ` (${params.branchNote})` : ""}` : "",
     ``,
     `ORDER ITEMS`,
     ...orderProducts.map((p, i) =>
@@ -153,6 +166,13 @@ function buildEmailHTML(params: SendOrderEmailParams): string {
                   <td colspan="2" style="padding-bottom:4px;">
                     <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Delivery Option</span><br/>
                     <span style="font-size:14px;text-transform:capitalize;">${deliveryOption}</span>
+                  </td>
+                </tr>` : ""}
+                ${params.branchName ? `<tr>
+                  <td colspan="2" style="padding-bottom:4px;">
+                    <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Branch</span><br/>
+                    <span style="font-size:14px;font-weight:600;">${escapeHtml(params.branchName)}</span>
+                    ${params.branchNote ? `<span style="font-size:12px;color:#b45309;"> &middot; ${escapeHtml(params.branchNote)}</span>` : ""}
                   </td>
                 </tr>` : ""}
               </table>

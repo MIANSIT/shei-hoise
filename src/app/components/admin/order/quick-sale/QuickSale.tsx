@@ -49,8 +49,11 @@ import ScanToAddModal, { type ScanResult } from "./ScanToAddModal";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { branchReceiptLines } from "@/lib/utils/invoiceStore";
 
 const { Text, Title } = Typography;
 
@@ -104,6 +107,11 @@ export default function QuickSale() {
     !currencyLoading && typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
+  // Stores with branches: a Quick Sale comes out of your work branch, which is
+  // the header's branch or (with "All branches") the last one you sold from.
+  const { enabled: branchesOn, workBranchId, workBranch } = useBranches();
+  const saleBranchId = branchesOn ? workBranchId : null;
+  const needsBranchPick = branchesOn && !workBranchId;
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -160,6 +168,8 @@ export default function QuickSale() {
         status: ProductStatus.ACTIVE,
         excludeBundles: true,
         withCounts: false,
+        // Stores with branches sell from the selected branch's shelf.
+        branchId: saleBranchId,
       });
       setProducts(res.data);
     } catch (err) {
@@ -167,7 +177,7 @@ export default function QuickSale() {
     } finally {
       setLoadingProducts(false);
     }
-  }, [user?.store_id]);
+  }, [user?.store_id, saleBranchId]);
 
   useEffect(() => {
     fetchProducts();
@@ -360,6 +370,7 @@ export default function QuickSale() {
   const receivedNow = isDueSale ? Math.min(Math.max(amountReceivedNow || 0, 0), total) : total;
   const dueAmount = isDueSale ? Math.max(0, total - receivedNow) : 0;
   const canCompleteSale =
+    !needsBranchPick &&
     cart.length > 0 && (!isDueSale || (walkInName.trim() !== "" && walkInPhone.trim() !== ""));
 
   const printReceipt = async (order: {
@@ -396,6 +407,8 @@ export default function QuickSale() {
     // just the combined 2-pager) so each can be printed as its own job.
     const { combined, customerCopy, shopCopy } = await generateReceiptPdfSet({
       storeName: storeDisplayName,
+      // Stores with branches: the branch the sale was made at.
+      branchLines: branchesOn ? branchReceiptLines(workBranch) : [],
       logoUrl,
       dateLabel: order.date.toLocaleString(),
       orderNumber: order.orderNumber,
@@ -517,6 +530,7 @@ export default function QuickSale() {
         channel: "pos",
         currency: "BDT",
         cashReceived: receiptCashReceived,
+        branchId: saleBranchId,
         orderDate: orderDate.format("YYYY-MM-DD"),
       };
 
@@ -612,6 +626,13 @@ export default function QuickSale() {
           <p className="mt-1 text-xs text-muted-foreground">
             Ring up a walk-in customer without leaving the counter.
           </p>
+          <WorkBranchPicker
+            label={t.branches.sellingFromLabel}
+            // The cart's stock was checked against the old branch.
+            onBeforeChange={() => {
+              if (cart.length > 0) setCart([]);
+            }}
+          />
         </div>
         <Button onClick={() => router.push("/dashboard/orders/quick-sale/audit")}>
           <MenuLabel labelKey="menuRegisterAudit" />

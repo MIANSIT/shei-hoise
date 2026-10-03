@@ -1,5 +1,5 @@
 "use server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { callVendorRpc } from "@/lib/queries/vendor/vendorBranchRpc";
 import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 // Cancels a confirmed vendor order by reversing all stock:
@@ -16,7 +16,8 @@ export async function cancelVendorOrder(
   const storeResult = await getAuthorizedStoreId("vendors.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
 
-  const { error } = await supabaseAdmin.rpc("cancel_vendor_order", {
+  // Stores with branches: the goods go back to the branch they came from.
+  const { error } = await callVendorRpc("cancel_vendor_order", {
     p_vendor_order_id: vendorOrderId,
     p_cancelled_by: cancelledBy || null,
     p_caller_store_id: storeResult.storeId,

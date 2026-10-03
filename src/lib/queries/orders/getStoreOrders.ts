@@ -12,6 +12,10 @@ export interface GetStoreOrdersOptions {
     status?: string;
     payment_status?: string;
     channel?: "online" | "pos";
+    /** Stores with branches: only orders of these branches (the switcher, or a staff member's branches). */
+    branchIds?: string[];
+    /** Only orders waiting for a person to confirm or fix their branch. */
+    needsBranch?: boolean;
   };
 }
 
@@ -93,6 +97,15 @@ export async function getStoreOrders(
       query = query.or(orConditions.join(","));
     }
 
+    // Branch scope applies to the list AND the tab counts, so the numbers on
+    // the tabs describe the branch being looked at. Only added when branches
+    // are in use, so stores without them never reference the new columns.
+    const branchIds = filters?.branchIds?.filter(Boolean) ?? [];
+    if (branchIds.length > 0) query = query.in("branch_id", branchIds);
+    if (filters?.needsBranch) {
+      query = query.or("branch_confirmed.eq.false,needs_transfer.eq.true");
+    }
+
     if (filters) {
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.payment_status)
@@ -119,37 +132,20 @@ export async function getStoreOrders(
     // undercounted stores once they passed that many orders.
     const orderStatusValues = Object.values(OrderStatus);
     const paymentStatusValues = Object.values(PaymentStatus);
+    const countOrders = (column?: string, value?: string) => {
+      let q = supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", storeId);
+      if (column && value) q = q.eq(column, value);
+      if (branchIds.length > 0) q = q.in("branch_id", branchIds);
+      return q;
+    };
 
     const [totalOrdersResult, onlineChannelResult, posChannelResult, ...statusCountResults] =
       await Promise.all([
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("store_id", storeId),
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("store_id", storeId)
-          .eq("channel", "online"),
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("store_id", storeId)
-          .eq("channel", "pos"),
-        ...orderStatusValues.map((status) =>
-          supabase
-            .from("orders")
-            .select("id", { count: "exact", head: true })
-            .eq("store_id", storeId)
-            .eq("status", status),
-        ),
-        ...paymentStatusValues.map((paymentStatus) =>
-          supabase
-            .from("orders")
-            .select("id", { count: "exact", head: true })
-            .eq("store_id", storeId)
-            .eq("payment_status", paymentStatus),
-        ),
+        countOrders(),
+        countOrders("channel", "online"),
+        countOrders("channel", "pos"),
+        ...orderStatusValues.map((status) => countOrders("status", status)),
+        ...paymentStatusValues.map((paymentStatus) => countOrders("payment_status", paymentStatus)),
       ]);
 
     const statusError =

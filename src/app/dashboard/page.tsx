@@ -30,6 +30,8 @@ import {
 } from "@/lib/hook/useDashboardMetrics";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useBranches } from "@/lib/context/BranchContext";
+import { BranchComparison } from "@/app/components/admin/branches/BranchComparison";
 
 export default function DashboardPage() {
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
@@ -43,6 +45,19 @@ export default function DashboardPage() {
   const t = useTranslation();
   const n = useLocalNum();
   const { currency, icon: CurrencyIcon } = useUserCurrencyIcon();
+  // Stores with branches: the header's branch, or the whole brand on "All branches".
+  const {
+    enabled: branchesOn,
+    loading: branchesLoading,
+    selectedBranchId,
+    selectedBranch,
+    canSeeAllBranches,
+  } = useBranches();
+  const dashboardBranchId = branchesOn ? selectedBranchId : null;
+
+  // Plain-text money for card descriptions (which are strings).
+  const renderCurrencyText = (amount: number) =>
+    `${typeof CurrencyIcon === "string" ? CurrencyIcon : "৳"}${n(amount.toFixed(2))}`;
 
   const renderCurrency = (amount: number) => {
     if (!currency) return n(amount.toFixed(2));
@@ -58,7 +73,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (!storeId) return;
+    // Wait for the branch selection so the first load isn't the wrong branch.
+    if (!storeId || branchesLoading) return;
     const fetchSummary = async () => {
       try {
         setLoadingSummary(true);
@@ -71,6 +87,7 @@ export default function DashboardPage() {
           periodEnd,
           prevPeriodStart,
           prevPeriodEnd,
+          dashboardBranchId,
         );
         setSummary(result);
       } catch (err) {
@@ -83,7 +100,7 @@ export default function DashboardPage() {
       }
     };
     fetchSummary();
-  }, [storeId, timePeriod]);
+  }, [storeId, timePeriod, dashboardBranchId, branchesLoading]);
 
   const metrics = useDashboardMetrics(summary);
 
@@ -159,16 +176,35 @@ export default function DashboardPage() {
   const changeTone = (pct: number): "positive" | "negative" | "neutral" =>
     isAllTime ? "neutral" : getChangeType(pct);
 
-  // ── Revenue / Order KPI cards ────────────────────────────────────────────────
+  // Sales = every order (paid or not); received = the paid part. Falls back
+  // to the paid figure when the database doesn't have the sales totals yet.
+  const salesSummary = summary?.sales_summary ?? null;
+  const salesChange =
+    salesSummary && salesSummary.prevSales > 0
+      ? ((salesSummary.sales - salesSummary.prevSales) / salesSummary.prevSales) * 100
+      : salesSummary && salesSummary.sales > 0
+        ? 100
+        : 0;
+
+  // ── Sales / Order KPI cards ──────────────────────────────────────────────────
   const stats = [
-    {
-      title: `${getPeriodLabel(timePeriod)} ${t.admin.revenuePaid}`,
-      value: renderCurrency(metrics.revenue),
-      icon: <DollarOutlined className="text-emerald-500" />,
-      change: changeLabel(metrics.changePercentage.revenue),
-      changeType: changeTone(metrics.changePercentage.revenue),
-      description: `${n(metrics.paidOrdersCount)} ${t.admin.fromPaidOrders}`,
-    },
+    salesSummary
+      ? {
+          title: `${getPeriodLabel(timePeriod)} ${t.admin.psSalesAll}`,
+          value: renderCurrency(salesSummary.sales),
+          icon: <DollarOutlined className="text-emerald-500" />,
+          change: changeLabel(salesChange),
+          changeType: changeTone(salesChange),
+          description: `${t.admin.psReceived} ${renderCurrencyText(salesSummary.received)} · ${t.admin.psToCollect} ${renderCurrencyText(salesSummary.toCollect)}`,
+        }
+      : {
+          title: `${getPeriodLabel(timePeriod)} ${t.admin.revenuePaid}`,
+          value: renderCurrency(metrics.revenue),
+          icon: <DollarOutlined className="text-emerald-500" />,
+          change: changeLabel(metrics.changePercentage.revenue),
+          changeType: changeTone(metrics.changePercentage.revenue),
+          description: `${n(metrics.paidOrdersCount)} ${t.admin.fromPaidOrders}`,
+        },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.ordersAll}`,
       value: n(metrics.orderCount),
@@ -398,6 +434,29 @@ export default function DashboardPage() {
       timePeriod={timePeriod}
       onTimePeriodChange={setTimePeriod}
       analyticsAllowed={analyticsAllowed}
+      branchLabel={branchesOn ? (selectedBranch?.name ?? t.branches.allBranches) : undefined}
+      profitStory={{
+        figures: {
+          sales: metrics.revenue,
+          grossProfit: metrics.grossProfit,
+          expenses: expenseMetrics.totalExpenses,
+          vendorProfit: summary?.vendor_profit ?? 0,
+          netProfit: expenseMetrics.netProfit,
+          netChangePct: isAllTime ? null : expenseMetrics.changePercentage.netProfit,
+          ...(salesSummary ? { allSales: salesSummary.sales } : {}),
+        },
+        formatMoney: (amount: number) => renderCurrency(amount),
+      }}
+      branchComparison={
+        branchesOn && !dashboardBranchId && canSeeAllBranches && storeId ? (
+          <BranchComparison
+            storeId={storeId}
+            periodStart={getDashboardPeriodRange(timePeriod).periodStart}
+            periodEnd={getDashboardPeriodRange(timePeriod).periodEnd}
+            currency={typeof CurrencyIcon === "string" ? CurrencyIcon : "৳"}
+          />
+        ) : undefined
+      }
     />
   );
 }

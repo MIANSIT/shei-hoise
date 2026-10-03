@@ -4,6 +4,7 @@ import { generateReceiptPdfSet, ReceiptPdfSet } from "./generateReceiptPdf";
 import { getStorePublicUrl } from "./productQr";
 import { PAYMENT_LABELS } from "./paymentLabels";
 import { resolveOrderInvoiceDate } from "./orderInvoiceDate";
+import { branchReceiptLines, type InvoiceBranch } from "./invoiceStore";
 
 /**
  * Rebuilds the same 58mm thermal receipt Quick Sale printed at checkout,
@@ -21,6 +22,8 @@ export async function buildReceiptPdfSetForOrder(
   storeData: StoreInvoiceData,
   paidToDate: number,
   currencyIcon: string,
+  /** Stores with branches: the order's branch, printed under the store name. */
+  branch?: InvoiceBranch | null,
 ): Promise<ReceiptPdfSet> {
   const due =
     order.payment_status === "paid"
@@ -35,6 +38,7 @@ export async function buildReceiptPdfSetForOrder(
 
   return generateReceiptPdfSet({
     storeName: storeData.store_name,
+    branchLines: branchReceiptLines(branch),
     logoUrl: storeData.logo_url,
     dateLabel: new Date(
       resolveOrderInvoiceDate(order.order_date, order.created_at) ?? order.created_at,
