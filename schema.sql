@@ -809,7 +809,7 @@ CREATE TABLE IF NOT EXISTS "public"."store_settings" (
     "facebook_pixel_id" character varying,
     "facebook_capi_access_token" "text",
     "facebook_test_event_code" character varying,
-    "delivery_couriers" "jsonb" DEFAULT '[{"id":"pathao","name":"Pathao","type":"pathao","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"},{"id":"steadfast","name":"Steadfast","type":"steadfast","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"}]'::"jsonb"
+    "delivery_couriers" "jsonb" DEFAULT '[{"id":"pathao","name":"Pathao","type":"pathao","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"},{"id":"steadfast","name":"Steadfast","type":"steadfast","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"},{"id":"paperfly","name":"Paperfly","type":"paperfly","deletable":false,"created_at":"2026-10-08T00:00:00.000Z"},{"id":"shop","name":"Shop / From Shop","type":"shop","deletable":false,"created_at":"2026-09-01T00:00:00.000Z"}]'::"jsonb"
 );
 
 
@@ -904,7 +904,7 @@ CREATE TABLE IF NOT EXISTS "public"."store_courier_credentials" (
     "connected_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "store_courier_credentials_courier_check" CHECK ((("courier")::"text" = ANY (ARRAY[('pathao'::character varying)::"text", ('steadfast'::character varying)::"text"]))),
+    CONSTRAINT "store_courier_credentials_courier_check" CHECK ((("courier")::"text" = ANY (ARRAY['pathao'::"text", 'steadfast'::"text", 'paperfly'::"text"]))),
     CONSTRAINT "store_courier_credentials_environment_check" CHECK ((("environment")::"text" = ANY (ARRAY[('sandbox'::character varying)::"text", ('live'::character varying)::"text"])))
 );
 

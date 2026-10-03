@@ -13,6 +13,7 @@ import {
 import type { CourierType } from "@/lib/queries/courier/getConnectedCourierAccounts";
 import { refreshPathaoOrderStatus } from "@/lib/queries/pathao/getPathaoOrderStatus";
 import { refreshSteadfastOrderStatus } from "@/lib/queries/steadfast/getSteadfastOrderStatus";
+import { refreshPaperflyOrderStatus } from "@/lib/queries/paperfly/getPaperflyOrderStatus";
 import { getCourierStatusStyle, prettifyCourierStatus } from "@/lib/utils/courierStatusDisplay";
 
 interface CourierShipmentsListProps {
@@ -50,7 +51,9 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
       const result =
         courier === "steadfast"
           ? await refreshSteadfastOrderStatus(shipment.credentialId, shipment.orderId, shipment.consignmentId)
-          : await refreshPathaoOrderStatus(shipment.credentialId, shipment.orderId, shipment.consignmentId);
+          : courier === "paperfly"
+            ? await refreshPaperflyOrderStatus(shipment.credentialId, shipment.orderId, shipment.consignmentId)
+            : await refreshPathaoOrderStatus(shipment.credentialId, shipment.orderId, shipment.consignmentId);
       if (!result.success) {
         notify.error(result.error ?? t.admin.pathaoShipmentFailed);
         return;
@@ -196,6 +199,19 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
                       />
                     )}
                   </div>
+                ) : d.courier === "paperfly" ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2.5">
+                    <DetailField label={t.admin.pathaoAmountToCollect} value={`৳ ${d.codAmount}`} />
+                    <DetailField label={t.admin.pathaoWeightLabel} value={`${d.weight} kg`} />
+                    <DetailField label={t.admin.paperflyReference} value={d.reference} />
+                    {d.description && (
+                      <DetailField
+                        label={t.admin.pathaoProductDescription}
+                        value={d.description}
+                        className="col-span-2 sm:col-span-3"
+                      />
+                    )}
+                  </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2.5">
                     <DetailField label={t.admin.pathaoAmountToCollect} value={`৳ ${d.codAmount}`} />
@@ -216,7 +232,12 @@ export function CourierShipmentsList({ storeId, courier }: CourierShipmentsListP
                   </div>
                 )}
                 <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-border">
-                  {t.admin.pathaoFinancialLedgerNote}
+                  {courier === "pathao"
+                    ? t.admin.pathaoFinancialLedgerNote
+                    : t.admin.courierFinancialLedgerNote.replaceAll(
+                        "{courier}",
+                        courier === "paperfly" ? t.admin.paperflyCardTitle : t.admin.steadfastCardTitle,
+                      )}
                 </p>
               </div>
             )}

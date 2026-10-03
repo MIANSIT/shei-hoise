@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-export type CourierType = "pathao" | "steadfast";
+export type CourierType = "pathao" | "steadfast" | "paperfly";
 
 export interface CourierAccountStatus {
   id: string;
@@ -36,7 +36,9 @@ export async function getConnectedCourierAccounts(
     label: row.label,
     environment: row.environment as "sandbox" | "live",
     connected:
-      row.courier === "steadfast" ? !!row.api_key : !!row.connected_at && !!row.pathao_store_id,
+      row.courier === "steadfast" || row.courier === "paperfly"
+        ? !!row.api_key
+        : !!row.connected_at && !!row.pathao_store_id,
     pathaoStoreId: row.pathao_store_id ?? null,
     pathaoStoreName: row.pathao_store_name ?? null,
     tokenExpiresAt: row.token_expires_at ?? null,

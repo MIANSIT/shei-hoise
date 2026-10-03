@@ -30,6 +30,12 @@ import { createPathaoShipment } from "@/lib/queries/pathao/createPathaoShipment"
 import { refreshPathaoOrderStatus } from "@/lib/queries/pathao/getPathaoOrderStatus";
 import { createSteadfastShipment } from "@/lib/queries/steadfast/createSteadfastShipment";
 import { refreshSteadfastOrderStatus } from "@/lib/queries/steadfast/getSteadfastOrderStatus";
+import { createPaperflyShipment } from "@/lib/queries/paperfly/createPaperflyShipment";
+import { refreshPaperflyOrderStatus } from "@/lib/queries/paperfly/getPaperflyOrderStatus";
+import { cancelPaperflyShipment } from "@/lib/queries/paperfly/cancelPaperflyShipment";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { isCourierStatusCancelled } from "@/lib/utils/courierStatus";
+import { PAPERFLY_CANCEL_ENABLED } from "@/lib/config/courierAvailability";
 import { getDeliveryCouriers } from "@/lib/queries/deliveryCouriers/getDeliveryCouriers";
 import {
   getOrderShipmentHistory,
@@ -69,6 +75,8 @@ export default function CourierShipmentPanel({
 
   const isPathao = order.courier === "pathao";
   const isSteadfast = order.courier === "steadfast";
+  const isPaperfly = order.courier === "paperfly";
+  const isApiCourier = isPathao || isSteadfast || isPaperfly;
 
   const [accounts, setAccounts] = useState<CourierAccountStatus[] | null>(null);
   const [courierName, setCourierName] = useState<string>("");
@@ -77,6 +85,9 @@ export default function CourierShipmentPanel({
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState<OrderShipmentHistoryEntry[]>([]);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const { can } = usePermissions();
 
   const recipientName =
     order.shipping_address?.customer_name || order.customers?.first_name || "";
@@ -117,7 +128,7 @@ export default function CourierShipmentPanel({
   }, [order.id, order.courier_consignment_id]);
 
   useEffect(() => {
-    if (!isPathao && !isSteadfast) return;
+    if (!isApiCourier) return;
     getConnectedCourierAccounts(order.store_id).then((all) => {
       setAccounts(all);
       const connected = all.filter((a) => a.courier === order.courier && a.connected);
@@ -129,7 +140,13 @@ export default function CourierShipmentPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.store_id, order.courier]);
 
-  const courierLabel = courierName || (isSteadfast ? t.admin.steadfastCardTitle : t.admin.pathaoCardTitle);
+  const courierLabel =
+    courierName ||
+    (isSteadfast
+      ? t.admin.steadfastCardTitle
+      : isPaperfly
+        ? t.admin.paperflyCardTitle
+        : t.admin.pathaoCardTitle);
 
   const handleCreateShipment = async () => {
     if (!selectedAccountId) return;
@@ -146,14 +163,23 @@ export default function CourierShipmentPanel({
             specialInstruction: instruction.trim() || undefined,
             amountToCollect: Number(amountToCollect),
           })
-        : await createSteadfastShipment(selectedAccountId, order.id, order.order_number, {
-            recipientName: name.trim(),
-            recipientPhone: phone.trim(),
-            recipientAddress: address.trim(),
-            codAmount: Number(amountToCollect),
-            note: instruction.trim() || undefined,
-            itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
-          });
+        : isPaperfly
+          ? await createPaperflyShipment(selectedAccountId, order.id, order.order_number, {
+              recipientName: name.trim(),
+              recipientPhone: phone.trim(),
+              recipientAddress: address.trim(),
+              codAmount: Number(amountToCollect),
+              weight: Number(weight),
+              itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
+            })
+          : await createSteadfastShipment(selectedAccountId, order.id, order.order_number, {
+              recipientName: name.trim(),
+              recipientPhone: phone.trim(),
+              recipientAddress: address.trim(),
+              codAmount: Number(amountToCollect),
+              note: instruction.trim() || undefined,
+              itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
+            });
 
       if (!result.success || !result.consignmentId || !result.orderStatus) {
         notify.error(result.error ?? t.admin.pathaoShipmentFailed);
@@ -178,7 +204,13 @@ export default function CourierShipmentPanel({
             order.id,
             order.courier_consignment_id,
           )
-        : await refreshPathaoOrderStatus(
+        : isPaperfly
+          ? await refreshPaperflyOrderStatus(
+              order.courier_credential_id,
+              order.id,
+              order.courier_consignment_id,
+            )
+          : await refreshPathaoOrderStatus(
             order.courier_credential_id,
             order.id,
             order.courier_consignment_id,
@@ -193,9 +225,45 @@ export default function CourierShipmentPanel({
     }
   };
 
+  const handleCancelShipment = async () => {
+    if (!order.courier_consignment_id || !order.courier_credential_id) return;
+    setCancelling(true);
+    try {
+      const result = await cancelPaperflyShipment(
+        order.courier_credential_id,
+        order.id,
+        order.courier_consignment_id,
+      );
+      if (!result.success || !result.orderStatus) {
+        notify.error(result.error ?? t.admin.paperflyCancelFailed);
+        return;
+      }
+      notify.success(t.admin.paperflyCancelledOk);
+      onShipped(order.courier_consignment_id, result.orderStatus);
+      setCancelConfirmOpen(false);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Paperfly only accepts a cancel before the parcel is out of their hands —
+  // hidden once it's cancelled, delivered, returned or the order is closed.
+  const courierStatusLower = (order.courier_order_status ?? "").toLowerCase();
+  const canCancelShipment =
+    PAPERFLY_CANCEL_ENABLED &&
+    isPaperfly &&
+    !!order.courier_consignment_id &&
+    !!order.courier_credential_id &&
+    can("courier.add") &&
+    !isCourierStatusCancelled(order.courier_order_status) &&
+    !courierStatusLower.includes("deliver") &&
+    !courierStatusLower.includes("return") &&
+    order.status !== "delivered" &&
+    order.status !== "returned";
+
   let activeContent: React.ReactNode = null;
 
-  if (isPathao || isSteadfast) {
+  if (isApiCourier) {
     if (order.courier_consignment_id) {
       const statusStyle = getCourierStatusStyle(order.courier_order_status);
       activeContent = (
@@ -223,6 +291,17 @@ export default function CourierShipmentPanel({
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
+            {canCancelShipment && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 ml-auto text-red-600 hover:text-red-700"
+                onClick={() => setCancelConfirmOpen(true)}
+                disabled={cancelling}
+              >
+                {t.admin.paperflyCancelBtn}
+              </Button>
+            )}
             {isPathao && (
               <a
                 href={buildPathaoTrackingUrl(order.courier_consignment_id, recipientPhone)}
@@ -310,6 +389,32 @@ export default function CourierShipmentPanel({
         </div>
       )}
 
+      <Dialog open={cancelConfirmOpen} onOpenChange={(open) => !cancelling && setCancelConfirmOpen(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t.admin.paperflyCancelConfirmTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t.admin.paperflyCancelConfirmBody.replace(
+              "{consignment}",
+              order.courier_consignment_id ?? "",
+            )}
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCancelConfirmOpen(false)}
+              disabled={cancelling}
+            >
+              {t.admin.paperflyCancelKeepBtn}
+            </Button>
+            <Button variant="destructive" onClick={handleCancelShipment} disabled={cancelling}>
+              {cancelling ? t.admin.paperflyCancelling : t.admin.paperflyCancelBtn}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -348,13 +453,13 @@ export default function CourierShipmentPanel({
               <Input value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              {isPathao && (
+              {(isPathao || isPaperfly) && (
                 <div className="space-y-1.5">
                   <Label>{t.admin.pathaoItemWeight}</Label>
                   <Input
                     type="number"
-                    min={0.5}
-                    max={10}
+                    min={isPaperfly ? 0.1 : 0.5}
+                    max={isPaperfly ? undefined : 10}
                     step={0.1}
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
@@ -382,15 +487,18 @@ export default function CourierShipmentPanel({
                 </p>
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label>{t.admin.pathaoSpecialInstructionLabel}</Label>
-              <Textarea
-                value={instruction}
-                onChange={(e) => setInstruction(e.target.value)}
-                placeholder={t.admin.pathaoSpecialInstructionPlaceholder}
-                rows={2}
-              />
-            </div>
+            {/* Paperfly's order API has no note/instruction field. */}
+            {!isPaperfly && (
+              <div className="space-y-1.5">
+                <Label>{t.admin.pathaoSpecialInstructionLabel}</Label>
+                <Textarea
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                  placeholder={t.admin.pathaoSpecialInstructionPlaceholder}
+                  rows={2}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

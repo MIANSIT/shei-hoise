@@ -119,6 +119,7 @@ export default function SidebarMenu({
   const courierHref = (courier: DeliveryCourier): string => {
     if (courier.type === "pathao") return "/dashboard/courier/pathao";
     if (courier.type === "steadfast") return "/dashboard/courier/steadfast";
+    if (courier.type === "paperfly") return "/dashboard/courier/paperfly";
     return `/dashboard/courier/manual/${courier.id}`;
   };
 
@@ -189,6 +190,7 @@ export default function SidebarMenu({
   const courierLabels: Record<string, string> = {
     Pathao: t.admin.pathaoCardTitle,
     Steadfast: t.admin.steadfastCardTitle,
+    Paperfly: t.admin.paperflyCardTitle,
   };
   const labelFor = (item: MenuItem): string =>
     item.labelKey ? t.admin[item.labelKey] : courierLabels[item.title] ?? item.title;

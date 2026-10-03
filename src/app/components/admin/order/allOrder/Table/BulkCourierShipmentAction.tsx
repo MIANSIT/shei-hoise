@@ -5,6 +5,7 @@ import { Button, Modal, Alert, Progress, Select } from "antd";
 import { StoreOrder } from "@/lib/types/order";
 import { createPathaoShipment } from "@/lib/queries/pathao/createPathaoShipment";
 import { createSteadfastShipment } from "@/lib/queries/steadfast/createSteadfastShipment";
+import { createPaperflyShipment } from "@/lib/queries/paperfly/createPaperflyShipment";
 import {
   getConnectedCourierAccounts,
   type CourierAccountStatus,
@@ -52,8 +53,10 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
   const [accounts, setAccounts] = useState<CourierAccountStatus[] | null>(null);
   const [pathaoAccountId, setPathaoAccountId] = useState<string | undefined>();
   const [steadfastAccountId, setSteadfastAccountId] = useState<string | undefined>();
+  const [paperflyAccountId, setPaperflyAccountId] = useState<string | undefined>();
   const [pathaoName, setPathaoName] = useState("");
   const [steadfastName, setSteadfastName] = useState("");
+  const [paperflyName, setPaperflyName] = useState("");
 
   // Selection can run into the hundreds, and this whole chain re-filters/
   // re-maps every one of them — memoized so it only recomputes when the
@@ -63,20 +66,25 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
     alreadyShipped,
     pathaoOrders,
     steadfastOrders,
+    paperflyOrders,
     skipped,
     pathaoAccounts,
     steadfastAccounts,
+    paperflyAccounts,
     eligible,
     unreachable,
     needsPathaoPicker,
     needsSteadfastPicker,
+    needsPaperflyPicker,
   } = useMemo(() => {
     const notYetShipped = selectedOrders.filter((o) => !o.courier_consignment_id);
     const alreadyShipped = selectedOrders.length - notYetShipped.length;
 
     const pathaoOrders = notYetShipped.filter((o) => o.courier === "pathao");
     const steadfastOrders = notYetShipped.filter((o) => o.courier === "steadfast");
-    const skipped = notYetShipped.length - pathaoOrders.length - steadfastOrders.length;
+    const paperflyOrders = notYetShipped.filter((o) => o.courier === "paperfly");
+    const skipped =
+      notYetShipped.length - pathaoOrders.length - steadfastOrders.length - paperflyOrders.length;
 
     // Treated as having zero accounts (never just disabling the button) so
     // the same "unreachable" messaging path below applies —
@@ -87,30 +95,39 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
     const steadfastAccounts = courierTrackingAllowed
       ? (accounts ?? []).filter((a) => a.courier === "steadfast" && a.connected)
       : [];
+    const paperflyAccounts = courierTrackingAllowed
+      ? (accounts ?? []).filter((a) => a.courier === "paperfly" && a.connected)
+      : [];
 
     const eligible = [
       ...(pathaoAccounts.length > 0 ? pathaoOrders : []),
       ...(steadfastAccounts.length > 0 ? steadfastOrders : []),
+      ...(paperflyAccounts.length > 0 ? paperflyOrders : []),
     ];
     const unreachable =
       (pathaoOrders.length > 0 && pathaoAccounts.length === 0 ? pathaoOrders.length : 0) +
-      (steadfastOrders.length > 0 && steadfastAccounts.length === 0 ? steadfastOrders.length : 0);
+      (steadfastOrders.length > 0 && steadfastAccounts.length === 0 ? steadfastOrders.length : 0) +
+      (paperflyOrders.length > 0 && paperflyAccounts.length === 0 ? paperflyOrders.length : 0);
 
     const needsPathaoPicker = pathaoOrders.length > 0 && pathaoAccounts.length > 1;
     const needsSteadfastPicker = steadfastOrders.length > 0 && steadfastAccounts.length > 1;
+    const needsPaperflyPicker = paperflyOrders.length > 0 && paperflyAccounts.length > 1;
 
     return {
       notYetShipped,
       alreadyShipped,
       pathaoOrders,
       steadfastOrders,
+      paperflyOrders,
       skipped,
       pathaoAccounts,
       steadfastAccounts,
+      paperflyAccounts,
       eligible,
       unreachable,
       needsPathaoPicker,
       needsSteadfastPicker,
+      needsPaperflyPicker,
     };
   }, [selectedOrders, accounts, courierTrackingAllowed]);
 
@@ -122,17 +139,23 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
     () => steadfastAccounts.map((a) => ({ value: a.id, label: a.label })),
     [steadfastAccounts],
   );
+  const paperflyAccountOptions = useMemo(
+    () => paperflyAccounts.map((a) => ({ value: a.id, label: a.label })),
+    [paperflyAccounts],
+  );
 
   const canShip =
     eligible.length > 0 &&
     (pathaoOrders.length === 0 || pathaoAccounts.length === 0 || !!pathaoAccountId) &&
-    (steadfastOrders.length === 0 || steadfastAccounts.length === 0 || !!steadfastAccountId);
+    (steadfastOrders.length === 0 || steadfastAccounts.length === 0 || !!steadfastAccountId) &&
+    (paperflyOrders.length === 0 || paperflyAccounts.length === 0 || !!paperflyAccountId);
 
   const openModal = async () => {
     setResults(null);
     setProgress(0);
     setPathaoAccountId(undefined);
     setSteadfastAccountId(undefined);
+    setPaperflyAccountId(undefined);
     setIsModalOpen(true);
 
     if (notYetShipped.length > 0) {
@@ -143,10 +166,13 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
       const steadfast = all.filter((a) => a.courier === "steadfast" && a.connected);
       if (pathao.length === 1) setPathaoAccountId(pathao[0].id);
       if (steadfast.length === 1) setSteadfastAccountId(steadfast[0].id);
+      const paperfly = all.filter((a) => a.courier === "paperfly" && a.connected);
+      if (paperfly.length === 1) setPaperflyAccountId(paperfly[0].id);
 
       const couriers = await getDeliveryCouriers(storeId);
       setPathaoName(couriers.find((c) => c.type === "pathao")?.name ?? "");
       setSteadfastName(couriers.find((c) => c.type === "steadfast")?.name ?? "");
+      setPaperflyName(couriers.find((c) => c.type === "paperfly")?.name ?? "");
     }
   };
 
@@ -186,6 +212,15 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
                 itemQuantity,
                 itemDescription: order.order_items?.map((it) => it.product_name).join(", "),
                 amountToCollect: codAmount,
+              })
+            : order.courier === "paperfly"
+            ? await createPaperflyShipment(paperflyAccountId!, order.id, order.order_number, {
+                recipientName,
+                recipientPhone,
+                recipientAddress,
+                codAmount,
+                weight: itemWeight,
+                itemDescription: order.order_items?.map((it) => it.product_name).join(", "),
               })
             : await createSteadfastShipment(steadfastAccountId!, order.id, order.order_number, {
                 recipientName,
@@ -301,6 +336,20 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
                       value={steadfastAccountId}
                       onChange={setSteadfastAccountId}
                       options={steadfastAccountOptions}
+                    />
+                  </div>
+                )}
+                {needsPaperflyPicker && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      {paperflyName || t.admin.paperflyCardTitle} — {t.admin.pathaoShipFrom}
+                    </label>
+                    <Select
+                      className="w-full"
+                      placeholder={t.admin.pathaoSelectAccount}
+                      value={paperflyAccountId}
+                      onChange={setPaperflyAccountId}
+                      options={paperflyAccountOptions}
                     />
                   </div>
                 )}

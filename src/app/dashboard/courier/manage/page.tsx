@@ -21,6 +21,7 @@ import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 function courierHref(courier: DeliveryCourier): string {
   if (courier.type === "pathao") return "/dashboard/courier/pathao";
   if (courier.type === "steadfast") return "/dashboard/courier/steadfast";
+  if (courier.type === "paperfly") return "/dashboard/courier/paperfly";
   return `/dashboard/courier/manual/${courier.id}`;
 }
 

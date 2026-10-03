@@ -51,6 +51,7 @@ const ROUTE_REQUIREMENTS: ReadonlyArray<readonly [string, RouteRequirement]> = [
   ["/dashboard/cod-settlements", "cod.view"],
   ["/dashboard/courier/pathao", "courier.view"],
   ["/dashboard/courier/steadfast", "courier.view"],
+  ["/dashboard/courier/paperfly", "courier.view"],
   ["/dashboard/courier/manual", "courier.view"],
 
   ["/dashboard/storefront-design", "storefront.view"],

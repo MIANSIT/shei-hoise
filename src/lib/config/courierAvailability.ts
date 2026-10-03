@@ -7,3 +7,11 @@
  * needed.
  */
 export const STEADFAST_LIVE = false;
+
+/**
+ * Paperfly's cancel-order endpoint answers "invalid" for every request
+ * format, even on a live pending parcel that create/track work fine for
+ * (awaiting Paperfly support). The "Cancel shipment" button stays hidden
+ * until that's resolved — flip to true once a real cancel succeeds.
+ */
+export const PAPERFLY_CANCEL_ENABLED = false;

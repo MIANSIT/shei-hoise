@@ -4,8 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { CourierType } from "./getConnectedCourierAccounts";
 import type { PathaoShipmentDetails } from "@/lib/queries/pathao/createPathaoShipment";
 import type { SteadfastShipmentDetails } from "@/lib/queries/steadfast/createSteadfastShipment";
+import type { PaperflyShipmentDetails } from "@/lib/queries/paperfly/createPaperflyShipment";
 
-export type CourierShipmentDetails = PathaoShipmentDetails | SteadfastShipmentDetails;
+export type CourierShipmentDetails =
+  | PathaoShipmentDetails
+  | SteadfastShipmentDetails
+  | PaperflyShipmentDetails;
 
 export interface CourierShipmentSummary {
   trackingId: string;

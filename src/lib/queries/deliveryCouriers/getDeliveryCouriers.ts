@@ -8,6 +8,7 @@ import type { DeliveryCourier } from "@/lib/types/store/store";
 const BUILT_IN_FALLBACK: DeliveryCourier[] = [
   { id: "pathao", name: "Pathao", type: "pathao", deletable: false, created_at: "" },
   { id: "steadfast", name: "Steadfast", type: "steadfast", deletable: false, created_at: "" },
+  { id: "paperfly", name: "Paperfly", type: "paperfly", deletable: false, created_at: "" },
   { id: "shop", name: "Shop / From Shop", type: "shop", deletable: false, created_at: "" },
 ];
 
