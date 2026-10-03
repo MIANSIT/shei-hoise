@@ -9,7 +9,16 @@ import { bundleItemKey } from "./bundleItemKey";
 import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
 import { redeemCoupon } from "@/lib/queries/coupons/redeemCoupon";
 import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
-import { authorizeForStore, can, checkDiscountLimit, logActivity, permissionDeniedMessage } from "@/lib/permissions/server";
+import { branchColumns, moveOrderStock, pickOrderBranch } from "./orderStock";
+import {
+  authorizeForStore,
+  BRANCH_SCOPE_ERROR,
+  can,
+  canUseBranch,
+  checkDiscountLimit,
+  logActivity,
+  permissionDeniedMessage,
+} from "@/lib/permissions/server";
 
 export interface CreateOrderData {
   storeId: string;
@@ -35,6 +44,11 @@ export interface CreateOrderData {
   cashReceived?: number | null;
   /** "YYYY-MM-DD" — when the sale actually happened, for backfilling manual orders. Defaults to today (DB default) when omitted, e.g. from the storefront checkout. */
   orderDate?: string;
+  /**
+   * Stores with branches: the branch selected in the dashboard (always set
+   * for Quick Sale). Omitted = pick the best branch automatically.
+   */
+  branchId?: string | null;
 }
 
 export interface CreateOrderResult {
@@ -146,130 +160,13 @@ async function validateStockAvailability(
 //   so just clear the reservation hold (reserved only, available untouched,
 //   since it was already decremented when the stock was reserved)
 async function updateInventoryForOrder(
+  orderId: string,
   orderProducts: OrderProduct[],
   action: "reserve" | "release" | "finalize"
 ): Promise<{ success: boolean; error?: string }> {
-  
-
-  // Batch-fetch every item's current inventory row up front (2 queries
-  // instead of 1 per item), then fire all the per-row updates concurrently —
-  // the old code did a sequential fetch-then-update round trip for each
-  // line item one at a time, which dominated order-submission time for
-  // multi-item orders.
-  const variantIds = [
-    ...new Set(
-      orderProducts
-        .map((item) => item.variant_id)
-        .filter((id): id is string => !!id)
-    ),
-  ];
-  const baseProductIds = [
-    ...new Set(
-      orderProducts.filter((item) => !item.variant_id).map((item) => item.product_id)
-    ),
-  ];
-
-  const [
-    { data: variantInventoryRows, error: variantFetchError },
-    { data: baseInventoryRows, error: baseFetchError },
-  ] = await Promise.all([
-    variantIds.length
-      ? supabaseAdmin
-          .from("product_inventory")
-          .select("id, variant_id, quantity_available, quantity_reserved")
-          .in("variant_id", variantIds)
-      : Promise.resolve({ data: [] as { id: string; variant_id: string | null; quantity_available: number | null; quantity_reserved: number | null }[], error: null }),
-    baseProductIds.length
-      ? supabaseAdmin
-          .from("product_inventory")
-          .select("id, product_id, quantity_available, quantity_reserved")
-          .in("product_id", baseProductIds)
-          .is("variant_id", null)
-      : Promise.resolve({ data: [] as { id: string; product_id: string | null; quantity_available: number | null; quantity_reserved: number | null }[], error: null }),
-  ]);
-
-  if (variantFetchError) {
-    console.error("❌ Error fetching variant inventory:", variantFetchError);
-  }
-  if (baseFetchError) {
-    console.error("❌ Error fetching base product inventory:", baseFetchError);
-  }
-
-  const variantInvMap = new Map<string, { id: string; quantity_available: number | null; quantity_reserved: number | null }>();
-  for (const row of variantInventoryRows ?? []) {
-    if (row.variant_id && !variantInvMap.has(row.variant_id)) variantInvMap.set(row.variant_id, row);
-  }
-  const productInvMap = new Map<string, { id: string; quantity_available: number | null; quantity_reserved: number | null }>();
-  for (const row of baseInventoryRows ?? []) {
-    if (row.product_id && !productInvMap.has(row.product_id)) productInvMap.set(row.product_id, row);
-  }
-
-  const inventoryUpdateResults = await Promise.all(
-    orderProducts.map(async (item) => {
-      const type = item.variant_id ? "variant" : "product";
-      const id = item.variant_id || item.product_id;
-
-      try {
-        const inventoryData = item.variant_id
-          ? variantInvMap.get(item.variant_id)
-          : productInvMap.get(item.product_id);
-
-        if (!inventoryData) {
-          console.error(`❌ No inventory record found for ${type} ${id}`);
-          return { type, id, success: false, error: `No inventory record found for ${type}` };
-        }
-
-        const updateData: any = {};
-        const currentAvailable = inventoryData.quantity_available || 0;
-        const currentReserved = inventoryData.quantity_reserved || 0;
-
-        if (action === "reserve") {
-          updateData.quantity_available = Math.max(0, currentAvailable - item.quantity);
-          updateData.quantity_reserved = currentReserved + item.quantity;
-        } else if (action === "finalize") {
-          // Stock already left available stock when reserved; just clear the hold
-          updateData.quantity_reserved = Math.max(0, currentReserved - item.quantity);
-        } else {
-          updateData.quantity_available = currentAvailable + item.quantity;
-          updateData.quantity_reserved = Math.max(0, currentReserved - item.quantity);
-        }
-
-        updateData.updated_at = new Date().toISOString();
-
-        const { error: updateError } = await supabaseAdmin
-          .from("product_inventory")
-          .update(updateData)
-          .eq("id", inventoryData.id);
-
-        if (updateError) {
-          console.error(`❌ Error updating ${type} inventory for ${id}:`, updateError);
-          return { type, id, success: false, error: updateError.message };
-        }
-
-        return { type, id, success: true };
-      } catch (inventoryError: any) {
-        console.error(`❌ Unexpected inventory update error for item:`, item, inventoryError);
-        return { type, id, success: false, error: inventoryError.message };
-      }
-    })
-  );
-
-  const successfulUpdates = inventoryUpdateResults.filter(
-    (result) => result.success
-  );
-  const failedUpdates = inventoryUpdateResults.filter(
-    (result) => !result.success
-  );
-
-  
-
-  if (failedUpdates.length > 0) {
-    const errorMessage = `Failed to update inventory for ${failedUpdates.length} items: ${failedUpdates.map(f => f.error).join(', ')}`;
-    console.warn(errorMessage, failedUpdates);
-    return { success: false, error: errorMessage };
-  }
-
-  return { success: true };
+  // Row-locked per line in the database (order_stock_move), on the order's
+  // branch when it has one — see orderStock.ts.
+  return moveOrderStock(orderId, orderProducts, action);
 }
 
 export async function createOrder(
@@ -337,6 +234,18 @@ export async function createOrder(
       throw new Error(`Insufficient stock: ${stockValidation.error}`);
     }
 
+    // Stores with branches: the order belongs to the dashboard's selected
+    // branch (staff only their own), or the best one if none is selected.
+    if (orderData.branchId && !canUseBranch(auth.actor, orderData.branchId)) {
+      throw new Error(BRANCH_SCOPE_ERROR);
+    }
+    // Staff limited to some branches never get an order auto-placed elsewhere.
+    const explicitBranchId =
+      orderData.branchId ||
+      (auth.actor.kind === "staff" && !auth.actor.allBranches ? auth.actor.branchIds[0] : null);
+    const placement = await pickOrderBranch(storeId, stockRelevantItems, explicitBranchId);
+    if (placement.error) throw new Error(placement.error);
+
 
     // Prepare shipping address JSON
     const shippingAddress = {
@@ -372,6 +281,7 @@ export async function createOrder(
       channel,
       cash_received: cashReceived ?? null,
       ...(orderDate ? { order_date: orderDate } : {}),
+      ...branchColumns(placement),
     };
 
 
@@ -384,12 +294,15 @@ export async function createOrder(
     // `cash_received` (see the 20260909000000 migration) may not have been
     // applied to this environment yet — retry without it rather than
     // failing every Quick Sale checkout until someone runs that migration.
+    // Same for the branch columns (20261003000000).
     if (orderError?.code === "42703") {
-      const { cash_received: _omit, ...withoutCashReceived } = orderInsertData;
-      void _omit;
+      const optional = new Set(["cash_received", "branch_id", "needs_transfer", "branch_confirmed"]);
+      const withoutOptional = Object.fromEntries(
+        Object.entries(orderInsertData).filter(([key]) => !optional.has(key)),
+      );
       ({ data: order, error: orderError } = await supabaseAdmin
         .from("orders")
-        .insert([withoutCashReceived])
+        .insert([withoutOptional])
         .select("id, order_number, customer_id")
         .single());
     }
@@ -470,6 +383,7 @@ export async function createOrder(
 
     // Step 3: Update inventory quantities - RESERVE STOCK
     const inventoryUpdateResult = await updateInventoryForOrder(
+      order.id,
       stockRelevantItems,
       "reserve"
     );
@@ -490,6 +404,7 @@ export async function createOrder(
     // clear the reservation hold right away or it would stay stuck forever.
     if (status === OrderStatus.DELIVERED) {
       const finalizeResult = await updateInventoryForOrder(
+        order.id,
         stockRelevantItems,
         "finalize"
       );
@@ -659,6 +574,10 @@ export async function createCustomerOrder(
       throw new Error(`Insufficient stock: ${stockValidation.error}`);
     }
 
+    // Stores with branches: the first branch (by priority) that has every
+    // item; the customer never sees which.
+    const placement = await pickOrderBranch(storeId, stockRelevantItems);
+
 
     // Prepare shipping address
     const shippingAddress = {
@@ -709,6 +628,7 @@ export async function createCustomerOrder(
       billing_address: shippingAddress,
       delivery_option: deliveryOption,
       fb_purchase_event_status: fbPurchaseEventStatus,
+      ...branchColumns(placement),
     };
 
     
@@ -835,6 +755,7 @@ export async function createCustomerOrder(
 
     // ✅ INVENTORY UPDATE
     const inventoryUpdateResult = await updateInventoryForOrder(
+      order.id,
       stockRelevantItems,
       "reserve"
     );
@@ -852,6 +773,7 @@ export async function createCustomerOrder(
     // Same direct-delivery safeguard as createOrder() above.
     if (status === OrderStatus.DELIVERED) {
       const finalizeResult = await updateInventoryForOrder(
+        order.id,
         stockRelevantItems,
         "finalize"
       );
@@ -931,6 +853,3 @@ export async function getOrdersByStore(storeId: string, limit = 50) {
     throw error;
   }
 }
-
-// Export the inventory update function for use in order updates
-export { updateInventoryForOrder };

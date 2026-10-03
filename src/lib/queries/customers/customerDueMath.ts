@@ -58,3 +58,54 @@ export function computeOrderBalances(
     };
   });
 }
+
+export interface BranchDueOrder extends DueOrder {
+  branch_id?: string | null;
+}
+
+export interface BranchDuePayment extends DuePayment {
+  branch_id?: string | null;
+}
+
+/**
+ * computeOrderBalances, run separately for each branch (stores with
+ * branches): a customer can owe Dhanmondi and Uttara different amounts, and
+ * money paid at one branch only pays down that branch's orders. A payment
+ * pinned to an order follows that order's branch; an unpinned one stays in
+ * the branch that took it. Stores without branches have one group (every
+ * branch_id is null), so the result is exactly computeOrderBalances.
+ * `orders` must be oldest-first, as for computeOrderBalances.
+ */
+export function computeBranchOrderBalances(
+  orders: BranchDueOrder[],
+  payments: BranchDuePayment[],
+): OrderBalance[] {
+  const branchOfOrder = new Map(orders.map((o) => [o.id, o.branch_id ?? null]));
+  const groups = new Map<string, { orders: DueOrder[]; payments: DuePayment[] }>();
+  const groupFor = (branchId: string | null) => {
+    const key = branchId ?? "";
+    let group = groups.get(key);
+    if (!group) {
+      group = { orders: [], payments: [] };
+      groups.set(key, group);
+    }
+    return group;
+  };
+
+  for (const order of orders) groupFor(order.branch_id ?? null).orders.push(order);
+  for (const payment of payments) {
+    const branchId =
+      payment.order_id && branchOfOrder.has(payment.order_id)
+        ? (branchOfOrder.get(payment.order_id) ?? null)
+        : (payment.branch_id ?? null);
+    groupFor(branchId).payments.push(payment);
+  }
+
+  const byOrderId = new Map<string, OrderBalance>();
+  for (const group of groups.values()) {
+    for (const balance of computeOrderBalances(group.orders, group.payments)) {
+      byOrderId.set(balance.order_id, balance);
+    }
+  }
+  return orders.map((o) => byOrderId.get(o.id)!);
+}

@@ -2,8 +2,8 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { updatePaymentStatus } from "@/lib/queries/orders/updateOrder";
 import { PaymentStatus } from "@/lib/types/enums";
-import { computeOrderBalances } from "./customerDueMath";
-import { authorizeForStoreAny, logActivity } from "@/lib/permissions/server";
+import { computeBranchOrderBalances } from "./customerDueMath";
+import { BRANCH_SCOPE_ERROR, authorizeForStoreAny, canUseBranch, logActivity } from "@/lib/permissions/server";
 
 export interface RecordCustomerPaymentInput {
   storeId: string;
@@ -14,6 +14,12 @@ export interface RecordCustomerPaymentInput {
   notes?: string;
   orderId?: string | null;
   createdBy?: string | null;
+  /**
+   * Stores with branches: the branch that took the money. A payment against
+   * an order always goes to that order's branch; an unpinned one with no
+   * branch goes to the default branch.
+   */
+  branchId?: string | null;
 }
 
 export interface RecordCustomerPaymentResult {
@@ -48,6 +54,9 @@ export async function recordCustomerPayment(
       "pos.add",
     ]);
     if (!auth.ok) return { success: false, error: auth.error };
+    if (input.branchId && !canUseBranch(auth.actor, input.branchId)) {
+      return { success: false, error: BRANCH_SCOPE_ERROR };
+    }
 
     const { error: insertError } = await supabaseAdmin.from("customer_payments").insert({
       store_id: input.storeId,
@@ -58,6 +67,8 @@ export async function recordCustomerPayment(
       payment_method: input.paymentMethod,
       notes: input.notes || null,
       created_by: input.createdBy || auth.actor.userId,
+      // Only for unpinned payments — a pinned one takes its order's branch in the database.
+      ...(input.branchId && !input.orderId ? { branch_id: input.branchId } : {}),
     });
 
     if (insertError) {
@@ -72,23 +83,28 @@ export async function recordCustomerPayment(
       details: { order_id: input.orderId ?? null, payment_date: input.paymentDate, notes: input.notes ?? null },
     });
 
+    // Branch columns exist once the branch migrations ran; without them every
+    // row reads as "no branch" and the math is the store-wide waterfall.
     const [ordersRes, paymentsRes] = await Promise.all([
       supabaseAdmin
         .from("orders")
-        .select("id, total_amount, payment_status")
+        .select("*")
         .eq("store_id", input.storeId)
-        .eq("customer_id", input.customerId),
+        .eq("customer_id", input.customerId)
+        .order("created_at", { ascending: true }),
       supabaseAdmin
         .from("customer_payments")
-        .select("amount, order_id")
+        .select("*")
         .eq("store_id", input.storeId)
         .eq("customer_id", input.customerId),
     ]);
 
-    const orders = ordersRes.data ?? [];
-    const balances = computeOrderBalances(
-      orders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount) })),
-      paymentsRes.data ?? [],
+    type OrderRow = { id: string; total_amount: number; payment_status: string; branch_id?: string | null };
+    type PaymentRow = { amount: number; order_id: string | null; branch_id?: string | null };
+    const orders = (ordersRes.data ?? []) as OrderRow[];
+    const balances = computeBranchOrderBalances(
+      orders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount), branch_id: o.branch_id ?? null })),
+      (paymentsRes.data ?? []) as PaymentRow[],
     );
     const balanceByOrderId = new Map(balances.map((b) => [b.order_id, b]));
 

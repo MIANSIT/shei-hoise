@@ -13,6 +13,7 @@ import { useLanguageStore } from "@/lib/store/languageStore";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { formatDateTime } from "@/app/components/admin/staff/staffUi";
 import type { Lang, translations } from "@/lib/i18n/translations";
+import { useBranches } from "@/lib/context/BranchContext";
 
 // Either language's strings — useTranslation() returns one or the other.
 type Strings = (typeof translations)[Lang];
@@ -23,7 +24,7 @@ const PAGE_SIZE = 25;
 const ACTION_GROUPS: Record<string, string[]> = {
   auth: ["auth."],
   orders: ["orders.", "pos.", "courier."],
-  stock: ["stock.", "products.", "categories."],
+  stock: ["stock.", "products.", "categories.", "transfers.", "branch."],
   money: ["expenses.", "cod.", "register.", "customers.collect_payment", "vendors."],
   staff: ["staff.", "role."],
 };
@@ -45,6 +46,13 @@ function fixedActionLabel(action: string, t: Strings): string | null {
     "role.create": t.staff.actionRoleCreate,
     "role.update": t.staff.actionRoleUpdate,
     "role.delete": t.staff.actionRoleDelete,
+    "branch.enable": t.staff.actionBranchEnable,
+    "branch.create": t.staff.actionBranchCreate,
+    "branch.update": t.staff.actionBranchUpdate,
+    "branch.reorder": t.staff.actionBranchReorder,
+    "branch.activate": t.staff.actionBranchActivate,
+    "branch.deactivate": t.staff.actionBranchDeactivate,
+    "branch.delete": t.staff.actionBranchDelete,
   };
   return labels[action] ?? null;
 }
@@ -62,6 +70,9 @@ function actionLabel(action: string, t: Strings, lang: "en" | "bn"): string {
     cancel: t.staff.verbCancel,
     change_status: t.staff.verbChangeStatus,
     collect_payment: t.staff.verbCollectPayment,
+    send: t.staff.verbSend,
+    receive: t.staff.verbReceive,
+    move_branch: t.staff.verbMoveBranch,
   };
   const verbLabel = verbs[verb] ?? t.staff.verbOther;
   return area ? `${verbLabel} · ${lang === "bn" ? area.labelBn : area.label}` : action;
@@ -118,8 +129,13 @@ export default function ActivityPage() {
   const [actionGroup, setActionGroup] = useState<string | null>(null);
   const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [selected, setSelected] = useState<ActivityRow | null>(null);
+  // Stores with branches: the log follows the header's branch.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchName } = useBranches();
+  const logBranchId = branchesOn ? selectedBranchId : null;
+  const showBranch = branchesOn && !logBranchId;
 
   const load = useCallback(async () => {
+    if (branchesLoading) return;
     setLoading(true);
     const filters: ActivityLogFilters = {
       page,
@@ -128,6 +144,7 @@ export default function ActivityPage() {
       actionPrefixes: actionGroup ? ACTION_GROUPS[actionGroup] : null,
       from: range?.[0]?.format("YYYY-MM-DD") ?? null,
       to: range?.[1]?.format("YYYY-MM-DD") ?? null,
+      branchId: logBranchId,
     };
     const result = await getActivityLog(filters);
     if (result.ok) {
@@ -139,7 +156,12 @@ export default function ActivityPage() {
     }
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, userId, actionGroup, range]);
+  }, [page, userId, actionGroup, range, logBranchId, branchesLoading]);
+
+  // A different branch starts again from the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [logBranchId]);
 
   useEffect(() => {
     load();
@@ -184,6 +206,11 @@ export default function ActivityPage() {
       key: "details",
       render: (_, r) => (
         <div className="text-sm text-foreground">
+          {showBranch && r.branchId && (
+            <Tag color="cyan" className="mr-1">
+              {branchName(r.branchId)}
+            </Tag>
+          )}
           {r.summary}
           {r.action.startsWith("auth.") && r.userAgent && (
             <div className="text-xs text-muted-foreground">
@@ -294,6 +321,11 @@ export default function ActivityPage() {
                       {r.actorName ?? t.staff.unknownUser}
                       {r.actorRole && <span className="text-muted-foreground"> · {r.actorRole}</span>}
                     </div>
+                    {showBranch && r.branchId && (
+                      <Tag color="cyan" className="mt-1">
+                        {branchName(r.branchId)}
+                      </Tag>
+                    )}
                     {r.summary && <div className="text-sm text-muted-foreground break-words">{r.summary}</div>}
                   </button>
                 </li>

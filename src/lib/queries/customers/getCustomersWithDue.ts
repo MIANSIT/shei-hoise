@@ -1,17 +1,30 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
-import { computeOrderBalances } from "./customerDueMath";
+import { computeBranchOrderBalances } from "./customerDueMath";
 
 export interface CustomerWithDue {
+  /** Unique per row: one row per customer, or per customer and branch for stores with branches. */
+  row_key: string;
   customer_id: string;
+  /** Stores with branches: the branch this due is owed to. */
+  branch_id: string | null;
   name: string | null;
   phone: string | null;
   total_due: number;
   oldest_due_date: string;
 }
 
-/** Every customer at this store who currently owes something, for the Customer Dues list. */
-export async function getCustomersWithDue(storeId: string): Promise<CustomerWithDue[]> {
+/**
+ * Every customer at this store who currently owes something, for the
+ * Customer Dues list. Stores with branches get one row per customer and
+ * branch (pass branchId for one branch only).
+ */
+export async function getCustomersWithDue(
+  storeId: string,
+  branchId?: string | null,
+  /** Read branch columns (stores with branches). */
+  withBranches = false,
+): Promise<CustomerWithDue[]> {
   if (!storeId) return [];
 
   const [ordersRes, paymentsRes] = await Promise.all([
@@ -21,7 +34,7 @@ export async function getCustomersWithDue(storeId: string): Promise<CustomerWith
     // would otherwise make it look 100% unpaid instead of not due.
     supabase
       .from("orders")
-      .select("id, customer_id, total_amount, created_at")
+      .select(withBranches ? "id, customer_id, total_amount, created_at, branch_id" : "id, customer_id, total_amount, created_at")
       .eq("store_id", storeId)
       .not("customer_id", "is", null)
       .neq("payment_status", PaymentStatus.PAID)
@@ -35,11 +48,16 @@ export async function getCustomersWithDue(storeId: string): Promise<CustomerWith
       .neq("status", OrderStatus.CANCELLED)
       .neq("status", OrderStatus.RETURNED)
       .order("created_at", { ascending: true }),
-    supabase.from("customer_payments").select("amount, order_id, customer_id").eq("store_id", storeId),
+    supabase
+      .from("customer_payments")
+      .select(withBranches ? "amount, order_id, customer_id, branch_id" : "amount, order_id, customer_id")
+      .eq("store_id", storeId),
   ]);
 
-  const orders = ordersRes.data ?? [];
-  const payments = paymentsRes.data ?? [];
+  type OrderRow = { id: string; customer_id: string | null; total_amount: number; created_at: string; branch_id?: string | null };
+  type PaymentRow = { amount: number; order_id: string | null; customer_id: string | null; branch_id?: string | null };
+  const orders = (ordersRes.data ?? []) as unknown as OrderRow[];
+  const payments = (paymentsRes.data ?? []) as unknown as PaymentRow[];
 
   const ordersByCustomer = new Map<string, typeof orders>();
   for (const order of orders) {
@@ -57,27 +75,38 @@ export async function getCustomersWithDue(storeId: string): Promise<CustomerWith
     paymentsByCustomer.set(payment.customer_id, list);
   }
 
-  const dueByCustomer: { customer_id: string; total_due: number; oldest_due_date: string }[] = [];
+  const dueByCustomer: { customer_id: string; branch_id: string | null; total_due: number; oldest_due_date: string }[] = [];
 
   for (const [customerId, customerOrders] of ordersByCustomer) {
-    const balances = computeOrderBalances(
-      customerOrders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount) })),
+    const balances = computeBranchOrderBalances(
+      customerOrders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount), branch_id: o.branch_id ?? null })),
       paymentsByCustomer.get(customerId) ?? [],
     );
     const balanceByOrderId = new Map(balances.map((b) => [b.order_id, b]));
 
-    let totalDue = 0;
-    let oldestDueDate: string | null = null;
+    // One total per branch (a single null-branch total for stores without branches).
+    const perBranch = new Map<string, { total: number; oldest: string | null }>();
     for (const order of customerOrders) {
+      const orderBranch = order.branch_id ?? null;
+      if (branchId && orderBranch !== branchId) continue;
       const due = balanceByOrderId.get(order.id)?.due_remaining ?? 0;
-      if (due > 0.01) {
-        totalDue += due;
-        if (!oldestDueDate) oldestDueDate = order.created_at;
-      }
+      if (due <= 0.01) continue;
+      const key = orderBranch ?? "";
+      const entry = perBranch.get(key) ?? { total: 0, oldest: null };
+      entry.total += due;
+      if (!entry.oldest) entry.oldest = order.created_at;
+      perBranch.set(key, entry);
     }
 
-    if (totalDue > 0.01 && oldestDueDate) {
-      dueByCustomer.push({ customer_id: customerId, total_due: totalDue, oldest_due_date: oldestDueDate });
+    for (const [key, entry] of perBranch) {
+      if (entry.total > 0.01 && entry.oldest) {
+        dueByCustomer.push({
+          customer_id: customerId,
+          branch_id: key || null,
+          total_due: entry.total,
+          oldest_due_date: entry.oldest,
+        });
+      }
     }
   }
 
@@ -95,7 +124,9 @@ export async function getCustomersWithDue(storeId: string): Promise<CustomerWith
 
   return dueByCustomer
     .map((d) => ({
+      row_key: `${d.customer_id}:${d.branch_id ?? ""}`,
       customer_id: d.customer_id,
+      branch_id: d.branch_id,
       name: customerMap.get(d.customer_id)?.name ?? null,
       phone: customerMap.get(d.customer_id)?.phone ?? null,
       total_due: d.total_due,

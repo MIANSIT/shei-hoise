@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Avatar,
   Space,
@@ -57,6 +57,9 @@ import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
 import { usePermissions } from "@/lib/context/PermissionsContext";
+import { OrderBranchTag } from "@/app/components/admin/branches/OrderBranchTag";
+import { useBranches } from "@/lib/context/BranchContext";
+import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
 
 interface Props {
   orders: StoreOrder[];
@@ -190,6 +193,12 @@ const OrdersTable: React.FC<Props> = ({
   const { storeData } = useInvoiceData({
     storeId: selectedOrderForInvoice?.store_id ?? receiptOrder?.store_id,
   });
+  // Stores with branches: invoices and receipts print the order's branch.
+  const { enabled: branchesOn, branches, branchFileSuffix } = useBranches();
+  const orderBranch = useCallback(
+    (branchId?: string | null) => (branchesOn ? (branches.find((b) => b.id === branchId) ?? null) : null),
+    [branchesOn, branches],
+  );
 
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState<StoreOrder | null>(null);
@@ -292,6 +301,7 @@ const OrdersTable: React.FC<Props> = ({
       storeData,
       paidAmountByOrderId[receiptOrder.id] ?? 0,
       currencyIcon,
+      orderBranch(receiptOrder.branch_id),
     )
       .then(({ combined, customerCopy, shopCopy }) => {
         if (cancelled) return;
@@ -318,7 +328,7 @@ const OrdersTable: React.FC<Props> = ({
     return () => {
       cancelled = true;
     };
-  }, [receiptOrder, storeData, paidAmountByOrderId, currencyIcon, notification]);
+  }, [receiptOrder, storeData, paidAmountByOrderId, currencyIcon, notification, orderBranch]);
 
   // Bulk selection handlers
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
@@ -422,7 +432,7 @@ const OrdersTable: React.FC<Props> = ({
         ]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Orders");
-        XLSX.writeFile(wb, `orders_${datePart}.xlsx`);
+        XLSX.writeFile(wb, `orders${branchFileSuffix}_${datePart}.xlsx`);
       } else {
         const escape = (v: any) => {
           if (v == null) return "";
@@ -440,7 +450,7 @@ const OrdersTable: React.FC<Props> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `orders_${datePart}.csv`;
+        a.download = `orders${branchFileSuffix}_${datePart}.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -651,6 +661,11 @@ const OrdersTable: React.FC<Props> = ({
               POS
             </Tag>
           )}
+          <OrderBranchTag
+            branchId={order.branch_id}
+            needsTransfer={order.needs_transfer}
+            confirmed={order.branch_confirmed}
+          />
           {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
             order.payment_status !== PaymentStatus.PAID && (
               <Tooltip title="Part of this order has already been paid — the rest is still outstanding">
@@ -832,6 +847,11 @@ const OrdersTable: React.FC<Props> = ({
                 <Tag color={order.channel === "pos" ? "gold" : "blue"} style={{ marginInlineEnd: 0 }}>
                   {order.channel === "pos" ? "Quick Sale" : "Online"}
                 </Tag>
+                <OrderBranchTag
+                  branchId={order.branch_id}
+                  needsTransfer={order.needs_transfer}
+                  confirmed={order.branch_confirmed}
+                />
                 {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
                   order.payment_status !== PaymentStatus.PAID && (
                     <Tag color="blue" style={{ marginInlineEnd: 0 }}>
@@ -1313,12 +1333,7 @@ const OrdersTable: React.FC<Props> = ({
             setShowInvoice(false);
             setSelectedOrderForInvoice(null);
           }}
-          store={{
-            name: storeData.store_name,
-            address: storeData.business_address,
-            phone: storeData.contact_phone,
-            email: storeData.contact_email,
-          }}
+          store={invoiceStoreFor(storeData, orderBranch(selectedOrderForInvoice.branch_id))}
           orderId={selectedOrderForInvoice.order_number}
           customer={{
             name: getCustomerName(selectedOrderForInvoice),

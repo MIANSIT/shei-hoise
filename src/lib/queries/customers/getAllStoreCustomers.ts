@@ -32,13 +32,112 @@ interface RawCustomerRow {
     | null;
 }
 
+function toDetailedCustomer(
+  c: RawCustomerRow,
+  customerOrders: { created_at: string }[],
+): DetailedCustomer {
+  const profile = (c.customer_profiles || [])[0] || null;
+  return {
+    id: c.id,
+    name: c.name || "Unknown Customer",
+    email: c.email,
+    phone: c.phone || undefined,
+    status: "active",
+    order_count: customerOrders.length,
+    last_order_date: customerOrders[0]?.created_at ?? undefined,
+    source: "direct",
+    user_type: "customer",
+    created_at: c.created_at,
+    updated_at: c.updated_at,
+    profile_id: c.profile_id || null,
+    profile_details: profile
+      ? {
+          date_of_birth: profile.date_of_birth || null,
+          gender: profile.gender || null,
+          address_line_1: profile.address || null,
+          address_line_2: null,
+          city: profile.city || null,
+          state: profile.state || null,
+          postal_code: profile.postal_code || null,
+          country: profile.country || null,
+          address: profile.address || null,
+        }
+      : null,
+  };
+}
+
+/**
+ * One page of a branch's customers (stores with branches): customers with at
+ * least one order in that branch, paged and searched in the database by the
+ * get_branch_customer_page RPC. Order counts are that branch's orders.
+ */
+async function getBranchStoreCustomers(
+  storeId: string,
+  branchId: string,
+  search: string | undefined,
+  page: number,
+  pageSize: number,
+): Promise<PaginatedCustomers> {
+  const { data, error } = await supabase.rpc("get_branch_customer_page", {
+    p_store_id: storeId,
+    p_branch_id: branchId,
+    p_search: search?.trim() || null,
+    p_offset: (page - 1) * pageSize,
+    p_limit: pageSize,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? { total: 0, ids: [] }) as { total: number; ids: string[] };
+  const totalCount = Number(payload.total) || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const ids = payload.ids ?? [];
+  if (ids.length === 0) {
+    return { customers: [], totalCount, currentPage: page, totalPages, hasMore: false };
+  }
+
+  // One page of ids — a short list, safe to send.
+  const [customersRes, ordersRes] = await Promise.all([
+    supabase
+      .from("store_customers")
+      .select(
+        "id, name, email, phone, profile_id, created_at, updated_at, customer_profiles!customer_profiles_store_customer_id_fkey(*)",
+      )
+      .in("id", ids),
+    supabase
+      .from("orders")
+      .select("customer_id, created_at")
+      .eq("store_id", storeId)
+      .eq("branch_id", branchId)
+      .in("customer_id", ids)
+      .order("created_at", { ascending: false }),
+  ]);
+  if (customersRes.error) throw customersRes.error;
+
+  const rows = (customersRes.data ?? []) as unknown as RawCustomerRow[];
+  const byId = new Map(rows.map((c) => [c.id, c]));
+  const orders = (ordersRes.data ?? []) as { customer_id: string; created_at: string }[];
+
+  const customers = ids
+    .map((id) => byId.get(id))
+    .filter((c): c is RawCustomerRow => !!c)
+    .map((c) => toDetailedCustomer(c, orders.filter((o) => o.customer_id === c.id)));
+
+  return { customers, totalCount, currentPage: page, totalPages, hasMore: page < totalPages };
+}
+
 export async function getAllStoreCustomers(
   storeId: string,
   search?: string,
   page?: number,
-  pageSize?: number
+  pageSize?: number,
+  /** Stores with branches: only customers who ordered from this branch (paged lists only). */
+  branchId?: string | null,
 ): Promise<DetailedCustomer[] | PaginatedCustomers> {
   if (!storeId) throw new Error("Store ID is required");
+
+  if (branchId && page !== undefined && pageSize !== undefined) {
+    return getBranchStoreCustomers(storeId, branchId, search, page, pageSize);
+  }
 
   try {
     // Query from store_customer_links (scoped directly by store_id) and embed
@@ -143,42 +242,9 @@ export async function getAllStoreCustomers(
     );
 
     // Step 4: Transform to DetailedCustomer
-    const detailedCustomers: DetailedCustomer[] = customers.map((c) => {
-      const profiles = c.customer_profiles || [];
-      const profile = profiles[0] || null;
-
-      // Filter orders for this customer
-      const customerOrders =
-        orders?.filter((o) => o.customer_id === c.id) || [];
-
-      return {
-        id: c.id,
-        name: c.name || "Unknown Customer",
-        email: c.email,
-        phone: c.phone || undefined,
-        status: "active",
-        order_count: customerOrders.length,
-        last_order_date: customerOrders[0]?.created_at ?? undefined,
-        source: "direct",
-        user_type: "customer",
-        created_at: c.created_at,
-        updated_at: c.updated_at,
-        profile_id: c.profile_id || null,
-        profile_details: profile
-          ? {
-              date_of_birth: profile.date_of_birth || null,
-              gender: profile.gender || null,
-              address_line_1: profile.address || null,
-              address_line_2: null,
-              city: profile.city || null,
-              state: profile.state || null,
-              postal_code: profile.postal_code || null,
-              country: profile.country || null,
-              address: profile.address || null,
-            }
-          : null,
-      };
-    });
+    const detailedCustomers: DetailedCustomer[] = customers.map((c) =>
+      toDetailedCustomer(c, orders?.filter((o) => o.customer_id === c.id) || []),
+    );
 
     // Return paginated response if page and pageSize are provided
     if (page !== undefined && pageSize !== undefined) {

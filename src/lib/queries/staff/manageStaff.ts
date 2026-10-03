@@ -39,6 +39,8 @@ interface StaffDbRow {
   locked_until: string | null;
   last_login_at: string | null;
   created_at: string;
+  all_branches: boolean;
+  branch_ids: string[] | null;
   store_roles: { name: string } | null;
 }
 
@@ -65,6 +67,8 @@ function toStaffItem(row: StaffDbRow): StaffListItem {
     lockedUntil: row.locked_until,
     lastLoginAt: row.last_login_at,
     createdAt: row.created_at,
+    allBranches: row.all_branches,
+    branchIds: row.branch_ids ?? [],
   };
 }
 
@@ -109,7 +113,7 @@ async function getOwnedStaff(owner: OwnerActor, staffId: string): Promise<StaffD
   const { data } = await supabaseAdmin
     .from("store_staff")
     .select(
-      "id, user_id, username, display_name, phone, role_id, is_active, must_change_password, locked_until, last_login_at, created_at, store_roles (name)",
+      "id, user_id, username, display_name, phone, role_id, is_active, must_change_password, locked_until, last_login_at, created_at, all_branches, branch_ids, store_roles (name)",
     )
     .eq("id", staffId)
     .eq("store_id", owner.storeId)
@@ -125,6 +129,23 @@ async function roleBelongsToStore(storeId: string, roleId: string): Promise<bool
     .eq("store_id", storeId)
     .maybeSingle();
   return !!data;
+}
+
+/**
+ * Branch scope from the form: "all branches", or a list that must belong to
+ * this store. Returns the values to store, or an error message.
+ */
+async function resolveBranchScope(
+  storeId: string,
+  allBranches: boolean | undefined,
+  branchIds: string[] | undefined,
+): Promise<{ all_branches: boolean; branch_ids: string[] } | { error: string }> {
+  if (allBranches !== false) return { all_branches: true, branch_ids: [] };
+  const ids = Array.from(new Set(branchIds ?? []));
+  if (ids.length === 0) return { error: "Choose at least one branch, or give access to all branches." };
+  const { data } = await supabaseAdmin.from("store_branches").select("id").eq("store_id", storeId).in("id", ids);
+  if ((data ?? []).length !== ids.length) return { error: "Branch not found" };
+  return { all_branches: false, branch_ids: ids };
 }
 
 async function revokeSessions(userId: string): Promise<void> {
@@ -166,7 +187,7 @@ export async function getStaffOverview(): Promise<StaffOverview> {
       supabaseAdmin
         .from("store_staff")
         .select(
-          "id, user_id, username, display_name, phone, role_id, is_active, must_change_password, locked_until, last_login_at, created_at, store_roles (name)",
+          "id, user_id, username, display_name, phone, role_id, is_active, must_change_password, locked_until, last_login_at, created_at, all_branches, branch_ids, store_roles (name)",
         )
         .eq("store_id", storeId)
         .order("created_at", { ascending: true }),
@@ -220,6 +241,8 @@ const createStaffSchema = z.object({
   password: z.string().min(STAFF_MIN_PASSWORD_LENGTH, `Use at least ${STAFF_MIN_PASSWORD_LENGTH} characters`).max(72),
   phone: z.string().trim().max(20).optional().nullable(),
   roleId: z.string().uuid("Choose a role"),
+  allBranches: z.boolean().optional(),
+  branchIds: z.array(z.string().uuid()).optional(),
 });
 
 export type CreateStaffInput = z.input<typeof createStaffSchema>;
@@ -232,7 +255,7 @@ export async function createStaff(input: CreateStaffInput): Promise<ActionResult
 
     const parsed = createStaffSchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form" };
-    const { displayName, name, password, phone, roleId } = parsed.data;
+    const { displayName, name, password, phone, roleId, allBranches, branchIds } = parsed.data;
 
     const { subscription, enabled } = await staffFeatureCheck(owner.storeId);
     if (!enabled) return { ok: false, error: "Staff logins aren't included in your plan." };
@@ -243,6 +266,8 @@ export async function createStaff(input: CreateStaffInput): Promise<ActionResult
     }
 
     if (!(await roleBelongsToStore(owner.storeId, roleId))) return { ok: false, error: "Choose a role" };
+    const scope = await resolveBranchScope(owner.storeId, allBranches, branchIds);
+    if ("error" in scope) return { ok: false, error: scope.error };
 
     const { data: store } = await supabaseAdmin
       .from("stores")
@@ -303,6 +328,7 @@ export async function createStaff(input: CreateStaffInput): Promise<ActionResult
             role_id: roleId,
             must_change_password: true,
             created_by: owner.userId,
+            ...scope,
           })
           .select("id")
           .single();
@@ -335,6 +361,8 @@ const updateStaffSchema = z.object({
   displayName: z.string().trim().min(1, "Enter their name").max(80),
   phone: z.string().trim().max(20).optional().nullable(),
   roleId: z.string().uuid("Choose a role"),
+  allBranches: z.boolean().optional(),
+  branchIds: z.array(z.string().uuid()).optional(),
 });
 
 export type UpdateStaffInput = z.input<typeof updateStaffSchema>;
@@ -347,11 +375,15 @@ export async function updateStaff(input: UpdateStaffInput): Promise<ActionResult
 
     const parsed = updateStaffSchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form" };
-    const { staffId, displayName, phone, roleId } = parsed.data;
+    const { staffId, displayName, phone, roleId, allBranches, branchIds } = parsed.data;
 
     const before = await getOwnedStaff(owner, staffId);
     if (!before) return { ok: false, error: "Staff member not found" };
     if (!(await roleBelongsToStore(owner.storeId, roleId))) return { ok: false, error: "Choose a role" };
+    // Only change branch access when the form sent it (stores with branches).
+    const scope =
+      allBranches === undefined ? null : await resolveBranchScope(owner.storeId, allBranches, branchIds);
+    if (scope && "error" in scope) return { ok: false, error: scope.error };
 
     const { error } = await supabaseAdmin
       .from("store_staff")
@@ -359,6 +391,7 @@ export async function updateStaff(input: UpdateStaffInput): Promise<ActionResult
         display_name: displayName,
         phone: phone || null,
         role_id: roleId,
+        ...(scope ?? {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", staffId)

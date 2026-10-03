@@ -36,6 +36,8 @@ import LanguageSwitcher from "@/app/components/common/LanguageSwitcher";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { PermissionsProvider } from "@/lib/context/PermissionsContext";
 import { StaffAccessGuard } from "@/app/components/admin/staff/StaffAccessGuard";
+import { BranchProvider } from "@/lib/context/BranchContext";
+import { BranchSwitcher } from "@/app/components/admin/branches/BranchSwitcher";
 // import { supabase } from "@/lib/supabase";
 // import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
@@ -373,6 +375,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Show dashboard
   return (
     <PermissionsProvider userKey={user?.id ?? null}>
+    <BranchProvider userKey={user?.id ?? null}>
     <ConfigProvider
       theme={{
         algorithm:
@@ -440,6 +443,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+              <BranchSwitcher />
               <LanguageSwitcher />
               {/* Theme toggle button */}
               <button
@@ -572,6 +576,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </AntdApp>
     </ConfigProvider>
+    </BranchProvider>
     </PermissionsProvider>
   );
 }

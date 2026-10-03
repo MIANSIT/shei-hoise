@@ -1,7 +1,13 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import { Expense } from "@/lib/types/expense/type";
-import { checkExpenseLimit, getAuthorizedStoreId, logActivity } from "@/lib/permissions/server";
+import {
+  BRANCH_SCOPE_ERROR,
+  canUseBranch,
+  checkExpenseLimit,
+  getAuthorizedStoreId,
+  logActivity,
+} from "@/lib/permissions/server";
 
 export interface UpdateExpenseInput {
   id: string;
@@ -14,6 +20,7 @@ export interface UpdateExpenseInput {
   payment_method?: string;
   platform?: string;
   notes?: string;
+  branch_id?: string;
 }
 
 export async function updateExpense(
@@ -36,6 +43,22 @@ export async function updateExpense(
         console.error("updateExpense:", overLimit);
         return null;
       }
+    }
+
+    // Staff limited to some branches can only touch (and move to) their own.
+    if (rawFields.branch_id && !canUseBranch(storeResult.actor, rawFields.branch_id)) {
+      console.error("updateExpense:", BRANCH_SCOPE_ERROR);
+      return null;
+    }
+    const { data: current } = await supabase
+      .from("expenses")
+      .select("branch_id")
+      .eq("id", id)
+      .eq("store_id", storeResult.storeId)
+      .maybeSingle();
+    if (current?.branch_id && !canUseBranch(storeResult.actor, current.branch_id)) {
+      console.error("updateExpense:", BRANCH_SCOPE_ERROR);
+      return null;
     }
 
     // Strip undefined values so we never accidentally null out existing DB columns

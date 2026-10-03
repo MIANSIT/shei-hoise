@@ -22,22 +22,34 @@ export interface SalesReportRow {
   pos_revenue: number;
 }
 
+export interface SalesReportBranchTotal {
+  branchId: string;
+  orders: number;
+  revenue: number;
+}
+
 export interface SalesReportResult {
   totalRevenue: number;
+  /** The paid part of totalRevenue. */
+  receivedRevenue: number;
   totalOrders: number;
   onlineRevenue: number;
   posRevenue: number;
   averageOrderValue: number;
   rows: SalesReportRow[];
+  /** Stores with branches, "All branches": each branch's share, biggest first. */
+  byBranch: SalesReportBranchTotal[];
 }
 
 const EMPTY_RESULT: SalesReportResult = {
   totalRevenue: 0,
+  receivedRevenue: 0,
   totalOrders: 0,
   onlineRevenue: 0,
   posRevenue: 0,
   averageOrderValue: 0,
   rows: [],
+  byBranch: [],
 };
 
 /**
@@ -70,6 +82,10 @@ export async function getSalesReport(
   fromDate: string, // YYYY-MM-DD
   toDate: string,
   bucket: "day" | "month",
+  /** Stores with branches: one branch's sales. Omitted/null = the whole store. */
+  branchId?: string | null,
+  /** Stores with branches: also split the totals by branch (reads orders.branch_id). */
+  withBranches = false,
 ): Promise<SalesReportResult> {
   if (!storeId) return EMPTY_RESULT;
 
@@ -83,31 +99,43 @@ export async function getSalesReport(
     additional_charges: number | null;
     channel: string;
     order_date: string;
+    payment_status: string | null;
+    branch_id?: string | null;
   }[];
   try {
-    orders = await fetchAllPaged((from, to) =>
-      supabase
+    orders = await fetchAllPaged((from, to) => {
+      let query = supabase
         .from("orders")
-        .select("subtotal, discount_amount, additional_charges, channel, order_date")
+        .select(
+          withBranches
+            ? "subtotal, discount_amount, additional_charges, channel, order_date, payment_status, branch_id"
+            : "subtotal, discount_amount, additional_charges, channel, order_date, payment_status",
+        )
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
         .neq("status", OrderStatus.RETURNED)
         .gte("order_date", fromDate)
-        .lte("order_date", toDate)
-        .range(from, to),
-    );
+        .lte("order_date", toDate);
+      if (branchId) query = query.eq("branch_id", branchId);
+      return query.range(from, to) as unknown as PromiseLike<{
+        data: typeof orders | null;
+        error: { message: string } | null;
+      }>;
+    });
   } catch (error) {
     console.error("Failed to load sales report:", error);
     return EMPTY_RESULT;
   }
 
   let totalRevenue = 0;
+  let receivedRevenue = 0;
   let onlineRevenue = 0;
   let posRevenue = 0;
 
   // Grouped by a sortable key (YYYY-MM-DD or YYYY-MM) separate from the
   // human-readable label ("Sep 2026" would sort wrong alphabetically).
   const rowByKey = new Map<string, SalesReportRow>();
+  const branchTotals = new Map<string, SalesReportBranchTotal>();
 
   for (const order of orders) {
     const amount =
@@ -117,6 +145,7 @@ export async function getSalesReport(
     const isPos = order.channel === "pos";
 
     totalRevenue += amount;
+    if (order.payment_status === "paid") receivedRevenue += amount;
     if (isPos) posRevenue += amount;
     else onlineRevenue += amount;
 
@@ -141,6 +170,13 @@ export async function getSalesReport(
     else row.online_revenue += amount;
 
     rowByKey.set(key, row);
+
+    if (withBranches && order.branch_id) {
+      const b = branchTotals.get(order.branch_id) ?? { branchId: order.branch_id, orders: 0, revenue: 0 };
+      b.orders += 1;
+      b.revenue += amount;
+      branchTotals.set(order.branch_id, b);
+    }
   }
 
   const rows = Array.from(rowByKey.entries())
@@ -149,11 +185,13 @@ export async function getSalesReport(
 
   return {
     totalRevenue,
+    receivedRevenue,
     totalOrders: orders.length,
     onlineRevenue,
     posRevenue,
     averageOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
     rows,
+    byBranch: [...branchTotals.values()].sort((a, b) => b.revenue - a.revenue),
   };
 }
 
@@ -163,6 +201,8 @@ export interface SalesReportOrderRow {
   channel: "online" | "pos";
   revenue: number;
   created_at: string;
+  /** Stores with branches: the order's branch. */
+  branch_id: string | null;
 }
 
 /**
@@ -177,23 +217,29 @@ export async function getSalesReportOrdersForPeriod(
   storeId: string,
   fromDate: string,
   toDate: string,
+  branchId?: string | null,
+  withBranches = false,
 ): Promise<SalesReportOrderRow[]> {
   if (!storeId) return [];
 
   let data: unknown[];
   try {
-    data = await fetchAllPaged((from, to) =>
-      supabase
+    data = await fetchAllPaged((from, to) => {
+      let query = supabase
         .from("orders")
-        .select("order_number, subtotal, discount_amount, additional_charges, channel, created_at, order_date, shipping_address, store_customers!customer_id(name)")
+        .select(
+          withBranches
+            ? "order_number, subtotal, discount_amount, additional_charges, channel, created_at, order_date, shipping_address, branch_id, store_customers!customer_id(name)"
+            : "order_number, subtotal, discount_amount, additional_charges, channel, created_at, order_date, shipping_address, store_customers!customer_id(name)",
+        )
         .eq("store_id", storeId)
         .neq("status", OrderStatus.CANCELLED)
         .neq("status", OrderStatus.RETURNED)
         .gte("order_date", fromDate)
-        .lte("order_date", toDate)
-        .order("order_date", { ascending: false })
-        .range(from, to),
-    );
+        .lte("order_date", toDate);
+      if (branchId) query = query.eq("branch_id", branchId);
+      return query.order("order_date", { ascending: false }).range(from, to);
+    });
   } catch (error) {
     console.error("Failed to load sales report period orders:", error);
     return [];
@@ -213,6 +259,7 @@ export async function getSalesReportOrdersForPeriod(
         (Number(order.discount_amount) || 0) +
         (Number(order.additional_charges) || 0),
       created_at: order.created_at,
+      branch_id: order.branch_id ?? null,
     };
   });
 }

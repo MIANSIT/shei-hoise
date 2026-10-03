@@ -27,6 +27,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useBranches } from "@/lib/context/BranchContext";
 
 const Products: React.FC = () => {
   const t = useTranslation();
@@ -34,6 +35,9 @@ const Products: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, storeSlug } = useCurrentUser();
+  // Stores with branches: stock shown is the header's branch (the store total on "All branches").
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchFileSuffix } = useBranches();
+  const stockBranchId = branchesOn ? selectedBranchId : null;
   const { store } = useStore(user?.store_id ?? null);
   const { allowed: qrAllowed } = useFeatureGate(user?.store_id, "qr");
   const { allowed: barcodeAllowed } = useFeatureGate(user?.store_id, "barcode");
@@ -117,7 +121,8 @@ const Products: React.FC = () => {
   const latestRequestRef = useRef(0);
 
   const fetchProducts = useCallback(async () => {
-    if (!user?.store_id) return;
+    // Wait for the branch selection so the first list isn't the wrong branch's stock.
+    if (!user?.store_id || branchesLoading) return;
     const requestId = ++latestRequestRef.current;
     setLoading(true);
     try {
@@ -130,6 +135,7 @@ const Products: React.FC = () => {
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
         sort,
+        branchId: stockBranchId,
       });
       if (requestId !== latestRequestRef.current) return;
       setProducts(res.data);
@@ -142,7 +148,7 @@ const Products: React.FC = () => {
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false);
     }
-  }, [user?.store_id, search, page, pageSize, status, featuredOnly, sort]);
+  }, [user?.store_id, search, page, pageSize, status, featuredOnly, sort, stockBranchId, branchesLoading]);
 
   useEffect(() => {
     fetchProducts();
@@ -170,6 +176,7 @@ const Products: React.FC = () => {
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
         sort,
+        branchId: stockBranchId,
       });
 
       const productsToExport = res.data;
@@ -291,7 +298,7 @@ const Products: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `products_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute("download", `products${branchFileSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
@@ -327,6 +334,7 @@ const Products: React.FC = () => {
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
         sort,
+        branchId: stockBranchId,
       });
 
       if (!res.data.length) {

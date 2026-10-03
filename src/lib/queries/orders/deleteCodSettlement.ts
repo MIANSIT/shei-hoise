@@ -1,6 +1,12 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { checkDeleteWindow, getAuthorizedStoreId, logDeleted } from "@/lib/permissions/server";
+import {
+  BRANCH_SCOPE_ERROR,
+  canUseBranch,
+  checkDeleteWindow,
+  getAuthorizedStoreId,
+  logDeleted,
+} from "@/lib/permissions/server";
 
 /**
  * Undoes a mistakenly-recorded COD settlement — frees every order it covered
@@ -21,6 +27,10 @@ export async function deleteCodSettlement(settlementId: string): Promise<void> {
 
   if (fetchError) throw new Error(fetchError.message);
   if (!settlement) throw new Error("Settlement not found");
+
+  if (settlement.branch_id && !canUseBranch(storeResult.actor, settlement.branch_id)) {
+    throw new Error(BRANCH_SCOPE_ERROR);
+  }
 
   const tooOld = checkDeleteWindow(storeResult.actor, settlement.created_at);
   if (tooOld) throw new Error(tooOld);

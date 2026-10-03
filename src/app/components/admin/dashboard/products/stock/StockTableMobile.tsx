@@ -9,6 +9,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import { stockLevelPct } from "./StockTable";
 import StockHistoryPopover from "./StockHistoryPopover";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { BranchStockLine } from "@/app/components/admin/branches/BranchStockLine";
 
 interface StockTableMobileProps {
   products: ProductRow[];
@@ -322,6 +323,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                 <span className="text-xs text-muted-foreground">
                   units
                 </span>
+                <BranchStockLine branchStock={product.branchStock} />
                 <DeltaChip
                   delta={(editedStocks[product.id] ?? product.stock) - product.stock}
                 />
@@ -391,6 +393,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                               <TpPriceChip tpPrice={variant.tpPrice} symbol={symbol} />
                             </div>
                           )}
+                          <BranchStockLine branchStock={variant.branchStock} />
                           <div className="flex gap-1 flex-wrap">
                             {!variant.isActive && (
                               <StatusBadge variant="inactive">

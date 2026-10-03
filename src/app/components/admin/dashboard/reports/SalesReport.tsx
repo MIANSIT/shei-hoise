@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DatePicker, Table, Spin, Dropdown, Button, Popover, App } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { BarChart2, ShoppingBag, Store, Smartphone, Download, Loader2 } from "lucide-react";
+import { BarChart2, ShoppingBag, Store, Smartphone, Download, Loader2, Building2 } from "lucide-react";
 import { LockOutlined } from "@ant-design/icons";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -25,6 +25,8 @@ import {
   SalesReportMeta,
 } from "@/lib/utils/exportSalesReport";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type Granularity = "day" | "week" | "month" | "year" | "custom";
 
@@ -85,25 +87,32 @@ function PeriodOrdersDrilldown({
   fromDate,
   toDate,
   currencyIcon,
+  branchId,
+  showBranch,
 }: {
   storeId?: string | null;
   fromDate: string;
   toDate: string;
   currencyIcon: string;
+  branchId: string | null;
+  /** "All branches": add a column saying which branch each order belongs to. */
+  showBranch: boolean;
 }) {
   const [orders, setOrders] = useState<SalesReportOrderRow[] | null>(null);
+  const { branchName } = useBranches();
+  const t = useTranslation();
 
   useEffect(() => {
     let cancelled = false;
     if (!storeId) return;
     setOrders(null);
-    getSalesReportOrdersForPeriod(storeId, fromDate, toDate).then((rows) => {
+    getSalesReportOrdersForPeriod(storeId, fromDate, toDate, branchId, showBranch).then((rows) => {
       if (!cancelled) setOrders(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [storeId, fromDate, toDate]);
+  }, [storeId, fromDate, toDate, branchId, showBranch]);
 
   if (orders === null) {
     return (
@@ -132,6 +141,7 @@ function PeriodOrdersDrilldown({
             <tr className="bg-muted/60 text-muted-foreground">
               <th className="text-left px-3 py-2 font-semibold">Order #</th>
               <th className="text-left px-3 py-2 font-semibold">Customer</th>
+              {showBranch && <th className="text-left px-3 py-2 font-semibold">{t.branches.orderBranch}</th>}
               <th className="text-left px-3 py-2 font-semibold">Channel</th>
               <th className="text-right px-3 py-2 font-semibold">Revenue</th>
             </tr>
@@ -141,6 +151,13 @@ function PeriodOrdersDrilldown({
               <tr key={o.order_number} className="border-t border-border">
                 <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">#{o.order_number}</td>
                 <td className="px-3 py-2 text-muted-foreground">{o.customer_name}</td>
+                {showBranch && (
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300">
+                      {branchName(o.branch_id) || "—"}
+                    </span>
+                  </td>
+                )}
                 <td className="px-3 py-2">
                   <span
                     className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
@@ -201,6 +218,14 @@ export default function SalesReport() {
   );
   const { storeData } = useInvoiceData({ storeId: user?.store_id ?? undefined });
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "xlsx" | "csv" | null>(null);
+  // Stores with branches: the header's branch, or the whole brand on "All branches".
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, selectedBranch } = useBranches();
+  const t = useTranslation();
+  const reportBranchId = branchesOn ? selectedBranchId : null;
+  // "All branches": split the numbers by branch so every taka has a home.
+  const splitByBranch = branchesOn && !reportBranchId;
+  const { branchName: nameOfBranch } = useBranches();
+  const branchName = branchesOn ? (selectedBranch?.name ?? t.branches.allBranches) : null;
 
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
@@ -224,15 +249,15 @@ export default function SalesReport() {
       : computeRange(granularity, selectedDate);
 
   const fetchReport = useCallback(async () => {
-    if (!user?.store_id) return;
+    if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const result = await getSalesReport(user.store_id, fromDate, toDate, bucket);
+      const result = await getSalesReport(user.store_id, fromDate, toDate, bucket, reportBranchId, splitByBranch);
       setReport(result);
     } finally {
       setLoading(false);
     }
-  }, [user?.store_id, fromDate, toDate, bucket]);
+  }, [user?.store_id, fromDate, toDate, bucket, reportBranchId, branchesLoading, splitByBranch]);
 
   useEffect(() => {
     fetchReport();
@@ -242,7 +267,9 @@ export default function SalesReport() {
     if (!report || exportingFormat) return;
 
     const meta: SalesReportMeta = {
-      storeName: storeData?.store_name ?? "Store",
+      storeName: branchName
+        ? `${storeData?.store_name ?? "Store"} — ${branchName}`
+        : (storeData?.store_name ?? "Store"),
       fromDate,
       toDate,
       granularityLabel:
@@ -420,6 +447,12 @@ export default function SalesReport() {
               allowClear={false}
             />
           )}
+          {branchName && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/15 px-3 py-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+              <Building2 size={13} aria-hidden="true" />
+              {branchName}
+            </span>
+          )}
         </div>
 
         {loading || !report ? (
@@ -431,9 +464,11 @@ export default function SalesReport() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatTile
                 icon={<BarChart2 size={18} />}
-                label="Total Sales"
+                label={t.admin.psSalesAll}
                 value={money(report.totalRevenue)}
-                hint="Excludes shipping & tax"
+                hint={`${t.admin.psReceived} ${money(report.receivedRevenue)} · ${t.admin.psToCollect} ${money(
+                  Math.max(report.totalRevenue - report.receivedRevenue, 0),
+                )}`}
               />
               <StatTile
                 icon={<ShoppingBag size={18} />}
@@ -452,6 +487,34 @@ export default function SalesReport() {
               />
             </div>
 
+            {splitByBranch && report.byBranch.length > 0 && (
+              <div className="rounded-2xl border border-border/80 bg-card p-4">
+                <h2 className="text-sm font-bold text-foreground m-0 mb-3">{t.branches.salesByBranch}</h2>
+                <div className="space-y-2.5">
+                  {report.byBranch.map((b) => {
+                    const share = report.totalRevenue > 0 ? (b.revenue / report.totalRevenue) * 100 : 0;
+                    return (
+                      <div key={b.branchId}>
+                        <div className="flex items-baseline justify-between gap-3 text-sm">
+                          <span className="font-semibold text-foreground truncate">{nameOfBranch(b.branchId) || "—"}</span>
+                          <span className="whitespace-nowrap tabular-nums">
+                            <span className="font-bold text-foreground">{money(b.revenue)}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {" "}
+                              · {b.orders} {t.branches.cmpOrders.toLowerCase()} · {share.toFixed(0)}%
+                            </span>
+                          </span>
+                        </div>
+                        <div className="mt-1 h-2 rounded-full bg-muted overflow-hidden" aria-hidden="true">
+                          <div className="h-full rounded-full bg-teal-500" style={{ width: `${share}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <Table<SalesReportRow>
               columns={columns}
               dataSource={report.rows}
@@ -468,6 +531,8 @@ export default function SalesReport() {
                       fromDate={rowFromDate}
                       toDate={rowToDate}
                       currencyIcon={currencyIcon}
+                      branchId={reportBranchId}
+                      showBranch={splitByBranch}
                     />
                   );
                 },

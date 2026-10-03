@@ -12,6 +12,7 @@ import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useBranches } from "@/lib/context/BranchContext";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -36,6 +37,11 @@ const StockPage = () => {
   const t = useTranslation();
   const n = useLocalNum();
   const { storeId, storeSlug } = useCurrentUser();
+  // Stores with branches: the header's branch picker decides whose stock this
+  // page shows and changes. "All branches" is read-only.
+  const { enabled: branchesOn, selectedBranchId, selectedBranch, branchFileSuffix } = useBranches();
+  const stockBranchId = branchesOn ? selectedBranchId : null;
+  const stockReadOnly = branchesOn && !selectedBranchId;
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
   // Its own flag, separate from stock export ("export_data") and the
   // Products page's "product_csv_export" — each export surface is gated
@@ -108,9 +114,11 @@ const StockPage = () => {
       stockFilter,
       1,
       Number.MAX_SAFE_INTEGER,
+      null,
+      stockBranchId,
     );
     return result.data;
-  }, [storeSlug, searchText, stockFilter]);
+  }, [storeSlug, searchText, stockFilter, stockBranchId]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -153,7 +161,7 @@ const StockPage = () => {
             </span>
           )}
           <StockExportButton
-            storeSlug={storeSlug ?? undefined}
+            storeSlug={storeSlug ? `${storeSlug}${branchFileSuffix}` : undefined}
             locked={!exportAllowed}
             fetchAllProducts={fetchAllProducts}
           />
@@ -283,7 +291,23 @@ const StockPage = () => {
       </div>
 
       {/* ── Table ── */}
+      {branchesOn && (
+        <div
+          className={`rounded-xl border px-4 py-2.5 text-sm ${
+            stockReadOnly
+              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+              : "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-300"
+          }`}
+        >
+          {stockReadOnly
+            ? t.branches.stockAllBranchesNote
+            : t.branches.stockBranchNote.replace("{name}", selectedBranch?.name ?? "")}
+        </div>
+      )}
+
       <StockChangeTable
+        branchId={stockBranchId}
+        readOnly={stockReadOnly}
         searchText={searchText}
         stockFilter={stockFilter}
         currentPage={currentPage}

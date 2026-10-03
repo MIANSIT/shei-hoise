@@ -20,6 +20,7 @@ import {
 } from "./ExpenseTableCells";
 import { ExpenseDetailDrawer } from "./ExpenseDetailDrawer";
 import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
 
 interface ExpenseTableProps {
   data: Expense[];
@@ -81,6 +82,9 @@ function ExpenseTable({
   const { modal } = App.useApp();
   const { can } = usePermissions();
   const { icon: currencyIcon } = useUserCurrencyIcon();
+  // On "All branches", say which branch carries each expense.
+  const { enabled: branchesOn, selectedBranchId, branchName } = useBranches();
+  const showBranch = branchesOn && !selectedBranchId;
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Which row's "..." menu is open. Dropdown's own open/close-on-item-click
@@ -172,7 +176,16 @@ function ExpenseTable({
     {
       title: t.admin.expenseColTitle,
       key: "title",
-      render: (_, record) => <ExpenseCell record={record} />,
+      render: (_, record) => (
+        <>
+          <ExpenseCell record={record} />
+          {showBranch && record.branch_id && (
+            <span className="mt-1 inline-block rounded bg-teal-50 dark:bg-teal-500/15 px-1.5 py-0.5 text-[11px] text-teal-700 dark:text-teal-300">
+              {branchName(record.branch_id)}
+            </span>
+          )}
+        </>
+      ),
     },
     {
       title: t.admin.expenseCatCol,

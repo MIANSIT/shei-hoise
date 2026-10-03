@@ -435,6 +435,101 @@ CREATE TABLE IF NOT EXISTS "public"."store_staff" (
     "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
+-- Branch Hubs (plan feature multi_branch, limit max_branches) — see
+-- 20261002000000_add_store_branches.sql. branch_inventory is the per-branch
+-- stock; product_inventory stays the store total, kept in sync both ways by
+-- triggers. Service-role only (RLS on, no policies).
+CREATE TABLE IF NOT EXISTS "public"."store_branches" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "name" text NOT NULL,
+    "code" text,
+    "priority" integer NOT NULL,
+    "address" text,
+    "phone" text,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "store_branches_store_priority_key" UNIQUE ("store_id", "priority") DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE TABLE IF NOT EXISTS "public"."branch_inventory" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "branch_id" uuid NOT NULL REFERENCES "public"."store_branches"("id") ON DELETE CASCADE,
+    "product_id" uuid NOT NULL REFERENCES "public"."products"("id") ON DELETE CASCADE,
+    "variant_id" uuid REFERENCES "public"."product_variants"("id") ON DELETE CASCADE,
+    "quantity_available" integer DEFAULT 0 NOT NULL,
+    "quantity_reserved" integer DEFAULT 0 NOT NULL,
+    "low_stock_threshold" integer DEFAULT 5 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfers" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "transfer_number" text NOT NULL DEFAULT '',
+    "from_branch_id" uuid NOT NULL REFERENCES "public"."store_branches"("id") ON DELETE RESTRICT,
+    "to_branch_id" uuid NOT NULL REFERENCES "public"."store_branches"("id") ON DELETE RESTRICT,
+    "status" text DEFAULT 'draft' NOT NULL,
+    "note" text,
+    "created_by" uuid, "sent_by" uuid, "received_by" uuid,
+    "sent_at" timestamp with time zone, "received_at" timestamp with time zone, "cancelled_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "transfer_id" uuid NOT NULL REFERENCES "public"."branch_stock_transfers"("id") ON DELETE CASCADE,
+    "product_id" uuid NOT NULL REFERENCES "public"."products"("id") ON DELETE RESTRICT,
+    "variant_id" uuid REFERENCES "public"."product_variants"("id") ON DELETE RESTRICT,
+    "quantity" integer NOT NULL CHECK ("quantity" > 0),
+    "product_name" text,
+    "variant_name" text
+);
+
+-- stock_movements also gets "branch_id" uuid (null for stores without branches).
+
+-- Orders by branch — 20261003000000_add_order_branches.sql:
+--   orders."branch_id" uuid REFERENCES store_branches(id) ON DELETE SET NULL
+--     (the branch whose stock the order holds; null for stores without branches)
+--   orders."needs_transfer" boolean DEFAULT false NOT NULL
+--     (no single branch had every item; stock must be sent over first)
+--   orders."branch_confirmed" boolean DEFAULT true NOT NULL
+--     (false while waiting for the owner/staff to confirm the suggested branch)
+--   stores."branch_assignment_mode" text DEFAULT 'auto' NOT NULL  -- 'auto' | 'confirm'
+
+-- Money per branch — 20261004000000_add_branch_money.sql. Each of these gets
+-- "branch_id" uuid REFERENCES store_branches(id) ON DELETE SET NULL, filled by
+-- trg_fill_money_branch (order's branch for a pinned customer payment, else
+-- the default branch) so every taka sits in exactly one branch:
+--   expenses, customer_payments, store_cod_settlements,
+--   store_register_openings (unique per store, branch and day), vendor_payments
+-- Branch rollups next to the existing dashboard ones, same columns plus
+-- "branch_id", kept current by their own triggers:
+--   dashboard_branch_daily_metrics, dashboard_branch_daily_product_summary
+-- get_dashboard_summary / get_profit_loss_report take an optional p_branch_id;
+-- get_branch_comparison returns every branch side by side.
+
+-- Vendor distribution by branch — 20261005000000_add_vendor_branches.sql:
+--   vendor_orders."branch_id", vendor_settlements."branch_id" uuid REFERENCES store_branches(id) ON DELETE SET NULL
+-- The vendor RPCs are called through *_at_branch wrappers, which check the
+-- branch's stock and set app.inventory_branch so product_inventory changes
+-- (and the vendor payments written alongside) land in that one branch.
+
+-- Customers per branch — 20261006000000_add_branch_customers.sql:
+-- get_branch_customer_page(store, branch, search, offset, limit) pages the
+-- customers with at least one order in that branch.
+
+-- Sales / Received — 20261007000000_sales_received.sql: dashboard_daily_metrics
+-- and dashboard_branch_daily_metrics gain "sales_amount" numeric(12,2) and
+-- "sales_count" integer (every order not cancelled/returned). Sales and
+-- paid_revenue (Received) both use items − discount + extra charges (no
+-- delivery charge, no tax). get_sales_summary(store, start, end, prev_start,
+-- prev_end, branch) returns sales / sales_count / received / prev_sales.
+
 -- Append-only (an UPDATE trigger raises); written only by server code.
 CREATE TABLE IF NOT EXISTS "public"."store_activity_log" (
     "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
@@ -1119,6 +1214,10 @@ ALTER TABLE ONLY "public"."store_register_openings"
 
 
 
+-- 20261004000000_add_branch_money.sql drops this constraint and adds
+-- branch_id with the unique index "store_register_openings_store_branch_date_key"
+-- on (store_id, COALESCE(branch_id, zero uuid), register_date) — one opening
+-- per store, branch and day.
 ALTER TABLE ONLY "public"."store_register_openings"
     ADD CONSTRAINT "store_register_openings_store_date_unique" UNIQUE ("store_id", "register_date");
 

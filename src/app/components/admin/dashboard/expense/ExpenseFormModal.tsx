@@ -27,6 +27,7 @@ import {
 } from "./CategorySelectOptions";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useBranches } from "@/lib/context/BranchContext";
 
 type ModalMode = "create" | "edit";
 
@@ -67,6 +68,12 @@ function ExpenseFormModal({
 }: ExpenseFormModalProps) {
   const t = useTranslation();
   const [form] = Form.useForm<ExpenseFormValues>();
+  // Stores with branches: every expense belongs to exactly one branch.
+  const { enabled: branchesOn, branches, workBranchId } = useBranches();
+  const branchOptions = useMemo(
+    () => branches.filter((b) => b.isActive).map((b) => ({ value: b.id, label: b.name })),
+    [branches],
+  );
   const { icon: currencyIcon } = useUserCurrencyIcon();
   const categoryOptions = useMemo(
     () => buildCategoryOptions(categories),
@@ -86,11 +93,15 @@ function ExpenseFormModal({
         platform: editingExpense.platform || undefined,
         vendor_name: editingExpense.vendor_name || undefined,
         notes: editingExpense.notes || undefined,
+        branch_id: editingExpense.branch_id || undefined,
       });
     } else {
       form.resetFields();
+      if (branchesOn && workBranchId) form.setFieldsValue({ branch_id: workBranchId });
     }
-  }, [open, mode, editingExpense, form]);
+    // workBranchId is only the starting value; changing it mid-form shouldn't reset the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, editingExpense, form, branchesOn]);
 
   const handleOk = async () => {
     try {
@@ -154,6 +165,21 @@ function ExpenseFormModal({
     >
       <div className="px-6 pt-5 pb-2">
         <Form form={form} layout="vertical">
+          {branchesOn && (
+            <Form.Item
+              name="branch_id"
+              label={<FieldLabel>{t.branches.expenseBranch}</FieldLabel>}
+              extra={<span className="text-xs">{t.branches.expenseBranchHint}</span>}
+              rules={[{ required: true, message: t.branches.expenseBranchRequired }]}
+            >
+              <Select
+                placeholder={t.branches.pickBranchToSell}
+                options={branchOptions}
+                className="rounded-lg"
+              />
+            </Form.Item>
+          )}
+
           <Form.Item
             name="title"
             label={<FieldLabel>{t.admin.expenseTitleLabel}</FieldLabel>}

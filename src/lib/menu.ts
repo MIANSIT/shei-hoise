@@ -41,6 +41,8 @@ import {
   UserCog,
   Users,
   History,
+  ArrowLeftRight,
+  Building2,
 } from "lucide-react";
 import React from "react";
 import type { translations } from "@/lib/i18n/translations";
@@ -113,6 +115,13 @@ export const sideMenu: MenuItem[] = [
       { title: "All Products", labelKey: "menuAllProducts", href: "/dashboard/products", icon: List },
       { title: "Stock Update", labelKey: "menuStockUpdate", href: "/dashboard/products/stocks-update", icon: Edit },
       { title: "Bundles", labelKey: "menuBundles", href: "/dashboard/products/bundles", icon: Boxes },
+      {
+        title: "Stock Transfers",
+        labelKey: "menuStockTransfers",
+        href: "/dashboard/stock-transfers",
+        icon: ArrowLeftRight,
+        requiredFeature: "multi_branch",
+      },
       { title: "All Categories", labelKey: "menuAllCategories", href: "/dashboard/products/category", icon: FolderPlus },
     ],
   },
@@ -213,6 +222,14 @@ export const sideMenu: MenuItem[] = [
     icon: Settings,
     children: [
       { title: "Store Management", labelKey: "menuStoreManagement", href: "/dashboard/store-management", icon: Store },
+      {
+        title: "Branches",
+        labelKey: "menuBranches",
+        href: "/dashboard/branches",
+        icon: Building2,
+        requiredFeature: "multi_branch",
+        ownerOnly: true,
+      },
       { title: "Store SEO", labelKey: "menuStoreSeo", href: "/dashboard/store-seo", icon: Search },
       { title: "Social Platform", labelKey: "menuSocialPlatform", href: "/dashboard/social-media", icon: Share2 },
       { title: "Shipping", labelKey: "menuShipping", href: "/dashboard/shipping-Management", icon: Truck },

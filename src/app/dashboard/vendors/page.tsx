@@ -29,12 +29,18 @@ import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorS
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 type ModalMode = "create" | "edit";
 const PAGE_SIZE = 10;
 
 export default function VendorsPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
+  // Stores with branches: money collected and margin follow the header's branch.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId } = useBranches();
+  const statsBranchId = branchesOn ? selectedBranchId : null;
+  const t = useTranslation();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const router = useRouter();
@@ -99,10 +105,10 @@ export default function VendorsPage() {
   }, [fetchVendors]);
 
   const fetchOverview = useCallback(async () => {
-    if (!storeId) return;
-    const stats = await getVendorsOverviewStats(storeId);
+    if (!storeId || branchesLoading) return;
+    const stats = await getVendorsOverviewStats(storeId, statsBranchId);
     setOverview(stats);
-  }, [storeId]);
+  }, [storeId, statsBranchId, branchesLoading]);
 
   useEffect(() => {
     fetchOverview();
@@ -242,12 +248,14 @@ export default function VendorsPage() {
             icon={<PackageCheck size={18} />}
             label="Stock Out With Vendors"
             value={fmtMoney(overview?.total_stock_value ?? 0)}
+            hint={statsBranchId ? t.branches.vendorAccountWide : undefined}
             tone="amber"
           />
           <VendorStatCard
             icon={<Wallet size={18} />}
             label="Total Due To Collect"
             value={fmtMoney(overview?.total_due ?? 0)}
+            hint={statsBranchId ? t.branches.vendorAccountWide : undefined}
             tone="rose"
           />
           <VendorStatCard

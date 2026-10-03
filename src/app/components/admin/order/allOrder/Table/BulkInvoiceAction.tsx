@@ -9,6 +9,8 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
 import { buildInvoiceRequestData } from "@/lib/utils/buildInvoiceRequestData";
 import { LockOutlined } from "@ant-design/icons";
+import { useBranches } from "@/lib/context/BranchContext";
+import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
 
 type BulkLayout = "1up" | "3up" | "10up";
 
@@ -78,6 +80,8 @@ const BulkInvoiceAction: React.FC<Props> = ({
   const { notification } = App.useApp();
   const n = useLocalNum();
   const { storeData } = useInvoiceData({ storeId });
+  // Stores with branches: each invoice carries its order's branch header.
+  const { enabled: branchesOn, branches } = useBranches();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [layout, setLayout] = useState<BulkLayout>("1up");
   const [downloading, setDownloading] = useState(false);
@@ -93,15 +97,17 @@ const BulkInvoiceAction: React.FC<Props> = ({
 
     setDownloading(true);
     try {
-      const invoices = selectedOrders.map((order) =>
-        buildInvoiceRequestData(
+      const invoices = selectedOrders.map((order) => {
+        const data = buildInvoiceRequestData(
           order,
           getCustomerName(order),
           getCustomerPhone(order),
           getFullAddress(order),
           paidAmountByOrderId[order.id],
-        ),
-      );
+        );
+        const branch = branchesOn ? branches.find((b) => b.id === order.branch_id) : undefined;
+        return branch ? { ...data, store: invoiceStoreFor(storeData, branch) } : data;
+      });
 
       const res = await fetch("/api/invoices/generate-bulk", {
         method: "POST",

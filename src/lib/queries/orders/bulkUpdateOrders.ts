@@ -14,6 +14,7 @@ import {
 } from "@/lib/permissions/server";
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
+import { moveOrderStock } from "./orderStock";
 
 export interface BulkUpdateData {
   orderIds: string[];
@@ -99,12 +100,15 @@ export async function bulkUpdateOrders(
     // that can only cancel pending orders can't bulk-cancel shipped ones).
     const { data: ordersToCheck } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, status, payment_status")
+      // "*" rather than a column list so this keeps working whether or not
+      // the branch columns (20261003000000) exist yet.
+      .select("*")
       .in("id", updateData.orderIds)
       .eq("store_id", storeId);
     const changesByOrder = (ordersToCheck ?? []).map((order) => {
       const change: OrderChange = {
         fromStatus: order.status,
+        branchId: order.branch_id ?? null,
         toStatus: status,
         paymentStatusChanged: !!payment_status && payment_status !== order.payment_status,
         toPaymentStatus: payment_status,
@@ -346,224 +350,33 @@ async function handleBulkInventoryUpdates(
 async function returnBulkReservedStockToAvailable(
   orderItems: OrderItem[]
 ): Promise<void> {
-  const inventoryUpdates: Record<string, InventoryUpdate> = {};
-
-  // Group inventory updates by product/variant
-  for (const item of orderItems) {
-    const key = item.variant_id
-      ? `variant_${item.variant_id}`
-      : `product_${item.product_id}`;
-
-    if (!inventoryUpdates[key]) {
-      inventoryUpdates[key] = { available: 0, reserved: 0 };
-    }
-
-    inventoryUpdates[key].available += item.quantity;
-    inventoryUpdates[key].reserved -= item.quantity;
-  }
-
-  // Process all inventory updates
-  const updatePromises = Object.entries(inventoryUpdates).map(
-    async ([key, update]) => {
-      try {
-        if (key.startsWith("variant_")) {
-          const variantId = key.replace("variant_", "");
-
-          const { data: inventory } = await supabaseAdmin
-            .from("product_inventory")
-            .select("quantity_available, quantity_reserved")
-            .eq("variant_id", variantId)
-            .single();
-
-          if (inventory) {
-            const newAvailable =
-              (inventory.quantity_available || 0) + update.available;
-            const newReserved = Math.max(
-              0,
-              (inventory.quantity_reserved || 0) + update.reserved
-            );
-
-            await supabaseAdmin
-              .from("product_inventory")
-              .update({
-                quantity_available: newAvailable,
-                quantity_reserved: newReserved,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("variant_id", variantId);
-          }
-        } else {
-          const productId = key.replace("product_", "");
-
-          const { data: inventory } = await supabaseAdmin
-            .from("product_inventory")
-            .select("quantity_available, quantity_reserved")
-            .eq("product_id", productId)
-            .is("variant_id", null)
-            .single();
-
-          if (inventory) {
-            const newAvailable =
-              (inventory.quantity_available || 0) + update.available;
-            const newReserved = Math.max(
-              0,
-              (inventory.quantity_reserved || 0) + update.reserved
-            );
-
-            await supabaseAdmin
-              .from("product_inventory")
-              .update({
-                quantity_available: newAvailable,
-                quantity_reserved: newReserved,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("product_id", productId)
-              .is("variant_id", null);
-          }
-        }
-      } catch (error) {
-        console.error(`Error updating inventory for ${key}:`, error);
-      }
-    }
-  );
-
-  await Promise.all(updatePromises);
+  await moveBulkStock(orderItems, "release");
 }
 
 // Add stock straight back to available for multiple DELIVERED orders that
 // are being returned — see handleBulkInventoryUpdates for why this is a
 // separate path from returnBulkReservedStockToAvailable.
 async function restockBulkDeliveredReturn(orderItems: OrderItem[]): Promise<void> {
-  const availableAdditions: Record<string, number> = {};
-
-  for (const item of orderItems) {
-    const key = item.variant_id
-      ? `variant_${item.variant_id}`
-      : `product_${item.product_id}`;
-    availableAdditions[key] = (availableAdditions[key] || 0) + item.quantity;
-  }
-
-  const updatePromises = Object.entries(availableAdditions).map(
-    async ([key, addition]) => {
-      try {
-        if (key.startsWith("variant_")) {
-          const variantId = key.replace("variant_", "");
-
-          const { data: inventory } = await supabaseAdmin
-            .from("product_inventory")
-            .select("quantity_available")
-            .eq("variant_id", variantId)
-            .single();
-
-          if (inventory) {
-            await supabaseAdmin
-              .from("product_inventory")
-              .update({
-                quantity_available: (inventory.quantity_available || 0) + addition,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("variant_id", variantId);
-          }
-        } else {
-          const productId = key.replace("product_", "");
-
-          const { data: inventory } = await supabaseAdmin
-            .from("product_inventory")
-            .select("quantity_available")
-            .eq("product_id", productId)
-            .is("variant_id", null)
-            .single();
-
-          if (inventory) {
-            await supabaseAdmin
-              .from("product_inventory")
-              .update({
-                quantity_available: (inventory.quantity_available || 0) + addition,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("product_id", productId)
-              .is("variant_id", null);
-          }
-        }
-      } catch (error) {
-        console.error(`Error restocking returned item for ${key}:`, error);
-      }
-    }
-  );
-
-  await Promise.all(updatePromises);
+  await moveBulkStock(orderItems, "restock");
 }
 
 // Deduct reserved stock for multiple orders when delivered
 async function deductBulkReservedStock(orderItems: OrderItem[]): Promise<void> {
-  const reservedDeductions: Record<string, number> = {};
+  await moveBulkStock(orderItems, "finalize");
+}
 
-  // Group reserved quantity deductions by product/variant
+// Each order's stock moves in its own branch, row-locked in the database
+// (order_stock_move) — see orderStock.ts. Bundle header lines are skipped
+// there, since a bundle holds no stock of its own.
+async function moveBulkStock(
+  orderItems: OrderItem[],
+  op: "release" | "restock" | "finalize",
+): Promise<void> {
+  const byOrder = new Map<string, OrderItem[]>();
   for (const item of orderItems) {
-    const key = item.variant_id
-      ? `variant_${item.variant_id}`
-      : `product_${item.product_id}`;
-    reservedDeductions[key] = (reservedDeductions[key] || 0) + item.quantity;
+    byOrder.set(item.order_id, [...(byOrder.get(item.order_id) ?? []), item]);
   }
-
-  // Process all reserved quantity deductions
-  const updatePromises = Object.entries(reservedDeductions).map(
-    async ([key, deduction]) => {
-      try {
-        if (key.startsWith("variant_")) {
-          const variantId = key.replace("variant_", "");
-
-          const { data: inventory } = await supabaseAdmin
-            .from("product_inventory")
-            .select("quantity_reserved")
-            .eq("variant_id", variantId)
-            .single();
-
-          if (inventory) {
-            const newReserved = Math.max(
-              0,
-              (inventory.quantity_reserved || 0) - deduction
-            );
-
-            await supabaseAdmin
-              .from("product_inventory")
-              .update({
-                quantity_reserved: newReserved,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("variant_id", variantId);
-          }
-        } else {
-          const productId = key.replace("product_", "");
-
-          const { data: inventory } = await supabaseAdmin
-            .from("product_inventory")
-            .select("quantity_reserved")
-            .eq("product_id", productId)
-            .is("variant_id", null)
-            .single();
-
-          if (inventory) {
-            const newReserved = Math.max(
-              0,
-              (inventory.quantity_reserved || 0) - deduction
-            );
-
-            await supabaseAdmin
-              .from("product_inventory")
-              .update({
-                quantity_reserved: newReserved,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("product_id", productId)
-              .is("variant_id", null);
-          }
-        }
-      } catch (error) {
-        console.error(`Error deducting reserved stock for ${key}:`, error);
-      }
-    }
+  await Promise.all(
+    Array.from(byOrder.entries()).map(([orderId, items]) => moveOrderStock(orderId, items, op)),
   );
-
-  await Promise.all(updatePromises);
 }

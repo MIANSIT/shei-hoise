@@ -1,7 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { CreateVendorPaymentInput, VendorPayment } from "@/lib/types/vendor/type";
-import { authorizeForStore, logActivity } from "@/lib/permissions/server";
+import { BRANCH_SCOPE_ERROR, authorizeForStore, canUseBranch, logActivity } from "@/lib/permissions/server";
 
 // Records cash collected from a vendor with no product breakdown required —
 // a pure ledger entry against the vendor. Record Settlement stays for
@@ -17,6 +17,7 @@ export async function createVendorPayment(
 
   const auth = await authorizeForStore(input.store_id, "vendors.add");
   if (!auth.ok) throw new Error(auth.error);
+  if (input.branch_id && !canUseBranch(auth.actor, input.branch_id)) throw new Error(BRANCH_SCOPE_ERROR);
 
   const { data, error } = await supabaseAdmin
     .from("vendor_payments")
@@ -29,6 +30,8 @@ export async function createVendorPayment(
       notes: input.notes || null,
       created_by: input.created_by || auth.actor.userId,
       vendor_order_id: input.vendor_order_id || null,
+      // Stores with branches; the database falls back to the default branch.
+      ...(input.branch_id ? { branch_id: input.branch_id } : {}),
     })
     .select("*")
     .single();

@@ -90,6 +90,7 @@ export async function getProductsWithVariants({
   withCounts = true,
   productIds,
   sort = "store",
+  branchId,
 }: {
   storeId: string;
   search?: string;
@@ -105,6 +106,11 @@ export async function getProductsWithVariants({
   productIds?: string[];
   /** Order when not searching (a search is always ordered by relevance). Defaults to "store". */
   sort?: ProductListSort;
+  /**
+   * Stores with branches: report this branch's stock instead of the store
+   * total (Quick Sale and Create Order sell from the selected branch).
+   */
+  branchId?: string | null;
 }): Promise<{
   data: ProductWithVariants[];
   total: number;
@@ -294,6 +300,8 @@ export async function getProductsWithVariants({
     product_type: p.product_type ?? "simple",
   })) as ProductWithVariants[];
 
+  if (branchId) await overlayBranchStock(products, branchId);
+
   // Bundles have no product_inventory row of their own — patch in the
   // computed "how many can I sell right now" so every downstream consumer
   // (stock badges, cart quantity clamping) reads it exactly like a normal
@@ -365,4 +373,36 @@ export async function getProductsWithVariants({
     counts,
     featuredCount,
   };
+}
+
+/**
+ * Replaces each product/variant's stock with one branch's numbers (a product
+ * the branch has never held shows 0). Store-wide totals are untouched for
+ * everyone else.
+ */
+async function overlayBranchStock(products: ProductWithVariants[], branchId: string): Promise<void> {
+  const ids = products.map((p) => p.id);
+  if (ids.length === 0) return;
+  const rows: { product_id: string; variant_id: string | null; quantity_available: number; quantity_reserved: number }[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await supabase
+      .from("branch_inventory")
+      .select("product_id, variant_id, quantity_available, quantity_reserved")
+      .eq("branch_id", branchId)
+      .in("product_id", ids.slice(i, i + 200));
+    rows.push(...((data as typeof rows) ?? []));
+  }
+  const key = (productId: string, variantId: string | null) => `${productId}:${variantId ?? ""}`;
+  const byKey = new Map(rows.map((r) => [key(r.product_id, r.variant_id), r]));
+  const stockFor = (productId: string, variantId: string | null): ProductStock[] => {
+    const row = byKey.get(key(productId, variantId));
+    return [{ quantity_available: row?.quantity_available ?? 0, quantity_reserved: row?.quantity_reserved ?? 0 }];
+  };
+  for (const product of products) {
+    if (product.product_type === "bundle") continue;
+    product.product_inventory = stockFor(product.id, null);
+    for (const variant of product.product_variants) {
+      variant.product_inventory = stockFor(product.id, variant.id);
+    }
+  }
 }

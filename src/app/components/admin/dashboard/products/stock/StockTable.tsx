@@ -18,6 +18,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import type { StockSort } from "@/lib/queries/products/getProductWithStock";
 import { CaretDownOutlined } from "@ant-design/icons";
 import StockHistoryPopover from "./StockHistoryPopover";
+import { BranchStockLine } from "@/app/components/admin/branches/BranchStockLine";
 
 interface StockTableProps {
   products: ProductRow[];
@@ -400,6 +401,7 @@ const StockTable: React.FC<StockTableProps> = ({
               </SheiButton>
             )}
             </div>
+            <BranchStockLine branchStock={record.branchStock} />
           </div>
         );
       },
