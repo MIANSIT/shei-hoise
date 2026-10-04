@@ -739,6 +739,22 @@ const OrdersTable: React.FC<Props> = ({
       responsive: ["md"],
     },
     {
+      title: t.admin.ordersPastOrders,
+      key: "history",
+      render: (_, order: StoreOrder) =>
+        isWalkIn(order) ? (
+          <span className="text-xs text-muted-foreground">—</span>
+        ) : (
+          <CustomerOrderHistoryTags
+            history={historyByPhone?.[getCustomerPhone(order)]}
+            currentOrderId={order.id}
+            showEmptyHint
+          />
+        ),
+      width: 110,
+      responsive: ["lg"],
+    },
+    {
       title: t.admin.ordersColItems,
       key: "items",
       render: (_, order: StoreOrder) => (
@@ -1098,8 +1114,8 @@ const OrdersTable: React.FC<Props> = ({
         </div>
       )}
 
-      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div className="flex-1">
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="w-full">
           <OrdersFilterTabs
             orders={orders}
             totalOrders={totalOrders}
@@ -1119,7 +1135,7 @@ const OrdersTable: React.FC<Props> = ({
             value={selectedRange}
             onChange={(d) => setSelectedRange(d)}
             allowClear
-            className="w-full sm:w-80"
+            className="w-full sm:w-72"
           />
           {exportAllowed ? (
             <Dropdown
@@ -1243,13 +1259,6 @@ const OrdersTable: React.FC<Props> = ({
                       </span>
                     </Tooltip>
                   </DetailField>
-                  <DetailField label={t.admin.ordersCustomerHistory}>
-                    <CustomerOrderHistoryTags
-                      history={historyByPhone?.[getCustomerPhone(order)]}
-                      currentOrderId={order.id}
-                      showEmptyHint
-                    />
-                  </DetailField>
                   <DetailField
                     label={t.admin.orderColAddress}
                     className="col-span-2 sm:col-span-3 lg:col-span-4"
@@ -1305,6 +1314,7 @@ const OrdersTable: React.FC<Props> = ({
         scroll={{ x: 1000 }}
         responsive={true}
         renderCard={renderOrderCard}
+        cardBreakpoint="lg"
       />
       {/* Mobile pagination */}
       <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
