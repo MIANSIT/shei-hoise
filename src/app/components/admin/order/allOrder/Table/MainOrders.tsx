@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Alert, Spin, App } from "antd";
-import { ShoppingCart, Clock, PackageCheck, Zap } from "lucide-react";
+import { ShoppingCart, Clock, PackageCheck, Zap, Printer } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { StoreOrder } from "@/lib/types/order";
@@ -72,12 +72,21 @@ const MainOrders: React.FC = () => {
       : canSeeAllBranches
         ? ""
         : branches.map((b) => b.id).join(",");
+  // "Not printed": orders whose invoice hasn't been printed yet — today's
+  // batch to print, without the ones already printed.
+  const [notPrintedOnly, setNotPrintedOnly] = useUrlSync<boolean>(
+    "not_printed",
+    false,
+    (v) => v === "true",
+    0
+  );
   const branchFilters = React.useMemo<NonNullable<GetStoreOrdersOptions["filters"]>>(
     () => ({
       ...(branchIdsKey ? { branchIds: branchIdsKey.split(",") } : {}),
       ...(branchesOn && needsBranchOnly ? { needsBranch: true } : {}),
+      ...(notPrintedOnly ? { printed: "no" as const } : {}),
     }),
-    [branchIdsKey, branchesOn, needsBranchOnly]
+    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly]
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -412,6 +421,26 @@ const MainOrders: React.FC = () => {
             tone="sky"
           />
         </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={notPrintedOnly}
+          onClick={() => {
+            setNotPrintedOnly(!notPrintedOnly);
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all ${
+            notPrintedOnly
+              ? "border-indigo-500 bg-indigo-500 text-white"
+              : "border-border bg-card text-muted-foreground hover:border-indigo-400 hover:text-indigo-600"
+          }`}
+        >
+          <Printer size={13} aria-hidden="true" />
+          {t.admin.notPrintedFilter}
+        </button>
+        <span className="text-xs text-muted-foreground">{t.admin.notPrintedHint}</span>
+      </div>
 
       {branchesOn && (
         <div className="flex flex-wrap items-center gap-2">

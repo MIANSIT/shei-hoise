@@ -11,6 +11,7 @@ import { buildInvoiceRequestData } from "@/lib/utils/buildInvoiceRequestData";
 import { LockOutlined } from "@ant-design/icons";
 import { useBranches } from "@/lib/context/BranchContext";
 import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
+import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 
 type BulkLayout = "1up" | "3up" | "10up";
 
@@ -23,6 +24,8 @@ interface Props {
   getFullAddress: (order: StoreOrder) => string;
   exportAllowed: boolean;
   onClearSelection: () => void;
+  /** Called after the selected orders were marked printed, so the list can refresh. */
+  onPrinted?: () => void;
 }
 
 const LAYOUT_OPTIONS: {
@@ -76,6 +79,7 @@ const BulkInvoiceAction: React.FC<Props> = ({
   getFullAddress,
   exportAllowed,
   onClearSelection,
+  onPrinted,
 }) => {
   const { notification } = App.useApp();
   const n = useLocalNum();
@@ -139,7 +143,12 @@ const BulkInvoiceAction: React.FC<Props> = ({
         description: `${n(selectedOrders.length)} invoice(s) exported as PDF.`,
       });
       setIsModalOpen(false);
+      // These invoices are done — mark them so "Not printed" no longer shows them.
+      const printedIds = selectedOrders.map((o) => o.id);
       onClearSelection();
+      markInvoicesPrinted(printedIds).then((res) => {
+        if (res.ok && res.count > 0) onPrinted?.();
+      });
     } catch (error) {
       console.error("Bulk invoice download error:", error);
       notification.error({

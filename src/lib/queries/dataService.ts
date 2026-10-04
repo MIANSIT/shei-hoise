@@ -183,6 +183,7 @@ const getStoreOrdersImpl = async (
   if (filters?.channel) normalizedFilters.channel = filters.channel;
   if (filters?.branchIds?.length) normalizedFilters.branchIds = filters.branchIds;
   if (filters?.needsBranch) normalizedFilters.needsBranch = true;
+  if (filters?.printed) normalizedFilters.printed = filters.printed;
 
   return originalGetStoreOrders(
     storeId,

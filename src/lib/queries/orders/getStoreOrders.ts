@@ -16,6 +16,8 @@ export interface GetStoreOrdersOptions {
     branchIds?: string[];
     /** Only orders waiting for a person to confirm or fix their branch. */
     needsBranch?: boolean;
+    /** "no" = invoice not printed yet, "yes" = already printed. */
+    printed?: "yes" | "no";
   };
 }
 
@@ -105,6 +107,9 @@ export async function getStoreOrders(
     if (filters?.needsBranch) {
       query = query.or("branch_confirmed.eq.false,needs_transfer.eq.true");
     }
+    // Only added when asked for, so databases without the column still work.
+    if (filters?.printed === "no") query = query.is("invoice_printed_at", null);
+    if (filters?.printed === "yes") query = query.not("invoice_printed_at", "is", null);
 
     if (filters) {
       if (filters.status) query = query.eq("status", filters.status);
@@ -136,6 +141,9 @@ export async function getStoreOrders(
       let q = supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", storeId);
       if (column && value) q = q.eq(column, value);
       if (branchIds.length > 0) q = q.in("branch_id", branchIds);
+      // Tab counts follow the printed filter, so "Confirmed (10)" means 10 to print.
+      if (filters?.printed === "no") q = q.is("invoice_printed_at", null);
+      if (filters?.printed === "yes") q = q.not("invoice_printed_at", "is", null);
       return q;
     };
 

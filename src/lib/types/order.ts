@@ -89,6 +89,8 @@ export interface StoreOrder {
   needs_transfer?: boolean;
   /** false = branch picked automatically, waiting for a person to confirm. */
   branch_confirmed?: boolean;
+  /** When the invoice was last printed or downloaded; null = not printed yet. */
+  invoice_printed_at?: string | null;
   status: OrderStatus;
   subtotal: number;
   tax_amount: number;

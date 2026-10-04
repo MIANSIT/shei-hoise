@@ -60,6 +60,7 @@ import { usePermissions } from "@/lib/context/PermissionsContext";
 import { OrderBranchTag } from "@/app/components/admin/branches/OrderBranchTag";
 import { useBranches } from "@/lib/context/BranchContext";
 import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
+import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 
 interface Props {
   orders: StoreOrder[];
@@ -666,6 +667,13 @@ const OrdersTable: React.FC<Props> = ({
             needsTransfer={order.needs_transfer}
             confirmed={order.branch_confirmed}
           />
+          {order.invoice_printed_at && (
+            <Tooltip title={`${t.admin.printedOn} ${formatDate(order.invoice_printed_at)}`}>
+              <Tag color="purple" style={{ marginInlineEnd: 0 }}>
+                {t.admin.printedTag}
+              </Tag>
+            </Tooltip>
+          )}
           {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
             order.payment_status !== PaymentStatus.PAID && (
               <Tooltip title="Part of this order has already been paid — the rest is still outstanding">
@@ -852,6 +860,11 @@ const OrdersTable: React.FC<Props> = ({
                   needsTransfer={order.needs_transfer}
                   confirmed={order.branch_confirmed}
                 />
+                {order.invoice_printed_at && (
+                  <Tag color="purple" style={{ marginInlineEnd: 0 }}>
+                    {t.admin.printedTag}
+                  </Tag>
+                )}
                 {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
                   order.payment_status !== PaymentStatus.PAID && (
                     <Tag color="blue" style={{ marginInlineEnd: 0 }}>
@@ -1037,6 +1050,7 @@ const OrdersTable: React.FC<Props> = ({
                 getFullAddress={getFullAddress}
                 exportAllowed={exportAllowed}
                 onClearSelection={() => setSelectedRowKeys([])}
+                onPrinted={() => onRefresh?.()}
               />
               <Button
                 onClick={() => setSelectedRowKeys([])}
@@ -1334,6 +1348,12 @@ const OrdersTable: React.FC<Props> = ({
             setSelectedOrderForInvoice(null);
           }}
           store={invoiceStoreFor(storeData, orderBranch(selectedOrderForInvoice.branch_id))}
+          onPrinted={() => {
+            const printedId = selectedOrderForInvoice.id;
+            markInvoicesPrinted([printedId]).then((res) => {
+              if (res.ok && res.count > 0) onRefresh?.();
+            });
+          }}
           orderId={selectedOrderForInvoice.order_number}
           customer={{
             name: getCustomerName(selectedOrderForInvoice),
