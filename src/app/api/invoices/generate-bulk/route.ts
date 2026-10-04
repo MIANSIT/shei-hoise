@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import { InvoicePdfData, InvoicePdfStore, registerBengaliFont } from "@/lib/utils/invoicePdfHelpers";
 import { drawFullInvoice, drawCompactInvoice, drawMiniSlip } from "@/lib/utils/invoicePdfLayouts";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontServer } from "@/lib/pdf/bengaliFontServer";
 
 type BulkLayout = "1up" | "3up" | "10up";
 
@@ -34,6 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     const pdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, PAGE_HEIGHT], compress: true });
+    enableBengaliText(pdf, loadBengaliFontServer());
     const bengaliLoaded = registerBengaliFont(pdf);
     pdf.setFont("helvetica");
 

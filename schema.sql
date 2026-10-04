@@ -530,6 +530,10 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 -- delivery charge, no tax). get_sales_summary(store, start, end, prev_start,
 -- prev_end, branch) returns sales / sales_count / received / prev_sales.
 
+-- Invoice printed — 20261009000000_invoice_printed.sql:
+--   orders."invoice_printed_at" timestamptz (null = not printed yet), set by
+--   markInvoicesPrinted() on print / PDF / bulk invoice download.
+
 -- Append-only (an UPDATE trigger raises); written only by server code.
 CREATE TABLE IF NOT EXISTS "public"."store_activity_log" (
     "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,

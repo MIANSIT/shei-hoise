@@ -60,6 +60,7 @@ import { usePermissions } from "@/lib/context/PermissionsContext";
 import { OrderBranchTag } from "@/app/components/admin/branches/OrderBranchTag";
 import { useBranches } from "@/lib/context/BranchContext";
 import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
+import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 
 interface Props {
   orders: StoreOrder[];
@@ -576,6 +577,20 @@ const OrdersTable: React.FC<Props> = ({
     );
   };
 
+  // Quick Sale walk-ins have no real name/phone — show one plain "Walk-in".
+  const isWalkIn = (order: StoreOrder) => {
+    const phone = getCustomerPhone(order);
+    return order.channel === "pos" && (!phone || phone === "N/A" || phone === "No phone");
+  };
+
+  /** "Cat Food 1.3kg x2 +1 more" — what's in the order at a glance. */
+  const itemsSummary = (order: StoreOrder) => {
+    const items = order.order_items ?? [];
+    if (items.length === 0) return "—";
+    const first = `${items[0].product_name} x${items[0].quantity}`;
+    return items.length > 1 ? `${first} ${t.admin.ordersMoreItems.replace("{n}", String(items.length - 1))}` : first;
+  };
+
   const getCustomerInitial = (order: StoreOrder) => {
     const name = getCustomerName(order);
     return name.charAt(0).toUpperCase();
@@ -652,13 +667,17 @@ const OrdersTable: React.FC<Props> = ({
                 copyOrderNumber(orderNumber);
               }}
             >
-              <span className="truncate">#{orderNumber}</span>
+              <span className="truncate font-semibold">#{orderNumber}</span>
               <CopyOutlined className="opacity-0 group-hover:opacity-100 text-xs shrink-0" />
             </span>
           </Tooltip>
+          <span className="text-[11px] text-muted-foreground">
+            {formatDate(order.order_date || order.created_at)}
+          </span>
+          <div className="flex flex-wrap gap-1">
           {order.channel === "pos" && (
             <Tag color="gold" style={{ marginInlineEnd: 0 }}>
-              POS
+              {t.admin.menuQuickSale}
             </Tag>
           )}
           <OrderBranchTag
@@ -666,6 +685,13 @@ const OrdersTable: React.FC<Props> = ({
             needsTransfer={order.needs_transfer}
             confirmed={order.branch_confirmed}
           />
+          {order.invoice_printed_at && (
+            <Tooltip title={`${t.admin.printedOn} ${formatDate(order.invoice_printed_at)}`}>
+              <Tag color="purple" style={{ marginInlineEnd: 0 }}>
+                {t.admin.printedTag}
+              </Tag>
+            </Tooltip>
+          )}
           {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
             order.payment_status !== PaymentStatus.PAID && (
               <Tooltip title="Part of this order has already been paid — the rest is still outstanding">
@@ -674,70 +700,55 @@ const OrdersTable: React.FC<Props> = ({
                 </Tag>
               </Tooltip>
             )}
+          </div>
         </div>
       ),
-      width: 120,
+      width: 190,
       fixed: "left" as const,
     },
     {
       title: t.admin.orderColCustomer,
       key: "customer",
-      render: (_, order: StoreOrder) => (
-        <Space size="small">
-          <Avatar
-            size="small"
-            style={{
-              backgroundColor: "#1890ff",
-              color: "#fff",
-              fontSize: "12px",
-              fontWeight: "bold",
-            }}
-          >
-            {getCustomerInitial(order)}
-          </Avatar>
-          <div className="min-w-0">
-            <div className="font-medium text-sm truncate max-w-25 lg:max-w-37.5">
-              {getCustomerName(order)}
+      render: (_, order: StoreOrder) =>
+        isWalkIn(order) ? (
+          <span className="text-sm text-muted-foreground">{t.admin.ordersWalkIn}</span>
+        ) : (
+          <Space size="small">
+            <Avatar
+              size="small"
+              style={{
+                backgroundColor: "#1890ff",
+                color: "#fff",
+                fontSize: "12px",
+                fontWeight: "bold",
+              }}
+            >
+              {getCustomerInitial(order)}
+            </Avatar>
+            <div className="min-w-0">
+              <div className="font-medium text-sm truncate max-w-25 lg:max-w-37.5">
+                {getCustomerName(order)}
+              </div>
+              <div className="text-xs text-muted-foreground truncate max-w-25 lg:max-w-37.5">
+                {n(getCustomerPhone(order))}
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground truncate max-w-25 lg:max-w-37.5">
-              {n(getCustomerPhone(order))}
-            </div>
-          </div>
-        </Space>
-      ),
-      width: 170,
+          </Space>
+        ),
+      width: 180,
       responsive: ["md"],
     },
     {
-      title: "Channel",
-      key: "channel",
-      render: (_, order: StoreOrder) =>
-        order.channel === "pos" ? (
-          <Tag color="gold" style={{ marginInlineEnd: 0 }}>
-            Quick Sale
-          </Tag>
-        ) : (
-          <Tag color="blue" style={{ marginInlineEnd: 0 }}>
-            Online
-          </Tag>
-        ),
-      width: 100,
-      responsive: ["sm"],
-    },
-    {
-      title: "History",
-      key: "history",
-      render: (_, order: StoreOrder) => {
-        const phone = getCustomerPhone(order);
-        return (
-          <CustomerOrderHistoryTags
-            history={historyByPhone?.[phone]}
-            currentOrderId={order.id}
-            showEmptyHint
-          />
-        );
-      },
-      width: 90,
+      title: t.admin.ordersColItems,
+      key: "items",
+      render: (_, order: StoreOrder) => (
+        <Tooltip
+          title={(order.order_items ?? []).map((i) => `${i.product_name} x${i.quantity}`).join(", ")}
+        >
+          <span className="text-sm text-foreground line-clamp-2 max-w-60">{itemsSummary(order)}</span>
+        </Tooltip>
+      ),
+      width: 220,
       responsive: ["lg"],
     },
     {
@@ -748,53 +759,51 @@ const OrdersTable: React.FC<Props> = ({
           <div className="font-semibold text-foreground text-sm">
             {formatCurrency(order.total_amount, order.currency)}
           </div>
-          <div className="text-xs text-muted-foreground">
-            Ship: {formatCurrency(order.shipping_fee, order.currency)}
-          </div>
-          {order.tax_amount != null && order.tax_amount > 0 && (
-            <div className="text-xs text-muted-foreground">
-              Tax: {formatCurrency(order.tax_amount, order.currency)}
+          {order.shipping_fee > 0 && (
+            <div className="text-[11px] text-muted-foreground">
+              {t.admin.ordersInclDelivery} {formatCurrency(order.shipping_fee, order.currency)}
             </div>
           )}
+          {order.payment_status !== PaymentStatus.PAID &&
+            order.status !== OrderStatus.CANCELLED &&
+            order.status !== OrderStatus.RETURNED && (
+              <div className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                {t.admin.ordersDue}{" "}
+                {formatCurrency(
+                  Math.max(order.total_amount - (paidAmountByOrderId[order.id] ?? 0), 0),
+                  order.currency,
+                )}
+              </div>
+            )}
         </div>
       ),
-      width: 100,
+      width: 130,
       align: "right" as const,
       responsive: ["sm"],
     },
     {
       title: t.admin.orderColStatus,
-      dataIndex: "status",
       key: "status",
-      render: (status: OrderStatus) => (
-        <StatusTag status={status} size="small" />
+      render: (_, order: StoreOrder) => (
+        <div className="flex flex-col items-start gap-1">
+          <StatusTag status={order.status as OrderStatus} size="small" />
+          <StatusTag status={order.payment_status as PaymentStatus} size="small" />
+        </div>
       ),
-      width: 100,
-      responsive: ["sm"],
-    },
-    {
-      title: t.admin.orderColPayment,
-      dataIndex: "payment_status",
-      key: "payment_status",
-      render: (status: PaymentStatus) => (
-        <StatusTag status={status} size="small" />
-      ),
-      width: 100,
-      responsive: ["md"],
-    },
-    {
-      title: "Invoice",
-      key: "invoice",
-      render: (_, order: StoreOrder) => renderInvoiceCell(order),
-      width: 96,
-      align: "center" as const,
+      width: 120,
       responsive: ["sm"],
     },
     {
       title: t.admin.orderColActions,
       key: "actions",
-      render: (_, order: StoreOrder) => renderActionButtons(order),
-      width: 76,
+      render: (_, order: StoreOrder) => (
+        <div className="flex items-center justify-center gap-1">
+          {renderInvoiceCell(order)}
+          <div className="w-px h-5 bg-border mx-0.5" />
+          {renderActionButtons(order)}
+        </div>
+      ),
+      width: 170,
       align: "center" as const,
       responsive: ["sm"],
     },
@@ -852,6 +861,11 @@ const OrdersTable: React.FC<Props> = ({
                   needsTransfer={order.needs_transfer}
                   confirmed={order.branch_confirmed}
                 />
+                {order.invoice_printed_at && (
+                  <Tag color="purple" style={{ marginInlineEnd: 0 }}>
+                    {t.admin.printedTag}
+                  </Tag>
+                )}
                 {(paidAmountByOrderId[order.id] ?? 0) > 0 &&
                   order.payment_status !== PaymentStatus.PAID && (
                     <Tag color="blue" style={{ marginInlineEnd: 0 }}>
@@ -895,12 +909,14 @@ const OrdersTable: React.FC<Props> = ({
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm text-foreground truncate">
-                {getCustomerName(order)}
+                {isWalkIn(order) ? t.admin.ordersWalkIn : getCustomerName(order)}
               </div>
-
-              <div className="text-xs text-muted-foreground truncate">
-                {n(getCustomerPhone(order))}
-              </div>
+              {!isWalkIn(order) && (
+                <div className="text-xs text-muted-foreground truncate">
+                  {n(getCustomerPhone(order))}
+                </div>
+              )}
+              <div className="text-xs text-foreground/80 truncate mt-0.5">{itemsSummary(order)}</div>
             </div>
           </div>
 
@@ -1006,12 +1022,12 @@ const OrdersTable: React.FC<Props> = ({
   };
 
   return (
-    <div>
-      {/* Bulk Actions Toolbar */}
+    <div className={selectedRowKeys.length > 0 ? "pb-40 sm:pb-24" : undefined}>
+      {/* Bulk actions — float at the bottom while orders are ticked. */}
       {selectedRowKeys.length > 0 && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-4xl rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-card/95 backdrop-blur shadow-2xl p-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="text-sm font-medium text-blue-800 text-center sm:text-left">
+            <div className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 text-center sm:text-left whitespace-nowrap">
               {n(selectedRowKeys.length)} {t.admin.orderSelected}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -1037,6 +1053,7 @@ const OrdersTable: React.FC<Props> = ({
                 getFullAddress={getFullAddress}
                 exportAllowed={exportAllowed}
                 onClearSelection={() => setSelectedRowKeys([])}
+                onPrinted={() => onRefresh?.()}
               />
               <Button
                 onClick={() => setSelectedRowKeys([])}
@@ -1226,6 +1243,13 @@ const OrdersTable: React.FC<Props> = ({
                       </span>
                     </Tooltip>
                   </DetailField>
+                  <DetailField label={t.admin.ordersCustomerHistory}>
+                    <CustomerOrderHistoryTags
+                      history={historyByPhone?.[getCustomerPhone(order)]}
+                      currentOrderId={order.id}
+                      showEmptyHint
+                    />
+                  </DetailField>
                   <DetailField
                     label={t.admin.orderColAddress}
                     className="col-span-2 sm:col-span-3 lg:col-span-4"
@@ -1334,6 +1358,12 @@ const OrdersTable: React.FC<Props> = ({
             setSelectedOrderForInvoice(null);
           }}
           store={invoiceStoreFor(storeData, orderBranch(selectedOrderForInvoice.branch_id))}
+          onPrinted={() => {
+            const printedId = selectedOrderForInvoice.id;
+            markInvoicesPrinted([printedId]).then((res) => {
+              if (res.ok && res.count > 0) onRefresh?.();
+            });
+          }}
           orderId={selectedOrderForInvoice.order_number}
           customer={{
             name: getCustomerName(selectedOrderForInvoice),

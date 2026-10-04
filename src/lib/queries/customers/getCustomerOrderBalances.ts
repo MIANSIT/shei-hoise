@@ -19,28 +19,30 @@ export async function getCustomerOrderBalances(
   branchId?: string | null,
   /** Read branch columns (stores with branches). */
   withBranches = false,
+  /** Customer Dues page: leave out online COD orders (the courier's to hand over, not a customer due). */
+  excludeCourierCod = false,
 ): Promise<CustomerOrderBalance[]> {
   if (!storeId || !customerId) return [];
+
+  let ordersQuery = supabase
+    .from("orders")
+    .select(withBranches ? "id, order_number, created_at, total_amount, branch_id" : "id, order_number, created_at, total_amount")
+    .eq("store_id", storeId)
+    .eq("customer_id", customerId)
+    .neq("payment_status", PaymentStatus.PAID)
+    .neq("payment_status", PaymentStatus.REFUNDED)
+    .neq("status", OrderStatus.CANCELLED)
+    .neq("status", OrderStatus.RETURNED);
+  if (excludeCourierCod) {
+    ordersQuery = ordersQuery.or("payment_method.is.null,payment_method.neq.cod,channel.eq.pos");
+  }
 
   const [ordersRes, paymentsRes] = await Promise.all([
     // Excludes already-`paid` orders — an order marked paid outside the due
     // system (e.g. a normal order, or the classic manual "mark as paid"
     // dropdown) has no customer_payments rows at all, so the ledger alone
     // would otherwise make it look 100% unpaid instead of not due.
-    supabase
-      .from("orders")
-      .select(withBranches ? "id, order_number, created_at, total_amount, branch_id" : "id, order_number, created_at, total_amount")
-      .eq("store_id", storeId)
-      .eq("customer_id", customerId)
-      .neq("payment_status", PaymentStatus.PAID)
-      // A returned order that was auto-refunded shouldn't reappear as an
-      // outstanding due once its refund row pushes due_remaining back up.
-      .neq("payment_status", PaymentStatus.REFUNDED)
-      // A cancelled or returned order was never fulfilled, so it isn't a
-      // debt the customer owes — see getCustomersWithDue.ts for the same fix.
-      .neq("status", OrderStatus.CANCELLED)
-      .neq("status", OrderStatus.RETURNED)
-      .order("created_at", { ascending: true }),
+    ordersQuery.order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")
       .select(withBranches ? "amount, order_id, branch_id" : "amount, order_id")

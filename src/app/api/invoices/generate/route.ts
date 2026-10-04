@@ -12,6 +12,8 @@ import {
   hasBengali,
   registerBengaliFont,
 } from "@/lib/utils/invoicePdfHelpers";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontServer } from "@/lib/pdf/bengaliFontServer";
 
 interface InvoiceRequest {
   store: Store;
@@ -145,6 +147,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     format: [pageWidth, dynamicHeight],
     compress: true,
   });
+  enableBengaliText(pdf, loadBengaliFontServer());
 
   // Load Bengali font once; use it only for text that actually contains Bengali
   const bengaliLoaded = registerBengaliFont(pdf);
@@ -461,6 +464,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     format: [80, 297],
     compress: true,
   });
+  enableBengaliText(pdf, loadBengaliFontServer());
 
   const bengaliLoaded = registerBengaliFont(pdf);
 

@@ -11,6 +11,8 @@
 import { JsPDFInstance, loadImageBase64, registerBengaliFont, setTextFont } from "./pdfText";
 import { drawBarcodeVector } from "./pdfBarcode";
 import { encodeCode128B } from "./barcode128";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 export interface BarcodeLabelData {
   storeName: string;
@@ -101,6 +103,7 @@ export async function generateBarcodeLabelPdf(data: BarcodeLabelData): Promise<B
   // turning the intended landscape sticker into a 32×50mm portrait page with
   // every element positioned past the actual (now much narrower) right edge.
   const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, PAGE_HEIGHT_MM], orientation: "landscape" });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFont(doc);
   drawLabel(doc, data, bengaliLoaded, logo);
 
@@ -132,6 +135,7 @@ export async function generateBulkBarcodeLabelPdf(
   // comment on the same line; addPage() has the identical swap behavior for
   // every page after the first.
   const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, PAGE_HEIGHT_MM], orientation: "landscape" });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFont(doc);
 
   items.forEach((item, i) => {

@@ -44,6 +44,7 @@ import {
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getCourierStatusStyle, prettifyCourierStatus } from "@/lib/utils/courierStatusDisplay";
 import type { StoreOrder } from "@/lib/types/order";
+import { buildShipmentItemDescription } from "@/lib/utils/shipmentItemDescription";
 
 interface CourierShipmentPanelProps {
   order: StoreOrder;
@@ -159,7 +160,7 @@ export default function CourierShipmentPanel({
             recipientAddress: address.trim(),
             itemWeight: Number(weight),
             itemQuantity: totalItemQuantity,
-            itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
+            itemDescription: buildShipmentItemDescription(order.order_items),
             specialInstruction: instruction.trim() || undefined,
             amountToCollect: Number(amountToCollect),
           })
@@ -170,7 +171,7 @@ export default function CourierShipmentPanel({
               recipientAddress: address.trim(),
               codAmount: Number(amountToCollect),
               weight: Number(weight),
-              itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
+              itemDescription: buildShipmentItemDescription(order.order_items),
             })
           : await createSteadfastShipment(selectedAccountId, order.id, order.order_number, {
               recipientName: name.trim(),
@@ -178,7 +179,7 @@ export default function CourierShipmentPanel({
               recipientAddress: address.trim(),
               codAmount: Number(amountToCollect),
               note: instruction.trim() || undefined,
-              itemDescription: order.order_items?.map((i) => i.product_name).join(", "),
+              itemDescription: buildShipmentItemDescription(order.order_items),
             });
 
       if (!result.success || !result.consignmentId || !result.orderStatus) {

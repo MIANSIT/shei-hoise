@@ -47,6 +47,10 @@ export async function getCustomersWithDue(
       // customer's due total forever.
       .neq("status", OrderStatus.CANCELLED)
       .neq("status", OrderStatus.RETURNED)
+      // Online COD isn't a customer due — the courier collects it and hands it
+      // over in a COD settlement (counted under COD pending), so including it
+      // here showed the same money twice.
+      .or("payment_method.is.null,payment_method.neq.cod,channel.eq.pos")
       .order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")
