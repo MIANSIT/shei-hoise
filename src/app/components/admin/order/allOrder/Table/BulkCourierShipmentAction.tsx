@@ -14,6 +14,7 @@ import { getDeliveryCouriers } from "@/lib/queries/deliveryCouriers/getDeliveryC
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { buildShipmentItemDescription } from "@/lib/utils/shipmentItemDescription";
 
 interface Props {
   selectedOrders: StoreOrder[];
@@ -210,7 +211,7 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
                 recipientAddress,
                 itemWeight,
                 itemQuantity,
-                itemDescription: order.order_items?.map((it) => it.product_name).join(", "),
+                itemDescription: buildShipmentItemDescription(order.order_items),
                 amountToCollect: codAmount,
               })
             : order.courier === "paperfly"
@@ -220,14 +221,14 @@ const BulkCourierShipmentAction: React.FC<Props> = ({
                 recipientAddress,
                 codAmount,
                 weight: itemWeight,
-                itemDescription: order.order_items?.map((it) => it.product_name).join(", "),
+                itemDescription: buildShipmentItemDescription(order.order_items),
               })
             : await createSteadfastShipment(steadfastAccountId!, order.id, order.order_number, {
                 recipientName,
                 recipientPhone,
                 recipientAddress,
                 codAmount,
-                itemDescription: order.order_items?.map((it) => it.product_name).join(", "),
+                itemDescription: buildShipmentItemDescription(order.order_items),
               });
 
         outcomes.push(
