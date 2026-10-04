@@ -1,15 +1,22 @@
 name: Deploy to VPS
 
-# On push to main: SSH to the VPS, pull the latest code, stop the currently
-# running app container, then rebuild and start it with the new image.
+# Two stages, deliberately split:
 #
-# This only touches the `app` service — db, auth, storage, kong, caddy, and
-# docker/.env.prod are never touched by this workflow. See
+#   build   — compiles the Next app into a Docker image ON THE RUNNER and pushes
+#             it to GHCR. The runner has far more RAM than the VPS.
+#   deploy  — SSHes to the VPS, pulls that prebuilt image, and restarts `app`.
+#             Nothing is compiled on the VPS.
+#
+# This replaces the previous single-job workflow that ran
+# `docker compose up -d --build app` on the VPS itself. That build exhausted
+# the box on 4 Oct 2026 — it ran 436s, failed, and left the machine wedged so
+# badly that later runs could not even open an SSH connection. Building here
+# removes that failure mode entirely, and `docker-compose.yml` was already
+# written for it: `image: ${APP_IMAGE}` exists for exactly this purpose.
+#
+# Only the `app` service is touched. db, auth, storage, kong, caddy and
+# docker/.env.prod are never modified by this workflow — see
 # docker/VPS_DEPLOYMENT.md for those manual, one-time steps.
-#
-# Note: there's a brief window of downtime between stopping the old
-# container and the new one becoming healthy — this is a simple
-# stop-then-start deploy, not a zero-downtime blue/green swap.
 
 on:
   push:
@@ -21,9 +28,90 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    # The build args below are secrets scoped to this environment, so the job
+    # needs the environment even though it never touches the VPS.
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # A missing secret becomes an EMPTY build arg, which does not fail the
+      # build — it produces an image that dies at runtime, or a Next build that
+      # fails hundreds of lines later with an unrelated-looking error. That
+      # exact bug (SERVICE_ROLE_KEY unset at build time) already cost a day, so
+      # fail loudly and immediately instead.
+      - name: Check required secrets are present
+        env:
+          SUPABASE_PUBLIC_URL: ${{ secrets.SUPABASE_PUBLIC_URL }}
+          ANON_KEY: ${{ secrets.ANON_KEY }}
+          SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          missing=""
+          for name in SUPABASE_PUBLIC_URL ANON_KEY SERVICE_ROLE_KEY SITE_URL; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "✗ Missing repository/environment secrets:$missing"
+            echo "  Add them under Settings → Environments → production."
+            echo "  The values are the same ones already in docker/.env.prod on the VPS."
+            exit 1
+          fi
+          echo "✓ All four build secrets are set"
+
+      # GHCR rejects uppercase paths and this org is "MIANSIT", so the owner
+      # has to be lowercased before it can be used as an image reference.
+      - name: Compute image reference
+        id: image
+        run: echo "ref=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/app" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build args mirror docker-compose.yml's `build.args` exactly. Note the
+      # name change on the last one: the env file calls it SERVICE_ROLE_KEY,
+      # the app reads process.env.SUPABASE_SERVICE_ROLE_KEY.
+      #
+      # SERVICE_ROLE_KEY is consumed only by the `builder` stage; the final
+      # `runner` stage starts from a clean base and copies artifacts, so the
+      # key is not present in any layer that gets pushed.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.ref }}:${{ github.sha }}
+            ${{ steps.image.outputs.ref }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_PUBLIC_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.SITE_URL }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SERVICE_ROLE_KEY }}
+
   deploy:
+    name: Deploy to VPS
+    needs: build
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: read
     steps:
       # The current VPS authenticates by password, not key, so this uses
       # sshpass rather than an identity file. The password is read from the
@@ -34,41 +122,73 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq sshpass
           mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          if ! ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "✗ Could not reach ${{ secrets.VPS_HOST }} on port 22."
+            echo "  The host is unreachable or SSH is down — this is a VPS problem,"
+            echo "  not a build problem. Recover the box from your provider's console."
+            exit 1
+          fi
+          test -s ~/.ssh/known_hosts
 
-      - name: Pull latest code and redeploy app
+      # The remote script is fed over stdin rather than passed as an ssh
+      # argument, so the registry token never lands in the VPS process list.
+      # printf %q quotes each value safely for re-evaluation by the remote shell.
+      - name: Pull image and restart app
         env:
           SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_REF: ${{ needs.build.outputs.image }}:${{ github.sha }}
+          DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+          USE_PROXY: ${{ vars.USE_PROXY }}
         run: |
-          sshpass -e ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
-            set -e
-            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+          {
+            printf 'export APP_IMAGE=%q\n'   "$IMAGE_REF"
+            printf 'export GHCR_USER=%q\n'   "$GHCR_USER"
+            printf 'export GHCR_TOKEN=%q\n'  "$GHCR_TOKEN"
+            printf 'export DEPLOY_PATH=%q\n' "$DEPLOY_PATH"
+            printf 'export USE_PROXY=%q\n'   "$USE_PROXY"
+            cat <<'REMOTE'
+          set -e
+          cd "$DEPLOY_PATH"
 
-            COMPOSE_FILES="-f docker/docker-compose.yml"
-            [ "${{ vars.USE_PROXY }}" = "true" ] && COMPOSE_FILES="$COMPOSE_FILES -f docker/docker-compose.proxy.yml"
+          COMPOSE_FILES="-f docker/docker-compose.yml"
+          [ "$USE_PROXY" = "true" ] && COMPOSE_FILES="$COMPOSE_FILES -f docker/docker-compose.proxy.yml"
+          COMPOSE="docker compose $COMPOSE_FILES --env-file docker/.env.prod"
 
-            echo "==> Pulling latest main"
-            git pull origin main
+          echo "==> Pulling latest main (compose files, Caddy config)"
+          git pull origin main
 
-            echo "==> Stopping current app container"
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod stop app
+          echo "==> Logging in to GHCR"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            echo "==> Building and starting new app container"
-            docker compose $COMPOSE_FILES --env-file docker/.env.prod up -d --build app
+          echo "==> Pulling $APP_IMAGE"
+          $COMPOSE pull app
 
-            echo "==> Waiting for app to become healthy"
-            attempt=0
-            max_attempts=30
-            until [ "$(docker inspect -f "{{.State.Health.Status}}" shei-hoise-app 2>/dev/null)" = "healthy" ]; do
-              attempt=$((attempt+1))
-              if [ $attempt -ge $max_attempts ]; then
-                echo "✗ App did not become healthy within 60 seconds"
-                docker logs shei-hoise-app | tail -50
-                exit 1
-              fi
-              sleep 2
-            done
+          # --no-build is load-bearing: docker-compose.yml still carries a
+          # `build:` section for local development, and without this flag
+          # compose would silently fall back to building on the VPS — the
+          # exact thing this workflow exists to avoid.
+          echo "==> Restarting app on the new image"
+          $COMPOSE up -d --no-build app
 
-            echo "✓ Deployed successfully"
-          '
+          echo "==> Waiting for app to become healthy"
+          attempt=0
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' shei-hoise-app 2>/dev/null)" = "healthy" ]; do
+            attempt=$((attempt+1))
+            if [ "$attempt" -ge 30 ]; then
+              echo "✗ App did not become healthy within 60 seconds"
+              docker logs shei-hoise-app 2>&1 | tail -50
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "==> Reclaiming disk from old images"
+          docker image prune -af --filter "until=168h" || true
+          docker logout ghcr.io || true
+
+          echo "✓ Deployed successfully"
+          REMOTE
+          } | sshpass -e ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password \
+                "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'bash -s'

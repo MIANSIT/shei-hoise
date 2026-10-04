@@ -169,8 +169,8 @@ const OrdersFilterTabs: React.FC<Props> = ({
         type="card"
       />
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-4 flex-wrap">
-        <div className="w-full md:w-1/2">
+      <div className="flex flex-col gap-3 mt-3">
+        <div className="w-full">
           <Space.Compact className="w-full">
             <Input
               placeholder={t.admin.searchByOrderNum}
@@ -191,10 +191,9 @@ const OrdersFilterTabs: React.FC<Props> = ({
           </Space.Compact>
         </div>
 
-        {/* Filter Buttons / MobileFilter */}
-        <div className="w-full md:w-auto">
-          {/* Desktop: button-style filters */}
-          <div className="hidden md:flex flex-wrap gap-2">
+        {/* Status buttons: one row that scrolls sideways when space is short. */}
+        <div className="w-full">
+          <div className="hidden md:flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:thin]">
             {statuses.map((status) => {
               const isActive = activeStatus === status;
               return (
@@ -202,11 +201,11 @@ const OrdersFilterTabs: React.FC<Props> = ({
                   key={status}
                   type="button"
                   onClick={() => handleStatusChange(status)}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium flex items-center gap-2 transition-all duration-200 ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium flex items-center gap-2 transition-all duration-200 ${
                     statusColors[status]
                   } ${
                     isActive
-                      ? "ring-2 ring-offset-1 ring-blue-500 scale-105"
+                      ? "ring-2 ring-offset-1 ring-blue-500"
                       : "hover:scale-105 hover:shadow-sm"
                   }`}
                 >

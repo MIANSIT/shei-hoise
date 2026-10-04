@@ -78,9 +78,9 @@ must change:
   the `${POSTGRES_PORT}:5432` mapping in `docker-compose.yml`'s `db` service,
   or bind it to `127.0.0.1` — use an SSH tunnel for any ad-hoc `psql`/dump
   access instead).
-- **Fill in for full functionality** if not already real: `GMAIL_*`,
-  `UPSTASH_REDIS_REST_URL/TOKEN`. Real per-store Pathao/Meta credentials are
-  unaffected by the move — they live in the database being cloned.
+- **Fill in for full functionality** if not already real: `GMAIL_*`. Real
+  per-store Pathao/Meta credentials are unaffected by the move — they live in
+  the database being cloned.
 
 ## 5. Dump the local database
 

@@ -347,7 +347,6 @@ pnpm dev
 | `xlsx`                    | Excel export             |
 | `framer-motion`           | Animations               |
 | `@dnd-kit/*`              | Drag & drop              |
-| `@upstash/redis`          | Caching (optional)       |
 
 ---
 

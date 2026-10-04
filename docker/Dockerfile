@@ -1,14 +1,18 @@
 # syntax=docker/dockerfile:1
 # Build context is the repo root: `docker compose -f docker/docker-compose.yml build app`
 
-FROM node:20-alpine AS deps
+# Node 24, not 20: @zxing/library declares engines.node >=24.0.0 and
+# sanitize-html >=22.12.0. Local dev runs a newer Node and builds fine, so a
+# node:20 image fails only here — keep this in step with .nvmrc.
+
+FROM node:24-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 RUN corepack enable && corepack prepare pnpm@10.24.0 --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.24.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,15 +21,11 @@ COPY . .
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SITE_URL
-ARG UPSTASH_REDIS_REST_URL
-ARG UPSTASH_REDIS_REST_TOKEN
 ARG SUPABASE_SERVICE_ROLE_KEY
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
-    UPSTASH_REDIS_REST_URL=$UPSTASH_REDIS_REST_URL \
-    UPSTASH_REDIS_REST_TOKEN=$UPSTASH_REDIS_REST_TOKEN \
     SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY \
     HUSKY=0 \
     NEXT_SKIP_VALIDATE_SERVER_COMPONENT_ROUTES=1
@@ -39,7 +39,7 @@ RUN echo "Build environment:" && \
 RUN test -f /app/.next/standalone/server.js || \
     (echo "ERROR: .next/standalone/server.js missing — build did not produce standalone output" && exit 1)
 
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup -g 1001 nodejs && adduser -u 1001 -G nodejs -s /bin/sh -D nextjs

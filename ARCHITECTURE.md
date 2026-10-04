@@ -60,7 +60,6 @@ Every one of these is a separate Docker container, defined in `docker/docker-com
 Next.js bakes every `NEXT_PUBLIC_*` environment variable into the compiled JavaScript **at `docker build` time**, not at container startup. So:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL` are passed as Docker **build arguments** (see `docker-compose.yml`'s `app.build.args`), sourced from the same `docker/.env` as everything else.
-- A couple of *non-public* env vars (`UPSTASH_REDIS_REST_URL`/`TOKEN`) also had to become build args, because `src/lib/redis/redis.ts` constructs its client the moment the module is imported, not lazily — so even a build-time static analysis pass needs a real-looking value.
 - Everything else (`SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `GMAIL_*`, `ADMIN_API_URL`, Pathao/Meta secrets) is read lazily inside request handlers, so those are supplied at container **runtime** via `environment:` — changing them just needs a container restart, not a rebuild.
 
 Practical consequence: moving from local → VPS means rebuilding the `app` image (because the Kong URL and keys differ), but the database, auth, and storage containers need no rebuild at all — just a fresh `docker/.env`.
