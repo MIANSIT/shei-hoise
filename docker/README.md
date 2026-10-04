@@ -44,8 +44,8 @@ before starting the other.
    ```
    ./docker/scripts/generate-keys-for.sh docker/.env
    ```
-   Fill in the remaining app-specific values (`GMAIL_*`, `UPSTASH_*`,
-   `ENCRYPTION_KEY`, etc.) yourself — same values as your existing
+   Fill in the remaining app-specific values (`GMAIL_*`, `ENCRYPTION_KEY`,
+   etc.) yourself — same values as your existing
    `.env.local`, or dev placeholders if you don't need those integrations
    working locally yet.
 3. Bring the whole stack up in the correct order:
@@ -122,7 +122,7 @@ the DB init scripts stay identical:
 | Fresh `JWT_SECRET`/`ANON_KEY`/`SERVICE_ROLE_KEY`/`POSTGRES_PASSWORD`/`DASHBOARD_PASSWORD` (never reuse the local-rehearsal prod secrets either) | `docker-compose.yml` (services, images, healthchecks, dependency graph) |
 | `SITE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` → real domain instead of `localhost`; new `SITE_DOMAIN`/`API_DOMAIN` for Caddy | `volumes/api/kong.yml`, `kong-entrypoint.sh` |
 | `db`'s port binding tightened to `127.0.0.1:5432:5432` or removed (use an SSH tunnel for migrations) | `volumes/db/{roles,jwt,webhooks}.sql` |
-| Real `ADMIN_API_URL`, `GMAIL_*`, `UPSTASH_*`, real Pathao/Meta secrets in the app's own settings | `Dockerfile` |
+| Real `ADMIN_API_URL`, `GMAIL_*`, real Pathao/Meta secrets in the app's own settings | `Dockerfile` |
 | A `docker-compose.proxy.yml` overlay (Caddy) added in front of Kong + the app for TLS — an *additional* compose file, not a change to `docker-compose.yml` | `docker-compose.dev.yml` (still only used for local dev) |
 | Rebuild `app` with the VPS's `NEXT_PUBLIC_*` build-args (baked in at `next build` time — see Dockerfile comments) | Bucket names, everything about how the app talks to Supabase |
 

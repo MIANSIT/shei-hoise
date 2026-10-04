@@ -53,12 +53,9 @@ jobs:
           ANON_KEY: ${{ secrets.ANON_KEY }}
           SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE_KEY }}
           SITE_URL: ${{ secrets.SITE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: |
           missing=""
-          for name in SUPABASE_PUBLIC_URL ANON_KEY SERVICE_ROLE_KEY SITE_URL \
-                      UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN; do
+          for name in SUPABASE_PUBLIC_URL ANON_KEY SERVICE_ROLE_KEY SITE_URL; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -67,7 +64,7 @@ jobs:
             echo "  The values are the same ones already in docker/.env.prod on the VPS."
             exit 1
           fi
-          echo "✓ All six build secrets are set"
+          echo "✓ All four build secrets are set"
 
       # GHCR rejects uppercase paths and this org is "MIANSIT", so the owner
       # has to be lowercased before it can be used as an image reference.
@@ -105,8 +102,6 @@ jobs:
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_PUBLIC_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.ANON_KEY }}
             NEXT_PUBLIC_SITE_URL=${{ secrets.SITE_URL }}
-            UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}
-            UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
             SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SERVICE_ROLE_KEY }}
 
   deploy:
