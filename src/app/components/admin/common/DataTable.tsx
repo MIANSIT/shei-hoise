@@ -25,6 +25,11 @@ interface DataTableProps<T> {
   className?: string;
   /** Passed straight to antd — used to swap in a drag-sortable row renderer. */
   components?: TableProps<T>["components"];
+  /**
+   * Below this screen size renderCard is used instead of the table. Wide
+   * tables next to the sidebar need "lg" so they don't get squeezed.
+   */
+  cardBreakpoint?: "md" | "lg" | "xl";
 }
 
 function DataTable<T extends object>({
@@ -42,9 +47,10 @@ function DataTable<T extends object>({
   renderCard,
   className,
   components,
+  cardBreakpoint = "md",
 }: DataTableProps<T>) {
   const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = !screens[cardBreakpoint];
 
   const getRowKey =
     typeof rowKey === "function" ? rowKey : (record: T) => `${record[rowKey]}`;
@@ -56,7 +62,7 @@ function DataTable<T extends object>({
         {data.map((record, index) => (
           <div
             key={getRowKey(record)}
-            className="bg-white rounded-lg border shadow-sm"
+            className="bg-card rounded-lg border shadow-sm"
           >
             {renderCard(record)}
           </div>
