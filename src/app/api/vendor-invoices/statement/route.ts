@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PDF_COLORS, drawVendorPdfHeader, drawPanel } from "@/lib/pdf/vendorPdfTheme";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontServer } from "@/lib/pdf/bengaliFontServer";
 
 interface VendorStatementEntry {
   date: string;
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
     const dynamicHeight = Math.max(Math.ceil(estimatedHeight / 10) * 10, 220);
 
     const pdf = new jsPDF({ unit: "mm", format: [pageWidth, dynamicHeight], compress: true });
+    enableBengaliText(pdf, loadBengaliFontServer());
 
     const storeInfo = [body.store.address, body.store.phone, body.store.email].filter(
       Boolean,

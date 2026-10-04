@@ -24,6 +24,8 @@ import {
   setTextFont,
 } from "./pdfText";
 import { drawQrVector, minQrSizeMm } from "./pdfQr";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 export interface ReceiptPdfItem {
   name: string;
@@ -265,6 +267,7 @@ export async function generateReceiptPdfSet(data: ReceiptPdfData): Promise<Recei
   // the exact content height has to be known before constructing the real
   // document. A tall scratch page runs the same layout purely to measure it.
   const scratch = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, 400] });
+  enableBengaliText(scratch, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFont(scratch);
   const pageHeightMm = drawReceiptCopy(scratch, data, "CUSTOMER COPY", bengaliLoaded, logo);
   const pageFormat: [number, number] = [PAGE_WIDTH_MM, pageHeightMm];
@@ -272,16 +275,19 @@ export async function generateReceiptPdfSet(data: ReceiptPdfData): Promise<Recei
   // Pass 2: the real, correctly-sized documents (font registration is
   // per-instance, so it's repeated on each one).
   const combinedDoc = new jsPDF({ unit: "mm", format: pageFormat });
+  enableBengaliText(combinedDoc, await loadBengaliFontBrowser());
   await registerBengaliFont(combinedDoc);
   drawReceiptCopy(combinedDoc, data, "CUSTOMER COPY", bengaliLoaded, logo);
   combinedDoc.addPage(pageFormat);
   drawReceiptCopy(combinedDoc, data, "SHOP COPY", bengaliLoaded, logo);
 
   const customerDoc = new jsPDF({ unit: "mm", format: pageFormat });
+  enableBengaliText(customerDoc, await loadBengaliFontBrowser());
   await registerBengaliFont(customerDoc);
   drawReceiptCopy(customerDoc, data, "CUSTOMER COPY", bengaliLoaded, logo);
 
   const shopDoc = new jsPDF({ unit: "mm", format: pageFormat });
+  enableBengaliText(shopDoc, await loadBengaliFontBrowser());
   await registerBengaliFont(shopDoc);
   drawReceiptCopy(shopDoc, data, "SHOP COPY", bengaliLoaded, logo);
 

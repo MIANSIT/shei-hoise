@@ -75,6 +75,7 @@ export interface DataService {
     totalByOrderStatus: Record<string, number>; // NEW
     totalByPaymentStatus: Record<string, number>; // NEW
     totalByChannel: { online: number; pos: number };
+    totalNotPrinted: number | null;
   }>;
   getOrderByNumber: (
     storeId: string,
@@ -172,6 +173,7 @@ const getStoreOrdersImpl = async (
   totalByOrderStatus: Record<string, number>;
   totalByPaymentStatus: Record<string, number>;
   totalByChannel: { online: number; pos: number };
+  totalNotPrinted: number | null;
 }> => {
   const { storeId, search, page = 1, pageSize = 10, filters } = options;
 

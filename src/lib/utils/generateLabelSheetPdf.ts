@@ -11,6 +11,8 @@
  */
 import { JsPDFInstance, loadImageBase64, registerBengaliFont, setTextFont } from "./pdfText";
 import { drawQrVector, minQrSizeMm } from "./pdfQr";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 export interface LabelSheetItem {
   qrUrl: string;
@@ -110,6 +112,7 @@ export async function generateLabelSheetPdf(
   const itemsPerPage = COLS * rowsPerPage;
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFont(doc);
 
   for (let i = 0; i < items.length; i++) {

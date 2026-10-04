@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PDF_COLORS, drawVendorPdfHeader, drawPanel } from "@/lib/pdf/vendorPdfTheme";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontServer } from "@/lib/pdf/bengaliFontServer";
 
 // Original TP and the TP increase % are the store owner's cost/margin —
 // deliberately not part of this interface. This invoice is handed directly
@@ -239,10 +241,12 @@ export async function POST(req: NextRequest) {
     // Measurement pass — tall enough that no realistic invoice could
     // overflow it, discarded once we know how much height was actually used.
     const measurePdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, 2000], compress: true });
+    enableBengaliText(measurePdf, loadBengaliFontServer());
     const measuredHeight = renderInvoice(measurePdf, body, hasMrp, isQuotation);
 
     const pageHeight = Math.max(Math.ceil((measuredHeight + MARGIN) / 10) * 10, 220);
     const pdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, pageHeight], compress: true });
+    enableBengaliText(pdf, loadBengaliFontServer());
     renderInvoice(pdf, body, hasMrp, isQuotation);
 
     const pdfBuffer = Buffer.from(pdf.output("arraybuffer"));

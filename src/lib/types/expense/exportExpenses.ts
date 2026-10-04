@@ -1,6 +1,8 @@
 import type { Expense } from "@/lib/types/expense/type";
 import dayjs from "dayjs";
 import { CURRENCY_ICONS } from "@/lib/types/enums";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -135,6 +137,7 @@ export async function exportPDF(
   const pdfCurrency = toPdfCurrency(currencySymbol);
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
 
   doc.setFillColor(102, 126, 234);
   doc.rect(0, 0, 297, 18, "F");
