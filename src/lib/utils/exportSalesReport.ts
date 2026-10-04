@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
 import type { SalesReportResult } from "@/lib/queries/orders/getSalesReport";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 export interface SalesReportMeta {
   storeName: string;
@@ -293,6 +295,7 @@ export async function exportSalesReportPDF(
   ]);
 
   const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
+  enableBengaliText(pdf, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFontBrowser(pdf);
   pdf.setFont("helvetica");
 

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Alert, Spin, App } from "antd";
-import { ShoppingCart, Clock, PackageCheck, Zap } from "lucide-react";
+import Link from "next/link";
+import { Alert, Spin, App, Button, Segmented } from "antd";
+import { ShoppingCart, Clock, Truck, Zap, Printer, Wallet, Plus } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import dataService from "@/lib/queries/dataService";
 import type { StoreOrder } from "@/lib/types/order";
@@ -13,16 +14,26 @@ import type { RiskAssessment } from "@/lib/utils/riskScoring";
 import { getMonthlyOrderUsage, type MonthlyOrderUsage } from "@/lib/queries/orders/getMonthlyOrderUsage";
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import { getCustomerPaymentsSummaryByOrderIds } from "@/lib/queries/customers/getCustomerPaymentsSummaryByOrderIds";
-import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorStatCard";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useBranches } from "@/lib/context/BranchContext";
 import type { GetStoreOrdersOptions } from "@/lib/queries/orders/getStoreOrders";
+
+const TODO_TONES = {
+  amber: { icon: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400", ring: "ring-amber-400" },
+  sky: { icon: "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400", ring: "ring-sky-400" },
+  rose: { icon: "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400", ring: "ring-rose-400" },
+  indigo: { icon: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400", ring: "ring-indigo-400" },
+} as const;
 
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
   const notificationRef = useRef(notification);
   useEffect(() => { notificationRef.current = notification; }, [notification]);
   const t = useTranslation();
+  const n = useLocalNum();
+  const { can } = usePermissions();
   const { user, loading: userLoading } = useCurrentUser();
 
   const [search, setSearch] = useUrlSync<string>("search", "", undefined, 500);
@@ -72,12 +83,21 @@ const MainOrders: React.FC = () => {
       : canSeeAllBranches
         ? ""
         : branches.map((b) => b.id).join(",");
+  // "Not printed": orders whose invoice hasn't been printed yet — today's
+  // batch to print, without the ones already printed.
+  const [notPrintedOnly, setNotPrintedOnly] = useUrlSync<boolean>(
+    "not_printed",
+    false,
+    (v) => v === "true",
+    0
+  );
   const branchFilters = React.useMemo<NonNullable<GetStoreOrdersOptions["filters"]>>(
     () => ({
       ...(branchIdsKey ? { branchIds: branchIdsKey.split(",") } : {}),
       ...(branchesOn && needsBranchOnly ? { needsBranch: true } : {}),
+      ...(notPrintedOnly ? { printed: "no" as const } : {}),
     }),
-    [branchIdsKey, branchesOn, needsBranchOnly]
+    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly]
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -101,6 +121,7 @@ const MainOrders: React.FC = () => {
     online: 0,
     pos: 0,
   });
+  const [totalNotPrinted, setTotalNotPrinted] = useState<number | null>(null);
 
   // ✅ ADD: refresh trigger state
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -145,6 +166,7 @@ const MainOrders: React.FC = () => {
         setTotalByOrderStatus(result.totalByOrderStatus);
         setTotalByPaymentStatus(result.totalByPaymentStatus);
         setTotalByChannel(result.totalByChannel);
+        setTotalNotPrinted(result.totalNotPrinted);
 
         // How much of each order on this page has an advance/partial
         // payment recorded against it (fire-and-forget, same pattern as the
@@ -365,6 +387,19 @@ const MainOrders: React.FC = () => {
               </p>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+          {can("orders.add") && (
+            <Link href="/dashboard/orders/create-order">
+              <Button type="primary" icon={<Plus size={15} />}>
+                {t.admin.ordersNewOrder}
+              </Button>
+            </Link>
+          )}
+          {can("pos.add") && (
+            <Link href="/dashboard/orders/quick-sale">
+              <Button icon={<Zap size={15} />}>{t.admin.menuQuickSale}</Button>
+            </Link>
+          )}
           {monthlyUsage && monthlyUsage.limit !== -1 && (
             <div
               className={`rounded-xl px-3 py-2 text-xs font-semibold ${
@@ -381,58 +416,132 @@ const MainOrders: React.FC = () => {
               {monthlyUsage.current}/{monthlyUsage.limit} {t.admin.allOrdersMonthlyLimitLabel}
             </div>
           )}
+          </div>
         </div>
       </div>
 
       <div className="px-4 sm:px-8 py-6 space-y-5">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <VendorStatCard
-            icon={<ShoppingCart size={18} />}
-            label="Total Orders"
-            value={String(totalOrders)}
-            tone="indigo"
-          />
-          <VendorStatCard
-            icon={<Clock size={18} />}
-            label="Payment Pending"
-            value={String(totalByPaymentStatus[PaymentStatus.PENDING] ?? 0)}
-            tone="amber"
-          />
-          <VendorStatCard
-            icon={<PackageCheck size={18} />}
-            label="Delivered"
-            value={String(totalByOrderStatus[OrderStatus.DELIVERED] ?? 0)}
-            tone="emerald"
-          />
-          <VendorStatCard
-            icon={<Zap size={18} />}
-            label="Quick Sale"
-            value={String(totalByChannel.pos)}
-            hint={`${totalByChannel.online} online`}
-            tone="sky"
-          />
+        {/* What needs doing — each card is a one-tap filter. */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {(
+            [
+              {
+                key: "confirm",
+                label: t.admin.ordersToConfirm,
+                hint: t.admin.ordersToConfirmHint,
+                value: totalByOrderStatus[OrderStatus.PENDING] ?? 0,
+                icon: <Clock size={18} />,
+                tone: "amber",
+                active: category === "order" && statusFilter === OrderStatus.PENDING,
+                onClick: () => handleStatusChange(statusFilter === OrderStatus.PENDING && category === "order" ? "all" : OrderStatus.PENDING),
+              },
+              {
+                key: "ship",
+                label: t.admin.ordersToShip,
+                hint: t.admin.ordersToShipHint,
+                value: totalByOrderStatus[OrderStatus.CONFIRMED] ?? 0,
+                icon: <Truck size={18} />,
+                tone: "sky",
+                active: category === "order" && statusFilter === OrderStatus.CONFIRMED,
+                onClick: () => handleStatusChange(statusFilter === OrderStatus.CONFIRMED && category === "order" ? "all" : OrderStatus.CONFIRMED),
+              },
+              {
+                key: "payment",
+                label: t.admin.ordersPaymentPending,
+                hint: t.admin.ordersPaymentPendingHint,
+                value: totalByPaymentStatus[PaymentStatus.PENDING] ?? 0,
+                icon: <Wallet size={18} />,
+                tone: "rose",
+                active: category === "payment" && paymentStatusFilter === PaymentStatus.PENDING,
+                onClick: () =>
+                  category === "payment" && paymentStatusFilter === PaymentStatus.PENDING
+                    ? handleStatusChange("all")
+                    : handlePaymentStatusChange(PaymentStatus.PENDING),
+              },
+              {
+                key: "print",
+                label: t.admin.notPrintedFilter,
+                hint: t.admin.notPrintedHint,
+                value: totalNotPrinted,
+                icon: <Printer size={18} />,
+                tone: "indigo",
+                active: notPrintedOnly,
+                onClick: () => {
+                  setNotPrintedOnly(!notPrintedOnly);
+                  setPage(1);
+                },
+              },
+            ] as const
+          ).map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              aria-pressed={card.active}
+              onClick={card.onClick}
+              className={`text-left rounded-2xl border p-3.5 sm:p-4 transition-all bg-card hover:shadow-md ${
+                card.active ? `ring-2 ${TODO_TONES[card.tone].ring} border-transparent` : "border-border"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${TODO_TONES[card.tone].icon}`}>
+                  {card.icon}
+                </span>
+                <span className="text-2xl font-black tabular-nums text-foreground">
+                  {card.value === null ? "—" : n(card.value)}
+                </span>
+              </div>
+              <div className="mt-2 text-sm font-semibold text-foreground">{card.label}</div>
+              <div className="text-[11px] text-muted-foreground leading-snug">{card.hint}</div>
+            </button>
+          ))}
         </div>
 
-      {branchesOn && (
+        {/* Quick filters, all in one row. */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            aria-pressed={needsBranchOnly}
-            onClick={() => {
-              setNeedsBranchOnly(!needsBranchOnly);
-              setPage(1);
-            }}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              needsBranchOnly
-                ? "border-amber-500 bg-amber-500 text-white"
-                : "border-border bg-card text-muted-foreground hover:border-amber-400 hover:text-amber-600"
-            }`}
-          >
-            {t.branches.needsBranchFilter}
-          </button>
-          <span className="text-xs text-muted-foreground">{t.branches.needsBranchHint}</span>
+          <Segmented
+            size="small"
+            value={channelFilter}
+            onChange={(v) => handleChannelChange(v as "all" | "online" | "pos")}
+            options={[
+              { value: "all", label: `${t.admin.ordersAllChannels} ${n(totalByChannel.online + totalByChannel.pos)}` },
+              { value: "online", label: `${t.admin.ordersOnline} ${n(totalByChannel.online)}` },
+              { value: "pos", label: `${t.admin.menuQuickSale} ${n(totalByChannel.pos)}` },
+            ]}
+          />
+          {branchesOn && (
+            <button
+              type="button"
+              aria-pressed={needsBranchOnly}
+              title={t.branches.needsBranchHint}
+              onClick={() => {
+                setNeedsBranchOnly(!needsBranchOnly);
+                setPage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all ${
+                needsBranchOnly
+                  ? "border-amber-500 bg-amber-500 text-white"
+                  : "border-border bg-card text-muted-foreground hover:border-amber-400 hover:text-amber-600"
+              }`}
+            >
+              {t.branches.needsBranchFilter}
+            </button>
+          )}
+          {(notPrintedOnly || needsBranchOnly || channelFilter !== "all" || statusFilter !== "all" || paymentStatusFilter !== "all") && (
+            <button
+              type="button"
+              onClick={() => {
+                setNotPrintedOnly(false);
+                setNeedsBranchOnly(false);
+                handleChannelChange("all");
+                setPaymentStatusFilter("all");
+                handleStatusChange("all");
+              }}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline px-1"
+            >
+              {t.admin.ordersClearFilters}
+            </button>
+          )}
         </div>
-      )}
 
       <OrdersTable
         orders={orders}
@@ -445,7 +554,6 @@ const MainOrders: React.FC = () => {
         totalByPaymentStatus={totalByPaymentStatus}
         totalByChannel={totalByChannel}
         channelFilter={channelFilter}
-        onChannelChange={handleChannelChange}
         page={page}
         pageSize={pageSize}
         onTableChange={handleTableChange}

@@ -1,6 +1,8 @@
 import type { SubscriptionInvoice } from "@/lib/queries/subscription/getStoreSubscription";
 import { CONTACT_INFO } from "@/lib/store/contact";
 import dayjs from "dayjs";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const NAVY   = [15,  23,  42]  as const; // slate-900
@@ -83,6 +85,7 @@ export async function downloadInvoicePdf(
   ]);
 
   const doc  = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
   const PW   = 210;  // page width
   const M    = 16;   // margin
   const MID  = PW / 2;

@@ -20,6 +20,8 @@
  */
 import { JsPDFInstance, loadImageBase64, registerBengaliFont, setTextFont } from "./pdfText";
 import { drawQrVector, minQrSizeMm } from "./pdfQr";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 export interface LabelPdfData {
   storeName: string;
@@ -93,11 +95,13 @@ export async function generateLabelPdf(data: LabelPdfData): Promise<Blob> {
   // Pass 1: measure on a tall scratch page (jsPDF can't resize a page after
   // creation), same two-pass approach as generateReceiptPdf.ts.
   const scratch = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, 100] });
+  enableBengaliText(scratch, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFont(scratch);
   const heightMm = drawLabel(scratch, data, bengaliLoaded, logo);
 
   // Pass 2: the real, correctly-sized document.
   const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, heightMm] });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
   await registerBengaliFont(doc);
   drawLabel(doc, data, bengaliLoaded, logo);
 
@@ -144,6 +148,7 @@ export async function generateBulkLabelPdf(
   });
 
   const scratch = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, 100] });
+  enableBengaliText(scratch, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFont(scratch);
   const heightsMm = items.map((item) =>
     drawLabel(scratch, toLabelData(item), bengaliLoaded, logo),
@@ -152,6 +157,7 @@ export async function generateBulkLabelPdf(
   if (layout === "strip") {
     const totalHeightMm = heightsMm.reduce((sum, h) => sum + h, 0);
     const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, totalHeightMm] });
+    enableBengaliText(doc, await loadBengaliFontBrowser());
     await registerBengaliFont(doc);
     let offsetMm = 0;
     items.forEach((item, i) => {
@@ -162,6 +168,7 @@ export async function generateBulkLabelPdf(
   }
 
   const doc = new jsPDF({ unit: "mm", format: [PAGE_WIDTH_MM, heightsMm[0]] });
+  enableBengaliText(doc, await loadBengaliFontBrowser());
   await registerBengaliFont(doc);
   items.forEach((item, i) => {
     if (i > 0) doc.addPage([PAGE_WIDTH_MM, heightsMm[i]]);

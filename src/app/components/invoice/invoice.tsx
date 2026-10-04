@@ -206,6 +206,8 @@ interface InvoiceModalProps {
   showPrintButton?: boolean;
   showPOSButton?: boolean;
   showPDFButton?: boolean;
+  /** Called after the invoice was printed, POS-printed or downloaded (e.g. to mark the order printed). */
+  onPrinted?: () => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -234,6 +236,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     showPrintButton = true,
     showPOSButton = true,
     showPDFButton = true,
+    onPrinted,
   } = props;
 
   const { notification } = App.useApp();
@@ -520,6 +523,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           }, 100);
         });
       }
+      onPrinted?.();
     } catch (err) {
       console.error("Print error:", err);
       notification.error({
@@ -573,6 +577,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
         title: "PDF Downloaded",
         description: "Invoice PDF downloaded successfully.",
       });
+      onPrinted?.();
     } catch (error) {
       console.error(error);
       notification.error({
@@ -801,6 +806,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
       pw.document.write(html);
       pw.document.close();
       pw.focus();
+      onPrinted?.();
     } catch (err) {
       console.error("POS print error:", err);
       notification.error({

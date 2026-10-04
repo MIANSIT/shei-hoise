@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
 import type { ProfitLossReport } from "@/lib/queries/dashboard/getProfitLossReport";
+import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
+import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
 export interface ProfitLossReportMeta {
   storeName: string;
@@ -94,6 +96,7 @@ export async function exportProfitLossReportPDF(
   ]);
 
   const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
+  enableBengaliText(pdf, await loadBengaliFontBrowser());
   const bengaliLoaded = await registerBengaliFontBrowser(pdf);
   pdf.setFont("helvetica");
 

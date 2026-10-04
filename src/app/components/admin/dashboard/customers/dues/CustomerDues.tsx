@@ -61,6 +61,7 @@ export default function CustomerDues() {
       customer.customer_id,
       customer.branch_id,
       branchesOn,
+      true,
     );
     setOrderOptions(balances.filter((b) => b.due_remaining > 0.01));
   };
