@@ -61,6 +61,7 @@ import { OrderBranchTag } from "@/app/components/admin/branches/OrderBranchTag";
 import { useBranches } from "@/lib/context/BranchContext";
 import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
 import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
+import { ReviewLinkButton } from "./ReviewLinkButton";
 
 interface Props {
   orders: StoreOrder[];
@@ -513,6 +514,12 @@ const OrdersTable: React.FC<Props> = ({
 
   const renderActionButtons = (order: StoreOrder) => (
     <div className="flex items-center justify-center gap-1.5">
+      {order.status === OrderStatus.DELIVERED && (
+        <ReviewLinkButton
+          order={order}
+          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 border-amber-200/70 dark:border-amber-800/40 text-amber-600! dark:text-amber-400! hover:from-amber-100 hover:to-amber-200/80 dark:hover:from-amber-900/60 dark:hover:to-amber-800/40`}
+        />
+      )}
       {can("orders.edit") && (
       <Tooltip title="Edit Order">
         <Button
@@ -747,7 +754,6 @@ const OrdersTable: React.FC<Props> = ({
         ) : (
           <CustomerOrderHistoryTags
             history={historyByPhone?.[getCustomerPhone(order)]}
-            currentOrderId={order.id}
             showEmptyHint
           />
         ),
@@ -819,7 +825,7 @@ const OrdersTable: React.FC<Props> = ({
           {renderActionButtons(order)}
         </div>
       ),
-      width: 170,
+      width: 205,
       align: "center" as const,
       responsive: ["sm"],
     },
