@@ -189,18 +189,18 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
         <div className="lg:col-span-3 p-4 sm:p-6">
           {showCollection && (
             <div className="mb-5 rounded-xl border border-border bg-muted/40 p-3">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
+                <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t.admin.psSalesAll}</div>
-                  <div className="text-base sm:text-lg font-black tabular-nums text-foreground">{formatMoney(allSales)}</div>
+                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-foreground">{formatMoney(allSales)}</div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{t.admin.psReceived}</div>
-                  <div className="text-base sm:text-lg font-black tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(sales)}</div>
+                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(sales)}</div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{t.admin.psToCollect}</div>
-                  <div className="text-base sm:text-lg font-black tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(toCollect)}</div>
+                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(toCollect)}</div>
                 </div>
               </div>
               <div className="mt-2.5 h-2 rounded-full bg-amber-200 dark:bg-amber-500/30 overflow-hidden" aria-hidden="true">
