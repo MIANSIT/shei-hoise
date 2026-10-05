@@ -57,6 +57,7 @@ interface TransferRow {
     product_name: string | null;
     variant_name: string | null;
     quantity: number;
+    received_at: string | null;
   }[];
 }
 
@@ -64,7 +65,7 @@ const TRANSFER_SELECT = `
   id, transfer_number, from_branch_id, to_branch_id, status, note, created_at, sent_at, received_at,
   from_branch:store_branches!branch_stock_transfers_from_branch_id_fkey (name),
   to_branch:store_branches!branch_stock_transfers_to_branch_id_fkey (name),
-  branch_stock_transfer_items (id, product_id, variant_id, product_name, variant_name, quantity)
+  branch_stock_transfer_items (id, product_id, variant_id, product_name, variant_name, quantity, received_at)
 `;
 
 function toListItem(row: TransferRow, withItems: boolean): TransferListItem {
@@ -75,6 +76,7 @@ function toListItem(row: TransferRow, withItems: boolean): TransferListItem {
     productName: i.product_name ?? "",
     variantName: i.variant_name,
     quantity: i.quantity,
+    receivedAt: i.received_at,
   }));
   return {
     id: row.id,
@@ -324,6 +326,13 @@ async function runTransferRpc(
     p_caller_store_id: auth.storeId,
     p_user_id: auth.actor.userId,
   });
+  return toRpcResult(fn, error);
+}
+
+function toRpcResult(
+  fn: string,
+  error: { message: string } | null,
+): { ok: true } | { ok: false; error: string } {
   if (error) {
     console.error(`${fn} failed:`, error.message);
     // The SQL messages are written for people ("Not enough stock to send …").
@@ -397,6 +406,99 @@ export async function cancelTransfer(transferId: string): Promise<BranchActionRe
     entityType: "transfer",
     entityId: transferId,
     summary: `Cancelled transfer ${transfer.transfer_number}`,
+  });
+  return { ok: true };
+}
+
+/**
+ * Cancel one product line of a draft or sent transfer. A sent line's stock
+ * goes back to the source branch; cancelling the last line cancels the transfer.
+ */
+export async function cancelTransferItem(transferId: string, itemId: string): Promise<BranchActionResult> {
+  const auth = await authorize("transfers.delete");
+  if (!auth.ok) return auth;
+  const transfer = await loadTransfer(auth.storeId, transferId);
+  if (!transfer) return { ok: false, error: "Transfer not found" };
+  if (!canUseBranch(auth.actor, transfer.from_branch_id)) return { ok: false, error: BRANCH_SCOPE_ERROR };
+
+  const { data: item } = await supabaseAdmin
+    .from("branch_stock_transfer_items")
+    .select("id, product_name")
+    .eq("id", itemId)
+    .eq("transfer_id", transferId)
+    .maybeSingle();
+  if (!item) return { ok: false, error: "Transfer item not found" };
+
+  const { error } = await supabaseAdmin.rpc("cancel_branch_transfer_item", {
+    p_item_id: itemId,
+    p_caller_store_id: auth.storeId,
+    p_user_id: auth.actor.userId,
+  });
+  const result = toRpcResult("cancel_branch_transfer_item", error);
+  if (!result.ok) return result;
+  await logActivity(auth.actor, {
+    action: "transfers.delete",
+    entityType: "transfer",
+    entityId: transferId,
+    summary: `Cancelled ${item.product_name ?? "a product"} from transfer ${transfer.transfer_number}`,
+  });
+  return { ok: true };
+}
+
+/**
+ * Cancel several product lines of one transfer in a single go. Lines are
+ * removed one after another, so if one fails the earlier ones stay removed
+ * and the error says how many went through.
+ */
+export async function cancelTransferItems(transferId: string, itemIds: string[]): Promise<BranchActionResult<{ removed: number }>> {
+  const ids = Array.from(new Set(itemIds));
+  if (ids.length === 0) return { ok: false, error: "Select at least one product" };
+  let removed = 0;
+  for (const itemId of ids) {
+    const result = await cancelTransferItem(transferId, itemId);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: removed > 0 ? `${removed} of ${ids.length} removed. ${result.error}` : result.error,
+      };
+    }
+    removed += 1;
+  }
+  return { ok: true, data: { removed } };
+}
+
+/**
+ * Receive one product line of a sent transfer into the target branch. The
+ * transfer becomes "received" once every line has been received.
+ */
+export async function receiveTransferItem(transferId: string, itemId: string): Promise<BranchActionResult> {
+  const auth = await authorize("transfers.receive");
+  if (!auth.ok) return auth;
+  const transfer = await loadTransfer(auth.storeId, transferId);
+  if (!transfer) return { ok: false, error: "Transfer not found" };
+  if (!canUseBranch(auth.actor, transfer.to_branch_id)) return { ok: false, error: BRANCH_SCOPE_ERROR };
+
+  const { data: item } = await supabaseAdmin
+    .from("branch_stock_transfer_items")
+    .select("id, product_name")
+    .eq("id", itemId)
+    .eq("transfer_id", transferId)
+    .maybeSingle();
+  if (!item) return { ok: false, error: "Transfer item not found" };
+
+  const { error } = await supabaseAdmin.rpc("receive_branch_transfer_items", {
+    p_transfer_id: transferId,
+    p_item_ids: [itemId],
+    p_caller_store_id: auth.storeId,
+    p_user_id: auth.actor.userId,
+  });
+  const result = toRpcResult("receive_branch_transfer_items", error);
+  if (!result.ok) return result;
+  await logActivity(auth.actor, {
+    action: "transfers.receive",
+    entityType: "transfer",
+    entityId: transferId,
+    summary: `Received ${item.product_name ?? "a product"} of transfer ${transfer.transfer_number}`,
   });
   return { ok: true };
 }

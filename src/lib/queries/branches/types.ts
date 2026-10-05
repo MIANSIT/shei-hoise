@@ -43,6 +43,8 @@ export interface TransferItem {
   productName: string;
   variantName: string | null;
   quantity: number;
+  /** Set once this line has been received into the target branch. */
+  receivedAt: string | null;
 }
 
 export interface TransferListItem {

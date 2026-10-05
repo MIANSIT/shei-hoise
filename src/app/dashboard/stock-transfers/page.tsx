@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { App, Button, Empty, Pagination, Segmented, Spin, Tag } from "antd";
+import { App, Button, Checkbox, Empty, Pagination, Segmented, Spin, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ArrowLeftRight, ArrowRight } from "lucide-react";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
@@ -17,11 +17,13 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import {
   cancelTransfer,
+  cancelTransferItem,
+  cancelTransferItems,
   getTransfers,
   receiveTransfer,
   sendTransfer,
 } from "@/lib/queries/branches/transfers";
-import type { TransferListItem, TransferStatus } from "@/lib/queries/branches/types";
+import type { TransferItem, TransferListItem, TransferStatus } from "@/lib/queries/branches/types";
 
 const PAGE_SIZE = 20;
 const STATUS_COLOR: Record<TransferStatus, string | undefined> = {
@@ -48,6 +50,10 @@ export default function StockTransfersPage() {
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Lines ticked for removal, per transfer.
+  // Transfers whose full product list is open.
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [selectedItems, setSelectedItems] = useState<Record<string, string[]>>({});
 
   const branchesOn = !!setup?.featureEnabled && !!setup?.branchesOn;
 
@@ -120,6 +126,59 @@ export default function StockTransfersPage() {
       cancelText: t.branches.keep,
       okButtonProps: { danger: true },
       onOk: () => act(row, cancelTransfer, t.branches.toastTransferCancelled),
+    });
+
+  const confirmCancelItem = (row: TransferListItem, item: TransferItem) => {
+    const product = item.variantName ? `${item.productName} — ${item.variantName}` : item.productName;
+    modal.confirm({
+      title: t.branches.confirmCancelItemTitle.replace("{product}", product).replace("{number}", row.transferNumber),
+      content: row.status === "sent" ? t.branches.confirmCancelItemSentBody : t.branches.confirmCancelItemDraftBody,
+      okText: t.branches.cancelTransferItem,
+      cancelText: t.branches.keep,
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setBusyId(row.id);
+        const result = await cancelTransferItem(row.id, item.id);
+        setBusyId(null);
+        if (!result.ok) {
+          notify.error(result.error);
+          return;
+        }
+        notify.success(
+          t.branches.toastTransferItemCancelled.replace("{product}", product).replace("{number}", row.transferNumber),
+        );
+        await Promise.all([load(), refreshBranches()]);
+      },
+    });
+  };
+
+  const toggleItem = (transferId: string, itemId: string, checked: boolean) =>
+    setSelectedItems((prev) => {
+      const current = prev[transferId] ?? [];
+      return { ...prev, [transferId]: checked ? [...current, itemId] : current.filter((id) => id !== itemId) };
+    });
+
+  const confirmCancelSelected = (row: TransferListItem, itemIds: string[]) =>
+    modal.confirm({
+      title: t.branches.confirmCancelItemsTitle.replace("{count}", n(itemIds.length)).replace("{number}", row.transferNumber),
+      content: row.status === "sent" ? t.branches.confirmCancelItemSentBody : t.branches.confirmCancelItemDraftBody,
+      okText: t.branches.cancelTransferItem,
+      cancelText: t.branches.keep,
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setBusyId(row.id);
+        const result = await cancelTransferItems(row.id, itemIds);
+        setBusyId(null);
+        setSelectedItems((prev) => ({ ...prev, [row.id]: [] }));
+        if (!result.ok) {
+          notify.error(result.error);
+        } else {
+          notify.success(
+            t.branches.toastTransferItemsCancelled.replace("{count}", n(result.data.removed)).replace("{number}", row.transferNumber),
+          );
+        }
+        await Promise.all([load(), refreshBranches()]);
+      },
     });
 
   const statusLabel: Record<TransferStatus, string> = {
@@ -235,18 +294,96 @@ export default function StockTransfersPage() {
                 </div>
               </div>
 
-              {row.items && row.items.length > 0 && (
-                <ul className="m-0 p-0 list-none rounded-lg bg-muted/40 divide-y divide-border">
-                  {row.items.map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-sm">
-                      <span className="min-w-0 truncate text-foreground">
-                        {item.variantName ? `${item.productName} — ${item.variantName}` : item.productName}
-                      </span>
-                      <span className="shrink-0 font-medium text-foreground">× {n(item.quantity)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {row.items && row.items.length > 0 && (() => {
+                const canRemove =
+                  (row.status === "draft" || row.status === "sent") && can("transfers.delete") && canUse(row.fromBranchId);
+                const picked = selectedItems[row.id] ?? [];
+                // Long transfers would otherwise make the page endless: live ones
+                // show a few lines, finished ones (received/cancelled) none.
+                const isLive = row.status === "draft" || row.status === "sent";
+                const previewCount = isLive ? 3 : 0;
+                const expanded = !!expandedRows[row.id];
+                const canCollapse = row.items.length > previewCount;
+                const visibleItems = expanded || !canCollapse ? row.items : row.items.slice(0, previewCount);
+                const toggle = (
+                  <Button
+                    size="small"
+                    type="link"
+                    onClick={() => setExpandedRows((prev) => ({ ...prev, [row.id]: !expanded }))}
+                  >
+                    {expanded
+                      ? t.branches.showLessItems
+                      : (previewCount === 0 ? t.branches.showItems : t.branches.showAllItems).replace(
+                          "{count}",
+                          n(row.items.length),
+                        )}
+                  </Button>
+                );
+                return (
+                  <>
+                    {canRemove && row.items.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Checkbox
+                          checked={picked.length === row.items.length}
+                          indeterminate={picked.length > 0 && picked.length < row.items.length}
+                          disabled={busyId === row.id}
+                          onChange={(e) =>
+                            setSelectedItems((prev) => ({
+                              ...prev,
+                              [row.id]: e.target.checked ? (row.items ?? []).map((i) => i.id) : [],
+                            }))
+                          }
+                        />
+                        {picked.length > 0 && (
+                          <Button
+                            size="small"
+                            danger
+                            loading={busyId === row.id}
+                            onClick={() => confirmCancelSelected(row, picked)}
+                          >
+                            {t.branches.cancelSelectedItems.replace("{count}", n(picked.length))}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    {visibleItems.length > 0 && (
+                    <ul className="m-0 p-0 list-none rounded-lg bg-muted/40 divide-y divide-border max-h-72 overflow-y-auto">
+                      {visibleItems.map((item) => (
+                        <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-sm">
+                          <span className="min-w-0 flex items-center gap-2">
+                            {canRemove && row.items && row.items.length > 1 && (
+                              <Checkbox
+                                checked={picked.includes(item.id)}
+                                disabled={busyId === row.id}
+                                onChange={(e) => toggleItem(row.id, item.id, e.target.checked)}
+                              />
+                            )}
+                            <span className="truncate text-foreground">
+                              {item.variantName ? `${item.productName} — ${item.variantName}` : item.productName}
+                            </span>
+                          </span>
+                          <span className="shrink-0 flex items-center gap-2">
+                            <span className="font-medium text-foreground">× {n(item.quantity)}</span>
+                            {canRemove && (
+                              <Button
+                                size="small"
+                                type="text"
+                                danger
+                                disabled={busyId === row.id}
+                                onClick={() => confirmCancelItem(row, item)}
+                              >
+                                {t.branches.cancelTransferItem}
+                              </Button>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    )}
+                    {canCollapse && <div>{toggle}</div>}
+                  </>
+                );
+              })()}
               {row.note && <p className="m-0 text-xs text-muted-foreground">{row.note}</p>}
             </li>
           ))}
