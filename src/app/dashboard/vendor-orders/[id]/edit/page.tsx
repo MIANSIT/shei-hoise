@@ -441,7 +441,7 @@ export default function EditVendorOrderPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Order Date</label>
-              <DatePicker
+              <DatePicker format="DD-MM-YYYY"
                 value={orderDate}
                 onChange={(d) => d && setOrderDate(d)}
                 className="w-full mt-1"
@@ -449,7 +449,7 @@ export default function EditVendorOrderPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Invoice Date (Optional)</label>
-              <DatePicker
+              <DatePicker format="DD-MM-YYYY"
                 value={invoiceDate}
                 onChange={setInvoiceDate}
                 className="w-full mt-1"
@@ -497,7 +497,7 @@ export default function EditVendorOrderPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Delivery Date</label>
-              <DatePicker value={deliveryDate} onChange={setDeliveryDate} className="w-full mt-1" />
+              <DatePicker format="DD-MM-YYYY" value={deliveryDate} onChange={setDeliveryDate} className="w-full mt-1" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Delivery Person</label>

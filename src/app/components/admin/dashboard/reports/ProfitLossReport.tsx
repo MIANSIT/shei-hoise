@@ -173,7 +173,7 @@ export default function ProfitLossReport() {
             </div>
           </div>
 
-          <DatePicker.RangePicker
+          <DatePicker.RangePicker format="DD-MM-YYYY"
             value={range}
             onChange={(v) => {
               if (v && v[0] && v[1]) setRange([v[0], v[1]]);
@@ -192,7 +192,7 @@ export default function ProfitLossReport() {
         ) : (
           <>
             <ProfitStory
-              periodLabel={`${range[0].format("DD MMM YYYY")} – ${range[1].format("DD MMM YYYY")}`}
+              periodLabel={`${range[0].format("DD-MM-YYYY")} – ${range[1].format("DD-MM-YYYY")}`}
               formatMoney={money}
               figures={{
                 sales: report.totalSales,

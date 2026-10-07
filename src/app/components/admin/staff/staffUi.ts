@@ -1,3 +1,4 @@
+import { formatDateTime as formatDateTimeDMY } from "@/lib/utils/formatDate";
 import type { Lang } from "@/lib/i18n/translations";
 import { toLocalDigits } from "@/lib/i18n/numeral";
 
@@ -14,17 +15,11 @@ export function fillTemplate(
   });
 }
 
-/** "12 Sep 2026, 3:05 pm" in the viewer's language. */
+/** "12-09-2026, 03:05 PM" in the viewer's timezone. */
 export function formatDateTime(iso: string | null, lang: Lang): string {
   if (!iso) return "";
-  return new Intl.DateTimeFormat(lang === "bn" ? "bn-BD" : "en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "Asia/Dhaka",
-  }).format(new Date(iso));
+  const text = formatDateTimeDMY(iso);
+  return lang === "bn" ? text.replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]) : text;
 }
 
 /** A readable random password for the owner to hand over (no look-alike characters). */

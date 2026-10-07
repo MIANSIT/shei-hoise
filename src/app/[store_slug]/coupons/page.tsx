@@ -12,6 +12,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 
+import { formatDate } from "@/lib/utils/formatDate";
 export default function CouponsPage() {
   const params = useParams();
   const storeSlugParam = params?.store_slug;
@@ -114,11 +115,7 @@ export default function CouponsPage() {
                     {coupon.ends_at ? (
                       <p>
                         {t.coupons.expiresPrefix}{" "}
-                        {new Date(coupon.ends_at).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        {formatDate(coupon.ends_at)}
                       </p>
                     ) : null}
                   </div>

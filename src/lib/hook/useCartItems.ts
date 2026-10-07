@@ -62,6 +62,8 @@ export function useCartItems(storeSlug?: string) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by retry() to force a fresh fetch after a failed load
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Refs to track previous states
   const previousCartRef = useRef<CartItem[]>([]);
@@ -91,7 +93,8 @@ export function useCartItems(storeSlug?: string) {
       .join(",");
 
     return currentKeys !== previousKeys || !hasLoadedRef.current;
-  }, [targetCart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reloadKey re-evaluates the check after retry()
+  }, [targetCart, reloadKey]);
 
   // Fetch product data when needed
   useEffect(() => {
@@ -244,6 +247,13 @@ export function useCartItems(storeSlug?: string) {
         // ✅ FIX: Group enriched items to ensure no duplicates
         const groupedEnrichedItems = groupAndSumCartItems(enrichedItems);
 
+        // Cart has lines but none could be loaded (request failed / dropped):
+        // that's an error to retry, not an empty cart.
+        if (groupedEnrichedItems.length === 0) {
+          storeSlugs.forEach((slug) => productDataCacheRef.current.delete(`store-${slug}`));
+          throw new Error("Failed to load cart items");
+        }
+
         setCartItems(groupedEnrichedItems);
         previousCartRef.current = [...targetCart];
         hasLoadedRef.current = true;
@@ -262,7 +272,7 @@ export function useCartItems(storeSlug?: string) {
     if (shouldFetchProducts) {
       fetchCartDetails();
     }
-  }, [shouldFetchProducts, targetCart]);
+  }, [shouldFetchProducts, targetCart, reloadKey]);
 
   // Handle local updates (quantity changes and removals) without refetching
   useEffect(() => {
@@ -335,12 +345,19 @@ export function useCartItems(storeSlug?: string) {
   return {
     items: cartItems,
     calculations,
-    loading: loading && !hasLoadedRef.current, // Only show loading on initial load
+    // Only show loading on initial load, and never for a truly empty cart
+    loading: loading && !hasLoadedRef.current && targetCart.length > 0,
     error,
     refresh: () => {
       productDataCacheRef.current.clear();
       hasLoadedRef.current = false;
       setLoading(true);
+    },
+    retry: () => {
+      productDataCacheRef.current.clear();
+      hasLoadedRef.current = false;
+      setLoading(true);
+      setReloadKey((k) => k + 1);
     },
   };
 }

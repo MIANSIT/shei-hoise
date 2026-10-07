@@ -15,6 +15,7 @@ import {
 import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
 import { loadBengaliFontServer } from "@/lib/pdf/bengaliFontServer";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface InvoiceRequest {
   store: Store;
   orderId: string;
@@ -83,7 +84,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   } = body;
 
   const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
-  const orderDateStr = orderDate.toLocaleDateString("en-GB");
+  const orderDateStr = formatDate(orderDate);
   const orderTimeStr = orderDate.toLocaleTimeString("en-US", {
     hour12: true,
     hour: "numeric",
@@ -445,7 +446,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   } = body;
 
   const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
-  const orderDateStr = orderDate.toLocaleDateString("en-GB");
+  const orderDateStr = formatDate(orderDate);
   const orderTimeStr = orderDate.toLocaleTimeString("en-US", {
     hour12: true,
     hour: "numeric",

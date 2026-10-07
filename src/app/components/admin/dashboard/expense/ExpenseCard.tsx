@@ -101,7 +101,7 @@ export function ExpenseCard({
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar size={11} strokeWidth={2} />
-            <span>{dayjs(record.expense_date).format("MMM D, YYYY")}</span>
+            <span>{dayjs(record.expense_date).format("DD-MM-YYYY")}</span>
             <span className="text-muted-foreground">·</span>
             <span>{dayjs(record.expense_date).fromNow()}</span>
           </div>

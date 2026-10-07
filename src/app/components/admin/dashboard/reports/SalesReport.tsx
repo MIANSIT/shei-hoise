@@ -430,7 +430,7 @@ export default function SalesReport() {
             ))}
           </div>
           {granularity === "custom" ? (
-            <DatePicker.RangePicker
+            <DatePicker.RangePicker format="DD-MM-YYYY"
               value={customRange}
               onChange={(range) => {
                 if (range && range[0] && range[1]) {

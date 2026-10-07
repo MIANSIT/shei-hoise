@@ -16,6 +16,7 @@ import { ProfitStory, type BranchProfit, type ProfitStoryFigures } from "./Profi
 // with the canonical type when "all" was added.
 import type { TimePeriod } from "@/lib/hook/useDashboardMetrics";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface MainDashboardProps {
   stats: {
     title: string;
@@ -403,12 +404,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   const netProfitValue = expenseStats[1]?.value ?? "—";
   const netChangeType = expenseStats[1]?.changeType ?? "neutral";
 
-  const dateStr = new Date().toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const dateStr = formatDate(new Date());
 
   return (
     <div

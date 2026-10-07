@@ -26,7 +26,7 @@ import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
 import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode, Copy, MoreHorizontal } from "lucide-react";
-import { isSaleActive } from "@/lib/utils/getEffectivePrice";
+import { getEffectivePrice, isSaleActive } from "@/lib/utils/getEffectivePrice";
 import { Modal, Checkbox, Button, Dropdown, Popover } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
@@ -104,22 +104,37 @@ interface ProductTableProps {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const getLowestBasePrice = (product: ProductWithVariants) => {
-  const prices =
-    product.product_variants?.map((v) => v.base_price).filter(Boolean) || [];
-  return prices.length > 0
-    ? Math.min(...(prices as number[]))
-    : product.base_price;
-};
+/**
+ * The price a customer pays right now, by the same rules as the storefront
+ * (getEffectivePrice): a discount only counts when it's below the base price
+ * and its sale window is open. A product with variants is priced by its
+ * cheapest variant — the product's own price/discount fields are not mixed
+ * in (they're hidden in the form when variants exist, so they can be stale,
+ * e.g. copied by Duplicate).
+ */
+const getDisplayPrice = (
+  product: ProductWithVariants,
+): { price: number; original: number; onSale: boolean } | null => {
+  type Priced = {
+    base_price: number | null;
+    discounted_price: number | null;
+    sale_starts_at: string | null;
+    sale_ends_at: string | null;
+  };
+  const variants = (product.product_variants ?? []).filter((v) => Number(v.base_price) > 0) as Priced[];
+  const candidates: Priced[] = variants.length > 0 ? variants : Number(product.base_price) > 0 ? [product as Priced] : [];
+  if (candidates.length === 0) return null;
 
-const getLowestDiscountedPrice = (product: ProductWithVariants) => {
-  const prices =
-    (product.product_variants
-      ?.map((v) => v.discounted_price)
-      .filter(Boolean) as number[]) || [];
-  return prices.length > 0
-    ? Math.min(...prices)
-    : product.discounted_price || null;
+  const results = candidates.map((candidate) =>
+    getEffectivePrice({
+      base_price: Number(candidate.base_price),
+      discounted_price: candidate.discounted_price,
+      sale_starts_at: candidate.sale_starts_at,
+      sale_ends_at: candidate.sale_ends_at,
+    }),
+  );
+  const cheapest = results.reduce((best, current) => (current.price < best.price ? current : best));
+  return { price: cheapest.price, original: cheapest.originalPrice, onSale: cheapest.isOnSale };
 };
 
 // A "flash sale" is a discount with a real, currently-open sale_ends_at
@@ -521,27 +536,26 @@ const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   const renderPrice = (record: ProductWithVariants) => {
-    const basePrice = getLowestBasePrice(record);
-    const discountedPrice = getLowestDiscountedPrice(record);
-    if (discountedPrice) {
+    const display = getDisplayPrice(record);
+    if (!display) return <span className="text-sm font-medium text-foreground">—</span>;
+    if (display.onSale) {
       return (
         <div className="inline-flex flex-col items-center leading-tight">
           <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
             {cur}
-            {n(discountedPrice.toFixed(2))}
+            {n(display.price.toFixed(2))}
           </span>
-          {basePrice ? (
-            <span className="text-xs text-muted-foreground line-through">
-              {cur}
-              {n(basePrice.toFixed(2))}
-            </span>
-          ) : null}
+          <span className="text-xs text-muted-foreground line-through">
+            {cur}
+            {n(display.original.toFixed(2))}
+          </span>
         </div>
       );
     }
     return (
       <span className="text-sm font-medium text-foreground">
-        {basePrice ? `${cur}${n(basePrice.toFixed(2))}` : "—"}
+        {cur}
+        {n(display.price.toFixed(2))}
       </span>
     );
   };

@@ -191,7 +191,7 @@ export default function VendorOrderDetailPage() {
             address: order.vendor?.address,
           },
           invoiceNumber: order.invoice_number,
-          orderDate: dayjs(order.order_date).format("DD MMM YYYY"),
+          orderDate: dayjs(order.order_date).format("DD-MM-YYYY"),
           docType: order.status === "draft" ? "quotation" : "invoice",
           items: (order.items ?? []).map((i) => ({
             name: i.product_name,
@@ -206,7 +206,7 @@ export default function VendorOrderDetailPage() {
           grandTotal: Number(order.grand_total),
           paidAmount: displayPaidAmount,
           dueAmount: displayDueAmount,
-          deliveryDate: order.delivery_date ? dayjs(order.delivery_date).format("DD MMM YYYY") : null,
+          deliveryDate: order.delivery_date ? dayjs(order.delivery_date).format("DD-MM-YYYY") : null,
           deliveryPerson: order.delivery_person,
           vehicleNumber: order.vehicle_number,
           referenceNumber: order.reference_number,
@@ -305,7 +305,7 @@ export default function VendorOrderDetailPage() {
               </Tag>
             </div>
             <p className="text-xs text-muted-foreground m-0">
-              {order.vendor?.name} · {dayjs(order.order_date).format("DD MMM YYYY")}
+              {order.vendor?.name} · {dayjs(order.order_date).format("DD-MM-YYYY")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ export default function VendorOrderDetailPage() {
           <div>
             <div className="text-xs text-gray-400">Delivery</div>
             <div className="text-sm text-foreground">
-              {order.delivery_date ? dayjs(order.delivery_date).format("DD MMM YYYY") : "—"}
+              {order.delivery_date ? dayjs(order.delivery_date).format("DD-MM-YYYY") : "—"}
             </div>
             <div className="text-xs text-gray-500">
               {order.delivery_person || ""} {order.vehicle_number ? `· ${order.vehicle_number}` : ""}

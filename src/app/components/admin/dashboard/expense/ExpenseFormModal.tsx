@@ -221,7 +221,7 @@ function ExpenseFormModal({
               label={<FieldLabel>{t.admin.expenseDateLabel}</FieldLabel>}
               rules={[{ required: true, message: t.admin.expenseDateRequired }]}
             >
-              <DatePicker
+              <DatePicker format="DD-MM-YYYY"
                 className="rounded-lg w-full h-9.5"
                 disabledDate={(d: Dayjs) => d.isAfter(new Date())}
               />

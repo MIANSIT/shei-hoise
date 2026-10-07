@@ -15,8 +15,11 @@ import {
   Popover,
   Tag,
   Modal,
+  Drawer,
+  Grid,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
 import { StoreOrder } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import StatusTag from "../StatusFilter/StatusTag";
@@ -24,7 +27,6 @@ import OrderProductTable from "./OrderProductTable";
 import DetailedOrderView from "../TableData/DetailedOrderView";
 import OrdersFilterTabs from "../StatusFilter/OrdersFilterTabs";
 import DataTable from "@/app/components/admin/common/DataTable";
-import MobileDetailedView from "../TableData/MobileDetailedView";
 import { getValidCurrency } from "@/lib/utils/currency";
 import {
   EditOutlined,
@@ -32,12 +34,15 @@ import {
   FileTextOutlined,
   CopyOutlined,
   PrinterOutlined,
+  MoreOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import BulkActions from "./BulkActions";
 import BulkCourierShipmentAction from "./BulkCourierShipmentAction";
 import BulkInvoiceAction from "./BulkInvoiceAction";
-import { Check, MapPin, ChevronDown, Trash2 } from "lucide-react";
+import { Check, MapPin, Trash2 } from "lucide-react";
 // import AnimatedInvoice from "@/app/components/invoice/AnimatedInvoice";
 import InvoiceModal from "@/app/components/invoice/invoice";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
@@ -63,6 +68,7 @@ import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
 import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 import { ReviewLinkButton } from "./ReviewLinkButton";
 
+import { formatDate, formatDateTime, formatDateTimeShort } from "@/lib/utils/formatDate";
 interface Props {
   orders: StoreOrder[];
   paidAmountByOrderId?: Record<string, number>;
@@ -88,6 +94,12 @@ interface Props {
   onChannelChange?: (channel: "all" | "online" | "pos") => void;
   onRefresh?: () => void;
   onExportOrders?: () => Promise<StoreOrder[]>;
+  /** Order-date range (YYYY-MM-DD) that filters the list and the export; empty = all dates. */
+  dateFrom?: string;
+  dateTo?: string;
+  onDateRangeChange?: (from: string, to: string) => void;
+  /** Extra quick filters (channel, needs-branch…) shown on the left of the filter card's bottom row. */
+  filterExtras?: React.ReactNode;
 }
 
 // Same re-skin technique as VendorTable.tsx's TABLE_STYLES — uppercase gray
@@ -98,14 +110,14 @@ const TABLE_STYLES = `
     background: #fafafa !important; color: #6b7280 !important;
     font-size: 11px !important; font-weight: 700 !important;
     text-transform: uppercase !important; letter-spacing: 0.06em !important;
-    border-bottom: 1px solid #f0f0f5 !important; padding: 12px 16px !important;
+    border-bottom: 1px solid #f0f0f5 !important; padding: 10px 16px !important;
   }
   .dark .orders-table .ant-table-thead > tr > th {
     background: #1f2937 !important; color: #9ca3af !important;
     border-bottom-color: #374151 !important;
   }
   .orders-table .ant-table-tbody > tr > td {
-    padding: 12px 16px !important; border-bottom: 1px solid #f9fafb !important;
+    padding: 16px !important; border-bottom: 1px solid #f3f4f6 !important; vertical-align: top !important;
   }
   .dark .orders-table .ant-table-tbody > tr > td { border-bottom-color: #374151 !important; }
   .orders-table .ant-table-tbody > tr:hover > td { background: #fafbff !important; }
@@ -163,18 +175,20 @@ const OrdersTable: React.FC<Props> = ({
   loading = false,
   totalByOrderStatus, // <--- add this
   totalByPaymentStatus,
-  totalByChannel = { online: 0, pos: 0 },
-  channelFilter = "all",
-  onChannelChange,
   onRefresh,
   onExportOrders,
+  dateFrom = "",
+  dateTo = "",
+  onDateRangeChange,
+  filterExtras,
 }) => {
   const { notification } = App.useApp();
   const t = useTranslation();
   const n = useLocalNum();
-  const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
+  // The order open in the side drawer (looked up live, so it refreshes after an edit).
+  const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
+  const screens = Grid.useBreakpoint();
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
-  const [selectedRange, setSelectedRange] = useState<any>(null);
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
@@ -343,7 +357,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const ORDER_EXPORT_HEADER = [
     "Order #",
-    "Created At",
+    "Order Date",
     "Customer",
     "Email",
     "Phone",
@@ -357,7 +371,8 @@ const OrdersTable: React.FC<Props> = ({
   const buildOrderExportRows = (targetOrders: StoreOrder[]) =>
     targetOrders.map((o) => [
       o.order_number,
-      new Date(o.created_at).toLocaleString(),
+      // order_date is the date shown on the order (can be backdated); created_at is only a fallback.
+      formatDate(o.order_date || o.created_at),
       (o.shipping_address?.customer_name || o.customers?.first_name || ""),
       o.customers?.email || o.shipping_address?.email || "",
       o.shipping_address?.phone || o.customers?.phone || "",
@@ -371,24 +386,12 @@ const OrdersTable: React.FC<Props> = ({
   const handleExport = async (format: "csv" | "xlsx") => {
     if (exportingCsv) return;
 
-    let startDate: Date | null = null;
-    let endDate: Date | null = null;
-
-    if (selectedRange && selectedRange.length === 2) {
-      const s = selectedRange[0];
-      const e = selectedRange[1];
-      startDate = s && s.toDate ? s.toDate() : s ? new Date(s) : null;
-      endDate = e && e.toDate ? e.toDate() : e ? new Date(e) : null;
-
-      if (startDate) startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
-      if (endDate) endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
-    }
-
     setExportingCsv(true);
     let sourceOrders: StoreOrder[];
     try {
       // Fetch every order matching the current filters — not just the page
       // currently on screen — so the export isn't silently truncated.
+      // Already limited to the selected order-date range by the server.
       sourceOrders = onExportOrders ? await onExportOrders() : orders;
     } catch (err) {
       console.error("Error fetching orders for export:", err);
@@ -400,12 +403,7 @@ const OrdersTable: React.FC<Props> = ({
       return;
     }
 
-    const targetOrders = startDate && endDate
-      ? sourceOrders.filter((o) => {
-          const d = new Date(o.created_at);
-          return d >= startDate! && d <= endDate!;
-        })
-      : sourceOrders;
+    const targetOrders = sourceOrders;
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
@@ -416,12 +414,7 @@ const OrdersTable: React.FC<Props> = ({
       return;
     }
 
-    let datePart = "all-dates";
-    if (startDate && endDate) {
-      const s = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
-      const e = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
-      datePart = `${s}_to_${e}`;
-    }
+    const datePart = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : "all-dates";
 
     try {
       if (format === "xlsx") {
@@ -512,59 +505,51 @@ const OrdersTable: React.FC<Props> = ({
     </div>
   );
 
-  const renderActionButtons = (order: StoreOrder) => (
-    <div className="flex items-center justify-center gap-1.5">
-      {order.status === OrderStatus.DELIVERED && (
-        <ReviewLinkButton
-          order={order}
-          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 border-amber-200/70 dark:border-amber-800/40 text-amber-600! dark:text-amber-400! hover:from-amber-100 hover:to-amber-200/80 dark:hover:from-amber-900/60 dark:hover:to-amber-800/40`}
-        />
-      )}
-      {can("orders.edit") && (
-      <Tooltip title="Edit Order">
-        <Button
-          type="text"
-          icon={<EditOutlined />}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEdit(order);
-          }}
-          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-blue-50 to-blue-100/80 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200/70 dark:border-blue-800/40 text-blue-600! dark:text-blue-400! hover:from-blue-100 hover:to-blue-200/80 dark:hover:from-blue-900/60 dark:hover:to-blue-800/40`}
-        />
-      </Tooltip>
-      )}
-      {can("orders.delete") && (
-      <Tooltip title="Delete Order">
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          loading={deleteLoading === order.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(order);
-          }}
-          className={`${ACTION_CHIP_BASE} bg-linear-to-b from-rose-50 to-rose-100/80 dark:from-rose-950/50 dark:to-rose-900/30 border-rose-200/70 dark:border-rose-800/40 text-rose-600! dark:text-rose-400! hover:from-rose-100 hover:to-rose-200/80 dark:hover:from-rose-900/60 dark:hover:to-rose-800/40`}
-        />
-      </Tooltip>
-      )}
-    </div>
-  );
+  const renderActionButtons = (order: StoreOrder) => {
+    const menuItems = [
+      ...(can("orders.edit")
+        ? [{ key: "edit", icon: <EditOutlined />, label: t.admin.orderEditAction, onClick: () => handleEdit(order) }]
+        : []),
+      ...(can("orders.delete")
+        ? [
+            {
+              key: "delete",
+              icon: <DeleteOutlined />,
+              label: t.admin.orderDeleteAction,
+              danger: true,
+              disabled: deleteLoading === order.id,
+              onClick: () => handleDelete(order),
+            },
+          ]
+        : []),
+    ];
+    return (
+      <div className="flex items-center justify-center gap-1.5">
+        {order.status === OrderStatus.DELIVERED && (
+          <ReviewLinkButton
+            order={order}
+            className={`${ACTION_CHIP_BASE} bg-linear-to-b from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 border-amber-200/70 dark:border-amber-800/40 text-amber-600! dark:text-amber-400! hover:from-amber-100 hover:to-amber-200/80 dark:hover:from-amber-900/60 dark:hover:to-amber-800/40`}
+          />
+        )}
+        {menuItems.length > 0 && (
+          <Dropdown menu={{ items: menuItems }} trigger={["click"]} placement="bottomRight">
+            <Button
+              type="text"
+              aria-label={t.admin.orderMoreActions}
+              icon={<MoreOutlined />}
+              onClick={(e) => e.stopPropagation()}
+              className={`${ACTION_CHIP_BASE} border-border bg-card text-muted-foreground!`}
+            />
+          </Dropdown>
+        )}
+      </div>
+    );
+  };
 
   const formatCurrency = (amount: number, currency?: string | null) => {
     const finalCurrency = currency || storeCurrency || "";
     return `${finalCurrency} ${n(amount.toFixed(2))}`;
   };
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   // ✅ FIXED: Get customer name from shipping_address
   const getCustomerName = (order: StoreOrder) => {
     return (
@@ -679,7 +664,7 @@ const OrdersTable: React.FC<Props> = ({
             </span>
           </Tooltip>
           <span className="text-[11px] text-muted-foreground">
-            {formatDate(order.order_date || order.created_at)}
+            {formatDateTimeShort(resolveOrderInvoiceDate(order.order_date, order.created_at))}
           </span>
           <div className="flex flex-wrap gap-1">
           {order.channel === "pos" && (
@@ -693,7 +678,7 @@ const OrdersTable: React.FC<Props> = ({
             confirmed={order.branch_confirmed}
           />
           {order.invoice_printed_at && (
-            <Tooltip title={`${t.admin.printedOn} ${formatDate(order.invoice_printed_at)}`}>
+            <Tooltip title={`${t.admin.printedOn} ${formatDateTime(order.invoice_printed_at)}`}>
               <Tag color="purple" style={{ marginInlineEnd: 0 }}>
                 {t.admin.printedTag}
               </Tag>
@@ -710,7 +695,7 @@ const OrdersTable: React.FC<Props> = ({
           </div>
         </div>
       ),
-      width: 190,
+      width: 210,
       fixed: "left" as const,
     },
     {
@@ -733,32 +718,23 @@ const OrdersTable: React.FC<Props> = ({
               {getCustomerInitial(order)}
             </Avatar>
             <div className="min-w-0">
-              <div className="font-medium text-sm truncate max-w-25 lg:max-w-37.5">
+              <div className="font-medium text-sm truncate max-w-40">
                 {getCustomerName(order)}
               </div>
-              <div className="text-xs text-muted-foreground truncate max-w-25 lg:max-w-37.5">
+              <div className="text-xs text-muted-foreground truncate max-w-40">
                 {n(getCustomerPhone(order))}
+              </div>
+              <div className="mt-1">
+                <CustomerOrderHistoryTags
+                  history={historyByPhone?.[getCustomerPhone(order)]}
+                  showEmptyHint
+                />
               </div>
             </div>
           </Space>
         ),
-      width: 180,
+      width: 220,
       responsive: ["md"],
-    },
-    {
-      title: t.admin.ordersPastOrders,
-      key: "history",
-      render: (_, order: StoreOrder) =>
-        isWalkIn(order) ? (
-          <span className="text-xs text-muted-foreground">—</span>
-        ) : (
-          <CustomerOrderHistoryTags
-            history={historyByPhone?.[getCustomerPhone(order)]}
-            showEmptyHint
-          />
-        ),
-      width: 110,
-      responsive: ["lg"],
     },
     {
       title: t.admin.ordersColItems,
@@ -767,10 +743,10 @@ const OrdersTable: React.FC<Props> = ({
         <Tooltip
           title={(order.order_items ?? []).map((i) => `${i.product_name} x${i.quantity}`).join(", ")}
         >
-          <span className="text-sm text-foreground line-clamp-2 max-w-60">{itemsSummary(order)}</span>
+          <span className="text-sm text-foreground line-clamp-3 max-w-72">{itemsSummary(order)}</span>
         </Tooltip>
       ),
-      width: 220,
+      width: 260,
       responsive: ["lg"],
     },
     {
@@ -825,18 +801,58 @@ const OrdersTable: React.FC<Props> = ({
           {renderActionButtons(order)}
         </div>
       ),
-      width: 205,
+      width: 150,
       align: "center" as const,
       responsive: ["sm"],
     },
   ];
+
+  /** One compact line of delivery / payment facts — status & payment are already on the row. */
+  const renderDeliveryStrip = (order: StoreOrder) => {
+    const phone = order.shipping_address?.phone;
+    const risk = phone ? riskByPhone?.[phone] : undefined;
+    const riskStyle = RISK_STYLES[risk?.level ?? "new"];
+    const fbStatus = order.fb_purchase_event_status ?? "sent";
+    const fbStyle = FB_STATUS_STYLES[fbStatus];
+    return (
+      <div className="rounded-2xl border border-border bg-card px-4 py-3">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+          <DetailField label={t.admin.orderDeliveryOption}>
+            <span className="capitalize">{order.delivery_option || t.admin.orderNotSet}</span>
+          </DetailField>
+          <DetailField label={t.admin.orderPaymentMethodOption}>
+            <span className="capitalize">
+              {order.payment_method === "cod" ? t.admin.orderCod : order.payment_method || t.admin.orderNotSet}
+            </span>
+          </DetailField>
+          <DetailField label={t.admin.orderDeliveryCourierOption}>
+            <span className="capitalize">{order.courier || t.admin.orderNotSet}</span>
+          </DetailField>
+          <DetailField label={t.admin.orderColRisk}>
+            <Tooltip title={risk?.reason ?? "No history yet"}>
+              <span className={`inline-block cursor-help rounded-full px-2 py-0.5 text-xs font-semibold ${riskStyle.bg} ${riskStyle.text}`}>
+                {riskStyle.label}
+              </span>
+            </Tooltip>
+          </DetailField>
+          <DetailField label={t.admin.orderColFb}>
+            <Tooltip title={fbStyle.reason}>
+              <span className={`inline-flex cursor-help items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${fbStyle.bg} ${fbStyle.text}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${fbStyle.dot}`} />
+                {fbStyle.label}
+              </span>
+            </Tooltip>
+          </DetailField>
+        </div>
+      </div>
+    );
+  };
 
   // ✅ FIXED: Mobile card renderer with proper address display
   const renderOrderCard = (order: StoreOrder) => {
     const displayAddress = getDisplayAddress(order);
     const fullAddress = getFullAddress(order);
 
-    const isExpanded = expandedRowKey === order.id;
     const isSelected = selectedRowKeys.includes(order.id);
 
     return (
@@ -872,7 +888,7 @@ const OrdersTable: React.FC<Props> = ({
                 #{order.order_number}
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">
-                {formatDate(order.order_date || order.created_at)}
+                {formatDateTimeShort(resolveOrderInvoiceDate(order.order_date, order.created_at))}
               </div>
               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                 <Tag color={order.channel === "pos" ? "gold" : "blue"} style={{ marginInlineEnd: 0 }}>
@@ -968,77 +984,16 @@ const OrdersTable: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Expand Button */}
+          {/* Details open in the side drawer */}
           <button
-            onClick={() => setExpandedRowKey(isExpanded ? null : order.id)}
-            className="mt-2 w-full flex items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 text-xs sm:text-sm font-semibold py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+            onClick={() => setDrawerOrderId(order.id)}
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700 sm:text-sm dark:text-indigo-400 dark:hover:bg-indigo-950/30"
           >
-            {isExpanded ? t.admin.orderHideDetails : t.admin.orderViewDetails}
-            <ChevronDown
-              size={14}
-              className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-            />
+            {t.admin.orderViewDetails}
+            <RightOutlined className="text-[10px]" />
           </button>
         </div>
 
-        {/* Expanded Content */}
-        {isExpanded && (
-          <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 -mt-1 bg-muted/30 pt-3">
-            {order.status !== OrderStatus.CANCELLED &&
-              order.status !== OrderStatus.RETURNED &&
-              !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
-              <div className="mb-3">
-                <OrderProductTable
-                  order={order}
-                  onSaveStatus={(s: OrderStatus) =>
-                    onUpdate(order.id, { status: s })
-                  }
-                  onSavePaymentStatus={(s: PaymentStatus) =>
-                    onUpdate(order.id, { payment_status: s })
-                  }
-                  onSaveDeliveryOption={(o) =>
-                    onUpdate(order.id, { delivery_option: o })
-                  }
-                  onSavePaymentMethod={(m) =>
-                    onUpdate(order.id, { payment_method: m })
-                  }
-                  onSaveCourier={(c) =>
-                    onUpdate(order.id, { courier: c })
-                  }
-                  onSaveShippingFee={(fee) =>
-                    onUpdate(order.id, {
-                      shipping_fee: fee,
-                      total_amount: order.subtotal + order.tax_amount + fee,
-                    })
-                  }
-                  onSaveCancelNote={(note) =>
-                    onUpdate(order.id, { notes: note })
-                  }
-                  onSavePathaoShipment={(consignmentId, orderStatus) =>
-                    onUpdate(order.id, {
-                      courier_consignment_id: consignmentId,
-                      courier_order_status: orderStatus,
-                    })
-                  }
-                  onRefresh={onRefresh}
-                />
-              </div>
-            )}
-            <MobileDetailedView
-              order={order}
-              selected={selectedRowKeys.includes(order.id)}
-              onSelect={(orderId, selected) => {
-                if (selected) {
-                  setSelectedRowKeys([...selectedRowKeys, orderId]);
-                } else {
-                  setSelectedRowKeys(
-                    selectedRowKeys.filter((key) => key !== orderId),
-                  );
-                }
-              }}
-            />
-          </div>
-        )}
       </Card>
     );
   };
@@ -1088,58 +1043,31 @@ const OrdersTable: React.FC<Props> = ({
         </div>
       )}
 
-      {onChannelChange && (
-        <div className="mb-3 flex items-center gap-1.5">
-          {(
-            [
-              ["all", "All Channels", totalByChannel.online + totalByChannel.pos],
-              ["online", "Online", totalByChannel.online],
-              ["pos", "Quick Sale", totalByChannel.pos],
-            ] as const
-          ).map(([key, label, count]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onChannelChange(key)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                channelFilter === key
-                  ? "bg-indigo-500 border-indigo-500 text-white"
-                  : "bg-card border-border text-muted-foreground hover:border-indigo-400 hover:text-indigo-600"
-              }`}
-            >
-              {label}
-              <span
-                className={`inline-flex items-center justify-center min-w-4.5 h-4 px-1 rounded-full text-[10px] font-bold ${
-                  channelFilter === key ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {n(count)}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="mb-4 space-y-3 rounded-2xl border border-border bg-card p-4">
+        <OrdersFilterTabs
+          orders={orders}
+          totalOrders={totalOrders}
+          totalByOrderStatus={totalByOrderStatus}
+          totalByPaymentStatus={totalByPaymentStatus}
+          searchValue={search}
+          onSearchChange={onSearchChange}
+          onStatusChange={onStatusChange}
+          onPaymentStatusChange={onPaymentStatusChange}
+          initialCategory={initialCategory}
+          initialStatus={initialStatus}
+        />
 
-      <div className="mb-4 flex flex-col gap-2">
-        <div className="w-full">
-          <OrdersFilterTabs
-            orders={orders}
-            totalOrders={totalOrders}
-            totalByOrderStatus={totalByOrderStatus}
-            totalByPaymentStatus={totalByPaymentStatus}
-            searchValue={search}
-            onSearchChange={onSearchChange}
-            onStatusChange={onStatusChange}
-            onPaymentStatusChange={onPaymentStatusChange}
-            initialCategory={initialCategory}
-            initialStatus={initialStatus}
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <DatePicker.RangePicker
-            value={selectedRange}
-            onChange={(d) => setSelectedRange(d)}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+          <div className="flex flex-wrap items-center gap-2">{filterExtras}</div>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <DatePicker.RangePicker format="DD-MM-YYYY"
+            value={dateFrom && dateTo ? [dayjs(dateFrom), dayjs(dateTo)] : null}
+            onChange={(d) =>
+              onDateRangeChange?.(
+                d?.[0] && d?.[1] ? d[0].format("YYYY-MM-DD") : "",
+                d?.[0] && d?.[1] ? d[1].format("YYYY-MM-DD") : "",
+              )
+            }
             allowClear
             className="w-full sm:w-72"
           />
@@ -1171,9 +1099,11 @@ const OrdersTable: React.FC<Props> = ({
             </Popover>
           )}
         </div>
+        </div>
       </div>
 
       <style>{TABLE_STYLES}</style>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <DataTable<StoreOrder>
         className="orders-table"
         bordered={false}
@@ -1203,125 +1133,20 @@ const OrdersTable: React.FC<Props> = ({
         }}
         pagination={false}
         size="middle"
-        expandable={{
-          expandedRowKeys: expandedRowKey ? [expandedRowKey] : [],
-          onExpand: (expanded, record) =>
-            setExpandedRowKey(expanded ? record.id : null),
-          expandedRowRender: (order: StoreOrder) => {
-            const phone = order.shipping_address?.phone;
-            const risk = phone ? riskByPhone?.[phone] : undefined;
-            const riskStyle = RISK_STYLES[risk?.level ?? "new"];
-            const fbStatus = order.fb_purchase_event_status ?? "sent";
-            const fbStyle = FB_STATUS_STYLES[fbStatus];
-            const fullAddress = getFullAddress(order);
-
-            return (
-            <div className="space-y-4 p-3 sm:p-4 rounded-xl bg-muted/30">
-              {/* Show backend values at the top */}
-              <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                  Order Details
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-4">
-                  <DetailField label={t.admin.orderDeliveryOption}>
-                    <span className="capitalize">
-                      {order.delivery_option || t.admin.orderNotSet}
-                    </span>
-                  </DetailField>
-                  <DetailField label={t.admin.orderPaymentMethodOption}>
-                    <span className="capitalize">
-                      {order.payment_method === "cod"
-                        ? t.admin.orderCod
-                        : order.payment_method || t.admin.orderNotSet}
-                    </span>
-                  </DetailField>
-                  <DetailField label={t.admin.orderStatusOption}>
-                    <StatusTag status={order.status as OrderStatus} />
-                  </DetailField>
-                  <DetailField label={t.admin.orderPaymentStatusOption}>
-                    <StatusTag status={order.payment_status as PaymentStatus} />
-                  </DetailField>
-                  <DetailField label={t.admin.orderDeliveryCourierOption}>
-                    <span className="capitalize">
-                      {order.courier || t.admin.orderNotSet}
-                    </span>
-                  </DetailField>
-                  <DetailField label={t.admin.orderColRisk}>
-                    <Tooltip title={risk?.reason ?? "No history yet"}>
-                      <span
-                        className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${riskStyle.bg} ${riskStyle.text}`}
-                      >
-                        {riskStyle.label}
-                      </span>
-                    </Tooltip>
-                  </DetailField>
-                  <DetailField label={t.admin.orderColFb}>
-                    <Tooltip title={fbStyle.reason}>
-                      <span
-                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full cursor-help ${fbStyle.bg} ${fbStyle.text}`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${fbStyle.dot}`} />
-                        {fbStyle.label}
-                      </span>
-                    </Tooltip>
-                  </DetailField>
-                  <DetailField
-                    label={t.admin.orderColAddress}
-                    className="col-span-2 sm:col-span-3 lg:col-span-4"
-                  >
-                    <span className="font-normal">{fullAddress}</span>
-                  </DetailField>
-                </div>
-              </div>
-
-              {order.status !== OrderStatus.CANCELLED &&
-                order.status !== OrderStatus.RETURNED &&
-                !(order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID) && (
-                <OrderProductTable
-                  order={order}
-                  onSaveStatus={(s: OrderStatus) =>
-                    onUpdate(order.id, { status: s })
-                  }
-                  onSavePaymentStatus={(s: PaymentStatus) =>
-                    onUpdate(order.id, { payment_status: s })
-                  }
-                  onSaveDeliveryOption={(o) =>
-                    onUpdate(order.id, { delivery_option: o })
-                  }
-                  onSavePaymentMethod={(m) =>
-                    onUpdate(order.id, { payment_method: m })
-                  }
-                  onSaveCourier={(c) =>
-                    onUpdate(order.id, { courier: c })
-                  }
-                  onSaveShippingFee={(fee) =>
-                    onUpdate(order.id, {
-                      shipping_fee: fee,
-                      total_amount: order.subtotal + order.tax_amount + fee,
-                    })
-                  }
-                  onSaveCancelNote={(note) =>
-                    onUpdate(order.id, { notes: note })
-                  }
-                  onSavePathaoShipment={(consignmentId, orderStatus) =>
-                    onUpdate(order.id, {
-                      courier_consignment_id: consignmentId,
-                      courier_order_status: orderStatus,
-                    })
-                  }
-                  onRefresh={onRefresh}
-                />
-              )}
-              <DetailedOrderView order={order} />
-            </div>
-            );
+        onRow={(record) => ({
+          onClick: (e) => {
+            // Buttons, links and checkboxes inside a row do their own thing.
+            if ((e.target as HTMLElement).closest("button, a, input, .ant-checkbox-wrapper, .ant-dropdown-trigger")) return;
+            setDrawerOrderId(record.id);
           },
-        }}
+          style: { cursor: "pointer" },
+        })}
         scroll={{ x: 1000 }}
         responsive={true}
         renderCard={renderOrderCard}
         cardBreakpoint="lg"
       />
+      </div>
       {/* Mobile pagination */}
       <div className="flex flex-col items-center gap-2 mt-4 md:hidden">
         {/* Show total items */}
@@ -1364,6 +1189,137 @@ const OrdersTable: React.FC<Props> = ({
           }
         />
       </div>
+
+      {/* Order drawer — the list stays put while one order is worked on. */}
+      {(() => {
+        const index = orders.findIndex((o) => o.id === drawerOrderId);
+        const order = index >= 0 ? orders[index] : null;
+        const isFinalizedOrder =
+          !!order &&
+          (order.status === OrderStatus.CANCELLED ||
+            order.status === OrderStatus.RETURNED ||
+            (order.status === OrderStatus.DELIVERED && order.payment_status === PaymentStatus.PAID));
+        return (
+          <Drawer
+            open={!!order}
+            onClose={() => setDrawerOrderId(null)}
+            size={screens.lg ? 760 : "100%"}
+            destroyOnHidden
+            title={
+              order && (
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400">#{order.order_number}</span>
+                  <Tooltip title={t.admin.orderCopied}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      onClick={() => copyOrderNumber(order.order_number)}
+                    />
+                  </Tooltip>
+                </div>
+              )
+            }
+            extra={
+              <div className="flex items-center gap-1">
+                <Tooltip title={t.admin.orderPrevOrder}>
+                  <Button
+                    size="small"
+                    icon={<LeftOutlined />}
+                    disabled={index <= 0}
+                    onClick={() => setDrawerOrderId(orders[index - 1].id)}
+                  />
+                </Tooltip>
+                <Tooltip title={t.admin.orderNextOrder}>
+                  <Button
+                    size="small"
+                    icon={<RightOutlined />}
+                    disabled={index < 0 || index >= orders.length - 1}
+                    onClick={() => setDrawerOrderId(orders[index + 1].id)}
+                  />
+                </Tooltip>
+              </div>
+            }
+          >
+            {order && (
+              <div className="space-y-4">
+                {/* Who, how much, where it stands */}
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">
+                        {isWalkIn(order) ? t.admin.ordersWalkIn : getCustomerName(order)}
+                      </div>
+                      {!isWalkIn(order) && (
+                        <div className="text-xs text-muted-foreground">{n(getCustomerPhone(order))}</div>
+                      )}
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {formatDateTimeShort(resolveOrderInvoiceDate(order.order_date, order.created_at))}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold tabular-nums text-foreground">
+                        {formatCurrency(order.total_amount, order.currency)}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap justify-end gap-1">
+                        <StatusTag status={order.status as OrderStatus} size="small" />
+                        <StatusTag status={order.payment_status as PaymentStatus} size="small" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+                    {order.channel === "pos" && <Tag color="gold" style={{ marginInlineEnd: 0 }}>{t.admin.menuQuickSale}</Tag>}
+                    <OrderBranchTag
+                      branchId={order.branch_id}
+                      needsTransfer={order.needs_transfer}
+                      confirmed={order.branch_confirmed}
+                    />
+                    {order.invoice_printed_at && (
+                      <Tag color="purple" style={{ marginInlineEnd: 0 }}>{t.admin.printedTag}</Tag>
+                    )}
+                    {!isWalkIn(order) && (
+                      <CustomerOrderHistoryTags history={historyByPhone?.[getCustomerPhone(order)]} showEmptyHint />
+                    )}
+                    <div className="ml-auto flex items-center gap-1.5">
+                      {renderInvoiceCell(order)}
+                      {renderActionButtons(order)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* The work: status, payment, courier, collect payment (hidden once the order is finished) */}
+                {!isFinalizedOrder && (
+                  <OrderProductTable
+                    order={order}
+                    onSaveStatus={(st: OrderStatus) => onUpdate(order.id, { status: st })}
+                    onSavePaymentStatus={(st: PaymentStatus) => onUpdate(order.id, { payment_status: st })}
+                    onSaveDeliveryOption={(o) => onUpdate(order.id, { delivery_option: o })}
+                    onSavePaymentMethod={(m) => onUpdate(order.id, { payment_method: m })}
+                    onSaveCourier={(c) => onUpdate(order.id, { courier: c })}
+                    onSaveShippingFee={(fee) =>
+                      onUpdate(order.id, {
+                        shipping_fee: fee,
+                        total_amount: order.subtotal + order.tax_amount + fee,
+                      })
+                    }
+                    onSaveCancelNote={(note) => onUpdate(order.id, { notes: note })}
+                    onSavePathaoShipment={(consignmentId, orderStatus) =>
+                      onUpdate(order.id, {
+                        courier_consignment_id: consignmentId,
+                        courier_order_status: orderStatus,
+                      })
+                    }
+                    onRefresh={onRefresh}
+                  />
+                )}
+
+                {renderDeliveryStrip(order)}
+                <DetailedOrderView order={order} paidAmount={paidAmountByOrderId[order.id] ?? 0} />
+              </div>
+            )}
+          </Drawer>
+        );
+      })()}
 
       {/* Invoice Modal */}
       {showInvoice && selectedOrderForInvoice && storeData && (

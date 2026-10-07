@@ -21,6 +21,7 @@ import type { StoreData, UpdatedStoreData } from "@/lib/types/store/store";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface InfoItemProps {
   icon: React.ReactNode;
   label: string;
@@ -290,11 +291,7 @@ export function StoreInfoCard({ store, onUpdate }: StoreInfoCardProps) {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
             {t.admin.storeMgmtRegistered}{" "}
-            {new Date(store.created_at).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {formatDate(store.created_at)}
           </div>
         </div>
       )}

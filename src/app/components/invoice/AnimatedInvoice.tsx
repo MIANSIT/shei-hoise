@@ -10,24 +10,13 @@ import { StoreOrder } from "@/lib/types/order";
 import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { formatDateTime } from "@/lib/utils/formatDate";
 interface AnimatedInvoiceProps {
   isOpen: boolean;
   onClose?: () => void;
   orderData: StoreOrder;
   showCloseButton?: boolean;
 }
-
-// Format date
-const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
 
 export default function AnimatedInvoice({
   isOpen,
@@ -361,7 +350,7 @@ export default function AnimatedInvoice({
                   <div>${
                     enhancedOrderData.payment_method?.toUpperCase() || "CASH"
                   }</div>
-                  <div>Date: ${formatDate(enhancedOrderData.created_at)}</div>
+                  <div>Date: ${formatDateTime(enhancedOrderData.created_at)}</div>
                   <div style="margin-top: 5px; font-size: 12px;">Status: ${enhancedOrderData.status.toUpperCase()}</div>
                 </div>
                 
@@ -595,7 +584,7 @@ export default function AnimatedInvoice({
                 {enhancedOrderData.payment_method?.toUpperCase() || "CASH"}
               </div>
               <div className="text-xs text-muted-foreground">
-                Date: {formatDate(enhancedOrderData.created_at)}
+                Date: {formatDateTime(enhancedOrderData.created_at)}
               </div>
               <div className="text-xs text-muted-foreground capitalize">
                 Status: {enhancedOrderData.status}

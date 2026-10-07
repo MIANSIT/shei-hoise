@@ -27,7 +27,7 @@ function formatAmount(amount: number): string {
 }
 
 function formatDate(date: string): string {
-  return dayjs(date).format("MMM D, YYYY");
+  return dayjs(date).format("DD-MM-YYYY");
 }
 
 function getRows(expenses: Expense[]): string[][] {
@@ -148,7 +148,7 @@ export async function exportPDF(
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  const subtitle = `Exported ${dayjs().format("MMM D, YYYY")}  ·  ${expenses.length} record${expenses.length !== 1 ? "s" : ""}`;
+  const subtitle = `Exported ${dayjs().format("DD-MM-YYYY")}  ·  ${expenses.length} record${expenses.length !== 1 ? "s" : ""}`;
   doc.text(subtitle, 14, 17.5);
 
   const headers = getHeaders(pdfCurrency); // "Amount (BDT)"

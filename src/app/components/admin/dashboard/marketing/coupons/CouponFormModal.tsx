@@ -239,7 +239,7 @@ function CouponFormModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item name="starts_at" label={<FieldLabel>Starts (Optional)</FieldLabel>}>
-              <DatePicker showTime className="rounded-lg w-full h-9.5" />
+              <DatePicker format="DD-MM-YYYY HH:mm" showTime className="rounded-lg w-full h-9.5" />
             </Form.Item>
 
             <Form.Item
@@ -258,7 +258,7 @@ function CouponFormModal({
                 }),
               ]}
             >
-              <DatePicker showTime className="rounded-lg w-full h-9.5" />
+              <DatePicker format="DD-MM-YYYY HH:mm" showTime className="rounded-lg w-full h-9.5" />
             </Form.Item>
           </div>
 

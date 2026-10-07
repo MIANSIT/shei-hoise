@@ -119,7 +119,7 @@ export default function OrderDeliveryCostSection({ orderId, shippingFee, currenc
                         }`}
                       >
                         <span className="text-muted-foreground truncate">
-                          {h.createdByName ?? "—"} · {dayjs(h.createdAt).format("MMM D, h:mm A")}
+                          {h.createdByName ?? "—"} · {dayjs(h.createdAt).format("DD-MM-YYYY h:mm A")}
                           {h.note ? ` · ${h.note}` : ""}
                         </span>
                         <span className="shrink-0 font-bold">

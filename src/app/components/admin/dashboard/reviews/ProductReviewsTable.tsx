@@ -11,6 +11,7 @@ import {
 import { toggleReviewApproval } from "@/lib/queries/reviews/toggleReviewApproval";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 
+import { formatDate } from "@/lib/utils/formatDate";
 const PAGE_SIZE = 20;
 
 function StarRow({ rating }: { rating: number | null }) {
@@ -154,7 +155,7 @@ const ProductReviewsTable: React.FC = () => {
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {new Date(review.created_at).toLocaleDateString()}
+                  {formatDate(review.created_at)}
                 </td>
                 <td className="px-4 py-3">
                   <span

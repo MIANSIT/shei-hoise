@@ -27,6 +27,12 @@ const TODO_TONES = {
   indigo: { icon: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400", ring: "ring-indigo-400" },
 } as const;
 
+const parseIdParam = (value: string | null): string =>
+  value && /^[0-9a-fA-F-]{36}$/.test(value) ? value : "";
+
+const parseDateParam = (value: string | null): string =>
+  value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
   const notificationRef = useRef(notification);
@@ -91,13 +97,24 @@ const MainOrders: React.FC = () => {
     (v) => v === "true",
     0
   );
+  // Order-date range (YYYY-MM-DD) — filters the list and the CSV/Excel export.
+  const [dateFrom, setDateFrom] = useUrlSync<string>("from", "", parseDateParam, 0);
+  const [dateTo, setDateTo] = useUrlSync<string>("to", "", parseDateParam, 0);
+  // From the Customers / Customer Dues pages: one customer's orders (or only
+  // the ones they still owe for).
+  const [customerId, setCustomerId] = useUrlSync<string>("customer", "", parseIdParam, 0);
+  const [customerName] = useUrlSync<string>("cname", "", undefined, 0);
+  const [dueOnly, setDueOnly] = useUrlSync<boolean>("due", false, (v) => v === "true", 0);
   const branchFilters = React.useMemo<NonNullable<GetStoreOrdersOptions["filters"]>>(
     () => ({
+      ...(customerId ? { customerId } : {}),
+      ...(customerId && dueOnly ? { dueOnly: true } : {}),
+      ...(dateFrom && dateTo ? { dateFrom, dateTo } : {}),
       ...(branchIdsKey ? { branchIds: branchIdsKey.split(",") } : {}),
       ...(branchesOn && needsBranchOnly ? { needsBranch: true } : {}),
       ...(notPrintedOnly ? { printed: "no" as const } : {}),
     }),
-    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly]
+    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly, dateFrom, dateTo, customerId, dueOnly]
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -294,6 +311,12 @@ const MainOrders: React.FC = () => {
     setPage(1);
   };
 
+  const handleDateRangeChange = (from: string, to: string) => {
+    setDateFrom(from);
+    setDateTo(to);
+    setPage(1);
+  };
+
   const handleTableChange = (pagination: {
     current: number;
     pageSize: number;
@@ -421,6 +444,28 @@ const MainOrders: React.FC = () => {
       </div>
 
       <div className="px-4 sm:px-8 py-6 space-y-5">
+        {customerId && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+            <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+              {(dueOnly ? t.admin.ordersOfCustomerDue : t.admin.ordersOfCustomer).replace(
+                "{name}",
+                customerName || orders[0]?.shipping_address?.customer_name || t.admin.ordersThisCustomer,
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCustomerId("");
+                setDueOnly(false);
+                setPage(1);
+              }}
+              className="text-xs font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
+            >
+              {t.admin.ordersShowAll}
+            </button>
+          </div>
+        )}
+
         {/* What needs doing — each card is a one-tap filter. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {(
@@ -477,27 +522,55 @@ const MainOrders: React.FC = () => {
               key={card.key}
               type="button"
               aria-pressed={card.active}
+              title={card.hint}
               onClick={card.onClick}
-              className={`text-left rounded-2xl border p-3.5 sm:p-4 transition-all bg-card hover:shadow-md ${
+              className={`flex items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all hover:shadow-md ${
                 card.active ? `ring-2 ${TODO_TONES[card.tone].ring} border-transparent` : "border-border"
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${TODO_TONES[card.tone].icon}`}>
-                  {card.icon}
-                </span>
-                <span className="text-2xl font-black tabular-nums text-foreground">
+              <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TODO_TONES[card.tone].icon}`}>
+                {card.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-2xl font-black leading-none tabular-nums text-foreground">
                   {card.value === null ? "—" : n(card.value)}
                 </span>
-              </div>
-              <div className="mt-2 text-sm font-semibold text-foreground">{card.label}</div>
-              <div className="text-[11px] text-muted-foreground leading-snug">{card.hint}</div>
+                <span className="mt-1 block truncate text-xs font-semibold text-muted-foreground">{card.label}</span>
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Quick filters, all in one row. */}
-        <div className="flex flex-wrap items-center gap-2">
+      <OrdersTable
+        orders={orders}
+        paidAmountByOrderId={paidAmountByOrderId}
+        riskByPhone={riskByPhone}
+        historyByPhone={historyByPhone}
+        total={total}
+        totalOrders={totalOrders}
+        totalByOrderStatus={totalByOrderStatus}
+        totalByPaymentStatus={totalByPaymentStatus}
+        totalByChannel={totalByChannel}
+        channelFilter={channelFilter}
+        page={page}
+        pageSize={pageSize}
+        onTableChange={handleTableChange}
+        onUpdate={handleUpdate} // ✅ Use the new update handler
+        loading={loading}
+        search={search}
+        onSearchChange={handleSearch}
+        onStatusChange={handleStatusChange}
+        onPaymentStatusChange={handlePaymentStatusChange}
+        initialCategory={getInitialCategory()}
+        initialStatus={getInitialStatus()}
+        // ✅ PASS the refresh function
+        onRefresh={handleRefresh}
+        onExportOrders={handleExportOrders}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateRangeChange={handleDateRangeChange}
+        filterExtras={
+          <>
           <Segmented
             size="small"
             value={channelFilter}
@@ -541,33 +614,8 @@ const MainOrders: React.FC = () => {
               {t.admin.ordersClearFilters}
             </button>
           )}
-        </div>
-
-      <OrdersTable
-        orders={orders}
-        paidAmountByOrderId={paidAmountByOrderId}
-        riskByPhone={riskByPhone}
-        historyByPhone={historyByPhone}
-        total={total}
-        totalOrders={totalOrders}
-        totalByOrderStatus={totalByOrderStatus}
-        totalByPaymentStatus={totalByPaymentStatus}
-        totalByChannel={totalByChannel}
-        channelFilter={channelFilter}
-        page={page}
-        pageSize={pageSize}
-        onTableChange={handleTableChange}
-        onUpdate={handleUpdate} // ✅ Use the new update handler
-        loading={loading}
-        search={search}
-        onSearchChange={handleSearch}
-        onStatusChange={handleStatusChange}
-        onPaymentStatusChange={handlePaymentStatusChange}
-        initialCategory={getInitialCategory()}
-        initialStatus={getInitialStatus()}
-        // ✅ PASS the refresh function
-        onRefresh={handleRefresh}
-        onExportOrders={handleExportOrders}
+          </>
+        }
       />
       </div>
     </div>

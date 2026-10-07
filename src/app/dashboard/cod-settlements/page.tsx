@@ -187,7 +187,7 @@ export default function CodSettlementsPage() {
       title: "Delivered/Order Date",
       dataIndex: "order_date",
       key: "order_date",
-      render: (d: string) => dayjs(d).format("DD MMM YYYY"),
+      render: (d: string) => dayjs(d).format("DD-MM-YYYY"),
     },
     { title: "Courier", key: "courier", render: (_, row) => courierName(row.courier) },
     ...(showBranch
@@ -223,7 +223,7 @@ export default function CodSettlementsPage() {
       title: "Settled On",
       dataIndex: "settlement_date",
       key: "settlement_date",
-      render: (d: string) => dayjs(d).format("DD MMM YYYY"),
+      render: (d: string) => dayjs(d).format("DD-MM-YYYY"),
     },
     { title: "Courier", key: "courier", render: (_, row) => courierName(row.courier) },
     ...(showBranch
@@ -335,7 +335,7 @@ export default function CodSettlementsPage() {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Settlement date</div>
-                <DatePicker
+                <DatePicker format="DD-MM-YYYY"
                   value={settlementDate}
                   onChange={(d) => d && setSettlementDate(d)}
                   allowClear={false}

@@ -18,6 +18,8 @@ import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
+import { formatDate } from "@/lib/utils/formatDate";
+import Link from "next/link";
 export default function CustomerDues() {
   const { user } = useCurrentUser();
   const { icon: currencyIconRaw } = useUserCurrencyIcon();
@@ -116,9 +118,13 @@ export default function CustomerDues() {
       title: "Customer",
       key: "name",
       render: (_: unknown, record: CustomerWithDue) => (
-        <span className="text-sm font-semibold text-foreground">
+        <Link
+          href={`/dashboard/orders?customer=${record.customer_id}&due=true&cname=${encodeURIComponent(record.name || "")}`}
+          title={t.admin.customerViewDueOrders}
+          className="text-sm font-semibold text-foreground hover:text-blue-600 hover:underline"
+        >
           {record.name || "Walk-in Customer"}
-        </span>
+        </Link>
       ),
     },
     ...(branchesOn && !listBranchId
@@ -146,7 +152,7 @@ export default function CustomerDues() {
       key: "oldest_due_date",
       render: (date: string) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(date).toLocaleDateString()}
+          {formatDate(date)}
         </span>
       ),
     },
@@ -155,11 +161,15 @@ export default function CustomerDues() {
       dataIndex: "total_due",
       key: "total_due",
       align: "right" as const,
-      render: (due: number) => (
-        <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
+      render: (due: number, record: CustomerWithDue) => (
+        <Link
+          href={`/dashboard/orders?customer=${record.customer_id}&due=true&cname=${encodeURIComponent(record.name || "")}`}
+          title={t.admin.customerViewDueOrders}
+          className="text-sm font-bold text-rose-600 hover:underline dark:text-rose-400"
+        >
           {currencyIcon}
           {due.toFixed(2)}
-        </span>
+        </Link>
       ),
     },
     {

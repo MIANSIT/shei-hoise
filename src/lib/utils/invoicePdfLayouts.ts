@@ -9,6 +9,7 @@ import {
   hasBengali,
 } from "@/lib/utils/invoicePdfHelpers";
 
+import { formatDate } from "@/lib/utils/formatDate";
 // Shared across all three densities — an order counts as "having an
 // advance" only when something's been paid but it doesn't cover the full
 // total; a fully-paid or fully-unpaid order shows just the normal total.
@@ -254,7 +255,7 @@ export function drawFullInvoice(
 
   // ---- Footer ----
   const orderDate = data.orderCreatedAt ? new Date(data.orderCreatedAt) : new Date();
-  const orderDateStr = orderDate.toLocaleDateString("en-GB");
+  const orderDateStr = formatDate(orderDate);
   const orderTimeStr = orderDate.toLocaleTimeString("en-US", { hour12: true, hour: "numeric", minute: "2-digit" });
 
   summaryY += 10;
@@ -321,7 +322,7 @@ export function drawCompactInvoice(
   const orderDate = data.orderCreatedAt ? new Date(data.orderCreatedAt) : new Date();
   pdf.setFontSize(8.5);
   pdf.setTextColor(90, 90, 90);
-  const metaLine = `${orderDate.toLocaleDateString("en-GB")}  •  ${formatStatus(data.orderStatus ?? "processing")}  •  ${formatStatus(data.paymentStatus ?? "pending")}`;
+  const metaLine = `${formatDate(orderDate)}  •  ${formatStatus(data.orderStatus ?? "processing")}  •  ${formatStatus(data.paymentStatus ?? "pending")}`;
   pdf.text(metaLine, margin, y);
   y += 5;
 
@@ -443,7 +444,7 @@ export function drawMiniSlip(
   pdf.setTextColor(0, 0, 0);
   pdf.text(`#${data.orderId}`, cellX + pad, y);
   const orderDate = data.orderCreatedAt ? new Date(data.orderCreatedAt) : new Date();
-  const dateText = orderDate.toLocaleDateString("en-GB");
+  const dateText = formatDate(orderDate);
   pdf.text(dateText, cellX + cellW - pad - pdf.getTextWidth(dateText), y);
   y += 4.5;
 

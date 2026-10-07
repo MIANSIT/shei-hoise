@@ -112,7 +112,7 @@ function VendorQuickPaymentModal({
         </p>
         <div>
           <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Payment Date</label>
-          <DatePicker
+          <DatePicker format="DD-MM-YYYY"
             value={paymentDate}
             onChange={(d) => d && setPaymentDate(d)}
             className="w-full mt-1 rounded-lg"

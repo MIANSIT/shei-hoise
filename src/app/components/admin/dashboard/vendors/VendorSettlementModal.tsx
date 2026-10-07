@@ -203,7 +203,7 @@ function VendorSettlementModal({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-semibold text-muted-foreground">Settlement Date</label>
-            <DatePicker
+            <DatePicker format="DD-MM-YYYY"
               value={settlementDate}
               onChange={(d) => d && setSettlementDate(d)}
               className="w-full mt-1 rounded-lg"

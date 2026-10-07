@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Tabs, Input, Button, Space } from "antd";
+import { Segmented, Input } from "antd";
 import { StoreOrder } from "@/lib/types/order";
 import { SearchOutlined } from "@ant-design/icons";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
@@ -158,83 +158,66 @@ const OrdersFilterTabs: React.FC<Props> = ({
   };
 
   return (
-    <div className="mb-4 w-full">
-      <Tabs
-        activeKey={category}
-        onChange={handleCategoryChange}
-        items={[
-          { key: "order", label: t.admin.orderStatusTab },
-          { key: "payment", label: t.admin.paymentStatusTab },
-        ]}
-        type="card"
+    <div className="w-full space-y-3">
+      <Input
+        size="large"
+        placeholder={t.admin.searchByOrderNum}
+        value={localSearch}
+        onChange={(e) => handleInputChange(e.target.value)}
+        allowClear
+        onClear={() => {
+          setLocalSearch("");
+          onSearchChange("");
+        }}
+        onPressEnter={handleSearchSubmit}
+        prefix={<SearchOutlined className="text-muted-foreground" />}
+        suffix={isTyping ? <span className="text-xs text-muted-foreground">{t.admin.typingLabel}</span> : null}
       />
 
-      <div className="flex flex-col gap-3 mt-3">
-        <div className="w-full">
-          <Space.Compact className="w-full">
-            <Input
-              placeholder={t.admin.searchByOrderNum}
-              value={localSearch}
-              onChange={(e) => handleInputChange(e.target.value)}
-              allowClear
-              onClear={() => { setLocalSearch(""); onSearchChange(""); }}
-              onPressEnter={handleSearchSubmit}
-              suffix={
-                isTyping ? <span className="text-xs">{t.admin.typingLabel}</span> : null
-              }
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={handleSearchSubmit}
-            />
-          </Space.Compact>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Segmented
+          value={category}
+          onChange={(value) => handleCategoryChange(String(value))}
+          options={[
+            { value: "order", label: t.admin.orderStatusTab },
+            { value: "payment", label: t.admin.paymentStatusTab },
+          ]}
+        />
 
         {/* Status buttons: one row that scrolls sideways when space is short. */}
-        <div className="w-full">
-          <div className="hidden md:flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:thin]">
-            {statuses.map((status) => {
-              const isActive = activeStatus === status;
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => handleStatusChange(status)}
-                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm rounded-full border font-medium flex items-center gap-2 transition-all duration-200 ${
-                    statusColors[status]
-                  } ${
-                    isActive
-                      ? "ring-2 ring-offset-1 ring-blue-500"
-                      : "hover:scale-105 hover:shadow-sm"
+        <div className="hidden min-w-0 flex-1 gap-2 overflow-x-auto py-1 md:flex [scrollbar-width:thin]">
+          {statuses.map((status) => {
+            const isActive = activeStatus === status;
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => handleStatusChange(status)}
+                className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+                  statusColors[status]
+                } ${isActive ? "ring-2 ring-blue-500 ring-offset-1" : "hover:shadow-sm"}`}
+              >
+                <span>{getStatusLabel(status)}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                    isActive ? "bg-white text-gray-800" : "bg-black/10 text-current"
                   }`}
                 >
-                  <span>{getStatusLabel(status)}</span>
-                  <span
-                    className={`px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full ${
-                      isActive
-                        ? "bg-white text-gray-800"
-                        : "bg-black bg-opacity-20 text-white"
-                    }`}
-                  >
-                    {n(getStatusCount(status))}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Mobile: MobileFilter */}
-          <MobileFilter
-            value={activeStatus}
-            defaultValue="all"
-            options={statuses}
-            onChange={handleStatusChange}
-            getLabel={(status) =>
-              `${getStatusLabel(status)} (${n(getStatusCount(status))})`
-            }
-          />
+                  {n(getStatusCount(status))}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Mobile: MobileFilter */}
+        <MobileFilter
+          value={activeStatus}
+          defaultValue="all"
+          options={statuses}
+          onChange={handleStatusChange}
+          getLabel={(status) => `${getStatusLabel(status)} (${n(getStatusCount(status))})`}
+        />
       </div>
     </div>
   );

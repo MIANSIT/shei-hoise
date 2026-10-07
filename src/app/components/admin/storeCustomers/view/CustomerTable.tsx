@@ -25,6 +25,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 
+import Link from "next/link";
 const { Text, Title } = Typography;
 
 interface CustomerTableProps {
@@ -104,7 +105,15 @@ export function CustomerTable({
             {name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontWeight: 500 }}>{name}</div>
+            <Link
+              href={`/dashboard/orders?customer=${record.id}&cname=${encodeURIComponent(name)}`}
+              title={t.admin.customerViewOrders}
+              onClick={(e) => e.stopPropagation()}
+              style={{ fontWeight: 500 }}
+              className="text-foreground hover:text-blue-600 hover:underline"
+            >
+              {name}
+            </Link>
             <Space size={4} wrap>
               {typeof record.order_count === "number" &&
                 record.order_count > 0 && (
@@ -241,9 +250,12 @@ export function CustomerTable({
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-foreground truncate text-base mb-1">
+                    <Link
+                      href={`/dashboard/orders?customer=${customer.id}&cname=${encodeURIComponent(customer.name)}`}
+                      className="block font-semibold text-foreground truncate text-base mb-1 hover:text-blue-600 hover:underline"
+                    >
                       {customer.name}
-                    </div>
+                    </Link>
                     <div className="flex flex-wrap gap-1">
                       <Tag
                         color={customer.status === "active" ? "green" : "red"}

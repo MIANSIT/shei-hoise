@@ -69,7 +69,7 @@ export default function VendorOrdersPage() {
       dataIndex: "order_date",
       key: "order_date",
       width: 120,
-      render: (d: string) => dayjs(d).format("DD MMM YYYY"),
+      render: (d: string) => dayjs(d).format("DD-MM-YYYY"),
     },
     { title: "Qty", dataIndex: "total_quantity", key: "total_quantity", width: 80 },
     {

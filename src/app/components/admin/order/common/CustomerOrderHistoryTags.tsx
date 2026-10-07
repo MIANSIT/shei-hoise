@@ -69,7 +69,7 @@ function CustomerOrderHistoryTags({
           </div>
           {prior.map((h) => (
             <div key={h.orderId}>
-              {dayjs(h.orderDate).format("DD MMM YY")} · {h.orderNumber} ·{" "}
+              {dayjs(h.orderDate).format("DD-MM-YYYY")} · {h.orderNumber} ·{" "}
               <span className="capitalize">{h.status}</span>
             </div>
           ))}
