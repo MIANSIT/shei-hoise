@@ -41,6 +41,9 @@ const SORT_COLUMNS: Record<
   name_asc: { column: "name", ascending: true },
 };
 
+/** The most search results one request will fetch (their ids travel in the URL). */
+const MAX_SEARCH_RESULTS = 200;
+
 export async function clientGetProducts(
   store_slug: string,
   page: number = 1,
@@ -148,6 +151,10 @@ export async function clientGetProducts(
       if (relevanceOrder.length === 0) {
         return { products: [], hasMore: false, totalCount: 0 };
       }
+      // The ids go in the request address, so a broad search (thousands of
+      // matches) made it too long and the whole product list failed to load.
+      // The best matches come first; nobody pages through hundreds of them.
+      relevanceOrder = relevanceOrder.slice(0, MAX_SEARCH_RESULTS);
       query = query.in("id", relevanceOrder);
     } else {
       // Default view leads with the order the shop owner dragged the

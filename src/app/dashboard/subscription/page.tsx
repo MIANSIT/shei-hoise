@@ -28,15 +28,11 @@ import {
 } from "@/lib/queries/subscription/getStoreSubscription";
 import type { AdminInvoiceRow } from "@/lib/queries/subscription/getAdminInvoices";
 
+import { formatDate as formatDateDMY } from "@/lib/utils/formatDate";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-BD", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDateDMY(iso) || "—";
 }
 
 function formatAmount(amount: number, currency: string): string {

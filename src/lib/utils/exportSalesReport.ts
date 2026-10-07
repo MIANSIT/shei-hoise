@@ -70,7 +70,7 @@ export function exportSalesReportCSV(report: SalesReportResult, meta: SalesRepor
   const lines: string[] = [
     [`${meta.storeName} — Sales Report`].map(escape).join(","),
     [`Period: ${meta.fromDate} to ${meta.toDate} (${meta.granularityLabel})`].map(escape).join(","),
-    [`Generated: ${dayjs().format("YYYY-MM-DD HH:mm")}`].map(escape).join(","),
+    [`Generated: ${dayjs().format("DD-MM-YYYY HH:mm")}`].map(escape).join(","),
     "",
     ["Total Sales", `${meta.currencySymbol}${money(report.totalRevenue)}`].map(escape).join(","),
     ["Total Orders", String(report.totalOrders)].map(escape).join(","),
@@ -141,7 +141,7 @@ export async function exportSalesReportXLSX(
   r += 1;
 
   sheet.mergeCells(`A${r}:E${r}`);
-  sheet.getCell(`A${r}`).value = `Generated: ${dayjs().format("YYYY-MM-DD HH:mm")}`;
+  sheet.getCell(`A${r}`).value = `Generated: ${dayjs().format("DD-MM-YYYY HH:mm")}`;
   sheet.getCell(`A${r}`).font = { size: 9, italic: true, color: { argb: "FF9CA3AF" } };
   r += 2;
 
@@ -344,7 +344,7 @@ export async function exportSalesReportPDF(
   pdf.setFontSize(8.5);
   const periodText = `Period: ${meta.fromDate} to ${meta.toDate} (${meta.granularityLabel})`;
   pdf.text(periodText, pageWidth - margin - pdf.getTextWidth(periodText), 14);
-  const generatedText = `Generated: ${dayjs().format("YYYY-MM-DD HH:mm")}`;
+  const generatedText = `Generated: ${dayjs().format("DD-MM-YYYY HH:mm")}`;
   pdf.text(generatedText, pageWidth - margin - pdf.getTextWidth(generatedText), 20);
 
   pdf.setTextColor(0, 0, 0);

@@ -210,7 +210,7 @@ function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdi
         if (!record.starts_at && !record.ends_at) {
           return <span className="text-gray-400 dark:text-gray-500">Always</span>;
         }
-        const fmt = (d: string | null) => (d ? dayjs(d).format("MMM D, YYYY h:mm A") : "—");
+        const fmt = (d: string | null) => (d ? dayjs(d).format("DD-MM-YYYY h:mm A") : "—");
         return (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {fmt(record.starts_at)} → {fmt(record.ends_at)}
@@ -297,7 +297,7 @@ function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdi
       title: "Date",
       dataIndex: "createdAt",
       key: "createdAt",
-      render: (createdAt: string) => dayjs(createdAt).format("MMM D, YYYY h:mm A"),
+      render: (createdAt: string) => dayjs(createdAt).format("DD-MM-YYYY h:mm A"),
     },
   ];
 

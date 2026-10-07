@@ -13,6 +13,8 @@ import { getProductBySlug } from "@/lib/queries/products/getProductBySlug";
 import { toDuplicateDraft } from "@/lib/utils/duplicateProduct";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
+import { useBranches } from "@/lib/context/BranchContext";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
 // useSearchParams needs a Suspense boundary on a statically rendered page.
 export default function AddProductPage() {
   return (
@@ -28,6 +30,9 @@ function AddProductPageContent() {
   const { success, error } = useSheiNotification();
   const { user, loading } = useCurrentUser();
   const formRef = useRef<AddProductFormRef>(null);
+  // Stores with branches: the starting stock goes to the branch picked above the form.
+  const { enabled: branchesOn, workBranchId } = useBranches();
+  const stockBranchId = branchesOn ? workBranchId : null;
 
   // ?duplicate=<slug>: start from a copy of that product (Products → Duplicate).
   const duplicateSlug = useSearchParams().get("duplicate");
@@ -68,7 +73,7 @@ function AddProductPageContent() {
   if (duplicateLoading) return <p>Loading...</p>;
 
   const handleSubmit = async (product: ProductType) => {
-    const result = await createProduct(product);
+    const result = await createProduct(product, stockBranchId);
 
     if (!result.success) {
       console.error("createProduct failed:", result.error);
@@ -88,14 +93,24 @@ function AddProductPageContent() {
   };
 
   return (
-    <AddProductForm
-      // Remount when switching between a blank form and a duplicate.
-      key={duplicate ? `dup-${duplicateSlug}` : "new"}
-      ref={formRef}
-      initialProduct={duplicate?.draft}
-      duplicatedFrom={duplicate?.from}
-      storeId={user.store_id}
-      onSubmit={(product) => handleSubmit(product)}
-    />
+    <>
+      {branchesOn && (
+        <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+          <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 dark:border-teal-500/30 dark:bg-teal-500/10">
+            <WorkBranchPicker label={t.branches.stockBranchLabel} />
+            <p className="m-0 mt-1 text-xs text-muted-foreground">{t.branches.stockBranchAddHint}</p>
+          </div>
+        </div>
+      )}
+      <AddProductForm
+        // Remount when switching between a blank form and a duplicate.
+        key={duplicate ? `dup-${duplicateSlug}` : "new"}
+        ref={formRef}
+        initialProduct={duplicate?.draft}
+        duplicatedFrom={duplicate?.from}
+        storeId={user.store_id}
+        onSubmit={(product) => handleSubmit(product)}
+      />
+    </>
   );
 }

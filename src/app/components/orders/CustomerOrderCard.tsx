@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { formatDate } from "@/lib/utils/formatDate";
 interface OrdersCardProps {
   orders: StoreOrder[];
   onViewInvoice?: (order: StoreOrder) => void;
@@ -40,14 +41,6 @@ export default function OrdersCard({ orders, onViewInvoice }: OrdersCardProps) {
     );
   };
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   // Reusable badge color function for order & payment
   const getBadgeColor = (

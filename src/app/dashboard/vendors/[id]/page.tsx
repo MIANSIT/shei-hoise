@@ -238,7 +238,7 @@ export default function VendorDetailPage() {
       // Ledger arrives newest-first; the statement reads top-to-bottom with
       // an accumulating balance, so it needs oldest-first order instead.
       const entries = [...ledger].reverse().map((e) => ({
-        date: dayjs(e.date).format("DD MMM YYYY"),
+        date: dayjs(e.date).format("DD-MM-YYYY"),
         type: e.type,
         reference: e.reference,
         description: e.description,
@@ -258,7 +258,7 @@ export default function VendorDetailPage() {
             email: store?.contact_email,
           },
           vendor: { name: vendor.name, phone: vendor.phone, address: vendor.address },
-          generatedDate: dayjs().format("DD MMM YYYY"),
+          generatedDate: dayjs().format("DD-MM-YYYY"),
           entries,
           currentDue: stats?.current_due ?? 0,
         }),
@@ -359,7 +359,7 @@ export default function VendorDetailPage() {
       dataIndex: "order_date",
       key: "order_date",
       width: 130,
-      render: (d: string) => dayjs(d).format("DD MMM YYYY"),
+      render: (d: string) => dayjs(d).format("DD-MM-YYYY"),
     },
     {
       title: "Grand Total",
@@ -428,7 +428,7 @@ export default function VendorDetailPage() {
       dataIndex: "date",
       key: "date",
       width: 120,
-      render: (d: string) => dayjs(d).format("DD MMM YYYY"),
+      render: (d: string) => dayjs(d).format("DD-MM-YYYY"),
     },
     {
       title: "Type",

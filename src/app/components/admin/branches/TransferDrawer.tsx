@@ -109,6 +109,8 @@ export function TransferDrawer({ open, onClose, onCreated }: TransferDrawerProps
     onClose();
   };
 
+  const totalUnits = lines.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
+
   const label = (o: BranchStockOption) => (o.variantName ? `${o.productName} — ${o.variantName}` : o.productName);
 
   return (
@@ -119,7 +121,13 @@ export function TransferDrawer({ open, onClose, onCreated }: TransferDrawerProps
       title={t.branches.newTransfer}
       destroyOnHidden
       footer={
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-foreground">
+            {lines.length > 0
+              ? t.branches.transferSummary.replace("{items}", n(lines.length)).replace("{units}", n(totalUnits))
+              : ""}
+          </span>
+          <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={onClose}>{t.branches.cancel}</Button>
           <Button disabled={!canSubmit} loading={saving === "draft"} onClick={() => submit(false)}>
             {t.branches.saveDraft}
@@ -129,6 +137,7 @@ export function TransferDrawer({ open, onClose, onCreated }: TransferDrawerProps
               {t.branches.sendNow}
             </Button>
           )}
+          </div>
         </div>
       }
     >
@@ -162,7 +171,7 @@ export function TransferDrawer({ open, onClose, onCreated }: TransferDrawerProps
                 return (
                   <li key={lineKey(line)} className="flex items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-foreground">{label(line)}</div>
+                      <div className="break-words text-sm text-foreground">{label(line)}</div>
                       <div className={`text-xs ${over ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                         {t.branches.availableInSource.replace("{count}", n(line.available))}
                       </div>
@@ -218,7 +227,7 @@ export function TransferDrawer({ open, onClose, onCreated }: TransferDrawerProps
                   return (
                     <li key={lineKey(option)} className="flex items-center gap-3 px-3 py-2">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm text-foreground">{label(option)}</div>
+                        <div className="break-words text-sm text-foreground">{label(option)}</div>
                         <div className="text-xs text-muted-foreground">
                           {t.branches.availableInSource.replace("{count}", n(option.available))}
                         </div>

@@ -123,10 +123,10 @@ export async function exportProfitLossReportPDF(
   pdf.setTextColor(224, 231, 255);
   pdf.text("Profit & Loss Report", margin, 20);
   pdf.setFontSize(8.5);
-  pdf.text(`${dayjs(meta.fromDate).format("DD MMM YYYY")} – ${dayjs(meta.toDate).format("DD MMM YYYY")}`, pageWidth - margin, 13, {
+  pdf.text(`${dayjs(meta.fromDate).format("DD-MM-YYYY")} – ${dayjs(meta.toDate).format("DD-MM-YYYY")}`, pageWidth - margin, 13, {
     align: "right",
   });
-  pdf.text(`Generated ${dayjs().format("DD MMM YYYY, HH:mm")}`, pageWidth - margin, 20, { align: "right" });
+  pdf.text(`Generated ${dayjs().format("DD-MM-YYYY, HH:mm")}`, pageWidth - margin, 20, { align: "right" });
 
   // ── Result box: profit or loss in one number ──
   const isLoss = report.netProfit < 0;
@@ -271,7 +271,7 @@ export async function exportProfitLossReportPDF(
       startY: y,
       head: [[byMonth ? "Month" : "Date", "Profit"]],
       body: activeRows.map(([key, v]) => [
-        byMonth ? dayjs(`${key}-01`).format("MMMM YYYY") : dayjs(key).format("DD MMM YYYY, ddd"),
+        byMonth ? dayjs(`${key}-01`).format("MMMM YYYY") : dayjs(key).format("DD-MM-YYYY, ddd"),
         cur(v),
       ]),
       theme: "grid",

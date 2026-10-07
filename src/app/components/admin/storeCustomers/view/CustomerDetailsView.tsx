@@ -14,6 +14,7 @@ import { ProfileDetailsCard } from "@/app/components/user-profile/ProfileDetails
 import { AccountInfoCard } from "@/app/components/user-profile/AccountInfoCard";
 import { useCustomerFormData } from "@/lib/hook/profile-user/useCustomerFormData";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface CustomerDetailsViewProps {
   customer: DetailedCustomer;
   onBack: () => void;
@@ -270,9 +271,9 @@ export function CustomerDetailsView({
                         Last Order
                       </div>
                       <div className="mt-1 text-muted-foreground">
-                        {new Date(
+                        {formatDate(
                           currentCustomer.last_order_date
-                        ).toLocaleDateString()}
+                        )}
                       </div>
                     </div>
                   )}

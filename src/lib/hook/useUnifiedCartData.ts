@@ -72,6 +72,7 @@ export function useUnifiedCartData({
           // Use Zustand cart data - it's already grouped by useCartItems
           setCartItems(zustandData.items);
           setCalculations(zustandData.calculations);
+          setError(zustandData.error);
         } else if (
           tokenData &&
           tokenData !== previousCompressedDataRef.current
@@ -245,7 +246,9 @@ export function useUnifiedCartData({
           err instanceof Error ? err.message : "Failed to load cart data"
         );
       } finally {
-        setLoading(false);
+        // The Zustand cart fetches product details asynchronously — stay in
+        // the loading state until it's done, or the page flashes "cart empty".
+        setLoading(useZustand ? zustandData.loading : false);
       }
     };
 
@@ -257,5 +260,6 @@ export function useUnifiedCartData({
     calculations,
     loading,
     error,
+    retry: zustandData.retry,
   };
 }

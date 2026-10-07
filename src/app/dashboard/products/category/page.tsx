@@ -21,6 +21,7 @@ import { Pagination } from "antd";
 import type { Category } from "@/lib/types/category";
 import type { CreateCategoryType } from "@/lib/schema/category.schema";
 
+import { formatDate } from "@/lib/utils/formatDate";
 type RawCategory = {
   id: string;
   name: string;
@@ -121,9 +122,7 @@ export default function CategoryPage() {
           parent_id: c.parent_id ?? null,
           image_url: c.image_url ?? null,
           is_active: c.is_active,
-          createdAt: c.created_at
-            ? new Date(c.created_at).toISOString().split("T")[0]
-            : "",
+          createdAt: formatDate(c.created_at),
         })) ?? []) as Category[],
       );
       setTotal(count || 0);

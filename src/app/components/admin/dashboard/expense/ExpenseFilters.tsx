@@ -128,7 +128,7 @@ function FilterControls({
       />
 
       <div style={{ width: vertical ? "100%" : "auto" }}>
-        <RangePicker
+        <RangePicker format="DD-MM-YYYY"
           value={dateRange}
           onChange={(v) => onDateRangeChange(v as [Dayjs, Dayjs] | null)}
           onOpenChange={onCalendarOpenChange}

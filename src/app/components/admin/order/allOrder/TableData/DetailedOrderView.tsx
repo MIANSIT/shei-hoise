@@ -3,54 +3,73 @@
 import React, { useState } from "react";
 import { App } from "antd";
 import { StoreOrder } from "@/lib/types/order";
-import {
-  ClipboardCheck,
-  CreditCard,
-  Truck,
-  DollarSign,
-  Copy,
-  MapPin,
-  Phone,
-  Check,
-  Package,
-  Calendar,
-  FileText,
-  BadgeCheck,
-} from "lucide-react";
+import { Check, Copy, FileText, MapPin, Package, Phone, User } from "lucide-react";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { createReviewInviteLink } from "@/lib/queries/reviews/createReviewInviteLink";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 import OrderDeliveryCostSection from "./OrderDeliveryCostSection";
+
+/** Orders with more lines than this show the rest behind a "show all" button. */
+const VISIBLE_ITEMS = 6;
 
 interface Props {
   order: StoreOrder;
+  /** Advance / partial payment already recorded against this order. */
+  paidAmount?: number;
 }
 
-const DetailedOrderView: React.FC<Props> = ({ order }) => {
+type OrderAddress = NonNullable<StoreOrder["shipping_address"]>;
+
+/** A titled white card used for every block of the details panel. */
+const Section: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, icon, aside, children }) => (
+  <section className="rounded-2xl border border-border bg-card p-4">
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h3 className="m-0 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <span className="text-muted-foreground">{icon}</span>
+        {title}
+      </h3>
+      {aside && <div className="text-xs text-muted-foreground">{aside}</div>}
+    </div>
+    {children}
+  </section>
+);
+
+const DetailedOrderView: React.FC<Props> = ({ order, paidAmount = 0 }) => {
   const { message } = App.useApp();
+  const t = useTranslation();
+  const n = useLocalNum();
+  const [showAllItems, setShowAllItems] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [generatingReviewLink, setGeneratingReviewLink] = useState<string | null>(null);
-  const { icon: currencyIcon, loading: currencyLoading } =
-    useUserCurrencyIcon();
+  const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
 
-  const address = order.shipping_address;
-  const billingAddress = order.billing_address;
-  const fullShippingAddress = `${address.address_line_1}, ${address.city}, ${address.country}`;
-  const fullBillingAddress = billingAddress
-    ? `${billingAddress.address_line_1}, ${billingAddress.city}, ${billingAddress.country}`
-    : fullShippingAddress;
+  const icon = (!currencyLoading && currencyIcon) || "৳";
+  const money = (amount: number) => `${icon}${n(amount.toFixed(2))}`;
 
+  const shipping = order.shipping_address;
+  const billing = order.billing_address;
   const isCancelled = order.status === "cancelled";
   const isDelivered = order.status === "delivered";
-  const isPaid = order.payment_status === "paid";
+  const isClosed = isCancelled || order.status === "returned";
+
+  const addressText = (a: OrderAddress | null | undefined) =>
+    [a?.address_line_1, a?.city, a?.country].filter(Boolean).join(", ");
 
   const copyToClipboard = (text: string, label: string, fieldId: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      message.success(`${label} copied to clipboard!`);
-      setCopiedField(fieldId);
-      setTimeout(() => {
-        setCopiedField(null);
-      }, 2000);
-    });
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        message.success(`${label} ${t.admin.odCopied}`);
+        setCopiedField(fieldId);
+        setTimeout(() => setCopiedField(null), 2000);
+      })
+      .catch(() => message.error(t.admin.orderCopyFailed));
   };
 
   const handleGetReviewLink = async (itemId: string, productId: string) => {
@@ -61,739 +80,202 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
         message.error(result.error);
         return;
       }
-      copyToClipboard(result.url, "Review link", `review-${itemId}`);
+      copyToClipboard(result.url, t.admin.odReviewLink, `review-${itemId}`);
     } catch (err) {
       console.error(err);
-      message.error("Failed to create review link");
+      message.error(t.admin.odReviewLinkFailed);
     } finally {
       setGeneratingReviewLink(null);
     }
   };
 
-  const CopyIcon = ({ fieldId }: { fieldId: string }) => {
-    if (copiedField === fieldId) {
-      return <Check size={12} className="text-green-500" />;
-    }
-    return <Copy size={12} />;
-  };
+  const CopyButton = ({ text, label, fieldId }: { text: string; label: string; fieldId: string }) => (
+    <button
+      type="button"
+      aria-label={`${t.admin.odCopy} ${label}`}
+      title={`${t.admin.odCopy} ${label}`}
+      onClick={() => copyToClipboard(text, label, fieldId)}
+      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      {copiedField === fieldId ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+    </button>
+  );
 
-  // Calculate savings if there are discounts
-  const calculateSavings = () => {
-    let totalSavings = 0;
-    order.order_items.forEach((item) => {
-      const variant = item.variant_details;
-      const basePrice = variant?.base_price ?? item.unit_price;
-      const discountedPrice =
-        variant?.discounted_price ?? item.discounted_price ?? basePrice;
-      if (discountedPrice < basePrice) {
-        totalSavings += (basePrice - discountedPrice) * item.quantity;
-      }
-    });
-    return totalSavings;
-  };
+  const AddressBlock = ({ address, prefix }: { address: OrderAddress; prefix: string }) => (
+    <div className="space-y-1.5 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+          <User size={13} className="shrink-0 text-muted-foreground" />
+          <span className="truncate">{address.customer_name}</span>
+        </span>
+        <CopyButton text={address.customer_name} label={t.admin.orderColCustomer} fieldId={`${prefix}-name`} />
+      </div>
+      {address.phone && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Phone size={13} className="shrink-0" />
+            {n(address.phone)}
+          </span>
+          <CopyButton text={address.phone} label={t.admin.odPhone} fieldId={`${prefix}-phone`} />
+        </div>
+      )}
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex items-start gap-2 text-muted-foreground">
+          <MapPin size={13} className="mt-0.5 shrink-0" />
+          <span className="wrap-break-word">{addressText(address) || t.admin.odNoAddress}</span>
+        </span>
+        {addressText(address) && (
+          <CopyButton text={addressText(address)} label={t.admin.orderColAddress} fieldId={`${prefix}-address`} />
+        )}
+      </div>
+    </div>
+  );
 
-  const totalSavings = calculateSavings();
+  const totalSavings = order.order_items.reduce((sum, item) => {
+    const basePrice = item.variant_details?.base_price ?? item.unit_price;
+    const finalPrice = item.variant_details?.discounted_price ?? item.discounted_price ?? basePrice;
+    return finalPrice < basePrice ? sum + (basePrice - finalPrice) * item.quantity : sum;
+  }, 0);
 
-  const calculateSubtotal = () => {
-    let subtotal = 0;
-    order.order_items.forEach((item) => {
-      const variant = item.variant_details;
-      const basePrice = variant?.base_price ?? item.unit_price;
-      const discountedPrice =
-        variant?.discounted_price ?? item.discounted_price ?? basePrice;
-      const finalPrice =
-        discountedPrice < basePrice ? discountedPrice : basePrice;
-      subtotal += finalPrice * item.quantity;
-    });
-    return subtotal;
-  };
+  const showBilling = !!billing && addressText(billing) !== addressText(shipping);
+  const due = Math.max(order.total_amount - paidAmount, 0);
+  const showDue = !isClosed && order.payment_status !== "paid" && due > 0;
 
-  const calculatedSubtotal = calculateSubtotal();
-  const displayCurrencyIcon = currencyLoading ? null : (currencyIcon ?? null);
-  const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
+  const summaryRow = (label: string, value: string, tone?: string) => (
+    <div className="flex items-center justify-between gap-3 py-1 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-medium tabular-nums ${tone ?? "text-foreground"}`}>{value}</span>
+    </div>
+  );
 
   return (
-    <div className="space-y-3 sm:space-y-4 w-full">
-      {/* Premium Header */}
-      {/* Premium Header */}
-      <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-xl p-4 text-white shadow-md">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  copyToClipboard(
-                    order.order_number,
-                    "Order number",
-                    "order-number",
-                  )
-                }
-                className="flex items-center gap-2 hover:bg-blue-700/30 px-2 py-1 rounded transition-colors cursor-pointer group"
-              >
-                <h1 className="text-lg font-bold">
-                  Order #{order.order_number}
-                </h1>
-                {copiedField === "order-number" ? (
-                  <Check size={16} className="text-green-300" />
-                ) : (
-                  <Copy
-                    size={16}
-                    className="text-blue-200 group-hover:text-white"
-                  />
-                )}
-              </button>
-            </div>
-            <p className="text-blue-100 text-xs flex items-center gap-1 mt-1">
-              <Calendar size={12} />
-              Placed on {new Date(order.order_date || order.created_at).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="mt-2 sm:mt-0 text-right">
-            <div className="text-xl font-bold">
-              {displayCurrencyIconSafe}
-              {order.total_amount.toFixed(2)}
-            </div>
-            <div className="text-blue-100 text-xs flex items-center justify-end gap-1 mt-1">
-              <BadgeCheck size={12} />
-              {isPaid ? "Payment Completed" : "Payment Pending"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded">
-              <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground">
-                {order.order_items.length}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Items
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-purple-100 dark:bg-purple-900 rounded">
-              <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground">
-                {order.order_items.reduce(
-                  (sum, item) => sum + item.quantity,
-                  0,
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Total Quantity
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-green-100 dark:bg-green-900 rounded">
-              <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground">
-                {displayCurrencyIconSafe}
-                {calculatedSubtotal.toFixed(2)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Subtotal
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-orange-100 dark:bg-orange-900 rounded">
-              <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground">
-                {order.shipping_fee === 0
-                  ? "Free Shipping"
-                  : ` ${displayCurrencyIconSafe}${order.shipping_fee.toFixed(
-                      2,
-                    )}`}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Shipping
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Order Status Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {/* Order Status */}
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded">
-              <ClipboardCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground capitalize">
-                {order.status}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Order Status
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Status */}
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-green-100 dark:bg-green-900 rounded">
-              <CreditCard className="w-4 h-4 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <div
-                className={`text-sm font-bold capitalize ${
-                  order.payment_status === "paid"
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-yellow-600 dark:text-yellow-400"
-                }`}
-              >
-                {order.payment_status}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Payment Status
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Delivery Method */}
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-orange-100 dark:bg-orange-900 rounded">
-              <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground capitalize">
-                {order.delivery_option || "N/A"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Delivery Method
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Method */}
-        <div className="bg-card rounded-lg p-3 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-purple-100 dark:bg-purple-900 rounded">
-              <DollarSign className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-foreground uppercase">
-                {order.payment_method}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Payment Method
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Products Table */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
-            <Package className="w-4 h-4 text-blue-500" />
-            Order Items
-          </h3>
-          <div className="text-xs text-gray-500">
-            {order.order_items.length} item
-            {order.order_items.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {order.order_items.map((item) => {
-            const variant = item.variant_details;
-            const basePrice = variant?.base_price ?? item.unit_price;
-            const discountedPrice =
-              variant?.discounted_price ?? item.discounted_price ?? basePrice;
-            const total = discountedPrice * item.quantity;
-            const hasDiscount = discountedPrice < basePrice;
-
-            // Get SKUs from the item - using optional chaining since these are optional properties
-            const productSku = item.product_sku || "";
-            const variantSku = item.variant_sku || "";
-            const displaySku = variantSku || productSku;
-
-            return (
-              <div
-                key={item.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between bg-card rounded-lg p-3 shadow-sm border border-border"
-              >
-                <div className="flex items-start gap-3 flex-1">
-                  <div className="flex-1">
-                    {/* Product Name and SKU */}
-                    <div className="flex flex-col gap-1">
-                      <div className="font-medium text-foreground text-sm">
-                        {item.product_name}
-                      </div>
-
-                      {/* Display SKU if available */}
-                      {displaySku && (
-                        <div className="text-xs text-muted-foreground">
-                          SKU:{" "}
-                          <span className="font-medium text-foreground">
-                            {displaySku}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Variant Information */}
-                    {variant && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        <span className="font-medium text-foreground">
-                          {variant.variant_name}
-                          {/* Show variant SKU if it's different from product SKU */}
-                          {variantSku &&
-                            productSku &&
-                            variantSku !== productSku && (
-                              <span className="ml-2 text-gray-500">
-                                ({variantSku})
-                              </span>
-                            )}
-                        </span>
+    <div className="grid w-full gap-4 lg:grid-cols-3">
+      {/* Left: what was ordered */}
+      <div className="space-y-4 lg:col-span-2">
+        <Section
+          title={t.admin.odItems}
+          icon={<Package size={15} />}
+          aside={t.admin.odItemsCount.replace("{n}", n(order.order_items.length))}
+        >
+          <ul className="m-0 list-none divide-y divide-border p-0">
+            {(showAllItems ? order.order_items : order.order_items.slice(0, VISIBLE_ITEMS)).map((item) => {
+              const variant = item.variant_details;
+              const basePrice = variant?.base_price ?? item.unit_price;
+              const finalPrice = variant?.discounted_price ?? item.discounted_price ?? basePrice;
+              const hasDiscount = finalPrice < basePrice;
+              const sku = item.variant_sku || item.product_sku || "";
+              return (
+                <li key={item.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <div className="wrap-break-word text-sm font-medium text-foreground">{item.product_name}</div>
+                    {(variant || sku) && (
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {[variant?.variant_name, sku && `${t.admin.odSku}: ${sku}`].filter(Boolean).join(" · ")}
                       </div>
                     )}
-                    <div className="flex flex-wrap items-center gap-2 text-xs mt-2">
-                      {hasDiscount && (
-                        <span className="line-through text-gray-400">
-                          {displayCurrencyIconSafe}
-                          {basePrice.toFixed(2)}
-                        </span>
-                      )}
-                      <span
-                        className={`font-semibold ${
-                          hasDiscount
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-foreground"
-                        }`}
-                      >
-                        {displayCurrencyIconSafe}
-                        {discountedPrice.toFixed(2)}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                      {hasDiscount && <span className="text-muted-foreground line-through">{money(basePrice)}</span>}
+                      <span className={`font-semibold ${hasDiscount ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                        {money(finalPrice)}
                       </span>
-                      <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        × {item.quantity}
+                      <span className="rounded-md bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+                        × {n(item.quantity)}
                       </span>
-                      {hasDiscount && (
-                        <span className="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded font-medium">
-                          Save {displayCurrencyIconSafe}
-                          {(
-                            (basePrice - discountedPrice) *
-                            item.quantity
-                          ).toFixed(2)}
-                        </span>
+                      {isDelivered && (
+                        <button
+                          type="button"
+                          onClick={() => handleGetReviewLink(item.id, item.product_id)}
+                          disabled={generatingReviewLink === item.id}
+                          className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50 dark:text-blue-400"
+                        >
+                          {copiedField === `review-${item.id}` ? <Check size={12} /> : <Copy size={12} />}
+                          {generatingReviewLink === item.id ? t.admin.odGenerating : t.admin.odReviewLink}
+                        </button>
                       )}
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-2 sm:mt-0 flex flex-col items-end gap-1.5">
-                  <div className="font-semibold text-foreground text-right text-sm">
-                    {displayCurrencyIconSafe}
-                    {total.toFixed(2)}
+                  <div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                    {money(finalPrice * item.quantity)}
                   </div>
-                  {isDelivered && (
-                    <button
-                      onClick={() => handleGetReviewLink(item.id, item.product_id)}
-                      disabled={generatingReviewLink === item.id}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 disabled:opacity-50"
-                    >
-                      <CopyIcon fieldId={`review-${item.id}`} />
-                      {generatingReviewLink === item.id
-                        ? "Generating…"
-                        : "Get review link"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                </li>
+              );
+            })}
+          </ul>
+          {order.order_items.length > VISIBLE_ITEMS && (
+            <button
+              type="button"
+              onClick={() => setShowAllItems((open) => !open)}
+              className="mt-3 w-full rounded-lg border border-border py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-muted dark:text-blue-400"
+            >
+              {showAllItems
+                ? t.admin.odShowFewer
+                : t.admin.odShowAllItems.replace("{n}", n(order.order_items.length))}
+            </button>
+          )}
+        </Section>
+
+        <div className={`grid gap-4 ${showBilling ? "md:grid-cols-2" : ""}`}>
+        {shipping && (
+          <Section title={t.admin.odShipTo} icon={<MapPin size={15} />}>
+            <AddressBlock address={shipping} prefix="ship" />
+          </Section>
+        )}
+
+        {showBilling && billing && (
+          <Section title={t.admin.odBilling} icon={<User size={15} />}>
+            <AddressBlock address={billing} prefix="bill" />
+          </Section>
+        )}
         </div>
 
-        {totalSavings > 0 && (
-          <div className="mt-3 p-2 bg-green-50 dark:bg-green-900 rounded-lg border border-green-200 dark:border-green-700">
-            <div className="flex items-center justify-between text-green-800 dark:text-green-200 text-xs">
-              <span className="font-semibold">Total Savings</span>
-              <span className="font-bold">
-                {" "}
-                {displayCurrencyIconSafe}
-                {totalSavings.toFixed(2)}
-              </span>
-            </div>
-          </div>
+        {order.notes && (
+          <section
+            className={`rounded-2xl border p-4 ${
+              isCancelled
+                ? "border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10"
+                : "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10"
+            }`}
+          >
+            <h3
+              className={`m-0 mb-1 flex items-center gap-2 text-sm font-semibold ${
+                isCancelled ? "text-red-800 dark:text-red-200" : "text-amber-800 dark:text-amber-200"
+              }`}
+            >
+              <FileText size={15} />
+              {isCancelled ? t.admin.odCancelNote : t.admin.odNotes}
+            </h3>
+            <p className="m-0 whitespace-pre-wrap text-sm text-foreground/80">{order.notes}</p>
+          </section>
         )}
       </div>
 
-      {/* Financial Summary */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
-        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-blue-500" />
-          Financial Summary
-        </h3>
-
-        <div className="space-y-2">
-          {order.order_items.map((item) => {
-            const basePrice =
-              item.variant_details?.base_price ?? item.unit_price;
-            const discountedPrice = item.unit_price;
-            const hasDiscount = discountedPrice < basePrice;
-            // Get SKU for display in financial summary
-            const productSku = item.product_sku || "";
-            const variantSku = item.variant_sku || "";
-            const displaySku = variantSku || productSku;
-
-            return (
-              <div
-                key={item.id}
-                className="p-2 rounded-lg border border-border bg-white/50 dark:bg-gray-800/30"
-              >
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">
-                      {item.product_name}
-                    </span>
-                    {displaySku && (
-                      <span className="text-xs text-muted-foreground">
-                        SKU: {displaySku}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    x{item.quantity}
-                  </span>
-                </div>
-
-                <div className="text-xs mt-1 text-muted-foreground">
-                  Base Price: {displayCurrencyIconSafe}
-                  {basePrice.toFixed(2)}
-                </div>
-
-                {hasDiscount && (
-                  <div className="text-xs text-green-600 dark:text-green-400">
-                    Discounted Price: {displayCurrencyIconSafe}
-                    {discountedPrice.toFixed(2)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Financial Summary Details */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
-        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-blue-500" />
-          Order Summary
-        </h3>
-
-        <div className="space-y-2">
-          {/* Subtotal */}
-          <div className="flex justify-between items-center py-1">
-            <span className="text-sm text-muted-foreground">
-              Subtotal
-            </span>
-            <span className="font-semibold text-sm text-foreground">
-              {displayCurrencyIconSafe}
-              {order.subtotal.toFixed(2)}
-            </span>
-          </div>
-
-          {/* Discount */}
-          <div className="flex justify-between items-center py-1">
-            <span className="text-sm text-muted-foreground">
-              Discount
-            </span>
-            <span className="font-semibold text-sm text-green-600 dark:text-green-400">
-              -{displayCurrencyIconSafe}
-              {(order.discount_amount || 0).toFixed(2)}
-            </span>
-          </div>
-
-          {/* Shipping Fee */}
-          <div className="flex justify-between items-center py-1">
-            <span className="text-sm text-muted-foreground">
-              Shipping Fee
-            </span>
-            <span className="font-semibold text-sm text-foreground">
-              {displayCurrencyIconSafe}
-              {(order.shipping_fee || 0).toFixed(2)}
-            </span>
-          </div>
-
+      {/* Right: money and who it goes to */}
+      {/* Stays in view while a long item list scrolls past. */}
+      <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <Section title={t.admin.odOrderSummary} icon={<FileText size={15} />}>
+          {summaryRow(t.admin.odSubtotal, money(order.subtotal))}
+          {(order.discount_amount ?? 0) > 0 &&
+            summaryRow(t.admin.odDiscount, `-${money(order.discount_amount ?? 0)}`, "text-emerald-600 dark:text-emerald-400")}
+          {summaryRow(t.admin.odShippingFee, money(order.shipping_fee || 0))}
           {/* Actual courier cost vs. what the customer was charged above */}
-          <OrderDeliveryCostSection
-            orderId={order.id}
-            shippingFee={order.shipping_fee || 0}
-            currencyIcon={displayCurrencyIconSafe}
-          />
-
-          {/* Tax */}
-          {(order.tax_amount ?? 0) > 0 && (
-            <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-muted-foreground">
-                Tax
-              </span>
-              <span className="font-semibold text-sm text-foreground">
-                {displayCurrencyIconSafe}
-                {(order.tax_amount || 0).toFixed(2)}
-              </span>
+          <OrderDeliveryCostSection orderId={order.id} shippingFee={order.shipping_fee || 0} currencyIcon={icon} />
+          {(order.tax_amount ?? 0) > 0 && summaryRow(t.admin.odTax, money(order.tax_amount ?? 0))}
+          {(order.additional_charges ?? 0) > 0 &&
+            summaryRow(t.admin.odAdditional, money(order.additional_charges ?? 0))}
+          <div className="mt-1 flex items-center justify-between border-t border-border pt-2.5 text-base font-bold text-foreground">
+            <span>{t.admin.odTotal}</span>
+            <span className="tabular-nums">{money(order.total_amount)}</span>
+          </div>
+          {paidAmount > 0 && summaryRow(t.admin.odPaid, money(paidAmount), "text-emerald-600 dark:text-emerald-400")}
+          {showDue && summaryRow(t.admin.ordersDue, money(due), "text-rose-600 dark:text-rose-400")}
+          {totalSavings > 0 && (
+            <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              {t.admin.odTotalSavings}: {money(totalSavings)}
             </div>
           )}
-          {(order.additional_charges ?? 0) > 0 && (
-            <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-muted-foreground">
-                Additional Charges
-              </span>
-              <span className="font-semibold text-sm text-foreground">
-                {displayCurrencyIconSafe}
-                {(order.additional_charges ?? 0).toFixed(2)}
-              </span>
-            </div>
-          )}
+        </Section>
 
-          {/* Total Amount */}
-          <div className="flex justify-between items-center pt-2 font-semibold border-t border-border">
-            <span className="text-sm">Total Amount</span>
-            <span className="text-blue-600 dark:text-blue-400 text-sm">
-              {displayCurrencyIconSafe}
-              {order.total_amount.toFixed(2)}
-            </span>
-          </div>
-        </div>
       </div>
-
-      {/* Address Information */}
-      <div className="rounded-xl bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 shadow-md border border-border">
-        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-blue-500" />
-          Address Information
-        </h3>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {/* Shipping Address */}
-          <div className="p-3 bg-card rounded-lg shadow-sm border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <Truck className="w-4 h-4 text-green-500" />
-              <h4 className="font-medium text-foreground text-sm">
-                Shipping Address
-              </h4>
-            </div>
-
-            <div className="space-y-2">
-              <div>
-                <p className="font-medium text-foreground text-sm flex items-center justify-between">
-                  {address.customer_name}
-                  <button
-                    onClick={() =>
-                      copyToClipboard(
-                        address.customer_name,
-                        "Customer name",
-                        "customer-name",
-                      )
-                    }
-                    className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
-                  >
-                    <CopyIcon fieldId="customer-name" />
-                  </button>
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Phone size={12} />
-                    {address.phone}
-                  </span>
-                  <button
-                    onClick={() =>
-                      copyToClipboard(
-                        address.phone,
-                        "Phone number",
-                        "customer-phone",
-                      )
-                    }
-                    className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
-                  >
-                    <CopyIcon fieldId="customer-phone" />
-                  </button>
-                </p>
-              </div>
-
-              <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>{address.address_line_1}</p>
-                <p>
-                  {address.city}, {address.country}
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
-                  copyToClipboard(
-                    fullShippingAddress,
-                    "Shipping address",
-                    "shipping-address",
-                  )
-                }
-                className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors cursor-pointer mt-1"
-              >
-                {copiedField === "shipping-address" ? (
-                  <Check size={10} className="text-green-500" />
-                ) : (
-                  <Copy size={10} />
-                )}
-                {copiedField === "shipping-address"
-                  ? "Copied!"
-                  : "Copy Address"}
-              </button>
-            </div>
-          </div>
-
-          {/* Billing Address */}
-          <div className="p-3 bg-card rounded-lg shadow-sm border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="w-4 h-4 text-purple-500" />
-              <h4 className="font-medium text-foreground text-sm">
-                Billing Address
-              </h4>
-            </div>
-
-            {billingAddress ? (
-              <div className="space-y-2">
-                <div>
-                  <p className="font-medium text-foreground text-sm flex items-center justify-between">
-                    {billingAddress.customer_name}
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          billingAddress.customer_name,
-                          "Billing name",
-                          "billing-name",
-                        )
-                      }
-                      className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
-                    >
-                      <CopyIcon fieldId="billing-name" />
-                    </button>
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-muted-foreground flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      <Phone size={12} />
-                      {billingAddress.phone}
-                    </span>
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          billingAddress.phone,
-                          "Billing phone",
-                          "billing-phone",
-                        )
-                      }
-                      className="text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
-                    >
-                      <CopyIcon fieldId="billing-phone" />
-                    </button>
-                  </p>
-                </div>
-
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p>{billingAddress.address_line_1}</p>
-                  <p>
-                    {billingAddress.city}, {billingAddress.country}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() =>
-                    copyToClipboard(
-                      fullBillingAddress,
-                      "Billing address",
-                      "billing-address",
-                    )
-                  }
-                  className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors cursor-pointer mt-1"
-                >
-                  {copiedField === "billing-address" ? (
-                    <Check size={10} className="text-green-500" />
-                  ) : (
-                    <Copy size={10} />
-                  )}
-                  {copiedField === "billing-address"
-                    ? "Copied!"
-                    : "Copy Address"}
-                </button>
-              </div>
-            ) : (
-              <div className="text-xs text-muted-foreground italic">
-                Same as shipping address
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Notes Section */}
-      {order.notes && (
-        <div
-          className={`rounded-lg p-3 shadow-sm border ${
-            isCancelled
-              ? "bg-red-50 dark:bg-red-900 border-red-200 dark:border-red-700"
-              : "bg-yellow-50 dark:bg-yellow-900 border-yellow-200 dark:border-yellow-700"
-          }`}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <FileText
-              className={`w-4 h-4 ${
-                isCancelled ? "text-red-500" : "text-yellow-500"
-              }`}
-            />
-            <h3
-              className={`font-medium text-sm ${
-                isCancelled
-                  ? "text-red-800 dark:text-red-200"
-                  : "text-yellow-800 dark:text-yellow-200"
-              }`}
-            >
-              {isCancelled ? "Cancellation Note" : "Order Notes"}
-            </h3>
-          </div>
-          <p
-            className={`text-xs ${
-              isCancelled
-                ? "text-red-700 dark:text-red-300"
-                : "text-yellow-700 dark:text-yellow-300"
-            }`}
-          >
-            {order.notes}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

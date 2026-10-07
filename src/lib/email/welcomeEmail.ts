@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { formatDate } from "@/lib/utils/formatDate";
 
 interface SendWelcomeEmailParams {
   toEmail: string;
@@ -8,13 +9,6 @@ interface SendWelcomeEmailParams {
   trialEndsAt: Date | null;
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function buildPlainText(params: SendWelcomeEmailParams): string {
   const { ownerName, storeName, trialEndsAt } = params;

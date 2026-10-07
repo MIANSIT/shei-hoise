@@ -31,6 +31,7 @@ import {
 } from "@/lib/types/enums";
 import { App } from "antd";
 
+import { formatDate } from "@/lib/utils/formatDate";
 // ─── Status helpers ────────────────────────────────────────────────────────────
 const STATUS_MAP: Record<string, string> = {
   PENDING: "Pending",
@@ -250,7 +251,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
   const currencyIcon = CURRENCY_ICONS[currency] || "৳";
   const orderDate = orderCreatedAt ? new Date(orderCreatedAt) : new Date();
-  const invoiceDate = orderDate.toLocaleDateString("en-GB");
+  const invoiceDate = formatDate(orderDate);
   const invoiceTime = orderDate.toLocaleTimeString("en-US", {
     hour12: true,
     hour: "numeric",

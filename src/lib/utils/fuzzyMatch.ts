@@ -52,6 +52,27 @@ function maxEditDistanceFor(wordLength: number): number {
   return 3;
 }
 
+/** Are the letters of `short` found in `long`, in the same order (not necessarily next to each other)? */
+function isSubsequence(short: string, long: string): boolean {
+  let i = 0;
+  for (let j = 0; j < long.length && i < short.length; j++) {
+    if (long[j] === short[i]) i++;
+  }
+  return i === short.length;
+}
+
+/**
+ * An abbreviation / dropped-letters search — "litr" for litter, "ktchn" for
+ * kitchen. The typed letters appear in order in the word, it starts with the
+ * same letter, and it's at least this share of the word's length (so a tiny
+ * fragment doesn't match half the catalog). Edit distance alone misses these:
+ * "litr" is 2 edits from "litter", more than a 4-letter word is allowed.
+ */
+const ABBREVIATION_MIN_SHARE = 0.6;
+const ABBREVIATION_MIN_LENGTH = 4;
+/** Ranks between a 1-edit typo (1) and a 2-edit typo (2). */
+const ABBREVIATION_SCORE = 1.5;
+
 export interface FuzzyMatchResult {
   matched: boolean;
   /** Lower is better: 0 for an exact substring hit, higher for a looser typo match. Used to rank results, not just filter them. */
@@ -81,6 +102,15 @@ function scoreFuzzyMatch(queryWords: string[], text: string): FuzzyMatchResult {
       const dist = levenshteinDistance(word, textWord);
       if (dist <= maxDist) {
         bestScore = Math.min(bestScore, dist);
+      }
+      if (
+        word.length >= ABBREVIATION_MIN_LENGTH &&
+        textWord.length > word.length &&
+        textWord[0] === word[0] &&
+        word.length / textWord.length >= ABBREVIATION_MIN_SHARE &&
+        isSubsequence(word, textWord)
+      ) {
+        bestScore = Math.min(bestScore, ABBREVIATION_SCORE);
       }
     }
   }

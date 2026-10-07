@@ -18,6 +18,13 @@ export interface GetStoreOrdersOptions {
     needsBranch?: boolean;
     /** "no" = invoice not printed yet, "yes" = already printed. */
     printed?: "yes" | "no";
+    /** Order date range (inclusive), YYYY-MM-DD — filters on order_date, the date shown on the order, not created_at. */
+    dateFrom?: string;
+    dateTo?: string;
+    /** Only this customer's orders (store_customers.id). */
+    customerId?: string;
+    /** Only orders the customer still owes for — same rules as the Customer Dues list. */
+    dueOnly?: boolean;
   };
 }
 
@@ -112,6 +119,20 @@ export async function getStoreOrders(
     // Only added when asked for, so databases without the column still work.
     if (filters?.printed === "no") query = query.is("invoice_printed_at", null);
     if (filters?.printed === "yes") query = query.not("invoice_printed_at", "is", null);
+
+    if (filters?.customerId) query = query.eq("customer_id", filters.customerId);
+    if (filters?.dueOnly) {
+      // Same rules as getCustomersWithDue: unpaid, not cancelled/returned, and
+      // not an online COD order (the courier collects that, not the customer).
+      query = query
+        .neq("payment_status", "paid")
+        .neq("payment_status", "refunded")
+        .neq("status", "cancelled")
+        .neq("status", "returned")
+        .or("payment_method.is.null,payment_method.neq.cod,channel.eq.pos");
+    }
+    if (filters?.dateFrom) query = query.gte("order_date", filters.dateFrom);
+    if (filters?.dateTo) query = query.lte("order_date", filters.dateTo);
 
     if (filters) {
       if (filters.status) query = query.eq("status", filters.status);

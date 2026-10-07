@@ -273,7 +273,7 @@ export default function ActivityPage() {
             }}
             options={actionGroups}
           />
-          <DatePicker.RangePicker
+          <DatePicker.RangePicker format="DD-MM-YYYY"
             className="w-full sm:w-auto"
             value={range}
             onChange={(v) => {

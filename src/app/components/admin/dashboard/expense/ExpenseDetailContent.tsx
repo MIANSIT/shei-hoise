@@ -66,7 +66,7 @@ export function ExpenseDetailContent({ expense, currencyIcon }: ExpenseDetailCon
       {/* Detail rows */}
       <div className="px-5 py-1 bg-card">
         <DetailRow icon={<Calendar size={14} color="#6366f1" />} label="Date">
-          <span>{dayjs(expense.expense_date).format("MMM D, YYYY")}</span>
+          <span>{dayjs(expense.expense_date).format("DD-MM-YYYY")}</span>
           <span className="text-xs text-gray-400 ml-2">{dayjs(expense.expense_date).fromNow()}</span>
         </DetailRow>
 

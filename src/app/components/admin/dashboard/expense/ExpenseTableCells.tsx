@@ -99,7 +99,7 @@ export function DateCell({ date }: { date: string }) {
   return (
     <div>
       <span className="text-foreground text-sm font-medium">
-        {dayjs(date).format("MMM D, YYYY")}
+        {dayjs(date).format("DD-MM-YYYY")}
       </span>
       <p className="text-gray-400 text-xs mt-0.5 m-0">
         {dayjs(date).fromNow()}

@@ -229,7 +229,7 @@ export default function VendorSettlementsPage() {
       dataIndex: "settlement_date",
       key: "settlement_date",
       width: 120,
-      render: (d: string) => dayjs(d).format("DD MMM YYYY"),
+      render: (d: string) => dayjs(d).format("DD-MM-YYYY"),
     },
     {
       title: "Vendor",

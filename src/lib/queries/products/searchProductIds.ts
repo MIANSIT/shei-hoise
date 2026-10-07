@@ -89,9 +89,13 @@ async function findSubstringMatchIds(
   words: string[],
   options: SearchProductIdsOptions,
 ): Promise<string[]> {
+  // Each value is double-quoted (and \ and " escaped): PostgREST reads an
+  // unquoted , ( ) or " as filter syntax, so a full name like
+  // "Salmon, Turkey & Rice (1kg)" used to break the whole search.
+  const quote = (value: string) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
   const orFilter = words
     .flatMap((word) => {
-      const term = `%${word}%`;
+      const term = quote(`%${word}%`);
       return [
         `name.ilike.${term}`,
         `sku.ilike.${term}`,
@@ -110,14 +114,21 @@ async function findSubstringMatchIds(
   const { data, error } = await query;
   if (error || !data) return [];
 
-  return (data as SearchCandidateRow[])
+  const ranked = (data as SearchCandidateRow[])
     .map((row) => ({ id: row.id, ...relevanceScore(words, row) }))
     .sort((a, b) =>
       b.matchedCount !== a.matchedCount
         ? b.matchedCount - a.matchedCount
         : a.bestWeight - b.bestWeight,
-    )
-    .map((r) => r.id);
+    );
+
+  // Typing a full product name makes every word match somewhere, and common
+  // words ("cat", "for") match half the catalog. When some products contain
+  // ALL the typed words, those are the ones meant — show just them. With no
+  // such product (a misremembered or reordered name), fall back to the
+  // best partial matches as before.
+  const fullMatches = ranked.filter((row) => row.matchedCount === words.length);
+  return (fullMatches.length > 0 ? fullMatches : ranked).map((row) => row.id);
 }
 
 // This tier is what genuinely needs a hard ceiling: it fetches candidates'
@@ -177,7 +188,11 @@ export async function searchProductIds(
   searchQuery: string,
   options: SearchProductIdsOptions = {},
 ): Promise<string[]> {
-  const words = searchQuery.trim().split(/\s+/).filter(Boolean);
+  const words = searchQuery
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
+    .filter(Boolean);
   if (words.length === 0) return [];
 
   const substringMatches = await findSubstringMatchIds(storeId, words, options);

@@ -13,15 +13,12 @@ import {
 import { PaymentMethodPicker, type MethodType } from "@/components/subscription/PaymentMethodPicker";
 import { PaymentDetailsForm } from "@/components/subscription/PaymentDetailsForm";
 
+import { formatDate } from "@/lib/utils/formatDate";
 const PAYABLE = new Set(["unpaid", "overdue"]);
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-BD", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return formatDate(iso);
 }
 
 export default function PayInvoicePage() {

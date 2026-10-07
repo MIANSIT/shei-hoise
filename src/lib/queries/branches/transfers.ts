@@ -96,7 +96,17 @@ function toListItem(row: TransferRow, withItems: boolean): TransferListItem {
   };
 }
 
-export async function getTransfers(filters: { page?: number; pageSize?: number; status?: TransferStatus | null } = {}): Promise<
+export async function getTransfers(
+  filters: {
+    page?: number;
+    pageSize?: number;
+    status?: TransferStatus | null;
+    /** Several statuses at once, e.g. ["draft", "sent"] for the Active view. */
+    statuses?: TransferStatus[];
+    /** Part of a transfer number, e.g. "TR-00". */
+    search?: string;
+  } = {},
+): Promise<
   { ok: true; rows: TransferListItem[]; total: number } | { ok: false; error: string }
 > {
   try {
@@ -111,7 +121,10 @@ export async function getTransfers(filters: { page?: number; pageSize?: number; 
       .eq("store_id", auth.storeId)
       .order("created_at", { ascending: false })
       .range((page - 1) * pageSize, page * pageSize - 1);
-    if (filters.status) query = query.eq("status", filters.status);
+    if (filters.statuses && filters.statuses.length > 0) query = query.in("status", filters.statuses);
+    else if (filters.status) query = query.eq("status", filters.status);
+    const term = (filters.search ?? "").replace(/[%,()\\]/g, "").trim();
+    if (term) query = query.ilike("transfer_number", `%${term}%`);
 
     // Staff limited to some branches only see transfers touching them.
     const { actor } = auth;
@@ -468,27 +481,32 @@ export async function cancelTransferItems(transferId: string, itemIds: string[])
 }
 
 /**
- * Receive one product line of a sent transfer into the target branch. The
+ * Receive product lines of a sent transfer into the target branch. The
  * transfer becomes "received" once every line has been received.
  */
-export async function receiveTransferItem(transferId: string, itemId: string): Promise<BranchActionResult> {
+export async function receiveTransferItems(transferId: string, itemIds: string[]): Promise<BranchActionResult<{ received: number }>> {
+  const ids = Array.from(new Set(itemIds));
+  if (ids.length === 0) return { ok: false, error: "Select at least one product" };
   const auth = await authorize("transfers.receive");
   if (!auth.ok) return auth;
   const transfer = await loadTransfer(auth.storeId, transferId);
   if (!transfer) return { ok: false, error: "Transfer not found" };
   if (!canUseBranch(auth.actor, transfer.to_branch_id)) return { ok: false, error: BRANCH_SCOPE_ERROR };
 
-  const { data: item } = await supabaseAdmin
+  // Only lines of this transfer that haven't been received yet.
+  const { data: pending } = await supabaseAdmin
     .from("branch_stock_transfer_items")
-    .select("id, product_name")
-    .eq("id", itemId)
+    .select("id")
     .eq("transfer_id", transferId)
-    .maybeSingle();
-  if (!item) return { ok: false, error: "Transfer item not found" };
+    .is("received_at", null)
+    .in("id", ids);
+  const pendingIds = ((pending as { id: string }[] | null) ?? []).map((r) => r.id);
+  if (pendingIds.length === 0) return { ok: false, error: "Nothing to receive" };
 
+  // One call, so the lines land together or not at all.
   const { error } = await supabaseAdmin.rpc("receive_branch_transfer_items", {
     p_transfer_id: transferId,
-    p_item_ids: [itemId],
+    p_item_ids: pendingIds,
     p_caller_store_id: auth.storeId,
     p_user_id: auth.actor.userId,
   });
@@ -498,7 +516,7 @@ export async function receiveTransferItem(transferId: string, itemId: string): P
     action: "transfers.receive",
     entityType: "transfer",
     entityId: transferId,
-    summary: `Received ${item.product_name ?? "a product"} of transfer ${transfer.transfer_number}`,
+    summary: `Received ${pendingIds.length} product${pendingIds.length === 1 ? "" : "s"} of transfer ${transfer.transfer_number}`,
   });
-  return { ok: true };
+  return { ok: true, data: { received: pendingIds.length } };
 }
