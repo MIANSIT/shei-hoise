@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AddProductForm from "@/app/components/admin/dashboard/products/addProducts/AddProductForm";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
@@ -13,6 +13,10 @@ import {
   ProductUpdateType,
 } from "@/lib/schema/productUpdateSchema";
 
+import { useBranches } from "@/lib/context/BranchContext";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
+import { getProductBranchStock } from "@/lib/queries/inventory/getProductBranchStock";
+import { useTranslation } from "@/lib/hook/useTranslation";
 const EditProductPage = () => {
   const params = useParams();
   const router = useRouter();
@@ -23,6 +27,17 @@ const EditProductPage = () => {
 
   const [product, setProduct] = useState<ProductType | null>(null);
   const [loading, setLoading] = useState(true);
+  const t = useTranslation();
+
+  // Stores with branches: the stock fields show — and save — the branch picked
+  // above the form, not the store-wide total (the sum of every branch).
+  const { enabled: branchesOn, workBranchId } = useBranches();
+  const stockBranchId = branchesOn ? workBranchId : null;
+  const [branchStock, setBranchStock] = useState<{
+    branchId: string;
+    product: number;
+    variants: Record<string, number>;
+  } | null>(null);
 
   // Get the returnUrl from query params (passed from products list page)
   const returnUrl = searchParams.get("returnUrl");
@@ -50,6 +65,36 @@ const EditProductPage = () => {
     fetchProduct();
   }, [slug, user?.store_id, error]);
 
+  useEffect(() => {
+    if (!stockBranchId || !product?.id) return;
+    let cancelled = false;
+    getProductBranchStock(product.id, stockBranchId).then((result) => {
+      if (cancelled) return;
+      if (result.success) {
+        setBranchStock({ branchId: stockBranchId, product: result.product, variants: result.variants });
+      } else {
+        error(result.error);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stockBranchId, product?.id, error]);
+
+  // The product with the picked branch's stock in place of the store total.
+  const stockReady = !stockBranchId || branchStock?.branchId === stockBranchId;
+  const formProduct = useMemo(() => {
+    if (!product || !stockBranchId || branchStock?.branchId !== stockBranchId) return product;
+    return {
+      ...product,
+      stock: branchStock.product,
+      variants: product.variants?.map((variant) => ({
+        ...variant,
+        stock: variant.id ? (branchStock.variants[variant.id] ?? 0) : variant.stock,
+      })),
+    };
+  }, [product, stockBranchId, branchStock]);
+
   const handleUpdate = async (updatedProduct: ProductType) => {
     if (!user?.store_id) return;
 
@@ -71,7 +116,7 @@ const EditProductPage = () => {
         id: updatedProduct.id,
       });
 
-      const result = await updateProduct(payload);
+      const result = await updateProduct(payload, stockBranchId);
 
       if (!result.success) {
         console.error("Update failed:", result.error);
@@ -111,11 +156,25 @@ const EditProductPage = () => {
 
   return (
     <div className="">
-      <AddProductForm
-        product={product}
-        storeId={product.store_id}
-        onSubmit={handleUpdate}
-      />
+      {branchesOn && (
+        <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+          <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 dark:border-teal-500/30 dark:bg-teal-500/10">
+            <WorkBranchPicker label={t.branches.stockBranchLabel} />
+            <p className="m-0 mt-1 text-xs text-muted-foreground">{t.branches.stockBranchEditHint}</p>
+          </div>
+        </div>
+      )}
+      {stockReady && formProduct ? (
+        <AddProductForm
+          // Remount for another branch so the stock fields load that branch's numbers.
+          key={stockBranchId ?? "store"}
+          product={formProduct}
+          storeId={product.store_id}
+          onSubmit={handleUpdate}
+        />
+      ) : (
+        <div className="p-6">Loading...</div>
+      )}
     </div>
   );
 };

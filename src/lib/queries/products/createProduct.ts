@@ -8,7 +8,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
-import { getAuthorizedStoreId } from "@/lib/permissions/server";
+import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export type CreateProductResult =
   | { success: true; productId: string }
@@ -18,12 +18,41 @@ export type CreateProductResult =
  * Fully atomic product creation with robust rollback
  * Handles single-variant inactive scenario: sets product status to inactive
  */
-async function createProductInternal(product: ProductType): Promise<string> {
+async function createProductInternal(
+  product: ProductType,
+  stockBranchId: string | null,
+): Promise<string> {
   // product.store_id is caller-supplied — never trust it for authorization.
   // Always create under the session's own store, regardless of what was sent.
   const storeResult = await getAuthorizedStoreId("products.add");
   if (!storeResult.ok) throw new Error(storeResult.error);
   product = { ...product, store_id: storeResult.storeId };
+  if (stockBranchId && !canUseBranch(storeResult.actor, stockBranchId)) {
+    throw new Error(BRANCH_SCOPE_ERROR);
+  }
+
+  // Stores with branches: the starting stock belongs to the branch the admin
+  // picked. The inventory row is created empty (the database would drop any
+  // quantity on the default branch) and the units are added to that branch.
+  const createStartingStock = async (variantId: string | null, quantity: number) => {
+    await createInventory({
+      product_id: productId!,
+      ...(variantId ? { variant_id: variantId } : {}),
+      quantity_available: stockBranchId ? 0 : quantity,
+    });
+    if (!stockBranchId || quantity <= 0) return;
+    const { error } = await supabaseAdmin.rpc("adjust_branch_inventory", {
+      p_branch_id: stockBranchId,
+      p_product_id: productId,
+      p_variant_id: variantId,
+      p_delta: quantity,
+      p_reason: "manual_adjustment",
+      p_note: "Starting stock",
+      p_created_by: storeResult.actor.userId,
+      p_caller_store_id: storeResult.storeId,
+    });
+    if (error) throw error;
+  };
 
   // ------------------ Frontend/Backend safe checks ------------------
   if (!product.name?.trim()) throw new Error("❌ Product name is required");
@@ -189,17 +218,10 @@ async function createProductInternal(product: ProductType): Promise<string> {
 
       // 🧾 Inventory for variants
       for (let i = 0; i < insertedVariants.length; i++) {
-        await createInventory({
-          product_id: productId!,
-          variant_id: insertedVariants[i].id,
-          quantity_available: product.variants![i].stock ?? 0,
-        });
+        await createStartingStock(insertedVariants[i].id, product.variants![i].stock ?? 0);
       }
     } else {
-      await createInventory({
-        product_id: productId!,
-        quantity_available: product.stock ?? 0,
-      });
+      await createStartingStock(null, product.stock ?? 0);
     }
 
     // ------------------ Upload Images ------------------
@@ -235,9 +257,11 @@ async function createProductInternal(product: ProductType): Promise<string> {
 // aren't touched.
 export async function createProduct(
   product: ProductType,
+  /** Stores with branches: the branch that receives the starting stock. */
+  stockBranchId: string | null = null,
 ): Promise<CreateProductResult> {
   try {
-    const productId = await createProductInternal(product);
+    const productId = await createProductInternal(product, stockBranchId);
     return { success: true, productId };
   } catch (err: unknown) {
     const error =

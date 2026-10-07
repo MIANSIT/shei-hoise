@@ -7,7 +7,7 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
-import { getAuthorizedStoreId } from "@/lib/permissions/server";
+import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
  * Sets an inventory row to an absolute quantity via the same `set_inventory`
@@ -25,7 +25,36 @@ async function setInventoryAudited(
   quantity: number,
   storeId: string,
   createdBy: string | null,
+  /** Stores with branches: set this branch's stock, not the store-wide total. */
+  branchId: string | null = null,
 ): Promise<void> {
+  if (branchId) {
+    // The store-wide row has to exist for the branch change to roll up into.
+    const existing = supabaseAdmin.from("product_inventory").select("id").eq("product_id", productId);
+    const { data: row } = await (variantId ? existing.eq("variant_id", variantId) : existing.is("variant_id", null)).maybeSingle();
+    if (!row) {
+      const { error: insertError } = await supabaseAdmin.from("product_inventory").insert({
+        product_id: productId,
+        variant_id: variantId,
+        quantity_available: 0,
+        quantity_reserved: 0,
+        track_inventory: true,
+      });
+      if (insertError) throw insertError;
+    }
+    const { error: branchError } = await supabaseAdmin.rpc("set_branch_inventory", {
+      p_branch_id: branchId,
+      p_product_id: productId,
+      p_variant_id: variantId,
+      p_quantity: quantity,
+      p_reason: "manual_adjustment",
+      p_created_by: createdBy,
+      p_caller_store_id: storeId,
+    });
+    if (branchError) throw branchError;
+    return;
+  }
+
   const { error } = await supabaseAdmin.rpc("set_inventory", {
     p_product_id: productId,
     p_variant_id: variantId,
@@ -51,7 +80,7 @@ export type UpdateProductResult =
   | { success: true }
   | { success: false; error: string };
 
-async function updateProductInternal(data: ProductUpdateType): Promise<void> {
+async function updateProductInternal(data: ProductUpdateType, stockBranchId: string | null): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to exclude store_id from productData below; the trusted value comes from getAuthenticatedStoreId()
   const { id, store_id: _clientStoreId, variants, images, stock, ...productData } = data;
 
@@ -61,6 +90,9 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
   const storeResult = await getAuthorizedStoreId("products.edit");
   if (!storeResult.ok) throw new Error(storeResult.error);
   const store_id = storeResult.storeId;
+  if (stockBranchId && !canUseBranch(storeResult.actor, stockBranchId)) {
+    throw new Error(BRANCH_SCOPE_ERROR);
+  }
 
   const {
     data: { user },
@@ -174,13 +206,13 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
         variantId = data.id;
       }
 
-      await setInventoryAudited(id, variantId ?? null, variantStock ?? 0, store_id, created_by);
+      await setInventoryAudited(id, variantId ?? null, variantStock ?? 0, store_id, created_by, stockBranchId);
     }
   }
 
   // 3️⃣ Simple product inventory (no variants)
   if ((!variants || variants.length === 0) && stock !== undefined) {
-    await setInventoryAudited(id, null, stock, store_id, created_by);
+    await setInventoryAudited(id, null, stock, store_id, created_by, stockBranchId);
   }
 
   // 4️⃣ Handle Images
@@ -201,9 +233,11 @@ async function updateProductInternal(data: ProductUpdateType): Promise<void> {
 // redacted in production builds unless returned as a normal value.
 export async function updateProduct(
   data: ProductUpdateType,
+  /** Stores with branches: the stock fields describe this branch. */
+  stockBranchId: string | null = null,
 ): Promise<UpdateProductResult> {
   try {
-    await updateProductInternal(data);
+    await updateProductInternal(data, stockBranchId);
     return { success: true };
   } catch (err: unknown) {
     const error =
