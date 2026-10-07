@@ -1299,6 +1299,11 @@ const OrdersTable: React.FC<Props> = ({
                 {/* The work: status, payment, courier, collect payment (hidden once the order is finished) */}
                 {!isFinalizedOrder && (
                   <OrderProductTable
+                    // Keyed by order id: the drawer's prev/next buttons swap
+                    // `order` without closing the drawer, so without this the
+                    // courier form keeps the previous order's recipient name,
+                    // phone, address and COD amount — and would ship them.
+                    key={order.id}
                     order={order}
                     onSaveStatus={(st: OrderStatus) => onUpdate(order.id, { status: st })}
                     onSavePaymentStatus={(st: PaymentStatus) => onUpdate(order.id, { payment_status: st })}

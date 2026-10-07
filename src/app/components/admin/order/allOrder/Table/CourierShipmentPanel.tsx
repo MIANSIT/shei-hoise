@@ -5,20 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// antd Modal + Select, not the Radix ones: this panel renders *inside* an antd
+// Drawer, and antd v6 assigns popup z-indexes dynamically (each nested popup
+// gets a higher one). A Radix overlay has a single fixed z-index, so it can end
+// up beneath the Drawer while still putting `pointer-events: none` on <body> —
+// the dialog is invisible and the page stops responding to every click. Keeping
+// Drawer and Modal in the same library lets antd stack them itself, which is
+// also what BulkCourierShipmentAction already does.
+import { Modal, Select } from "antd";
 import { Truck, ExternalLink, RefreshCw, AlertCircle, History } from "lucide-react";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useTranslation } from "@/lib/hook/useTranslation";
@@ -124,22 +118,51 @@ export default function CourierShipmentPanel({
     (a) => a.courier === order.courier && a.connected,
   );
 
+  // One effect, three requests in parallel. Previously these ran as three
+  // separate awaited chains, so opening the drawer serialised a round trip per
+  // call before the panel settled. `cancelled` stops a slow response from a
+  // drawer the user has already moved on from writing into this one's state.
   useEffect(() => {
-    getOrderShipmentHistory(order.id).then(setHistory);
-  }, [order.id, order.courier_consignment_id]);
+    let cancelled = false;
 
-  useEffect(() => {
-    if (!isApiCourier) return;
-    getConnectedCourierAccounts(order.store_id).then((all) => {
-      setAccounts(all);
-      const connected = all.filter((a) => a.courier === order.courier && a.connected);
-      if (connected.length === 1) setSelectedAccountId(connected[0].id);
-    });
-    getDeliveryCouriers(order.store_id).then((all) => {
-      setCourierName(all.find((c) => c.type === order.courier)?.name ?? "");
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order.store_id, order.courier]);
+    const historyPromise = getOrderShipmentHistory(order.id);
+    const accountsPromise = isApiCourier
+      ? getConnectedCourierAccounts(order.store_id)
+      : Promise.resolve(null);
+    const couriersPromise = isApiCourier
+      ? getDeliveryCouriers(order.store_id)
+      : Promise.resolve(null);
+
+    Promise.all([historyPromise, accountsPromise, couriersPromise])
+      .then(([historyRows, allAccounts, allCouriers]) => {
+        if (cancelled) return;
+
+        setHistory(historyRows);
+
+        if (allAccounts) {
+          setAccounts(allAccounts);
+          const connected = allAccounts.filter(
+            (a) => a.courier === order.courier && a.connected,
+          );
+          // Only auto-select when there is exactly one choice; with several,
+          // the picker stays empty so staff pick deliberately.
+          if (connected.length === 1) setSelectedAccountId(connected[0].id);
+        }
+
+        if (allCouriers) {
+          setCourierName(allCouriers.find((c) => c.type === order.courier)?.name ?? "");
+        }
+      })
+      .catch(() => {
+        // A failed lookup leaves the panel in its empty state rather than
+        // throwing through the drawer — the create button stays disabled
+        // because no account gets selected.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order.id, order.store_id, order.courier, order.courier_consignment_id, isApiCourier]);
 
   const courierLabel =
     courierName ||
@@ -190,6 +213,13 @@ export default function CourierShipmentPanel({
       notify.success(t.admin.pathaoShipmentCreatedOk);
       onShipped(result.consignmentId, result.orderStatus);
       setModalOpen(false);
+    } catch (err) {
+      // A server action that throws (rather than returning {success:false})
+      // used to reject with nothing caught here: the spinner cleared, the
+      // modal stayed open and no message appeared, so staff retried a
+      // request that had already reached the courier. Surface it instead.
+      console.error("Courier shipment creation failed:", err);
+      notify.error(err instanceof Error ? err.message : t.admin.pathaoShipmentFailed);
     } finally {
       setSubmitting(false);
     }
@@ -221,6 +251,9 @@ export default function CourierShipmentPanel({
         return;
       }
       onShipped(order.courier_consignment_id, result.orderStatus);
+    } catch (err) {
+      console.error("Courier status refresh failed:", err);
+      notify.error(err instanceof Error ? err.message : t.admin.pathaoShipmentFailed);
     } finally {
       setRefreshing(false);
     }
@@ -242,6 +275,9 @@ export default function CourierShipmentPanel({
       notify.success(t.admin.paperflyCancelledOk);
       onShipped(order.courier_consignment_id, result.orderStatus);
       setCancelConfirmOpen(false);
+    } catch (err) {
+      console.error("Courier shipment cancellation failed:", err);
+      notify.error(err instanceof Error ? err.message : t.admin.paperflyCancelFailed);
     } finally {
       setCancelling(false);
     }
@@ -390,18 +426,15 @@ export default function CourierShipmentPanel({
         </div>
       )}
 
-      <Dialog open={cancelConfirmOpen} onOpenChange={(open) => !cancelling && setCancelConfirmOpen(open)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t.admin.paperflyCancelConfirmTitle}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {t.admin.paperflyCancelConfirmBody.replace(
-              "{consignment}",
-              order.courier_consignment_id ?? "",
-            )}
-          </p>
-          <DialogFooter>
+      <Modal
+        title={t.admin.paperflyCancelConfirmTitle}
+        open={cancelConfirmOpen}
+        onCancel={() => !cancelling && setCancelConfirmOpen(false)}
+        maskClosable={!cancelling}
+        destroyOnHidden
+        width={440}
+        footer={
+          <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setCancelConfirmOpen(false)}
@@ -412,33 +445,52 @@ export default function CourierShipmentPanel({
             <Button variant="destructive" onClick={handleCancelShipment} disabled={cancelling}>
               {cancelling ? t.admin.paperflyCancelling : t.admin.paperflyCancelBtn}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        }
+      >
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {t.admin.paperflyCancelConfirmBody.replace(
+            "{consignment}",
+            order.courier_consignment_id ?? "",
+          )}
+        </p>
+      </Modal>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {courierLabel} — {t.admin.pathaoCreateShipmentBtn}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
+      <Modal
+        title={`${courierLabel} — ${t.admin.pathaoCreateShipmentBtn}`}
+        open={modalOpen}
+        onCancel={() => !submitting && setModalOpen(false)}
+        maskClosable={!submitting}
+        destroyOnHidden
+        width={480}
+        footer={
+          <div className="flex justify-end">
+            <Button
+              onClick={handleCreateShipment}
+              disabled={
+                submitting ||
+                !selectedAccountId ||
+                !name.trim() ||
+                !phone.trim() ||
+                !address.trim()
+              }
+            >
+              {submitting ? t.admin.pathaoCreatingShipment : t.admin.pathaoCreateShipmentBtn}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
             {accountsForCourier.length > 1 && (
               <div className="space-y-1.5">
                 <Label>{t.admin.pathaoShipFrom}</Label>
-                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t.admin.pathaoSelectAccount} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountsForCourier.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Select
+                  className="w-full"
+                  value={selectedAccountId || undefined}
+                  onChange={setSelectedAccountId}
+                  placeholder={t.admin.pathaoSelectAccount}
+                  options={accountsForCourier.map((a) => ({ value: a.id, label: a.label }))}
+                />
               </div>
             )}
             <div className="space-y-1.5">
@@ -500,23 +552,8 @@ export default function CourierShipmentPanel({
                 />
               </div>
             )}
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleCreateShipment}
-              disabled={
-                submitting ||
-                !selectedAccountId ||
-                !name.trim() ||
-                !phone.trim() ||
-                !address.trim()
-              }
-            >
-              {submitting ? t.admin.pathaoCreatingShipment : t.admin.pathaoCreateShipmentBtn}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </Modal>
     </div>
   );
 }
