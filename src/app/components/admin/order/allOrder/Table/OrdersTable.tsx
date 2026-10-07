@@ -17,6 +17,7 @@ import {
   Modal,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
 import { StoreOrder } from "@/lib/types/order";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
 import StatusTag from "../StatusFilter/StatusTag";
@@ -63,6 +64,7 @@ import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
 import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 import { ReviewLinkButton } from "./ReviewLinkButton";
 
+import { formatDate, formatDateTime } from "@/lib/utils/formatDate";
 interface Props {
   orders: StoreOrder[];
   paidAmountByOrderId?: Record<string, number>;
@@ -88,6 +90,10 @@ interface Props {
   onChannelChange?: (channel: "all" | "online" | "pos") => void;
   onRefresh?: () => void;
   onExportOrders?: () => Promise<StoreOrder[]>;
+  /** Order-date range (YYYY-MM-DD) that filters the list and the export; empty = all dates. */
+  dateFrom?: string;
+  dateTo?: string;
+  onDateRangeChange?: (from: string, to: string) => void;
 }
 
 // Same re-skin technique as VendorTable.tsx's TABLE_STYLES — uppercase gray
@@ -168,13 +174,15 @@ const OrdersTable: React.FC<Props> = ({
   onChannelChange,
   onRefresh,
   onExportOrders,
+  dateFrom = "",
+  dateTo = "",
+  onDateRangeChange,
 }) => {
   const { notification } = App.useApp();
   const t = useTranslation();
   const n = useLocalNum();
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
-  const [selectedRange, setSelectedRange] = useState<any>(null);
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] =
     useState<StoreOrder | null>(null);
@@ -343,7 +351,7 @@ const OrdersTable: React.FC<Props> = ({
 
   const ORDER_EXPORT_HEADER = [
     "Order #",
-    "Created At",
+    "Order Date",
     "Customer",
     "Email",
     "Phone",
@@ -357,7 +365,8 @@ const OrdersTable: React.FC<Props> = ({
   const buildOrderExportRows = (targetOrders: StoreOrder[]) =>
     targetOrders.map((o) => [
       o.order_number,
-      new Date(o.created_at).toLocaleString(),
+      // order_date is the date shown on the order (can be backdated); created_at is only a fallback.
+      formatDate(o.order_date || o.created_at),
       (o.shipping_address?.customer_name || o.customers?.first_name || ""),
       o.customers?.email || o.shipping_address?.email || "",
       o.shipping_address?.phone || o.customers?.phone || "",
@@ -371,24 +380,12 @@ const OrdersTable: React.FC<Props> = ({
   const handleExport = async (format: "csv" | "xlsx") => {
     if (exportingCsv) return;
 
-    let startDate: Date | null = null;
-    let endDate: Date | null = null;
-
-    if (selectedRange && selectedRange.length === 2) {
-      const s = selectedRange[0];
-      const e = selectedRange[1];
-      startDate = s && s.toDate ? s.toDate() : s ? new Date(s) : null;
-      endDate = e && e.toDate ? e.toDate() : e ? new Date(e) : null;
-
-      if (startDate) startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
-      if (endDate) endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
-    }
-
     setExportingCsv(true);
     let sourceOrders: StoreOrder[];
     try {
       // Fetch every order matching the current filters — not just the page
       // currently on screen — so the export isn't silently truncated.
+      // Already limited to the selected order-date range by the server.
       sourceOrders = onExportOrders ? await onExportOrders() : orders;
     } catch (err) {
       console.error("Error fetching orders for export:", err);
@@ -400,12 +397,7 @@ const OrdersTable: React.FC<Props> = ({
       return;
     }
 
-    const targetOrders = startDate && endDate
-      ? sourceOrders.filter((o) => {
-          const d = new Date(o.created_at);
-          return d >= startDate! && d <= endDate!;
-        })
-      : sourceOrders;
+    const targetOrders = sourceOrders;
 
     if (!targetOrders || targetOrders.length === 0) {
       notification.info({
@@ -416,12 +408,7 @@ const OrdersTable: React.FC<Props> = ({
       return;
     }
 
-    let datePart = "all-dates";
-    if (startDate && endDate) {
-      const s = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
-      const e = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
-      datePart = `${s}_to_${e}`;
-    }
+    const datePart = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : "all-dates";
 
     try {
       if (format === "xlsx") {
@@ -555,16 +542,6 @@ const OrdersTable: React.FC<Props> = ({
     const finalCurrency = currency || storeCurrency || "";
     return `${finalCurrency} ${n(amount.toFixed(2))}`;
   };
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   // ✅ FIXED: Get customer name from shipping_address
   const getCustomerName = (order: StoreOrder) => {
     return (
@@ -679,7 +656,7 @@ const OrdersTable: React.FC<Props> = ({
             </span>
           </Tooltip>
           <span className="text-[11px] text-muted-foreground">
-            {formatDate(order.order_date || order.created_at)}
+            {formatDateTime(resolveOrderInvoiceDate(order.order_date, order.created_at))}
           </span>
           <div className="flex flex-wrap gap-1">
           {order.channel === "pos" && (
@@ -693,7 +670,7 @@ const OrdersTable: React.FC<Props> = ({
             confirmed={order.branch_confirmed}
           />
           {order.invoice_printed_at && (
-            <Tooltip title={`${t.admin.printedOn} ${formatDate(order.invoice_printed_at)}`}>
+            <Tooltip title={`${t.admin.printedOn} ${formatDateTime(order.invoice_printed_at)}`}>
               <Tag color="purple" style={{ marginInlineEnd: 0 }}>
                 {t.admin.printedTag}
               </Tag>
@@ -872,7 +849,7 @@ const OrdersTable: React.FC<Props> = ({
                 #{order.order_number}
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">
-                {formatDate(order.order_date || order.created_at)}
+                {formatDateTime(resolveOrderInvoiceDate(order.order_date, order.created_at))}
               </div>
               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                 <Tag color={order.channel === "pos" ? "gold" : "blue"} style={{ marginInlineEnd: 0 }}>
@@ -1138,8 +1115,13 @@ const OrdersTable: React.FC<Props> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           <DatePicker.RangePicker
-            value={selectedRange}
-            onChange={(d) => setSelectedRange(d)}
+            value={dateFrom && dateTo ? [dayjs(dateFrom), dayjs(dateTo)] : null}
+            onChange={(d) =>
+              onDateRangeChange?.(
+                d?.[0] && d?.[1] ? d[0].format("YYYY-MM-DD") : "",
+                d?.[0] && d?.[1] ? d[1].format("YYYY-MM-DD") : "",
+              )
+            }
             allowClear
             className="w-full sm:w-72"
           />

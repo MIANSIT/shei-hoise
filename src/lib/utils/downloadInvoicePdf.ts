@@ -25,7 +25,7 @@ export interface StoreInfo {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(iso: string | null): string {
   if (!iso) return "—";
-  return dayjs(iso).format("MMM D, YYYY");
+  return dayjs(iso).format("DD-MM-YYYY");
 }
 
 function fmtAmount(amount: number, currency: string): string {
@@ -124,7 +124,7 @@ export async function downloadInvoicePdf(
   doc.setFontSize(8);
   doc.setTextColor(S400[0], S400[1], S400[2]);
   doc.text(`# ${invoice.invoice_number}`, PW - M, 28, { align: "right" });
-  doc.text(`Issued  ${dayjs().format("MMM D, YYYY")}`, PW - M, 34, { align: "right" });
+  doc.text(`Issued  ${dayjs().format("DD-MM-YYYY")}`, PW - M, 34, { align: "right" });
 
   // ── 2. FROM  /  BILLED TO (52 → ~90mm) ───────────────────────────────────
   const sectionLabel = (text: string, x: number, y: number) => {

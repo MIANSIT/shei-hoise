@@ -56,7 +56,7 @@ const ProfitTrendChart: React.FC<ProfitTrendChartProps> = ({ data }) => {
   const n = useLocalNum();
 
   const chartData = data.map((d) => ({
-    date: dayjs(d.date).format("MMM D"),
+    date: dayjs(d.date).format("DD-MM"),
     "Net Profit": d.net_profit,
   }));
 

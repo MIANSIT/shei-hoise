@@ -17,6 +17,7 @@ import { getAvatarProps } from "@/lib/utils/avatarColor";
 import { StarRating } from "./StarRating";
 import { ReviewForm } from "./ReviewForm";
 
+import { formatDate } from "@/lib/utils/formatDate";
 const PAGE_SIZE = 10;
 
 interface ReviewsSectionProps {
@@ -62,7 +63,7 @@ function ReviewCard({ review }: { review: ProductReview }) {
           </div>
         </div>
         <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0 pt-0.5">
-          {new Date(review.created_at).toLocaleDateString()}
+          {formatDate(review.created_at)}
         </span>
       </div>
       {review.is_verified_purchase && (

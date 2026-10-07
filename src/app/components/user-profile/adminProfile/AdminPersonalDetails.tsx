@@ -11,6 +11,7 @@ import { MapPin, Calendar, UserX } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { CountryFlagBadge } from "@/app/components/common/CountryFlag";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface ProfileDetails {
   date_of_birth?: string | null;
   gender?: string | null;
@@ -29,13 +30,6 @@ interface ProfileDetailsCardProps {
 export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
   const t = useTranslation();
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   if (!profile) {
     return (

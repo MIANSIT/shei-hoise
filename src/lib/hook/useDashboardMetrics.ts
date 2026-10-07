@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import type { DashboardSummaryPayload } from "@/lib/queries/dashboard/getDashboardSummary";
 
+import { formatDate } from "@/lib/utils/formatDate";
 export type TimePeriod = "weekly" | "monthly" | "yearly" | "all";
 export type OrderStatus =
   | "pending"
@@ -170,10 +171,8 @@ export const useDashboardMetrics = (
     );
 
     const salesTrend = summary.sales_trend.map(({ date, sales }) => ({
-      date: new Date(date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
+      // Short axis label: DD-MM
+      date: formatDate(date).slice(0, 5),
       sales,
     }));
 

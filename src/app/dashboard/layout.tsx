@@ -38,6 +38,22 @@ import { PermissionsProvider } from "@/lib/context/PermissionsContext";
 import { StaffAccessGuard } from "@/app/components/admin/staff/StaffAccessGuard";
 import { BranchProvider } from "@/lib/context/BranchContext";
 import { BranchSwitcher } from "@/app/components/admin/branches/BranchSwitcher";
+import enUS from "antd/locale/en_US";
+
+// Every date picker shows DD-MM-YYYY, matching the rest of the app.
+const DASHBOARD_LOCALE = {
+  ...enUS,
+  DatePicker: {
+    ...enUS.DatePicker!,
+    lang: {
+      ...enUS.DatePicker!.lang,
+      fieldDateFormat: "DD-MM-YYYY",
+      fieldDateTimeFormat: "DD-MM-YYYY HH:mm:ss",
+      cellDateFormat: "D",
+    },
+  },
+};
+
 // import { supabase } from "@/lib/supabase";
 // import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 
@@ -377,6 +393,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <PermissionsProvider userKey={user?.id ?? null}>
     <BranchProvider userKey={user?.id ?? null}>
     <ConfigProvider
+      locale={DASHBOARD_LOCALE}
       theme={{
         algorithm:
           theme === "dark"

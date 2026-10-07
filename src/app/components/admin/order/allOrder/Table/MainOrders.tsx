@@ -27,6 +27,9 @@ const TODO_TONES = {
   indigo: { icon: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400", ring: "ring-indigo-400" },
 } as const;
 
+const parseDateParam = (value: string | null): string =>
+  value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+
 const MainOrders: React.FC = () => {
   const { notification } = App.useApp();
   const notificationRef = useRef(notification);
@@ -91,13 +94,17 @@ const MainOrders: React.FC = () => {
     (v) => v === "true",
     0
   );
+  // Order-date range (YYYY-MM-DD) — filters the list and the CSV/Excel export.
+  const [dateFrom, setDateFrom] = useUrlSync<string>("from", "", parseDateParam, 0);
+  const [dateTo, setDateTo] = useUrlSync<string>("to", "", parseDateParam, 0);
   const branchFilters = React.useMemo<NonNullable<GetStoreOrdersOptions["filters"]>>(
     () => ({
+      ...(dateFrom && dateTo ? { dateFrom, dateTo } : {}),
       ...(branchIdsKey ? { branchIds: branchIdsKey.split(",") } : {}),
       ...(branchesOn && needsBranchOnly ? { needsBranch: true } : {}),
       ...(notPrintedOnly ? { printed: "no" as const } : {}),
     }),
-    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly]
+    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly, dateFrom, dateTo]
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -291,6 +298,12 @@ const MainOrders: React.FC = () => {
 
   const handleSearch = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleDateRangeChange = (from: string, to: string) => {
+    setDateFrom(from);
+    setDateTo(to);
     setPage(1);
   };
 
@@ -568,6 +581,9 @@ const MainOrders: React.FC = () => {
         // ✅ PASS the refresh function
         onRefresh={handleRefresh}
         onExportOrders={handleExportOrders}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateRangeChange={handleDateRangeChange}
       />
       </div>
     </div>

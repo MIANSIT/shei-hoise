@@ -18,6 +18,9 @@ export interface GetStoreOrdersOptions {
     needsBranch?: boolean;
     /** "no" = invoice not printed yet, "yes" = already printed. */
     printed?: "yes" | "no";
+    /** Order date range (inclusive), YYYY-MM-DD — filters on order_date, the date shown on the order, not created_at. */
+    dateFrom?: string;
+    dateTo?: string;
   };
 }
 
@@ -112,6 +115,9 @@ export async function getStoreOrders(
     // Only added when asked for, so databases without the column still work.
     if (filters?.printed === "no") query = query.is("invoice_printed_at", null);
     if (filters?.printed === "yes") query = query.not("invoice_printed_at", "is", null);
+
+    if (filters?.dateFrom) query = query.gte("order_date", filters.dateFrom);
+    if (filters?.dateTo) query = query.lte("order_date", filters.dateTo);
 
     if (filters) {
       if (filters.status) query = query.eq("status", filters.status);

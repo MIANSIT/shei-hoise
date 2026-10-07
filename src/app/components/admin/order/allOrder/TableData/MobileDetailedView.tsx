@@ -19,6 +19,7 @@ import {
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import OrderDeliveryCostSection from "./OrderDeliveryCostSection";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface Props {
   order: StoreOrder;
   selected?: boolean;
@@ -122,7 +123,7 @@ const MobileDetailedViewFull: React.FC<Props> = ({
               </div>
               <div className="text-xs flex items-center gap-1 mt-1">
                 <Calendar size={12} />{" "}
-                {new Date(order.order_date || order.created_at).toLocaleDateString()}
+                {formatDate(order.order_date || order.created_at)}
               </div>
             </div>
           </div>

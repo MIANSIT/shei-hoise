@@ -18,6 +18,7 @@ import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
+import { formatDate } from "@/lib/utils/formatDate";
 export default function CustomerDues() {
   const { user } = useCurrentUser();
   const { icon: currencyIconRaw } = useUserCurrencyIcon();
@@ -146,7 +147,7 @@ export default function CustomerDues() {
       key: "oldest_due_date",
       render: (date: string) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(date).toLocaleDateString()}
+          {formatDate(date)}
         </span>
       ),
     },

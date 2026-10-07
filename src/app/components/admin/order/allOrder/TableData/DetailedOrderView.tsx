@@ -21,6 +21,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { createReviewInviteLink } from "@/lib/queries/reviews/createReviewInviteLink";
 import OrderDeliveryCostSection from "./OrderDeliveryCostSection";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface Props {
   order: StoreOrder;
 }
@@ -145,7 +146,7 @@ const DetailedOrderView: React.FC<Props> = ({ order }) => {
             </div>
             <p className="text-blue-100 text-xs flex items-center gap-1 mt-1">
               <Calendar size={12} />
-              Placed on {new Date(order.order_date || order.created_at).toLocaleDateString()}
+              Placed on {formatDate(order.order_date || order.created_at)}
             </p>
           </div>
           <div className="mt-2 sm:mt-0 text-right">

@@ -10,6 +10,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { CountryFlagBadge } from "@/app/components/common/CountryFlag";
 
+import { formatDate } from "@/lib/utils/formatDate";
 // Update the interface to match your data structure
 interface ProfileDetails {
   date_of_birth?: string | null;
@@ -29,15 +30,7 @@ interface ProfileDetailsCardProps {
 export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const formatDate = (dateString: string) => {
-    return n(
-      new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    );
-  };
+  const showDate = (dateString: string) => n(formatDate(dateString));
 
   if (!profile) {
     return (
@@ -97,7 +90,7 @@ export function ProfileDetailsCard({ profile }: ProfileDetailsCardProps) {
                 {t.admin.myProfileDOB}
               </div>
               <div className="mt-1 text-muted-foreground">
-                {formatDate(profile.date_of_birth)}
+                {showDate(profile.date_of_birth)}
               </div>
             </div>
           )}

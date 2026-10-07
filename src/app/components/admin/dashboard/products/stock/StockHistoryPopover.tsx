@@ -75,7 +75,7 @@ const StockHistoryPopover: React.FC<StockHistoryPopoverProps> = ({
                 >
                   <span className="text-muted-foreground truncate">
                     {m.createdByName ?? REASON_LABELS[m.reason] ?? m.reason} ·{" "}
-                    {dayjs(m.createdAt).format("MMM D, h:mm A")}
+                    {dayjs(m.createdAt).format("DD-MM-YYYY h:mm A")}
                   </span>
                   <span
                     className={`shrink-0 font-bold ${

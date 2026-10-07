@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User as UserIcon } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
+import { formatDate } from "@/lib/utils/formatDate";
 interface AccountInfoCardProps {
   createdAt?: string;
   updatedAt?: string;
@@ -17,13 +18,6 @@ export function AccountInfoCard({
 }: AccountInfoCardProps) {
   const t = useTranslation();
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   return (
     <Card className="shadow-sm">

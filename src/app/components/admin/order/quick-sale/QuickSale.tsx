@@ -55,6 +55,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { branchReceiptLines } from "@/lib/utils/invoiceStore";
 
+import { formatDateTime } from "@/lib/utils/formatDate";
 const { Text, Title } = Typography;
 
 function getEffectivePrice(product: ProductWithVariants): number {
@@ -410,7 +411,7 @@ export default function QuickSale() {
       // Stores with branches: the branch the sale was made at.
       branchLines: branchesOn ? branchReceiptLines(workBranch) : [],
       logoUrl,
-      dateLabel: order.date.toLocaleString(),
+      dateLabel: formatDateTime(order.date),
       orderNumber: order.orderNumber,
       items: order.items.map((it) => ({
         name: it.product_name + (it.variant_name ? ` (${it.variant_name})` : ""),
@@ -880,7 +881,7 @@ export default function QuickSale() {
                 onChange={(date) => date && setOrderDate(date)}
                 disabledDate={(current) => !!current && current > dayjs().endOf("day")}
                 allowClear={false}
-                format="DD/MM/YYYY"
+                format="DD-MM-YYYY"
                 style={{ width: 150 }}
               />
             </div>

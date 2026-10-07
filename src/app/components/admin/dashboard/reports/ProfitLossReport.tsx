@@ -192,7 +192,7 @@ export default function ProfitLossReport() {
         ) : (
           <>
             <ProfitStory
-              periodLabel={`${range[0].format("DD MMM YYYY")} – ${range[1].format("DD MMM YYYY")}`}
+              periodLabel={`${range[0].format("DD-MM-YYYY")} – ${range[1].format("DD-MM-YYYY")}`}
               formatMoney={money}
               figures={{
                 sales: report.totalSales,
