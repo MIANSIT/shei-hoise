@@ -105,15 +105,19 @@ export function CustomerTable({
             {name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <Link
-              href={`/dashboard/orders?customer=${record.id}&cname=${encodeURIComponent(name)}`}
-              title={t.admin.customerViewOrders}
-              onClick={(e) => e.stopPropagation()}
-              style={{ fontWeight: 500 }}
-              className="text-foreground hover:text-blue-600 hover:underline"
-            >
-              {name}
-            </Link>
+            {record.phone ? (
+              <Link
+                href={`/dashboard/orders?phone=${encodeURIComponent(record.phone)}`}
+                title={t.admin.customerViewOrders}
+                onClick={(e) => e.stopPropagation()}
+                style={{ fontWeight: 500 }}
+                className="text-foreground hover:text-blue-600 hover:underline"
+              >
+                {name}
+              </Link>
+            ) : (
+              <div style={{ fontWeight: 500 }}>{name}</div>
+            )}
             <Space size={4} wrap>
               {typeof record.order_count === "number" &&
                 record.order_count > 0 && (
@@ -250,12 +254,16 @@ export function CustomerTable({
                     {customer.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/dashboard/orders?customer=${customer.id}&cname=${encodeURIComponent(customer.name)}`}
-                      className="block font-semibold text-foreground truncate text-base mb-1 hover:text-blue-600 hover:underline"
-                    >
-                      {customer.name}
-                    </Link>
+                    {customer.phone ? (
+                      <Link
+                        href={`/dashboard/orders?phone=${encodeURIComponent(customer.phone)}`}
+                        className="block font-semibold text-foreground truncate text-base mb-1 hover:text-blue-600 hover:underline"
+                      >
+                        {customer.name}
+                      </Link>
+                    ) : (
+                      <div className="font-semibold text-foreground truncate text-base mb-1">{customer.name}</div>
+                    )}
                     <div className="flex flex-wrap gap-1">
                       <Tag
                         color={customer.status === "active" ? "green" : "red"}

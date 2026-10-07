@@ -27,8 +27,7 @@ const TODO_TONES = {
   indigo: { icon: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400", ring: "ring-indigo-400" },
 } as const;
 
-const parseIdParam = (value: string | null): string =>
-  value && /^[0-9a-fA-F-]{36}$/.test(value) ? value : "";
+const parsePhoneParam = (value: string | null): string => (value && /^\+?\d{7,15}$/.test(value.trim()) ? value.trim() : "");
 
 const parseDateParam = (value: string | null): string =>
   value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
@@ -101,20 +100,21 @@ const MainOrders: React.FC = () => {
   const [dateFrom, setDateFrom] = useUrlSync<string>("from", "", parseDateParam, 0);
   const [dateTo, setDateTo] = useUrlSync<string>("to", "", parseDateParam, 0);
   // From the Customers / Customer Dues pages: one customer's orders (or only
-  // the ones they still owe for).
-  const [customerId, setCustomerId] = useUrlSync<string>("customer", "", parseIdParam, 0);
-  const [customerName] = useUrlSync<string>("cname", "", undefined, 0);
+  // the ones they still owe for), found by phone number. Kept in the URL so a
+  // reload, the Back button and a shared link keep the filter; no internal id
+  // is ever shown.
+  const [customerPhone, setCustomerPhone] = useUrlSync<string>("phone", "", parsePhoneParam, 0);
   const [dueOnly, setDueOnly] = useUrlSync<boolean>("due", false, (v) => v === "true", 0);
   const branchFilters = React.useMemo<NonNullable<GetStoreOrdersOptions["filters"]>>(
     () => ({
-      ...(customerId ? { customerId } : {}),
-      ...(customerId && dueOnly ? { dueOnly: true } : {}),
+      ...(customerPhone ? { customerPhone } : {}),
+      ...(customerPhone && dueOnly ? { dueOnly: true } : {}),
       ...(dateFrom && dateTo ? { dateFrom, dateTo } : {}),
       ...(branchIdsKey ? { branchIds: branchIdsKey.split(",") } : {}),
       ...(branchesOn && needsBranchOnly ? { needsBranch: true } : {}),
       ...(notPrintedOnly ? { printed: "no" as const } : {}),
     }),
-    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly, dateFrom, dateTo, customerId, dueOnly]
+    [branchIdsKey, branchesOn, needsBranchOnly, notPrintedOnly, dateFrom, dateTo, customerPhone, dueOnly]
   );
 
   const [orders, setOrders] = useState<StoreOrder[]>([]);
@@ -444,18 +444,18 @@ const MainOrders: React.FC = () => {
       </div>
 
       <div className="px-4 sm:px-8 py-6 space-y-5">
-        {customerId && (
+        {customerPhone && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
             <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
               {(dueOnly ? t.admin.ordersOfCustomerDue : t.admin.ordersOfCustomer).replace(
                 "{name}",
-                customerName || orders[0]?.shipping_address?.customer_name || t.admin.ordersThisCustomer,
+                orders[0]?.shipping_address?.customer_name || t.admin.ordersThisCustomer,
               )}
             </div>
             <button
               type="button"
               onClick={() => {
-                setCustomerId("");
+                setCustomerPhone("");
                 setDueOnly(false);
                 setPage(1);
               }}

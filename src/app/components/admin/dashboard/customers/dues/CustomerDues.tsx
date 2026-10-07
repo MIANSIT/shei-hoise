@@ -18,8 +18,11 @@ import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
-import { formatDate } from "@/lib/utils/formatDate";
+import { formatDate, formatDateShort, formatTime } from "@/lib/utils/formatDate";
 import Link from "next/link";
+import { DueReminderButton } from "./DueReminderButton";
+import { getLastDueReminders } from "@/lib/queries/customers/dueReminders";
+import { dueReminderKey } from "@/lib/utils/dueReminderKey";
 export default function CustomerDues() {
   const { user } = useCurrentUser();
   const { icon: currencyIconRaw } = useUserCurrencyIcon();
@@ -33,6 +36,8 @@ export default function CustomerDues() {
   const [dues, setDues] = useState<CustomerWithDue[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // When each row was last sent a payment reminder (key: customer + branch).
+  const [reminders, setReminders] = useState<Record<string, string>>({});
 
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithDue | null>(null);
   const [orderOptions, setOrderOptions] = useState<CustomerOrderBalance[]>([]);
@@ -45,6 +50,9 @@ export default function CustomerDues() {
     try {
       const data = await getCustomersWithDue(user.store_id, listBranchId, branchesOn);
       setDues(data);
+      getLastDueReminders(user.store_id, [...new Set(data.map((d) => d.customer_id))])
+        .then(setReminders)
+        .catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -118,13 +126,17 @@ export default function CustomerDues() {
       title: "Customer",
       key: "name",
       render: (_: unknown, record: CustomerWithDue) => (
-        <Link
-          href={`/dashboard/orders?customer=${record.customer_id}&due=true&cname=${encodeURIComponent(record.name || "")}`}
-          title={t.admin.customerViewDueOrders}
-          className="text-sm font-semibold text-foreground hover:text-blue-600 hover:underline"
-        >
-          {record.name || "Walk-in Customer"}
-        </Link>
+        record.phone ? (
+          <Link
+            href={`/dashboard/orders?phone=${encodeURIComponent(record.phone)}&due=true`}
+            title={t.admin.customerViewDueOrders}
+            className="text-sm font-semibold text-foreground hover:text-blue-600 hover:underline"
+          >
+            {record.name || "Walk-in Customer"}
+          </Link>
+        ) : (
+          <span className="text-sm font-semibold text-foreground">{record.name || "Walk-in Customer"}</span>
+        )
       ),
     },
     ...(branchesOn && !listBranchId
@@ -162,24 +174,65 @@ export default function CustomerDues() {
       key: "total_due",
       align: "right" as const,
       render: (due: number, record: CustomerWithDue) => (
-        <Link
-          href={`/dashboard/orders?customer=${record.customer_id}&due=true&cname=${encodeURIComponent(record.name || "")}`}
-          title={t.admin.customerViewDueOrders}
-          className="text-sm font-bold text-rose-600 hover:underline dark:text-rose-400"
-        >
-          {currencyIcon}
-          {due.toFixed(2)}
-        </Link>
+        record.phone ? (
+          <Link
+            href={`/dashboard/orders?phone=${encodeURIComponent(record.phone)}&due=true`}
+            title={t.admin.customerViewDueOrders}
+            className="text-sm font-bold text-rose-600 hover:underline dark:text-rose-400"
+          >
+            {currencyIcon}
+            {due.toFixed(2)}
+          </Link>
+        ) : (
+          <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
+            {currencyIcon}
+            {due.toFixed(2)}
+          </span>
+        )
       ),
+    },
+    {
+      title: t.admin.dueLastReminder,
+      key: "last_reminder",
+      render: (_: unknown, record: CustomerWithDue) => {
+        const at = reminders[dueReminderKey(record.customer_id, record.branch_id)];
+        if (!at) return <span className="text-sm text-muted-foreground">—</span>;
+        const today = new Date(at).toDateString() === new Date().toDateString();
+        return (
+          <span
+            className={`text-sm ${today ? "font-semibold text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+          >
+            {today ? `${t.admin.dueRemindedToday}, ${formatTime(at)}` : formatDateShort(at)}
+          </span>
+        );
+      },
     },
     {
       title: "",
       key: "actions",
       align: "right" as const,
       render: (_: unknown, record: CustomerWithDue) => (
-        <Button size="small" type="primary" onClick={() => openPaymentModal(record)}>
-          Collect Payment
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          {user?.store_id && (
+            <DueReminderButton
+              storeId={user.store_id}
+              customerId={record.customer_id}
+              branchId={record.branch_id}
+              lastRemindedAt={reminders[dueReminderKey(record.customer_id, record.branch_id)] ?? null}
+              onReminded={(at) =>
+                setReminders((prev) => ({ ...prev, [dueReminderKey(record.customer_id, record.branch_id)]: at }))
+              }
+              customerName={record.name}
+              phone={record.phone}
+              amount={record.total_due}
+              currency={currencyIcon}
+              dueSince={record.oldest_due_date}
+            />
+          )}
+          <Button size="small" type="primary" onClick={() => openPaymentModal(record)}>
+            Collect Payment
+          </Button>
+        </div>
       ),
     },
   ];

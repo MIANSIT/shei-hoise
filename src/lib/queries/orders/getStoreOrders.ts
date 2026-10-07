@@ -21,8 +21,8 @@ export interface GetStoreOrdersOptions {
     /** Order date range (inclusive), YYYY-MM-DD — filters on order_date, the date shown on the order, not created_at. */
     dateFrom?: string;
     dateTo?: string;
-    /** Only this customer's orders (store_customers.id). */
-    customerId?: string;
+    /** Only this customer's orders, matched on their phone number. */
+    customerPhone?: string;
     /** Only orders the customer still owes for — same rules as the Customer Dues list. */
     dueOnly?: boolean;
   };
@@ -120,7 +120,23 @@ export async function getStoreOrders(
     if (filters?.printed === "no") query = query.is("invoice_printed_at", null);
     if (filters?.printed === "yes") query = query.not("invoice_printed_at", "is", null);
 
-    if (filters?.customerId) query = query.eq("customer_id", filters.customerId);
+    if (filters?.customerPhone) {
+      // Last 10 digits, so 01712345678, +8801712345678 and 880 1712-345678 all match.
+      const phoneDigits = filters.customerPhone.replace(/\D/g, "").slice(-10);
+      if (phoneDigits.length >= 7) {
+        const phoneConditions = [`shipping_address->>phone.ilike.%${phoneDigits}%`];
+        const { data: phoneCustomers } = await supabase
+          .from("store_customers")
+          .select("id")
+          .ilike("phone", `%${phoneDigits}%`);
+        const phoneCustomerIds = (phoneCustomers ?? []).map((c) => c.id);
+        if (phoneCustomerIds.length > 0) phoneConditions.push(`customer_id.in.(${phoneCustomerIds.join(",")})`);
+        query = query.or(phoneConditions.join(","));
+      } else {
+        // Too short to be a real number — match nothing rather than everything.
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
     if (filters?.dueOnly) {
       // Same rules as getCustomersWithDue: unpaid, not cancelled/returned, and
       // not an online COD order (the courier collects that, not the customer).

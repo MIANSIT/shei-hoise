@@ -190,7 +190,7 @@ const getStoreOrdersImpl = async (
     normalizedFilters.dateFrom = filters.dateFrom;
     normalizedFilters.dateTo = filters.dateTo;
   }
-  if (filters?.customerId) normalizedFilters.customerId = filters.customerId;
+  if (filters?.customerPhone) normalizedFilters.customerPhone = filters.customerPhone;
   if (filters?.dueOnly) normalizedFilters.dueOnly = true;
 
   return originalGetStoreOrders(

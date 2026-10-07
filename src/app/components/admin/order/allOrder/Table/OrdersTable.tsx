@@ -105,6 +105,11 @@ interface Props {
 // Same re-skin technique as VendorTable.tsx's TABLE_STYLES — uppercase gray
 // headers, subtle hover tint, borderless rows — for visual consistency with
 // the rest of the dashboard's "modernized antd table" pages.
+// "All" loads this many orders at once — every order for most stores, and
+// still a quick page for the ones with more (they get a second page).
+const ALL_ORDERS_PAGE_SIZE = 500;
+const PAGE_SIZE_CHOICES = [10, 20, 50, 100, ALL_ORDERS_PAGE_SIZE];
+
 const TABLE_STYLES = `
   .orders-table .ant-table-thead > tr > th {
     background: #fafafa !important; color: #6b7280 !important;
@@ -1181,9 +1186,13 @@ const OrdersTable: React.FC<Props> = ({
           current={page}
           pageSize={pageSize}
           total={total}
-          showSizeChanger
+          showSizeChanger={{
+            options: PAGE_SIZE_CHOICES.map((size) => ({
+              value: size,
+              label: size === ALL_ORDERS_PAGE_SIZE ? t.admin.ordersShowAllPerPage : `${n(size)} / ${t.admin.ordersPerPage}`,
+            })),
+          }}
           onChange={(p, ps) => onTableChange({ current: p, pageSize: ps })}
-          pageSizeOptions={["5", "10", "20", "50"]}
           showTotal={(total, range) =>
             `${n(range[0])}-${n(range[1])} ${t.admin.orderOf} ${n(total)} ${t.admin.orderItemsLabel}`
           }
