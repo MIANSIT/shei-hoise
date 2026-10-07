@@ -72,6 +72,7 @@ export function useUnifiedCartData({
           // Use Zustand cart data - it's already grouped by useCartItems
           setCartItems(zustandData.items);
           setCalculations(zustandData.calculations);
+          setError(zustandData.error);
         } else if (
           tokenData &&
           tokenData !== previousCompressedDataRef.current
@@ -259,5 +260,6 @@ export function useUnifiedCartData({
     calculations,
     loading,
     error,
+    retry: zustandData.retry,
   };
 }

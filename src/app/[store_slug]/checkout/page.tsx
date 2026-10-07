@@ -61,6 +61,7 @@ export default function CheckoutPage() {
     calculations,
     loading: cartLoading,
     error: cartError,
+    retry: retryCart,
   } = useUnifiedCartData({
     storeSlug: store_slug,
     useZustand: true,
@@ -595,6 +596,25 @@ export default function CheckoutPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">{t.checkout.storeNotFound}</h1>
           <p>{t.checkout.storeNotFoundDesc}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Products failed to load (e.g. a dropped connection) — offer a retry
+  // instead of claiming the cart is empty.
+  if (cartItems.length === 0 && cartError && !showInvoice && !hasAttemptedCheckout.current) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-foreground">{t.checkout.cartLoadFailed}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t.checkout.cartLoadFailedDesc}</p>
+          <button
+            onClick={retryCart}
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-primary text-primary-foreground hover:bg-primary-hover active:scale-95 transition-all duration-200"
+          >
+            {t.checkout.tryAgain}
+          </button>
         </div>
       </div>
     );
