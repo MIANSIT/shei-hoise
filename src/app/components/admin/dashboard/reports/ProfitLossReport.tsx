@@ -173,7 +173,7 @@ export default function ProfitLossReport() {
             </div>
           </div>
 
-          <DatePicker.RangePicker
+          <DatePicker.RangePicker format="DD-MM-YYYY"
             value={range}
             onChange={(v) => {
               if (v && v[0] && v[1]) setRange([v[0], v[1]]);

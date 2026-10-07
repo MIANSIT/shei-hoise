@@ -186,6 +186,12 @@ const getStoreOrdersImpl = async (
   if (filters?.branchIds?.length) normalizedFilters.branchIds = filters.branchIds;
   if (filters?.needsBranch) normalizedFilters.needsBranch = true;
   if (filters?.printed) normalizedFilters.printed = filters.printed;
+  if (filters?.dateFrom && filters?.dateTo) {
+    normalizedFilters.dateFrom = filters.dateFrom;
+    normalizedFilters.dateTo = filters.dateTo;
+  }
+  if (filters?.customerId) normalizedFilters.customerId = filters.customerId;
+  if (filters?.dueOnly) normalizedFilters.dueOnly = true;
 
   return originalGetStoreOrders(
     storeId,

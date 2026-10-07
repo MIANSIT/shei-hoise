@@ -515,7 +515,7 @@ export default function OrderSummary({
                   </span>
                 }
               >
-                <DatePicker
+                <DatePicker format="DD-MM-YYYY"
                   value={orderDate}
                   onChange={(date) => date && setOrderDate(date)}
                   disabledDate={(current) =>

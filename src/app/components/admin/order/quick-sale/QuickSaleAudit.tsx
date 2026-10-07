@@ -235,7 +235,7 @@ export default function QuickSaleAudit() {
           </Text>
           <WorkBranchPicker label={t.branches.drawerLabel} />
         </div>
-        <DatePicker
+        <DatePicker format="DD-MM-YYYY"
           value={selectedDate}
           onChange={(d) => d && setSelectedDate(d)}
           allowClear={false}

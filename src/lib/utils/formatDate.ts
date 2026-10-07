@@ -9,6 +9,8 @@ const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const pad = (value: number): string => String(value).padStart(2, "0");
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function toDate(value: string | number | Date | null | undefined): Date | null {
   if (value === null || value === undefined || value === "") return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -48,4 +50,29 @@ export function formatDateTime(value: string | number | Date | null | undefined)
   const date = toDate(value);
   if (!date) return "";
   return `${formatDate(date)}, ${formatTime(date)}`;
+}
+
+/**
+ * Table style: "03 Oct 2026" — unambiguous at a glance (03-10 vs 10-03).
+ * @param value ISO timestamp, "YYYY-MM-DD" date, or Date
+ * @returns "DD Mon YYYY", or "" when the value is missing/invalid
+ */
+export function formatDateShort(value: string | number | Date | null | undefined): string {
+  if (typeof value === "string") {
+    const match = DATE_ONLY.exec(value);
+    if (match) return `${match[3]} ${MONTHS[Number(match[2]) - 1]} ${match[1]}`;
+  }
+  const date = toDate(value);
+  if (!date) return "";
+  return `${pad(date.getDate())} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+/**
+ * @param value ISO timestamp or Date
+ * @returns "DD Mon YYYY, hh:mm AM/PM", or "" when the value is missing/invalid
+ */
+export function formatDateTimeShort(value: string | number | Date | null | undefined): string {
+  const date = toDate(value);
+  if (!date) return "";
+  return `${formatDateShort(date)}, ${formatTime(date)}`;
 }

@@ -19,6 +19,7 @@ interface DataTableProps<T> {
   size?: "small" | "middle" | "large";
   expandable?: TableProps<T>["expandable"];
   rowClassName?: TableProps<T>["rowClassName"];
+  onRow?: TableProps<T>["onRow"];
   scroll?: TableProps<T>["scroll"];
   responsive?: boolean;
   renderCard?: (record: T) => React.ReactNode;
@@ -43,6 +44,7 @@ function DataTable<T extends object>({
   size = "middle",
   expandable,
   rowClassName,
+  onRow,
   scroll,
   renderCard,
   className,
@@ -90,6 +92,7 @@ function DataTable<T extends object>({
         size={size}
         expandable={expandable}
         rowClassName={rowClassName}
+        onRow={onRow}
         components={components}
         scroll={scroll ?? { x: "max-content" }}
       />
