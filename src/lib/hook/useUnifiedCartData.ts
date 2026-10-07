@@ -245,7 +245,9 @@ export function useUnifiedCartData({
           err instanceof Error ? err.message : "Failed to load cart data"
         );
       } finally {
-        setLoading(false);
+        // The Zustand cart fetches product details asynchronously — stay in
+        // the loading state until it's done, or the page flashes "cart empty".
+        setLoading(useZustand ? zustandData.loading : false);
       }
     };
 

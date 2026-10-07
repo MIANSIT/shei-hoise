@@ -335,7 +335,8 @@ export function useCartItems(storeSlug?: string) {
   return {
     items: cartItems,
     calculations,
-    loading: loading && !hasLoadedRef.current, // Only show loading on initial load
+    // Only show loading on initial load, and never for a truly empty cart
+    loading: loading && !hasLoadedRef.current && targetCart.length > 0,
     error,
     refresh: () => {
       productDataCacheRef.current.clear();
