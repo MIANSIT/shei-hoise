@@ -29,13 +29,24 @@ export async function getPaperflyCredentials(
     return { ok: false, error: "Paperfly account is not connected" };
   }
 
-  return {
-    ok: true,
-    auth: {
-      username: decrypt(row.client_id),
-      password: decrypt(row.client_secret),
-      paperflyKey: decrypt(row.api_key),
-    },
-    storeName: row.pathao_store_name ?? "",
-  };
+  // decrypt() throws on a key mismatch (e.g. a credential saved under a
+  // rotated ENCRYPTION_KEY whose old version was not preserved). Let that
+  // surface as a normal error result instead of a 500 from the server action.
+  try {
+    return {
+      ok: true,
+      auth: {
+        username: decrypt(row.client_id),
+        password: decrypt(row.client_secret),
+        paperflyKey: decrypt(row.api_key),
+      },
+      storeName: row.pathao_store_name ?? "",
+    };
+  } catch (err) {
+    console.error("Failed to decrypt Paperfly credentials:", err);
+    return {
+      ok: false,
+      error: "Saved Paperfly credentials could not be read — reconnect the account",
+    };
+  }
 }
