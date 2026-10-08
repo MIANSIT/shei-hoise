@@ -52,7 +52,6 @@ export default function UpdateOrderButton({
   courier,
   orderDate,
   disabled = false,
-  onOrderUpdated,
   emailError,
   returnUrl,
 }: UpdateOrderButtonProps) {
@@ -237,10 +236,8 @@ export default function UpdateOrderButton({
           duration: 4,
         });
 
-        if (onOrderUpdated) {
-          onOrderUpdated();
-        }
-
+        // Leave first: the form's refetch (onOrderUpdated) flips the page into
+        // its loading state and would unmount this button mid-navigation.
         router.push(returnUrl || "/dashboard/orders");
       } else {
         console.error("❌ Order update failed:", result.error);

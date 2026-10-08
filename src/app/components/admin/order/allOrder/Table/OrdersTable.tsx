@@ -1141,7 +1141,9 @@ const OrdersTable: React.FC<Props> = ({
         onRow={(record) => ({
           onClick: (e) => {
             // Buttons, links and checkboxes inside a row do their own thing.
-            if ((e.target as HTMLElement).closest("button, a, input, .ant-checkbox-wrapper, .ant-dropdown-trigger")) return;
+            if ((e.target as HTMLElement).closest("button, a, input, .ant-checkbox-wrapper, .ant-dropdown-trigger, .ant-dropdown")) return;
+            // Selecting text to copy (a phone number, say) isn't a request to open the order.
+            if (window.getSelection()?.toString()) return;
             setDrawerOrderId(record.id);
           },
           style: { cursor: "pointer" },
