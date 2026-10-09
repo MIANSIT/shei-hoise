@@ -89,7 +89,7 @@ export default function AddItemsToVendorOrderPage() {
           return;
         }
 
-        const products = await getVendorOrderableProducts(storeId, "");
+        const products = await getVendorOrderableProducts(storeId, "", o.branch_id ?? null);
 
         setOrder(o);
         setProductOptions(products);
@@ -118,14 +118,14 @@ export default function AddItemsToVendorOrderPage() {
       const requestId = ++searchRequestIdRef.current;
       setProductSearchLoading(true);
       try {
-        const rows = await getVendorOrderableProducts(storeId, term);
+        const rows = await getVendorOrderableProducts(storeId, term, order?.branch_id ?? null);
         if (requestId !== searchRequestIdRef.current) return;
         setProductOptions(rows);
       } finally {
         if (requestId === searchRequestIdRef.current) setProductSearchLoading(false);
       }
     },
-    [storeId],
+    [storeId, order?.branch_id],
   );
 
   const handleProductSearch = useCallback(
@@ -374,11 +374,15 @@ export default function AddItemsToVendorOrderPage() {
   const performSave = async () => {
     setSaving(true);
     try {
-      await addItemsToConfirmedOrder(
+      const res = await addItemsToConfirmedOrder(
         orderId,
         newItems.map(({ key: _k, warehouse_stock: _s, ...rest }) => rest),
         user?.id ?? null,
       );
+      if (!res.ok) {
+        error(res.error);
+        return;
+      }
       clearDraft();
       success("Products added and stock dispatched");
       router.push(`/dashboard/vendor-orders/${orderId}`);

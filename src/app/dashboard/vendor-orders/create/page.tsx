@@ -20,6 +20,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useBranches } from "@/lib/context/BranchContext";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useLocalDraft } from "@/lib/hook/useLocalDraft";
@@ -47,6 +48,9 @@ function round2(n: number): number {
 
 export default function CreateVendorOrderPage() {
   const { storeId, user, loading: userLoading } = useCurrentUser();
+  // Stores with branches: stock is shown for the branch you work at.
+  const { enabled: branchesOn, workBranchId } = useBranches();
+  const stockBranchId = branchesOn ? workBranchId : null;
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
   const router = useRouter();
@@ -128,7 +132,7 @@ export default function CreateVendorOrderPage() {
       const requestId = ++searchRequestIdRef.current;
       setProductSearchLoading(true);
       try {
-        const rows = await getVendorOrderableProducts(storeId, term);
+        const rows = await getVendorOrderableProducts(storeId, term, stockBranchId);
         // A newer keystroke may have fired its own request while this one
         // was in flight — ignore this response if it's no longer the latest,
         // otherwise a slow older search can overwrite a faster newer one.
@@ -138,7 +142,7 @@ export default function CreateVendorOrderPage() {
         if (requestId === searchRequestIdRef.current) setProductSearchLoading(false);
       }
     },
-    [storeId],
+    [storeId, stockBranchId],
   );
 
   const handleProductSearch = useCallback(
@@ -375,8 +379,7 @@ export default function CreateVendorOrderPage() {
     if (!storeId || !vendorId) return;
     setSaving(true);
     try {
-      clearDraft();
-      const order = await createVendorOrder({
+      const result = await createVendorOrder({
         store_id: storeId,
         vendor_id: vendorId,
         order_date: orderDate.format("YYYY-MM-DD"),
@@ -392,11 +395,12 @@ export default function CreateVendorOrderPage() {
         created_by: user?.id ?? null,
         items: items.map(({ key: _key, warehouse_stock: _stock, ...rest }) => rest),
       });
-      if (order) {
+      if (result.ok) {
+        clearDraft();
         success("Vendor order saved as draft");
-        router.push(`/dashboard/vendor-orders/${order.id}`);
+        router.push(`/dashboard/vendor-orders/${result.data.id}`);
       } else {
-        error("Failed to save vendor order");
+        error(result.error);
       }
     } catch (err) {
       error(err instanceof Error ? err.message : "Failed to save vendor order");

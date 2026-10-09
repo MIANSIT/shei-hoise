@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
 import { getVendorPaymentStatsForPeriod } from "@/lib/queries/vendor/getVendorPaymentStatsForPeriod";
+import { getVendorSalesForPeriod } from "@/lib/queries/vendor/getVendorSalesForPeriod";
 import { getSalesSummary, type SalesSummary } from "./getSalesSummary";
 
 export interface DashboardSummaryPayload {
@@ -50,6 +51,9 @@ export interface DashboardSummaryPayload {
   };
   vendor_profit: number;
   prev_vendor_profit: number;
+  /** Confirmed vendor orders in the period — added to store sales for total sales. */
+  vendor_sales: number;
+  prev_vendor_sales: number;
   /** Sales (all orders) / received / to collect — null when the database predates them. */
   sales_summary: SalesSummary | null;
   vendor_payments: {
@@ -76,7 +80,7 @@ export async function getDashboardSummary(
   /** Stores with branches: one branch's dashboard. Omitted/null = the whole store. */
   branchId?: string | null,
 ): Promise<DashboardSummaryPayload> {
-  const [{ data, error }, vendorProfit, vendorPayments, salesSummary] = await Promise.all([
+  const [{ data, error }, vendorProfit, vendorPayments, salesSummary, vendorSales] = await Promise.all([
     supabase.rpc("get_dashboard_summary", {
       p_store_id: storeId,
       p_period_start: periodStart,
@@ -103,6 +107,7 @@ export async function getDashboardSummary(
       branchId ?? null,
     ),
     getSalesSummary(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId),
+    getVendorSalesForPeriod(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId ?? null),
   ]);
 
   if (error) throw new Error(error.message);
@@ -111,6 +116,8 @@ export async function getDashboardSummary(
     vendor_profit: vendorProfit.vendor_profit,
     prev_vendor_profit: vendorProfit.prev_vendor_profit,
     vendor_payments: vendorPayments,
+    vendor_sales: vendorSales.vendor_sales,
+    prev_vendor_sales: vendorSales.prev_vendor_sales,
     sales_summary: salesSummary,
   };
 }

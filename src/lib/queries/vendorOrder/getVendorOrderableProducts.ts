@@ -32,6 +32,8 @@ interface DbProduct {
 export async function getVendorOrderableProducts(
   storeId: string,
   search?: string,
+  /** Stores with branches: show this branch's stock instead of the store-wide total. */
+  branchId?: string | null,
 ): Promise<VendorOrderableProduct[]> {
   if (!storeId) return [];
 
@@ -71,9 +73,30 @@ export async function getVendorOrderableProducts(
     return [];
   }
 
+  const products = (data as unknown as DbProduct[]) ?? [];
+
+  // A branch's own stock — dispatch takes goods from one branch, so the
+  // store-wide total would promise units that branch doesn't have.
+  let branchStock: Map<string, number> | null = null;
+  if (branchId && products.length) {
+    const { data: stockRows } = await supabase
+      .from("branch_inventory")
+      .select("product_id, variant_id, quantity_available")
+      .eq("branch_id", branchId)
+      .in("product_id", products.map((p) => p.id));
+    branchStock = new Map(
+      (stockRows ?? []).map((r) => [
+        `${r.product_id}:${r.variant_id ?? ""}`,
+        Number(r.quantity_available ?? 0),
+      ]),
+    );
+  }
+  const stockOf = (productId: string, variantId: string | null, total: number) =>
+    branchStock ? (branchStock.get(`${productId}:${variantId ?? ""}`) ?? 0) : total;
+
   const rows: VendorOrderableProduct[] = [];
 
-  for (const product of (data as unknown as DbProduct[]) ?? []) {
+  for (const product of products) {
     if (product.product_variants?.length) {
       for (const variant of product.product_variants) {
         if (!variant.is_active) continue;
@@ -83,7 +106,7 @@ export async function getVendorOrderableProducts(
           product_name: product.name,
           variant_name: variant.variant_name,
           sku: variant.sku,
-          warehouse_stock: variant.product_inventory?.[0]?.quantity_available ?? 0,
+          warehouse_stock: stockOf(product.id, variant.id, variant.product_inventory?.[0]?.quantity_available ?? 0),
           tp_price: variant.tp_price ?? 0,
           base_price: variant.base_price,
         });
@@ -95,7 +118,7 @@ export async function getVendorOrderableProducts(
         product_name: product.name,
         variant_name: null,
         sku: product.sku,
-        warehouse_stock: product.product_inventory?.[0]?.quantity_available ?? 0,
+        warehouse_stock: stockOf(product.id, null, product.product_inventory?.[0]?.quantity_available ?? 0),
         tp_price: product.tp_price ?? 0,
         base_price: product.base_price,
       });

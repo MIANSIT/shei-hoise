@@ -74,6 +74,7 @@ export function useCurrentUser() {
   useEffect(() => {
     let mounted = true;
     let currentAuthUser: User | null = null;
+    let hasLoaded = false;
 
     const fetchUser = async (authUser: User | null) => {
       if (!mounted) return;
@@ -84,6 +85,7 @@ export function useCurrentUser() {
            LOGOUT
         ======================= */
         if (!authUser) {
+          hasLoaded = false;
           setUser(null);
           setStoreSlug(null);
           setStoreId(null);
@@ -102,6 +104,7 @@ export function useCurrentUser() {
           globalUserCache &&
           Date.now() - globalUserCache.timestamp < CACHE_DURATION
         ) {
+          hasLoaded = true;
           setUser(globalUserCache.user);
           setStoreSlug(globalUserCache.storeSlug);
           setStoreId(globalUserCache.storeId);
@@ -111,7 +114,11 @@ export function useCurrentUser() {
           return;
         }
 
-        setLoading(true);
+        // Only the first load is a "loading" state. A later refresh (cache
+        // expired, token refreshed, tab refocused) runs silently — flipping
+        // loading back on made the dashboard swap itself for a spinner and
+        // remount the page, wiping an open add/edit product form.
+        if (!hasLoaded) setLoading(true);
         setError(null);
 
         /* =======================
@@ -149,6 +156,7 @@ export function useCurrentUser() {
             timestamp: Date.now(),
           };
 
+          hasLoaded = true;
           setUser(fallbackUser);
           setStoreSlug(null);
           setStoreId(null);
@@ -201,6 +209,7 @@ export function useCurrentUser() {
           timestamp: Date.now(),
         };
 
+        hasLoaded = true;
         setUser(userWithProfile);
         setStoreSlug(userStoreSlug);
         setStoreId(parsedUser.store_id || null);
@@ -209,6 +218,7 @@ export function useCurrentUser() {
         setLoading(false);
       } catch (err) {
         console.error("❌ useCurrentUser error:", err);
+        hasLoaded = false;
         setError(err as Error);
         setUser(null);
         setStoreSlug(null);

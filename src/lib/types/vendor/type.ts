@@ -70,6 +70,8 @@ export interface VendorOrder {
   vendor_id: string;
   invoice_number: string;
   status: VendorOrderStatus;
+  /** Stores with branches: the branch the goods were dispatched from (set on confirm). */
+  branch_id?: string | null;
   order_date: string;
   invoice_date: string | null;
   delivery_date: string | null;
@@ -299,3 +301,12 @@ export interface VendorsOverviewStats {
   total_margin_dispatched: number;
   slow_moving_stock_value: number;
 }
+
+/**
+ * Result of a vendor-order server action. Production builds mask the message
+ * of any error thrown from a server action, so actions return the failure
+ * text instead of throwing it.
+ */
+export type VendorActionResult<T = undefined> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };

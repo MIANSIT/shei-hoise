@@ -88,6 +88,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [subscription, setSubscription] = useState<StoreSubscription | null>(null);
   const [subLoading, setSubLoading] = useState(true);
+  const dashboardReadyRef = useRef(false);
   // const [, setLogoutLoading] = useState(false);
   // const notify = useSheiNotification();
 
@@ -331,7 +332,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // };
 
   // Combined loading states
-  const isLoading = authLoading || userLoading || storeLoading;
+  // The full-screen spinner is for the first load only. Once the dashboard has
+  // rendered, a background refresh (token refresh, tab refocus, cache expiry)
+  // must not swap the page for a spinner: that unmounts it, wiping an open
+  // add/edit product form and dropping a navigation that was in flight.
+  const stillLoading = authLoading || userLoading || storeLoading;
+  if (!stillLoading) dashboardReadyRef.current = true;
+  const isLoading = stillLoading && !dashboardReadyRef.current;
 
   // Check if user should be blocked from accessing dashboard
   const shouldBlockAccess = !isLoading && !storeIsActive;

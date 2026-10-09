@@ -1,21 +1,22 @@
 "use server";
 import { callVendorRpc } from "@/lib/queries/vendor/vendorBranchRpc";
-import type { VendorOrderItemInput } from "@/lib/types/vendor/type";
+import type { VendorActionResult, VendorOrderItemInput } from "@/lib/types/vendor/type";
 import { getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export async function addItemsToConfirmedOrder(
   vendorOrderId: string,
   items: VendorOrderItemInput[],
   createdBy?: string | null,
-): Promise<void> {
-  if (!items.length) throw new Error("At least one item is required");
+): Promise<VendorActionResult> {
+  try {
+  if (!items.length) return { ok: false, error: "At least one item is required" };
 
   // vendorOrderId is caller-supplied — confirm it belongs to the caller's
   // own store before letting the RPC move any stock. p_caller_store_id is
   // also passed through so the RPC itself re-checks (see
   // supabase/migrations/20260822000000_add_vendor_rpc_ownership_checks.sql).
   const storeResult = await getAuthorizedStoreId("vendors.edit");
-  if (!storeResult.ok) throw new Error(storeResult.error);
+  if (!storeResult.ok) return { ok: false, error: storeResult.error };
 
   // Stores with branches: the extra goods come from the order's own branch.
   const { error } = await callVendorRpc("add_items_to_confirmed_vendor_order", {
@@ -35,5 +36,10 @@ export async function addItemsToConfirmedOrder(
     p_created_by: createdBy || null,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+  } catch (err) {
+    console.error("addItemsToConfirmedOrder failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to add products" };
+  }
 }

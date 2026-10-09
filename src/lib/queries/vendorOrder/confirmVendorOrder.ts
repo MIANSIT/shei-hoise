@@ -1,5 +1,6 @@
 "use server";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
+import type { VendorActionResult } from "@/lib/types/vendor/type";
 import { callVendorRpc } from "@/lib/queries/vendor/vendorBranchRpc";
 
 // Atomically transfers stock from warehouse (product_inventory) to the
@@ -14,14 +15,15 @@ export async function confirmVendorOrder(
   vendorOrderId: string,
   createdBy?: string | null,
   branchId?: string | null,
-): Promise<void> {
+): Promise<VendorActionResult> {
+  try {
   // vendorOrderId is caller-supplied — confirm it belongs to the caller's
   // own store before letting the RPC move any stock. p_caller_store_id is
   // also passed through so the RPC itself re-checks (see
   // supabase/migrations/20260822000000_add_vendor_rpc_ownership_checks.sql).
   const storeResult = await getAuthorizedStoreId("vendors.edit");
-  if (!storeResult.ok) throw new Error(storeResult.error);
-  if (branchId && !canUseBranch(storeResult.actor, branchId)) throw new Error(BRANCH_SCOPE_ERROR);
+  if (!storeResult.ok) return { ok: false, error: storeResult.error };
+  if (branchId && !canUseBranch(storeResult.actor, branchId)) return { ok: false, error: BRANCH_SCOPE_ERROR };
 
   const { error } = await callVendorRpc(
     "confirm_vendor_order",
@@ -33,7 +35,10 @@ export async function confirmVendorOrder(
     { p_branch_id: branchId || null },
   );
 
-  if (error) {
-    throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: undefined };
+  } catch (err) {
+    console.error("confirmVendorOrder failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to confirm order" };
   }
 }

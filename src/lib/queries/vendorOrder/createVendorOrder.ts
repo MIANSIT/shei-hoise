@@ -1,6 +1,6 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import type { CreateVendorOrderInput, VendorOrder } from "@/lib/types/vendor/type";
+import type { CreateVendorOrderInput, VendorActionResult, VendorOrder } from "@/lib/types/vendor/type";
 import { authorizeForStore } from "@/lib/permissions/server";
 
 const MAX_INVOICE_NUMBER_ATTEMPTS = 3;
@@ -20,13 +20,14 @@ function generateInvoiceNumber(): string {
 // separate step from drafting/reviewing the order.
 export async function createVendorOrder(
   input: CreateVendorOrderInput,
-): Promise<VendorOrder | null> {
+): Promise<VendorActionResult<VendorOrder>> {
   if (!input.items?.length) {
-    throw new Error("At least one product is required");
+    return { ok: false, error: "At least one product is required" };
   }
 
+  try {
   const auth = await authorizeForStore(input.store_id, "vendors.add");
-  if (!auth.ok) throw new Error(auth.error);
+  if (!auth.ok) return { ok: false, error: auth.error };
 
   const totalQuantity = input.items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = input.items.reduce(
@@ -107,12 +108,16 @@ export async function createVendorOrder(
 
     if (itemsError) throw new Error(itemsError.message);
 
-    return order as VendorOrder;
+    return { ok: true, data: order as VendorOrder };
   } catch (err) {
     console.error("Error creating vendor order:", err);
     if (orderId) {
       await supabaseAdmin.from("vendor_orders").delete().eq("id", orderId);
     }
-    throw err;
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to create vendor order" };
+  }
+  } catch (err) {
+    console.error("createVendorOrder failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to create vendor order" };
   }
 }

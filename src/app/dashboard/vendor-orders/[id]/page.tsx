@@ -107,7 +107,11 @@ export default function VendorOrderDetailPage() {
       onOk: async () => {
         setConfirming(true);
         try {
-          await confirmVendorOrder(orderId, user?.id ?? null, workBranchId);
+          const res = await confirmVendorOrder(orderId, user?.id ?? null, workBranchId);
+          if (!res.ok) {
+            error(res.error);
+            return;
+          }
           success("Vendor order confirmed — stock transferred");
           fetchOrder();
         } catch (err) {
@@ -130,7 +134,11 @@ export default function VendorOrderDetailPage() {
       onOk: async () => {
         setCancelling(true);
         try {
-          await cancelVendorOrder(orderId, user?.id ?? null);
+          const res = await cancelVendorOrder(orderId, user?.id ?? null);
+          if (!res.ok) {
+            error(res.error);
+            return;
+          }
           success("Order cancelled — stock returned to warehouse");
           fetchOrder();
         } catch (err) {

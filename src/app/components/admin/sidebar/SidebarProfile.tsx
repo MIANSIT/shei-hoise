@@ -27,20 +27,28 @@ export default function SidebarProfile() {
   const [storeLoading, setStoreLoading] = useState(false);
 
   // Fetch store data
+  // storeLoading must not be a dependency: flipping it would re-run this
+  // effect and refetch forever, making the logo blink until a click re-rendered.
   useEffect(() => {
-    if (!storeSlug || storeLoading) return;
+    if (!storeSlug) return;
 
+    let cancelled = false;
     setStoreLoading(true);
     getStoreBySlugWithLogo(storeSlug)
       .then((data) => {
-        setStore(data);
-        setStoreLoading(false);
+        if (!cancelled) setStore(data);
       })
       .catch((err) => {
         console.error("Failed to fetch store:", err);
-        setStoreLoading(false);
+      })
+      .finally(() => {
+        if (!cancelled) setStoreLoading(false);
       });
-  }, [storeLoading, storeSlug]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storeSlug]);
 
   const handleLogout = async () => {
     try {

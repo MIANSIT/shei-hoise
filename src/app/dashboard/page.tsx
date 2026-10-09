@@ -207,10 +207,23 @@ export default function DashboardPage() {
   // Sales = every order (paid or not); received = the paid part. Falls back
   // to the paid figure when the database doesn't have the sales totals yet.
   const salesSummary = summary?.sales_summary ?? null;
+  // Total sales = store sales + vendor sales; total profit likewise.
+  const vendorSales = summary?.vendor_sales ?? 0;
+  const vendorProfit = summary?.vendor_profit ?? 0;
+  const totalSales = (salesSummary?.sales ?? 0) + vendorSales;
+  const prevTotalSales = (salesSummary?.prevSales ?? 0) + (summary?.prev_vendor_sales ?? 0);
   const salesChange =
-    salesSummary && salesSummary.prevSales > 0
-      ? ((salesSummary.sales - salesSummary.prevSales) / salesSummary.prevSales) * 100
-      : salesSummary && salesSummary.sales > 0
+    salesSummary && prevTotalSales > 0
+      ? ((totalSales - prevTotalSales) / prevTotalSales) * 100
+      : salesSummary && totalSales > 0
+        ? 100
+        : 0;
+  const totalProfit = metrics.grossProfit + vendorProfit;
+  const prevTotalProfit = (summary?.prev_gross_profit ?? 0) + (summary?.prev_vendor_profit ?? 0);
+  const totalProfitChange =
+    prevTotalProfit > 0
+      ? ((totalProfit - prevTotalProfit) / prevTotalProfit) * 100
+      : totalProfit > 0
         ? 100
         : 0;
 
@@ -219,11 +232,14 @@ export default function DashboardPage() {
     salesSummary
       ? {
           title: `${getPeriodLabel(timePeriod)} ${t.admin.psSalesAll}`,
-          value: renderCurrency(salesSummary.sales),
+          value: renderCurrency(totalSales),
           icon: <DollarOutlined className="text-emerald-500" />,
           change: changeLabel(salesChange),
           changeType: changeTone(salesChange),
-          description: `${t.admin.psReceived} ${renderCurrencyText(salesSummary.received)} · ${t.admin.psToCollect} ${renderCurrencyText(salesSummary.toCollect)}`,
+          description:
+            vendorSales > 0
+              ? `${t.admin.psStoreShort} ${renderCurrencyText(salesSummary.sales)} + ${t.admin.psVendorShort} ${renderCurrencyText(vendorSales)}`
+              : `${t.admin.psReceived} ${renderCurrencyText(salesSummary.received)} · ${t.admin.psToCollect} ${renderCurrencyText(salesSummary.toCollect)}`,
         }
       : {
           title: `${getPeriodLabel(timePeriod)} ${t.admin.revenuePaid}`,
@@ -251,11 +267,14 @@ export default function DashboardPage() {
     },
     {
       title: `${getPeriodLabel(timePeriod)} ${t.admin.grossProfit}`,
-      value: renderCurrency(metrics.grossProfit),
+      value: renderCurrency(totalProfit),
       icon: <DollarOutlined className="text-amber-500" />,
-      change: changeLabel(metrics.changePercentage.profit),
-      changeType: changeTone(metrics.changePercentage.profit),
-      description: t.admin.basedOnCost,
+      change: changeLabel(totalProfitChange),
+      changeType: changeTone(totalProfitChange),
+      description:
+        vendorProfit !== 0
+          ? `${t.admin.psStoreShort} ${renderCurrencyText(metrics.grossProfit)} + ${t.admin.psVendorShort} ${renderCurrencyText(vendorProfit)}`
+          : t.admin.basedOnCost,
     },
   ];
 
@@ -468,10 +487,10 @@ export default function DashboardPage() {
           sales: metrics.revenue,
           grossProfit: metrics.grossProfit,
           expenses: expenseMetrics.totalExpenses,
-          vendorProfit: summary?.vendor_profit ?? 0,
+          vendorProfit,
           netProfit: expenseMetrics.netProfit,
           netChangePct: isAllTime ? null : expenseMetrics.changePercentage.netProfit,
-          ...(salesSummary ? { allSales: salesSummary.sales } : {}),
+          ...(salesSummary ? { allSales: totalSales } : {}),
         },
         formatMoney: (amount: number) => renderCurrency(amount),
         ...(showComparison && comparison && comparison.length > 1
