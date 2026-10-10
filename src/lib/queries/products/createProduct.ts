@@ -8,6 +8,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
+import { getVariantListPrice } from "@/lib/utils/variantProductPricing";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export type CreateProductResult =
@@ -122,8 +123,13 @@ async function createProductInternal(
       productStatus = ProductStatus.DRAFT;
     }
     // ------------------ Resolve base price ------------------
-    const resolvedBasePrice =
-      product.base_price ?? product.variants?.[0]?.base_price;
+    // With variants the product-level price/discount are hidden in the form,
+    // so any value there is stale — derive the price from the variants and
+    // drop the product's own discount (each variant carries its own).
+    const hasVariants = !!product.variants?.length;
+    const resolvedBasePrice = hasVariants
+      ? getVariantListPrice(product.variants!)
+      : product.base_price;
 
     if (!resolvedBasePrice) {
       throw new Error("❌ Base price is required");
@@ -142,10 +148,10 @@ async function createProductInternal(
         meta_description: product.meta_description || null,
         base_price: resolvedBasePrice,
         tp_price: product.tp_price,
-        discounted_price: product.discounted_price,
-        discount_amount: product.discount_amount,
-        sale_starts_at: product.sale_starts_at,
-        sale_ends_at: product.sale_ends_at,
+        discounted_price: hasVariants ? null : product.discounted_price,
+        discount_amount: hasVariants ? null : product.discount_amount,
+        sale_starts_at: hasVariants ? null : product.sale_starts_at,
+        sale_ends_at: hasVariants ? null : product.sale_ends_at,
         weight: product.weight,
         sku: product.sku,
         status: productStatus,

@@ -7,6 +7,7 @@ import { uploadOrUpdateProductImages } from "@/lib/queries/storage/uploadProduct
 import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
+import { getVariantListPrice } from "@/lib/utils/variantProductPricing";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
@@ -133,10 +134,16 @@ async function updateProductInternal(data: ProductUpdateType, stockBranchId: str
   // Discount fields are normalised to null when absent: supabase-js drops
   // undefined keys from the JSON body, so leaving them out would keep the old
   // sale price on a product whose discount was just removed.
+  // With variants the product-level price/discount are hidden in the form, so
+  // whatever is there is stale — derive the price from the variants and clear
+  // the product's own discount (each variant carries its own).
+  const hasVariants = !!variants && variants.length > 0;
+  const variantListPrice = hasVariants ? getVariantListPrice(variants) : undefined;
   const { error: productError } = await supabaseAdmin
     .from("products")
     .update({
       ...productData,
+      ...(variantListPrice !== undefined ? { base_price: variantListPrice } : {}),
       description:
         productData.description !== undefined
           ? sanitizeHtml(productData.description)
@@ -149,10 +156,10 @@ async function updateProductInternal(data: ProductUpdateType, stockBranchId: str
         productData.meta_description !== undefined && !seoAllowed
           ? null
           : productData.meta_description,
-      discounted_price: productData.discounted_price ?? null,
-      discount_amount: productData.discount_amount ?? null,
-      sale_starts_at: productData.sale_starts_at ?? null,
-      sale_ends_at: productData.sale_ends_at ?? null,
+      discounted_price: hasVariants ? null : (productData.discounted_price ?? null),
+      discount_amount: hasVariants ? null : (productData.discount_amount ?? null),
+      sale_starts_at: hasVariants ? null : (productData.sale_starts_at ?? null),
+      sale_ends_at: hasVariants ? null : (productData.sale_ends_at ?? null),
     })
     .eq("id", id);
   if (productError) throw productError;

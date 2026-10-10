@@ -63,6 +63,16 @@ function getEffectivePrice(product: ProductWithVariants): number {
     ? product.discounted_price
     : product.base_price || 0;
 }
+// Card price: for a product with active variants, the lowest active variant's
+// price (the product's own price is hidden for variant products and can be
+// stale); otherwise the product's price.
+function getCardPrice(product: ProductWithVariants): number {
+  const variantPrices = (product.product_variants || [])
+    .filter((v) => v.is_active)
+    .map(getVariantEffectivePrice)
+    .filter((price) => price > 0);
+  return variantPrices.length > 0 ? Math.min(...variantPrices) : getEffectivePrice(product);
+}
 // Use raw quantity_available (not net of reservations) — Admin can sell
 // against physical stock; reservation deduction is for customer checkout
 // only (see OrderDetails.tsx's getAvailableQuantity for the same rule).
@@ -731,8 +741,9 @@ export default function QuickSale() {
                       {product.name}
                     </span>
                     <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      {hasVariants ? "from " : ""}
                       {currencyIcon}
-                      {getEffectivePrice(product).toFixed(2)}
+                      {getCardPrice(product).toFixed(2)}
                     </span>
                     {hasVariants ? (
                       <Tag color="blue" style={{ marginInlineEnd: 0 }}>
