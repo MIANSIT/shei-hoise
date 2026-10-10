@@ -169,8 +169,16 @@ function drawReceiptCopy(
   y += 4.5;
 
   for (const line of data.branchLines ?? []) {
-    centeredText(doc, line, y, 7, false, bengaliLoaded);
-    y += 3.3;
+    // Addresses are longer than the 58mm roll — wrap within the margins
+    // (measured in the same font the line is drawn with) instead of letting
+    // one centered line run off both edges.
+    doc.setFontSize(7);
+    setTextFont(doc, line, bengaliLoaded, false);
+    const wrapped: string[] = doc.splitTextToSize(line, CONTENT_WIDTH_MM);
+    for (const part of wrapped) {
+      centeredText(doc, part, y, 7, false, bengaliLoaded);
+      y += 3.3;
+    }
   }
 
   centeredText(doc, data.dateLabel, y, 7.5, false, bengaliLoaded);
