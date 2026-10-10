@@ -75,6 +75,7 @@ export default function ShopPage({ params }: ShopPageProps) {
 
   const ITEMS_PER_PAGE = 10;
   const isLoadingRef = useRef(false);
+  const requestIdRef = useRef(0);
   const storeIdRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
 
@@ -103,7 +104,12 @@ export default function ShopPage({ params }: ShopPageProps) {
       sort: ProductSortOption,
       isInitialLoad: boolean = false,
     ) => {
-      if (isLoadingRef.current) return;
+      // Only "load more" is dropped while a request is in flight. A new
+      // filter/search must always run — dropping it left the grid showing the
+      // results of an earlier, half-typed query. Responses that arrive after
+      // a newer request started are ignored below.
+      if (!isInitialLoad && isLoadingRef.current) return;
+      const requestId = ++requestIdRef.current;
       isLoadingRef.current = true;
       try {
         if (isInitialLoad) setLoading(true);
@@ -122,18 +128,23 @@ export default function ShopPage({ params }: ShopPageProps) {
           sort,
         );
 
+        if (requestId !== requestIdRef.current) return;
+
         if (isInitialLoad) setProducts(result.products);
         else setProducts((prev) => [...prev, ...result.products]);
 
         setHasMore(result.hasMore);
         setTotalProducts(result.totalCount);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         console.error(err);
         showError(t.shop.failedLoad);
       } finally {
-        if (isInitialLoad) setLoading(false);
-        else setLoadingMore(false);
-        isLoadingRef.current = false;
+        if (requestId === requestIdRef.current) {
+          if (isInitialLoad) setLoading(false);
+          else setLoadingMore(false);
+          isLoadingRef.current = false;
+        }
       }
     },
     [store_slug, showError],
@@ -201,6 +212,20 @@ export default function ShopPage({ params }: ShopPageProps) {
     updateURLParams(activeCategory, searchQuery, sortOption);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, searchQuery, sortOption]);
+
+  // The header search (and shared links) navigate to /shop?search=… while this
+  // page may already be mounted — the initial useState values above only read
+  // the URL once, so follow later URL changes here. Our own replaceState calls
+  // keep the URL equal to state, which makes this a no-op for them.
+  const urlCategory = searchParams.get("category") || ALL_CATEGORIES;
+  const urlSearch = searchParams.get("search") || "";
+  const urlSort = parseSortParam(searchParams.get("sort"));
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    setActiveCategory((prev) => (prev === urlCategory ? prev : urlCategory));
+    setSearchQuery((prev) => (prev.trim() === urlSearch.trim() ? prev : urlSearch));
+    setSortOption((prev) => (prev === urlSort ? prev : urlSort));
+  }, [urlCategory, urlSearch, urlSort]);
 
   const handleCategoryChange = useCallback((categorySlug: string) => {
     setActiveCategory(categorySlug);

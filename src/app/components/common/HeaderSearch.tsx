@@ -54,17 +54,21 @@ export function HeaderSearch({ storeSlug, className = "", onExpandedChange }: He
       return;
     }
     setLoading(true);
+    // Set by the cleanup when a newer keystroke supersedes this search, so a
+    // slow earlier response can't overwrite the newer results.
+    let stale = false;
     debounceRef.current = setTimeout(async () => {
       try {
         const { products } = await clientGetProducts(storeSlug, 1, RESULT_LIMIT, undefined, trimmed);
-        setResults(products);
+        if (!stale) setResults(products);
       } catch {
-        setResults([]);
+        if (!stale) setResults([]);
       } finally {
-        setLoading(false);
+        if (!stale) setLoading(false);
       }
     }, DEBOUNCE_MS);
     return () => {
+      stale = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, storeSlug]);
